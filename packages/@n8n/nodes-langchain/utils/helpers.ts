@@ -255,7 +255,10 @@ export const getConnectedTools = async (
 		}
 
 		if (convertStructuredTool && tool instanceof N8nTool) {
-			finalTools.push(tool.asDynamicTool());
+			const dynamicTool = tool.asDynamicTool();
+			// A fresh tool, so carry over the metadata callers route the call by
+			dynamicTool.metadata = tool.metadata;
+			finalTools.push(dynamicTool);
 		} else {
 			finalTools.push(tool);
 		}

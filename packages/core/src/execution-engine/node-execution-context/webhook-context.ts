@@ -43,17 +43,14 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		private readonly closeFunctions: CloseFunction[],
 		runExecutionData: IRunExecutionData | null,
 	) {
-		let connectionInputData: INodeExecutionData[] = [];
-		let executionData: IExecuteData | undefined;
+		const executionData = runExecutionData?.executionData?.nodeExecutionStack[0];
+		let connectionInputData: INodeExecutionData[] = executionData?.data.main[0] ?? [];
 
-		if (runExecutionData?.executionData !== undefined) {
-			executionData = runExecutionData.executionData.nodeExecutionStack[0];
-			if (executionData !== undefined) {
-				connectionInputData = executionData.data.main[0] ?? [];
-			}
-		}
-
-		if (executionData === undefined && additionalData.httpRequest) {
+		// A webhook execution seeds the stack entry with no output at all (`main: []`)
+		// before the webhook runs, so there is nothing to take input from yet. Only
+		// then fall back to the request itself, so a resumed execution keeps whatever
+		// input its waiting node had — including none.
+		if (!executionData?.data.main.length && additionalData.httpRequest) {
 			const req = additionalData.httpRequest;
 			connectionInputData = [
 				{

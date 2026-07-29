@@ -32,9 +32,6 @@ flowchart TB
         end
 
         subgraph Execution["Execution Layer"]
-            EC[ExecutionCoordinator]
-            DS[DirectStrategy]
-            QS[QueuedStrategy]
             PM[PendingCallsManager]
         end
 
@@ -47,15 +44,12 @@ flowchart TB
     C <-->|SSE/HTTP| MS
     MS --> SM
     MS --> TF
-    MS --> EC
+    MS --> PM
     MS --> MP
     MS --> MF
     SM --> SS
     TF --> SSE
     TF --> HTTP
-    EC --> DS
-    EC --> QS
-    QS --> PM
 ```
 
 ## Architecture
@@ -67,7 +61,7 @@ flowchart TB
 | **McpServer** | Main entry point. Coordinates all subsystems. |
 | **Session** | Manages client connections and tool registrations. |
 | **Transport** | Handles communication protocols (SSE, Streamable HTTP). |
-| **Execution** | Executes tools directly or via worker queue. |
+| **Execution** | Tracks in-flight tool calls until the workflow execution answers them. |
 | **Protocol** | Parses and formats MCP messages. |
 
 ### McpServer Facade
@@ -80,7 +74,7 @@ Without the facade, consumers would need to:
 1. Create and configure a SessionManager with a SessionStore
 2. Create a TransportFactory
 3. Create transports and wire up event handlers
-4. Create an ExecutionCoordinator with a strategy
+4. Track in-flight tool calls with a PendingCallsManager
 5. Parse incoming messages with MessageParser
 6. Format responses with MessageFormatter
 7. Wire everything together correctly
@@ -114,7 +108,7 @@ flowchart TB
         HandleStreamable[handleStreamableHttpSetup]
         HandlePost[handlePostMessage]
         HandleDelete[handleDeleteRequest]
-        HandleWorker[handleWorkerResponse]
+        Deliver[deliverToolResult]
         StorePending[storePendingResponse]
     end
 
@@ -148,10 +142,10 @@ flowchart TB
 | `instance(logger)` | Get the singleton instance |
 | `handleSetupRequest(req, resp, serverName, postUrl, tools)` | Handle SSE connection setup (GET request) |
 | `handleStreamableHttpSetup(req, resp, serverName, tools)` | Handle Streamable HTTP initialization (POST with `initialize` method) |
-| `handlePostMessage(req, resp, tools, serverName?)` | Handle incoming tool calls or list-tools requests. Returns `HandlePostResult` |
+| `handlePostMessage(req, resp, getTools, serverName?, gateResult?)` | Handle incoming tool calls or list-tools requests. Returns `HandlePostResult`. `getTools` is only resolved when the session has to be rebuilt on this instance |
 | `handleDeleteRequest(req, resp)` | Handle session termination |
-| `handleWorkerResponse(sessionId, messageId, result)` | Route worker results back to clients (queue mode) |
-| `storePendingResponse(sessionId, messageId)` | Track a pending response awaiting worker result |
+| `deliverToolResult(sessionId, messageId, result)` | Answer a parked tool call with the result of the execution that ran it. Returns whether this instance could answer |
+| `storePendingResponse(sessionId, messageId)` | Track a call awaiting its result |
 | `hasPendingResponse(sessionId, messageId)` | Check if a pending response exists |
 | `removePendingResponse(sessionId, messageId)` | Remove a pending response |
 | `pendingResponseCount` | Getter for the number of pending responses |
@@ -167,9 +161,7 @@ The `handlePostMessage` method returns a `HandlePostResult` object:
 ```typescript
 interface HandlePostResult {
   wasToolCall: boolean;              // Whether the request was a tool call
-  toolCallInfo?: McpToolCallInfo;    // Info about the tool call (if any)
-  messageId?: string;                // The JSONRPC message ID
-  relaySessionId?: string;           // Session ID for relayed requests (queue mode)
+  relaySessionId?: string;           // Session ID for a request another instance must answer
   needsListToolsRelay?: boolean;     // Whether this is a list-tools request needing relay
 }
 ```
@@ -179,9 +171,6 @@ interface HandlePostResult {
 | Method | Purpose |
 |--------|---------|
 | `setSessionStore(store)` | Replace the session store (e.g., InMemory → Redis) |
-| `setExecutionStrategy(strategy)` | Replace the execution strategy (e.g., Direct → Queued) |
-| `isQueueMode()` | Check if using queued execution |
-| `getPendingCallsManager()` | Get the pending calls manager (needed for QueuedExecutionStrategy) |
 
 #### Internal Coordination
 
@@ -195,35 +184,33 @@ The facade coordinates these internal operations:
 | `cleanupSession(sessionId)` | Cleans up pending calls, pending responses, and destroys the session |
 | `recreateStreamableHttpTransport(...)` | Recreates a transport for an existing session (multi-instance scenarios) |
 
-#### Queue Mode Behavior
+#### Answering a Tool Call
 
-In queue mode (multi-instance deployment), the facade has additional responsibilities:
+A tool call is not run by the MCP server. The webhook hands the call to the workflow
+engine as the trigger's output, and the request is parked until the execution that runs
+the tool reports its result back. The same path is used whether the execution runs in
+this process or on a queue worker.
 
 ```mermaid
 sequenceDiagram
     participant Client
-    participant Main as McpServer (Main)
-    participant Redis
-    participant Worker
+    participant McpServer
+    participant Trigger as MCP Trigger node
+    participant Engine as Workflow engine
 
-    Client->>Main: POST /messages (tool call)
-    Main->>Main: storePendingResponse()
-    Main-->>Client: 202 Accepted
-    Main->>Redis: Enqueue job
-
-    Redis->>Worker: Dequeue job
-    Worker->>Worker: Execute tool
-    Worker->>Redis: Publish result
-
-    Redis->>Main: mcp-response event
-    Main->>Main: handleWorkerResponse()
-    Main-->>Client: Result via SSE/HTTP
+    Client->>McpServer: POST (tool call)
+    McpServer->>McpServer: storePendingResponse()
+    McpServer->>Trigger: parked CallTool handler
+    Trigger-->>Engine: request tool node execution
+    Engine->>Engine: run tool node
+    Engine-->>Trigger: tool result
+    Trigger->>McpServer: deliverToolResult()
+    McpServer-->>Client: Result via SSE/HTTP
 ```
 
-Key queue mode methods:
-- **`storePendingResponse()`** - Tracks that we're waiting for a worker result
-- **`handleWorkerResponse()`** - Routes the worker's result back to the correct client
-- **`hasPendingResponse()`** / **`removePendingResponse()`** - Manage pending response state
+When the execution runs elsewhere (a queue worker, or another main holding the session),
+the result reaches this instance over pub/sub and `deliverToolResult` either resolves the
+parked call or writes to the session's transport.
 
 ## Layers
 
@@ -619,74 +606,9 @@ This type extends Express's `Response` to include an optional `flush()` method. 
 
 ### 4. Execution Layer
 
-Implements strategy pattern for tool execution, allowing different execution modes depending on deployment scenario.
+Tracks tool calls that are waiting for the workflow execution to report a result.
 
-```mermaid
-flowchart TB
-    subgraph ExecutionCoordinator
-        Execute[executeTool]
-        SetStrategy[setStrategy]
-    end
-
-    subgraph Strategies["ExecutionStrategy Interface"]
-        Direct[DirectExecutionStrategy]
-        Queued[QueuedExecutionStrategy]
-    end
-
-    subgraph PendingCalls[PendingCallsManager]
-        Wait[waitForResult]
-        Resolve[resolve]
-    end
-
-    ExecutionCoordinator --> Strategies
-    Direct -->|invoke| Tool[Tool.invoke]
-    Queued --> PendingCalls
-    PendingCalls -.->|worker response| Resolve
-```
-
-#### ExecutionStrategy Interface
-
-```typescript
-interface ExecutionStrategy {
-  executeTool(
-    tool: Tool,
-    args: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<unknown>;
-}
-
-interface ExecutionContext {
-  sessionId: string;
-  messageId?: string;
-}
-```
-
-#### DirectExecutionStrategy
-
-The default strategy that executes tools immediately in the same process:
-
-```typescript
-const strategy = new DirectExecutionStrategy();
-const result = await strategy.executeTool(tool, args, context);
-// Directly calls tool.invoke(args)
-```
-
-#### QueuedExecutionStrategy
-
-For multi-instance deployments where tool execution happens on worker processes:
-
-```typescript
-const strategy = new QueuedExecutionStrategy(
-  pendingCallsManager,
-  timeoutMs  // Optional, defaults to 120000ms (2 minutes)
-);
-
-// Methods for resolving calls from workers:
-strategy.resolveToolCall(callId, result);  // Returns true if call was pending
-strategy.rejectToolCall(callId, error);    // Returns true if call was pending
-strategy.getPendingCallsManager();         // Access the pending calls manager
-```
-
+#### PendingCallsManager
 #### PendingCallsManager
 
 Tracks tool calls waiting for results with automatic timeout handling:
@@ -709,11 +631,7 @@ manager.cleanupBySessionId(sessionId);  // Clean up all calls for a session
 ```
 
 **Files:**
-- `ExecutionStrategy.ts` - Strategy interface and ExecutionContext type
-- `DirectExecutionStrategy.ts` - Executes tools directly on main instance
-- `QueuedExecutionStrategy.ts` - Delegates to worker, waits for response (default timeout: 120s)
 - `PendingCallsManager.ts` - Tracks pending tool calls with timeout support
-- `ExecutionCoordinator.ts` - Selects and invokes strategy
 
 ## Usage
 
@@ -728,25 +646,19 @@ const mcpServer = McpServer.instance(logger);
 await mcpServer.handleSetupRequest(req, resp, serverName, postUrl, tools);
 
 // Handle POST messages
-const result = await mcpServer.handlePostMessage(req, resp, tools, serverName);
+const result = await mcpServer.handlePostMessage(req, resp, getTools, serverName);
 ```
 
-### Queue Mode Setup
+### Multi-Instance Setup
 
 ```typescript
 import { McpServer } from './McpServer';
-import { QueuedExecutionStrategy } from './execution';
 import { RedisSessionStore } from './RedisSessionStore';
 
 const mcpServer = McpServer.instance(logger);
 
-// Configure Redis session store
+// Sessions have to be resolvable from any instance
 mcpServer.setSessionStore(new RedisSessionStore(publisher, getKey, ttl));
-
-// Configure queued execution
-mcpServer.setExecutionStrategy(
-  new QueuedExecutionStrategy(mcpServer.getPendingCallsManager())
-);
 ```
 
 ## Flow Diagrams
@@ -769,7 +681,7 @@ sequenceDiagram
     Client->>McpServer: POST /messages (tool call)
     McpServer->>Session: getTransport()
     McpServer->>Transport: handleRequest()
-    Note over McpServer: Execute tool
+    Note over McpServer: Park the call until the execution answers
     Transport-->>Client: Tool result via SSE
 ```
 
@@ -786,15 +698,15 @@ sequenceDiagram
     Client->>Main: Tool call request
     Main->>McpServer: handlePostMessage()
     McpServer->>McpServer: storePendingResponse()
-    Main->>Redis: Enqueue job
+    Main->>Redis: Enqueue execution
     Main-->>Client: 202 Accepted
 
-    Redis->>Worker: Dequeue job
-    Worker->>Worker: Execute tool
+    Redis->>Worker: Dequeue execution
+    Worker->>Worker: Run the tool node
     Worker->>Redis: Publish result
 
     Redis->>Main: mcp-response event
-    Main->>McpServer: handleWorkerResponse()
+    Main->>McpServer: deliverToolResult()
     McpServer-->>Client: Result via SSE
 ```
 
@@ -817,12 +729,8 @@ McpTrigger/
 │   ├── SSETransport.ts
 │   ├── StreamableHttpTransport.ts
 │   └── TransportFactory.ts
-├── execution/                # Direct & queued execution strategies
-│   ├── ExecutionStrategy.ts
-│   ├── DirectExecutionStrategy.ts
-│   ├── QueuedExecutionStrategy.ts
-│   ├── PendingCallsManager.ts
-│   └── ExecutionCoordinator.ts
+├── execution/                # In-flight tool call tracking
+│   └── PendingCallsManager.ts
 └── __tests__/                # Comprehensive unit tests
 ```
 
@@ -846,6 +754,5 @@ import { SSETransport, StreamableHttpTransport, TransportFactory } from './trans
 import type { McpTransport, CompressionResponse, TransportType } from './transport';
 
 // Execution
-import { DirectExecutionStrategy, QueuedExecutionStrategy, PendingCallsManager, ExecutionCoordinator } from './execution';
-import type { ExecutionStrategy, ExecutionContext } from './execution';
+import { PendingCallsManager } from './execution';
 ```

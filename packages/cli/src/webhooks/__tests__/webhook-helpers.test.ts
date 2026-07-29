@@ -30,7 +30,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	WorkflowConfigurationError,
 	NodeOperationError,
-	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
@@ -612,154 +612,58 @@ describe('prepareExecutionData', () => {
 		expect(runExecutionData.manualData).toBeUndefined();
 	});
 
-	describe('MICROSOFT_AGENT365_TRIGGER_NODE_TYPE merge condition', () => {
-		test('should merge nodeExecutionStack when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE and runExecutionData exists', () => {
-			const microsoftAgentNode = mock<INode>({
-				name: 'Microsoft Agent 365',
-				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+	describe('pre-existing execution data', () => {
+		test('stages the webhook workflow data on the start node stack entry', () => {
+			const triggerNode = mock<INode>({ name: 'MCP Server Trigger' });
+			const existingRunExecutionData = createRunExecutionData({
+				executionData: {
+					nodeExecutionStack: [{ node: triggerNode, data: { main: [] }, source: null }],
+				},
 			});
-
-			const existingNodeExecutionStack: IExecuteData[] = [
+			// Simulates data set via stageWorkflowData during the webhook
+			existingRunExecutionData.resultData.runData[triggerNode.name] = [
 				{
-					node: mock<INode>({ name: 'ExistingNode' }),
-					data: {
-						main: [[{ json: { existing: 'data' } }]],
-					},
-					source: null,
+					startTime: Date.now(),
+					executionTime: 0,
+					executionIndex: 0,
+					source: [],
+					executionStatus: 'running',
+					data: { main: [[{ json: { set: 'during webhook' } }]] },
 				},
 			];
 
-			const existingRunExecutionData: IRunExecutionData = {
-				version: 1,
-				startData: {},
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: existingNodeExecutionStack,
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			} as IRunExecutionData;
-
 			const { runExecutionData } = prepareExecutionData(
-				'trigger',
-				microsoftAgentNode,
+				'webhook',
+				triggerNode,
 				webhookResultData,
 				existingRunExecutionData,
 			);
 
-			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].node.name).toBe(
-				'Microsoft Agent 365',
-			);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].node.type).toBe(
-				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-			);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]).toHaveLength(1);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json).toEqual(
-				{
-					existing: 'data',
-					data: 'test',
-				},
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main).toBe(
+				webhookResultData.workflowData,
 			);
 		});
 
-		test('should not merge when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE but runExecutionData is undefined', () => {
-			const microsoftAgentNode = mock<INode>({
-				name: 'Microsoft Agent 365',
-				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-			});
-
-			const { runExecutionData } = prepareExecutionData(
-				'trigger',
-				microsoftAgentNode,
-				webhookResultData,
-				undefined,
-			);
-
-			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].node).toEqual(
-				microsoftAgentNode,
-			);
-		});
-
-		test('should not merge when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE but nodeExecutionStack is undefined', () => {
-			const microsoftAgentNode = mock<INode>({
-				name: 'Microsoft Agent 365',
-				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-			});
-
-			const existingRunExecutionData: IRunExecutionData = {
-				version: 1,
-				startData: {},
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: undefined as any,
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			} as IRunExecutionData;
-
-			const { runExecutionData } = prepareExecutionData(
-				'trigger',
-				microsoftAgentNode,
-				webhookResultData,
-				existingRunExecutionData,
-			);
-
-			expect(runExecutionData.executionData?.nodeExecutionStack).toBeUndefined();
-		});
-
-		test('should not merge when node type is not MICROSOFT_AGENT365_TRIGGER_NODE_TYPE', () => {
-			const regularNode = mock<INode>({
-				name: 'Regular Webhook',
-				type: 'n8n-nodes-base.webhook',
-			});
-
-			const existingNodeExecutionStack: IExecuteData[] = [
+		test('throws when the stack has no entry for the start node', () => {
+			// Dropping the webhook output here would run the workflow on empty input
+			const startNode = mock<INode>({ name: 'Some Trigger' });
+			const existingStack: IExecuteData[] = [
 				{
 					node: mock<INode>({ name: 'ExistingNode' }),
-					data: {
-						main: [[{ json: { existing: 'data' } }]],
-					},
+					data: { main: [[{ json: { existing: 'data' } }]] },
 					source: null,
 				},
 			];
+			const existingRunExecutionData = createRunExecutionData({
+				executionData: { nodeExecutionStack: existingStack },
+			});
 
-			const existingRunExecutionData: IRunExecutionData = {
-				version: 1,
-				startData: {},
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: existingNodeExecutionStack,
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			} as IRunExecutionData;
-
-			const { runExecutionData } = prepareExecutionData(
-				'trigger',
-				regularNode,
-				webhookResultData,
-				existingRunExecutionData,
-			);
-
-			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
-			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.node.name).toBe(
-				'ExistingNode',
-			);
-
-			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.data.main).toEqual([
-				[{ json: { existing: 'data' } }],
-			]);
+			expect(() =>
+				prepareExecutionData('webhook', startNode, webhookResultData, existingRunExecutionData),
+			).toThrow('Execution data has no stack entry for the start node "Some Trigger"');
 		});
 
-		test('should replace the seeded stack (not merge) for a Webhook node using n8nOAuth2 auth, preserving runtimeData', () => {
+		test('replaces the seeded stack entry for a Webhook node using n8nOAuth2 auth, preserving runtimeData', () => {
 			const identityWebhookNode = mock<INode>({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
@@ -767,32 +671,14 @@ describe('prepareExecutionData', () => {
 			});
 
 			// After the node's webhook() call the identity is already established: the
-			// seeder's placeholder item has been consumed by the hook (leaving an empty
-			// item) and the resolved credentials live on executionData.runtimeData.
-			const existingNodeExecutionStack: IExecuteData[] = [
-				{
-					node: mock<INode>({ name: 'ExistingNode' }),
-					data: {
-						main: [[{ json: {} }]],
-					},
-					source: null,
-				},
-			];
-
-			const existingRunExecutionData: IRunExecutionData = {
-				version: 1,
-				startData: {},
-				resultData: { runData: {} },
+			// resolved credentials live on executionData.runtimeData.
+			const existingRunExecutionData = createRunExecutionData({
 				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: existingNodeExecutionStack,
-					waitingExecution: {},
-					waitingExecutionSource: {},
+					nodeExecutionStack: [{ node: identityWebhookNode, data: { main: [] }, source: null }],
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					runtimeData: { version: 1, credentials: { source: 'n8n-oauth' } } as any,
 				},
-			} as IRunExecutionData;
+			});
 
 			const { runExecutionData } = prepareExecutionData(
 				'trigger',
@@ -802,7 +688,6 @@ describe('prepareExecutionData', () => {
 			);
 
 			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
-			// The seeded placeholder is discarded; only the webhook's real output remains.
 			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main).toEqual([
 				[{ json: { data: 'test' } }],
 			]);
@@ -813,7 +698,7 @@ describe('prepareExecutionData', () => {
 			});
 		});
 
-		test('should not leak the seeded placeholder into output slot 0 for a multi-method n8nOAuth2 webhook', () => {
+		test('does not leak seeded placeholder items into output slot 0 for a multi-method webhook', () => {
 			const identityWebhookNode = mock<INode>({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
@@ -821,28 +706,13 @@ describe('prepareExecutionData', () => {
 			});
 
 			// Seeded placeholder sits in output slot 0.
-			const existingNodeExecutionStack: IExecuteData[] = [
-				{
-					node: mock<INode>({ name: 'ExistingNode' }),
-					data: {
-						main: [[{ json: {} }]],
-					},
-					source: null,
-				},
-			];
-
-			const existingRunExecutionData: IRunExecutionData = {
-				version: 1,
-				startData: {},
-				resultData: { runData: {} },
+			const existingRunExecutionData = createRunExecutionData({
 				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: existingNodeExecutionStack,
-					waitingExecution: {},
-					waitingExecutionSource: {},
+					nodeExecutionStack: [
+						{ node: identityWebhookNode, data: { main: [[{ json: {} }]] }, source: null },
+					],
 				},
-			} as IRunExecutionData;
+			});
 
 			// A multi-method webhook routes the request to a non-first output slot; e.g.
 			// a POST on a ['GET','POST'] node puts the item in slot 1, slot 0 stays empty.
@@ -862,60 +732,6 @@ describe('prepareExecutionData', () => {
 				[],
 				[{ json: { method: 'POST' } }],
 			]);
-		});
-
-		test('should merge existing data with new data for MICROSOFT_AGENT365_TRIGGER_NODE_TYPE', () => {
-			const microsoftAgentNode = mock<INode>({
-				name: 'Microsoft Agent 365',
-				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-			});
-
-			const existingData: IExecuteData = {
-				node: mock<INode>({ name: 'ExistingNode' }),
-				data: {
-					main: [[{ json: { existing: 'preserved' } }]],
-				},
-				source: { main: [{ previousNode: 'test' }] },
-			};
-
-			const existingRunExecutionData: IRunExecutionData = {
-				version: 1,
-				startData: {},
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: [existingData],
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			} as IRunExecutionData;
-
-			const { runExecutionData } = prepareExecutionData(
-				'trigger',
-				microsoftAgentNode,
-				webhookResultData,
-				existingRunExecutionData,
-			);
-
-			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
-
-			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.node.name).toBe(
-				'Microsoft Agent 365',
-			);
-			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.node.type).toBe(
-				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-			);
-
-			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.data.main[0]).toHaveLength(1);
-			expect(
-				runExecutionData.executionData?.nodeExecutionStack?.[0]?.data.main[0]?.[0]?.json,
-			).toEqual({
-				existing: 'preserved',
-				data: 'test',
-			});
-
-			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.source).toBeNull();
 		});
 	});
 });

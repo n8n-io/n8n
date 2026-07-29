@@ -77,9 +77,7 @@ export class ScalingService {
 
 		this.scheduleQueueMetrics();
 
-		const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
-			'@n8n/n8n-nodes-langchain/mcp/core'
-		);
+		const { McpServer, RedisSessionStore } = await import('@n8n/n8n-nodes-langchain/mcp/core');
 		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 
 		const publisher = Container.get(Publisher);
@@ -100,7 +98,6 @@ export class ScalingService {
 		);
 
 		mcpServer.setSessionStore(redisStore);
-		mcpServer.setExecutionStrategy(new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()));
 
 		this.logger.debug('Queue setup completed');
 	}
@@ -482,7 +479,7 @@ export class ScalingService {
 			} else {
 				const { McpServer } = await import('@n8n/n8n-nodes-langchain/mcp/core');
 				const mcpServer = McpServer.instance(this.logger);
-				mcpServer.handleWorkerResponse(sessionId, messageId, response);
+				mcpServer.deliverToolResult(sessionId, messageId, response);
 			}
 		} catch (error) {
 			this.logger.error('Failed to handle MCP response', {

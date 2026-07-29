@@ -1,11 +1,15 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
+	ISupplyDataFunctions,
 	EngineResponse,
 	EngineRequest,
 	NodeOutput,
+	SupplyData,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { NodeTypes } from '@test/helpers';
 
@@ -55,6 +59,29 @@ export const testNodeWithRequiredProperty: INodeType = {
 	},
 };
 
+/** An older tool node: it can supply a tool, but not run as a node. */
+export const supplyDataOnlyToolNode: INodeType = {
+	description: {
+		displayName: 'Supply Data Only Tool',
+		name: 'supplyDataOnlyTool',
+		group: ['output'],
+		version: 1,
+		description: 'A tool node without an execute method',
+		defaults: { name: 'Supply Data Only Tool' },
+		inputs: [],
+		outputs: [NodeConnectionTypes.AiTool],
+		properties: [],
+	},
+	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
+		return await Promise.resolve({
+			response: {
+				invoke: async (args: IDataObject) =>
+					await Promise.resolve(`supplied tool saw ${String(args.query)}`),
+			},
+		});
+	},
+};
+
 export const nodeTypeArguments = {
 	passThrough: {
 		type: passThroughNode,
@@ -64,6 +91,10 @@ export const nodeTypeArguments = {
 		type: testNodeWithRequiredProperty,
 		sourcePath: '',
 	},
+	supplyDataOnlyTool: {
+		type: supplyDataOnlyToolNode,
+		sourcePath: '',
+	},
 };
 
 export const nodeTypes = NodeTypes(nodeTypeArguments);
@@ -71,6 +102,7 @@ export const nodeTypes = NodeTypes(nodeTypeArguments);
 export const types: Record<keyof typeof nodeTypeArguments, string> = {
 	passThrough: 'passThrough',
 	testNodeWithRequiredProperty: 'testNodeWithRequiredProperty',
+	supplyDataOnlyTool: 'supplyDataOnlyTool',
 };
 
 /**

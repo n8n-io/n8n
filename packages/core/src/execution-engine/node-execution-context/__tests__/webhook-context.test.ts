@@ -110,7 +110,7 @@ describe('WebhookContext', () => {
 			]);
 		});
 
-		it('should not throw and should leave input empty when the seeded execution stack has no main data', () => {
+		it('should expose the HTTP request as input data when the execution stack has no main data', () => {
 			const runExecutionDataWithEmptyStack = {
 				executionData: {
 					nodeExecutionStack: [{ node, data: { main: [] }, source: null }],
@@ -127,7 +127,38 @@ describe('WebhookContext', () => {
 				runExecutionDataWithEmptyStack,
 			);
 
-			expect(context.connectionInputData).toEqual([]);
+			expect(context.connectionInputData).toEqual([
+				{
+					json: {
+						body: { test: 'body' },
+						headers: { test: 'header' },
+						params: { test: 'param' },
+						query: { test: 'query' },
+					},
+				},
+			]);
+		});
+
+		it('should expose the execution stack data as input data when it has items', () => {
+			const runExecutionDataWithStackItems = {
+				executionData: {
+					nodeExecutionStack: [
+						{ node, data: { main: [[{ json: { from: 'stack' } }]] }, source: null },
+					],
+				},
+			} as unknown as IRunExecutionData;
+
+			const context = new WebhookContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				webhookData,
+				[],
+				runExecutionDataWithStackItems,
+			);
+
+			expect(context.connectionInputData).toEqual([{ json: { from: 'stack' } }]);
 		});
 	});
 

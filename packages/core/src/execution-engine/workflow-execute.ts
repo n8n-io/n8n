@@ -74,6 +74,7 @@ import {
 	getAdditionalKeys,
 	PollContext,
 	resolveSourceOverwrite,
+	SupplyDataContext,
 } from './node-execution-context';
 import {
 	DirectedGraph,
@@ -87,7 +88,12 @@ import {
 	rewireGraph,
 	getNextExecutionIndex,
 } from './partial-execution-utils';
-import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
+import {
+	handleRequest,
+	isEngineRequest,
+	makeEngineResponse,
+	seedRootNodeRunData,
+} from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 import { convertBinaryData } from '../utils/convert-binary-data';
@@ -103,6 +109,17 @@ interface RunWorkflowOptions {
 	 * By default run() executes only destinationNode and its parents, others are not allowed to run
 	 */
 	additionalRunFilterNodes?: string[];
+}
+
+/** A tool a `supplyData` node handed back, which can be invoked with the tool call's input. */
+function isSuppliedTool(
+	value: unknown,
+): value is { invoke: (args: IDataObject) => Promise<unknown> } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as { invoke?: unknown }).invoke === 'function'
+	);
 }
 
 export class WorkflowExecute {
@@ -1209,6 +1226,63 @@ export class WorkflowExecute {
 	}
 
 	/**
+	 * Runs a tool node that only implements `supplyData` by invoking the tool it
+	 * supplies with the tool call's input, so such nodes can be dispatched as
+	 * tools like any other. A node supplying a toolkit is not invocable this way —
+	 * there is no single tool to call.
+	 */
+	private async invokeSuppliedTool(
+		workflow: Workflow,
+		node: INode,
+		nodeType: INodeType,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		inputData: ITaskDataConnections,
+		executionData: IExecuteData,
+		abortSignal?: AbortSignal,
+	): Promise<IRunNodeResponse> {
+		const closeFunctions: CloseFunction[] = [];
+		const [parentNodeName] = workflow.getChildNodes(node.name, NodeConnectionTypes.AiTool, 1);
+		const context = new SupplyDataContext(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			NodeConnectionTypes.AiTool,
+			executionData,
+			closeFunctions,
+			abortSignal,
+			(parentNodeName ? workflow.getNode(parentNodeName) : null) ?? undefined,
+		);
+
+		try {
+			const { response } = await nodeType.supplyData!.call(context, 0);
+			if (!isSuppliedTool(response)) {
+				throw new UnexpectedError(`The node "${node.type}" did not supply a tool to invoke.`);
+			}
+
+			const toolArgs = inputData.main?.[0]?.[0]?.json ?? {};
+			const result = await response.invoke(toolArgs);
+
+			return { data: [[{ json: { response: result } as IDataObject }]] };
+		} finally {
+			const settled = await Promise.allSettled(closeFunctions.map(async (fn) => await fn()));
+			for (const result of settled) {
+				if (result.status === 'rejected') {
+					Logger.error('Error on execution node close function', { error: result.reason });
+				}
+			}
+		}
+	}
+
+	/**
 	 * Executes a trigger node
 	 */
 	private async executeTriggerNode(
@@ -1379,6 +1453,16 @@ export class WorkflowExecute {
 		}
 
 		if (nodeType.execute || customOperation) {
+			// A root node can build or dispatch sub-nodes that reference it by name, so its
+			// run has to be visible before it runs, not only once it finishes
+			seedRootNodeRunData(
+				workflow,
+				node,
+				runIndex,
+				executionData,
+				runExecutionData.resultData.runData,
+			);
+
 			return await this.executeNode(
 				workflow,
 				node,
@@ -1412,6 +1496,24 @@ export class WorkflowExecute {
 		}
 
 		if (nodeType.supplyData) {
+			// Older tool nodes only know how to supply a tool, not to run as a node. When
+			// one is dispatched as a tool, invoke what it supplies with the tool's input.
+			if (node.rewireOutputLogTo === NodeConnectionTypes.AiTool) {
+				return await this.invokeSuppliedTool(
+					workflow,
+					node,
+					nodeType,
+					additionalData,
+					mode,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					inputData,
+					executionData,
+					abortSignal,
+				);
+			}
+
 			throw new UnexpectedError(
 				`The node "${node.type}" has a "supplyData" method but no "execute" method.`,
 			);

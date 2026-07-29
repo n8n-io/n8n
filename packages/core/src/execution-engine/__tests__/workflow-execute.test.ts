@@ -2858,7 +2858,7 @@ describe('WorkflowExecute', () => {
 	describe('customOperations', () => {
 		const nodeTypes = mock<INodeTypes>();
 
-		const runExecutionData = mock<IRunExecutionData>();
+		const runExecutionData = createRunExecutionData({});
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({
 			webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 			formWaitingBaseUrl: 'http://localhost:5678/form-waiting',

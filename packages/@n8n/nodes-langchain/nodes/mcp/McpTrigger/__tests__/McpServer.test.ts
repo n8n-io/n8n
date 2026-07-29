@@ -14,7 +14,6 @@ import {
 import type { McpServerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { QueuedExecutionStrategy } from '../execution/QueuedExecutionStrategy';
 import { McpServer } from '../McpServer';
 import { InMemorySessionStore } from '../session/InMemorySessionStore';
 import type { SessionManager } from '../session/SessionManager';
@@ -120,7 +119,7 @@ describe('McpServer', () => {
 			const response = createMockResponse();
 			const request = createMockRequestWithSessionId('non-existent', '{}');
 
-			await mcpServer.handlePostMessage(request, response, []);
+			await mcpServer.handlePostMessage(request, response, async () => []);
 
 			expect(response.status).toHaveBeenCalledWith(401);
 			expect(response.send).toHaveBeenCalledWith('No transport found for sessionId');
@@ -131,32 +130,9 @@ describe('McpServer', () => {
 			const toolCallBody = createValidToolCallMessage('get_weather', { city: 'London' });
 			const request = createMockRequestWithSessionId('non-existent', toolCallBody);
 
-			const result = await mcpServer.handlePostMessage(request, response, []);
+			const result = await mcpServer.handlePostMessage(request, response, async () => []);
 
 			expect(result.wasToolCall).toBe(true);
-			expect(result.toolCallInfo).toEqual({
-				toolName: 'get_weather',
-				arguments: { city: 'London' },
-			});
-		});
-
-		it('should add sourceNodeName from tool metadata', async () => {
-			const response = createMockResponse();
-			const tools = [
-				createMockTool('get_weather', {
-					metadata: { sourceNodeName: 'Weather Node' },
-				}),
-			];
-			const toolCallBody = createValidToolCallMessage('get_weather', { city: 'London' });
-			const request = createMockRequestWithSessionId('non-existent', toolCallBody);
-
-			const result = await mcpServer.handlePostMessage(request, response, tools);
-
-			expect(result.toolCallInfo).toEqual({
-				toolName: 'get_weather',
-				arguments: { city: 'London' },
-				sourceNodeName: 'Weather Node',
-			});
 		});
 
 		it('should identify non-tool-call messages', async () => {
@@ -164,9 +140,21 @@ describe('McpServer', () => {
 			const listToolsBody = createListToolsMessage();
 			const request = createMockRequestWithSessionId('non-existent', listToolsBody);
 
-			const result = await mcpServer.handlePostMessage(request, response, []);
+			const result = await mcpServer.handlePostMessage(request, response, async () => []);
 
 			expect(result.wasToolCall).toBe(false);
+		});
+
+		it('should not create the tools unless the session has to be rebuilt', async () => {
+			const getTools = vi.fn(async () => []);
+			const request = createMockRequestWithSessionId(
+				'non-existent',
+				createValidToolCallMessage('get_weather', { city: 'London' }),
+			);
+
+			await mcpServer.handlePostMessage(request, createMockResponse(), getTools);
+
+			expect(getTools).not.toHaveBeenCalled();
 		});
 	});
 
@@ -203,17 +191,6 @@ describe('McpServer', () => {
 
 			// Verify the store is used (indirect test)
 			expect(mcpServer).toBeDefined();
-		});
-
-		it('should allow setting execution strategy', () => {
-			const queuedStrategy = new QueuedExecutionStrategy(mcpServer.getPendingCallsManager());
-			mcpServer.setExecutionStrategy(queuedStrategy);
-
-			expect(mcpServer.isQueueMode()).toBe(true);
-		});
-
-		it('should not be in queue mode by default', () => {
-			expect(mcpServer.isQueueMode()).toBe(false);
 		});
 	});
 
@@ -298,9 +275,8 @@ describe('McpServer', () => {
 			expect(mcpServer.getTransport('busy-1')).toBeUndefined();
 		});
 
-		it('should not evict a session with an in-flight direct-mode tool call', async () => {
+		it('should not evict a session with an in-flight tool call', async () => {
 			await registerSession('busy-2');
-			// Direct mode tracks the running call only via resolveFunctions.
 			const resolveFunctions = (
 				mcpServer as unknown as { resolveFunctions: Record<string, () => void> }
 			).resolveFunctions;
@@ -320,7 +296,7 @@ describe('McpServer', () => {
 			void mcpServer.handlePostMessage(
 				createMockRequestWithSessionId('handshake-1', createListToolsMessage()),
 				createMockResponse(),
-				[],
+				async () => [],
 			);
 
 			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
@@ -440,17 +416,7 @@ describe('McpServer', () => {
 		});
 	});
 
-	describe('getPendingCallsManager', () => {
-		it('should return the pending calls manager', () => {
-			const manager = mcpServer.getPendingCallsManager();
-			expect(manager).toBeDefined();
-			expect(typeof manager.waitForResult).toBe('function');
-			expect(typeof manager.resolve).toBe('function');
-			expect(typeof manager.reject).toBe('function');
-		});
-	});
-
-	describe('handleWorkerResponse', () => {
+	describe('deliverToolResult', () => {
 		it('should set isError on error results sent via SSE transport', async () => {
 			const sessionId = 'test-session';
 			const transport = createMockTransport(sessionId, 'sse');
@@ -472,13 +438,8 @@ describe('McpServer', () => {
 				createMockTool('test-tool'),
 			]);
 
-			// Set up queue mode so handleWorkerResponse uses SSE fallback path
-			const queuedStrategy = new QueuedExecutionStrategy(mcpServer.getPendingCallsManager());
-			mcpServer.setExecutionStrategy(queuedStrategy);
-
-			// Worker returns an error result (queue mode error format)
 			const errorResult = { error: { message: 'Bad request', name: 'NodeApiError' } };
-			mcpServer.handleWorkerResponse(sessionId, 'msg-1', errorResult);
+			mcpServer.deliverToolResult(sessionId, 'msg-1', errorResult);
 
 			expect(transport.send).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -513,12 +474,8 @@ describe('McpServer', () => {
 				createMockTool('test-tool'),
 			]);
 
-			const queuedStrategy = new QueuedExecutionStrategy(mcpServer.getPendingCallsManager());
-			mcpServer.setExecutionStrategy(queuedStrategy);
-
-			// Worker returns a successful result
 			const successResult = { data: 'value', count: 42 };
-			mcpServer.handleWorkerResponse(sessionId, 'msg-1', successResult);
+			mcpServer.deliverToolResult(sessionId, 'msg-1', successResult);
 
 			expect(transport.send).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -557,7 +514,7 @@ describe('McpServer', () => {
 				createMockTool('test-tool'),
 			]);
 
-			mcpServer.handleWorkerResponse(sessionId, 'msg-1', { _listToolsRequest: true });
+			mcpServer.deliverToolResult(sessionId, 'msg-1', { _listToolsRequest: true });
 
 			// Should have attempted to send tools list via transport
 			expect(transport.send).toHaveBeenCalled();
@@ -659,34 +616,58 @@ describe('McpServer', () => {
 			expect(tool.invoke).not.toHaveBeenCalled();
 		});
 
-		it('executes the tool when the gate result is ready', async () => {
-			const tool = createMockTool('get_weather', { invokeReturn: { ok: true } });
+		it('fails a parked call when the execution ends without answering it', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+
+			const handler = getCallToolHandler();
+			const pending = handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+			await vi.waitFor(() => expect(mcpServer.hasPendingResponse(sessionId, requestId)).toBe(true));
+
+			expect(mcpServer.failPendingToolCall(sessionId, requestId, 'execution ended')).toBe(true);
+
+			const result = await pending;
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('execution ended');
+		});
+
+		it('does not fail a call that was already answered', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+
+			const handler = getCallToolHandler();
+			const pending = handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+			await vi.waitFor(() => expect(mcpServer.hasPendingResponse(sessionId, requestId)).toBe(true));
+			mcpServer.deliverToolResult(sessionId, requestId, { ok: true });
+			await pending;
+
+			expect(mcpServer.failPendingToolCall(sessionId, requestId, 'execution ended')).toBe(false);
+		});
+
+		it('waits for the execution to answer the call when the gate result is ready', async () => {
+			const tool = createMockTool('get_weather');
 			await registerToolSession(tool);
 			setPendingGate({ readyToExecute: true, credentials: [] });
 
 			const handler = getCallToolHandler();
-			const result = await handler(
+			const pending = handler(
 				{ params: { name: 'get_weather', arguments: { city: 'X' } } },
 				{ sessionId, requestId },
 			);
+			await vi.waitFor(() => expect(mcpServer.hasPendingResponse(sessionId, requestId)).toBe(true));
 
-			expect(tool.invoke).toHaveBeenCalledWith({ city: 'X' });
+			mcpServer.deliverToolResult(sessionId, requestId, { ok: true });
+
+			const result = await pending;
 			expect(result.isError).toBeUndefined();
 			expect(result.content[0].text).toBe(JSON.stringify({ ok: true }));
-		});
-
-		it('executes normally when no gate result is present for the call', async () => {
-			const tool = createMockTool('get_weather', { invokeReturn: { ok: true } });
-			await registerToolSession(tool);
-
-			const handler = getCallToolHandler();
-			const result = await handler(
-				{ params: { name: 'get_weather', arguments: {} } },
-				{ sessionId, requestId },
-			);
-
-			expect(tool.invoke).toHaveBeenCalled();
-			expect(result.content[0].text).toBe(JSON.stringify({ ok: true }));
+			expect(tool.invoke).not.toHaveBeenCalled();
 		});
 
 		it('falls back to text (no elicitation) when the client lacks the capability', async () => {

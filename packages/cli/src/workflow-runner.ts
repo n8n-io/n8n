@@ -521,7 +521,6 @@ export class WorkflowRunner {
 			mcpType: data.mcpType,
 			mcpSessionId: data.mcpSessionId,
 			mcpMessageId: data.mcpMessageId,
-			mcpToolCall: data.mcpToolCall,
 		};
 
 		if (!this.scalingService) {

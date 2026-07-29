@@ -44,6 +44,7 @@ vi.mock('../node-execution-context', async (importActual) => {
 			this.hints = [];
 		}),
 		PollContext: vi.fn().mockImplementation(function () {}),
+		SupplyDataContext: vi.fn().mockImplementation(function () {}),
 	};
 });
 
@@ -1107,6 +1108,68 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			);
 
 			expect(result).toEqual({ data: mockExecutionData.data.main });
+		});
+	});
+
+	describe('supplyData node type handling', () => {
+		beforeEach(() => {
+			mockWorkflow.getChildNodes.mockReturnValue([]);
+		});
+
+		it('should invoke the supplied tool when the node is dispatched as a tool', async () => {
+			const invoke = vi.fn().mockResolvedValue('tool output');
+			mockNodeType.execute = undefined;
+			mockNodeType.poll = undefined;
+			mockNodeType.trigger = undefined;
+			mockNodeType.supplyData = vi.fn().mockResolvedValue({ response: { invoke } });
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				{ ...mockExecutionData, node: { ...mockNode, rewireOutputLogTo: 'ai_tool' } },
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(invoke).toHaveBeenCalledWith({ test: 'data' });
+			expect(result).toEqual({ data: [[{ json: { response: 'tool output' } }]] });
+		});
+
+		it('should throw for a supplyData node that is not dispatched as a tool', async () => {
+			mockNodeType.execute = undefined;
+			mockNodeType.poll = undefined;
+			mockNodeType.trigger = undefined;
+			mockNodeType.supplyData = vi.fn();
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('has a "supplyData" method but no "execute" method');
+		});
+
+		it('should throw when the node supplies something that cannot be invoked', async () => {
+			mockNodeType.execute = undefined;
+			mockNodeType.poll = undefined;
+			mockNodeType.trigger = undefined;
+			mockNodeType.supplyData = vi.fn().mockResolvedValue({ response: { getTools: () => [] } });
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					{ ...mockExecutionData, node: { ...mockNode, rewireOutputLogTo: 'ai_tool' } },
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('did not supply a tool to invoke');
 		});
 	});
 

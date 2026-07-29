@@ -1,7 +1,12 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
 import type {
-	CredentialCheckResult,
+	EngineRequest,
+	EngineResponse,
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
@@ -16,6 +21,78 @@ import type { CompressionResponse } from './transport';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
+
+interface ToolCall {
+	toolName: string;
+	arguments: IDataObject;
+	sessionId: string;
+	messageId: string;
+}
+
+/**
+ * The trigger's output for one request, and so what expressions in the tools it
+ * dispatches resolve against. The body is spread in first because `$json` in a
+ * connected tool used to be the raw JSON-RPC message, and our own keys last so a
+ * crafted body cannot shadow them.
+ */
+function requestContext(context: IWebhookFunctions, mcpData: IDataObject = {}): IDataObject {
+	return {
+		...context.getBodyData(),
+		...mcpData,
+		// Expose caller identity headers, matching the Webhook node
+		headers: context.getHeaderData(),
+	};
+}
+
+/** Reads back the tool call this node put into its own output during `webhook`. */
+function readToolCall(json: IDataObject | undefined): ToolCall | undefined {
+	const toolCall = json?.mcpToolCall;
+	if (!isToolCallInfo(toolCall) || typeof json?.mcpSessionId !== 'string') return undefined;
+
+	return {
+		toolName: toolCall.toolName,
+		arguments: toolCall.arguments,
+		sessionId: json.mcpSessionId,
+		messageId: typeof json.mcpMessageId === 'string' ? json.mcpMessageId : '',
+	};
+}
+
+function isToolCallInfo(value: unknown): value is { toolName: string; arguments: IDataObject } {
+	if (typeof value !== 'object' || value === null) return false;
+	const { toolName, arguments: args } = value as Record<string, unknown>;
+	return typeof toolName === 'string' && typeof args === 'object' && args !== null;
+}
+
+/** The tool node's run, as the result to answer the MCP client with. */
+function toolResult(actionResponse: EngineResponse['actionResponses'][number] | undefined) {
+	const taskData = actionResponse?.data;
+	if (!taskData) return { error: { message: 'The tool did not run', name: 'ToolCallError' } };
+	if (taskData.error) {
+		return { error: { message: taskData.error.message, name: taskData.error.name } };
+	}
+
+	const items = taskData.data?.[NodeConnectionTypes.AiTool]?.[0] ?? [];
+
+	// A tool node wraps its own result in `response`; unwrap it so the client sees the
+	// result itself, as it did when the tool was invoked directly
+	const [{ json } = { json: {} }] = items;
+	if (items.length === 1 && Object.keys(json).length === 1 && 'response' in json) {
+		return json.response;
+	}
+
+	// Anything else keeps the shape a tool's output has always had: its items' json
+	return items.map((item) => item.json);
+}
+
+/**
+ * Answers the tool call. The request is parked on the instance holding the MCP session,
+ * so when the execution runs elsewhere the response channel relays the result there.
+ */
+function answerToolCall(context: IExecuteFunctions, call: ToolCall, result: unknown) {
+	const delivered = McpServer.current()?.deliverToolResult(call.sessionId, call.messageId, result);
+	// The relay forwards the result as-is; the channel is only typed for data objects
+	if (!delivered) context.sendResponse(result as IDataObject);
+}
 
 export class McpTrigger extends Node {
 	description: INodeTypeDescription = {
@@ -66,6 +143,7 @@ export class McpTrigger extends Node {
 			},
 		],
 		outputs: [],
+		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -217,27 +295,42 @@ export class McpTrigger extends Node {
 				context.logger.debug('MCP POST request received for existing session');
 
 				if (sessionId) {
-					const connectedTools = await getConnectedTools(context, true);
+					const message = MessageParser.parse(req.rawBody.toString());
+					const messageId = MessageParser.getRequestId(message);
+					const toolCall = MessageParser.parseToolCall(message);
+					const toolCallInfo = toolCall && MessageParser.toolCallInfo(toolCall);
 
-					// For a tool call, check the triggering user's private-credential status
-					// before executing. Returns undefined (no gate) unless an OAuth2 identity
-					// was established and the dynamic-credentials module is enabled.
-					let gateResult: CredentialCheckResult | undefined;
-					if (MessageParser.isToolCall(req.rawBody.toString())) {
-						gateResult = await context.checkTriggerCredentialStatus();
+					// The tool call itself is dispatched from `execute`, so the metadata it
+					// needs is part of this node's output. Always written for a tool call,
+					// so the request body can never supply these keys itself.
+					const mcpData: IDataObject = {};
+					if (toolCall) {
+						mcpData.mcpToolCall = toolCallInfo ?? {
+							toolName: toolCall.params.name,
+							arguments: {},
+						};
+						mcpData.mcpSessionId = sessionId;
+						mcpData.mcpMessageId = messageId ?? '';
 					}
 
-					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
-						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName, gateResult);
+					// Check the triggering user's private-credential status before
+					// executing. Returns undefined (no gate) unless an OAuth2 identity
+					// was established and the dynamic-credentials module is enabled.
+					const gateResult = toolCall ? await context.checkTriggerCredentialStatus() : undefined;
+
+					const { wasToolCall, relaySessionId, needsListToolsRelay } =
+						await mcpServer.handlePostMessage(
+							req,
+							resp,
+							async () => await getConnectedTools(context, true),
+							serverName,
+							gateResult,
+						);
 
 					if (wasToolCall) {
-						const workflowData = {
-							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
-							...(messageId && { mcpMessageId: messageId }),
-						};
 						return {
 							noWebhookResponse: true,
-							workflowData: [[{ json: workflowData }]],
+							workflowData: [[{ json: requestContext(context, mcpData) }]],
 						};
 					}
 
@@ -264,5 +357,63 @@ export class McpTrigger extends Node {
 		}
 
 		return { workflowData: [[{ json: {} }]] };
+	}
+
+	/**
+	 * Runs the tool an incoming call asked for and answers the client with its result.
+	 * Dispatching it through the engine instead of invoking it inside `webhook` is what
+	 * lets the tool's expressions resolve against this node's output, and records the
+	 * tool as a node run.
+	 */
+	async execute(
+		context: IExecuteFunctions,
+		response?: EngineResponse,
+	): Promise<INodeExecutionData[][] | EngineRequest> {
+		const inputData = context.getInputData();
+		const call = readToolCall(inputData[0]?.json);
+		if (!call) return [inputData];
+
+		try {
+			// The engine passes an empty response on the first call, and the tool's run on
+			// the one that resumes this node
+			const [actionResponse] = response?.actionResponses ?? [];
+			if (actionResponse) {
+				answerToolCall(context, call, toolResult(actionResponse));
+				return [inputData];
+			}
+
+			const tools = await getConnectedTools(context, true);
+			const tool = tools.find((t) => t.name === call.toolName);
+			const sourceNodeName = tool?.metadata?.sourceNodeName;
+
+			if (typeof sourceNodeName !== 'string') {
+				const message = tool
+					? `Tool "${call.toolName}" cannot be run: it does not report the node providing it`
+					: `Tool "${call.toolName}" not found`;
+				answerToolCall(context, call, { error: { message, name: 'ToolCallError' } });
+				return [inputData];
+			}
+
+			return {
+				actions: [
+					{
+						actionType: 'ExecutionNodeAction',
+						nodeName: sourceNodeName,
+						input: tool?.metadata?.isFromToolkit
+							? { ...call.arguments, tool: call.toolName }
+							: call.arguments,
+						type: NodeConnectionTypes.AiTool,
+						id: call.messageId || call.toolName,
+						metadata: {},
+					},
+				],
+				metadata: {},
+			};
+		} catch (error) {
+			// The client is waiting on this call, so answer before failing the execution
+			const { message, name } = ensureError(error);
+			answerToolCall(context, call, { error: { message, name } });
+			throw error;
+		}
 	}
 }

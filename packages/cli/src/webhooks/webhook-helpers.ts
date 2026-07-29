@@ -5,12 +5,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
-import merge from 'lodash/merge';
 import {
 	BinaryDataService,
 	ErrorReporter,
@@ -21,7 +20,6 @@ import {
 import type {
 	IBinaryData,
 	IDataObject,
-	IExecuteData,
 	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
 	INode,
@@ -46,20 +44,17 @@ import {
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
 	tryToParseUrl,
 	UnexpectedError,
 	WAIT_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
-import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -90,24 +85,6 @@ import {
 } from './webhook-response-headers';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
-
-// Type guards for MCP queue mode data validation
-interface McpToolCallPayload {
-	toolName: string;
-	arguments: Record<string, unknown>;
-	sourceNodeName?: string;
-}
-
-function isMcpToolCall(value: unknown): value is McpToolCallPayload {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'toolName' in value &&
-		typeof (value as Record<string, unknown>).toolName === 'string' &&
-		'arguments' in value &&
-		typeof (value as Record<string, unknown>).arguments === 'object'
-	);
-}
 
 interface McpListToolsRelayPayload {
 	sessionId: string;
@@ -361,53 +338,6 @@ export function setupResponseNodePromise(
 		});
 }
 
-/**
- * Predicate (not an action): checks whether the start node will establish a
- * triggering-user identity from within its `webhook()` method (via
- * `context.establishTriggerIdentity`). Such nodes need their `runExecutionData`
- * created before the webhook runs, and the webhook output merged into the seeded
- * execution stack afterwards.
- *
- * The Webhook node does this only when its opt-in "n8n User Auth (OAuth2)" mode
- * (`n8nOAuth2`) is selected; the MCP / chat / Agent365 triggers always do.
- */
-function shouldEstablishTriggerIdentity(workflowStartNode: INode): boolean {
-	return (
-		workflowStartNode.type === WEBHOOK_NODE_TYPE &&
-		workflowStartNode.parameters?.authentication === 'n8nOAuth2'
-	);
-}
-
-/**
- * Reconciles a pre-seeded execution stack (identity/context trigger flows) with the
- * webhook node's real output. No-op unless the start node seeded execution data.
- *
- * - MCP / chat / Agent365 (single-output triggers): index-merge the webhook output
- *   into the seeded item so seeded input data is preserved.
- * - n8n Identity webhook: the identity was already established from the seeded
- *   placeholder during the node's `webhook()` call (credentials now live on
- *   `executionData.runtimeData`, a sibling that survives the reassignment). Replace
- *   the seeded stack with the real output instead of index-merging — a naive merge
- *   keeps the empty placeholder in output slot 0 and would spuriously fire that
- *   branch on multi-method webhooks.
- */
-function reconcileSeededExecutionStack(
-	workflowStartNode: INode,
-	runExecutionData: IRunExecutionData | undefined,
-	nodeExecutionStack: IExecuteData[],
-): void {
-	const executionData = runExecutionData?.executionData;
-	if (!executionData?.nodeExecutionStack) return;
-
-	if (
-		[MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(workflowStartNode.type)
-	) {
-		merge(executionData.nodeExecutionStack, nodeExecutionStack);
-	} else if (shouldEstablishTriggerIdentity(workflowStartNode)) {
-		executionData.nodeExecutionStack = nodeExecutionStack;
-	}
-}
-
 export function prepareExecutionData(
 	executionMode: WorkflowExecuteMode,
 	workflowStartNode: INode,
@@ -419,22 +349,11 @@ export function prepareExecutionData(
 	workflowData?: IWorkflowBase,
 	userId?: string,
 ): { runExecutionData: IRunExecutionData; pinData: IPinData | undefined } {
-	// Initialize the data of the webhook node
-	const nodeExecutionStack: IExecuteData[] = [
-		{
-			node: workflowStartNode,
-			data: {
-				main: webhookResultData.workflowData ?? [],
-			},
-			source: null,
-		},
-	];
-
-	reconcileSeededExecutionStack(workflowStartNode, runExecutionData, nodeExecutionStack);
-
+	// Normally created before the webhook ran (see `executeWebhook`); seed it here
+	// for callers that don't, and for resumed executions it comes in as a parameter.
 	runExecutionData ??= createRunExecutionData({
 		executionData: {
-			nodeExecutionStack,
+			nodeExecutionStack: [{ node: workflowStartNode, data: { main: [] }, source: null }],
 		},
 		...(executionMode === 'manual' && userId ? { manualData: { userId } } : {}),
 	});
@@ -443,12 +362,21 @@ export function prepareExecutionData(
 		runExecutionData.startData.destinationNode = destinationNode;
 	}
 
-	if (executionId !== undefined) {
-		// Set the data the webhook node did return on the waiting node if executionId
-		// already exists as it means that we are restarting an existing execution.
-		runExecutionData.executionData!.nodeExecutionStack[0].data.main =
-			webhookResultData.workflowData ?? [];
+	// An existing executionId means we are restarting an existing execution, where
+	// the webhook's output belongs to the waiting node at the head of the stack.
+	const nodeExecutionStack = runExecutionData.executionData?.nodeExecutionStack ?? [];
+	const startEntry =
+		executionId !== undefined
+			? nodeExecutionStack[0]
+			: nodeExecutionStack.find((entry) => entry.node.name === workflowStartNode.name);
+	if (!startEntry) {
+		// Without it the webhook's output has nowhere to go and the workflow would
+		// run on empty input, so fail loudly instead
+		throw new UnexpectedError(
+			`Execution data has no stack entry for the start node "${workflowStartNode.name}"`,
+		);
 	}
+	startEntry.data.main = webhookResultData.workflowData ?? [];
 
 	if (Object.keys(runExecutionDataMerge).length !== 0) {
 		// If data to merge got defined add it to the execution data
@@ -654,35 +582,17 @@ export async function executeWebhook(
 
 		await parseRequestBody(req, workflowStartNode, workflow, executionMode, additionalKeys);
 
-		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
-		if (
-			[
-				MCP_TRIGGER_NODE_TYPE,
-				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-				CHAT_TRIGGER_NODE_TYPE,
-			].includes(workflowStartNode.type) ||
-			shouldEstablishTriggerIdentity(workflowStartNode)
-		) {
-			// Initialize the data of the webhook node
-			const nodeExecutionStack: IExecuteData[] = [];
-			nodeExecutionStack.push({
-				node: workflowStartNode,
-				data: {
-					main: [],
-				},
-				source: null,
-			});
-			runExecutionData =
-				runExecutionData ??
-				createRunExecutionData({
-					executionData: {
-						nodeExecutionStack,
-					},
-					...(executionMode === 'manual' && webhookData.userId
-						? { manualData: { userId: webhookData.userId } }
-						: {}),
-				});
-		}
+		// Execution data must exist before the webhook is invoked: a trigger can act on
+		// it while its webhook is still running (e.g. establishing the caller's identity),
+		// and shares this object by reference
+		runExecutionData ??= createRunExecutionData({
+			executionData: {
+				nodeExecutionStack: [{ node: workflowStartNode, data: { main: [] }, source: null }],
+			},
+			...(executionMode === 'manual' && webhookData.userId
+				? { manualData: { userId: webhookData.userId } }
+				: {}),
+		});
 
 		try {
 			webhookResultData = await Container.get(WebhookService).runWebhook(
@@ -814,49 +724,31 @@ export async function executeWebhook(
 			runData.pushRef = runExecutionData.pushRef;
 		}
 
-		const executionsConfig = Container.get(ExecutionsConfig);
-		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE && executionsConfig.mode === 'queue') {
-			const querySessionId = req.query?.sessionId;
-			const headerSessionId = req.headers['mcp-session-id'];
-			const mcpSessionId =
-				typeof querySessionId === 'string'
-					? querySessionId
-					: typeof headerSessionId === 'string'
-						? headerSessionId
-						: '';
+		// Only an MCP webhook speaks the session protocol below; other triggers put the
+		// request body in their output, where these keys could otherwise be spoofed.
+		const mcpOutput =
+			webhookData.webhookDescription.nodeType === 'mcp'
+				? webhookResultData.workflowData?.[0]?.[0]?.json
+				: undefined;
 
-			const firstItem = webhookResultData.workflowData?.[0]?.[0];
-			const mcpMessageId =
-				(firstItem && 'json' in firstItem && typeof firstItem.json?.mcpMessageId === 'string'
-					? firstItem.json.mcpMessageId
-					: null) ?? `mcp-trigger-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+		// A request for a session this instance does not hold: hand it to the one that
+		// does, which answers it without running the workflow.
+		if (isMcpListToolsRelay(mcpOutput?.mcpListToolsRelay)) {
+			const { sessionId, messageId, marker } = mcpOutput.mcpListToolsRelay;
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			await Container.get(Publisher).publishMcpRelay({ sessionId, messageId, response: marker });
+			return undefined;
+		}
 
+		// A trigger answering over an MCP session does so from within the execution, so
+		// tag it: when it runs on a worker, the response has to be relayed back to the
+		// instance holding the session.
+		if (typeof mcpOutput?.mcpSessionId === 'string') {
 			runData.isMcpExecution = true;
 			runData.mcpType = 'trigger';
-			runData.mcpSessionId = mcpSessionId;
-			runData.mcpMessageId = mcpMessageId;
-
-			const mcpToolCallValue =
-				firstItem && 'json' in firstItem ? firstItem.json?.mcpToolCall : null;
-			if (isMcpToolCall(mcpToolCallValue)) {
-				runData.mcpToolCall = mcpToolCallValue;
-			}
-
-			// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
-			const mcpListToolsRelayValue =
-				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
-			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
-				const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
-				const publisher = Container.get(Publisher);
-				await publisher.publishMcpRelay({
-					sessionId: mcpListToolsRelayValue.sessionId,
-					messageId: mcpListToolsRelayValue.messageId,
-					response: mcpListToolsRelayValue.marker,
-				});
-				// Don't run workflow - the relay will be handled by the main with the transport
-				// Return undefined since no execution is started
-				return undefined;
-			}
+			runData.mcpSessionId = mcpOutput.mcpSessionId;
+			runData.mcpMessageId =
+				typeof mcpOutput.mcpMessageId === 'string' ? mcpOutput.mcpMessageId : '';
 		}
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
@@ -971,6 +863,22 @@ export async function executeWebhook(
 
 		// Get a promise which resolves when the workflow did execute and send then response
 		const executePromise = activeExecutions.getPostExecutePromise(executionId);
+
+		// The trigger answers its MCP session from within the execution, so an execution
+		// that ends without answering would leave the client waiting for its timeout.
+		if (runData.mcpSessionId) {
+			const { mcpSessionId, mcpMessageId = '' } = runData;
+			void executePromise
+				.catch(() => undefined)
+				.finally(async () => {
+					const { McpServer } = await import('@n8n/n8n-nodes-langchain/mcp/core');
+					McpServer.current()?.failPendingToolCall(
+						mcpSessionId,
+						mcpMessageId,
+						'The execution ended without running the tool',
+					);
+				});
+		}
 
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {

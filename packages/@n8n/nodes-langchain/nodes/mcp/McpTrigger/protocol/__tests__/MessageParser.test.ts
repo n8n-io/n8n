@@ -99,6 +99,16 @@ describe('MessageParser', () => {
 			expect(MessageParser.isToolCall('{"jsonrpc":"2.0"')).toBe(false);
 		});
 
+		it('should return false for a tools/call the server would reject', () => {
+			// The MCP SDK rejects these before our CallTool handler sees them
+			expect(MessageParser.isToolCall('{"jsonrpc":"2.0","id":1,"method":"tools/call"}')).toBe(
+				false,
+			);
+			expect(
+				MessageParser.isToolCall('{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{}}'),
+			).toBe(false);
+		});
+
 		it('should return false for other MCP methods', () => {
 			expect(MessageParser.isToolCall('{"jsonrpc":"2.0","id":1,"method":"initialize"}')).toBe(
 				false,
@@ -178,12 +188,71 @@ describe('MessageParser', () => {
 		});
 	});
 
-	describe('extractToolCallInfo', () => {
-		it('should extract tool name and arguments from valid call', () => {
+	describe('parseToolCall', () => {
+		const parseToolCall = (body: string) => MessageParser.parseToolCall(MessageParser.parse(body));
+
+		it('should return the request for a valid tool call', () => {
 			const body =
 				'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_weather","arguments":{"city":"London"}}}';
-			const result = MessageParser.extractToolCallInfo(body);
-			expect(result).toEqual({
+			expect(parseToolCall(body)?.params).toEqual({
+				name: 'get_weather',
+				arguments: { city: 'London' },
+			});
+		});
+
+		it('should return the request when arguments are omitted', () => {
+			const body = '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"test"}}';
+			expect(parseToolCall(body)?.params.name).toBe('test');
+		});
+
+		it('should return undefined when params is missing', () => {
+			const body = '{"jsonrpc":"2.0","id":1,"method":"tools/call"}';
+			expect(parseToolCall(body)).toBeUndefined();
+		});
+
+		it('should return undefined when params.name is missing', () => {
+			const body = '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"arguments":{}}}';
+			expect(parseToolCall(body)).toBeUndefined();
+		});
+
+		it('should return undefined when params.name is not a string', () => {
+			const body =
+				'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":123,"arguments":{}}}';
+			expect(parseToolCall(body)).toBeUndefined();
+		});
+
+		it('should return undefined when params.arguments is not an object', () => {
+			const body =
+				'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"test","arguments":"string"}}';
+			expect(parseToolCall(body)).toBeUndefined();
+		});
+
+		it('should return undefined for a notification (no id)', () => {
+			const body =
+				'{"jsonrpc":"2.0","method":"tools/call","params":{"name":"test","arguments":{}}}';
+			expect(parseToolCall(body)).toBeUndefined();
+		});
+
+		it('should return undefined for non-tool-call messages', () => {
+			expect(parseToolCall('{"jsonrpc":"2.0","id":1,"method":"tools/list"}')).toBeUndefined();
+		});
+
+		it('should return undefined for empty or malformed bodies', () => {
+			expect(parseToolCall('')).toBeUndefined();
+			expect(parseToolCall('{"invalid')).toBeUndefined();
+		});
+	});
+
+	describe('toolCallInfo', () => {
+		const toolCallInfo = (body: string) => {
+			const request = MessageParser.parseToolCall(MessageParser.parse(body));
+			return request && MessageParser.toolCallInfo(request);
+		};
+
+		it('should extract tool name and arguments', () => {
+			const body =
+				'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_weather","arguments":{"city":"London"}}}';
+			expect(toolCallInfo(body)).toEqual({
 				toolName: 'get_weather',
 				arguments: { city: 'London' },
 			});
@@ -192,8 +261,7 @@ describe('MessageParser', () => {
 		it('should handle empty arguments object', () => {
 			const body =
 				'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"no_args_tool","arguments":{}}}';
-			const result = MessageParser.extractToolCallInfo(body);
-			expect(result).toEqual({
+			expect(toolCallInfo(body)).toEqual({
 				toolName: 'no_args_tool',
 				arguments: {},
 			});
@@ -202,57 +270,15 @@ describe('MessageParser', () => {
 		it('should handle complex nested arguments', () => {
 			const body =
 				'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"complex_tool","arguments":{"nested":{"deep":{"value":123}},"array":[1,2,3]}}}';
-			const result = MessageParser.extractToolCallInfo(body);
-			expect(result).toEqual({
+			expect(toolCallInfo(body)).toEqual({
 				toolName: 'complex_tool',
 				arguments: { nested: { deep: { value: 123 } }, array: [1, 2, 3] },
 			});
 		});
 
-		it('should return undefined when params.name is missing', () => {
-			const body = '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"arguments":{}}}';
-			expect(MessageParser.extractToolCallInfo(body)).toBeUndefined();
-		});
-
-		it('should return undefined when params.arguments is missing', () => {
+		it('should return undefined when arguments are omitted', () => {
 			const body = '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"test"}}';
-			expect(MessageParser.extractToolCallInfo(body)).toBeUndefined();
-		});
-
-		it('should return undefined when params.arguments is null', () => {
-			const body =
-				'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"test","arguments":null}}';
-			expect(MessageParser.extractToolCallInfo(body)).toBeUndefined();
-		});
-
-		it('should return undefined when params.arguments is not an object', () => {
-			const body =
-				'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"test","arguments":"string"}}';
-			expect(MessageParser.extractToolCallInfo(body)).toBeUndefined();
-		});
-
-		it('should return undefined when params.name is not a string', () => {
-			const body =
-				'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":123,"arguments":{}}}';
-			expect(MessageParser.extractToolCallInfo(body)).toBeUndefined();
-		});
-
-		it('should return undefined for non-tool-call messages', () => {
-			const body = '{"jsonrpc":"2.0","id":1,"method":"tools/list"}';
-			expect(MessageParser.extractToolCallInfo(body)).toBeUndefined();
-		});
-
-		it('should return undefined when params is missing', () => {
-			const body = '{"jsonrpc":"2.0","id":1,"method":"tools/call"}';
-			expect(MessageParser.extractToolCallInfo(body)).toBeUndefined();
-		});
-
-		it('should return undefined for empty body', () => {
-			expect(MessageParser.extractToolCallInfo('')).toBeUndefined();
-		});
-
-		it('should return undefined for malformed JSON', () => {
-			expect(MessageParser.extractToolCallInfo('{"invalid')).toBeUndefined();
+			expect(toolCallInfo(body)).toBeUndefined();
 		});
 	});
 });

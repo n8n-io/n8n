@@ -37,13 +37,6 @@ export type JobData = {
 	mcpSessionId?: string;
 	/** MCP message ID for correlating responses with requests. */
 	mcpMessageId?: string;
-	/** Tool call info for MCP Trigger executions (tool name, args, source node). */
-	mcpToolCall?: {
-		toolName: string;
-		arguments: Record<string, unknown>;
-		/** The n8n node name that provides this tool. */
-		sourceNodeName?: string;
-	};
 };
 
 export type JobResult = {

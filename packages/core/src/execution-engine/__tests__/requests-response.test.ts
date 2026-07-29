@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import { DirectedGraph } from '../partial-execution-utils';
 import { nodeTypes, types } from './mock-node-types';
 import { createNodeData } from '../partial-execution-utils/__tests__/helpers';
-import { handleRequest } from '../requests-response';
+import { handleRequest, seedRootNodeRunData } from '../requests-response';
 
 describe('handleRequests', () => {
 	test('throws if an action mentions a node that does not exist in the workflow', () => {
@@ -494,6 +494,125 @@ describe('handleRequests', () => {
 		expect(resumingNode.metadata).toHaveProperty('nodeWasResumed', true);
 		expect(resumingNode.metadata).toHaveProperty('preserveSourceOverwrite', true);
 		expect(resumingNode.metadata).toHaveProperty('preservedSourceOverwrite', preservedSource);
+	});
+
+	test('resumes a root node, which has no main input to resume from', () => {
+		const toolNode = createNodeData({ name: 'Gmail Tool', type: types.passThrough });
+		const triggerNode = createNodeData({ name: 'MCP Server Trigger', type: types.passThrough });
+
+		const workflow = new DirectedGraph()
+			.addNodes(toolNode, triggerNode)
+			.toWorkflow({ name: '', active: false, nodeTypes });
+
+		const triggerOutput: INodeExecutionData[] = [{ json: { headers: { 'x-user-id': 'user-42' } } }];
+		const executionData: IExecuteData = {
+			data: { main: [triggerOutput] },
+			source: null,
+			node: triggerNode,
+		};
+
+		const request: EngineRequest = {
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction',
+					nodeName: 'Gmail Tool',
+					input: { subject: 'Test' },
+					type: 'ai_tool',
+					id: 'msg-1',
+					metadata: {},
+				},
+			],
+			metadata: {},
+		};
+
+		const runData: IRunData = {};
+
+		const result = handleRequest({
+			workflow,
+			currentNode: triggerNode,
+			request,
+			runIndex: 0,
+			executionData,
+			runData,
+		});
+
+		// The trigger stands in as its own parent, and is scheduled to resume
+		const resumingNode = result.nodesToBeExecuted[0];
+		expect(resumingNode.parentNode).toBe('MCP Server Trigger');
+		expect(resumingNode.metadata).toHaveProperty('nodeWasResumed', true);
+
+		const toolNodeToExecute = result.nodesToBeExecuted.find(
+			(n) => n.inputConnectionData.node === 'Gmail Tool',
+		);
+		expect(toolNodeToExecute!.parentOutputData[0][0].json).toEqual({
+			headers: { 'x-user-id': 'user-42' },
+			subject: 'Test',
+			toolCallId: 'msg-1',
+		});
+	});
+
+	describe('seedRootNodeRunData', () => {
+		test("records a root node's input as its in-progress output", () => {
+			const triggerNode = createNodeData({ name: 'MCP Server Trigger', type: types.passThrough });
+			const workflow = new DirectedGraph()
+				.addNodes(triggerNode)
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const triggerOutput: INodeExecutionData[] = [{ json: { headers: { probe: 'value' } } }];
+			const runData: IRunData = {};
+
+			seedRootNodeRunData(
+				workflow,
+				triggerNode,
+				0,
+				{ data: { main: [triggerOutput] }, source: null, node: triggerNode },
+				runData,
+			);
+
+			expect(runData['MCP Server Trigger']).toEqual([
+				expect.objectContaining({
+					executionStatus: 'running',
+					data: { main: [triggerOutput] },
+				}),
+			]);
+		});
+
+		test('leaves a node that has a main input alone', () => {
+			const previousNode = createNodeData({ name: 'Process Quotes', type: types.passThrough });
+			const agentNode = createNodeData({ name: 'AI Agent', type: types.passThrough });
+			const workflow = new DirectedGraph()
+				.addNodes(previousNode, agentNode)
+				.addConnection({ from: previousNode, to: agentNode })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const runData: IRunData = {};
+
+			seedRootNodeRunData(
+				workflow,
+				agentNode,
+				0,
+				{ data: { main: [[{ json: {} }]] }, source: null, node: agentNode },
+				runData,
+			);
+
+			expect(runData['AI Agent']).toBeUndefined();
+		});
+
+		test('does not add a second entry for a run it already recorded', () => {
+			const triggerNode = createNodeData({ name: 'MCP Server Trigger', type: types.passThrough });
+			const workflow = new DirectedGraph()
+				.addNodes(triggerNode)
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const executionData: IExecuteData = {
+				data: { main: [[{ json: {} }]] },
+				source: null,
+				node: triggerNode,
+			};
+			const runData: IRunData = {};
+
+			seedRootNodeRunData(workflow, triggerNode, 0, executionData, runData);
+			seedRootNodeRunData(workflow, triggerNode, 0, executionData, runData);
+
+			expect(runData['MCP Server Trigger']).toHaveLength(1);
+		});
 	});
 
 	test('does not add preserveSourceOverwrite metadata when not present', () => {

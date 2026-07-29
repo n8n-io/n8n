@@ -7,6 +7,7 @@ import type {
 	ServerRequest,
 	ServerNotification,
 	JSONRPCMessage,
+	RequestId,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { randomUUID } from 'crypto';
@@ -16,16 +17,13 @@ import type { CredentialCheckResult, Logger } from 'n8n-workflow';
 import { jsonParse, OperationalError } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { ExecutionCoordinator } from './execution/ExecutionCoordinator';
-import type { ExecutionStrategy } from './execution/ExecutionStrategy';
 import { PendingCallsManager } from './execution/PendingCallsManager';
-import { QueuedExecutionStrategy } from './execution/QueuedExecutionStrategy';
 import {
 	MessageFormatter,
 	type CredentialGateElicitationOutcome,
 } from './protocol/MessageFormatter';
 import { MessageParser } from './protocol/MessageParser';
-import type { McpToolCallInfo, McpToolResult } from './protocol/types';
+import type { McpToolResult } from './protocol/types';
 import { MCP_LIST_TOOLS_REQUEST_MARKER } from './protocol/types';
 import { InMemorySessionStore } from './session/InMemorySessionStore';
 import { SessionManager } from './session/SessionManager';
@@ -43,10 +41,26 @@ import { TransportFactory } from './transport/TransportFactory';
  */
 const ELICITATION_TIMEOUT_MS = 300_000;
 
+/** Safety net for a tool call whose execution never reports back, so the request cannot hang forever. */
+const TOOL_CALL_TIMEOUT_MS = 300_000;
+
+/**
+ * Correlation key for one in-flight request. Both the request side (which reads
+ * the id off the message) and the CallTool handler (which gets it from the SDK)
+ * must derive the same key, so normalize here — `0` is a valid request id and
+ * must not be mistaken for "no id".
+ */
+function buildCallId(sessionId: string, requestId?: RequestId): string {
+	const messageId = requestId === undefined || requestId === '' ? undefined : String(requestId);
+	return messageId ? `${sessionId}_${messageId}` : sessionId;
+}
+
+function isListToolsMarker(result: unknown): boolean {
+	return typeof result === 'object' && result !== null && '_listToolsRequest' in result;
+}
+
 export interface HandlePostResult {
 	wasToolCall: boolean;
-	toolCallInfo?: McpToolCallInfo;
-	messageId?: string;
 	relaySessionId?: string;
 	needsListToolsRelay?: boolean;
 }
@@ -63,10 +77,11 @@ export class McpServer {
 
 	private sessionManager: SessionManager;
 	private transportFactory: TransportFactory;
-	private executionCoordinator: ExecutionCoordinator;
 	private pendingCallsManager: PendingCallsManager;
 	private resolveFunctions: Record<string, () => void> = {};
 	private pendingResponses: Record<string, PendingResponse> = {};
+	/** Calls this instance has already answered, so a late result is dropped instead of re-sent. */
+	private answeredCalls = new Set<string>();
 	/**
 	 * Request-scoped credential-gate results, keyed by callId. Set just before a
 	 * tool call is driven through the transport and consumed (then deleted) by the
@@ -85,11 +100,15 @@ export class McpServer {
 		this.sessionManager = new SessionManager(new InMemorySessionStore());
 		this.transportFactory = new TransportFactory();
 		this.pendingCallsManager = new PendingCallsManager();
-		this.executionCoordinator = new ExecutionCoordinator();
 		const config = Container.get(McpServerConfig);
 		this.idleTtlMs = config.sessionIdleTtl;
 		this.sweepIntervalMs = config.sessionSweepInterval;
 		this.logger.debug('McpServer created');
+	}
+
+	/** The instance holding the sessions of this process, if it has any. */
+	static current(): McpServer | undefined {
+		return McpServer.instance_;
 	}
 
 	static instance(logger: Logger): McpServer {
@@ -142,10 +161,11 @@ export class McpServer {
 		resp.flush?.();
 	}
 
+	/** @param getTools Resolved only when the session has to be rebuilt on this instance. */
 	async handlePostMessage(
 		req: express.Request,
 		resp: CompressionResponse,
-		tools: Tool[],
+		getTools: () => Promise<Tool[]>,
 		serverName?: string,
 		gateResult?: CredentialCheckResult,
 	): Promise<HandlePostResult> {
@@ -154,15 +174,6 @@ export class McpServer {
 		if (sessionId) this.sessionManager.touch(sessionId);
 		let transport = sessionId ? this.sessionManager.getTransport(sessionId) : undefined;
 		const rawBody = req.rawBody.toString();
-		let toolCallInfo = MessageParser.extractToolCallInfo(rawBody);
-		let messageId: string | undefined;
-
-		if (toolCallInfo) {
-			const tool = tools.find((t) => t.name === toolCallInfo!.toolName);
-			if (tool?.metadata?.sourceNodeName && typeof tool.metadata.sourceNodeName === 'string') {
-				toolCallInfo = { ...toolCallInfo, sourceNodeName: tool.metadata.sourceNodeName };
-			}
-		}
 
 		if (sessionId && !transport && req.headers['mcp-session-id'] && serverName) {
 			this.logger.debug(
@@ -171,7 +182,7 @@ export class McpServer {
 			const recreated = await this.recreateStreamableHttpTransport(
 				sessionId,
 				serverName,
-				tools,
+				await getTools(),
 				resp,
 			);
 			if (!recreated) {
@@ -184,23 +195,21 @@ export class McpServer {
 		const isToolCall = MessageParser.isToolCall(rawBody);
 		const isListToolsRequest = MessageParser.isListToolsRequest(rawBody);
 
+		// An SSE session belongs to the instance holding its stream. When that is not this
+		// one, take the request and let that instance answer it.
 		if (
 			sessionId &&
 			!transport &&
 			req.query.sessionId &&
-			this.executionCoordinator.isQueueMode() &&
-			(isToolCall || isListToolsRequest)
+			(isToolCall || isListToolsRequest) &&
+			(await this.sessionManager.isSessionValid(sessionId))
 		) {
 			this.logger.debug(
-				`SSE queue mode: forwarding ${isToolCall ? 'tool call' : 'list tools'} for session ${sessionId} via pub/sub`,
+				`Forwarding ${isToolCall ? 'tool call' : 'list tools'} for session ${sessionId} to the instance holding it`,
 			);
-			const message = jsonParse(rawBody);
-			messageId = MessageParser.getRequestId(message);
 			resp.status(202).send('Accepted');
 			return {
 				wasToolCall: isToolCall,
-				toolCallInfo,
-				messageId,
 				relaySessionId: isListToolsRequest ? sessionId : undefined,
 				needsListToolsRelay: isListToolsRequest,
 			};
@@ -208,9 +217,11 @@ export class McpServer {
 
 		if (sessionId && transport) {
 			const message = jsonParse(rawBody);
-			messageId = MessageParser.getRequestId(message);
-			const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
-			this.sessionManager.setTools(sessionId, tools);
+			const callId = buildCallId(sessionId, MessageParser.getRequestId(message));
+
+			// The tool definitions the client is about to be shown are the ones a call
+			// will be matched against, so this is where the session's list is refreshed.
+			if (isListToolsRequest) this.sessionManager.setTools(sessionId, await getTools());
 
 			// Hand the gate result to the CallTool handler for this request only.
 			if (gateResult) {
@@ -218,6 +229,8 @@ export class McpServer {
 			}
 
 			try {
+				// The CallTool handler resolves this before parking, so the webhook can
+				// return and the execution that answers the call can start
 				await new Promise<void>((resolve) => {
 					this.resolveFunctions[callId] = resolve;
 					void transport.handleRequest(req, resp, message as IncomingMessage).finally(resolve);
@@ -238,11 +251,7 @@ export class McpServer {
 		// not a tool call so the node does not also trigger a workflow execution.
 		const wasGated = !!gateResult && !gateResult.readyToExecute;
 
-		return {
-			wasToolCall: MessageParser.isToolCall(rawBody) && !wasGated,
-			toolCallInfo,
-			messageId,
-		};
+		return { wasToolCall: isToolCall && !wasGated };
 	}
 
 	async handleDeleteRequest(req: express.Request, resp: CompressionResponse): Promise<void> {
@@ -290,7 +299,7 @@ export class McpServer {
 			return;
 		}
 
-		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
+		const callId = buildCallId(sessionId, messageId);
 		this.pendingResponses[callId] = {
 			sessionId,
 			messageId,
@@ -299,83 +308,75 @@ export class McpServer {
 		};
 	}
 
-	handleWorkerResponse(sessionId: string, messageId: string, result: unknown): void {
-		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
-		const pending = this.pendingResponses[callId];
+	/**
+	 * Answers a tool call with the result of the execution that ran it. Returns whether
+	 * this instance could: the request is parked on the one holding the session.
+	 */
+	deliverToolResult(sessionId: string, messageId: string, result: unknown): boolean {
+		const callId = buildCallId(sessionId, messageId);
+		delete this.pendingResponses[callId];
 
-		const isListToolsRequest =
-			typeof result === 'object' &&
-			result !== null &&
-			'_listToolsRequest' in result &&
-			(result as { _listToolsRequest: boolean })._listToolsRequest;
+		if (isListToolsMarker(result)) return this.sendToolList(sessionId, messageId);
+		if (this.pendingCallsManager.resolve(callId, result)) return true;
+		if (this.answeredCalls.has(callId)) return true;
 
-		if (isListToolsRequest) {
-			const transport = this.sessionManager.getTransport(sessionId);
-			if (transport && transport.transportType === 'sse' && messageId) {
-				this.logger.debug(
-					`SSE queue mode: handling relayed list tools request for session ${sessionId}`,
-				);
+		// The call was never parked here, so it arrived while another instance held the
+		// session: answer over the transport ourselves.
+		return this.sendOverTransport(sessionId, messageId, {
+			jsonrpc: '2.0',
+			id: messageId,
+			result: MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result)),
+		});
+	}
 
-				const tools = this.sessionManager.getTools(sessionId) ?? [];
-				const toolsList = tools.map((tool) => ({
+	/**
+	 * Fails a call still parked on this instance, for when the execution that should
+	 * have answered it ended without doing so (a tool that stops the workflow, a
+	 * cancelled or failed execution). Returns whether a call was waiting.
+	 */
+	failPendingToolCall(sessionId: string, messageId: string, message: string): boolean {
+		const callId = buildCallId(sessionId, messageId);
+		if (this.answeredCalls.has(callId)) return false;
+
+		delete this.pendingResponses[callId];
+		return this.pendingCallsManager.reject(callId, new OperationalError(message));
+	}
+
+	private sendToolList(sessionId: string, messageId: string): boolean {
+		const tools = this.sessionManager.getTools(sessionId) ?? [];
+		return this.sendOverTransport(sessionId, messageId, {
+			jsonrpc: '2.0',
+			id: messageId,
+			result: {
+				tools: tools.map((tool) => ({
 					name: tool.name,
 					description: tool.description,
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
 					inputSchema: zodToJsonSchema(tool.schema as any, { removeAdditionalStrategy: 'strict' }),
-				}));
+				})),
+			},
+		});
+	}
 
-				const response: JSONRPCMessage = {
-					jsonrpc: '2.0',
-					id: messageId,
-					result: { tools: toolsList },
-				};
-				void transport.send(response);
-			}
-			return;
-		}
+	private sendOverTransport(
+		sessionId: string,
+		messageId: string,
+		message: JSONRPCMessage,
+	): boolean {
+		const transport = this.sessionManager.getTransport(sessionId);
+		if (!transport || transport.transportType !== 'sse' || !messageId) return false;
 
-		const strategy = this.executionCoordinator.getStrategy();
-		if (strategy instanceof QueuedExecutionStrategy) {
-			if (strategy.resolveToolCall(callId, result)) {
-				// Resolved via pending tool call
-			} else {
-				const transport = this.sessionManager.getTransport(sessionId);
-				if (transport && transport.transportType === 'sse' && messageId) {
-					this.logger.debug(
-						`SSE queue mode: sending response directly via transport for session ${sessionId}`,
-					);
-
-					const formattedResult = MessageFormatter.formatToolResult(
-						result,
-						MessageFormatter.isErrorResult(result),
-					);
-					const response: JSONRPCMessage = {
-						jsonrpc: '2.0',
-						id: messageId,
-						result: formattedResult,
-					};
-					void transport.send(response);
-				}
-			}
-		}
-
-		if (this.resolveFunctions[callId]) {
-			this.resolveFunctions[callId]();
-			delete this.resolveFunctions[callId];
-		}
-
-		if (pending) {
-			delete this.pendingResponses[callId];
-		}
+		void transport.send(message);
+		return true;
 	}
 
 	removePendingResponse(sessionId: string, messageId: string): void {
-		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
+		const callId = buildCallId(sessionId, messageId);
 		delete this.pendingResponses[callId];
 	}
 
 	hasPendingResponse(sessionId: string, messageId: string): boolean {
-		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
+		const callId = buildCallId(sessionId, messageId);
 		return callId in this.pendingResponses;
 	}
 
@@ -385,10 +386,6 @@ export class McpServer {
 
 	setSessionStore(store: SessionStore): void {
 		this.sessionManager.setStore(store);
-	}
-
-	setExecutionStrategy(strategy: ExecutionStrategy): void {
-		this.executionCoordinator.setStrategy(strategy);
 	}
 
 	private startSweep(): void {
@@ -426,16 +423,10 @@ export class McpServer {
 
 	private hasInFlightWork(sessionId: string): boolean {
 		if (this.pendingCallsManager.hasForSession(sessionId)) return true;
-		// Direct-mode tool calls are tracked only by resolveFunctions for their whole
-		// duration; queue-mode also uses pendingResponses below.
 		const ownsSession = (callId: string) =>
 			callId === sessionId || callId.startsWith(`${sessionId}_`);
 		if (Object.keys(this.resolveFunctions).some(ownsSession)) return true;
 		return Object.values(this.pendingResponses).some((pending) => pending.sessionId === sessionId);
-	}
-
-	isQueueMode(): boolean {
-		return this.executionCoordinator.isQueueMode();
 	}
 
 	getTransport(sessionId: string): McpTransport | undefined {
@@ -444,10 +435,6 @@ export class McpServer {
 
 	getTools(sessionId: string): Tool[] | undefined {
 		return this.sessionManager.getTools(sessionId);
-	}
-
-	getPendingCallsManager(): PendingCallsManager {
-		return this.pendingCallsManager;
 	}
 
 	private createServer(serverName: string): Server {
@@ -476,6 +463,12 @@ export class McpServer {
 
 	private async cleanupSession(sessionId: string): Promise<void> {
 		this.pendingCallsManager.cleanupBySessionId(sessionId);
+
+		for (const callId of this.answeredCalls) {
+			if (callId === sessionId || callId.startsWith(`${sessionId}_`)) {
+				this.answeredCalls.delete(callId);
+			}
+		}
 
 		for (const callId of Object.keys(this.pendingResponses)) {
 			if (this.pendingResponses[callId].sessionId === sessionId) {
@@ -603,73 +596,69 @@ export class McpServer {
 		);
 
 		server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-			if (!request.params?.name || !request.params?.arguments) {
-				throw new OperationalError('Require a name and arguments for the tool call');
-			}
 			if (!extra.sessionId) {
+				// Nothing to correlate the call with, so no webhook can be waiting on it
 				throw new OperationalError('Require a sessionId for the tool call');
 			}
-
-			const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
-			const toolName = request.params.name;
-			const toolArguments =
-				typeof request.params.arguments === 'object' && request.params.arguments !== null
-					? request.params.arguments
-					: {};
-
-			const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
-			const requestedTool = tools.find((tool) => tool.name === toolName);
-			if (!requestedTool) {
-				throw new OperationalError('Tool not found');
-			}
-
-			// Eager pre-execution credential gate: if the caller has not connected a
-			// required private credential, surface the actionable connection URLs
-			// (via elicitation when supported, otherwise as text) instead of
-			// executing (or enqueuing) the workflow.
-			const gateResult = this.pendingGateResults[callId];
-			if (gateResult && !gateResult.readyToExecute) {
-				return await this.handleCredentialGate(server, gateResult, callId);
-			}
+			const callId = buildCallId(extra.sessionId, extra.requestId);
 
 			try {
-				if (this.executionCoordinator.isQueueMode()) {
-					const requestId = extra.requestId?.toString() ?? '';
-					this.storePendingResponse(extra.sessionId, requestId);
+				if (!request.params?.name || !request.params?.arguments) {
+					throw new OperationalError('Require a name and arguments for the tool call');
+				}
 
-					// Resolve handlePostMessage so webhook can return and enqueue execution.
-					// The handler continues running asynchronously, waiting for worker response.
-					if (this.resolveFunctions[callId]) {
-						this.resolveFunctions[callId]();
-					}
+				const toolName = request.params.name;
+				const toolArguments =
+					typeof request.params.arguments === 'object' && request.params.arguments !== null
+						? request.params.arguments
+						: {};
 
-					const strategy = this.executionCoordinator.getStrategy() as QueuedExecutionStrategy;
-					const result = await strategy.executeTool(requestedTool, toolArguments, {
-						sessionId: extra.sessionId,
-						messageId: requestId,
-					});
+				const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
+				const requestedTool = tools.find((tool) => tool.name === toolName);
+				if (!requestedTool) {
+					throw new OperationalError('Tool not found');
+				}
+
+				// Eager pre-execution credential gate: if the caller has not connected a
+				// required private credential, surface the actionable connection URLs
+				// (via elicitation when supported, otherwise as text) instead of
+				// executing (or enqueuing) the workflow.
+				const gateResult = this.pendingGateResults[callId];
+				if (gateResult && !gateResult.readyToExecute) {
+					return await this.handleCredentialGate(server, gateResult, callId);
+				}
+
+				try {
+					const messageId = extra.requestId?.toString() ?? '';
+					this.storePendingResponse(extra.sessionId, messageId);
+
+					// Let the webhook return so the execution that runs the tool can start;
+					// this handler stays alive waiting for its result.
+					this.resolveFunctions[callId]?.();
+
+					const result = await this.pendingCallsManager.waitForResult(
+						callId,
+						requestedTool.name,
+						toolArguments,
+						TOOL_CALL_TIMEOUT_MS,
+					);
 
 					return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
+				} catch (error) {
+					const errorObject = error instanceof Error ? error : new Error(String(error));
+					this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {
+						error: errorObject,
+					});
+					return MessageFormatter.formatError(errorObject);
 				}
-
-				const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
-					sessionId: extra.sessionId,
-					messageId: extra.requestId?.toString(),
-				});
-
-				if (this.resolveFunctions[callId]) {
-					this.resolveFunctions[callId]();
-				} else {
-					this.logger.warn(`No resolve function found for ${callId}`);
-				}
-
-				return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
-			} catch (error) {
-				const errorObject = error instanceof Error ? error : new Error(String(error));
-				this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {
-					error: errorObject,
-				});
-				return MessageFormatter.formatError(errorObject);
+			} finally {
+				// Whatever this returned is the client's answer, so a result arriving late
+				// (after a timeout, say) must not be sent a second time.
+				this.answeredCalls.add(callId);
+				delete this.pendingResponses[callId];
+				// The webhook that delivered this call waits for the tool to finish
+				// (see handlePostMessage); resolve on every exit path so it never hangs.
+				this.resolveFunctions[callId]?.();
 			}
 		});
 

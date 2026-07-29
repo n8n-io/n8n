@@ -184,12 +184,20 @@ function prepareRequestedNodesForExecution(
 	return { nodesToBeExecuted, subNodeExecutionData };
 }
 
+/** A root node (e.g. a trigger dispatching a tool call) has no main input to resume from. */
+function isRootNode(workflow: Workflow, nodeName: string) {
+	return !workflow.connectionsByDestinationNode[nodeName]?.main?.length;
+}
+
 function prepareRequestingNodeForResuming(
 	workflow: Workflow,
 	request: EngineRequest,
 	executionData: IExecuteData,
 ) {
-	const parentNode = executionData.source?.main?.[0]?.previousNode;
+	const nodeName = executionData.node.name;
+	const parentNode =
+		executionData.source?.main?.[0]?.previousNode ??
+		(isRootNode(workflow, nodeName) ? nodeName : undefined);
 	if (!parentNode) {
 		Container.get(ErrorReporter).error(
 			new UnexpectedError(
@@ -228,6 +236,33 @@ function prepareRequestingNodeForResuming(
 	};
 
 	return { connectionData, parentNode, metadata };
+}
+
+/**
+ * Records the in-progress run of a root node, whose output is its input, so nodes it
+ * builds or dispatches can reference it by name while it runs. Called before the node
+ * executes; the real task data merges into this entry once it finishes.
+ */
+export function seedRootNodeRunData(
+	workflow: Workflow,
+	currentNode: INode,
+	runIndex: number,
+	executionData: IExecuteData,
+	runData: IRunData,
+) {
+	if (!isRootNode(workflow, currentNode.name)) return;
+
+	const nodeRunData = (runData[currentNode.name] ||= []);
+	if (nodeRunData.length !== runIndex) return;
+
+	nodeRunData.push({
+		startTime: Date.now(),
+		executionTime: 0,
+		executionIndex: 0,
+		source: [],
+		executionStatus: 'running',
+		data: { main: (executionData.data.main ?? []) as INodeExecutionData[][] },
+	});
 }
 
 /**

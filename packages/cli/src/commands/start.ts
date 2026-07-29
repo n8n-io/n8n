@@ -323,7 +323,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		subscriber.setMcpRelayHandler((msg) => {
 			try {
 				const mcpServer = McpServer.instance(this.logger);
-				mcpServer.handleWorkerResponse(msg.sessionId, msg.messageId, msg.response);
+				mcpServer.deliverToolResult(msg.sessionId, msg.messageId, msg.response);
 			} catch (error) {
 				this.logger.error('Failed to handle MCP relay message', {
 					sessionId: msg.sessionId,

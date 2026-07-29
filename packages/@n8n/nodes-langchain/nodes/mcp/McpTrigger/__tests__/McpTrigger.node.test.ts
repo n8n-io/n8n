@@ -1,11 +1,15 @@
 import type {
+	IExecuteFunctions,
 	INode,
 	INodePropertyOptions,
+	ITaskData,
 	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+
+import { getConnectedTools } from '@utils/helpers';
 
 import { createMockLogger, createMockRequest, createMockResponse } from './helpers';
 import { McpServer } from '../McpServer';
@@ -18,6 +22,7 @@ const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
 vi.mock('../McpServer', () => ({
 	McpServer: {
 		instance: vi.fn(),
+		current: vi.fn(),
 	},
 	MCP_LIST_TOOLS_REQUEST_MARKER: 'mcp_list_tools_request',
 }));
@@ -50,14 +55,13 @@ describe('McpTrigger', () => {
 			handleSetupRequest: vi.fn().mockResolvedValue(undefined),
 			handlePostMessage: vi.fn().mockResolvedValue({
 				wasToolCall: false,
-				toolCallInfo: undefined,
-				messageId: undefined,
 				relaySessionId: undefined,
 				needsListToolsRelay: false,
 			}),
 			handleDeleteRequest: vi.fn().mockResolvedValue(undefined),
 			handleStreamableHttpSetup: vi.fn().mockResolvedValue(undefined),
 			getSessionId: vi.fn().mockReturnValue(undefined),
+			deliverToolResult: vi.fn().mockReturnValue(true),
 		} as unknown as Mocked<McpServer>;
 
 		(McpServer.instance as Mock).mockReturnValue(mockMcpServer);
@@ -67,6 +71,8 @@ describe('McpTrigger', () => {
 			getRequestObject: vi.fn(),
 			getResponseObject: vi.fn(),
 			getNode: vi.fn(),
+			getBodyData: vi.fn().mockReturnValue({}),
+			getHeaderData: vi.fn().mockReturnValue({}),
 			logger: mockLogger,
 			getCredentials: vi.fn().mockResolvedValue({} as ICredentialDataDecryptedObject),
 		});
@@ -261,7 +267,16 @@ describe('McpTrigger', () => {
 		});
 
 		it('should return workflow data when tool call is detected', async () => {
-			const req = createMockRequest({ method: 'POST', query: { sessionId: 'test-session' } });
+			const req = createMockRequest({
+				method: 'POST',
+				query: { sessionId: 'test-session' },
+				rawBody: JSON.stringify({
+					jsonrpc: '2.0',
+					id: 'msg-123',
+					method: 'tools/call',
+					params: { name: 'test-tool', arguments: { arg1: 'value1' } },
+				}),
+			});
 			const resp = createMockResponse();
 			const node = mock<INode>({
 				typeVersion: 2,
@@ -271,8 +286,6 @@ describe('McpTrigger', () => {
 			mockMcpServer.getSessionId.mockReturnValue('test-session');
 			mockMcpServer.handlePostMessage.mockResolvedValue({
 				wasToolCall: true,
-				toolCallInfo: { toolName: 'test-tool', arguments: { arg1: 'value1' } },
-				messageId: 'msg-123',
 				relaySessionId: undefined,
 				needsListToolsRelay: false,
 			});
@@ -291,12 +304,172 @@ describe('McpTrigger', () => {
 						{
 							json: {
 								mcpToolCall: { toolName: 'test-tool', arguments: { arg1: 'value1' } },
+								mcpSessionId: 'test-session',
 								mcpMessageId: 'msg-123',
+								headers: {},
 							},
 						},
 					],
 				],
 			});
+		});
+
+		it('should handle a tool call that omits its arguments', async () => {
+			// A call for a tool without parameters, which `execute` still has to answer
+			const message = {
+				jsonrpc: '2.0',
+				id: 'msg-123',
+				method: 'tools/call',
+				params: { name: 'test-tool' },
+			};
+			const req = createMockRequest({
+				method: 'POST',
+				query: { sessionId: 'test-session' },
+				rawBody: JSON.stringify(message),
+			});
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockMcpServer.handlePostMessage.mockResolvedValue({
+				wasToolCall: true,
+				relaySessionId: undefined,
+				needsListToolsRelay: false,
+			});
+
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(createMockResponse() as never);
+			mockContext.getNode.mockReturnValue(node);
+			mockContext.getBodyData.mockReturnValue(message);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0]?.[0]?.json).toMatchObject({
+				mcpToolCall: { toolName: 'test-tool', arguments: {} },
+				mcpSessionId: 'test-session',
+				mcpMessageId: 'msg-123',
+			});
+		});
+
+		it('should not create the tools for a tool call', async () => {
+			const req = createMockRequest({
+				method: 'POST',
+				query: { sessionId: 'test-session' },
+				rawBody: JSON.stringify({
+					jsonrpc: '2.0',
+					id: 'msg-123',
+					method: 'tools/call',
+					params: { name: 'test-tool', arguments: {} },
+				}),
+			});
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockMcpServer.handlePostMessage.mockResolvedValue({
+				wasToolCall: true,
+				relaySessionId: undefined,
+				needsListToolsRelay: false,
+			});
+
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(createMockResponse() as never);
+			mockContext.getNode.mockReturnValue(node);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(getConnectedTools).not.toHaveBeenCalled();
+		});
+
+		it('should expose incoming request headers in the tool call workflow data', async () => {
+			const headers = {
+				'x-user-id': 'user-42',
+				'x-tenant-id': 'tenant-7',
+				authorization: 'Bearer secret-token',
+			};
+			const req = createMockRequest({
+				method: 'POST',
+				query: { sessionId: 'test-session' },
+				headers,
+				rawBody: JSON.stringify({
+					jsonrpc: '2.0',
+					id: 'msg-123',
+					method: 'tools/call',
+					params: { name: 'test-tool', arguments: { arg1: 'value1' } },
+				}),
+			});
+			const resp = createMockResponse();
+			const node = mock<INode>({
+				typeVersion: 2,
+				name: 'MCP Server Trigger',
+			});
+
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockMcpServer.handlePostMessage.mockResolvedValue({
+				wasToolCall: true,
+				relaySessionId: undefined,
+				needsListToolsRelay: false,
+			});
+
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			mockContext.getHeaderData.mockReturnValue(headers);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0]?.[0]?.json?.headers).toEqual(headers);
+		});
+
+		it('should keep the request body accessible alongside the request metadata', async () => {
+			// Before request metadata was exposed, `$json` in a connected tool was the
+			// raw JSON-RPC message, so it has to stay resolvable
+			const message = {
+				jsonrpc: '2.0',
+				id: 'msg-123',
+				method: 'tools/call',
+				params: { name: 'test-tool', arguments: { arg1: 'value1' } },
+			};
+			const req = createMockRequest({
+				method: 'POST',
+				query: { sessionId: 'test-session' },
+				rawBody: JSON.stringify(message),
+			});
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockMcpServer.handlePostMessage.mockResolvedValue({
+				wasToolCall: true,
+				relaySessionId: undefined,
+				needsListToolsRelay: false,
+			});
+
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			// A body key must never shadow the exposed request metadata
+			mockContext.getBodyData.mockReturnValue({ ...message, headers: 'spoofed' });
+			mockContext.getHeaderData.mockReturnValue({ 'x-user-id': 'user-42' });
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0]?.[0]?.json).toEqual({
+				...message,
+				mcpToolCall: { toolName: 'test-tool', arguments: { arg1: 'value1' } },
+				mcpSessionId: 'test-session',
+				mcpMessageId: 'msg-123',
+				headers: { 'x-user-id': 'user-42' },
+			});
+		});
+
+		it('should declare authorization and cookie headers as sensitive output fields', () => {
+			expect(mcpTrigger.description.sensitiveOutputFields).toEqual([
+				'headers.authorization',
+				'headers.cookie',
+			]);
 		});
 
 		it('should handle Streamable HTTP setup when no session exists', async () => {
@@ -485,7 +658,11 @@ describe('McpTrigger', () => {
 			// Reset validateWebhookAuthentication to resolve (not reject)
 			validateWebhookAuthenticationMock.mockResolvedValue(undefined);
 
-			const req = createMockRequest({ method: 'POST', query: { sessionId: 'test-session' } });
+			const req = createMockRequest({
+				method: 'POST',
+				query: { sessionId: 'test-session' },
+				rawBody: JSON.stringify({ jsonrpc: '2.0', id: 'msg-456', method: 'tools/list' }),
+			});
 			const resp = createMockResponse();
 			const node = mock<INode>({
 				typeVersion: 2,
@@ -495,8 +672,6 @@ describe('McpTrigger', () => {
 			mockMcpServer.getSessionId.mockReturnValue('test-session');
 			mockMcpServer.handlePostMessage.mockResolvedValue({
 				wasToolCall: false,
-				toolCallInfo: undefined,
-				messageId: 'msg-456',
 				relaySessionId: 'relay-session-789',
 				needsListToolsRelay: true,
 			});
@@ -524,6 +699,168 @@ describe('McpTrigger', () => {
 					],
 				],
 			});
+		});
+	});
+	describe('execute', () => {
+		const toolCallInput = (json: Record<string, unknown> = {}) => [
+			{
+				json: {
+					mcpToolCall: { toolName: 'test-tool', arguments: { arg1: 'value1' } },
+					mcpSessionId: 'test-session',
+					mcpMessageId: 'msg-123',
+					...json,
+				},
+			},
+		];
+
+		const taskData = (data: ITaskData['data'] | undefined): ITaskData => ({
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: [],
+			executionStatus: 'success',
+			data,
+		});
+
+		let executeContext: Mocked<IExecuteFunctions>;
+
+		beforeEach(() => {
+			executeContext = mock<IExecuteFunctions>({ logger: mockLogger as never });
+			(McpServer.current as Mock).mockReturnValue(mockMcpServer);
+		});
+
+		// The engine hands the node an empty response on the first call, not `undefined`
+		it.each([[undefined], [{ actionResponses: [], metadata: {} }]])(
+			'requests the tool node the call names (response: %s)',
+			async (response) => {
+				executeContext.getInputData.mockReturnValue(toolCallInput());
+				(getConnectedTools as Mock).mockResolvedValueOnce([
+					{ name: 'test-tool', metadata: { sourceNodeName: 'Weather Node' } },
+				]);
+
+				const result = await mcpTrigger.execute(executeContext, response);
+
+				expect(result).toEqual({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Weather Node',
+							input: { arg1: 'value1' },
+							type: 'ai_tool',
+							id: 'msg-123',
+							metadata: {},
+						},
+					],
+					metadata: {},
+				});
+			},
+		);
+
+		it('names the requested tool for a toolkit node, which exposes several', async () => {
+			executeContext.getInputData.mockReturnValue(toolCallInput());
+			(getConnectedTools as Mock).mockResolvedValueOnce([
+				{ name: 'test-tool', metadata: { sourceNodeName: 'MCP Client', isFromToolkit: true } },
+			]);
+
+			const result = await mcpTrigger.execute(executeContext);
+
+			expect(result).toMatchObject({
+				actions: [{ input: { arg1: 'value1', tool: 'test-tool' } }],
+			});
+		});
+
+		it('answers with the tool run output, unwrapped', async () => {
+			executeContext.getInputData.mockReturnValue(toolCallInput());
+
+			await mcpTrigger.execute(executeContext, {
+				actionResponses: [
+					{
+						action: mock(),
+						data: taskData({ ai_tool: [[{ json: { response: '42' } }]] }),
+					},
+				],
+				metadata: {},
+			});
+
+			expect(mockMcpServer.deliverToolResult).toHaveBeenCalledWith('test-session', 'msg-123', '42');
+		});
+
+		it('answers with the tool run items when they are not a single wrapped result', async () => {
+			executeContext.getInputData.mockReturnValue(toolCallInput());
+
+			await mcpTrigger.execute(executeContext, {
+				actionResponses: [
+					{
+						action: mock(),
+						data: taskData({ ai_tool: [[{ json: { status: 200, body: 'ok' } }]] }),
+					},
+				],
+				metadata: {},
+			});
+
+			expect(mockMcpServer.deliverToolResult).toHaveBeenCalledWith('test-session', 'msg-123', [
+				{ status: 200, body: 'ok' },
+			]);
+		});
+
+		it('answers with an error when the tool run failed', async () => {
+			executeContext.getInputData.mockReturnValue(toolCallInput());
+
+			await mcpTrigger.execute(executeContext, {
+				actionResponses: [
+					{
+						action: mock(),
+						data: {
+							...taskData(undefined),
+							error: mock<ITaskData['error']>({ message: 'Request failed', name: 'NodeApiError' }),
+						},
+					},
+				],
+				metadata: {},
+			});
+
+			expect(mockMcpServer.deliverToolResult).toHaveBeenCalledWith('test-session', 'msg-123', {
+				error: { message: 'Request failed', name: 'NodeApiError' },
+			});
+		});
+
+		it('answers with an error when the called tool no longer exists', async () => {
+			executeContext.getInputData.mockReturnValue(toolCallInput());
+			(getConnectedTools as Mock).mockResolvedValueOnce([]);
+
+			const result = await mcpTrigger.execute(executeContext);
+
+			expect(mockMcpServer.deliverToolResult).toHaveBeenCalledWith('test-session', 'msg-123', {
+				error: { message: 'Tool "test-tool" not found', name: 'ToolCallError' },
+			});
+			expect(result).toEqual([toolCallInput()]);
+		});
+
+		it('relays the result through the execution when this instance holds no session', async () => {
+			executeContext.getInputData.mockReturnValue(toolCallInput());
+			mockMcpServer.deliverToolResult.mockReturnValue(false);
+
+			await mcpTrigger.execute(executeContext, {
+				actionResponses: [
+					{
+						action: mock(),
+						data: taskData({ ai_tool: [[{ json: { response: '42' } }]] }),
+					},
+				],
+				metadata: {},
+			});
+
+			expect(executeContext.sendResponse).toHaveBeenCalledWith('42');
+		});
+
+		it('passes the input through when the request was not a tool call', async () => {
+			const input = [{ json: { jsonrpc: '2.0' } }];
+			executeContext.getInputData.mockReturnValue(input);
+
+			const result = await mcpTrigger.execute(executeContext);
+
+			expect(result).toEqual([input]);
+			expect(getConnectedTools).not.toHaveBeenCalled();
 		});
 	});
 });

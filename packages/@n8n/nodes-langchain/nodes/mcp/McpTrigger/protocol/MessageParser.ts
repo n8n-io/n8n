@@ -3,7 +3,7 @@ import {
 	ListToolsRequestSchema,
 	CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolRequest, JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 
 import type { McpToolCallInfo } from './types';
 
@@ -17,14 +17,24 @@ export class MessageParser {
 		}
 	}
 
+	/**
+	 * The tool call a message requests, if it is a `tools/call` request the MCP
+	 * server will accept. Validated against the same schema the SDK applies
+	 * before invoking our handler, so a parsed call is guaranteed to reach it.
+	 */
+	static parseToolCall(message: JSONRPCMessage | undefined): CallToolRequest | undefined {
+		if (!message || !('id' in message)) return undefined;
+		const result = CallToolRequestSchema.safeParse(message);
+		return result.success ? result.data : undefined;
+	}
+
+	static toolCallInfo(request: CallToolRequest): McpToolCallInfo | undefined {
+		const { name, arguments: toolArguments } = request.params;
+		return toolArguments ? { toolName: name, arguments: toolArguments } : undefined;
+	}
+
 	static isToolCall(body: string): boolean {
-		const message = this.parse(body);
-		if (!message) return false;
-		return (
-			'method' in message &&
-			'id' in message &&
-			message.method === CallToolRequestSchema.shape.method.value
-		);
+		return this.parseToolCall(this.parse(body)) !== undefined;
 	}
 
 	static isListToolsRequest(body: string): boolean {
@@ -44,33 +54,5 @@ export class MessageParser {
 		} catch {
 			return undefined;
 		}
-	}
-
-	static extractToolCallInfo(body: string): McpToolCallInfo | undefined {
-		const message = this.parse(body);
-		if (!message) return undefined;
-
-		if (
-			'method' in message &&
-			'params' in message &&
-			message.method === CallToolRequestSchema.shape.method.value
-		) {
-			const params = message.params;
-			if (
-				typeof params === 'object' &&
-				params !== null &&
-				'name' in params &&
-				typeof params.name === 'string' &&
-				'arguments' in params &&
-				typeof params.arguments === 'object' &&
-				params.arguments !== null
-			) {
-				return {
-					toolName: params.name,
-					arguments: params.arguments as Record<string, unknown>,
-				};
-			}
-		}
-		return undefined;
 	}
 }
