@@ -44,8 +44,6 @@ describe('ExecutionRecoveryService', () => {
 	const instanceSettings = Container.get(InstanceSettings);
 	const ownershipService = mockInstance(OwnershipService);
 	const projectRelationRepository = mockInstance(ProjectRelationRepository);
-	// Neutralize the side effects of the system deactivation path resolved via
-	// Container.get(WorkflowService) at call time.
 	const externalHooks = mockInstance(ExternalHooks);
 	const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 	mockInstance(WorkflowPublicationNotifier);
@@ -98,6 +96,23 @@ describe('ExecutionRecoveryService', () => {
 	afterAll(async () => {
 		await testDb.terminate();
 	});
+
+	async function createCrashedActiveWorkflow() {
+		const workflow = await createActiveWorkflow({ ...OOM_WORKFLOW });
+		expect(workflow.activeVersionId).not.toBeNull();
+		await createExecution({ status: 'crashed' }, workflow);
+		await createExecution({ status: 'crashed' }, workflow);
+		await createExecution({ status: 'crashed' }, workflow);
+		return workflow;
+	}
+
+	function mockOwnershipForDeactivation() {
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: uuid(), type: 'personal' }),
+		);
+		ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: uuid() }));
+		projectRelationRepository.find.mockResolvedValue([]);
+	}
 
 	describe('recoverFromLogs', () => {
 		describe('if follower', () => {
@@ -495,19 +510,8 @@ describe('ExecutionRecoveryService', () => {
 				 */
 				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
 
-				const workflow = await createActiveWorkflow({
-					...OOM_WORKFLOW,
-				});
-				expect(workflow.activeVersionId).not.toBeNull();
-				await createExecution({ status: 'crashed' }, workflow);
-				await createExecution({ status: 'crashed' }, workflow);
-				await createExecution({ status: 'crashed' }, workflow);
-
-				ownershipService.getWorkflowProjectCached.mockResolvedValue(
-					mock<Project>({ id: uuid(), type: 'personal' }),
-				);
-				ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: uuid() }));
-				projectRelationRepository.find.mockResolvedValue([]);
+				const workflow = await createCrashedActiveWorkflow();
+				mockOwnershipForDeactivation();
 
 				/**
 				 * Act
@@ -529,19 +533,8 @@ describe('ExecutionRecoveryService', () => {
 				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
 				globalConfig.workflows.useWorkflowPublicationService = true;
 
-				const workflow = await createActiveWorkflow({
-					...OOM_WORKFLOW,
-				});
-				expect(workflow.activeVersionId).not.toBeNull();
-				await createExecution({ status: 'crashed' }, workflow);
-				await createExecution({ status: 'crashed' }, workflow);
-				await createExecution({ status: 'crashed' }, workflow);
-
-				ownershipService.getWorkflowProjectCached.mockResolvedValue(
-					mock<Project>({ id: uuid(), type: 'personal' }),
-				);
-				ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: uuid() }));
-				projectRelationRepository.find.mockResolvedValue([]);
+				const workflow = await createCrashedActiveWorkflow();
+				mockOwnershipForDeactivation();
 
 				/**
 				 * Act
@@ -580,21 +573,9 @@ describe('ExecutionRecoveryService', () => {
 				 * Arrange
 				 */
 				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
-				globalConfig.workflows.useWorkflowPublicationService = false;
 
-				const workflow = await createActiveWorkflow({
-					...OOM_WORKFLOW,
-				});
-				expect(workflow.activeVersionId).not.toBeNull();
-				await createExecution({ status: 'crashed' }, workflow);
-				await createExecution({ status: 'crashed' }, workflow);
-				await createExecution({ status: 'crashed' }, workflow);
-
-				ownershipService.getWorkflowProjectCached.mockResolvedValue(
-					mock<Project>({ id: uuid(), type: 'personal' }),
-				);
-				ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: uuid() }));
-				projectRelationRepository.find.mockResolvedValue([]);
+				const workflow = await createCrashedActiveWorkflow();
+				mockOwnershipForDeactivation();
 
 				/**
 				 * Act
