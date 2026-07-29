@@ -8,6 +8,8 @@ import type { INodeParameters } from 'n8n-workflow';
 export interface WorkflowSetupSection {
 	id: string;
 	credentialType?: string;
+	/** Pre-select "End-user credential" connection mode when creating a new credential for this section. */
+	isResolvable?: boolean;
 	targetNodeName: string;
 	node: InstanceAiWorkflowSetupNode['node'];
 	currentCredentialId: string | null;

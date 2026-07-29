@@ -363,7 +363,32 @@ describe('NodeCredentials', () => {
 			undefined,
 			httpNode.name,
 			httpNode,
-			{ hideAskAssistant: false, closeOnSave: true },
+			{ hideAskAssistant: false, closeOnSave: true, defaultIsResolvable: false },
+		);
+	});
+
+	it('opens the new credential modal pre-set to End-user mode when defaultIsResolvable is true', async () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent({ props: { defaultIsResolvable: true } });
+
+		const credentialsSelect = screen.getByTestId('node-credentials-select');
+
+		await userEvent.click(credentialsSelect);
+		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
+
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+			'openAiApi',
+			false,
+			false,
+			undefined,
+			undefined,
+			httpNode.name,
+			httpNode,
+			{ hideAskAssistant: false, closeOnSave: true, defaultIsResolvable: true },
 		);
 	});
 
@@ -394,7 +419,7 @@ describe('NodeCredentials', () => {
 			undefined,
 			httpNode.name,
 			httpNode,
-			{ hideAskAssistant: true, closeOnSave: true },
+			{ hideAskAssistant: true, closeOnSave: true, defaultIsResolvable: false },
 		);
 	});
 
@@ -952,7 +977,7 @@ describe('NodeCredentials', () => {
 					name: slackNode.name,
 					type: slackNode.type,
 				}),
-				{ hideAskAssistant: false, closeOnSave: true },
+				{ hideAskAssistant: false, closeOnSave: true, defaultIsResolvable: false },
 			);
 		});
 

@@ -566,6 +566,7 @@ async function buildRequestForCredentialType(
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
 	nodeCtx: NodeSetupContext,
+	credentialHints?: Record<string, boolean>,
 ): Promise<SetupRequest | null> {
 	const nodeCredentials = node.credentials
 		? Object.fromEntries(
@@ -624,6 +625,7 @@ async function buildRequestForCredentialType(
 			),
 		},
 		...(credentialType ? { credentialType } : {}),
+		...(credentialType && credentialHints?.[credentialType] ? { isResolvable: true } : {}),
 		...(existingCredentials.length > 0 ? { existingCredentials } : {}),
 		isTrigger,
 		...(isTestable ? { isTestable } : {}),
@@ -644,6 +646,7 @@ export async function buildSetupRequests(
 	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string },
 	cache?: CredentialCache,
 	workflowId?: string,
+	credentialHints?: Record<string, boolean>,
 ): Promise<SetupRequest[]> {
 	if (!node.name) return [];
 	if (node.disabled) return [];
@@ -700,6 +703,7 @@ export async function buildSetupRequests(
 			cache,
 			workflowId,
 			nodeCtx,
+			credentialHints,
 		);
 		if (request) requests.push(request);
 	}
@@ -1261,6 +1265,7 @@ export async function analyzeWorkflow(
 	context: InstanceAiContext,
 	workflowId: string,
 	triggerResults?: Record<string, { status: 'success' | 'error' | 'listening'; error?: string }>,
+	credentialHints?: Record<string, boolean>,
 ): Promise<SetupRequest[]> {
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
 
@@ -1273,6 +1278,7 @@ export async function analyzeWorkflow(
 				triggerResults?.[node.name ?? ''],
 				cache,
 				workflowId,
+				credentialHints,
 			);
 		}),
 	);

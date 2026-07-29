@@ -347,15 +347,17 @@ reference look exactly the same either way.
 
 **How to apply it:** this is chosen on the credential itself when the user
 creates or selects it (via the credential setup card's connection-mode
-toggle), not something `build-workflow` code controls. If a request clearly
-implies it, when calling `credentials(action="setup")` for that credential,
-set `isResolvable: true` on its entry (this pre-selects End-user mode when the
-setup card opens the create-credential modal) *and* say so in that entry's
-`reason` text (e.g. "Set this up as an End-user credential so files belong to
-whoever triggers the workflow") — the `reason` is what's shown when an
-existing-credentials dropdown renders instead of the create modal, so the
-`isResolvable` flag alone doesn't reach the user in that path. Do not attempt
-to set this via node parameters or SDK code.
+toggle), not something `build-workflow` code controls — do not attempt to set
+this via node parameters or SDK code. `analyzeWorkflow` (which powers
+`workflows(action="setup")`) only inspects the saved workflow graph; it cannot
+infer "for whoever triggers it" from a request's wording, so you must pass the
+hint explicitly on whichever setup tool call routes this credential:
+
+- **After a build (the common case, via post-build-flow's `workflows(action="setup")` call):** pass `credentialHints: [{ credentialType, isResolvable: true }]` for every credential type the request calls for End-user mode. This pre-selects End-user mode when the user creates a *new* credential of that type from the workflow setup card. There is no `reason` text on this card to fall back on — the hint is the only channel, so do not skip it when routing setup after a build that needs it.
+- **Standalone credential flows (no preceding build in this turn), via `credentials(action="setup")`:** set `isResolvable: true` on that entry *and* say so in its `reason` text (e.g. "Set this up as an End-user credential so files belong to whoever triggers the workflow") — the `reason` is what's shown when an existing-credentials dropdown renders instead of the create modal, so the `isResolvable` flag alone doesn't reach the user in that path.
+
+Either way, the hint only pre-selects the mode for a brand-new credential; it
+never changes a credential the user already selected or created.
 
 **Check, don't guess, the current mode.** `credentials(action="list")` and
 `credentials(action="get")` return an `isResolvable` field on every stored

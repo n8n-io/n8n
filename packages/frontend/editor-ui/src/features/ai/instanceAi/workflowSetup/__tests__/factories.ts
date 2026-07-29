@@ -53,6 +53,7 @@ export function makeWorkflowSetupSection(
 	return {
 		id: overrides.id ?? buildSectionId(targetNodeName, credentialType),
 		...(credentialType ? { credentialType } : {}),
+		...(overrides.isResolvable !== undefined ? { isResolvable: overrides.isResolvable } : {}),
 		targetNodeName,
 		node: finalNode,
 		currentCredentialId: overrides.currentCredentialId ?? null,

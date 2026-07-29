@@ -1214,13 +1214,35 @@ describe('workflows tool', () => {
 				resumeData: undefined,
 			} as never);
 
-			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1');
+			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, undefined);
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: 'Configure credentials for your workflow',
 				severity: 'info',
 				setupRequests,
 				workflowId: 'wf1',
+			});
+		});
+
+		it('should pass credentialHints through to analyzeWorkflow as a lookup map', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{
+					action: 'setup',
+					workflowId: 'wf1',
+					credentialHints: [{ credentialType: 'googleDriveOAuth2Api', isResolvable: true }],
+				},
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+				googleDriveOAuth2Api: true,
 			});
 		});
 

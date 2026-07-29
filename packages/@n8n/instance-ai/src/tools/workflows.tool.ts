@@ -105,6 +105,23 @@ const setupAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+	credentialHints: z
+		.array(
+			z.object({
+				credentialType: z
+					.string()
+					.describe('n8n credential type name (e.g. "googleDriveOAuth2Api")'),
+				isResolvable: z
+					.boolean()
+					.describe(
+						'True when this credential type should default to "End-user credential" mode (resolves to whoever triggers the workflow) instead of "Fixed". Set this when the build request clearly called for per-user credentials — see the End-User Credentials section of the workflow-builder skill. This only pre-selects the mode when the user creates a NEW credential of this type from the setup card; it does not change an already-selected credential.',
+					),
+			}),
+		)
+		.optional()
+		.describe(
+			'Per-credential-type connection-mode hints for this workflow\'s setup card. Analysis of the saved workflow has no way to know an "End-user credential" was intended — pass a hint here for every credential type that should default to that mode.',
+		),
 });
 
 const validateAction = z.object({
@@ -572,6 +589,14 @@ function collectCredentialTestFailures(
 	return failures;
 }
 
+/** Convert the tool input's `credentialHints` array into the lookup `analyzeWorkflow` expects. */
+function buildCredentialHintsMap(
+	input: Extract<Input, { action: 'setup' }>,
+): Record<string, boolean> | undefined {
+	if (!input.credentialHints || input.credentialHints.length === 0) return undefined;
+	return Object.fromEntries(input.credentialHints.map((h) => [h.credentialType, h.isResolvable]));
+}
+
 /** Setup state 3: persist setup, run the trigger, and re-suspend with the refreshed requests. */
 async function handleSetupTestTrigger(
 	context: InstanceAiContext,
@@ -601,9 +626,14 @@ async function handleSetupTestTrigger(
 
 	const triggerTestResult = await runTriggerTest(context, input.workflowId, testTriggerNode);
 
-	const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
-		[testTriggerNode]: triggerTestResult,
-	});
+	const refreshedRequests = await analyzeWorkflow(
+		context,
+		input.workflowId,
+		{
+			[testTriggerNode]: triggerTestResult,
+		},
+		buildCredentialHintsMap(input),
+	);
 
 	// Generate a new requestId so the frontend doesn't filter it
 	// as already-resolved from the previous suspend cycle
@@ -655,7 +685,12 @@ async function handleSetupApply(
 		// Re-analyze to determine if any nodes still need setup.
 		// Filter by needsAction to distinguish "render this card" from
 		// "this still requires user intervention".
-		const remainingRequests = await analyzeWorkflow(context, input.workflowId);
+		const remainingRequests = await analyzeWorkflow(
+			context,
+			input.workflowId,
+			undefined,
+			buildCredentialHintsMap(input),
+		);
 		const pendingRequests = remainingRequests.filter((r) => r.needsAction);
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,
@@ -723,7 +758,12 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+		const setupRequests = await analyzeWorkflow(
+			context,
+			input.workflowId,
+			undefined,
+			buildCredentialHintsMap(input),
+		);
 
 		if (setupRequests.length === 0) {
 			return { success: true, reason: 'No nodes require setup.' };

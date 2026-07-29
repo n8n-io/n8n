@@ -39,6 +39,24 @@ describe('useWorkflowSetupSections', () => {
 		expect(sections.value[0].credentialType).toBe('httpBasicAuth');
 	});
 
+	it('carries isResolvable from the setup request onto the section', () => {
+		const setupRequests = ref([
+			makeSetupRequest({ credentialType: 'googleDriveOAuth2Api', isResolvable: true }),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].isResolvable).toBe(true);
+	});
+
+	it('omits isResolvable from the section when the setup request does not set it', () => {
+		const setupRequests = ref([makeSetupRequest({ credentialType: 'httpBasicAuth' })]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0]).not.toHaveProperty('isResolvable');
+	});
+
 	it('creates sections for editable parameter-only setup requests', () => {
 		const setupRequests = ref([
 			makeSetupRequest({

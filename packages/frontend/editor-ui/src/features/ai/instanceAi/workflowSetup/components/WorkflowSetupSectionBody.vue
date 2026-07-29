@@ -201,6 +201,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:node="displayNode"
 			:override-cred-type="credentialType"
 			:project-id="ctx.projectId.value"
+			:default-is-resolvable="section.isResolvable"
 			standalone
 			hide-issues
 			hide-ask-assistant

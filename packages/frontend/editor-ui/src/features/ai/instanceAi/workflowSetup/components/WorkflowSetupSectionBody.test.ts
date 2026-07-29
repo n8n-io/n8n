@@ -31,6 +31,7 @@ const workflowDocumentStoreRef = vi.hoisted(() => ({
 const nodeCredentialsMock = vi.hoisted(() => ({
 	emitCredentialSelected: null as ((update: unknown) => void) | null,
 	lastNodeProp: null as unknown,
+	lastDefaultIsResolvableProp: undefined as boolean | undefined,
 }));
 const parameterListMock = vi.hoisted(() => ({
 	lastHiddenIssuesInputs: undefined as string[] | undefined,
@@ -52,11 +53,14 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 	const { defineComponent, h } = await import('vue');
 	return {
 		default: defineComponent({
-			props: ['node'],
+			props: ['node', 'defaultIsResolvable'],
 			emits: ['credentialSelected'],
 			setup(props, { emit, slots }) {
 				nodeCredentialsMock.emitCredentialSelected = (update) => emit('credentialSelected', update);
 				nodeCredentialsMock.lastNodeProp = props.node;
+				nodeCredentialsMock.lastDefaultIsResolvableProp = props.defaultIsResolvable as
+					| boolean
+					| undefined;
 				return () => h('div', { 'data-test-id': 'node-credentials' }, slots['label-postfix']?.());
 			},
 		}),
@@ -153,6 +157,7 @@ describe('WorkflowSetupSectionBody', () => {
 		workflowDocumentStoreRef.current = null;
 		nodeCredentialsMock.emitCredentialSelected = null;
 		nodeCredentialsMock.lastNodeProp = null;
+		nodeCredentialsMock.lastDefaultIsResolvableProp = undefined;
 		parameterListMock.lastHiddenIssuesInputs = undefined;
 		credentialsStore.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Typeform account' });
 		nodeTypesStore.getNodeType.mockReturnValue({
@@ -197,6 +202,29 @@ describe('WorkflowSetupSectionBody', () => {
 		await nextTick();
 
 		expect(renderedCredentials.at(-1)).toBe(credentialsBeforeParameterChange);
+	});
+
+	it('passes isResolvable through to NodeCredentials as defaultIsResolvable', async () => {
+		const section = makeWorkflowSetupSection({
+			credentialType: 'googleDriveOAuth2Api',
+			isResolvable: true,
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(nodeCredentialsMock.lastDefaultIsResolvableProp).toBe(true);
+	});
+
+	it('leaves defaultIsResolvable undefined when the section has no isResolvable hint', async () => {
+		const section = makeWorkflowSetupSection({ credentialType: 'slackApi' });
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(nodeCredentialsMock.lastDefaultIsResolvableProp).toBeUndefined();
 	});
 
 	it('reveals validation for setup parameters on mount so required fields show immediately', async () => {

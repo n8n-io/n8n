@@ -142,6 +142,30 @@ describe('buildSetupRequests', () => {
 		expect(result[0].existingCredentials).toEqual([{ id: 'cred-1', name: 'My Slack' }]);
 	});
 
+	it('sets isResolvable when the credential type matches a credentialHints entry', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node, undefined, undefined, undefined, {
+			slackApi: true,
+		});
+
+		expect(result).toHaveLength(1);
+		expect(result[0].isResolvable).toBe(true);
+	});
+
+	it('omits isResolvable when credentialHints does not mention the credential type', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node, undefined, undefined, undefined, {
+			notionApi: true,
+		});
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).not.toHaveProperty('isResolvable');
+	});
+
 	it('falls back to node description credentials when getNodeCredentialTypes returns empty', async () => {
 		// Simulate production: getNodeCredentialTypes is available but returns []
 		// (e.g. node lookup miss in the adapter). The fallback should still detect
@@ -740,6 +764,21 @@ describe('analyzeWorkflow', () => {
 		const result = await analyzeWorkflow(context, 'wf-1');
 		expect(result).toHaveLength(1);
 		expect(result[0].credentialType).toBe('slackApi');
+	});
+
+	it('threads credentialHints through to mark a credential type isResolvable', async () => {
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
+			makeWorkflowJSON([makeNode()]),
+		);
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+
+		const result = await analyzeWorkflow(context, 'wf-1', undefined, { slackApi: true });
+		expect(result).toHaveLength(1);
+		expect(result[0].isResolvable).toBe(true);
 	});
 
 	it('hides credential-only requests whose credential is already set and tests OK', async () => {

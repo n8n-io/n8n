@@ -79,6 +79,8 @@ type Props = {
 	projectId?: string;
 	/** Pre-fill the credential name when creating a new credential. */
 	suggestedCredentialName?: string;
+	/** Pre-select "End-user credential" connection mode when creating a new credential. */
+	defaultIsResolvable?: boolean;
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
 	 *  Used by surfaces (e.g. agents) where the assistant flow isn't wired up. */
 	hideAskAssistant?: boolean;
@@ -98,6 +100,7 @@ const props = withDefaults(defineProps<Props>(), {
 	skipAutoSelect: false,
 	standalone: false,
 	skipCredentialsFetch: false,
+	defaultIsResolvable: false,
 });
 
 const emit = defineEmits<{
@@ -526,6 +529,7 @@ function createNewCredential(
 			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
 			instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			defaultIsResolvable: props.defaultIsResolvable,
 		},
 	);
 	telemetry.track('User opened Credential modal', {

@@ -324,6 +324,8 @@ export const workflowSetupNodeSchema = z.object({
 	}),
 	credentialType: z.string().optional(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+	/** True when this credential type should resolve per-user ("End-user credential") rather than a single shared connection ("Fixed"). Pre-selects that mode when the user creates a new credential from this card. */
+	isResolvable: z.boolean().optional(),
 	isTrigger: z.boolean(),
 	isFirstTrigger: z.boolean().optional(),
 	isTestable: z.boolean().optional(),

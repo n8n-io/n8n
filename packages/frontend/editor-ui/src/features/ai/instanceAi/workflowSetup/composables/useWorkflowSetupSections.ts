@@ -53,6 +53,7 @@ export function useWorkflowSetupSections(
 			const section: WorkflowSetupSection = {
 				id: buildSectionId(req.node.name, credentialType),
 				...(credentialType ? { credentialType } : {}),
+				...(req.isResolvable ? { isResolvable: true } : {}),
 				targetNodeName: req.node.name,
 				node,
 				currentCredentialId,

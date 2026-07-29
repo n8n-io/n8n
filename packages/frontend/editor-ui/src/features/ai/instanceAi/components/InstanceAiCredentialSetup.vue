@@ -559,6 +559,7 @@ async function handleSetupAutomatically() {
 							:override-cred-type="currentRequest.credentialType"
 							:project-id="projectId"
 							:suggested-credential-name="currentRequest.suggestedName"
+							:default-is-resolvable="currentRequest.isResolvable"
 							standalone
 							hide-issues
 							hide-ask-assistant
