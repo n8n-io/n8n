@@ -7,7 +7,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import WorkflowReviewSubmittedDialog from './WorkflowReviewSubmittedDialog.vue';
 
 const renderComponent = createComponentRenderer(WorkflowReviewSubmittedDialog, {
-	props: { open: false },
+	props: { open: false, workflowReviewRequestId: 'review-1' },
 });
 
 const renderOpenDialog = async (pinia: ReturnType<typeof createPinia>) => {
@@ -21,15 +21,28 @@ describe('WorkflowReviewSubmittedDialog', () => {
 		localStorage.clear();
 	});
 
+	it('links to the submitted review', async () => {
+		const pinia = createPinia();
+		useUsersStore(pinia).currentUserId = 'user-1';
+		const { getByRole } = await renderOpenDialog(pinia);
+
+		expect(getByRole('link', { name: 'your submission' })).toHaveAttribute(
+			'to',
+			'/workflow-review-requests/review-1',
+		);
+	});
+
 	it('renders the confirmation and closes from Got it', async () => {
 		const pinia = createPinia();
 		useUsersStore(pinia).currentUserId = 'user-1';
-		const { getByRole, getByText, emitted } = await renderOpenDialog(pinia);
+		const { getByRole, getByTestId, emitted } = await renderOpenDialog(pinia);
 
 		expect(
 			getByRole('dialog', { name: 'Workflow version submitted for review' }),
 		).toBeInTheDocument();
-		expect(getByText(/You can view your submission in the reviews area/)).toBeInTheDocument();
+		expect(getByTestId('workflow-review-submitted-dialog')).toHaveTextContent(
+			'You can view your submission in the reviews area',
+		);
 
 		await userEvent.click(getByRole('button', { name: 'Got it' }));
 

@@ -77,6 +77,24 @@ describe('WorkflowUpdateReviewDialog', () => {
 		expect(emitted('update:open')).toContainEqual([false]);
 	});
 
+	it('links to the open review', async () => {
+		const { getByRole } = await renderDialog();
+
+		expect(getByRole('link', { name: 'open review' })).toHaveAttribute(
+			'to',
+			'/workflow-review-requests/review-1',
+		);
+	});
+
+	it('keeps the description intact without a link when the open review is unknown', async () => {
+		const { baseElement, queryByRole } = await renderDialog({ seedOpenReview: false });
+
+		expect(baseElement.textContent?.replace(/\s+/g, ' ')).toContain(
+			'This workflow already has an open review.',
+		);
+		expect(queryByRole('link', { name: 'open review' })).not.toBeInTheDocument();
+	});
+
 	it('submits the flushed version to the open review and refetches the status', async () => {
 		const { getByTestId, flushSave, fetchStatusSpy, emitted } = await renderDialog();
 

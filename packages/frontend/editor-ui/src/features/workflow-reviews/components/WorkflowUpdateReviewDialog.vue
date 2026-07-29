@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { N8nButton, N8nDialog, N8nDialogDescription, N8nDialogFooter } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogDescription,
+	N8nDialogFooter,
+	N8nLink,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
@@ -25,6 +32,9 @@ const toast = useToast();
 const reviewStatusStore = useWorkflowReviewStatusStore();
 
 const isSubmitting = ref(false);
+const workflowReviewRequestId = computed(
+	() => reviewStatusStore.openReviewRequest(props.workflowId)?.id,
+);
 
 const close = () => {
 	if (isSubmitting.value) return;
@@ -98,7 +108,21 @@ const submit = async () => {
 		@update:open="close"
 	>
 		<N8nDialogDescription :class="$style.description">
-			{{ i18n.baseText('workflowReviews.updateReview.description') }}
+			<I18nT keypath="workflowReviews.updateReview.description" tag="span" scope="global">
+				<!-- the id is undefined until fetchStatus resolves (409 path), so the
+					label must render unlinked rather than leaving an empty slot. -->
+				<template #review>
+					<N8nLink
+						v-if="workflowReviewRequestId"
+						:to="`/workflow-review-requests/${workflowReviewRequestId}`"
+					>
+						{{ i18n.baseText('workflowReviews.updateReview.description.review') }}
+					</N8nLink>
+					<span v-else>
+						{{ i18n.baseText('workflowReviews.updateReview.description.review') }}
+					</span>
+				</template>
+			</I18nT>
 		</N8nDialogDescription>
 		<N8nDialogFooter data-test-id="workflow-update-review-dialog">
 			<N8nButton
