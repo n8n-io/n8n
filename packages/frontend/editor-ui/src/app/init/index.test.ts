@@ -97,10 +97,6 @@ describe('Init', () => {
 			expect(settingsStoreSpy).toHaveBeenCalledTimes(1);
 		});
 
-		// The bootstrap registration relocated out of the deprecated
-		// `@/app/composables/useToast` shim (N8N-104). `initializeCore` is now the
-		// only thing that performs it, so dropping the call here is what this
-		// asserts against — without it, toasts degrade to a no-op notifier.
 		it('should register the toast notifier before anything can toast', async () => {
 			const settingsStoreSpy = vi.spyOn(settingsStore, 'initialize');
 
