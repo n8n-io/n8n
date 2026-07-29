@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/vite.config.mts
+  s_5057968ebca05f::t_bffb39c1a0a126 17,21
+packages/frontend/editor-ui/vite/dev-backend-origin.ts
+  s_5057968ebca05f::t_95b4f229ad97cc 1-21
+packages/frontend/editor-ui/vite/dev-backend-origin.spec.ts
+  s_5057968ebca05f::t_bd950d4fcd71fc 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cc94db85cbf984c277a018ea6339defaa8efbfd2",
+  "prompts": {},
+  "sessions": {
+    "s_5057968ebca05f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f00beca-3a77-4b4f-817d-da80fa392dfe",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

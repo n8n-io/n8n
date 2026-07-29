@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_66be2eb681ad3c::t_a1891e40a758c4 355-419
+  s_66be2eb681ad3c::t_5e5a1d5a8d407c 212,235
+  s_66be2eb681ad3c::t_da9be704ce7aae 494-525
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_66be2eb681ad3c::t_020eabf7186922 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2787a10c31d6ca8abd50d6e3e2ceb3906974ffde",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
