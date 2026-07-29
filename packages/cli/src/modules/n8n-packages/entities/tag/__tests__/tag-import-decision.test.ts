@@ -6,7 +6,7 @@ const sameIdOtherName = { id: 'tag-1', name: 'production' };
 const otherIdSameName = { id: 'tag-2', name: 'prod' };
 
 describe('decideTagImportAction', () => {
-	describe('id match, name equal (exact match)', () => {
+	describe('tag exists on the target with the same id and name (exact match)', () => {
 		it('attaches to the existing tag regardless of policy', () => {
 			expect(decideTagImportAction(source, sameIdSameName, undefined, 'create', 'skip')).toEqual({
 				action: 'attach',
@@ -27,7 +27,7 @@ describe('decideTagImportAction', () => {
 		});
 	});
 
-	describe('id match, name differs (rename drift)', () => {
+	describe('tag exists on the target with the same id but a different name (rename drift)', () => {
 		it('gates under fail, reporting both names', () => {
 			expect(decideTagImportAction(source, sameIdOtherName, undefined, 'create', 'fail')).toEqual({
 				action: 'fail',
@@ -72,7 +72,7 @@ describe('decideTagImportAction', () => {
 		});
 	});
 
-	describe('id absent, name free', () => {
+	describe('tag missing from the target, name free (create happy path)', () => {
 		it('creates with the source id and trimmed name under create', () => {
 			expect(
 				decideTagImportAction(
@@ -93,7 +93,7 @@ describe('decideTagImportAction', () => {
 		});
 	});
 
-	describe('id absent, name held by a different tag (name collision)', () => {
+	describe('tag missing from the target, name taken by a different tag (name collision, e.g. tag created manually on the target)', () => {
 		it('drops under do-nothing, never conflicting', () => {
 			expect(
 				decideTagImportAction(source, undefined, otherIdSameName, 'do-nothing', 'fail'),
@@ -137,7 +137,7 @@ describe('decideTagImportAction', () => {
 		});
 	});
 
-	describe('name validation (only when the plan would write)', () => {
+	describe('tag name validation (only when the import would write the name)', () => {
 		it('creates a 24-character name but gates a 25-character one', () => {
 			const ok = 'a'.repeat(24);
 			const tooLong = 'a'.repeat(25);
@@ -239,7 +239,7 @@ describe('decideTagImportAction', () => {
 		});
 	});
 
-	describe('id validation (creations only)', () => {
+	describe('tag id validation (only when the import would create the tag)', () => {
 		it('creates a 36-character id but gates a 37-character one', () => {
 			const ok = 'i'.repeat(36);
 			const tooLong = 'i'.repeat(37);

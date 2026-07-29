@@ -42,13 +42,13 @@ export class TagImporter {
 		// Disabled tags are a silent no-op: nothing gates, nothing is written.
 		if (this.globalConfig.tags.disabled) return plan;
 
-		const referencedIds = [...new Set(appliedWorkflows.flatMap(({ tagIds }) => tagIds ?? []))];
-		if (referencedIds.length === 0) return plan;
+		const referencedTagIds = [...new Set(appliedWorkflows.flatMap(({ tagIds }) => tagIds ?? []))];
+		if (referencedTagIds.length === 0) return plan;
 
 		const requirementsById = new Map(
 			(request.requirements ?? []).map((requirement) => [requirement.id, requirement]),
 		);
-		const referenced = referencedIds.map((id) => {
+		const referencedRequirements = referencedTagIds.map((id) => {
 			const requirement = requirementsById.get(id);
 			if (!requirement) {
 				throw new UserError(
@@ -59,15 +59,15 @@ export class TagImporter {
 		});
 
 		const targetsById = new Map(
-			(await this.tagService.getByIds(referencedIds)).map((tag) => [tag.id, toTagRef(tag)]),
+			(await this.tagService.getByIds(referencedTagIds)).map((tag) => [tag.id, toTagRef(tag)]),
 		);
-		const wantedNames = [...new Set(referenced.map(({ name }) => name.trim()))];
+		const wantedNames = [...new Set(referencedRequirements.map(({ name }) => name.trim()))];
 		const holdersByName = new Map(
 			(await this.tagService.getByNames(wantedNames)).map((tag) => [tag.name, toTagRef(tag)]),
 		);
 
 		const decisionFailures: TagDecisionFailure[] = [];
-		for (const requirement of referenced) {
+		for (const requirement of referencedRequirements) {
 			const holder = holdersByName.get(requirement.name.trim());
 			const effect = decideTagImportAction(
 				requirement,
@@ -85,14 +85,14 @@ export class TagImporter {
 
 		decisionFailures.push(...duplicateWrittenNameFailures(plan));
 
-		const workflowsReferencing = (tagId: string) =>
+		const sourceWorkflowIdsReferencing = (tagId: string) =>
 			appliedWorkflows
 				.filter(({ tagIds }) => tagIds?.includes(tagId))
 				.map(({ sourceWorkflowId }) => sourceWorkflowId);
 
 		plan.failures = decisionFailures.map((failure) => ({
 			...failure,
-			usedByWorkflows: sortedUnique(workflowsReferencing(failure.sourceId)),
+			usedByWorkflows: sortedUnique(sourceWorkflowIdsReferencing(failure.sourceId)),
 		}));
 
 		// Tags are global entities, so gate on the user's global scopes: project-level
@@ -102,7 +102,7 @@ export class TagImporter {
 				permissionFailure(
 					'tag:create',
 					plan.creations.map(({ id }) => id),
-					workflowsReferencing,
+					sourceWorkflowIdsReferencing,
 				),
 			);
 		}
@@ -111,7 +111,7 @@ export class TagImporter {
 				permissionFailure(
 					'tag:update',
 					plan.renames.map(({ id }) => id),
-					workflowsReferencing,
+					sourceWorkflowIdsReferencing,
 				),
 			);
 		}
@@ -197,11 +197,11 @@ function duplicateWrittenNameFailures(plan: TagImportPlan): TagDecisionFailure[]
 function permissionFailure(
 	missingScope: 'tag:create' | 'tag:update',
 	tagIds: string[],
-	workflowsReferencing: (tagId: string) => string[],
+	sourceWorkflowIdsReferencing: (tagId: string) => string[],
 ): TagResolutionFailure {
 	return {
 		kind: 'permission-denied',
 		missingScope,
-		usedByWorkflows: sortedUnique(tagIds.flatMap(workflowsReferencing)),
+		usedByWorkflows: sortedUnique(tagIds.flatMap(sourceWorkflowIdsReferencing)),
 	};
 }

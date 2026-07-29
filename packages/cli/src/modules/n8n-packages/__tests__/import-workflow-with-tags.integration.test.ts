@@ -207,7 +207,7 @@ describe('workflow package import — with tags', () => {
 		});
 	});
 
-	describe('rename drift (same id, different target name)', () => {
+	describe('rename drift (target tag with the same id carries a different name)', () => {
 		it('blocks under fail and writes nothing, leaving the drifted tag name alone', async () => {
 			const { workflow, tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
 			await updateTag(tag, { name: 'production' });
@@ -315,7 +315,7 @@ describe('workflow package import — with tags', () => {
 		});
 	});
 
-	describe('name collision (id absent, name held by a different tag)', () => {
+	describe('name collision (name taken by a different tag, e.g. tag created manually on the target)', () => {
 		it('blocks under fail with a 409, deleting and altering nothing', async () => {
 			const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
 			await tagRepository.delete(tag.id);
