@@ -2,6 +2,7 @@ import { HTTP_REQUEST_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/consta
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	insertCompletionText,
@@ -287,9 +288,20 @@ export function autocompletableNodeNames(
 
 	const nonMainChildren = workflowDocumentStore.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
 
-	// This is a tool node, look for the nearest node with main connections
+	// This is a sub-node: its trigger root(s) and all its roots' ancestors are
+	// referencable — a trigger root's data is staged before sub-nodes run
 	if (nonMainChildren.length > 0) {
-		return nonMainChildren.map((child) => getPreviousNodes(workflowDocumentId, child)).flat();
+		const nodeTypesStore = useNodeTypesStore();
+		const triggerRoots = nonMainChildren.filter((name) => {
+			const node = workflowDocumentStore.getNodeByName(name);
+			return node && nodeTypesStore.isTriggerNode(node.type);
+		});
+		return [
+			...new Set([
+				...triggerRoots,
+				...nonMainChildren.flatMap((child) => getPreviousNodes(workflowDocumentId, child)),
+			]),
+		];
 	}
 
 	return getPreviousNodes(workflowDocumentId, activeNodeName);

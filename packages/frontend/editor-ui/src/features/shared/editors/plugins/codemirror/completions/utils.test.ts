@@ -10,6 +10,7 @@ import {
 	stripExcessParens,
 	isAllowedInDotNotation,
 } from './utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -27,6 +28,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		getChildNodes: vi.fn().mockReturnValue([]),
 		getParentNodesByDepth: vi.fn().mockReturnValue([]),
+		getNodeByName: vi.fn().mockReturnValue(null),
 		allNodes: [],
 		name: '',
 		settings: {},
@@ -140,20 +142,41 @@ describe('completion utils', () => {
 			expect(autocompletableNodeNames('test@latest')).toEqual(['Node 2', 'Node 1']);
 		});
 
-		it('should work for AI tool nodes', () => {
-			const nodes = [
-				createTestNode({ name: 'Normal Node' }),
-				createTestNode({ name: 'Agent' }),
-				createTestNode({ name: 'Tool' }),
-			];
+		it('should include a trigger root node and its ancestors for AI tool nodes', () => {
+			const trigger = createTestNode({
+				name: 'MCP Trigger',
+				type: '@n8n/n8n-nodes-langchain.mcpTrigger',
+			});
+			const tool = createTestNode({ name: 'Tool' });
 
 			mockedStore(useWorkflowsStore);
-			vi.mocked(mockWorkflowDocumentStore.getChildNodes).mockReturnValue(['Agent']);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.isTriggerNode = (type: string) => type === trigger.type;
+			vi.mocked(mockWorkflowDocumentStore.getChildNodes).mockReturnValue(['MCP Trigger']);
+			vi.mocked(mockWorkflowDocumentStore.getNodeByName).mockReturnValue(trigger);
 			vi.mocked(mockWorkflowDocumentStore.getParentNodesByDepth).mockReturnValue([
 				{ name: 'Normal Node', depth: 1, indicies: [] },
 			]);
 
-			mockNdvStore.activeNode = nodes[2];
+			mockNdvStore.activeNode = tool;
+
+			expect(autocompletableNodeNames('test@latest')).toEqual(['MCP Trigger', 'Normal Node']);
+		});
+
+		it('should not include a non-trigger root node for AI tool nodes', () => {
+			const agent = createTestNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' });
+			const tool = createTestNode({ name: 'Tool' });
+
+			mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.isTriggerNode = () => false;
+			vi.mocked(mockWorkflowDocumentStore.getChildNodes).mockReturnValue(['Agent']);
+			vi.mocked(mockWorkflowDocumentStore.getNodeByName).mockReturnValue(agent);
+			vi.mocked(mockWorkflowDocumentStore.getParentNodesByDepth).mockReturnValue([
+				{ name: 'Normal Node', depth: 1, indicies: [] },
+			]);
+
+			mockNdvStore.activeNode = tool;
 
 			expect(autocompletableNodeNames('test@latest')).toEqual(['Normal Node']);
 		});
