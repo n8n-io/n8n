@@ -156,4 +156,49 @@ describe('executeWorkflow → webhook response', () => {
 		expect(relay.restoreOffloadedBody).toHaveBeenCalledWith(relayed, { reclaim: true });
 		expect(result.data?.response).toEqual(restored);
 	});
+
+	const responseBodyOf = async (body: unknown) => {
+		const relayed = { body: { binaryData: { id: 'database:abc' } } } as IExecuteResponsePromiseData;
+		relay.restoreOffloadedBody.mockResolvedValue({ body, headers: {}, statusCode: 200 });
+
+		const result = await executeWorkflow(
+			workflow,
+			triggerNode,
+			'manual',
+			{},
+			buildContext(runnerResolving(relayed)),
+			false,
+		);
+
+		return (result.data?.response as { body: unknown }).body;
+	};
+
+	it('caps an oversized body, keeping a preview and its length', async () => {
+		const body = { blob: 'x'.repeat(50_000) };
+
+		expect(await responseBodyOf(body)).toEqual({
+			_truncated: true,
+			_charLength: JSON.stringify(body).length,
+			_preview: expect.stringMatching(/^\{"blob":"x{100}/),
+		});
+	});
+
+	// Whatever its size: measuring a Buffer costs 12x the body, so it is never serialized.
+	it.each([
+		['a large Buffer body', 4 * 1024 * 1024],
+		['a small Buffer body', 5],
+	])('describes %s by its size instead of serializing it', async (_label, byteLength) => {
+		expect(await responseBodyOf(Buffer.alloc(byteLength))).toEqual({
+			_truncated: true,
+			_byteLength: byteLength,
+		});
+	});
+
+	// Reachable in regular mode only: a relayed body was serialized once already.
+	it('describes a cyclic body it cannot serialize', async () => {
+		const body: Record<string, unknown> = { name: 'cycle' };
+		body.self = body;
+
+		expect(await responseBodyOf(body)).toEqual({ _truncated: true });
+	});
 });

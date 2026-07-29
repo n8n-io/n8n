@@ -388,7 +388,7 @@ export async function executeWorkflow(
 		);
 		result.data = {
 			...(result.data ?? {}),
-			response: truncateResultData({ response }).response,
+			response: truncateWebhookResponse(response),
 		};
 	}
 	return result;
@@ -503,6 +503,47 @@ function truncateNodeOutput(items: unknown[]): unknown {
 		totalItems: items.length,
 		shownItems: truncated.length,
 		message: `Output truncated: showing ${truncated.length} of ${items.length} items.`,
+	};
+}
+
+/**
+ * Caps a webhook response's body at {@link MAX_RESULT_CHARS}, describing it
+ * instead of carrying it once over. Headers and status code pass through.
+ *
+ * @remarks A Buffer body is described without being serialized at all:
+ * `JSON.stringify` turns it into one array element per byte, which costs about
+ * twelve times the body and throws above V8's max string length. A body
+ * `JSON.stringify` rejects (a cycle, a BigInt) is described bare, with neither
+ * length nor preview.
+ */
+function truncateWebhookResponse(response: IExecuteResponsePromiseData): unknown {
+	if (!isRecord(response)) {
+		return response;
+	}
+
+	const { body, ...rest } = response;
+
+	if (Buffer.isBuffer(body)) {
+		return { ...rest, body: { _truncated: true, _byteLength: body.length } };
+	}
+
+	let serialized: string;
+	try {
+		serialized = JSON.stringify(body) ?? '';
+	} catch {
+		return { ...rest, body: { _truncated: true } };
+	}
+	if (serialized.length <= MAX_RESULT_CHARS) {
+		return response;
+	}
+
+	return {
+		...rest,
+		body: {
+			_truncated: true,
+			_charLength: serialized.length,
+			_preview: serialized.slice(0, MAX_RESULT_CHARS),
+		},
 	};
 }
 
