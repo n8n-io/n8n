@@ -1,0 +1,37 @@
+# Debian (glibc) variant of the base image. The Alpine image (./Dockerfile)
+# remains the default; this variant exists for native vendor client libraries
+# that are glibc-only and can never run on musl (e.g. Oracle Instant Client,
+# IBM DB2 clidriver). Vendor libraries are NOT shipped here — customers layer
+# them on top; this image's contract is the glibc runtime plus a working
+# package manager.
+#
+# Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for
+# reproducible builds. Bump the tag and digest together when updating.
+FROM dhi.io/node:24.18.0-debian13-dev@sha256:f840f3c488c579e78e6dffdf62dda5d9560eeac9f9d685778c7e14e6822e5b76
+
+# Differences from the Alpine base:
+# - libc6-compat and busybox-binsh dropped: they exist to paper over musl.
+# - openssl added: provides c_rehash for the /opt/custom-certificates
+#   entrypoint flow (Alpine provides it transitively).
+# - msttcorefonts omitted: Debian's ttf-mscorefonts-installer lives in
+#   contrib and requires EULA acceptance; the DHI mirror serves main only.
+# - apt is kept, unlike the Alpine base which deletes apk-tools: extending
+#   this image with vendor libraries is its purpose.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        openssh-client \
+        graphicsmagick \
+        tini \
+        tzdata \
+        ca-certificates \
+        openssl \
+    && rm -rf /var/lib/apt/lists/* /tmp/*
+
+# DHI Debian ships node at /usr/bin; symlink it to /usr/local/bin so the path
+# matches what the cloud launch and AppArmor profile expect.
+RUN mkdir -p /usr/local/bin && ln -sf /usr/bin/node /usr/local/bin/node
+
+WORKDIR /home/node
+# This base image installs global npm modules under /usr/local; set NODE_PATH
+# so packages added via `npm install -g` are require()-able at runtime.
+ENV NODE_PATH=/usr/local/lib/node_modules
+EXPOSE 5678/tcp
