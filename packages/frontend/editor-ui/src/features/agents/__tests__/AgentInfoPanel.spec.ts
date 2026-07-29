@@ -3,9 +3,36 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
+import type { ProviderCatalog } from '../composables/useAgentApi';
+import type { AgentJsonConfig } from '../types';
 
 const ensureLoadedMock = vi.fn();
 const selectCredentialMock = vi.fn();
+
+function makeCatalog(): ProviderCatalog {
+	return {
+		anthropic: {
+			id: 'anthropic',
+			name: 'Anthropic',
+			models: {
+				'claude-sonnet-4-5': {
+					id: 'claude-sonnet-4-5',
+					name: 'Claude Sonnet 4.5',
+					reasoning: true,
+					toolCall: true,
+				},
+				'claude-3-haiku': {
+					id: 'claude-3-haiku',
+					name: 'Claude 3 Haiku',
+					reasoning: false,
+					toolCall: true,
+				},
+			},
+		},
+	};
+}
+
+const modelCatalog = ref<ProviderCatalog>(makeCatalog());
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -50,6 +77,7 @@ vi.mock('../composables/useAgentModelCredentials', () => ({
 
 vi.mock('../composables/useModelCatalog', () => ({
 	useModelCatalog: () => ({
+		catalog: modelCatalog,
 		ensureLoaded: ensureLoadedMock,
 		getModelsForPicker: () => ({
 			anthropic: {
@@ -58,6 +86,14 @@ vi.mock('../composables/useModelCatalog', () => ({
 						provider: 'anthropic',
 						model: 'claude-sonnet-4-5',
 						name: 'Claude Sonnet 4.5',
+						description: null,
+						createdAt: null,
+						metadata: { functionCalling: true, available: true },
+					},
+					{
+						provider: 'anthropic',
+						model: 'claude-3-haiku',
+						name: 'Claude 3 Haiku',
 						description: null,
 						createdAt: null,
 						metadata: { functionCalling: true, available: true },
@@ -74,6 +110,7 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 		name: 'AgentModelSelector',
 		template: '<div data-testid="agent-model-selector" />',
 		props: ['selectedModel'],
+		emits: ['change'],
 	},
 }));
 
@@ -97,9 +134,21 @@ function mountPanel(
 	});
 }
 
+function mountModelPanel(config: AgentJsonConfig) {
+	return mount(AgentInfoPanel, {
+		props: {
+			config,
+			projectId: 'project-1',
+			showInstructions: false,
+			embedded: true,
+		},
+	});
+}
+
 describe('AgentInfoPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		modelCatalog.value = makeCatalog();
 	});
 
 	it('renders instructions as a contained markdown editor', () => {
@@ -135,5 +184,75 @@ describe('AgentInfoPanel', () => {
 		expect(editor.props('modelValue')).toBe('');
 		expect(editor.props('placeholder')).toBeUndefined();
 		expect(wrapper.text()).not.toContain('Enter instructions here');
+	});
+
+	it('removes reasoning immediately when selecting a model that does not support it', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+			config: { reasoning: 'high', toolCallConcurrency: 2 },
+		};
+		const wrapper = mountModelPanel(config);
+
+		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+			provider: 'anthropic',
+			model: 'claude-3-haiku',
+		});
+		await wrapper.vm.$nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events).toHaveLength(1);
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.model).toBe('anthropic/claude-3-haiku');
+		expect(last.config).toEqual({
+			toolCallConcurrency: 2,
+			promptCaching: { enabled: true },
+		});
+	});
+
+	it('preserves reasoning when selecting a model that supports it', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+			config: { reasoning: 'high' },
+		};
+		const wrapper = mountModelPanel(config);
+
+		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+		});
+		await wrapper.vm.$nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events).toHaveLength(1);
+		const last = events[0][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.reasoning).toBe('high');
+	});
+
+	it('preserves reasoning when the selected model is missing from the catalog', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+			config: { reasoning: 'high' },
+		};
+		const wrapper = mountModelPanel(config);
+
+		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+			provider: 'anthropic',
+			model: 'model-missing-from-catalog',
+		});
+		await wrapper.vm.$nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events).toHaveLength(1);
+		const last = events[0][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.reasoning).toBe('high');
 	});
 });

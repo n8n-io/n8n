@@ -12,13 +12,14 @@ import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
 
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useModelCatalog } from '../composables/useModelCatalog';
 import type { AgentJsonConfig } from '../types';
 import {
 	PROVIDER_CAPABILITIES,
 	ANTHROPIC_CACHE_TTL_OPTIONS,
 	type AnthropicCacheTtl,
 } from '../provider-capabilities';
-import { parseProvider } from '../utils/model-string';
+import { modelToString, parseModelString, parseProvider } from '../utils/model-string';
 import {
 	getNativeWebSearchArgs,
 	getWebSearchMethod,
@@ -31,6 +32,7 @@ import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
+const { catalog, ensureLoaded } = useModelCatalog();
 const DEFAULT_CAPABILITIES = {
 	promptCaching: false,
 	webSearch: false,
@@ -50,6 +52,7 @@ const props = withDefaults(
 		config: AgentJsonConfig | null;
 		disabled?: boolean;
 		collapsible?: boolean;
+		projectId?: string;
 	}>(),
 	{
 		disabled: false,
@@ -61,8 +64,22 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const isExpanded = ref(!props.collapsible);
 
 const provider = computed(() => parseProvider(props.config?.model));
+const selectedCatalogModel = computed(() => {
+	const parsed = parseModelString(modelToString(props.config?.model));
+	if (!parsed) return undefined;
+	return catalog.value[parsed.provider]?.models[parsed.name];
+});
+const supportsReasoning = computed(() => selectedCatalogModel.value?.reasoning === true);
 const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
 const hasNativeWebSearch = computed(() => Boolean(capabilities.value.webSearch));
+
+watch(
+	() => props.projectId,
+	(projectId) => {
+		if (projectId) void ensureLoaded(projectId);
+	},
+	{ immediate: true },
+);
 
 // ---------------------------------------------------------------------------
 // Generic helper for numeric config fields
@@ -535,7 +552,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 			</div>
 
-			<div :class="$style.settingGroup">
+			<div v-if="supportsReasoning" :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{

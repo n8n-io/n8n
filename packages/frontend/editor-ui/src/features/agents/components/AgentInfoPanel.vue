@@ -65,7 +65,7 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const { showError } = useToast();
-const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+const { catalog, ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 
 const projectId = useAgentProjectId(() => props.projectId);
 
@@ -126,20 +126,38 @@ function onModelChange(selection: AgentModelSelection) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
 		return;
 	}
-	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
+	const modelName = sanitizeModelId(selection.provider, selection.model);
+	const model = `${selection.provider}/${modelName}`;
 	const capabilities = PROVIDER_CAPABILITIES[selection.provider];
 	const webSearchChanges = normalizeWebSearchForModelChange(
 		props.config,
 		capabilities?.webSearch ?? false,
 	);
+	const webSearchConfig =
+		'config' in webSearchChanges ? webSearchChanges.config : props.config?.config;
+	const promptCachingChanges = normalizePromptCachingForModelChange(
+		webSearchConfig,
+		capabilities?.promptCaching ?? false,
+	);
+	const normalizedConfig =
+		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;
+	let reasoningChanges: Partial<AgentJsonConfig> = {};
+	if (
+		catalog.value[selection.provider]?.models[modelName]?.reasoning === false &&
+		normalizedConfig?.reasoning !== undefined
+	) {
+		const configWithoutReasoning = { ...normalizedConfig };
+		delete configWithoutReasoning.reasoning;
+		reasoningChanges = {
+			config: Object.keys(configWithoutReasoning).length > 0 ? configWithoutReasoning : undefined,
+		};
+	}
 	emit('update:config', {
 		model,
 		credential: credentialId,
 		...webSearchChanges,
-		...normalizePromptCachingForModelChange(
-			webSearchChanges.config ?? props.config?.config,
-			capabilities?.promptCaching ?? false,
-		),
+		...promptCachingChanges,
+		...reasoningChanges,
 	});
 }
 
