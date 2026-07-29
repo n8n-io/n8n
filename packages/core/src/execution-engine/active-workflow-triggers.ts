@@ -446,7 +446,9 @@ export class ActiveWorkflowTriggers {
 	}
 
 	/**
-	 * Makes a workflow inactive in memory.
+	 * Makes a workflow inactive in memory. Returns whether anything was
+	 * removed — tracked trigger registrations or stranded orphan crons alike —
+	 * so callers can tell "found and removed something" from "nothing was there".
 	 */
 	async remove(workflowId: string) {
 		// Ensure crons are deregistered to prevent executions on inactive workflows
@@ -463,7 +465,7 @@ export class ActiveWorkflowTriggers {
 				);
 			}
 
-			return false;
+			return hadRegisteredCrons;
 		}
 
 		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
