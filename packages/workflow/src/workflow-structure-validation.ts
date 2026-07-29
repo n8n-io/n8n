@@ -10,8 +10,9 @@ import { z } from 'zod';
  * presence, known node types, credential issues, etc.).
  *
  * Lives in n8n-workflow so it can be shared by:
- *   - Backend: create/update/import reject malformed payloads (400)
- *   - Frontend: open path warns but still renders; import path blocks
+ *   - Backend: create, import, and structural updates reject malformed payloads (400).
+ *     Metadata-only updates skip the check so legacy data stays editable.
+ *   - Frontend: open path warns but still renders; the sample-template JSON route blocks
  *
  * Validates:
  *   - Required node fields (name, type, position)
@@ -131,33 +132,31 @@ export function safeParseWorkflowStructure(input: unknown): WorkflowStructureVal
 	const { nodes, connections } = parsed.data;
 	const issues: WorkflowStructureIssue[] = [];
 	const nodeNames = new Set<string>();
-	const nodeIds = new Set<string>();
-
-	const rejectDuplicate = (
-		seen: Set<string>,
-		value: string,
-		issue: WorkflowStructureGraphIssue,
-	) => {
-		if (seen.has(value)) issues.push(issue);
-		else seen.add(value);
-	};
+	const nodeNameById = new Map<string, string>();
 
 	for (const [index, node] of nodes.entries()) {
-		// Ids are optional here because they're filled in on save. A supplied id must be
-		// unique because it identifies the node on its own, wherever a name cannot.
+		// Ids are optional in the schema because the backend fills them in on save. A supplied
+		// id must be unique: it identifies a node independently of its name, and per-node state
+		// keyed on it would otherwise be shared between two nodes.
 		if (node.id !== undefined) {
-			rejectDuplicate(nodeIds, node.id, {
-				path: ['nodes', index, 'id'],
-				message: `Duplicate node id "${node.id}"`,
-				code: 'duplicate_node_id',
-			});
+			const firstNodeName = nodeNameById.get(node.id);
+
+			if (firstNodeName === undefined) nodeNameById.set(node.id, node.name);
+			else
+				issues.push({
+					path: ['nodes', index, 'id'],
+					message: `Duplicate node id "${node.id}" on nodes "${firstNodeName}" and "${node.name}"`,
+					code: 'duplicate_node_id',
+				});
 		}
 
-		rejectDuplicate(nodeNames, node.name, {
-			path: ['nodes', index, 'name'],
-			message: `Duplicate node name "${node.name}"`,
-			code: 'duplicate_node_name',
-		});
+		if (nodeNames.has(node.name))
+			issues.push({
+				path: ['nodes', index, 'name'],
+				message: `Duplicate node name "${node.name}"`,
+				code: 'duplicate_node_name',
+			});
+		else nodeNames.add(node.name);
 	}
 
 	for (const sourceNodeName of Object.keys(connections)) {
