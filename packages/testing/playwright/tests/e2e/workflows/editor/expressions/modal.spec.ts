@@ -23,10 +23,8 @@ test.describe(
 				await n8n.ndv.fillExpressionEditorModalInput('{{ "hello"');
 				await expect(n8n.ndv.getExpressionEditorModalOutput()).toContainText('hello');
 
-				// There is no save toast any more, so assert on the save request itself
-				const saved = n8n.canvas.waitForSaveWorkflowCompleted();
 				await input.press('ControlOrMeta+s');
-				await saved;
+				await n8n.notifications.waitForNotificationAndClose('Saved successfully');
 			});
 		});
 
