@@ -1317,6 +1317,13 @@ type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersi
 export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| {
+			id: `vertex/${string}`;
+			project?: string;
+			location?: string;
+			googleCredentialsJson?: string;
+			headers?: Record<string, string>;
+	  }
 	| NativeLanguageModelConfig;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */

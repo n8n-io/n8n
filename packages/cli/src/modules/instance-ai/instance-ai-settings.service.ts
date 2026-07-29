@@ -23,7 +23,7 @@ import { DbLock, DbLockService, SettingsRepository, UserRepository } from '@n8n/
 import type { CredentialsEntity, ICredentialsDb, OperationContext, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
-import { parseModelHeadersJson } from '../../../../../@n8n/instance-ai/src/utils/parse-model-headers';
+import { parseModelHeadersJson } from '@n8n/instance-ai';
 import { hasGlobalScope } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
@@ -1377,12 +1377,13 @@ export class InstanceAiSettingsService {
 			: `custom/${model}`;
 
 		if (id.startsWith('vertex/')) {
+			const vertexId = id as `vertex/${string}`;
 			const project = vertexProject.trim() || process.env.GOOGLE_VERTEX_PROJECT?.trim() || '';
 			const location =
 				vertexLocation.trim() || process.env.GOOGLE_VERTEX_LOCATION?.trim() || 'global';
 			const googleCredentialsJson = vertexCredentials.trim();
 			return {
-				id,
+				id: vertexId,
 				...(project ? { project } : {}),
 				location,
 				...(googleCredentialsJson ? { googleCredentialsJson } : {}),
@@ -1416,9 +1417,11 @@ export class InstanceAiSettingsService {
 
 		const headers = parseModelHeadersJson(raw);
 		if (!headers) {
-			this.logger.warn(
-				'N8N_INSTANCE_AI_MODEL_HEADERS is set but could not be parsed as a JSON object of string headers',
-			);
+			Container.get(Logger)
+				.scoped('instance-ai')
+				.warn(
+					'N8N_INSTANCE_AI_MODEL_HEADERS is set but could not be parsed as a JSON object of string headers',
+				);
 		}
 		return headers;
 	}
