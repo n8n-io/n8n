@@ -7,6 +7,7 @@ type ProviderOpts = {
 	baseURL?: string;
 	fetch?: typeof globalThis.fetch;
 	headers?: Record<string, string>;
+	includeUsage?: boolean;
 };
 
 // All providers are mocked via vi.mock so require() inside the registry entries
@@ -162,6 +163,7 @@ vi.mock('@ai-sdk/openai-compatible', () => ({
 		baseURL: opts.baseURL,
 		headers: opts.headers,
 		fetch: opts.fetch,
+		includeUsage: opts.includeUsage,
 		specificationVersion: 'v3',
 	}),
 }));
@@ -355,6 +357,7 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('zai-org/GLM-5.2-Fast');
 			expect(model.apiKey).toBe('bt-test');
 			expect(model.baseURL).toBe('https://inference.baseten.co/v1');
+			expect(model.includeUsage).toBe(true);
 		});
 
 		it('should create model for fireworks via openai-compatible', () => {
@@ -366,6 +369,7 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('accounts/fireworks/models/llama-v3p1-70b-instruct');
 			expect(model.apiKey).toBe('fw-test');
 			expect(model.baseURL).toBe('https://api.fireworks.ai/inference/v1');
+			expect(model.includeUsage).toBe(true);
 		});
 
 		it('should create model for nvidia', () => {

@@ -107,6 +107,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				baseURL: creds.baseURL ?? 'https://inference.baseten.co/v1',
 				apiKey: creds.apiKey,
 				fetch,
+				// Request the final stream usage chunk so LangSmith/OTel get tokens.
+				includeUsage: true,
 			})(model);
 		},
 	},
@@ -120,6 +122,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				baseURL: creds.baseURL ?? 'https://api.fireworks.ai/inference/v1',
 				apiKey: creds.apiKey,
 				fetch,
+				// Without this, streams omit usage (e.g. kimi-k3-fast) → 0 tokens in LangSmith.
+				includeUsage: true,
 			})(model);
 		},
 	},
