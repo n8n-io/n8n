@@ -1122,6 +1122,42 @@ describe('CredentialsService', () => {
 				encrypted,
 			);
 		});
+
+		it('enriches the returned credential with connectedByMe when a user is passed', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'private-credential',
+				isResolvable: true,
+			});
+			const transactionManager = mock<EntityManager>();
+			transactionManager.findOneBy.mockResolvedValue(credential);
+			setRepositoryTransaction(transactionManager);
+			const encrypted = mock<ICredentialsDb>({ id: credential.id });
+			connectionStatusProxy.findConnectedCredentialIds.mockResolvedValue(new Set([credential.id]));
+
+			const result = await service.update(credential.id, encrypted, undefined, {
+				user: ownerUser,
+			});
+
+			expect(connectionStatusProxy.findConnectedCredentialIds).toHaveBeenCalledWith(ownerUser.id, [
+				credential.id,
+			]);
+			expect(result).toMatchObject({ connectedByMe: true });
+		});
+
+		it('does not enrich the returned credential when no user is passed', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'private-credential',
+				isResolvable: true,
+			});
+			const transactionManager = mock<EntityManager>();
+			transactionManager.findOneBy.mockResolvedValue(credential);
+			setRepositoryTransaction(transactionManager);
+			const encrypted = mock<ICredentialsDb>({ id: credential.id });
+
+			await service.update(credential.id, encrypted);
+
+			expect(connectionStatusProxy.findConnectedCredentialIds).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('updateInstanceCredential', () => {
