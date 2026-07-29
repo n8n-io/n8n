@@ -19,6 +19,7 @@ function describeExport(counts: ExportPackageCounts & { projects?: number }): st
 	if (counts.credentials) parts.push(`${counts.credentials} credential(s)`);
 	if (counts.dataTables) parts.push(`${counts.dataTables} data table(s)`);
 	if (counts.variables) parts.push(`${counts.variables} variable(s)`);
+	if (counts.tags) parts.push(`${counts.tags} tag(s)`);
 	return parts.length > 0 ? parts.join(', ') : 'nothing';
 }
 
@@ -32,6 +33,7 @@ export default class PackageExport extends BaseCommand {
 		'<%= config.bin %> package export --project-id=abc -o project.n8np',
 		'<%= config.bin %> package export -p abc -p def -o projects.n8np',
 		'<%= config.bin %> package export -w abc --include-variable-values=false -o export.n8np',
+		'<%= config.bin %> package export -w abc --include-tags=false -o export.n8np',
 	];
 
 	static override flags = {
@@ -66,6 +68,12 @@ export default class PackageExport extends BaseCommand {
 			default: 'true',
 			aliases: ['include-variable-values'],
 		}),
+		includeTags: Flags.string({
+			description: 'Whether tags assigned to the exported workflows are bundled into the package',
+			options: ['true', 'false'],
+			default: 'true',
+			aliases: ['include-tags'],
+		}),
 		missingWorkflowDependencyPolicy: Flags.string({
 			options: ['fail', 'reference-only', 'include-in-package'],
 			default: 'fail',
@@ -81,6 +89,7 @@ export default class PackageExport extends BaseCommand {
 		const folderIds = flags.folderId ?? [];
 		const projectIds = flags.projectId ?? [];
 		const includeVariableValues = flags.includeVariableValues !== 'false';
+		const includeTags = flags.includeTags !== 'false';
 		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
 
 		// A package is either loose workflows/folders or whole projects, not both.
@@ -97,8 +106,14 @@ export default class PackageExport extends BaseCommand {
 			try {
 				result = await client.exportPackage(
 					projectIds.length > 0
-						? { projectIds, includeVariableValues, missingWorkflowDependencyPolicy }
-						: { workflowIds, folderIds, includeVariableValues, missingWorkflowDependencyPolicy },
+						? { projectIds, includeVariableValues, includeTags, missingWorkflowDependencyPolicy }
+						: {
+								workflowIds,
+								folderIds,
+								includeVariableValues,
+								includeTags,
+								missingWorkflowDependencyPolicy,
+							},
 				);
 			} catch (error) {
 				throw toPackagesError(error);

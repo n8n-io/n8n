@@ -6,23 +6,23 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import type { CredentialApplyResult } from '../../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../../entities/data-table/data-table.types';
-import type { WorkflowImportOutcome } from '../../entities/workflow/workflow-import.types';
+import type { PersistedWorkflowOutcome } from '../../entities/workflow/workflow-import.types';
 import type { ImportContext, ImportPackageRequest } from '../../n8n-packages.types';
 import type { PackageManifest } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
-import type { ImportOrchestrationResult } from '../import-orchestrator';
+import type { ImportContentResult } from '../import-orchestrator';
 import { emitPackageImportedEvent, type PackageImportScope } from '../import-telemetry';
 
 const outcome = (
 	id: string,
 	sourceWorkflowId: string,
-	status: WorkflowImportOutcome['status'],
-): WorkflowImportOutcome => ({
-	status,
-	sourceWorkflowId,
-	workflow: mock<WorkflowEntity>({ id }),
-	publishing: { state: 'unchanged' },
-});
+	status: PersistedWorkflowOutcome['status'],
+): PersistedWorkflowOutcome => {
+	const workflow = mock<WorkflowEntity>({ id });
+	return status === 'skipped'
+		? { status, sourceWorkflowId, workflow }
+		: { status, sourceWorkflowId, workflow, item: mock() };
+};
 
 const requirement = (id: string): PackageCredentialRequirement => ({
 	id,
@@ -34,7 +34,7 @@ const requirement = (id: string): PackageCredentialRequirement => ({
 const scope = (input: {
 	projectId: string;
 	folderId?: string | null;
-	outcomes: WorkflowImportOutcome[];
+	outcomes: PersistedWorkflowOutcome[];
 	credentialResult: CredentialApplyResult;
 	requirements?: PackageCredentialRequirement[];
 	dataTable?: { matched: number; created: number; requirements: number };
@@ -60,7 +60,7 @@ const scope = (input: {
 		createdVariableCount,
 		createdVariableCount + (vars.existing ?? 0),
 	);
-	const imported: ImportOrchestrationResult = {
+	const imported: ImportContentResult = {
 		workflowOutcomes: input.outcomes,
 		folderSummaries: [],
 		bindings: { workflows: new Map(), credentials: new Map() },

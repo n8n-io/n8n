@@ -1,4 +1,4 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useI18n } from '@n8n/i18n';

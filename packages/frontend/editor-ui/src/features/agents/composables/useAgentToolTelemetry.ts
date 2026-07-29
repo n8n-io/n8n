@@ -1,6 +1,6 @@
 import { toValue, type MaybeRefOrGetter } from 'vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 

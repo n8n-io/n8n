@@ -902,7 +902,8 @@ export async function executeWebhook(
 			runData,
 			true,
 			!didSendResponse && !shouldDeferOnReceivedResponse,
-			executionId,
+			// An execution id here means we are resuming one that is waiting on this webhook
+			executionId ? { executionId, expectedStatus: 'waiting' } : undefined,
 			responsePromise as IDeferredPromise<IExecuteResponsePromiseData> | undefined,
 		);
 

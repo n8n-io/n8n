@@ -35,6 +35,7 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 			messages: ctx.messages,
 			allowSystemInMessages: true,
 			abortSignal: ctx.abortSignal,
+			...(ctx.reasoning ? { reasoning: ctx.reasoning } : {}),
 			...(ctx.hasTools ? { tools: ctx.aiTools } : {}),
 			...(ctx.providerOptions ? { providerOptions: ctx.providerOptions } : {}),
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),

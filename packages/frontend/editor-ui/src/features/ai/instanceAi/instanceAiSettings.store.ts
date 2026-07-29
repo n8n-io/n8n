@@ -169,10 +169,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			const [s, p] = await Promise.all(promises);
 			settings.value = s;
 			preferences.value = p;
-			if (!isProxyEnabled.value && !isCloudManaged.value && canManage.value) {
+			if (!isCloudManaged.value && canManage.value) {
 				const [sc, imc] = await Promise.all([
 					fetchServiceCredentials(rootStore.restApiContext),
-					fetchInstanceModelCredentials(rootStore.restApiContext),
+					isProxyEnabled.value
+						? Promise.resolve([])
+						: fetchInstanceModelCredentials(rootStore.restApiContext),
 				]);
 				serviceCredentials.value = sc;
 				instanceModelCredentials.value = imc;
@@ -567,7 +569,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	async function refreshCredentials(): Promise<void> {
-		if (isProxyEnabled.value) return;
+		if (isCloudManaged.value) return;
 		try {
 			serviceCredentials.value = await fetchServiceCredentials(rootStore.restApiContext);
 		} catch {

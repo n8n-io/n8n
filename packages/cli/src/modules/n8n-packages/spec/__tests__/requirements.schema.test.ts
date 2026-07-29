@@ -32,6 +32,13 @@ describe('packageRequirementsSchema', () => {
 		);
 	});
 
+	it('rejects duplicate tag ids', () => {
+		const tag = (id: string) => ({ id, name: 'production', usedByWorkflows: ['wf-1'] });
+		const requirements = { tags: [tag('tag-1'), tag('tag-1')] };
+
+		expect(() => packageRequirementsSchema.parse(requirements)).toThrow(/Duplicate tag id: tag-1/);
+	});
+
 	it('rejects duplicate variable names', () => {
 		const requirements = { variables: [variable('API_URL'), variable('API_URL')] };
 

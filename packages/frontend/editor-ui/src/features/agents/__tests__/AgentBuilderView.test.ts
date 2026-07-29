@@ -85,7 +85,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
