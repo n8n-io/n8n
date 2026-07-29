@@ -1,7 +1,7 @@
 import { VariableParentPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
-import type { ImportedVariable } from '../../spec/serialized/variable.schema';
+import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import {
 	deriveParentFolderId,
 	foldersInScope,
@@ -138,7 +138,7 @@ describe('package-layout', () => {
 				named('API_URL', 'variables/api_url'),
 				named('API_URL', 'projects/x/variables/api_url'),
 			];
-			const bundledVariables = new Map<string, ImportedVariable>([
+			const bundledVariables = new Map<string, SerializedVariable>([
 				['variables/api_url', { name: 'API_URL', type: 'string', value: 'global-value' }],
 				[
 					'projects/x/variables/api_url',
@@ -152,7 +152,7 @@ describe('package-layout', () => {
 		});
 
 		it('omits the value when the package bundles no file for the name', () => {
-			const bundledVariables = new Map<string, ImportedVariable>([
+			const bundledVariables = new Map<string, SerializedVariable>([
 				['variables/other', { name: 'OTHER', type: 'string', value: 'v' }],
 			]);
 
@@ -163,7 +163,7 @@ describe('package-layout', () => {
 
 		it('omits the value when the exported file carries none', () => {
 			const entries = [named('API_URL', 'variables/api_url')];
-			const bundledVariables = new Map<string, ImportedVariable>([
+			const bundledVariables = new Map<string, SerializedVariable>([
 				['variables/api_url', { name: 'API_URL', type: 'string' }],
 			]);
 

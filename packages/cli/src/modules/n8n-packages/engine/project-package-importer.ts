@@ -36,7 +36,7 @@ import {
 import { emitPackageImportedEvent, type PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
-import type { ImportedVariable } from '../spec/serialized/variable.schema';
+import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 @Service()
 export class ProjectPackageImporter {
@@ -149,7 +149,7 @@ export class ProjectPackageImporter {
 		manifest: PackageManifest,
 		project: ManifestEntry,
 		projectPendingCreation: boolean,
-		bundledVariables: Map<string, ImportedVariable> | undefined,
+		bundledVariables: Map<string, SerializedVariable> | undefined,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);

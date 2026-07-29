@@ -4,7 +4,7 @@ import type { PlacedVariableRequirement } from '../entities/variable/variable.ty
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ManifestEntry } from '../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../spec/requirements.schema';
-import type { ImportedVariable } from '../spec/serialized/variable.schema';
+import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 export function foldersInScope(
 	entries: ManifestEntry[] | undefined,
@@ -65,7 +65,7 @@ export function placeVariableRequirements({
 	basePrefix: string;
 	placement: VariablePlacement;
 	/** Absent under a mode that ignores package values, which never reads the bundled files. */
-	bundledVariables?: Map<string, ImportedVariable>;
+	bundledVariables?: Map<string, SerializedVariable>;
 }): PlacedVariableRequirement[] | undefined {
 	return requirements?.map((requirement) => {
 		const bundle = variableBundleEntry(manifestVariables, basePrefix, requirement.name);

@@ -18,7 +18,10 @@ import { serializedDataTableSchema } from '../spec/serialized/data-table.schema'
 import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
 import { serializedProjectSchema, type SerializedProject } from '../spec/serialized/project.schema';
-import { importedVariableSchema, type ImportedVariable } from '../spec/serialized/variable.schema';
+import {
+	serializedVariableSchema,
+	type SerializedVariable,
+} from '../spec/serialized/variable.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
@@ -87,9 +90,9 @@ export class N8nPackageParser {
 	}
 
 	/** Reads and validates the package's bundled variables, keyed by manifest target. */
-	async getVariables(reader: PackageReader): Promise<Map<string, ImportedVariable>> {
+	async getVariables(reader: PackageReader): Promise<Map<string, SerializedVariable>> {
 		const manifest = await this.getManifest(reader);
-		const variables = new Map<string, ImportedVariable>();
+		const variables = new Map<string, SerializedVariable>();
 
 		for (const entry of manifest.variables ?? []) {
 			variables.set(entry.target, await this.readVariable(reader, entry));
@@ -225,13 +228,13 @@ export class N8nPackageParser {
 	private async readVariable(
 		reader: PackageReader,
 		entry: ManifestEntry,
-	): Promise<ImportedVariable> {
+	): Promise<SerializedVariable> {
 		const path = `${entry.target}/variable.json`;
 		const wire = await this.readJson(reader, path, 'variable');
 
-		let variable: ImportedVariable;
+		let variable: SerializedVariable;
 		try {
-			variable = importedVariableSchema.parse(wire);
+			variable = serializedVariableSchema.parse(wire);
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package variable file at ${path} failed schema validation.`, {
