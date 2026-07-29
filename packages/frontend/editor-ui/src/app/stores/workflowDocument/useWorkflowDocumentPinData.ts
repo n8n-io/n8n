@@ -84,6 +84,7 @@ export function getPinDataSize(
 export type WorkflowDocumentPinDataDeps = {
 	nodesById: ShallowRef<Map<string, INodeUi>>;
 	onNodesChange: (cb: (event: NodesChangeEvent) => void) => void;
+	syncWorkflowObject: (pinData: IPinData) => void;
 };
 
 export function useWorkflowDocumentPinData(deps: WorkflowDocumentPinDataDeps) {
@@ -93,6 +94,7 @@ export function useWorkflowDocumentPinData(deps: WorkflowDocumentPinDataDeps) {
 
 	function applyPinData(data: IPinData, action: ChangeAction = CHANGE_ACTION.UPDATE) {
 		pinnedDataByNodeName.value = data;
+		deps.syncWorkflowObject(data);
 		void onPinnedDataChange.trigger({ action, payload: { pinData: data } });
 	}
 
@@ -101,12 +103,14 @@ export function useWorkflowDocumentPinData(deps: WorkflowDocumentPinDataDeps) {
 			? CHANGE_ACTION.UPDATE
 			: CHANGE_ACTION.ADD;
 		pinnedDataByNodeName.value = { ...pinnedDataByNodeName.value, [nodeName]: data };
+		deps.syncWorkflowObject(pinnedDataByNodeName.value);
 		void onPinnedDataChange.trigger({ action, payload: { nodeName, data } });
 	}
 
 	function applyUnpin(nodeName: string) {
 		const { [nodeName]: _, ...rest } = pinnedDataByNodeName.value;
 		pinnedDataByNodeName.value = rest;
+		deps.syncWorkflowObject(rest);
 		void onPinnedDataChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { nodeName, data: undefined },
@@ -131,6 +135,7 @@ export function useWorkflowDocumentPinData(deps: WorkflowDocumentPinDataDeps) {
 					return;
 				pairedItem.sourceOverwrite.previousNode = newName;
 			});
+		deps.syncWorkflowObject(pinnedDataByNodeName.value);
 		void onPinnedDataChange.trigger({
 			action: CHANGE_ACTION.UPDATE,
 			payload: { nodeName: newName, data: pinnedDataByNodeName.value[newName] },

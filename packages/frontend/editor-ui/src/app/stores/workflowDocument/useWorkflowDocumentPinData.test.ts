@@ -11,10 +11,13 @@ import { CHANGE_ACTION } from './types';
 import type { NodesChangeEvent } from './useWorkflowDocumentNodes';
 
 function createPinData() {
-	return useWorkflowDocumentPinData({
+	const syncWorkflowObject = vi.fn();
+	const pinData = useWorkflowDocumentPinData({
 		nodesById: shallowRef(new Map<string, INodeUi>()),
 		onNodesChange: () => {},
+		syncWorkflowObject,
 	});
+	return { ...pinData, syncWorkflowObject };
 }
 
 function createPinDataWithNodesChange() {
@@ -24,6 +27,7 @@ function createPinDataWithNodesChange() {
 		onNodesChange: (cb) => {
 			subscribers.push(cb);
 		},
+		syncWorkflowObject: () => {},
 	});
 	const fire = (event: NodesChangeEvent) => subscribers.forEach((cb) => cb(event));
 	return { pinData, fire };
@@ -219,6 +223,25 @@ describe('useWorkflowDocumentPinData', () => {
 			unpinNodeData('NonExistent');
 
 			expect(pinnedDataByNodeName.value).toEqual({});
+		});
+	});
+
+	describe('syncWorkflowObject', () => {
+		it('should sync every pin data mutation to the workflow object', () => {
+			const { pinNodeData, unpinNodeData, setPinData, renamePinDataNode, syncWorkflowObject } =
+				createPinData();
+
+			pinNodeData('Node1', [{ json: { a: 1 } }]);
+			expect(syncWorkflowObject).toHaveBeenLastCalledWith({ Node1: [{ json: { a: 1 } }] });
+
+			renamePinDataNode('Node1', 'Node2');
+			expect(syncWorkflowObject).toHaveBeenLastCalledWith({ Node2: [{ json: { a: 1 } }] });
+
+			unpinNodeData('Node2');
+			expect(syncWorkflowObject).toHaveBeenLastCalledWith({});
+
+			setPinData({ Node3: [{ json: { b: 2 } }] });
+			expect(syncWorkflowObject).toHaveBeenLastCalledWith({ Node3: [{ json: { b: 2 } }] });
 		});
 	});
 

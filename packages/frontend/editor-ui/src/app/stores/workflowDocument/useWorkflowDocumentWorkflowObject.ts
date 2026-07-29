@@ -59,6 +59,10 @@ export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflow
 		workflowObject.value.setSettings(settings);
 	}
 
+	function syncWorkflowObjectPinData(pinData: IPinData) {
+		workflowObject.value.setPinData(pinData);
+	}
+
 	function createWorkflowObject(
 		nodes: INodeUi[],
 		connections: IConnections,
@@ -102,5 +106,6 @@ export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflow
 		syncWorkflowObjectConnections,
 		syncWorkflowObjectName,
 		syncWorkflowObjectSettings,
+		syncWorkflowObjectPinData,
 	};
 }

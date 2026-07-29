@@ -217,6 +217,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentPinData = useWorkflowDocumentPinData({
 			nodesById: workflowDocumentNodes.nodesById,
 			onNodesChange: workflowDocumentNodes.onNodesChange,
+			syncWorkflowObject: (pinData) =>
+				workflowDocumentWorkflowObject.syncWorkflowObjectPinData(pinData),
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
