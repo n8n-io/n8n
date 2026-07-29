@@ -279,7 +279,7 @@ describe('v2/components/Pagination', () => {
 			});
 		});
 
-		it('should clamp jumper input to the nearest valid page', async () => {
+		it('should clamp jumper input above the last page', async () => {
 			const wrapper = render(Pagination, {
 				props: {
 					page: 1,
@@ -298,6 +298,111 @@ describe('v2/components/Pagination', () => {
 				expect(wrapper.emitted('update:page')?.[0]).toEqual([10]);
 			});
 			expect(input).toHaveValue(10);
+		});
+
+		it('should clamp jumper input below the first page', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					page: 3,
+					total: 100,
+					itemsPerPage: 10,
+				},
+			});
+
+			const input = wrapper.getByTestId('pagination-jumper-input');
+
+			await userEvent.clear(input);
+			await userEvent.type(input, '0');
+			await userEvent.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:page')?.[0]).toEqual([1]);
+			});
+			expect(input).toHaveValue(1);
+		});
+
+		it('should reset invalid jumper input to the current page without emitting', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					page: 3,
+					total: 100,
+					itemsPerPage: 10,
+				},
+			});
+
+			const input = wrapper.getByTestId('pagination-jumper-input');
+
+			await userEvent.clear(input);
+			await userEvent.tab();
+
+			await waitFor(() => {
+				expect(input).toHaveValue(3);
+			});
+			expect(wrapper.emitted('update:page')).toBeFalsy();
+		});
+	});
+
+	describe('keyboard navigation', () => {
+		it('should move focus across enabled pager buttons with arrow keys', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					page: 2,
+					total: 50,
+					itemsPerPage: 10,
+					showTotal: false,
+					showSizes: false,
+					showJumper: false,
+				},
+			});
+
+			wrapper.getByText('2').focus();
+			expect(wrapper.getByText('2')).toHaveFocus();
+
+			await userEvent.keyboard('{ArrowRight}');
+			expect(wrapper.getByText('3')).toHaveFocus();
+
+			await userEvent.keyboard('{ArrowLeft}');
+			expect(wrapper.getByText('2')).toHaveFocus();
+
+			await userEvent.keyboard('{ArrowLeft}');
+			expect(wrapper.getByText('1')).toHaveFocus();
+
+			await userEvent.keyboard('{ArrowLeft}');
+			expect(wrapper.getByTestId('pagination-prev')).toHaveFocus();
+		});
+
+		it('should not move focus onto disabled prev or next buttons', async () => {
+			const firstPage = render(Pagination, {
+				props: {
+					page: 1,
+					total: 50,
+					itemsPerPage: 10,
+					showTotal: false,
+					showSizes: false,
+					showJumper: false,
+				},
+			});
+
+			firstPage.getByText('1').focus();
+			await userEvent.keyboard('{ArrowLeft}');
+			expect(firstPage.getByText('1')).toHaveFocus();
+			firstPage.unmount();
+
+			const lastPage = render(Pagination, {
+				props: {
+					page: 5,
+					total: 50,
+					itemsPerPage: 10,
+					showTotal: false,
+					showSizes: false,
+					showJumper: false,
+				},
+			});
+
+			lastPage.getByText('5').focus();
+			await userEvent.keyboard('{ArrowRight}');
+			expect(lastPage.getByTestId('pagination-next')).not.toHaveFocus();
+			expect(lastPage.getByText('5')).toHaveFocus();
 		});
 	});
 
