@@ -538,7 +538,7 @@ describe('update-workflow MCP tool', () => {
 			test('a structurally invalid group is not pre-checked; a persistence-layer rejection still surfaces as isError', async () => {
 				findWorkflowMock.mockResolvedValue(buildWorkflowWithTrigger());
 				updateMock.mockRejectedValueOnce(
-					new Error('Node group "Group" (g1) cannot contain trigger nodes: Trigger.'),
+					new Error('Node group "Group" cannot contain trigger nodes: Trigger.'),
 				);
 
 				const result = await callHandler({

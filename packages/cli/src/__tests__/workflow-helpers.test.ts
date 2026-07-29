@@ -613,7 +613,7 @@ describe('validateWorkflowNodeGroups', () => {
 					},
 					() => triggerType,
 				),
-			).toThrow('Node group "Has trigger" (g1) cannot contain trigger nodes');
+			).toThrow('Node group "Has trigger" cannot contain trigger nodes');
 		});
 
 		it('does not run full checks when getNodeType is null (basic-only)', () => {
@@ -682,7 +682,7 @@ describe('validateWorkflowNodeGroups', () => {
 						getNodeType,
 					),
 				).toThrow(
-					'Node group "Disconnected" (g1) must form a single connected subgraph with a single entry and exit.',
+					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit.',
 				);
 			});
 		});
