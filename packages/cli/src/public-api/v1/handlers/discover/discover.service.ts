@@ -4,10 +4,10 @@ import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 
 import {
-	extractScopeFromEovHandlerChain,
-	loadPublicControllerScopeMap,
-	resolvePublicApiImplementedScope,
-} from '../../shared/public-api-scope-lookup';
+	resolvePublicApiRoutes,
+	scopeRequirementToString,
+} from '../../../public-api-route-resolver';
+import { extractScopeFromEovHandlerChain } from '../../shared/public-api-scope-lookup';
 
 import '../../controllers';
 
@@ -73,12 +73,16 @@ function extractRequestSchema(
 
 async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 	if (!cachedEndpointsPromise) {
-		cachedEndpointsPromise = _parseEndpointsFromSpec();
+		cachedEndpointsPromise = buildAllEndpoints();
 	}
 	return await cachedEndpointsPromise;
 }
 
-async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
+async function buildAllEndpoints(): Promise<EndpointInfo[]> {
+	return [...(await buildEovEndpoints()), ...buildDecoratorEndpoints()];
+}
+
+async function buildEovEndpoints(): Promise<EndpointInfo[]> {
 	const specPath = path.join(__dirname, '..', '..', 'openapi.yml');
 	const publicApiRoot = path.join(__dirname, '..', '..', '..');
 
@@ -88,7 +92,6 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 
 	const endpoints: EndpointInfo[] = [];
 	const handlerCache = new Map<string, Record<string, unknown>>();
-	const controllerScopes = loadPublicControllerScopeMap();
 
 	for (const [pathKey, pathValue] of Object.entries(spec.paths)) {
 		if (!isRecord(pathValue)) continue;
@@ -96,67 +99,58 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 		for (const method of HTTP_METHODS) {
 			const operation = pathValue[method];
 			if (!isRecord(operation)) continue;
+			if (operation['x-decorator-routed'] === true) continue;
 
-			const eovOperationId = operation['x-eov-operation-id'];
-			const eovHandlerPath = operation['x-eov-operation-handler'];
-
-			// Decorator-routed operations (@PublicApiController) carry x-eov-* fields
-			// but they point at an unreachable stub, `x-decorator-routed` is the signal to tell them apart.
-			const hasEovHandler =
-				operation['x-decorator-routed'] !== true &&
-				typeof eovOperationId === 'string' &&
-				typeof eovHandlerPath === 'string';
-
-			// Decorator-routed operations carry a plain `operationId` and `x-required-scope`,
-			// generated straight from decorator metadata.
-			const operationId = hasEovHandler ? eovOperationId : operation.operationId;
-			if (typeof operationId !== 'string') continue;
+			const operationId = operation['x-eov-operation-id'];
+			const handlerPath = operation['x-eov-operation-handler'];
+			if (typeof operationId !== 'string' || typeof handlerPath !== 'string') continue;
 
 			const tags = Array.isArray(operation.tags) ? operation.tags : [];
 			const tag = typeof tags[0] === 'string' ? tags[0] : 'Other';
 
-			let eovHandlerScope: ApiKeyScope | undefined;
-			if (hasEovHandler) {
-				let handlerModule = handlerCache.get(eovHandlerPath);
-				if (!handlerModule) {
-					try {
-						const fullHandlerPath = path.join(publicApiRoot, `${eovHandlerPath}.js`);
-						const imported: unknown = await import(fullHandlerPath);
-						if (!isRecord(imported)) continue;
-						const loaded = isRecord(imported.default) ? imported.default : imported;
-						if (!isRecord(loaded)) continue;
-						handlerModule = loaded;
-						handlerCache.set(eovHandlerPath, handlerModule);
-					} catch {
-						continue;
-					}
+			let handlerModule = handlerCache.get(handlerPath);
+			if (!handlerModule) {
+				try {
+					const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
+					const imported: unknown = await import(fullHandlerPath);
+					if (!isRecord(imported)) continue;
+					const loaded = isRecord(imported.default) ? imported.default : imported;
+					if (!isRecord(loaded)) continue;
+					handlerModule = loaded;
+					handlerCache.set(handlerPath, handlerModule);
+				} catch {
+					continue;
 				}
-
-				const middlewareChain = handlerModule[operationId];
-				eovHandlerScope = Array.isArray(middlewareChain)
-					? extractScopeFromEovHandlerChain(middlewareChain)
-					: undefined;
 			}
 
-			const implemented = resolvePublicApiImplementedScope(
-				controllerScopes,
-				method,
-				pathKey,
-				eovHandlerScope,
-			);
+			const middlewareChain = handlerModule[operationId];
+			const scope = Array.isArray(middlewareChain)
+				? extractScopeFromEovHandlerChain(middlewareChain)
+				: undefined;
 
 			endpoints.push({
 				method: method.toUpperCase(),
 				path: `/api/v1${pathKey}`,
 				operationId,
 				tag,
-				scope: (implemented as ApiKeyScope | undefined) ?? null,
+				scope: scope ?? null,
 				requestSchema: extractRequestSchema(operation),
 			});
 		}
 	}
 
 	return endpoints;
+}
+
+function buildDecoratorEndpoints(): EndpointInfo[] {
+	return resolvePublicApiRoutes().map((route) => ({
+		method: route.method.toUpperCase(),
+		// Mirror the OpenAPI path template: `:param` -> `{param}`.
+		path: `/api/v1${route.path.replace(/:([A-Za-z0-9_]+)/g, '{$1}')}`,
+		operationId: route.handlerName,
+		tag: route.tags?.[0] ?? 'Other',
+		scope: route.apiKeyScope ? (scopeRequirementToString(route.apiKeyScope) as ApiKeyScope) : null,
+	}));
 }
 
 export async function buildDiscoverResponse(

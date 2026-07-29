@@ -26,7 +26,3 @@ post:
       $ref: '../../../../shared/spec/responses/conflict.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
-get:
-  # GET /tags is routed by TagsPublicController (@PublicApiController), not eov — this operation
-  # is generated from its DTOs/decorators rather than hand-written. See openapi-gen/generate.ts.
-  $ref: './getTags.generated.yml'
