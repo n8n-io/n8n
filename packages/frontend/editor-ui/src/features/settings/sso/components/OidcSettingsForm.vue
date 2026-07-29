@@ -422,8 +422,8 @@ onMounted(async () => {
 						<template #prefix>
 							<span v-if="ssoStore.isOidcLoginEnabled" :class="$style.greenDot" />
 						</template>
-						<N8nOption value="enabled" label="Enabled" />
-						<N8nOption value="disabled" label="Disabled" />
+						<N8nOption value="enabled" label="Enabled" data-test-id="sso-oidc-toggle-option" />
+						<N8nOption value="disabled" label="Disabled" data-test-id="sso-oidc-toggle-option" />
 					</N8nSelect>
 				</div>
 			</div>
