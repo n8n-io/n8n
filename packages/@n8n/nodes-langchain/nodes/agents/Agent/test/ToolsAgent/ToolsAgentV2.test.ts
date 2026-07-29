@@ -620,6 +620,14 @@ describe('toolsAgentExecute', () => {
 						},
 					},
 				};
+				yield {
+					event: 'on_chat_model_end',
+					data: {
+						output: {
+							content: 'Hello world!',
+						},
+					},
+				};
 			};
 
 			const mockExecutor = {
@@ -715,6 +723,14 @@ describe('toolsAgentExecute', () => {
 						},
 					},
 				};
+				yield {
+					event: 'on_chat_model_end',
+					data: {
+						output: {
+							content: 'Final response',
+						},
+					},
+				};
 			};
 
 			const mockExecutor = {
@@ -748,6 +764,100 @@ describe('toolsAgentExecute', () => {
 			expect(messageLogEntry.tool_calls).toEqual([
 				{ id: 'call_123', name: 'TestTool', args: { input: 'test data' }, type: 'function' },
 			]);
+		});
+
+		it('should not stream text from a turn that also requested tools', async () => {
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			// A turn that announces itself before calling a tool, then the real answer
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					run_id: 'run-1',
+					data: { chunk: { content: 'Room 1101' } },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'run-1',
+					data: {
+						output: {
+							content: [{ type: 'text', text: 'Room 1101' }],
+							tool_calls: [{ id: 'call_1', name: 'TestTool', args: {}, type: 'function' }],
+						},
+					},
+				};
+				yield {
+					event: 'on_tool_end',
+					name: 'TestTool',
+					run_id: 'run-1',
+					data: { output: 'created' },
+				};
+				yield {
+					event: 'on_chat_model_stream',
+					run_id: 'run-2',
+					data: { chunk: { content: 'Work order created successfully!' } },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'run-2',
+					data: { output: { content: 'Work order created successfully!' } },
+				};
+			};
+
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig({
+					streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
+				}) as any,
+			);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(result[0][0].json.output).toBe('Work order created successfully!');
+			expect(mockContext.sendChunk).not.toHaveBeenCalledWith('item', 0, 'Room 1101');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith(
+				'item',
+				0,
+				'Work order created successfully!',
+			);
+		});
+
+		it('should discard text from a model run that never completed', async () => {
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			// A run that streams then never ends, as happens when a primary model fails
+			// before a fallback takes over
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					run_id: 'failed-run',
+					data: { chunk: { content: 'partial ' } },
+				};
+				yield {
+					event: 'on_chat_model_stream',
+					run_id: 'fallback-run',
+					data: { chunk: { content: 'Complete answer' } },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'fallback-run',
+					data: { output: { content: 'Complete answer' } },
+				};
+			};
+
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig({
+					streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
+				}) as any,
+			);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(result[0][0].json.output).toBe('Complete answer');
+			expect(mockContext.sendChunk).not.toHaveBeenCalledWith('item', 0, 'partial ');
 		});
 
 		it('should use regular execution on version 2.2 when enableStreaming is false', async () => {
@@ -876,6 +986,10 @@ describe('toolsAgentExecute', () => {
 						},
 					},
 				};
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: { content: 'Hello world!' } },
+				};
 			};
 
 			const mockExecutor = {
@@ -909,6 +1023,10 @@ describe('toolsAgentExecute', () => {
 							content: 'Direct string content',
 						},
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: { content: 'Direct string content' } },
 				};
 			};
 
@@ -947,6 +1065,10 @@ describe('toolsAgentExecute', () => {
 							],
 						},
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: { content: '' } },
 				};
 			};
 

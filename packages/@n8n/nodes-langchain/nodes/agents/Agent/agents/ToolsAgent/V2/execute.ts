@@ -145,44 +145,61 @@ async function processEventStream(
 		agentResult.intermediateSteps = [];
 	}
 
+	// This agent runs every model turn inside a single stream, so text is held until the
+	// turn ends: a turn that also requests tools was announcing itself rather than
+	// answering, and its text belongs to neither the stream nor the output. Keyed by run
+	// so interleaved or fallback model runs cannot mix, and dropped if a run never ends.
+	const pendingChunksByRun = new Map<string, string[]>();
+
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
 		switch (event.event) {
-			case 'on_chat_model_stream':
+			case 'on_chat_model_stream': {
 				const chunk = event.data?.chunk as AIMessageChunk;
 				if (chunk?.content) {
-					const chunkText = extractMessageText(chunk.content);
-					ctx.sendChunk('item', itemIndex, chunkText);
-
-					agentResult.output += chunkText;
+					const pending = pendingChunksByRun.get(event.run_id) ?? [];
+					pending.push(extractMessageText(chunk.content));
+					pendingChunksByRun.set(event.run_id, pending);
 				}
 				break;
-			case 'on_chat_model_end':
-				// Capture full LLM response with tool calls for intermediate steps
-				if (returnIntermediateSteps && event.data) {
-					const chatModelData = event.data as any;
-					const output = chatModelData.output;
+			}
+			case 'on_chat_model_end': {
+				const chatModelData = event.data as any;
+				const output = chatModelData?.output;
+				const hasToolCalls = !!output?.tool_calls?.length;
 
-					// Check if this LLM response contains tool calls
-					if (output?.tool_calls && output.tool_calls.length > 0) {
-						for (const toolCall of output.tool_calls) {
-							agentResult.intermediateSteps!.push({
-								action: {
-									tool: toolCall.name,
-									toolInput: toolCall.args,
-									log:
-										extractMessageText(output.content) ||
-										`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
-									messageLog: [output], // Include the full LLM response
-									toolCallId: toolCall.id,
-									type: toolCall.type,
-								},
-							});
-						}
+				const pending = pendingChunksByRun.get(event.run_id) ?? [];
+				pendingChunksByRun.delete(event.run_id);
+
+				// Only a turn that produced no tool calls is the actual answer
+				if (!hasToolCalls) {
+					for (const chunkText of pending) {
+						ctx.sendChunk('item', itemIndex, chunkText);
+
+						agentResult.output += chunkText;
+					}
+				}
+
+				// Capture full LLM response with tool calls for intermediate steps
+				if (returnIntermediateSteps && hasToolCalls) {
+					for (const toolCall of output.tool_calls) {
+						agentResult.intermediateSteps!.push({
+							action: {
+								tool: toolCall.name,
+								toolInput: toolCall.args,
+								log:
+									extractMessageText(output.content) ||
+									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
+								messageLog: [output], // Include the full LLM response
+								toolCallId: toolCall.id,
+								type: toolCall.type,
+							},
+						});
 					}
 				}
 				break;
+			}
 			case 'on_tool_end':
 				// Capture tool execution results and match with action
 				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
