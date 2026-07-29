@@ -24,6 +24,7 @@ import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { INSTANCE_MCP_RESOURCE_ID } from '@/modules/mcp/mcp-protected-resource';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
@@ -455,12 +456,19 @@ export class OAuthServerService implements OAuthServerProvider {
 		);
 
 		// Completion of the authorization-code grant is the point at which the user
-		// has finished the OAuth flow for this client.
-		this.eventService.emit('mcp-oauth-completed', {
-			userId: authRecord.userId,
-			clientId: client.client_id,
-			clientName: client.client_name,
-		});
+		// has finished the OAuth flow for this client. The authorization server is
+		// shared by every protected resource on the instance (MCP, forms, ...), so
+		// only grants targeting the instance MCP server count as MCP usage.
+		const grantedResource = finalResource
+			? await this.resourceRegistry.getByResourceUrl(finalResource)
+			: this.resourceRegistry.getDefaultResource();
+		if (grantedResource?.id === INSTANCE_MCP_RESOURCE_ID) {
+			this.eventService.emit('mcp-oauth-completed', {
+				userId: authRecord.userId,
+				clientId: client.client_id,
+				clientName: client.client_name,
+			});
+		}
 
 		return {
 			access_token: accessToken,
