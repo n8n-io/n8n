@@ -1,4 +1,4 @@
-import { DEFAULT_MISFIRE_GRACE_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { ScheduledJobKind, RecurringCronUnit } from '@n8n/constants';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
@@ -156,7 +156,10 @@ export class ScheduledJob extends WithTimestamps {
 	 * Copied from {@link SchedulerConfig.misfireGraceSeconds} onto each row rather than
 	 * read live, so every instance agrees on one job's deadline through a rolling
 	 * config change.
+	 *
+	 * Pinned to a literal, not the shared constant, so a later change to the
+	 * constant can't retroactively change what this entity declares.
 	 */
-	@Column({ type: 'int', default: DEFAULT_MISFIRE_GRACE_SECONDS })
+	@Column({ type: 'int', default: 60 })
 	misfireGraceSeconds: number;
 }

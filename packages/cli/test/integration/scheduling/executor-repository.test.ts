@@ -1056,14 +1056,30 @@ describe('ScheduledTaskRepository executor methods', () => {
 	});
 
 	describe('updateMissedAfterForJobs', () => {
-		it("recomputes a pending row's deadline from its own runAt, not from now", async () => {
-			const runAt = past();
+		it("recomputes a pending row's deadline from its own future runAt", async () => {
+			const runAt = new Date(Date.now() + 60_000);
 			const task = await createTask({ runAt, missedAfter: new Date(runAt.getTime() + 30_000) });
 
 			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
 
 			const reloaded = await reload(task.id);
 			expect(reloaded.missedAfter!.getTime()).toBe(runAt.getTime() + 90_000);
+		});
+
+		it("clamps an overdue row's recomputed deadline to now", async () => {
+			const runAt = past();
+			const task = await createTask({ runAt, missedAfter: new Date(runAt.getTime() + 30_000) });
+
+			// DB-clock brackets, not `Date.now()`: a container's clock can drift from
+			// the test runner's host clock.
+			const before = await taskRepository.readDbTime();
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+			const after = await taskRepository.readDbTime();
+
+			const reloaded = await reload(task.id);
+			const deadline = reloaded.missedAfter!.getTime();
+			expect(deadline).toBeGreaterThanOrEqual(before.getTime() + 90_000);
+			expect(deadline).toBeLessThanOrEqual(after.getTime() + 90_000);
 		});
 
 		it('leaves a row with no deadline without one', async () => {

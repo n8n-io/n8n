@@ -27,6 +27,17 @@ const DEFAULT_GRACE_SECONDS = 60;
  */
 export class AddMisfirePolicyToScheduler1785247194307 implements ReversibleMigration {
 	async up(context: MigrationContext) {
+		// A rename of this migration's file leaves an instance that already ran it
+		// under the old name with no record of that under the current one, so a
+		// plain rerun here would fail on columns that already exist. Guard on the
+		// first one instead: it was added atomically with everything else this
+		// migration does, so its presence means the rest is already done too.
+		const alreadyApplied = await context.queryRunner.hasColumn(
+			`${context.tablePrefix}${jobTable}`,
+			policyColumn,
+		);
+		if (alreadyApplied) return;
+
 		await this.addJobPolicyColumns(context);
 		await this.addTaskDeadlineColumn(context);
 		// Partial, so it holds only the rows the reaper sweeps and orders by, not the

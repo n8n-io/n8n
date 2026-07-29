@@ -45,6 +45,28 @@ export function columnPlusMsLiteral(isPostgres: boolean, columnExpr: string, ms:
 }
 
 /**
+ * Whichever is later of a column's value or DB-clock `now`, plus a millisecond
+ * offset, per dialect. Unlike {@link columnPlusMsLiteral}, a column value already
+ * in the past doesn't drag the result into the past with it.
+ * `ms` is caller-computed (safe to inline); `columnExpr` must already be a safe
+ * SQL fragment (a quoted column name), never caller input.
+ */
+export function columnOrNowPlusMsLiteral(
+	isPostgres: boolean,
+	columnExpr: string,
+	ms: number,
+): string {
+	const rounded = Math.round(ms);
+	if (isPostgres) {
+		return `GREATEST(${columnExpr}, CURRENT_TIMESTAMP(3)) + (${rounded} || ' milliseconds')::interval`;
+	}
+	const seconds = rounded / 1000;
+	// SQLite's `%Y-%m-%d %H:%M:%f` is fixed-width and zero-padded, so a lexical MAX
+	// on the formatted strings agrees with a chronological one.
+	return `STRFTIME('%Y-%m-%d %H:%M:%f', MAX(${columnExpr}, ${dbNowLiteral(false)}), '${seconds < 0 ? '' : '+'}${seconds} seconds')`;
+}
+
+/**
  * Parse a DB-clock value read back from a query.
  * Postgres returns a `Date`.
  * SQLite returns UTC wall-clock text with no zone.

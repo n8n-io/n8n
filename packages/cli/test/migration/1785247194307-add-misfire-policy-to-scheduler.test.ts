@@ -96,6 +96,25 @@ describe('AddMisfirePolicyToScheduler Migration', () => {
 			await context.queryRunner.release();
 		});
 
+		it('is a no-op when replayed under a different recorded migration name', async () => {
+			await runSingleMigration(MIGRATION_NAME);
+			const context = createTestMigrationContext(dataSource);
+			// Deleting the migrations-table row, with the columns left in place, is
+			// what a rename looks like from the next run's perspective.
+			await context.runQuery(
+				`DELETE FROM ${context.escape.tableName('migrations')} WHERE "name" = '${MIGRATION_NAME}'`,
+			);
+			await context.queryRunner.release();
+
+			await expect(runSingleMigration(MIGRATION_NAME)).resolves.not.toThrow();
+
+			const after = createTestMigrationContext(dataSource);
+			expect(await columnNames(after, 'scheduled_job')).toEqual(
+				expect.arrayContaining(['misfirePolicy', 'misfireGraceSeconds']),
+			);
+			await after.queryRunner.release();
+		});
+
 		it('indexes the deadline over the pending rows the reaper sweeps', async () => {
 			await runSingleMigration(MIGRATION_NAME);
 			const context = createTestMigrationContext(dataSource);

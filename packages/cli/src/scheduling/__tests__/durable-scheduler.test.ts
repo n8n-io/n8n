@@ -28,6 +28,9 @@ describe('DurableScheduler', () => {
 		dbType = 'sqlite',
 		materializationIntervalSeconds = 10,
 		minIntervalSeconds = 0,
+		executorIntervalSeconds = 5,
+		materializationWindowSeconds = 60,
+		misfireGraceSeconds = 60,
 	} = {}) {
 		const inner = mock<Scheduler & SchedulerPasses>();
 		vi.mocked(createScheduler).mockReturnValue(inner);
@@ -52,10 +55,12 @@ describe('DurableScheduler', () => {
 				database: { type: dbType as 'sqlite' | 'postgresdb' },
 				scheduler: {
 					enabled,
-					executorIntervalSeconds: 5,
+					executorIntervalSeconds,
 					jitterRatio: 0.1,
 					materializationIntervalSeconds,
 					minIntervalSeconds,
+					materializationWindowSeconds,
+					misfireGraceSeconds,
 				},
 			}),
 			tracing,
@@ -123,6 +128,38 @@ describe('DurableScheduler', () => {
 
 			expect(logger.warn).not.toHaveBeenCalledWith(
 				expect.stringContaining('materialization interval'),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('misfire grace warning', () => {
+		it('warns when the grace is at or below the executor interval', () => {
+			const { logger } = makeScheduler({ misfireGraceSeconds: 5, executorIntervalSeconds: 5 });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('executor interval'),
+				expect.objectContaining({ misfireGraceSeconds: 5, executorIntervalSeconds: 5 }),
+			);
+		});
+
+		it('warns when the grace is below the materialization window', () => {
+			const { logger } = makeScheduler({
+				misfireGraceSeconds: 30,
+				materializationWindowSeconds: 60,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('materialization window'),
+				expect.objectContaining({ misfireGraceSeconds: 30, materializationWindowSeconds: 60 }),
+			);
+		});
+
+		it('does not warn at the default grace', () => {
+			const { logger } = makeScheduler();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('misfire grace'),
 				expect.anything(),
 			);
 		});

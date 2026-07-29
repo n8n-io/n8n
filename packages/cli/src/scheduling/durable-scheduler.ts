@@ -128,9 +128,10 @@ function warnOnMisfireGrace(logger: Logger, config: GlobalConfig['scheduler']): 
 			{ misfireGraceSeconds, executorIntervalSeconds },
 		);
 	}
-	// Occurrences are recorded a window ahead. A downtime past the grace but short of
-	// the window expires them while the schedule's next run is still ahead, so they are
-	// dropped and nothing is planned until that run comes due.
+	// A short outage (shorter than the window) doesn't create new unrecorded backlog
+	// for the misfire policy to act on: the affected occurrences were already
+	// recorded ahead of the outage, so they're retired once their grace passes
+	// rather than coalesced.
 	if (misfireGraceSeconds < materializationWindowSeconds) {
 		logger.warn(
 			'Scheduler misfire grace is below the materialization window; runs missed during a short outage are dropped rather than caught up',

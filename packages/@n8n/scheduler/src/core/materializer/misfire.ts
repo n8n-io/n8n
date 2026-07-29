@@ -20,6 +20,11 @@ export interface MisfireCount {
  *
  * `truncated` says the cap ended the walk, so the newest instant here is not the
  * newest missed one; the catch-up run is deferred rather than recorded.
+ *
+ * Only ever sees instants the current pass is about to record for the first time.
+ * An instant already recorded by an earlier pass, that then goes unclaimed past its
+ * own deadline, doesn't come back through here: it's retired directly (see
+ * `ScheduledTaskRepository.retireMissedPending`), regardless of policy.
  */
 export function applyMisfirePolicy(
 	due: Date[],

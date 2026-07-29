@@ -19,7 +19,7 @@ import {
 	TerminalTaskStatusList,
 } from '../entities/scheduled-task';
 import {
-	columnPlusMsLiteral,
+	columnOrNowPlusMsLiteral,
 	dbNowLiteral,
 	dbNowPlusMsLiteral,
 	parseDbTime,
@@ -249,10 +249,11 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 
 	/**
 	 * Recompute `missedAfter` on a job's still-`pending` occurrences from the given
-	 * grace, anchored to each row's own `runAt` rather than DB-now, so a policy or
-	 * grace change reaches rows already queued under the old grace. Rows with a
-	 * `null` `missedAfter` are left alone: reconciliation only adjusts an existing
-	 * deadline, never gives one to a row that never had one.
+	 * grace, anchored to each row's own `runAt` or DB-now, whichever is later, so a
+	 * policy or grace change reaches rows already queued under the old grace
+	 * without dragging an overdue-but-still-live row's deadline into the past. Rows
+	 * with a `null` `missedAfter` are left alone: reconciliation only adjusts an
+	 * existing deadline, never gives one to a row that never had one.
 	 */
 	async updateMissedAfterForJobs(
 		manager: EntityManager,
@@ -265,7 +266,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.update(ScheduledTask)
 			.set({
 				missedAfter: () =>
-					columnPlusMsLiteral(this.isPostgres, this.runAtColumn, misfireGraceSeconds * 1000),
+					columnOrNowPlusMsLiteral(this.isPostgres, this.runAtColumn, misfireGraceSeconds * 1000),
 			})
 			.where({ jobId: In(jobIds), status: ScheduledTaskStatus.Pending, missedAfter: Not(IsNull()) })
 			.execute();
@@ -759,6 +760,12 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * Retire, as `missed`, up to `limit` `pending` occurrences past their
 	 * `missedAfter`, oldest deadline first. Rows already attempted are left alone:
 	 * they're awaiting their own retry, not stuck.
+	 *
+	 * Policy-blind by design: a row here was already recorded by an earlier
+	 * materialization pass, so `applyMisfirePolicy` never runs on it again. `coalesce`
+	 * only ever collapses backlog that is still unrecorded at the moment a pass
+	 * plans it; once recorded, an occurrence that goes unclaimed past its deadline is
+	 * always retired here, regardless of its job's policy.
 	 */
 	async retireMissedPending(limit: number): Promise<number> {
 		// A non-integer bound to LIMIT errors on SQLite (datatype mismatch), and NaN
