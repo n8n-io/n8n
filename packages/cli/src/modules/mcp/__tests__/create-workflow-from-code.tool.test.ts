@@ -630,7 +630,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				const response = parseResult(result);
 				expect(result.isError).toBe(true);
 				expect(response.error).toContain("data table with id 'missing' not found");
-				expect(response.error).toContain('create_data_table');
+				expect(response.error).toContain('manage_data_table');
 				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
 			});
 

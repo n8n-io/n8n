@@ -112,7 +112,7 @@ describe('data-table validation against a real database', () => {
 			if (result.ok) return;
 			expect(result.error).toContain("node 'DT'");
 			expect(result.error).toContain("data table with id 'this-id-was-never-created' not found");
-			expect(result.error).toContain('create_data_table');
+			expect(result.error).toContain('manage_data_table');
 			expect(result.error).toContain('search_data_tables');
 		});
 

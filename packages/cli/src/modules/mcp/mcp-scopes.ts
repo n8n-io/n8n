@@ -73,15 +73,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	'credential:read': ['list_credentials', 'list_n8n_connect_services', 'explore_node_resources'],
 	'dataTable:read': ['search_data_tables'],
 	// Writing requires finding tables, so search rides along.
-	'dataTable:write': [
-		'search_data_tables',
-		'create_data_table',
-		'rename_data_table',
-		'add_data_table_column',
-		'delete_data_table_column',
-		'rename_data_table_column',
-		'add_data_table_rows',
-	],
+	'dataTable:write': ['search_data_tables', 'manage_data_table'],
 	'project:read': ['search_projects', 'search_folders'],
 	'tag:read': ['list_workflow_tags'],
 };
