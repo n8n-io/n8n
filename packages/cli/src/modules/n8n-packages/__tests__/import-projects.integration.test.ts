@@ -371,7 +371,13 @@ describe('project shell import', () => {
 
 		const result = await importProjects(owner, packageBuffer);
 
-		expect(result.tags).toEqual({ matched: [], created: ['shared'], renamed: [], skipped: [] });
+		expect(result.tags).toEqual({
+			matched: [],
+			created: ['shared'],
+			renamed: [],
+			reconciled: [],
+			skipped: [],
+		});
 		expect(await Container.get(TagRepository).find()).toEqual([
 			expect.objectContaining({ id: 'TAG1', name: 'shared' }),
 		]);

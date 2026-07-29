@@ -22,7 +22,7 @@ import type {
 } from '../entities/folder/folder-import.types';
 import { FolderImporter } from '../entities/folder/folder-importer';
 import { TagImporter } from '../entities/tag/tag-importer';
-import { droppedTagIds } from '../entities/tag/tag.types';
+import { crossPlanReconcileOverlapFailures, droppedTagIds } from '../entities/tag/tag.types';
 import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
 import { VariableImporter } from '../entities/variable/variable-importer';
 import type {
@@ -120,6 +120,15 @@ export class ImportOrchestrator {
 
 	async assertNotBlocked(plans: ImportPlan[]): Promise<void> {
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
+
+		issues.push(
+			...crossPlanReconcileOverlapFailures(
+				plans.map((plan) => ({
+					tagPlan: plan.tagPlan,
+					workflows: plan.workflowPlan.items.filter((item) => item.action !== 'skip'),
+				})),
+			).map((failure): BlockingIssue => ({ type: 'tag-unresolved', ...failure })),
+		);
 
 		const quotaFailure = await this.variableImporter.quotaFailure(
 			plans.flatMap((plan) => plan.variablePlan.creations),

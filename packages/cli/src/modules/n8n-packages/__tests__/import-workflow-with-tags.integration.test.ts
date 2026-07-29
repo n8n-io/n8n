@@ -122,7 +122,13 @@ describe('workflow package import — with tags', () => {
 				packageBuffer,
 			});
 
-			expect(result.tags).toEqual({ matched: [], created: ['shared'], renamed: [], skipped: [] });
+			expect(result.tags).toEqual({
+				matched: [],
+				created: ['shared'],
+				renamed: [],
+				reconciled: [],
+				skipped: [],
+			});
 			expect(await tagRepository.find()).toEqual([
 				expect.objectContaining({ id: tag.id, name: 'shared' }),
 			]);
@@ -142,7 +148,13 @@ describe('workflow package import — with tags', () => {
 				packageBuffer,
 			});
 
-			expect(result.tags).toEqual({ matched: ['prod'], created: [], renamed: [], skipped: [] });
+			expect(result.tags).toEqual({
+				matched: ['prod'],
+				created: [],
+				renamed: [],
+				reconciled: [],
+				skipped: [],
+			});
 			expect(await tagRepository.count()).toBe(1);
 			expect(await tagIdsOf(result.workflows[0].localId)).toEqual([tag.id]);
 		});
@@ -166,7 +178,13 @@ describe('workflow package import — with tags', () => {
 			});
 
 			expect(first.tags.created).toEqual(['prod']);
-			expect(second.tags).toEqual({ matched: ['prod'], created: [], renamed: [], skipped: [] });
+			expect(second.tags).toEqual({
+				matched: ['prod'],
+				created: [],
+				renamed: [],
+				reconciled: [],
+				skipped: [],
+			});
 			expect(second.workflows[0].localId).toBe(first.workflows[0].localId);
 			expect(await tagRepository.count()).toBe(1);
 			expect(await tagIdsOf(first.workflows[0].localId)).toEqual([tag.id]);
@@ -203,7 +221,13 @@ describe('workflow package import — with tags', () => {
 			});
 
 			expect(result.workflows[0].status).toBe('created');
-			expect(result.tags).toEqual({ matched: [], created: [], renamed: [], skipped: ['prod'] });
+			expect(result.tags).toEqual({
+				matched: [],
+				created: [],
+				renamed: [],
+				reconciled: [],
+				skipped: ['prod'],
+			});
 			expect(await tagRepository.count()).toBe(0);
 			expect(await tagIdsOf(result.workflows[0].localId)).toEqual([]);
 		});
@@ -257,7 +281,13 @@ describe('workflow package import — with tags', () => {
 				tagConflictPolicy: 'rename',
 			});
 
-			expect(result.tags).toEqual({ matched: [], created: [], renamed: ['prod'], skipped: [] });
+			expect(result.tags).toEqual({
+				matched: [],
+				created: [],
+				renamed: ['prod'],
+				reconciled: [],
+				skipped: [],
+			});
 			expect((await tagRepository.findOneByOrFail({ id: tag.id })).name).toBe('prod');
 			expect(await tagIdsOf(result.workflows[0].localId)).toEqual([tag.id]);
 		});
@@ -367,7 +397,13 @@ describe('workflow package import — with tags', () => {
 				tagConflictPolicy: 'fail',
 			});
 
-			expect(result.tags).toEqual({ matched: [], created: ['prod'], renamed: [], skipped: [] });
+			expect(result.tags).toEqual({
+				matched: [],
+				created: ['prod'],
+				renamed: [],
+				reconciled: [],
+				skipped: [],
+			});
 			expect(await tagIdsOf(result.workflows[0].localId)).toEqual([tag.id]);
 		});
 
@@ -432,7 +468,13 @@ describe('workflow package import — with tags', () => {
 			});
 
 			expect(result.workflows[0].status).toBe('created');
-			expect(result.tags).toEqual({ matched: [], created: [], renamed: [], skipped: ['prod'] });
+			expect(result.tags).toEqual({
+				matched: [],
+				created: [],
+				renamed: [],
+				reconciled: [],
+				skipped: ['prod'],
+			});
 			expect(await tagIdsOf(result.workflows[0].localId)).toEqual([]);
 			expect(await tagRepository.find()).toEqual([
 				expect.objectContaining({ id: holder.id, name: 'prod' }),
@@ -571,7 +613,13 @@ describe('workflow package import — with tags', () => {
 		});
 
 		expect(result.workflows[0].status).toBe('skipped');
-		expect(result.tags).toEqual({ matched: [], created: [], renamed: [], skipped: [] });
+		expect(result.tags).toEqual({
+			matched: [],
+			created: [],
+			renamed: [],
+			reconciled: [],
+			skipped: [],
+		});
 		expect(await tagRepository.count()).toBe(tagsBefore);
 	});
 
@@ -612,7 +660,13 @@ describe('workflow package import — with tags', () => {
 			});
 
 			expect(result.workflows[0].status).toBe('created');
-			expect(result.tags).toEqual({ matched: [], created: [], renamed: [], skipped: [] });
+			expect(result.tags).toEqual({
+				matched: [],
+				created: [],
+				renamed: [],
+				reconciled: [],
+				skipped: [],
+			});
 			expect((await tagRepository.findOneByOrFail({ id: tag.id })).name).toBe('production');
 			expect(await mappingRepository.count()).toBe(mappingsBefore);
 		} finally {
@@ -635,7 +689,13 @@ describe('workflow package import — with tags', () => {
 			});
 
 			expect(result.workflows[0].status).toBe('created');
-			expect(result.tags).toEqual({ matched: [], created: [], renamed: [], skipped: [] });
+			expect(result.tags).toEqual({
+				matched: [],
+				created: [],
+				renamed: [],
+				reconciled: [],
+				skipped: [],
+			});
 		} finally {
 			globalConfig.tags.disabled = false;
 		}

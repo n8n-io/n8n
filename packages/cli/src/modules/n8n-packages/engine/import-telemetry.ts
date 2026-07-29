@@ -142,6 +142,7 @@ export function emitPackageImportedEvent(
 				matched: uniqueTagIds((plan) => plan.matched),
 				created: uniqueTagIds((plan) => plan.creations),
 				renamed: uniqueTagIds((plan) => plan.renames),
+				reconciled: uniqueTagIds((plan) => plan.reconciles),
 				skipped: uniqueTagIds((plan) => plan.dropped),
 				requirements: tagRequirements,
 			},

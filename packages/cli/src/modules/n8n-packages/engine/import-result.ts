@@ -120,6 +120,7 @@ export function toTagSummary(plan: TagImportPlan): ImportTagSummary {
 		matched: plan.matched.map(({ name }) => name),
 		created: plan.creations.map(({ name }) => name),
 		renamed: plan.renames.map(({ to }) => to),
+		reconciled: plan.reconciles.map(({ name }) => name),
 		skipped: plan.dropped.map(({ name }) => name),
 	};
 }
@@ -130,6 +131,7 @@ export function unionTagSummaries(summaries: ImportTagSummary[]): ImportTagSumma
 		matched: [...new Set(summaries.flatMap(({ matched }) => matched))],
 		created: [...new Set(summaries.flatMap(({ created }) => created))],
 		renamed: [...new Set(summaries.flatMap(({ renamed }) => renamed))],
+		reconciled: [...new Set(summaries.flatMap(({ reconciled }) => reconciled))],
 		skipped: [...new Set(summaries.flatMap(({ skipped }) => skipped))],
 	};
 }

@@ -1081,6 +1081,7 @@ export class TelemetryEventRelay extends EventRelay {
 			tags_matched: counts.tags.matched,
 			tags_created: counts.tags.created,
 			tags_renamed: counts.tags.renamed,
+			tags_reconciled: counts.tags.reconciled,
 			tags_skipped: counts.tags.skipped,
 			tags_required: counts.tags.requirements,
 		});

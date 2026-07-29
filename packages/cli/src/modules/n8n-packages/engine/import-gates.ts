@@ -53,7 +53,7 @@ export function assertTagWritesAllowed(
 	if (tagPlans.some((plan) => plan.creations.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:create']);
 	}
-	if (tagPlans.some((plan) => plan.renames.length > 0)) {
+	if (tagPlans.some((plan) => plan.renames.length > 0 || plan.reconciles.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:update']);
 	}
 }
