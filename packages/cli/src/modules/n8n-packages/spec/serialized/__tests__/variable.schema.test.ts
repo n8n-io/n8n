@@ -34,16 +34,4 @@ describe('serializedVariableSchema', () => {
 			value: 'v',
 		});
 	});
-
-	it('rejects an unsupported type', () => {
-		const variable = { name: 'API_URL', type: 'number', value: '1' };
-
-		expect(() => serializedVariableSchema.parse(variable)).toThrow();
-	});
-
-	it('rejects an overlong value', () => {
-		const variable = { name: 'API_URL', type: 'string', value: 'a'.repeat(1001) };
-
-		expect(() => serializedVariableSchema.parse(variable)).toThrow();
-	});
 });

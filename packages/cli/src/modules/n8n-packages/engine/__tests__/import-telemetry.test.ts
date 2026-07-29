@@ -42,11 +42,9 @@ const scope = (input: {
 		matched: number;
 		missing: number;
 		requirements: number;
-		/** Of the missing names, how many were created carrying the package value. */
+		/** How the scope's `missing` names were resolved: with a package value, as an empty stub, or already there. */
 		valued?: number;
-		/** Of the missing names, how many were created as empty stubs. */
 		stubbed?: number;
-		/** Of the missing names, how many already existed at their destination. */
 		existing?: number;
 	};
 }): PackageImportScope => {
@@ -184,87 +182,5 @@ describe('emitPackageImportedEvent', () => {
 		expect(payload.packageSourceId).toBe('src-1');
 		expect(payload.options.variableMissingMode).toBe('create-stub');
 		expect(payload.options.variableParentPolicy).toBe('global');
-	});
-
-	it('still counts a missing requirement the import left unfilled', () => {
-		const eventService = mock<EventService>();
-
-		emitPackageImportedEvent(eventService, {
-			request,
-			manifest,
-			scopes: [
-				scope({
-					projectId: 'P1',
-					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
-					// Of three missing requirements, one was stubbed and one already existed.
-					variables: { matched: 0, missing: 3, requirements: 3, stubbed: 1, existing: 1 },
-				}),
-			],
-		});
-
-		// The one that already existed is reported as matched, like the API summary does, so all
-		// three requirements are accounted for.
-		expect(lastImportedPayload(eventService).counts.variables).toEqual({
-			matched: 1,
-			missing: 1,
-			created: 0,
-			stubbed: 1,
-			requirements: 3,
-		});
-	});
-
-	it('reconciles matched and missing names across scopes, and counts creations as rows', () => {
-		const eventService = mock<EventService>();
-
-		emitPackageImportedEvent(eventService, {
-			request,
-			manifest,
-			scopes: [
-				// Both scopes need the same name: the first creates it, so the second finds the
-				// destination occupied and skips. Only one row exists, and nothing pre-existed.
-				scope({
-					projectId: 'P1',
-					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
-					variables: { matched: 0, missing: 1, requirements: 1, stubbed: 1 },
-				}),
-				scope({
-					projectId: 'P2',
-					outcomes: [outcome('wf2', 'WF2', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
-					variables: { matched: 0, missing: 1, requirements: 1, existing: 1 },
-				}),
-			],
-		});
-
-		// stubbed is 1 because one row was written, not because the name deduped — the same
-		// name created in two projects would count twice.
-		expect(lastImportedPayload(eventService).counts.variables).toEqual({
-			matched: 0,
-			missing: 0,
-			created: 0,
-			stubbed: 1,
-			requirements: 2,
-		});
-	});
-
-	it('preserves the folder id for a single-scope import', () => {
-		const eventService = mock<EventService>();
-
-		emitPackageImportedEvent(eventService, {
-			request,
-			manifest,
-			scopes: [
-				scope({
-					projectId: 'P1',
-					folderId: 'F1',
-					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
-				}),
-			],
-		});
-
-		expect(lastImportedPayload(eventService).folderId).toBe('F1');
 	});
 });

@@ -1,7 +1,3 @@
-import type {
-	VariableApplyResult,
-	VariableImportPlan,
-} from '../../entities/variable/variable.types';
 import type { PreparedWorkflow } from '../../entities/workflow/workflow-import.types';
 import type { ImportBindingMap } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
@@ -9,7 +5,6 @@ import {
 	identifyRequirements,
 	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
-	toVariableSummary,
 } from '../import-result';
 
 const requirement = (id: string, usedByWorkflows: string[]): PackageCredentialRequirement => ({
@@ -71,67 +66,9 @@ describe('scopeCredentialBindingsToRequirements', () => {
 	});
 });
 
-describe('toVariableSummary', () => {
-	const plan = (matched: string[], missing: string[]): VariableImportPlan => ({
-		matched,
-		missing: missing.map((name) => ({ name, usedByWorkflows: [] })),
-		creations: [],
-	});
-
-	const result = (overrides: Partial<VariableApplyResult> = {}): VariableApplyResult => ({
-		created: [],
-		stubbed: [],
-		skippedExisting: [],
-		...overrides,
-	});
-
-	it('counts an externally-created (skipped) destination as matched, not stubbed', () => {
-		// The destination was occupied between plan and apply, so this import did not create it.
-		expect(toVariableSummary(plan(['A'], ['B']), result({ skippedExisting: ['B'] }))).toEqual({
-			matched: ['A', 'B'],
-			missing: [],
-			created: [],
-			stubbed: [],
-		});
-	});
-
-	it('deduplicates a plan match that also appears as skipped', () => {
-		expect(toVariableSummary(plan(['A'], ['B']), result({ skippedExisting: ['A', 'B'] }))).toEqual({
-			matched: ['A', 'B'],
-			missing: [],
-			created: [],
-			stubbed: [],
-		});
-	});
-});
-
 describe('reconcileVariableSummary', () => {
-	it('does not report a name as matched when this import stubbed it in another scope', () => {
-		// The first scope created the global stub, so the second scope's planned creation found the
-		// destination occupied and skipped. Reporting the name as matched would imply it pre-existed.
-		expect(
-			reconcileVariableSummary({
-				matched: [],
-				missing: ['SHARED_URL', 'SHARED_URL'],
-				created: [],
-				stubbed: ['SHARED_URL'],
-				skipped: ['SHARED_URL'],
-			}),
-		).toEqual({ matched: [], missing: [], created: [], stubbed: ['SHARED_URL'] });
-	});
-
-	it('reports a name as both matched and stubbed when it pre-existed in only some scopes', () => {
-		expect(
-			reconcileVariableSummary({
-				matched: ['API_URL'],
-				missing: ['API_URL'],
-				created: [],
-				stubbed: ['API_URL'],
-				skipped: [],
-			}),
-		).toEqual({ matched: ['API_URL'], missing: [], created: [], stubbed: ['API_URL'] });
-	});
-
+	// The only case the import integration suites cannot reach: a destination occupied by an
+	// external writer between plan and apply, which no scope of this import created.
 	it('counts a skip that no scope stubbed as matched', () => {
 		expect(
 			reconcileVariableSummary({
@@ -142,17 +79,5 @@ describe('reconcileVariableSummary', () => {
 				skipped: ['API_URL'],
 			}),
 		).toEqual({ matched: ['API_URL'], missing: [], created: [], stubbed: [] });
-	});
-
-	it('deduplicates names repeated across scopes', () => {
-		expect(
-			reconcileVariableSummary({
-				matched: ['API_URL', 'API_URL'],
-				missing: ['API_KEY', 'API_KEY'],
-				created: [],
-				stubbed: [],
-				skipped: [],
-			}),
-		).toEqual({ matched: ['API_URL'], missing: ['API_KEY'], created: [], stubbed: [] });
 	});
 });

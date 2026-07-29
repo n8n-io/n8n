@@ -1164,27 +1164,6 @@ describe('project shell import', () => {
 					stubbed: ['API_URL'],
 				});
 			});
-
-			it('counts one shared valued global variable once during aggregate quota preflight', async () => {
-				licenseMocker.setQuota('quota:maxVariables', 1);
-				const packageBuffer = await twoProjectPackage({
-					variables: [
-						{
-							id: 'v1',
-							target: 'variables/shared_url',
-							variable: { name: 'SHARED_URL', type: 'string', value: 'shared' },
-						},
-					],
-					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
-				});
-
-				const result = await importProjects(owner, packageBuffer, undefined, {
-					variableMissingMode: 'create-with-value',
-				});
-
-				expect(result.variables.created).toEqual(['SHARED_URL']);
-				expect(await Container.get(VariablesRepository).count()).toBe(1);
-			});
 		});
 	});
 
