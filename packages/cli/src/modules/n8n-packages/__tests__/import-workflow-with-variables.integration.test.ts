@@ -20,6 +20,7 @@ import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportPackageRequest } from '../n8n-packages.types';
+import { buildEntityPackageBuffer, serializedWorkflow } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
 import { buildWorkflowReferencingVariables } from './utils/test-builders';
 
@@ -928,6 +929,44 @@ describe('workflow package import — with variables', () => {
 			expect(await variableLayout()).toEqual(
 				expect.arrayContaining([{ key: 'API_URL', scope: targetProject.id, value: '' }]),
 			);
+		});
+
+		// A real export that names a requirement value also bundles the variable file, so the
+		// requirement's own value only ever supplies the value for a hand-made package.
+		it('creates the variable from the manifest requirement value when no variable file is bundled', async () => {
+			const owner = await createOwner();
+			const targetProject = await createTeamProject('Target', owner);
+			const workflow = serializedWorkflow({ id: 'wf-hand-made', name: 'Hand-made' });
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer: await buildEntityPackageBuffer({
+					workflows: [{ target: 'workflows/wf-0', workflow }],
+					manifestExtras: {
+						requirements: {
+							variables: [
+								{
+									name: 'API_URL',
+									value: 'https://hand-made.example.com',
+									usedByWorkflows: [workflow.id],
+								},
+							],
+						},
+					},
+				}),
+				variableMissingMode: 'create-with-value',
+			});
+
+			expect(result.variables).toEqual({
+				matched: [],
+				missing: [],
+				created: ['API_URL'],
+				stubbed: [],
+			});
+			expect(await variableLayout()).toEqual([
+				{ key: 'API_URL', scope: targetProject.id, value: 'https://hand-made.example.com' },
+			]);
 		});
 
 		it('does not overwrite a variable that already resolves in the target project', async () => {
