@@ -1,0 +1,159 @@
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 11,103-108,114-115,120-124,179-180,182-188,209-212,342-359
+packages/cli/src/modules/mcp/__tests__/webhook-utils.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 17,311-359
+packages/cli/src/modules/mcp/tools/search-projects.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 71
+packages/testing/playwright/services/mcp-api-helper.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 130,985,994
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 1-1411
+packages/cli/src/modules/mcp/__tests__/list-tags.tool.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 51,123,141
+packages/testing/playwright/tests/e2e/mcp/mcp-service.spec.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 15,355
+packages/cli/src/modules/mcp/__tests__/workflow-validation.utils.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 11,22,32
+packages/cli/src/modules/agents/utils/agent-config-hash.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 1-19
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 8,17,53,163,272-276,280,287,469-471
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-node-types.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 69
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 9-13,20-21,25,576-624
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 68-69
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 4,46,68,81,214-254
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 2,255-307,531-564
+packages/cli/src/modules/mcp/tools/test-workflow.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 38,83
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 38,56
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 37,42
+packages/cli/src/modules/mcp/tools/workflow-builder/validate-workflow-code.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 112
+packages/cli/src/modules/mcp/__tests__/prepare-workflow-pin-data.tool.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 98,807,834
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.service.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 16-20,121-122
+packages/cli/src/modules/mcp/tools/search-executions.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 70,77,102
+.github/workflows/test-evals-mcp.yml
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 191-193,198
+packages/cli/src/modules/mcp/tools/workflow-builder/search-workflow-nodes.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 27-32,54-68,78,82,93,97,101-107,109
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 1-1535
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 1-171
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/constants.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 118-119
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 60,230-241
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 73
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 387
+packages/cli/src/modules/mcp/tools/get-execution.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 71,74,78,94
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 449-451,468
+packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 412-444,550-574
+packages/cli/src/node-catalog/node-catalog.service.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 212,253,325-339
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.tool.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 15,21-22,169-215
+packages/cli/src/modules/agents/agents.service.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 9,11,23-27,169-195
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 23,38,42-43,59,71
+packages/cli/src/modules/mcp/mcp.controller.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 77-82,90,99-107,199
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 4,6,9,21-25,29-31,39-40,76-140
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 237-254
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 7-18,33-70,131-146
+packages/cli/src/modules/mcp/tools/list-tags.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 65,71,81
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/InstanceAiToolsConnectionModalWrapper.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 137-142,214,219,222,231-252
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 345
+packages/cli/src/modules/mcp/__tests__/mcp.controller.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 331-333,336-348
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-search.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 59-66,91
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 519-546
+packages/@n8n/api-types/src/agents/agent-task.schema.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 16-20
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 1,72-74,130
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 189
+packages/cli/src/events/maps/workflow-publication-metrics.event-map.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 60-65
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-best-practices.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 131
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 1,127,177,382,577,629,706
+packages/cli/src/metrics/prometheus/__tests__/workflow-publication-metrics.service.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 192-197
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 251
+packages/cli/src/modules/mcp/tools/prepare-workflow-pin-data.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 65,72,82
+packages/cli/src/modules/mcp/tools/webhook-utils.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 72,81-84
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 2,152-157,163
+packages/cli/src/modules/mcp/tools/list-credentials.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 121
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 28,380-400
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 3,45-83,108-165
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 786-787,1216,1218-1219,1226
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 101,468,499
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 41-46,49-54,70-80,83,109-124
+packages/cli/src/workflows/publication/__tests__/published-workflow-trigger-deactivator.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 4,6,11-12,21-24,27-30,38-39,45,53-57,138-311
+packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 63,199,223
+packages/cli/src/modules/mcp/__tests__/search-workflow-nodes.tool.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 60
+packages/cli/src/modules/mcp/__tests__/get-execution.tool.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 45,48,190
+packages/cli/src/modules/mcp/__tests__/get-workflow-sdk-reference.tool.test.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 17
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-sdk-reference.tool.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 59
+packages/cli/src/modules/mcp/mcp.constants.ts
+  s_f8ac80ec8b888e::t_5865c42c2b33aa 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a3a5dac990fd233563cd2f30866d78b5055ba0c",
+  "prompts": {},
+  "sessions": {
+    "s_f8ac80ec8b888e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12539761-7291-481f-9835-0a04ece3fce5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
