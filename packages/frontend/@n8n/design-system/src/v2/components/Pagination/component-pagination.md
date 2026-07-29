@@ -15,16 +15,17 @@ Extends Reka UI [`PaginationRootProps`](https://reka-ui.com/docs/components/pagi
 
 **Reka props**
 
-- `page?: number` - Controlled current page (1-indexed). Supports `v-model:page`
+- `page?: number` - Controlled current page (1-indexed). Supports `v-model:page`. When set, the parent value stays authoritative until it accepts `@update:page`
 - `defaultPage?: number` - Initial page in uncontrolled mode. Default: `1`
-- `itemsPerPage?: number` - Number of items per page. Supports `v-model:items-per-page`. Default: `10`
-- `total?: number` - Total number of items across all pages. Default: `0`
+- `itemsPerPage?: number` - Controlled items per page. Supports `v-model:items-per-page`. When set, the parent value stays authoritative until it accepts `@update:items-per-page`
+- `total?: number` - Total number of items across all pages. Optional; when omitted the total label renders empty
 - `siblingCount?: number` - Pages to show on each side of the current page before ellipsis. Default: `1`
 - `showEdges?: boolean` - Always show first and last page buttons (with ellipsis when needed). Default: `true`
 - `disabled?: boolean` - Disable all pagination controls. Default: `false`
 
 **Additional props**
 
+- `defaultItemsPerPage?: number` - Initial items-per-page in uncontrolled mode. Default: `10`
 - `pageSizes?: number[]` - Options for the page size selector. Default: `[10, 20, 30, 40, 50, 100]`
 - `showTotal?: boolean` - Show the total item count. Default: `true`
 - `showSizes?: boolean` - Show the page size selector. Default: `true`
@@ -65,7 +66,7 @@ const itemsPerPage = ref(20)
 </template>
 ```
 
-**Uncontrolled page:**
+**Uncontrolled:**
 ```vue
 <script setup lang="ts">
 import { N8nPagination2 } from '@n8n/design-system'
@@ -74,7 +75,7 @@ import { N8nPagination2 } from '@n8n/design-system'
 <template>
   <N8nPagination2
     :default-page="1"
-    :items-per-page="20"
+    :default-items-per-page="20"
     :total="100"
   />
 </template>

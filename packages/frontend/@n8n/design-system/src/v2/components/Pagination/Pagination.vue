@@ -36,13 +36,13 @@ const $style = useCssModule();
 
 const props = withDefaults(defineProps<PaginationProps>(), {
 	size: 'medium',
-	itemsPerPage: 10,
 	pageSizes: () => [10, 20, 30, 40, 50, 100],
 	showTotal: true,
 	showSizes: true,
 	showJumper: true,
 	hideOnSinglePage: false,
 	defaultPage: 1,
+	defaultItemsPerPage: 10,
 	disabled: false,
 	siblingCount: 1,
 	showEdges: true,
@@ -55,13 +55,25 @@ const { t } = useI18n();
 
 const rootProps = useForwardProps(reactivePick(props, 'disabled', 'showEdges', 'siblingCount'));
 
-// Local page state is only for uncontrolled mode; a supplied `page` stays authoritative
-const isControlled = computed(() => props.page !== undefined);
+function resolveItemsPerPageDefault(value: unknown): number {
+	return typeof value === 'number' && Number.isFinite(value) ? value : 10;
+}
+
+// Local state only for uncontrolled mode; supplied props stay authoritative until the parent updates them
+const isPageControlled = computed(() => props.page !== undefined);
 const uncontrolledPage = ref(props.defaultPage);
 const currentPage = computed(() => {
 	if (props.page !== undefined) return props.page;
 	return uncontrolledPage.value;
 });
+
+const isItemsPerPageControlled = computed(() => props.itemsPerPage !== undefined);
+const uncontrolledItemsPerPage = ref(resolveItemsPerPageDefault(props.defaultItemsPerPage));
+const currentItemsPerPage = computed(() => {
+	if (props.itemsPerPage !== undefined) return props.itemsPerPage;
+	return uncontrolledItemsPerPage.value;
+});
+
 const jumperValue = ref(String(currentPage.value));
 const jumperInputRef = useTemplateRef<HTMLInputElement>('jumperInput');
 
@@ -94,14 +106,14 @@ onMounted(() => {
 
 function resolvedPageCount() {
 	if (props.pageCount !== undefined) return props.pageCount;
-	if (!props.total || !props.itemsPerPage) return 1;
-	return Math.ceil(props.total / props.itemsPerPage);
+	if (!props.total || !currentItemsPerPage.value) return 1;
+	return Math.ceil(props.total / currentItemsPerPage.value);
 }
 
 // pageCount takes precedence over total per DS-323
 function resolvedTotalItems() {
 	if (props.pageCount !== undefined) {
-		return props.pageCount * props.itemsPerPage;
+		return props.pageCount * currentItemsPerPage.value;
 	}
 	if (props.total !== undefined) return props.total;
 	return 0;
@@ -128,7 +140,7 @@ function pageSizeItems() {
 
 function handlePageUpdate(newPage: number) {
 	if (props.disabled) return;
-	if (!isControlled.value) {
+	if (!isPageControlled.value) {
 		uncontrolledPage.value = newPage;
 	}
 	emit('update:page', newPage);
@@ -138,6 +150,9 @@ function handleItemsPerPageUpdate(newSize: number | string) {
 	if (props.disabled) return;
 
 	const size = typeof newSize === 'string' ? parseInt(newSize, 10) : newSize;
+	if (!isItemsPerPageControlled.value) {
+		uncontrolledItemsPerPage.value = size;
+	}
 	emit('update:itemsPerPage', size);
 	handlePageUpdate(1);
 }
@@ -160,8 +175,7 @@ function commitJumperValue() {
 
 	handlePageUpdate(targetPage);
 
-	// Controlled: keep jumper aligned with the supplied page until the parent accepts
-	if (isControlled.value) {
+	if (isPageControlled.value) {
 		jumperValue.value = String(currentPage.value);
 	}
 }
@@ -178,17 +192,20 @@ function onJumperFocus(event: FocusEvent) {
 	input.select();
 
 	// Click-focus: mouseup after focus collapses select() to a caret. Block the next one.
-	const onMouseUp = (mouseEvent: MouseEvent) => {
-		mouseEvent.preventDefault();
-		input.select();
-		cleanup();
+	const listeners = {
+		onMouseUp: (mouseEvent: MouseEvent) => {
+			mouseEvent.preventDefault();
+			input.select();
+			input.removeEventListener('mouseup', listeners.onMouseUp);
+			input.removeEventListener('blur', listeners.onBlur);
+		},
+		onBlur: () => {
+			input.removeEventListener('mouseup', listeners.onMouseUp);
+			input.removeEventListener('blur', listeners.onBlur);
+		},
 	};
-	const cleanup = () => {
-		input.removeEventListener('mouseup', onMouseUp);
-		input.removeEventListener('blur', cleanup);
-	};
-	input.addEventListener('mouseup', onMouseUp);
-	input.addEventListener('blur', cleanup);
+	input.addEventListener('mouseup', listeners.onMouseUp);
+	input.addEventListener('blur', listeners.onBlur);
 }
 
 function handlePagerKeydown(event: KeyboardEvent) {
@@ -235,10 +252,10 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		</div>
 
 		<PaginationRoot
-			v-slot="{ page: rootPage, pageCount }"
+			v-slot="{ page: rootPage, pageCount: rootPageCount }"
 			v-bind="rootProps"
 			:page="currentPage"
-			:items-per-page="itemsPerPage"
+			:items-per-page="currentItemsPerPage"
 			:total="resolvedTotalItems()"
 			@update:page="handlePageUpdate"
 		>
@@ -285,13 +302,13 @@ function handlePagerKeydown(event: KeyboardEvent) {
 				</template>
 
 				<PaginationNext as-child>
-					<slot name="next" :disabled="isNextDisabled(rootPage, pageCount)">
+					<slot name="next" :disabled="isNextDisabled(rootPage, rootPageCount)">
 						<N8nButton
 							variant="ghost"
 							icon-only
 							icon="chevron-right"
 							:size="size"
-							:disabled="isNextDisabled(rootPage, pageCount)"
+							:disabled="isNextDisabled(rootPage, rootPageCount)"
 							:aria-label="t('pagination.nextPage')"
 							data-test-id="pagination-next"
 						/>
@@ -303,7 +320,7 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		<N8nSelect
 			v-if="showSizes"
 			:class="$style.pageSizes"
-			:model-value="String(itemsPerPage)"
+			:model-value="String(currentItemsPerPage)"
 			:items="pageSizeItems()"
 			:size="size"
 			:disabled="disabled"

@@ -265,6 +265,56 @@ describe('v2/components/Pagination', () => {
 			});
 		});
 
+		it('should keep the supplied itemsPerPage until the parent accepts the update', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					page: 1,
+					itemsPerPage: 10,
+					total: 100,
+				},
+			});
+
+			await userEvent.click(wrapper.getByRole('combobox'));
+
+			await waitFor(async () => {
+				await userEvent.click(wrapper.getByRole('option', { name: '20' }));
+			});
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:itemsPerPage')?.[0]).toEqual([20]);
+			});
+			expect(wrapper.getByRole('combobox')).toHaveTextContent('10');
+
+			await wrapper.rerender({
+				page: 1,
+				itemsPerPage: 20,
+				total: 100,
+			});
+
+			expect(wrapper.getByRole('combobox')).toHaveTextContent('20');
+		});
+
+		it('should support uncontrolled mode via defaultItemsPerPage', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					defaultPage: 1,
+					defaultItemsPerPage: 10,
+					total: 100,
+				},
+			});
+
+			await userEvent.click(wrapper.getByRole('combobox'));
+
+			await waitFor(async () => {
+				await userEvent.click(wrapper.getByRole('option', { name: '20' }));
+			});
+
+			await waitFor(() => {
+				expect(wrapper.getByRole('combobox')).toHaveTextContent('20');
+				expect(wrapper.emitted('update:itemsPerPage')?.[0]).toEqual([20]);
+			});
+		});
+
 		it('should reset to page 1 when page size changes', async () => {
 			const wrapper = render(Pagination, {
 				props: {
@@ -368,6 +418,44 @@ describe('v2/components/Pagination', () => {
 			});
 			expect(wrapper.emitted('update:page')).toBeFalsy();
 		});
+
+		it('should keep jumper aligned with the supplied page when the parent does not accept the update', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					page: 1,
+					total: 100,
+					itemsPerPage: 10,
+				},
+			});
+
+			const input = wrapper.getByTestId('pagination-jumper-input');
+			await userEvent.clear(input);
+			await userEvent.type(input, '5');
+			await userEvent.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:page')?.[0]).toEqual([5]);
+			});
+			expect(input).toHaveValue('1');
+			expect(wrapper.getByText('1')).toHaveAttribute('data-selected');
+		});
+
+		it('should strip non-digit characters from jumper input', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					page: 1,
+					total: 100,
+					itemsPerPage: 10,
+				},
+			});
+
+			const input = wrapper.getByTestId('pagination-jumper-input');
+			await userEvent.clear(input);
+			await userEvent.type(input, '1a2b3');
+
+			expect(input).toHaveValue('123');
+			expect(wrapper.emitted('update:page')).toBeFalsy();
+		});
 	});
 
 	describe('keyboard navigation', () => {
@@ -434,7 +522,7 @@ describe('v2/components/Pagination', () => {
 		});
 	});
 
-	describe('siblingCount', () => {
+	describe('siblingCount and showEdges', () => {
 		it('should limit visible page buttons with siblingCount', () => {
 			const withFew = render(Pagination, {
 				props: {
@@ -461,6 +549,26 @@ describe('v2/components/Pagination', () => {
 
 			expect(fewCount).toBeLessThan(manyCount);
 		});
+
+		it('should omit first and last page buttons when showEdges is false', () => {
+			const wrapper = render(Pagination, {
+				props: {
+					page: 10,
+					total: 200,
+					itemsPerPage: 10,
+					siblingCount: 1,
+					showEdges: false,
+				},
+			});
+
+			const pageNumbers = wrapper
+				.queryAllByTestId('pagination-item')
+				.map((item) => item.textContent?.trim());
+
+			expect(pageNumbers).not.toContain('1');
+			expect(pageNumbers).not.toContain('20');
+			expect(pageNumbers).toContain('10');
+		});
 	});
 
 	describe('edge cases', () => {
@@ -484,6 +592,23 @@ describe('v2/components/Pagination', () => {
 			});
 
 			expect(wrapper.getByText('5')).toBeInTheDocument();
+		});
+
+		it('should prefer pageCount over total when both are set', () => {
+			const wrapper = render(Pagination, {
+				props: {
+					pageCount: 3,
+					total: 1000,
+					itemsPerPage: 10,
+					showEdges: true,
+				},
+			});
+
+			const pageNumbers = wrapper
+				.queryAllByTestId('pagination-item')
+				.map((item) => item.textContent?.trim());
+
+			expect(pageNumbers).toEqual(['1', '2', '3']);
 		});
 	});
 

@@ -11,7 +11,8 @@ export default {
 	argTypes: {
 		page: {
 			control: 'number',
-			description: 'Controlled current page (1-indexed). Supports v-model:page.',
+			description:
+				'Controlled current page (1-indexed). Supports v-model:page. When set, stays authoritative until the parent accepts the update.',
 		},
 		defaultPage: {
 			control: 'number',
@@ -19,7 +20,12 @@ export default {
 		},
 		itemsPerPage: {
 			control: 'number',
-			description: 'Number of items per page. Supports v-model:items-per-page.',
+			description:
+				'Controlled items per page. Supports v-model:items-per-page. When set, stays authoritative until the parent accepts the update.',
+		},
+		defaultItemsPerPage: {
+			control: 'number',
+			description: 'Initial items-per-page in uncontrolled mode',
 		},
 		pageSizes: {
 			control: 'object',
@@ -39,7 +45,7 @@ export default {
 		},
 		total: {
 			control: 'number',
-			description: 'Total number of items',
+			description: 'Total number of items. Optional; when omitted the total label renders empty.',
 		},
 		pageCount: {
 			control: 'number',
@@ -383,12 +389,12 @@ export const ControlledUncontrolled: Story = {
 					Uncontrolled
 				</h3>
 				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-					Initial page via <code>default-page</code>. The component owns page state after mount.
+					Initial values via <code>default-page</code> and <code>default-items-per-page</code>. The component owns state after mount.
 				</p>
 				<Pagination
 					key="uncontrolled"
 					:default-page="3"
-					:items-per-page="10"
+					:default-items-per-page="10"
 					:total="100"
 					:page-sizes="[10, 20, 50]"
 				/>
