@@ -163,6 +163,12 @@ const agentChatMessageSchema = z
 		path: ['message'],
 	});
 
+/**
+ * Validate via `parse`/`safeParse` (what the controller registry's `@Body`
+ * middleware calls) — they apply the refined schema. The inherited `schema`
+ * static cannot hold the refinement (a `ZodEffects` is not assignable to the
+ * base class's `ZodObject`) and misses the text-or-attachment invariant.
+ */
 export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 	constructor(data: z.infer<typeof agentChatMessageSchema>) {
 		super(agentChatMessageSchema.parse(data));
