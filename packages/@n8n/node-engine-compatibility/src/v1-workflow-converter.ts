@@ -183,8 +183,14 @@ export class V1WorkflowConverter {
 	 *
 	 * Example with a nested loop:
 	 *
-	 *   Trigger -> Outer -> Inner -> Body -> Inner (return)
-	 *                       Inner -> AfterInner -> Outer (return)
+	 *   ┌───────┐   ┌─────┐    ┌─────┐    ┌──────────┐
+	 *   │Trigger├──►│     ├───►│     ├───►│AfterInner│
+	 *   └───────┘   │Outer│    │Inner│    └────┬─────┘
+	 *               │     │    │     │ ┌────┐  │
+	 *               │     │    │     ├►│Body│  │
+	 *               └──▲──┘    └──▲──┘ └──┬─┘  │
+	 *                  │          └(back)─┘    │
+	 *                  └───────(back)──────────┘
 	 *
 	 *   Round 1 groups {Outer, Inner, Body, AfterInner} with entry Outer, then
 	 *   marks and cuts AfterInner -> Outer. Round 2 groups {Inner, Body} with
