@@ -2,11 +2,17 @@ import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { TagRepository, WorkflowRepository, WorkflowTagMappingRepository } from '@n8n/db';
+import {
+	FolderTagMappingRepository,
+	TagRepository,
+	WorkflowRepository,
+	WorkflowTagMappingRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
@@ -476,6 +482,271 @@ describe('workflow package import — with tags', () => {
 				skipped: ['prod'],
 			});
 			expect(await tagIdsOf(result.workflows[0].localId)).toEqual([]);
+			expect(await tagRepository.find()).toEqual([
+				expect.objectContaining({ id: holder.id, name: 'prod' }),
+			]);
+		});
+
+		it('reconciles the target tag to the source id on name collision under rename, moving existing workflow taggings to it', async () => {
+			const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
+			await tagRepository.delete(tag.id);
+			const holder = await createTag({ name: 'prod' });
+			const targetProject = await createTeamProject('Target', owner);
+			const preExisting = await createWorkflow({ name: 'Pre-existing' }, targetProject);
+			await assignTagToWorkflow(holder, preExisting);
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				tagConflictPolicy: 'rename',
+			});
+
+			expect(result.tags).toEqual({
+				matched: [],
+				created: [],
+				renamed: [],
+				reconciled: ['prod'],
+				skipped: [],
+			});
+			expect(await tagRepository.find()).toEqual([
+				expect.objectContaining({ id: tag.id, name: 'prod', createdAt: holder.createdAt }),
+			]);
+			expect(await tagIdsOf(preExisting.id)).toEqual([tag.id]);
+			expect(await tagIdsOf(result.workflows[0].localId)).toEqual([tag.id]);
+		});
+
+		it('is stable on re-import: reuses the reconciled tag, creates no duplicate, raises no conflict', async () => {
+			const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
+			await tagRepository.delete(tag.id);
+			await createTag({ name: 'prod' });
+			const targetProject = await createTeamProject('Target', owner);
+
+			const first = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				tagConflictPolicy: 'rename',
+			});
+			const second = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				tagConflictPolicy: 'rename',
+				workflowConflictPolicy: 'new-version',
+			});
+
+			expect(first.tags.reconciled).toEqual(['prod']);
+			expect(second.tags).toEqual({
+				matched: ['prod'],
+				created: [],
+				renamed: [],
+				reconciled: [],
+				skipped: [],
+			});
+			expect(await tagRepository.count()).toBe(1);
+			expect(await tagIdsOf(second.workflows[0].localId)).toEqual([tag.id]);
+		});
+
+		it('moves folder taggings along with the reconciled tag', async () => {
+			const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
+			await tagRepository.delete(tag.id);
+			const holder = await createTag({ name: 'prod' });
+			const targetProject = await createTeamProject('Target', owner);
+			const folder = await createFolder(targetProject, { name: 'Tagged folder', tags: [holder] });
+
+			await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				tagConflictPolicy: 'rename',
+			});
+
+			expect(await Container.get(FolderTagMappingRepository).find()).toEqual([
+				expect.objectContaining({ folderId: folder.id, tagId: tag.id }),
+			]);
+		});
+
+		it('gates an import that would reconcile a tag on the tag:update API key scope', async () => {
+			const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
+			await tagRepository.delete(tag.id);
+			const holder = await createTag({ name: 'prod' });
+			const targetProject = await createTeamProject('Target', owner);
+
+			await expect(
+				importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer,
+					tagConflictPolicy: 'rename',
+					apiKeyScopes: ['workflow:import', 'tag:create'],
+				}),
+			).rejects.toBeInstanceOf(ForbiddenError);
+			expect(await tagRepository.find()).toEqual([
+				expect.objectContaining({ id: holder.id, name: 'prod' }),
+			]);
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				tagConflictPolicy: 'rename',
+				apiKeyScopes: ['workflow:import', 'tag:create', 'tag:update'],
+			});
+
+			expect(result.tags.reconciled).toEqual(['prod']);
+			expect(await tagIdsOf(result.workflows[0].localId)).toEqual([tag.id]);
+		});
+
+		it('blocks two package tags that would reconcile onto the same target tag', async () => {
+			const workflow = serializedWorkflow({
+				id: 'wf-0',
+				name: 'Workflow 0',
+				tagIds: ['tag-a', 'tag-b'],
+			});
+			const packageBuffer = await buildEntityPackageBuffer({
+				workflows: [{ target: 'workflows/wf-0', workflow }],
+				manifestExtras: {
+					requirements: {
+						tags: [
+							{ id: 'tag-a', name: 'prod', usedByWorkflows: ['wf-0'] },
+							{ id: 'tag-b', name: ' prod ', usedByWorkflows: ['wf-0'] },
+						],
+					},
+				},
+			});
+			const holder = await createTag({ name: 'prod' });
+			const targetProject = await createTeamProject('Target', owner);
+
+			let caught: unknown;
+			await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				tagConflictPolicy: 'rename',
+			}).catch((error: unknown) => (caught = error));
+
+			expect(caught).toBeInstanceOf(ConflictError);
+			expect(caught).toMatchObject({
+				meta: {
+					issues: [
+						expect.objectContaining({
+							type: 'tag-unresolved',
+							kind: 'name-collision',
+							sourceId: 'tag-a',
+							name: 'prod',
+							existingTagId: holder.id,
+							usedByWorkflows: ['wf-0'],
+						}),
+						expect.objectContaining({
+							type: 'tag-unresolved',
+							kind: 'name-collision',
+							sourceId: 'tag-b',
+							name: 'prod',
+							existingTagId: holder.id,
+							usedByWorkflows: ['wf-0'],
+						}),
+					],
+				},
+			});
+			expect(await tagRepository.find()).toEqual([
+				expect.objectContaining({ id: holder.id, name: 'prod' }),
+			]);
+		});
+
+		it('blocks a reconcile whose target tag is also matched by the package', async () => {
+			const holder = await createTag({ name: 'prod' });
+			const workflow = serializedWorkflow({
+				id: 'wf-0',
+				name: 'Workflow 0',
+				tagIds: [holder.id, 'tag-x'],
+			});
+			const packageBuffer = await buildEntityPackageBuffer({
+				workflows: [{ target: 'workflows/wf-0', workflow }],
+				manifestExtras: {
+					requirements: {
+						tags: [
+							{ id: holder.id, name: 'prod', usedByWorkflows: ['wf-0'] },
+							{ id: 'tag-x', name: 'prod', usedByWorkflows: ['wf-0'] },
+						],
+					},
+				},
+			});
+			const targetProject = await createTeamProject('Target', owner);
+
+			let caught: unknown;
+			await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				tagConflictPolicy: 'rename',
+			}).catch((error: unknown) => (caught = error));
+
+			expect(caught).toBeInstanceOf(ConflictError);
+			expect(caught).toMatchObject({
+				meta: {
+					issues: [
+						expect.objectContaining({
+							type: 'tag-unresolved',
+							kind: 'name-collision',
+							sourceId: 'tag-x',
+							name: 'prod',
+							existingTagId: holder.id,
+							usedByWorkflows: ['wf-0'],
+						}),
+					],
+				},
+			});
+			expect(await tagRepository.find()).toEqual([
+				expect.objectContaining({ id: holder.id, name: 'prod' }),
+			]);
+		});
+
+		it('blocks a reconcile whose target tag the package also renames', async () => {
+			const holder = await createTag({ name: 'prod' });
+			const workflow = serializedWorkflow({
+				id: 'wf-0',
+				name: 'Workflow 0',
+				tagIds: [holder.id, 'tag-x'],
+			});
+			const packageBuffer = await buildEntityPackageBuffer({
+				workflows: [{ target: 'workflows/wf-0', workflow }],
+				manifestExtras: {
+					requirements: {
+						tags: [
+							{ id: holder.id, name: 'staging', usedByWorkflows: ['wf-0'] },
+							{ id: 'tag-x', name: 'prod', usedByWorkflows: ['wf-0'] },
+						],
+					},
+				},
+			});
+			const targetProject = await createTeamProject('Target', owner);
+			const workflowsBefore = await workflowRepository.count();
+
+			let caught: unknown;
+			await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				tagConflictPolicy: 'rename',
+			}).catch((error: unknown) => (caught = error));
+
+			expect(caught).toBeInstanceOf(ConflictError);
+			expect(caught).toMatchObject({
+				meta: {
+					issues: [
+						expect.objectContaining({
+							type: 'tag-unresolved',
+							kind: 'name-collision',
+							sourceId: 'tag-x',
+							name: 'prod',
+							existingTagId: holder.id,
+							usedByWorkflows: ['wf-0'],
+						}),
+					],
+				},
+			});
+			expect(await workflowRepository.count()).toBe(workflowsBefore);
 			expect(await tagRepository.find()).toEqual([
 				expect.objectContaining({ id: holder.id, name: 'prod' }),
 			]);

@@ -21,10 +21,12 @@ import { Container } from '@n8n/di';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
@@ -388,6 +390,107 @@ describe('project shell import', () => {
 			),
 		);
 		expect(mappings).toHaveLength(2);
+	});
+
+	it('reconciles a collided tag shared across two projects exactly once', async () => {
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/brie/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa', tagIds: ['TAG1'] }),
+				},
+				{
+					target: 'projects/stilton/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb', tagIds: ['TAG1'] }),
+				},
+			],
+			manifestExtras: {
+				requirements: {
+					tags: [{ id: 'TAG1', name: 'prod', usedByWorkflows: ['WFA', 'WFB'] }],
+				},
+			},
+		});
+		await createTag({ name: 'prod' });
+
+		const result = await importProjects(owner, packageBuffer, undefined, {
+			tagConflictPolicy: 'rename',
+		});
+
+		expect(result.tags).toEqual({
+			matched: [],
+			created: [],
+			renamed: [],
+			reconciled: ['prod'],
+			skipped: [],
+		});
+		expect(await Container.get(TagRepository).find()).toEqual([
+			expect.objectContaining({ id: 'TAG1', name: 'prod' }),
+		]);
+		const mappings = await Container.get(WorkflowTagMappingRepository).find();
+		expect(mappings.map(({ workflowId, tagId }) => ({ workflowId, tagId }))).toEqual(
+			expect.arrayContaining(
+				result.workflows.map(({ localId }) => ({ workflowId: localId, tagId: 'TAG1' })),
+			),
+		);
+		expect(mappings).toHaveLength(2);
+	});
+
+	it('blocks a package whose projects reconcile and rename the same target tag', async () => {
+		const holder = await createTag({ name: 'prod' });
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/brie/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa', tagIds: ['TAG-X'] }),
+				},
+				{
+					target: 'projects/stilton/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb', tagIds: [holder.id] }),
+				},
+			],
+			manifestExtras: {
+				requirements: {
+					tags: [
+						{ id: 'TAG-X', name: 'prod', usedByWorkflows: ['WFA'] },
+						{ id: holder.id, name: 'staging', usedByWorkflows: ['WFB'] },
+					],
+				},
+			},
+		});
+
+		let caught: unknown;
+		await importProjects(owner, packageBuffer, undefined, { tagConflictPolicy: 'rename' }).catch(
+			(error: unknown) => (caught = error),
+		);
+
+		expect(caught).toBeInstanceOf(ConflictError);
+		expect(caught).toMatchObject({
+			meta: {
+				issues: [
+					expect.objectContaining({
+						type: 'tag-unresolved',
+						kind: 'name-collision',
+						sourceId: 'TAG-X',
+						name: 'prod',
+						existingTagId: holder.id,
+						usedByWorkflows: ['WFA'],
+					}),
+				],
+			},
+		});
+		expect(await findProject('P1')).toBeNull();
+		expect(await findProject('P2')).toBeNull();
+		expect(await Container.get(TagRepository).find()).toEqual([
+			expect.objectContaining({ id: holder.id, name: 'prod' }),
+		]);
 	});
 
 	it('reuses the project and folder and updates the workflow on re-import', async () => {
