@@ -1,22 +1,19 @@
-import { createPinia, setActivePinia } from 'pinia';
-import { useVersionsStore } from './versions.store';
-import type { ModalOpeners } from '@/Interface';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import type { IVersionNotificationSettings } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
+import { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@n8n/frontend-constants/versions';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import type { Version, WhatsNewArticle, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { createPinia, setActivePinia } from 'pinia';
+import { mock } from 'vitest-mock-extended';
+
+import type { ModalOpeners } from './modalOpeners';
 import { useSettingsStore } from './settings.store';
-import { useToast } from '@/app/composables/useToast';
-import { reactive } from 'vue';
-import { VERSIONS_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/app/constants';
+import { useRootStore } from './useRootStore';
+import { useUsersStore } from './users.store';
+import { useVersionsStore } from './versions.store';
 
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRoute: () => reactive({ name: VIEWS.HOMEPAGE }),
-}));
-
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showToast = vi.fn();
 	const showMessage = vi.fn();
 	return {
@@ -29,7 +26,19 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/features/settings/users/users.store');
+vi.mock('./users.store');
+
+/**
+ * Stub `useUsersStore` with just the `currentUser` this store reads —
+ * `shouldShowWhatsNewCallout` only looks at `createdAt`.
+ */
+const mockCurrentUser = (currentUser: Partial<IUser> | null) => {
+	vi.mocked(useUsersStore).mockReturnValue(
+		mock<ReturnType<typeof useUsersStore>>({
+			currentUser: currentUser && mock<IUser>(currentUser),
+		}),
+	);
+};
 
 const settings: IVersionNotificationSettings = {
 	enabled: true,
@@ -156,8 +165,7 @@ describe('versions.store', () => {
 
 		it('should dismiss the callout as soon as it is shown', async () => {
 			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+			mockCurrentUser(null);
 
 			const rootStore = useRootStore();
 			rootStore.setVersionCli(currentVersionName);
@@ -178,8 +186,7 @@ describe('versions.store', () => {
 
 		it("should open the what's new modal via the registered opener when the callout is clicked", async () => {
 			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+			mockCurrentUser(null);
 
 			const rootStore = useRootStore();
 			rootStore.setVersionCli(currentVersionName);
@@ -629,8 +636,7 @@ describe('shouldShowWhatsNewCallout', () => {
 	});
 
 	it('returns false if there are no articles', () => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+		mockCurrentUser(null);
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [];
@@ -638,8 +644,7 @@ describe('shouldShowWhatsNewCallout', () => {
 	});
 
 	it('returns true if user has no createdAt and not all articles are dismissed', () => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+		mockCurrentUser(null);
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [makeArticle()];
@@ -647,8 +652,7 @@ describe('shouldShowWhatsNewCallout', () => {
 	});
 
 	it('returns false if all articles are dismissed', () => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+		mockCurrentUser(null);
 		versionsStore = useVersionsStore();
 		versionsStore.whatsNew.items = [makeArticle()];
 		versionsStore.dismissWhatsNewCallout();
@@ -657,10 +661,7 @@ describe('shouldShowWhatsNewCallout', () => {
 
 	it('returns true if user createdAt is before article updatedAt', () => {
 		const now = Date.now();
-		vi.mocked(useUsersStore).mockReturnValue({
-			currentUser: { createdAt: new Date(now - 10000).toISOString() },
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} as any);
+		mockCurrentUser({ createdAt: new Date(now - 10000).toISOString() });
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [makeArticle({ updatedAt: new Date(now).toISOString() })];
@@ -669,10 +670,7 @@ describe('shouldShowWhatsNewCallout', () => {
 
 	it('returns false if user createdAt is after article updatedAt', () => {
 		const now = Date.now();
-		vi.mocked(useUsersStore).mockReturnValue({
-			currentUser: { createdAt: new Date(now).toISOString() },
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} as any);
+		mockCurrentUser({ createdAt: new Date(now).toISOString() });
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [
@@ -682,10 +680,7 @@ describe('shouldShowWhatsNewCallout', () => {
 	});
 
 	it('handles missing updatedAt on article', () => {
-		vi.mocked(useUsersStore).mockReturnValue({
-			currentUser: { createdAt: new Date().toISOString() },
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} as any);
+		mockCurrentUser({ createdAt: new Date().toISOString() });
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [makeArticle({ updatedAt: undefined })];
