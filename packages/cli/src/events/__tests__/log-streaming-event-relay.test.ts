@@ -169,6 +169,7 @@ describe('LogStreamingEventRelay', () => {
 					credentials: 1,
 					dataTables: 1,
 					variables: 1,
+					tags: 1,
 				},
 			};
 

@@ -1,8 +1,9 @@
 import type { VariableApplyResult, VariableImportPlan } from '../entities/variable/variable.types';
 import type {
+	PersistedWorkflowOutcome,
 	PreparedWorkflow,
-	WorkflowImportOutcome,
 } from '../entities/workflow/workflow-import.types';
+import type { PackagePublishingResults } from '../entities/workflow/workflow-publisher';
 import { serializeBindings } from '../n8n-packages.types';
 import type {
 	ImportBindingMap,
@@ -26,20 +27,32 @@ export function toPackageSummary(manifest: PackageManifest): ImportPackageSummar
 	};
 }
 
+/**
+ * One row per imported workflow, folding in what the publish phase decided for it. Ordered as the
+ * workflows were written, not as they were published (dependencies first), which is an
+ * implementation detail. Publishing reloads the workflow, so its copy wins where it has one; a
+ * workflow the phase never acted on — a skip — keeps the state it had and reports `unchanged`.
+ */
 export function toImportedWorkflowSummaries(
-	outcomes: WorkflowImportOutcome[],
+	outcomes: PersistedWorkflowOutcome[],
 	projectId: string,
+	published: PackagePublishingResults,
 ): ImportedWorkflowSummary[] {
-	return outcomes.map(({ workflow, sourceWorkflowId, status, publishing }) => ({
-		sourceWorkflowId,
-		localId: workflow.id,
-		name: workflow.name,
-		projectId,
-		parentFolderId: workflow.parentFolder?.id ?? null,
-		activeVersionId: workflow.activeVersionId ?? null,
-		publishing,
-		status,
-	}));
+	return outcomes.map(({ workflow, sourceWorkflowId, status }) => {
+		const result = published.get(sourceWorkflowId);
+		const current = result?.workflow ?? workflow;
+
+		return {
+			sourceWorkflowId,
+			localId: current.id,
+			name: current.name,
+			projectId,
+			parentFolderId: current.parentFolder?.id ?? null,
+			activeVersionId: current.activeVersionId ?? null,
+			publishing: result?.publishing ?? { state: 'unchanged' },
+			status,
+		};
+	});
 }
 
 export function buildImportResult(input: {

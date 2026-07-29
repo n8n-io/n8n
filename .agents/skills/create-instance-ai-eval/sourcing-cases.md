@@ -56,7 +56,7 @@ connected.)
 5. **Push it to a curated suite** (don't commit the JSON) with
    `eval:langtracer-push` — see
    [Push to a lang-tracer suite](SKILL.md#push-to-a-lang-tracer-suite). Exception:
-   seeded cases (`seedThread` / `seedFile` / `priorConversation`) can't be pushed —
+   seeded cases (`seedThread` / `conversationSeed` / `priorConversation`) can't be pushed —
    the case-write API rejects every seeding mode, so the push lists them under
    `skipped:`. And a `seedThread` case shouldn't be committed either — it dies when
    its trace is pruned or deleted — so it has no durable home; that's exactly why

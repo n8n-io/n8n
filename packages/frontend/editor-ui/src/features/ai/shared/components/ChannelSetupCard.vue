@@ -216,7 +216,6 @@ watch(
 				v-if="integrationType === 'slack'"
 				ref="channelSetupRef"
 				v-model="selectedCredentials.slack"
-				mode="setup"
 				:connected="isConnected"
 				:is-published="false"
 				:setup-slack-app="setupSlackApp"
