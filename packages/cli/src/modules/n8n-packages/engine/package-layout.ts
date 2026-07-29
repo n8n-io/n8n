@@ -35,6 +35,7 @@ function variableBundleEntry(
 	const topLevel = named.filter((entry) => entry.target.startsWith('variables/'));
 	const winning = scoped.length > 0 ? scoped : topLevel;
 
+	// Only a hand-made package ties: the exporter blocks a same-directory name collision.
 	if (winning.length > 1) {
 		throw new UserError(`Package contains ambiguous variable entries for "${name}".`);
 	}
