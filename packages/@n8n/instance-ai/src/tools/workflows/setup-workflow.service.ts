@@ -133,12 +133,8 @@ export async function getValidCredentialTypes(
 }
 
 /**
- * Parameter values that satisfy a credential's `displayOptions.show`, i.e. make it
- * the active slot (e.g. `{ authentication: ['apiKey'] }` → `{ authentication: 'apiKey' }`).
- * Thin adapter over the n8n-workflow helper for the loosely-typed descriptions the
- * node service returns. The first `show` value is only a switching fallback — never
- * apply these when the credential is already active (see
- * {@link getCredentialActivationState}), or an already-valid value would be rewritten.
+ * Adapter over the n8n-workflow helper of the same name for the loosely-typed
+ * descriptions the node service returns; see it for semantics.
  */
 export function getCredentialActivationParameters(
 	displayOptions: Record<string, unknown> | undefined,
@@ -175,11 +171,10 @@ export function getCredentialActivationState(
 }
 
 /**
- * Fallback for a slot whose credential type n8n credits doesn't support (e.g. the
- * node's default auth points at an OAuth2 type): the first declared sibling type
- * that is supported, unassigned on the node, not backed by a stored user
- * credential, and reachable by a parameter switch. Mirrors the MCP builder's
- * `resolveSupportedCredentialActivation` fallback.
+ * Fallback for a slot whose credential type n8n credits doesn't support: the
+ * first declared sibling type that is supported, unassigned, not backed by a
+ * stored user credential, and reachable by a parameter switch. The async/loosely-
+ * typed counterpart of the shared `resolveSupportedCredentialActivation`.
  */
 export async function resolveSupportedSiblingCredentialType(
 	context: InstanceAiContext,

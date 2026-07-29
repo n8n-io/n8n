@@ -2142,15 +2142,11 @@ export function nodeHasOutputType(nodeType: INodeTypeDescription, connectionType
 }
 
 /**
- * Node parameters to write so a credential's `displayOptions.show` is satisfied,
- * i.e. it becomes the active slot (e.g. `{ authentication: ['apiKey'] }` →
- * `{ authentication: 'apiKey' }`). `@version` is not a settable parameter (it
- * gates the node's typeVersion), so it's excluded here — version reachability is
- * enforced by `resolveSupportedCredentialActivation` via `displayParameter`.
- *
- * The first `show` value is only a switching fallback, not a canonical
- * assignment: a credential can be shown by several values, so callers must not
- * apply these parameters when the credential is already active.
+ * Parameters to write so a credential's `displayOptions.show` becomes satisfied,
+ * making it the active slot (e.g. `{ authentication: ['apiKey'] }` →
+ * `{ authentication: 'apiKey' }`). `@version` is excluded — it gates typeVersion,
+ * not a settable parameter. A `show` clause may accept several values; this
+ * returns only the first, so callers must not apply it to an already-active slot.
  */
 export function getCredentialActivationParameters(
 	displayOptions: ICredentialsDisplayOptions | undefined,
@@ -2170,14 +2166,12 @@ export function getCredentialActivationParameters(
 }
 
 /**
- * Resolve the credential type a node should use for an n8n-credits (managed)
+ * Pick the credential type a node should use for a managed (n8n-credits)
  * credential and the parameters that activate it. Prefers `preferredType`, else
- * the first supported declared type. A candidate that is already active under
- * the node's current parameters is returned with no parameter changes, so an
- * already-valid value (e.g. the second entry of a multi-value `show` clause) is
- * never overwritten. Candidates whose display condition the node can't satisfy
- * (e.g. version-gated by `@version`) are skipped; returns `undefined` when none
- * qualifies.
+ * the first supported declared type. An already-active candidate returns empty
+ * parameters, so a valid value (e.g. the second entry of a multi-value `show`
+ * clause) is never overwritten; candidates the node can't display (e.g.
+ * `@version`-gated) are skipped. Returns `undefined` when none qualifies.
  */
 export function resolveSupportedCredentialActivation(
 	nodeTypeDescription: INodeTypeDescription,

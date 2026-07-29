@@ -328,8 +328,7 @@ watch(
 			// the user onto n8n credits. The experiment variant leaves it unselected.
 			if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
 				for (const { type } of types) {
-					// Mirror showAiGatewaySelector: directly-supported types qualify as-is;
-					// otherwise fall back to a supported sibling (whose auth we switch to).
+					// Same rule as showAiGatewaySelector: supported type, or a sibling fallback.
 					const gatewaySupported =
 						aiGateway.isCredentialTypeSupported(type.name) ||
 						resolveGatewayActivation(type.name) !== undefined;
@@ -684,16 +683,14 @@ function isAiGatewayManagedCredentials(credentialType: string): boolean {
 	return aiGateway.isEnabled.value && selected.value[credentialType]?.__aiGatewayManaged === true;
 }
 
-// The credential type + activation parameters n8n credits should use for this
-// row: the shown type when supported, else a supported sibling (whose auth the
-// node must switch to). See `resolveSupportedCredentialActivation`.
+// Credential type + activation parameters n8n credits should use for this row:
+// the shown type if supported, else a supported sibling (whose auth the node
+// switches to). See `resolveSupportedCredentialActivation`.
 //
-// The sibling fallback only applies to hosts that consume the full
-// `credentialSelected` payload and `valueChanged` (NDV, tool config). The
-// setup-flow hosts (setup panel, Instance AI setup — standalone or driven by
-// `overrideCredType`) read the payload by this row's credential type, so a slot
-// moved to a sibling type would register as a deselect and the auth switch
-// would be dropped; for them only the shown type qualifies.
+// The sibling fallback is limited to hosts consuming the full `credentialSelected`
+// payload and `valueChanged` (NDV, tool config). Setup-flow hosts (setup panel,
+// Instance AI — standalone or `overrideCredType`) key the payload by this row's
+// type, so a sibling switch reads as a deselect and the auth change is lost.
 function resolveGatewayActivation(credentialType: string) {
 	if (!nodeType.value) return undefined;
 	const activation = resolveSupportedCredentialActivation(
@@ -714,15 +711,14 @@ function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
 	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
-	// The shown type is already displayed, so if it's supported show the toggle
-	// directly; otherwise fall back to a supported sibling.
+	// Shown type supported → toggle directly; otherwise fall back to a sibling.
 	if (aiGateway.isCredentialTypeSupported(credentialType)) return true;
 	return resolveGatewayActivation(credentialType) !== undefined;
 }
 
 // Persist the parameters that activate the chosen credential type (e.g. switch
-// `authentication`). Writes through the workflow document when available and
-// emits so the host (NDV, setup panel) can sync its own parameter state.
+// `authentication`): write through the workflow document, and emit so hosts that
+// keep their own parameter copy (NDV, setup panel) stay in sync.
 function applyActivationParameters(parameters: INodeParameters): void {
 	const changed = Object.entries(parameters).filter(
 		([name, value]) => props.node.parameters[name] !== value,
@@ -753,9 +749,8 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 	let assignedKind: 'n8n_connect' | 'own' | null = null;
 
 	if (enable) {
-		// When moving the managed slot to a sibling type, drop a stale managed
-		// sentinel from the shown type; a user credential entry stays (inactive),
-		// matching how manual auth switches retain unselected credentials.
+		// Moving the managed slot to a sibling: drop a stale managed sentinel from the
+		// shown type. A user credential stays (inactive), as manual auth switches do.
 		if (effectiveType !== credentialType && credentials[credentialType]?.__aiGatewayManaged) {
 			delete credentials[credentialType];
 		}

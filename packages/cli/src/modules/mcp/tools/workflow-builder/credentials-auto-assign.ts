@@ -22,13 +22,11 @@ import { MCP_CREDENTIALS_AUTOASSIGN_EVENT } from '../../mcp.constants';
 const AI_GATEWAY_CREDENTIAL_NAME = 'n8n credits';
 
 /**
- * Attach the n8n-credits (managed) sentinel to `credentialType` and, when that
- * credential isn't already the active slot, switch the node's parameters so it
- * becomes one. Auth is tied to the managed assignment here so the two can never
- * drift — every managed assignment goes through this function. An already-active
- * slot is left untouched: a credential can be shown by several parameter values,
- * and rewriting a valid value with the first `show` entry would change what the
- * node does.
+ * Attach the managed (n8n-credits) sentinel to `credentialType` and, unless it's
+ * already the active slot, switch the node's parameters so it becomes one. The
+ * single path for every managed assignment, so auth and credential can't drift.
+ * An already-active slot is left untouched — rewriting a valid `show` value would
+ * change what the node does.
  */
 function setManagedCredential(
 	node: INode,
@@ -343,12 +341,9 @@ export async function autoPopulateNodeCredentials(
 					continue;
 				}
 
-				// The shown credential type isn't covered by n8n credits, but the node's
-				// default auth pointing at an unsupported type shouldn't block it: fall
-				// back to a supported sibling type (with no explicit credential on the
-				// node and no stored user credential), assigning the managed sentinel and
-				// switching auth to match. Only reachable with no user credential on this
-				// slot — the branch above returns.
+				// Shown type not covered, but the node's default auth pointing at an
+				// unsupported type shouldn't block it: fall back to a supported sibling
+				// (unassigned, no stored user credential) and switch auth to match.
 				if (eligibility.reason === 'credentialTypeNotCovered') {
 					const activation = resolveSupportedCredentialActivation(
 						nodeTypeDescription,

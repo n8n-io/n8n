@@ -162,12 +162,9 @@ export async function resolveCredentials(
 			hasStoredCredential,
 		);
 
-	// When attaching an n8n-credits credential, switch the node's parameters so that
-	// credential type is the active slot (e.g. set `authentication` to match) — tying
-	// auth to the managed assignment so the node runs against the right credential.
-	// Leaves the node untouched when the slot is already active (never rewrite an
-	// already-valid parameter value) or when no parameter switch can activate it
-	// (e.g. the type is gated to another node version).
+	// Switch the node's parameters so the attached credential type is the active
+	// slot (e.g. set `authentication` to match). No-op when the slot is already
+	// active (never rewrite a valid value) or no switch can reach it (version-gated).
 	const applyManagedAuth = async (node: NodeJSON, credentialType: string): Promise<void> => {
 		let nodeDesc: Awaited<ReturnType<typeof ctx.nodeService.getDescription>> | undefined;
 		try {
@@ -271,10 +268,9 @@ export async function resolveCredentials(
 				}
 			};
 
-			// Prefer n8n credits over mocking when the user has no stored credential
-			// of their own for the type: attach directly when the written type is
-			// gateway-supported, else attach to a supported sibling type (switching
-			// the node's auth to it) and drop the unusable slot.
+			// With no stored credential for the type, prefer n8n credits over mocking:
+			// attach directly if the written type is gateway-supported, else attach to
+			// a supported sibling (switching auth to it) and drop the unusable slot.
 			const mockOrAttachGateway = async () => {
 				if (!hasStoredCredential(key)) {
 					if (await isGatewayCredentialType(key)) {
@@ -328,15 +324,11 @@ export async function resolveCredentials(
 	}
 
 	// Second pass — required-but-omitted credentials. The first pass only visits
-	// slots the LLM actually wrote in `node.credentials`; a node built with no
-	// slot for a type it requires is skipped there, then reaches post-build setup
-	// analysis credential-less and surfaces a setup card. Here the required types
-	// come from the node description (getValidCredentialTypes), and we silently
-	// attach n8n credits when, in guard order: (1) the node has no entry for the
-	// type, (2) the user has no stored credential for it, and (3) the type — or,
-	// failing that, a supported sibling type the node's auth is switched to — is
-	// supported by n8n credits. Any guard failing leaves the node untouched so the
-	// setup card can collect a real credential.
+	// slots the LLM wrote; a node missing a slot for a type it requires reaches
+	// post-build setup credential-less and surfaces a setup card. Required types
+	// come from the node description; silently attach n8n credits when the node has
+	// no entry and no stored credential, and the type — or a supported sibling its
+	// auth is switched to — is gateway-supported. Otherwise leave it for setup.
 	for (const node of json.nodes ?? []) {
 		if (!node.name) continue;
 		const requiredTypes = await getValidCredentialTypes(ctx, node);
