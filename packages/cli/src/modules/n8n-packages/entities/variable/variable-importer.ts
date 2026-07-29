@@ -63,10 +63,7 @@ export class VariableImporter {
 			}
 			missing.push(createFailure(requirement));
 			if (createsMissing) {
-				// The requirement's own value is only a fallback for hand-made packages.
-				const value = usesPackageValue
-					? (requirement.packageValue ?? requirement.value)
-					: undefined;
+				const value = usesPackageValue ? requirement.packageValue : undefined;
 				creations.push({
 					name: requirement.name,
 					...(requirement.globalPlacement ? {} : { projectId: context.projectId }),
