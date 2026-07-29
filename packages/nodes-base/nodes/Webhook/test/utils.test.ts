@@ -393,7 +393,10 @@ describe('Webhook Utils', () => {
 				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
 				getChildNodes: vi
 					.fn()
-					.mockReturnValue([waitNode, { name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' }]),
+					.mockReturnValue([
+						waitNode,
+						{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
 				getParentNodes: vi
 					.fn()
 					.mockReturnValue([waitNode, { name: 'Webhook', type: 'n8n-nodes-base.webhook' }]),
@@ -415,7 +418,10 @@ describe('Webhook Utils', () => {
 				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
 				getChildNodes: vi
 					.fn()
-					.mockReturnValue([waitNode, { name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' }]),
+					.mockReturnValue([
+						waitNode,
+						{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
 				getParentNodes: vi
 					.fn()
 					.mockReturnValue([waitNode, { name: 'Webhook', type: 'n8n-nodes-base.webhook' }]),
