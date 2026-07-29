@@ -395,6 +395,12 @@ export interface SkippedOperation {
 	reason: string;
 }
 
+/** The submitted operation that put a group in its current state. */
+export interface GroupOperationRef {
+	opIndex: number;
+	type: PartialUpdateOperation['type'];
+}
+
 export interface ApplyOperationsSuccess {
 	success: true;
 	workflow: WorkflowSlice;
@@ -412,13 +418,15 @@ export interface ApplyOperationsSuccess {
 	 */
 	skippedOperations: SkippedOperation[];
 	/**
-	 * Group id -> the type of operation that last created/touched it (such as
-	 * `removeNode` when it pruned the group's membership). Lets a caller doing its
-	 * own post-loop group validation (structural rules aren't checked here — see
-	 * `NON_FATAL_OPERATION_TYPES`'s doc comment) report the op type actually
-	 * responsible for a given group, instead of guessing.
+	 * Group id -> the group operation that last put it in its current state.
+	 * Contains only groups this batch explicitly asked for; a pre-existing group,
+	 * or one merely affected as a side effect (e.g. `removeNode` pruning a
+	 * member), is deliberately absent. Lets a caller doing its own post-loop group
+	 * validation (structural rules aren't checked here — see
+	 * `NON_FATAL_OPERATION_TYPES`'s doc comment) tell "the caller requested this
+	 * group and it failed" from "an unrelated edit invalidated an existing group".
 	 */
-	groupOperationTypes: Record<string, PartialUpdateOperation['type']>;
+	groupOperations: Record<string, GroupOperationRef>;
 }
 
 export interface ApplyOperationsFailure {
@@ -620,20 +628,25 @@ interface ApplyContext {
 	tagSet: Set<string> | null;
 	nodeGroupsChanged: boolean;
 	/**
-	 * Group id -> the type of the group op that last created/touched it. Lets a
-	 * post-loop structural violation (which only knows the group, not an op index)
-	 * report the op type that's actually responsible, instead of guessing.
+	 * Group id -> the group op that last put it in its current state. Only groups
+	 * this batch asked for land here, so a post-loop structural violation (which
+	 * only knows the group) can attribute the failure to a real submitted op —
+	 * or recognise that no op asked for this group at all.
 	 */
-	groupOperationTypes: Map<string, PartialUpdateOperation['type']>;
+	groupOperations: Map<string, GroupOperationRef>;
 }
 
 /**
  * Handler for a single operation type. Returns null on success, or a raw error
  * message (without the `Operation N failed:` prefix, which `fail` adds).
+ *
+ * `opIndex` is the op's position in the submitted batch; only the group handlers
+ * need it, to record which op is answerable for a group.
  */
 type OpHandler<K extends PartialUpdateOperation['type']> = (
 	op: Extract<PartialUpdateOperation, { type: K }>,
 	ctx: ApplyContext,
+	opIndex: number,
 ) => string | null;
 
 /**
@@ -757,10 +770,11 @@ const handleRemoveNode: OpHandler<'removeNode'> = (op, ctx) => {
 			ctx.nodeGroupsChanged = true;
 			const remaining = group.nodeIds.filter((id) => id !== node.id);
 			if (remaining.length > 0) {
+				// Not recorded in `groupOperations`: pruning is a side effect, so a group
+				// invalidated by it shouldn't discount this operation.
 				prunedGroups.push({ ...group, nodeIds: remaining });
-				ctx.groupOperationTypes.set(group.id, 'removeNode');
 			} else {
-				ctx.groupOperationTypes.delete(group.id);
+				ctx.groupOperations.delete(group.id);
 			}
 		}
 		ctx.workflow.nodeGroups = prunedGroups;
@@ -939,7 +953,7 @@ const handleSetWorkflowSettings: OpHandler<'setWorkflowSettings'> = (op, ctx) =>
 	return null;
 };
 
-const handleSetNodeGroups: OpHandler<'setNodeGroups'> = (op, ctx) => {
+const handleSetNodeGroups: OpHandler<'setNodeGroups'> = (op, ctx, opIndex) => {
 	const nodeGroups: IWorkflowGroup[] = [];
 	for (const group of op.nodeGroups) {
 		const resolved = resolveGroupNodeIds(ctx.nodeByName, group.nodeNames, group.name);
@@ -958,12 +972,14 @@ const handleSetNodeGroups: OpHandler<'setNodeGroups'> = (op, ctx) => {
 	}
 	ctx.workflow.nodeGroups = nodeGroups;
 	ctx.nodeGroupsChanged = true;
-	// Wholesale replace: every surviving group's tracked op type is this one.
-	ctx.groupOperationTypes = new Map(nodeGroups.map((group) => [group.id, 'setNodeGroups']));
+	// Wholesale replace: this op is answerable for every surviving group.
+	ctx.groupOperations = new Map(
+		nodeGroups.map((group) => [group.id, { opIndex, type: 'setNodeGroups' as const }]),
+	);
 	return null;
 };
 
-const handleAddNodeGroup: OpHandler<'addNodeGroup'> = (op, ctx) => {
+const handleAddNodeGroup: OpHandler<'addNodeGroup'> = (op, ctx, opIndex) => {
 	const groups = ctx.workflow.nodeGroups ?? [];
 	if (groups.some((g) => g.name === op.name)) {
 		return `a node group named '${op.name}' already exists`;
@@ -989,7 +1005,7 @@ const handleAddNodeGroup: OpHandler<'addNodeGroup'> = (op, ctx) => {
 
 	ctx.workflow.nodeGroups = groups;
 	ctx.nodeGroupsChanged = true;
-	ctx.groupOperationTypes.set(newGroup.id, 'addNodeGroup');
+	ctx.groupOperations.set(newGroup.id, { opIndex, type: 'addNodeGroup' });
 
 	return null;
 };
@@ -1005,12 +1021,12 @@ const handleRemoveNodeGroup: OpHandler<'removeNodeGroup'> = (op, ctx) => {
 	const [removed] = groups.splice(index, 1);
 	ctx.workflow.nodeGroups = groups;
 	ctx.nodeGroupsChanged = true;
-	ctx.groupOperationTypes.delete(removed.id);
+	ctx.groupOperations.delete(removed.id);
 
 	return null;
 };
 
-const handleUpdateNodeGroup: OpHandler<'updateNodeGroup'> = (op, ctx) => {
+const handleUpdateNodeGroup: OpHandler<'updateNodeGroup'> = (op, ctx, opIndex) => {
 	// Cross-field "at least one change" lives here because zod v3 discriminated
 	// unions cannot carry a `.refine()` on their members.
 	if (op.newName === undefined && op.nodeNames === undefined && op.description === undefined) {
@@ -1050,7 +1066,7 @@ const handleUpdateNodeGroup: OpHandler<'updateNodeGroup'> = (op, ctx) => {
 	}
 
 	ctx.nodeGroupsChanged = true;
-	ctx.groupOperationTypes.set(group.id, 'updateNodeGroup');
+	ctx.groupOperations.set(group.id, { opIndex, type: 'updateNodeGroup' });
 
 	return null;
 };
@@ -1101,8 +1117,8 @@ const OPERATION_HANDLERS: { [K in PartialUpdateOperation['type']]: OpHandler<K> 
 	updateNodeGroup: handleUpdateNodeGroup,
 	// Thin wrappers narrow the shared handler to each slot's exact op type; a
 	// direct `handleTagOp` assignment trips a variance check on the `Extract`.
-	addTags: (op, ctx) => handleTagOp(op, ctx),
-	removeTags: (op, ctx) => handleTagOp(op, ctx),
+	addTags: (op, ctx, opIndex) => handleTagOp(op, ctx, opIndex),
+	removeTags: (op, ctx, opIndex) => handleTagOp(op, ctx, opIndex),
 };
 
 /**
@@ -1135,9 +1151,9 @@ export function applyOperations(
 		addedNodeNames: new Set<string>(),
 		tagSet: null,
 		nodeGroupsChanged: false,
-		groupOperationTypes: new Map(
-			(workflow.nodeGroups ?? []).map((group) => [group.id, 'setNodeGroups' as const]),
-		),
+		// Starts empty: the groups the workflow arrives with weren't requested by
+		// this batch, so no submitted op is answerable for them.
+		groupOperations: new Map(),
 	};
 
 	for (let i = 0; i < operations.length; i++) {
@@ -1147,7 +1163,7 @@ export function applyOperations(
 		// `never`; the cast reconnects each op to its own handler.
 		const handler = OPERATION_HANDLERS[op.type] as OpHandler<typeof op.type>;
 
-		const error = handler(op, ctx);
+		const error = handler(op, ctx, i);
 		if (error) {
 			if (nonFatalOperationTypes.has(op.type)) {
 				skippedOperations.push({ opIndex: i, type: op.type, reason: error });
@@ -1168,7 +1184,7 @@ export function applyOperations(
 		tagNames: ctx.tagSet !== null ? [...ctx.tagSet] : undefined,
 		nodeGroupsChanged: ctx.nodeGroupsChanged,
 		skippedOperations,
-		groupOperationTypes: Object.fromEntries(ctx.groupOperationTypes),
+		groupOperations: Object.fromEntries(ctx.groupOperations),
 	};
 }
 

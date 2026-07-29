@@ -30,6 +30,7 @@ import {
 	partialUpdateOperationSchema,
 	toWorkflowSlice,
 	workflowSettingsObjectSchema,
+	type ApplyOperationsSuccess,
 	type PartialUpdateOperation,
 } from './workflow-operations';
 
@@ -265,6 +266,40 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 	return touched;
 }
 
+/**
+ * How many operations had no effect, so `appliedOperations` can discount them.
+ *
+ * An operation counts only if *all* the groups it produced were skipped or
+ * dropped: one `setNodeGroups` can define several groups and still apply the
+ * rest after losing one.
+ *
+ * Known imprecision: each group remembers only the last operation that touched
+ * it, so in an `addNodeGroup` + `updateNodeGroup` batch on the same dropped
+ * group only the second operation is discounted.
+ */
+const countOperationsWithNoEffect = (
+	skippedOperations: Array<{ opIndex: number }>,
+	groupOperations: ApplyOperationsSuccess['groupOperations'],
+): number => {
+	const producedPerOp = new Map<number, number>();
+	for (const { opIndex } of Object.values(groupOperations)) {
+		producedPerOp.set(opIndex, (producedPerOp.get(opIndex) ?? 0) + 1);
+	}
+
+	const skippedPerOp = new Map<number, number>();
+	for (const { opIndex } of skippedOperations) {
+		skippedPerOp.set(opIndex, (skippedPerOp.get(opIndex) ?? 0) + 1);
+	}
+
+	let count = 0;
+	for (const [opIndex, skipped] of skippedPerOp) {
+		if (skipped >= (producedPerOp.get(opIndex) ?? 0)) {
+			count++;
+		}
+	}
+	return count;
+};
+
 // The concrete return type (not a widened z.ZodRawShape) keeps the tool's
 // generic coupled to the real schema shape, so the handler's argument
 // annotation is compile-checked against it via ToolCallback's parameter types.
@@ -274,7 +309,7 @@ const buildToolDescription = (canvasGroupsEnabled: boolean) => {
 	const base =
 		'Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used.';
 	return canvasGroupsEnabled
-		? `${base} Node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}) are the one exception to "atomically": an invalid one is skipped and reported in skippedOperations instead of aborting the whole update.`
+		? `${base} Node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}) are the one exception to "atomically": an invalid one is skipped and reported in skippedOperations instead of aborting the whole update. Separately, if other edits in the batch make an existing group invalid, that group is removed and reported in removedGroups.`
 		: base;
 };
 
@@ -288,7 +323,7 @@ const buildInputSchema = (canvasGroupsEnabled: boolean) =>
 			.max(MAX_OPERATIONS_PER_CALL)
 			.describe(
 				canvasGroupsEnabled
-					? `Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved — except node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}): an invalid one is skipped and reported in skippedOperations, while the rest of the batch still saves.`
+					? `Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved — except node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}): an invalid one is skipped and reported in skippedOperations, while the rest of the batch still saves. An existing group that these ops leave invalid is removed and reported in removedGroups.`
 					: `Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
 			),
 		versionName: versionNameInputSchema.describe(
@@ -349,14 +384,25 @@ const outputSchema = {
 	skippedOperations: z
 		.array(
 			z.object({
-				opIndex: z.number().optional(),
+				opIndex: z.number(),
 				type: z.string(),
 				reason: z.string(),
 			}),
 		)
 		.optional()
 		.describe(
-			'Group operations that were invalid and skipped instead of failing the whole update. The rest of the batch was still saved. Fix and retry these (e.g. via update_workflow).',
+			'Submitted group operations that did not take effect: either invalid, or their group broke the group rules. They were skipped instead of failing the whole update, and the rest of the batch was still saved. Fix and retry these.',
+		),
+	removedGroups: z
+		.array(
+			z.object({
+				groupName: z.string(),
+				reason: z.string(),
+			}),
+		)
+		.optional()
+		.describe(
+			'Existing node groups removed because other operations in this batch made them invalid. Those operations still applied — nothing was skipped. Tell the user which groups were removed and offer to recreate them (e.g. with different members via addNodeGroup).',
 		),
 	settings: z
 		.record(z.string(), z.unknown())
@@ -655,9 +701,13 @@ export const createUpdateWorkflowTool = (
 			// are no groups, so checking unconditionally is safe and mirrors the broader
 			// `saveNewVersion` condition WorkflowService.update itself uses to decide
 			// whether to re-validate groups.
-			const skippedOperations: Array<{ opIndex?: number; type: string; reason: string }> = [
+			const skippedOperations: Array<{ opIndex: number; type: string; reason: string }> = [
 				...result.skippedOperations,
 			];
+			// Groups the batch never asked for, removed because these operations made
+			// them invalid. Reported apart from skippedOperations: no submitted
+			// operation failed here, an existing group was destroyed as a side effect.
+			const removedGroups: Array<{ groupName: string; reason: string }> = [];
 			let nodeGroupsNeedPersisting = result.nodeGroupsChanged;
 
 			if (options.canvasGroupsEnabled && result.workflow.nodeGroups?.length) {
@@ -680,12 +730,15 @@ export const createUpdateWorkflowTool = (
 					nodeGroupsNeedPersisting = true;
 
 					for (const violation of groupValidation.violations) {
-						const opType = result.groupOperationTypes[violation.groupId] ?? 'setNodeGroups';
-
-						skippedOperations.push({
-							type: opType,
-							reason: violation.message,
-						});
+						const requestedBy = result.groupOperations[violation.groupId];
+						if (requestedBy) {
+							skippedOperations.push({ ...requestedBy, reason: violation.message });
+						} else {
+							removedGroups.push({
+								groupName: violation.groupName,
+								reason: violation.message,
+							});
+						}
 					}
 				}
 			}
@@ -966,12 +1019,10 @@ export const createUpdateWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			// Only count skips tied to a specific submitted operation (Part A, has an
-			// opIndex) against the total — those operations genuinely didn't apply.
-			// A Part B (structural) skip has no opIndex because it isn't attributable
-			// to one submitted operation: it can drop a group an *unrelated* op (e.g.
-			// removeConnection) indirectly invalidated, and that op itself still ran.
-			const notAppliedCount = skippedOperations.filter((op) => op.opIndex !== undefined).length;
+			const notAppliedCount = countOperationsWithNoEffect(
+				skippedOperations,
+				result.groupOperations,
+			);
 
 			const output = {
 				workflowId: updatedWorkflow.id,
@@ -985,6 +1036,7 @@ export const createUpdateWorkflowTool = (
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
 				skippedOperations: skippedOperations.length > 0 ? skippedOperations : undefined,
+				removedGroups: removedGroups.length > 0 ? removedGroups : undefined,
 				settings: hasSettingsOperations ? (updatedWorkflow.settings ?? {}) : undefined,
 			};
 

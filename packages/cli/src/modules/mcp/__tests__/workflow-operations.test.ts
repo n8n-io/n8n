@@ -1415,6 +1415,90 @@ describe('applyOperations', () => {
 		});
 	});
 
+	describe('groupOperations', () => {
+		// Only groups the batch explicitly asked for belong here: it's what lets a
+		// caller tell "your group operation failed" from "an unrelated edit
+		// invalidated a group that was already there".
+		const withGroup = () => ({
+			...baseWorkflow(),
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+		});
+
+		test('is empty when the workflow arrives with groups and no group operation runs', () => {
+			const result = applyOperations(withGroup(), [
+				{ type: 'setNodePosition', nodeName: 'A', position: [10, 10] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({});
+		});
+
+		test('is empty after a removeNode prunes an existing group', () => {
+			const result = applyOperations(withGroup(), [{ type: 'removeNode', nodeName: 'B' }]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a'] }]);
+			expect(result.groupOperations).toEqual({});
+		});
+
+		test('records the operation index and type for addNodeGroup', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'setNodePosition', nodeName: 'A', position: [10, 10] },
+				{ type: 'addNodeGroup', id: 'g1', name: 'Group', nodeNames: ['A', 'B'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({ g1: { opIndex: 1, type: 'addNodeGroup' } });
+		});
+
+		test('records every group a setNodeGroups produced against that operation', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{
+					type: 'setNodeGroups',
+					nodeGroups: [
+						{ id: 'g1', name: 'One', nodeNames: ['A'] },
+						{ id: 'g2', name: 'Two', nodeNames: ['B'] },
+					],
+				},
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({
+				g1: { opIndex: 0, type: 'setNodeGroups' },
+				g2: { opIndex: 0, type: 'setNodeGroups' },
+			});
+		});
+
+		test('records updateNodeGroup on a pre-existing group', () => {
+			const result = applyOperations(withGroup(), [
+				{ type: 'updateNodeGroup', groupName: 'Group', nodeNames: ['A'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({ g1: { opIndex: 0, type: 'updateNodeGroup' } });
+		});
+
+		test('the last operation to touch a group wins', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'addNodeGroup', id: 'g1', name: 'Group', nodeNames: ['A', 'B'] },
+				{ type: 'updateNodeGroup', groupName: 'Group', nodeNames: ['A'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({ g1: { opIndex: 1, type: 'updateNodeGroup' } });
+		});
+
+		test('drops a group that removeNodeGroup deleted', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'addNodeGroup', id: 'g1', name: 'Group', nodeNames: ['A', 'B'] },
+				{ type: 'removeNodeGroup', groupName: 'Group' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({});
+		});
+	});
+
 	describe('non-fatal operation types', () => {
 		describe('canvasGroupsEnabled off', () => {
 			test('a normal batch with no failures succeeds with no skipped operations', () => {

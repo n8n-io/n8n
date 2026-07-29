@@ -621,7 +621,7 @@ describe('update-workflow MCP tool', () => {
 				);
 			});
 
-			test('a non-group operation that disconnects an existing group is caught: the group is dropped and reported, the rest of the update still saves', async () => {
+			test('a non-group operation that disconnects an existing group is caught: the group is removed and reported in removedGroups, the rest of the update still saves', async () => {
 				// A removeConnection never touches nodeGroups directly, so
 				// nodeGroupsChanged alone would miss this — the structural check must
 				// run whenever the workflow HAS groups, not only when a group op ran.
@@ -655,13 +655,15 @@ describe('update-workflow MCP tool', () => {
 				expect(saved.nodeGroups).toEqual([]);
 
 				const response = parseResult(result);
-				expect(response.skippedOperations).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({
-							reason: expect.stringContaining('single connected subgraph') as string,
-						}),
-					]),
-				);
+				// No operation was skipped: the caller asked for a removeConnection and got
+				// it. The group is collateral damage, so it belongs in removedGroups.
+				expect(response.skippedOperations ?? []).toEqual([]);
+				expect(response.removedGroups).toEqual([
+					{
+						groupName: 'Group',
+						reason: expect.stringContaining('single connected subgraph') as string,
+					},
+				]);
 			});
 
 			test('a group that splits an AI sub-node from its Agent is skipped', async () => {
@@ -783,6 +785,46 @@ describe('update-workflow MCP tool', () => {
 						}),
 					]),
 				);
+				// "Good" was persisted, so the operation did apply — just not in full.
+				expect(response.appliedOperations).toBe(1);
+			});
+
+			test('a setNodeGroups whose every group is dropped is discounted once, not per group', async () => {
+				// Trigger -> A -> B plus a detached C: one group fails on the trigger and
+				// the other on connectivity, with no member overlap between them.
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildWorkflowWithTrigger(), {
+						nodes: [
+							makeNode({ id: 'trigger', name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+							makeNode({ id: 'a', name: 'A', position: [200, 0] }),
+							makeNode({ id: 'b', name: 'B', position: [400, 0] }),
+							makeNode({ id: 'c', name: 'C', position: [600, 200] }),
+						],
+					}),
+				);
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [
+							{
+								type: 'setNodeGroups',
+								nodeGroups: [
+									{ id: 'g1', name: 'Bad', nodeNames: ['Trigger'] },
+									{ id: 'g2', name: 'AlsoBad', nodeNames: ['A', 'C'] },
+								],
+							},
+						],
+					},
+					createOnTool(),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const response = parseResult(result);
+				// Two violations, one operation: the count must not go negative.
+				expect(response.skippedOperations).toHaveLength(2);
+				expect(response.appliedOperations).toBe(0);
 			});
 
 			test('a group made invalid via updateNodeGroup reports updateNodeGroup, not a hardcoded type', async () => {
@@ -850,7 +892,7 @@ describe('update-workflow MCP tool', () => {
 				);
 			});
 
-			test('a group made invalid by removeNode pruning its bridge node reports removeNode', async () => {
+			test('a group made invalid by removeNode pruning its bridge node is reported in removedGroups, not as a skipped removeNode', async () => {
 				// Trigger -> A -> B -> C, group {A, B, C}. Removing the bridge node B
 				// prunes it from the group, leaving {A, C} with no path between them.
 				findWorkflowMock.mockResolvedValue(
@@ -884,14 +926,119 @@ describe('update-workflow MCP tool', () => {
 				expect(saved.nodeGroups ?? []).toEqual([]);
 
 				const response = parseResult(result);
-				expect(response.skippedOperations).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({
-							type: 'removeNode',
-							reason: expect.stringContaining('single connected subgraph') as string,
-						}),
-					]),
+				// The node is gone: the removeNode applied in full. Pruning the group was
+				// a side effect, so the group's loss is not a skipped operation.
+				expect(response.skippedOperations ?? []).toEqual([]);
+				expect(response.appliedOperations).toBe(1);
+				expect(response.removedGroups).toEqual([
+					{
+						groupName: 'Group',
+						reason: expect.stringContaining('single connected subgraph') as string,
+					},
+				]);
+			});
+
+			test('adding a node that branches out of an existing group removes the group and reports it as collateral', async () => {
+				// Trigger -> A -> B, group {A, B}. Branching a new node off A gives the
+				// group two outgoing boundary connections, breaking single-entry/exit.
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildWorkflowWithTrigger(), {
+						nodeGroups: [{ id: 'g1', name: 'Chain', nodeIds: ['a', 'b'] }],
+					}),
 				);
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [
+							{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.set', typeVersion: 1 } },
+							{ type: 'addConnection', source: 'A', target: 'C' },
+						],
+					},
+					createOnTool(),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				// Both requested operations landed...
+				expect(saved.nodes.map((n) => n.name)).toContain('C');
+				expect(saved.connections.A?.main?.[0]).toEqual(
+					expect.arrayContaining([expect.objectContaining({ node: 'C' })]),
+				);
+				// ...and only the group was lost.
+				expect(saved.nodeGroups).toEqual([]);
+
+				const response = parseResult(result);
+				expect(response.appliedOperations).toBe(2);
+				expect(response.skippedOperations ?? []).toEqual([]);
+				expect(response.removedGroups).toEqual([
+					{
+						groupName: 'Chain',
+						reason: expect.stringContaining('single connected subgraph') as string,
+					},
+				]);
+			});
+
+			test('a group already invalid before this batch is removed and reported, whatever the operations were', async () => {
+				// Legacy data: basic-only validation (e.g. a git import) lets a group
+				// with a trigger through, so any later update has to clean it up —
+				// the same removal the canvas performs on load.
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildWorkflowWithTrigger(), {
+						nodeGroups: [{ id: 'g1', name: 'Legacy', nodeIds: ['trigger', 'a'] }],
+					}),
+				);
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'setNodePosition', nodeName: 'B', position: [50, 50] }],
+					},
+					createOnTool(),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				expect(saved.nodeGroups).toEqual([]);
+
+				const response = parseResult(result);
+				expect(response.appliedOperations).toBe(1);
+				expect(response.skippedOperations ?? []).toEqual([]);
+				expect(response.removedGroups).toEqual([
+					{
+						groupName: 'Legacy',
+						reason: expect.stringContaining('cannot contain trigger nodes') as string,
+					},
+				]);
+			});
+
+			test('every skippedOperations entry carries the index of the operation it belongs to', async () => {
+				findWorkflowMock.mockResolvedValue(buildWorkflowWithTrigger());
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [
+							{ type: 'setNodePosition', nodeName: 'A', position: [10, 10] },
+							// Fails the basic checks: unknown member.
+							{ type: 'addNodeGroup', name: 'Missing', nodeNames: ['Nope'] },
+							// Passes them, then fails the structural check.
+							{ type: 'addNodeGroup', name: 'WithTrigger', nodeNames: ['Trigger', 'A'] },
+						],
+					},
+					createOnTool(),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const response = parseResult(result);
+				expect(response.skippedOperations).toEqual([
+					expect.objectContaining({ opIndex: 1, type: 'addNodeGroup' }),
+					expect.objectContaining({ opIndex: 2, type: 'addNodeGroup' }),
+				]);
+				expect(response.appliedOperations).toBe(1);
 			});
 
 			test('all groups valid: no skipped operations are reported', async () => {
@@ -976,7 +1123,7 @@ describe('update-workflow MCP tool', () => {
 			expect(response.appliedOperations).toBe(1);
 		});
 
-		test('does not exclude a submitted operation whose unrelated side effect broke a group (Part B)', async () => {
+		test('does not exclude a submitted operation whose unrelated side effect removed a group (Part B)', async () => {
 			// The removeConnection operation itself ran successfully — only the
 			// pre-existing, untouched group it indirectly broke gets dropped.
 			findWorkflowMock.mockResolvedValue(
@@ -1002,8 +1149,43 @@ describe('update-workflow MCP tool', () => {
 
 			expect(result.isError).toBeUndefined();
 			const response = parseResult(result);
-			expect(response.skippedOperations).toHaveLength(1);
+			expect(response.skippedOperations ?? []).toEqual([]);
+			expect(response.removedGroups).toHaveLength(1);
 			expect(response.appliedOperations).toBe(1);
+		});
+
+		test('excludes a group operation whose group the structural check dropped', async () => {
+			// The whole point of the addNodeGroup was that group; nothing of it
+			// survived the save, so it must not be counted as applied.
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(new WorkflowEntity(), {
+					id: 'wf-1',
+					name: 'Existing',
+					settings: { availableInMCP: true },
+					nodes: [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })],
+					connections: {} as IConnections,
+				}),
+			);
+
+			const result = await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [{ type: 'addNodeGroup', name: 'Group', nodeNames: ['A', 'B'] }],
+				},
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(result.isError).toBeUndefined();
+			const response = parseResult(result);
+			expect(response.skippedOperations).toEqual([
+				{
+					opIndex: 0,
+					type: 'addNodeGroup',
+					reason: expect.stringContaining('single connected subgraph') as string,
+				},
+			]);
+			expect(response.removedGroups ?? []).toEqual([]);
+			expect(response.appliedOperations).toBe(0);
 		});
 
 		test('counts all operations when nothing is skipped', async () => {
