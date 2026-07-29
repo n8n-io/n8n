@@ -28,7 +28,7 @@ import {
 } from './import-result';
 import { emitPackageImportedEvent } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
-import { placeVariableRequirements } from './package-layout';
+import { placeByPolicy } from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
@@ -96,11 +96,10 @@ export class WorkflowPackageImporter {
 				? await this.packageParser.getVariables(reader)
 				: undefined;
 		const variableRequest: VariableImportRequest = {
-			requirements: placeVariableRequirements({
+			requirements: placeByPolicy({
 				requirements: variableRequirements,
 				manifestVariables: manifest.variables,
-				basePrefix: '',
-				placement: request.variableParentPolicy ?? VariableParentPolicy.Project,
+				policy: request.variableParentPolicy ?? VariableParentPolicy.Project,
 				bundledVariables,
 			}),
 			missingMode: request.variableMissingMode,

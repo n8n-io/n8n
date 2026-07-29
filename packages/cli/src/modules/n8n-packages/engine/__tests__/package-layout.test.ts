@@ -5,7 +5,8 @@ import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import {
 	deriveParentFolderId,
 	foldersInScope,
-	placeVariableRequirements,
+	placeByLayout,
+	placeByPolicy,
 	workflowsInScope,
 } from '../package-layout';
 
@@ -59,28 +60,23 @@ describe('package-layout', () => {
 		});
 	});
 
-	describe('placeVariableRequirements', () => {
+	describe('variable placement', () => {
 		const named = (name: string, target: string): ManifestEntry => ({ id: name, name, target });
 		const requirement = (name: string, value?: string): PackageVariableRequirement => ({
 			name,
 			usedByWorkflows: ['wf-1'],
 			...(value !== undefined ? { value } : {}),
 		});
-		const place = (
-			params: Partial<Parameters<typeof placeVariableRequirements>[0]> & {
+		const layout = (
+			params: Partial<Parameters<typeof placeByLayout>[0]> & {
 				manifestVariables: ManifestEntry[];
-				basePrefix: string;
+				scopePrefix: string;
 			},
-		) =>
-			placeVariableRequirements({
-				requirements: [requirement('API_URL')],
-				placement: 'from-layout',
-				...params,
-			})![0];
+		) => placeByLayout({ requirements: [requirement('API_URL')], ...params })![0];
 
 		/** Project packages derive placement from the layout; read it back in the exporter's terms. */
-		const scopeOf = (manifestVariables: ManifestEntry[], basePrefix: string, name = 'API_URL') =>
-			place({ requirements: [requirement(name)], manifestVariables, basePrefix }).globalPlacement
+		const scopeOf = (manifestVariables: ManifestEntry[], scopePrefix: string, name = 'API_URL') =>
+			layout({ requirements: [requirement(name)], manifestVariables, scopePrefix }).globalPlacement
 				? 'global'
 				: 'project';
 
@@ -125,12 +121,17 @@ describe('package-layout', () => {
 		it.each([
 			[VariableParentPolicy.Project, false],
 			[VariableParentPolicy.Global, true],
-		])('follows the %s request policy instead of the layout', (placement, globalPlacement) => {
-			// A top-level bundle would read as global from the layout; the policy overrides it.
+		])('follows the %s request policy instead of the layout', (policy, globalPlacement) => {
+			// A top-level bundle would read as global from the layout; the policy decides instead.
 			const entries = [named('API_URL', 'variables/api_url')];
-			expect(place({ manifestVariables: entries, basePrefix: '', placement })).toMatchObject({
-				globalPlacement,
-			});
+
+			expect(
+				placeByPolicy({
+					requirements: [requirement('API_URL')],
+					manifestVariables: entries,
+					policy,
+				})![0],
+			).toMatchObject({ globalPlacement });
 		});
 
 		it("attaches the bundled variable's value for the winning entry", () => {
@@ -147,7 +148,7 @@ describe('package-layout', () => {
 			]);
 
 			expect(
-				place({ manifestVariables: entries, basePrefix: 'projects/x/', bundledVariables }),
+				layout({ manifestVariables: entries, scopePrefix: 'projects/x/', bundledVariables }),
 			).toMatchObject({ packageValue: 'project-value' });
 		});
 
@@ -157,7 +158,7 @@ describe('package-layout', () => {
 			]);
 
 			expect(
-				place({ manifestVariables: [], basePrefix: 'projects/x/', bundledVariables }),
+				layout({ manifestVariables: [], scopePrefix: 'projects/x/', bundledVariables }),
 			).not.toHaveProperty('packageValue');
 		});
 
@@ -168,17 +169,19 @@ describe('package-layout', () => {
 			]);
 
 			expect(
-				place({ manifestVariables: entries, basePrefix: 'projects/x/', bundledVariables }),
+				layout({ manifestVariables: entries, scopePrefix: 'projects/x/', bundledVariables }),
 			).not.toHaveProperty('packageValue');
 		});
 
 		it('returns undefined when the package declares no variable requirements', () => {
 			expect(
-				placeVariableRequirements({
+				placeByLayout({ requirements: undefined, manifestVariables: [], scopePrefix: '' }),
+			).toBeUndefined();
+			expect(
+				placeByPolicy({
 					requirements: undefined,
 					manifestVariables: [],
-					basePrefix: '',
-					placement: 'from-layout',
+					policy: VariableParentPolicy.Project,
 				}),
 			).toBeUndefined();
 		});

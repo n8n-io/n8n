@@ -24,9 +24,6 @@ export function workflowsInScope(
 	);
 }
 
-/** Workflow packages place variables by request policy; project packages follow the package layout. */
-export type VariablePlacement = VariableParentPolicy | 'from-layout';
-
 /**
  * The entry bundling `name` for one scope: the scope's own variables/ entry beats a
  * top-level one. Two entries at the winning tier are ambiguous and reject the import.
@@ -48,38 +45,59 @@ function variableBundleEntry(
 	return winning[0];
 }
 
+interface VariableBundleLookup {
+	requirements: PackageVariableRequirement[] | undefined;
+	manifestVariables: ManifestEntry[] | undefined;
+	/** Absent under a mode that ignores package values, which never reads the bundled files. */
+	bundledVariables?: Map<string, SerializedVariable>;
+}
+
 /**
  * Pairs each requirement with the value the package bundles for it and the scope a
  * creation would land in, so the variable importer never reads the manifest itself.
- * An unbundled name defaults to project placement.
+ * Callers differ only in how they decide the scope, which `isGlobal` supplies.
  */
-export function placeVariableRequirements({
-	requirements,
-	manifestVariables,
-	basePrefix,
-	placement,
-	bundledVariables,
-}: {
-	requirements: PackageVariableRequirement[] | undefined;
-	manifestVariables: ManifestEntry[] | undefined;
-	basePrefix: string;
-	placement: VariablePlacement;
-	/** Absent under a mode that ignores package values, which never reads the bundled files. */
-	bundledVariables?: Map<string, SerializedVariable>;
-}): PlacedVariableRequirement[] | undefined {
+function placeWith(
+	{ requirements, manifestVariables, bundledVariables }: VariableBundleLookup,
+	basePrefix: string,
+	isGlobal: (bundle: ManifestEntry | undefined) => boolean,
+): PlacedVariableRequirement[] | undefined {
 	return requirements?.map((requirement) => {
 		const bundle = variableBundleEntry(manifestVariables, basePrefix, requirement.name);
 		const packageValue = bundle ? bundledVariables?.get(bundle.target)?.value : undefined;
 
 		return {
 			...requirement,
-			globalPlacement:
-				placement === 'from-layout'
-					? bundle !== undefined && !bundle.target.startsWith(basePrefix)
-					: placement === VariableParentPolicy.Global,
+			globalPlacement: isGlobal(bundle),
 			...(packageValue !== undefined ? { packageValue } : {}),
 		};
 	});
+}
+
+/**
+ * Workflow and folder packages place every missing variable at the requested policy's
+ * scope; a bundled entry only supplies the value, never the placement.
+ */
+export function placeByPolicy(
+	params: VariableBundleLookup & { policy: VariableParentPolicy },
+): PlacedVariableRequirement[] | undefined {
+	const global = params.policy === VariableParentPolicy.Global;
+	return placeWith(params, '', () => global);
+}
+
+/**
+ * Project packages follow the package layout: a name bundled under the scope is created
+ * in that project, one bundled at the top level globally. An unbundled name — including
+ * one bundled only under a different project — defaults to the consuming project.
+ */
+export function placeByLayout(
+	params: VariableBundleLookup & { scopePrefix: string },
+): PlacedVariableRequirement[] | undefined {
+	return placeWith(
+		params,
+		params.scopePrefix,
+		(bundle) => bundle !== undefined && !bundle.target.startsWith(params.scopePrefix),
+	);
 }
 
 export function deriveParentFolderId(

@@ -19,7 +19,7 @@ import type {
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes } from './import-gates';
-import { placeVariableRequirements } from './package-layout';
+import { placeByLayout } from './package-layout';
 import {
 	ImportOrchestrator,
 	type ImportOrchestrationInput,
@@ -177,11 +177,10 @@ export class ProjectPackageImporter {
 		};
 
 		const variableRequest: VariableImportRequest = {
-			requirements: placeVariableRequirements({
+			requirements: placeByLayout({
 				requirements: identifyRequirements(manifest.requirements?.variables, workflows),
 				manifestVariables: manifest.variables,
-				basePrefix,
-				placement: 'from-layout',
+				scopePrefix: basePrefix,
 				bundledVariables,
 			}),
 			missingMode: request.variableMissingMode,
