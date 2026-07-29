@@ -1,3 +1,11 @@
+## [2.33.1](https://github.com/n8n-io/n8n/compare/n8n@2.33.0...n8n@2.33.1) (2026-07-29)
+
+
+### Features
+
+* **core:** Expose workflow hook context to lifecycle external hooks ([#35084](https://github.com/n8n-io/n8n/issues/35084)) ([b4ffe0e](https://github.com/n8n-io/n8n/commit/b4ffe0e433b3a173571aa1df99c12677ff0cbb95))
+
+
 # [2.33.0](https://github.com/n8n-io/n8n/compare/n8n@2.32.0...n8n@2.33.0) (2026-07-28)
 
 
