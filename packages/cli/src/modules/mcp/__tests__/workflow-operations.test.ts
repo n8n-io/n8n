@@ -1395,6 +1395,32 @@ describe('applyOperations', () => {
 			applyOperations(wf, [{ type: 'updateNodeGroup', groupName: 'Group', newName: 'Renamed' }]);
 			expect(wf.nodeGroups[0].name).toBe('Group');
 		});
+
+		test('leaves the group untouched when a later field fails validation', () => {
+			// Valid nodeNames combined with a colliding newName: since a failing group
+			// op is skipped rather than fatal, applying the membership before checking
+			// the name would persist a change the skip report says never happened.
+			const result = applyOperations(
+				groupedWorkflow(),
+				[{ type: 'updateNodeGroup', groupName: 'Group', nodeNames: ['A', 'B'], newName: 'Other' }],
+				{ canvasGroupsEnabled: true },
+			);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.skippedOperations).toEqual([
+				{
+					opIndex: 0,
+					type: 'updateNodeGroup',
+					reason: "a node group named 'Other' already exists",
+				},
+			]);
+			expect(result.workflow.nodeGroups![0]).toEqual({
+				id: 'g1',
+				name: 'Group',
+				nodeIds: ['a'],
+				description: 'Old description',
+			});
+		});
 	});
 
 	describe('nodeGroupsChanged', () => {

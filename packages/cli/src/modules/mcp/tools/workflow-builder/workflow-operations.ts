@@ -1040,19 +1040,29 @@ const handleUpdateNodeGroup: OpHandler<'updateNodeGroup'> = (op, ctx, opIndex) =
 		return `node group '${op.groupName}' not found`;
 	}
 
+	// Validate every field before touching the group. A failing group op is
+	// skipped, not fatal, so a half-applied mutation would be persisted while the
+	// report says the operation never took effect.
+	let nodeIds: string[] | undefined;
 	if (op.nodeNames !== undefined) {
 		const resolved = resolveGroupNodeIds(ctx.nodeByName, op.nodeNames, op.groupName);
 		if ('error' in resolved) {
 			return resolved.error;
 		}
-		group.nodeIds = resolved.nodeIds;
+		nodeIds = resolved.nodeIds;
 	}
 
-	if (op.newName !== undefined && op.newName !== group.name) {
-		if (groups.some((g) => g !== group && g.name === op.newName)) {
-			return `a node group named '${op.newName}' already exists`;
-		}
-		group.name = op.newName;
+	const newName = op.newName !== undefined && op.newName !== group.name ? op.newName : undefined;
+	if (newName !== undefined && groups.some((g) => g !== group && g.name === newName)) {
+		return `a node group named '${newName}' already exists`;
+	}
+
+	if (nodeIds !== undefined) {
+		group.nodeIds = nodeIds;
+	}
+
+	if (newName !== undefined) {
+		group.name = newName;
 	}
 
 	if (op.description !== undefined) {
