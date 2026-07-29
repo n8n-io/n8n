@@ -1,0 +1,58 @@
+packages/@n8n/decorators/src/controller/types.ts
+  s_64390ec65834a0::t_37634ccbbbc3e8 56-57,60-61
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_64390ec65834a0::t_f41ddc448e72a4 37,39
+  s_64390ec65834a0::t_c833d7533b4d44 146,148
+packages/@n8n/decorators/src/controller/__tests__/api-error-response.test.ts
+  s_64390ec65834a0::t_b2c53c5e2c3110 1-47
+packages/cli/src/public-api/v1/controllers/tags.public.controller.ts
+  s_64390ec65834a0::t_cbac4ac6859dc1 24
+  s_64390ec65834a0::t_41a137bc502cff 26
+  s_64390ec65834a0::t_a7872778c4759d 7
+.agents/skills/public-api/SKILL.md
+  s_64390ec65834a0::t_c82cedc1dbccba 46,54-59,65-66
+  s_64390ec65834a0::t_c7f8643744785b 44,61-62,67-71
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  s_64390ec65834a0::t_fad31f286adf17 4,7
+  s_64390ec65834a0::t_0fbab23cf90cac 237,242,244,256,258
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_64390ec65834a0::t_2bc7a10861dd87 1-95
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_64390ec65834a0::t_88afccb326bd79 10
+  s_64390ec65834a0::t_cecc6a7aacac24 222
+  s_64390ec65834a0::t_86d13b8a75daa9 143-146,175-184
+  s_64390ec65834a0::t_684d6c5062d88e 154
+  s_64390ec65834a0::t_1359e4db782a3a 33-46
+  s_64390ec65834a0::t_32eba7f4d5095e 185-186
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_64390ec65834a0::t_84b1612d438f10 30-33,35
+  s_64390ec65834a0::t_ce0df7639f84ff 4-5,8
+packages/@n8n/decorators/src/controller/__tests__/api-summary.test.ts
+  s_64390ec65834a0::t_fb90692724eda7 1-32
+packages/@n8n/decorators/src/controller/api-error-response.ts
+  s_64390ec65834a0::t_7c865b31f0d354 1-26
+packages/@n8n/decorators/src/controller/index.ts
+  s_64390ec65834a0::t_a4976ce8e60de0 8-9
+packages/@n8n/decorators/src/controller/api-summary.ts
+  s_64390ec65834a0::t_27b26ff9c98f8a 1-17
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTags.generated.yml
+  s_64390ec65834a0::t_6286f5a296e429 4,15
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  s_64390ec65834a0::t_b2688f41c5e149 4-6,17,66-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "860fc56101889e7eea9cc0730b232f5ed8ce9b3b",
+  "prompts": {},
+  "sessions": {
+    "s_64390ec65834a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bcfd0e-672d-481c-a393-54c80e6b7558",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
