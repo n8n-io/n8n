@@ -446,38 +446,41 @@ describe('workflow package import — with variables', () => {
 			expect(layout).toHaveLength(2);
 		});
 
-		it('rejects global placement for a user without the global variable:create scope', async () => {
-			const owner = await createOwner();
-			const member = await createMember();
-			const sourceProject = await createTeamProject('Source', owner);
-			const targetProject = await createTeamProject('Target', owner);
-			// An editor may import workflows and create project variables, but global placement
-			// additionally requires the global variable:create scope, which members lack.
-			await linkUserToProject(member, targetProject, 'project:editor');
-			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
-			const workflow = await buildWorkflowReferencingVariables({
-				name: 'Workflow with vars',
-				project: sourceProject,
-				variableNames: ['API_URL'],
-			});
+		it.each(['create-stub', 'create-with-value'] as const)(
+			'rejects global placement under %s for a user without the global variable:create scope',
+			async (variableMissingMode) => {
+				const owner = await createOwner();
+				const member = await createMember();
+				const sourceProject = await createTeamProject('Source', owner);
+				const targetProject = await createTeamProject('Target', owner);
+				// An editor may import workflows and create project variables, but global placement
+				// additionally requires the global variable:create scope, which members lack.
+				await linkUserToProject(member, targetProject, 'project:editor');
+				await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+				const workflow = await buildWorkflowReferencingVariables({
+					name: 'Workflow with vars',
+					project: sourceProject,
+					variableNames: ['API_URL'],
+				});
 
-			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
-			const workflowsBefore = await workflowRepository.count();
-			const variablesBefore = await variablesRepository.count();
+				const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+				const workflowsBefore = await workflowRepository.count();
+				const variablesBefore = await variablesRepository.count();
 
-			await expect(
-				importPackage({
-					user: member,
-					projectId: targetProject.id,
-					packageBuffer,
-					variableMissingMode: 'create-stub',
-					variableParentPolicy: 'global',
-				}),
-			).rejects.toThrow('You are not allowed to create global variables');
+				await expect(
+					importPackage({
+						user: member,
+						projectId: targetProject.id,
+						packageBuffer,
+						variableMissingMode,
+						variableParentPolicy: 'global',
+					}),
+				).rejects.toThrow('You are not allowed to create global variables');
 
-			expect(await workflowRepository.count()).toBe(workflowsBefore);
-			expect(await variablesRepository.count()).toBe(variablesBefore);
-		});
+				expect(await workflowRepository.count()).toBe(workflowsBefore);
+				expect(await variablesRepository.count()).toBe(variablesBefore);
+			},
+		);
 
 		it('rejects project placement for a user without projectVariable:create in the target', async () => {
 			const owner = await createOwner();
