@@ -6,7 +6,7 @@ import { computed, onMounted, ref } from 'vue';
 import type { Agent } from '@/features/agents/agent.types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
 
 defineProps<{
 	placeholder?: string;

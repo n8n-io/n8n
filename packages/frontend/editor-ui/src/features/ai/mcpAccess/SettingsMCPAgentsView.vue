@@ -11,7 +11,7 @@ import {
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -180,7 +180,7 @@ onMounted(async () => {
 				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
 					<N8nButton
 						variant="subtle"
-						iconOnly
+						icon-only
 						data-test-id="mcp-agents-refresh-button"
 						size="small"
 						icon="refresh-cw"
