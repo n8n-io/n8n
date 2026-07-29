@@ -36,6 +36,7 @@ const showUserRoleProvisioningDialog = ref(false);
 const {
 	roleAssignment,
 	mappingMethod,
+	defaultInstanceRole,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
 	trackProvisioningChange,
@@ -344,12 +345,14 @@ onMounted(async () => {
 			<UserRoleProvisioningDropdown
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
+				v-model:default-instance-role="defaultInstanceRole"
 				auth-protocol="oidc"
 				:disabled="isSsoManagedByEnv"
 			/>
 			<RoleMappingRuleEditor
 				v-if="mappingMethod === 'rules_in_n8n'"
 				ref="roleMappingRuleEditorRef"
+				v-model:default-instance-role="defaultInstanceRole"
 				:show-project-rules="roleAssignment === 'instance_and_project'"
 			/>
 			<ConfirmProvisioningDialog

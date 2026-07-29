@@ -25,6 +25,7 @@ import {
 	tryToParseUrl,
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
+	UnexpectedError,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -68,6 +69,10 @@ function isFormUserAuthClaims(value: unknown): value is FormUserAuthClaims {
 		typeof c.nid === 'string' &&
 		typeof c.wid === 'string'
 	);
+}
+
+export function isFormOAuth2Enabled(): boolean {
+	return process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 === 'true';
 }
 
 export function sanitizeHtml(text: string) {
@@ -705,6 +710,46 @@ export function verifyFormUserAuthToken(token: string, node: INode): IUser | nul
 	};
 }
 
+function trimTrailingSlash(url: string): string {
+	return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
+// Carries the OAuth2 access token across the single same-site redirect from the
+// provider callback to the clean form URL, so `code`/`state` never reach the
+// sandboxed form page. The token is otherwise already embedded in the form HTML
+// (the page sends it back as `x-auth-token` on POST), so this is not a new exposure.
+const FORM_OAUTH_COOKIE_NAME = 'n8n-form-oauth';
+
+function formOAuthCookieOptions(req: Request, resourceUrl: string) {
+	// Derive `secure` from the request scheme (honouring x-forwarded-proto, as
+	// buildAbsoluteFormUrl does) rather than config, so the cookie is actually sent
+	// back on the follow-up GET over http in dev while staying Secure over https.
+	const forwardedProto = req.headers['x-forwarded-proto'];
+	const proto = (typeof forwardedProto === 'string' ? forwardedProto.trim() : '') || req.protocol;
+	return {
+		httpOnly: true,
+		sameSite: 'lax' as const, // must be Lax: sent on our own top-level 302 → GET
+		secure: proto === 'https',
+		path: new URL(resourceUrl).pathname, // scope the bearer token to this form
+	};
+}
+
+function setFormOAuthToken(res: Response, req: Request, resourceUrl: string, token: string): void {
+	res.cookie(FORM_OAUTH_COOKIE_NAME, token, {
+		...formOAuthCookieOptions(req, resourceUrl),
+		maxAge: 60_000, // one redirect hop; short by design
+	});
+}
+
+function readFormOAuthToken(req: Request): string | null {
+	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-form-oauth=([^;]+)/);
+	return match ? decodeURIComponent(match[1].trim()) : null;
+}
+
+function clearFormOAuthToken(res: Response, req: Request, resourceUrl: string): void {
+	res.clearCookie(FORM_OAUTH_COOKIE_NAME, formOAuthCookieOptions(req, resourceUrl));
+}
+
 /**
  * Authenticate an `n8nUserAuth` request via:
  * 1. the `n8n-auth` cookie (sent on top-level GET when the user is logged in), or
@@ -715,22 +760,139 @@ export function verifyFormUserAuthToken(token: string, node: INode): IUser | nul
  * (302 to `/signin` on GET, 401 on POST) and returns `null` — the caller
  * must abort with `noWebhookResponse`.
  */
-async function authenticateFormUserOrRespond(context: IWebhookFunctions): Promise<IUser | null> {
+async function authenticateFormUserOrRespond(
+	context: IWebhookFunctions,
+	oauth2Enabled: boolean = false,
+): Promise<{ user: IUser; token: string | null } | null> {
 	const req = context.getRequestObject();
+
+	if (oauth2Enabled) {
+		const res = context.getResponseObject();
+		const url = context.getNodeWebhookUrl('default');
+		if (!url) {
+			throw new UnexpectedError('Webhook URL not found for the node');
+		}
+		const resourceUrl = trimTrailingSlash(url);
+		if (req.method === 'GET') {
+			const { code, state } = req.query;
+
+			if (typeof req.query.error === 'string') {
+				// The provider returned an error (e.g. the user denied consent). Restarting the
+				// flow here would loop straight back to the same denial, so stop and report.
+				context.logger.warn('Form OAuth2 authorization was denied or failed', {
+					error: req.query.error,
+					error_description: req.query.error_description,
+				});
+				res.status(403).send('Access denied');
+				res.end();
+				return null;
+			}
+
+			// handle OAuth2 callback from the provider (code + state query params)
+			if (typeof code === 'string' && typeof state === 'string') {
+				try {
+					const authorizationResult = await context.completeN8nOAuth2Flow(code, state);
+					if (authorizationResult.valid) {
+						// TODO: exchange the OAuth2 token to a specficly scoped token.
+						// Don't render the form here: the callback URL still carries `code`/`state`,
+						// which must never reach the sandboxed form page. Stash the token in a
+						// one-hop cookie and redirect to the clean resource URL — the follow-up GET
+						// (below) picks up the cookie and renders the form.
+						setFormOAuthToken(res, req, resourceUrl, authorizationResult.token);
+						// Re-append the original query params (dropped by the first provider
+						// redirect, stashed against this flow's `state` on the fresh GET) so the
+						// follow-up GET restores field prefill and `formQueryParameters`.
+						const preservedQuery = authorizationResult.metadata?.query;
+						res.writeHead(302, {
+							Location: preservedQuery ? `${resourceUrl}?${preservedQuery}` : resourceUrl,
+						});
+						res.end();
+						return null;
+					}
+					// We fall through to the redirect below to restart the OAuth2 flow if the callback is invalid.
+					context.logger.warn('Form OAuth2 flow failed, restarting', {
+						reason: authorizationResult.reason,
+					});
+				} catch (error) {
+					// Ignore errors and fall through to the redirect below
+					context.logger.warn('Form OAuth2 flow failed, restarting', {
+						error,
+					});
+				}
+			} else {
+				// Not a provider callback. If we just completed the flow, the token rides in a
+				// one-hop cookie set on the redirect above. Consume it once and render.
+				const cookieToken = readFormOAuthToken(req);
+				if (cookieToken) {
+					clearFormOAuthToken(res, req, resourceUrl);
+					const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
+					if (validation.valid) {
+						return { user: validation.user, token: cookieToken };
+					}
+					// Stale/invalid cookie — fall through to restart the OAuth2 flow.
+				}
+			}
+
+			// Stash the original query params against this flow's OAuth `state` so we can
+			// restore them after the bounce. Only on a genuine fresh GET — a callback
+			// fall-through (invalid completion) carries `code`/`state`, which we must not
+			// preserve as the form's query, and whose original query was consumed with the
+			// now-invalid state, so a restart begins clean.
+			const isCallback = typeof code === 'string' && typeof state === 'string';
+			const originalQuery = isCallback ? '' : req.originalUrl.split('?').slice(1).join('?');
+
+			try {
+				// start authentication flow by redirecting to the OAuth2 provider's authorization URL
+				const authorizationUrl = await context.beginN8nOAuth2Flow(
+					resourceUrl,
+					originalQuery ? { query: originalQuery } : undefined,
+				);
+				res.writeHead(302, {
+					Location: authorizationUrl,
+				});
+				res.end();
+			} catch (error) {
+				// Can't build the authorization URL — nothing to redirect to, so abort.
+				context.logger.warn('Form OAuth2 flow failed', {
+					error,
+				});
+				throw new UnexpectedError('Form OAuth2 flow failed');
+			}
+			return null;
+		} else {
+			// For POST requests, the OAuth2 flow is not applicable. We fall through to the cookie and token checks below.
+			const formToken = req.headers['x-auth-token'];
+			if (typeof formToken === 'string' && formToken) {
+				const validation = await context.validateN8nOAuth2Token(formToken, resourceUrl);
+				if (validation.valid) {
+					await context.establishTriggerIdentity(formToken, resourceUrl); // seeds the run
+					return {
+						user: validation.user,
+						token: null,
+					};
+				}
+			}
+			res.status(401).send();
+			return null;
+		}
+	}
 
 	// Parse the raw Cookie header rather than `req.cookies` because the webhook
 	// path may bypass cookie-parser middleware in some deployments.
 	const cookieMatch = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-auth=([^;]+)/);
 	if (cookieMatch) {
 		try {
-			return await context.validateCookieAuth(cookieMatch[1].trim());
+			return {
+				user: await context.validateCookieAuth(cookieMatch[1].trim()),
+				token: null,
+			};
 		} catch {}
 	}
 
 	const formToken = req.headers['x-auth-token'];
 	if (typeof formToken === 'string' && formToken) {
 		const user = verifyFormUserAuthToken(formToken, context.getNode());
-		if (user) return user;
+		if (user) return { user, token: null };
 	}
 
 	const res = context.getResponseObject();
@@ -758,7 +920,7 @@ export async function validateFormPageAuth(
 	triggerAuthentication: string,
 ): Promise<{ authedUser?: IUser; responded?: boolean }> {
 	if (triggerAuthentication !== 'n8nUserAuth') return {};
-	const user = await authenticateFormUserOrRespond(context);
+	const { user } = (await authenticateFormUserOrRespond(context, false)) ?? {};
 	return user ? { authedUser: user } : { responded: true };
 }
 
@@ -802,11 +964,14 @@ export async function formWebhook(
 
 	const authentication = context.getNodeParameter(authProperty, 'none') as string;
 	let authedUser: IUser | undefined;
+	let oAuth2Token: string | undefined;
 	if (node.typeVersion > 1) {
 		if (authentication === 'n8nUserAuth') {
-			const user = await authenticateFormUserOrRespond(context);
+			const { user, token } =
+				(await authenticateFormUserOrRespond(context, isFormOAuth2Enabled())) ?? {};
 			if (!user) return { noWebhookResponse: true };
 			authedUser = user;
+			oAuth2Token = token ?? undefined;
 		} else {
 			try {
 				await validateWebhookAuthentication(context, authProperty);
@@ -885,10 +1050,14 @@ export async function formWebhook(
 		let authToken: string | undefined;
 		if (node.typeVersion > 1) {
 			if (authentication === 'n8nUserAuth' && authedUser) {
-				// Cookies aren't sent on POST from the sandboxed form page
-				// (null origin + SameSite=Lax). Embed an HMAC token so the
-				// POST handler can re-authenticate the user.
-				authToken = generateFormUserAuthToken(node, authedUser);
+				if (!isFormOAuth2Enabled()) {
+					// Cookies aren't sent on POST from the sandboxed form page
+					// (null origin + SameSite=Lax). Embed an HMAC token so the
+					// POST handler can re-authenticate the user.
+					authToken = generateFormUserAuthToken(node, authedUser);
+				} else {
+					authToken = oAuth2Token;
+				}
 			} else {
 				authToken = await generateFormPostBasicAuthToken(context, authProperty);
 			}

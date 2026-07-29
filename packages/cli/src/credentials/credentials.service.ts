@@ -102,6 +102,8 @@ type UpdateOptions = {
 	deleteUserEntries?: boolean;
 	/** Existing instance credential whose hook-mutated payload must be revalidated. */
 	instanceCredential?: Pick<CredentialsEntity, 'id' | 'type'>;
+	/** When provided, the returned entity is enriched with `connectedByMe` for this user. */
+	user?: User;
 };
 
 type CreateCredentialOptions = CreateCredentialDto & {
@@ -806,7 +808,7 @@ export class CredentialsService {
 		// every time anybody changes anything on the credentials even if it is just the name.
 		// Exception: when toggling to private (Static→Private), the shared token must be cleared.
 		if (decryptedData.oauthTokenData && !options?.clearOauthTokenData) {
-			// @ts-ignore
+			// @ts-expect-error data is typed as encrypted string
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
 
@@ -917,23 +919,37 @@ export class CredentialsService {
 			return await transactionManager.findOneBy(CredentialsEntity, { id: credentialId });
 		};
 
+		let result: CredentialsEntity | null;
 		if (!options?.instanceCredential) {
-			return await this.credentialsRepository.manager.transaction(persist);
+			result = await this.credentialsRepository.manager.transaction(persist);
+		} else {
+			const instanceCredential = options.instanceCredential;
+			const hookedData = await this.getValidatedInstanceCredentialHookData(
+				newCredentialData,
+				instanceCredential.id,
+				instanceCredential.type,
+			);
+			result = await this.dbLockService.withLock(
+				DbLock.INSTANCE_AI_SETTINGS,
+				async (transactionManager, ctx) => {
+					await this.validateInstanceCredentialUpdate(
+						instanceCredential,
+						hookedData,
+						undefined,
+						ctx,
+					);
+					return await persist(transactionManager);
+				},
+			);
 		}
 
-		const instanceCredential = options.instanceCredential;
-		const hookedData = await this.getValidatedInstanceCredentialHookData(
-			newCredentialData,
-			instanceCredential.id,
-			instanceCredential.type,
-		);
-		return await this.dbLockService.withLock(
-			DbLock.INSTANCE_AI_SETTINGS,
-			async (transactionManager, ctx) => {
-				await this.validateInstanceCredentialUpdate(instanceCredential, hookedData, undefined, ctx);
-				return await persist(transactionManager);
-			},
-		);
+		// Reflect connections cleared above by deleteUserEntries, not a stale pre-update value.
+		const enriched: (CredentialsEntity & { connectedByMe?: boolean }) | null = result;
+		if (enriched && options?.user) {
+			await this.populateConnectedByMe([enriched], options.user);
+		}
+
+		return enriched;
 	}
 
 	/**

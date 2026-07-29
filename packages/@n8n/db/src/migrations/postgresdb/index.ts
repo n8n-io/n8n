@@ -54,6 +54,7 @@ import { LimitWorkflowVersionTriggerToContent1784000000003 } from './17840000000
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
 import { AddExecutionEntityWorkflowStatusIndex1784000000031 } from './1784000000031-AddExecutionEntityWorkflowStatusIndex';
 import { CreateWorkflowStatisticsDeltaTable1784000000043 } from './1784000000043-CreateWorkflowStatisticsDeltaTable';
+import { ChangeInstalledNodeVersionType1785162364000 } from './1785162364000-ChangeInstalledNodeVersionType';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -230,6 +231,8 @@ import { AddStoredAtToAgentExecution1784815940110 } from '../common/178481594011
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
 import { AddAvailableInMcpToAgents1784897791636 } from '../common/1784897791636-AddAvailableInMcpToAgents';
+import { AddIsFirstPartyToOAuthClients1785162364001 } from '../common/1785162364001-AddIsFirstPartyToOAuthClients';
+import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -465,4 +468,7 @@ export const postgresMigrations: Migration[] = [
 	AddInstanceCredentials1784815940111,
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
+	ChangeInstalledNodeVersionType1785162364000,
+	AddIsFirstPartyToOAuthClients1785162364001,
+	AddAgentFileStorageColumns1785186578138,
 ];
