@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { workflowReferences } from './references';
+import { workflowReferences } from './references/workflow-references';
 import { decideWorkflowConflictAction } from './workflow-conflict-policy';
 import { decideWorkflowId } from './workflow-id-policy';
 import {

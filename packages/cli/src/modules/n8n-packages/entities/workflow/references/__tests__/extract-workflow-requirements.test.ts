@@ -1,7 +1,7 @@
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-import { extractWorkflowRequirements } from '../index';
+import { extractWorkflowRequirements } from '../extract-workflow-requirements';
 
 function makeWorkflow(nodes: INode[]): WorkflowEntity {
 	return {

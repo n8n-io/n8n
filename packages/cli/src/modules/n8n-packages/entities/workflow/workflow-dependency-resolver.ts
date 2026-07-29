@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { extractWorkflowRequirements } from './references';
+import { extractWorkflowRequirements } from './references/extract-workflow-requirements';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
 export interface WorkflowDependencyResolveRequest {
