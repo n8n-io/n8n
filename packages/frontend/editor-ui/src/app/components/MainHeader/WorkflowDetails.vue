@@ -13,7 +13,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
