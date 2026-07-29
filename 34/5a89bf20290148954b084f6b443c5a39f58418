@@ -1,0 +1,85 @@
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/index.ts
+  s_a34fcfabd7cdbf::t_eae6cdad1fed84 7,22-23
+  s_a34fcfabd7cdbf::t_eeee8a5d3b145d 24
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-trigger-resource.resolver.api.test.ts
+  s_a34fcfabd7cdbf::t_ab9affde613da0 100,135,138,147,150-151,153,157,160,163,167,169-181,183,194,197,203,208-209,212,222,225,232-233,243,246,248-249,253,257,259-260,264,269,271-272,290-291,313,316,325,330,337,340,347,350,356,386
+  s_a34fcfabd7cdbf::t_b57dd5a79f2a4d 97-99
+  s_a34fcfabd7cdbf::t_5a67996f935b47 101-103,132-134
+  s_a34fcfabd7cdbf::t_e4b09b8ea8a28f 136-137
+  s_a34fcfabd7cdbf::t_a5d406c7472670 139-141,144-146
+  s_a34fcfabd7cdbf::t_9816669cad250c 148-149
+  s_a34fcfabd7cdbf::t_a4d900561067e9 152
+  s_a34fcfabd7cdbf::t_853a7509bb8b65 154-156
+  s_a34fcfabd7cdbf::t_681dd6cc8bec89 158-159
+  s_a34fcfabd7cdbf::t_bbdbc16ca3b78c 161-162
+  s_a34fcfabd7cdbf::t_e6d1fef2344a95 164-166
+  s_a34fcfabd7cdbf::t_02ee4c9f30bd78 168
+  s_a34fcfabd7cdbf::t_112052b252373c 182
+  s_a34fcfabd7cdbf::t_5ce522a5c1aa2f 184-186,191-193
+  s_a34fcfabd7cdbf::t_bfcae72687b9a5 195-196
+  s_a34fcfabd7cdbf::t_8be9d429d449c8 198-202
+  s_a34fcfabd7cdbf::t_5bef024ce56b7b 204-207
+  s_a34fcfabd7cdbf::t_358fb3c6c07fef 210-211
+  s_a34fcfabd7cdbf::t_dc3919ea19aa54 213-215,219-221
+  s_a34fcfabd7cdbf::t_cf99440861da13 223-224
+  s_a34fcfabd7cdbf::t_ccc08801ddb58e 226-231
+  s_a34fcfabd7cdbf::t_4ffbcdb45a2460 234-236,240-242
+  s_a34fcfabd7cdbf::t_1a6061d58676e1 244-245
+  s_a34fcfabd7cdbf::t_0232b7c40fbea2 247
+  s_a34fcfabd7cdbf::t_7c7d6179e56fdd 250-252
+  s_a34fcfabd7cdbf::t_0d4068d4b3b850 254-256
+  s_a34fcfabd7cdbf::t_16806f6cedd4c2 258
+  s_a34fcfabd7cdbf::t_49a07ee2349617 261-263
+  s_a34fcfabd7cdbf::t_4bf545bcda256f 265-268
+  s_a34fcfabd7cdbf::t_0a752d7d0a6930 270
+  s_a34fcfabd7cdbf::t_7c8936b366ab77 273-275,287-289
+  s_a34fcfabd7cdbf::t_f8f15abc0b1f26 292-294,310-312
+  s_a34fcfabd7cdbf::t_0c459e90779ce6 314-315
+  s_a34fcfabd7cdbf::t_238012dca64d03 317-319,322-324
+  s_a34fcfabd7cdbf::t_59e671b1b64306 326-329
+  s_a34fcfabd7cdbf::t_124f6745a8a8f4 331-336
+  s_a34fcfabd7cdbf::t_f638af88cd4198 338-339
+  s_a34fcfabd7cdbf::t_734af8879c5ff7 341-346
+  s_a34fcfabd7cdbf::t_4fef3bc6024307 348-349
+  s_a34fcfabd7cdbf::t_298db5f26ad6d9 351-355
+  s_a34fcfabd7cdbf::t_42ec5bdf5bfeb0 357-359,383-385
+  s_a34fcfabd7cdbf::t_74237a5a6b5dca 387
+  s_a34fcfabd7cdbf::t_10dcd4111ee941 1-96,104-131,142-143,187-190,216-218,237-239,276-286,295-309,320-321,360-382
+packages/cli/src/webhooks/webhook.service.ts
+  s_a34fcfabd7cdbf::t_88be2f0994fe2b 109-117
+  s_a34fcfabd7cdbf::t_b67cc0bffb7cf6 108
+packages/@n8n/db/src/repositories/webhook.repository.ts
+  s_a34fcfabd7cdbf::t_2835c2911f0661 19-27
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_a34fcfabd7cdbf::t_9a407b6843498b 12-13,23-29
+  s_a34fcfabd7cdbf::t_2ef751121c2a1f 11
+  s_a34fcfabd7cdbf::t_a9f96d9562078d 30-31
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
+  s_a34fcfabd7cdbf::t_d288facff88956 47-48,54-55,59-60,74-75,77-109,124-125,133-134,164
+  s_a34fcfabd7cdbf::t_4f2c68facb886c 44-46
+  s_a34fcfabd7cdbf::t_fba22a31a169ec 49-53
+  s_a34fcfabd7cdbf::t_a5ee0a0ce13f1b 56-58
+  s_a34fcfabd7cdbf::t_1106171f1e38a4 61-63,71-73
+  s_a34fcfabd7cdbf::t_2c7b81fd99ce0f 76
+  s_a34fcfabd7cdbf::t_bb92a60d618feb 110-112,121-123
+  s_a34fcfabd7cdbf::t_60c1bc6f005e3e 126-128,130-132
+  s_a34fcfabd7cdbf::t_4b74ee933c1ff1 135-137,161-163
+  s_a34fcfabd7cdbf::t_d99ec30ee15ed6 165-167
+  s_a34fcfabd7cdbf::t_f72a618572b445 1-43,64-70,113-120,129,138-160,168-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "345a89bf20290148954b084f6b443c5a39f58418",
+  "prompts": {},
+  "sessions": {
+    "s_a34fcfabd7cdbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb7c98d7-9bf4-4adc-bb18-cacddf973ef7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
