@@ -106,6 +106,16 @@ export class WebhookService {
 	}
 
 	/**
+	 * Find every static webhook registered at the given path, regardless of HTTP
+	 * method. Used by the OAuth protected-resource resolver, which knows a resource
+	 * only by its path (the RFC 8707 resource URL carries no method) and so must
+	 * consider every method registered there. Bypasses the per-method cache.
+	 */
+	async findStaticWebhooksByPath(path: string) {
+		return await this.webhookRepository.findStaticWebhooksByPath(path);
+	}
+
+	/**
 	 * Find a matching webhook with one or more dynamic path segments, e.g. `<uuid>/user/:id/posts`.
 	 * It is mandatory for dynamic webhooks to have `<uuid>/` at the base.
 	 */

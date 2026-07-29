@@ -16,4 +16,13 @@ export class WebhookRepository extends Repository<WebhookEntity> {
 	async getStaticWebhooks() {
 		return await this.findBy({ webhookId: IsNull() });
 	}
+
+	/**
+	 * Retrieve every static webhook (no dynamic path segments) registered at the
+	 * given path, across all HTTP methods. A node listening on multiple methods
+	 * registers one row per method, so a single path can map to several rows.
+	 */
+	async findStaticWebhooksByPath(webhookPath: string) {
+		return await this.findBy({ webhookPath, webhookId: IsNull() });
+	}
 }
