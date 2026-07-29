@@ -111,7 +111,6 @@ function decideForAbsentId(
 	}
 
 	if (nameHolder) {
-		// Name collision: the id is free but the name belongs to a different tag.
 		if (conflictPolicy === TagConflictPolicy.Skip) {
 			return { action: 'drop', tag: { id: sourceId, name } };
 		}

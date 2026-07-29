@@ -371,7 +371,6 @@ describe('project shell import', () => {
 
 		const result = await importProjects(owner, packageBuffer);
 
-		// Both scopes plan the same global tag; the first apply creates it, the second no-ops.
 		expect(result.tags).toEqual({ matched: [], created: ['shared'], renamed: [], skipped: [] });
 		expect(await Container.get(TagRepository).find()).toEqual([
 			expect.objectContaining({ id: 'TAG1', name: 'shared' }),

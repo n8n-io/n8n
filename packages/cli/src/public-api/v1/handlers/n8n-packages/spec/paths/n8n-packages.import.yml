@@ -246,8 +246,8 @@ post:
                 What to do when a tag referenced by the package's workflows has no
                 tag with the same id on the target instance (tags are matched by
                 source id, never by name). `create` (default) creates the tag
-                globally with its package (source) id and name; when the package
-                has tag requirements this needs an API key carrying the
+                globally with its package (source) id and name; when the import
+                would create a tag this needs an API key carrying the
                 `tag:create` scope. `do-nothing` imports the workflows without the
                 missing tags — nothing is created and the dropped names are listed
                 under `tags.skipped`.
@@ -267,7 +267,7 @@ post:
                 proceeds and lists them under `tags.skipped`). `fail` rejects the
                 import with a 409. `rename` renames a drifted target tag to the
                 package name and needs an API key carrying the `tag:update` scope
-                when the package has tag requirements; a name collision — including
+                when the import would rename a tag; a name collision — including
                 a drifted tag whose package name is held by another tag — still
                 rejects the import (rename degrades to fail).
   responses:

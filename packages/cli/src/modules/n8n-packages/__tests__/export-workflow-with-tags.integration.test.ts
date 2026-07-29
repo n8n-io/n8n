@@ -131,9 +131,7 @@ describe('workflow package export — with tags', () => {
 		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
-		// An emitted `tagIds` key is how import knows tags were exported at all: present (even
-		// empty) means the package's set is authoritative and updates overwrite taggings to it;
-		// absent (includeTags=false or a pre-tag package) leaves target taggings untouched.
+		// An emitted `tagIds` key (vs absent) is how import knows tags were exported at all.
 		expect(workflowJson(entries, manifest.workflows![0].target).tagIds).toEqual([]);
 		expect(tagFiles(entries)).toEqual([]);
 		expect(manifest).not.toHaveProperty('tags');

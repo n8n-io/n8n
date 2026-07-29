@@ -97,13 +97,13 @@ export default class PackageImport extends BaseCommand {
 		}),
 		tagMissingMode: Flags.string({
 			description:
-				'What to do when a tag referenced by the package is absent on the target instance — tags are matched by source id, never by name (default on the instance: create). create creates the tag globally with its source id and name, and needs an API key with the tag:create scope when the package has tag requirements; do-nothing imports the workflows without the missing tags and lists them under tags.skipped',
+				'What to do when a tag referenced by the package is absent on the target instance — tags are matched by source id, never by name (default on the instance: create). create creates the tag globally with its source id and name, and needs an API key with the tag:create scope when the import would create a tag; do-nothing imports the workflows without the missing tags and lists them under tags.skipped',
 			options: ['create', 'do-nothing'],
 			aliases: ['tag-missing-mode'],
 		}),
 		tagConflictPolicy: Flags.string({
 			description:
-				"What to do when a referenced tag conflicts on the target instance — the same-id target tag has a different name (rename drift), or the tag's name is held by a different tag (name collision). skip (instance default) imports the workflows without the conflicted tags and lists them under tags.skipped; fail rejects the import; rename renames a drifted target tag to the package name (needs an API key with the tag:update scope when the package has tag requirements) — name collisions still reject the import",
+				"What to do when a referenced tag conflicts on the target instance — the same-id target tag has a different name (rename drift), or the tag's name is held by a different tag (name collision). skip (instance default) imports the workflows without the conflicted tags and lists them under tags.skipped; fail rejects the import; rename renames a drifted target tag to the package name (needs an API key with the tag:update scope when the import would rename a tag) — name collisions still reject the import",
 			options: ['skip', 'fail', 'rename'],
 			aliases: ['tag-conflict-policy'],
 		}),

@@ -77,8 +77,8 @@ Requires the API key to hold:
 - `workflow:import` — always
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`
 - `variable:create` — when the package references variables and `--variable-missing-mode` is `create-stub`
-- `tag:create` — when the package references tags and `--tag-missing-mode` is `create` (the instance default)
-- `tag:update` — when the package references tags and `--tag-conflict-policy` is `rename`.
+- `tag:create` — when the import would create a tag (under `--tag-missing-mode create`, the instance default; tags that match, are dropped, or belong only to skipped workflows need no scope)
+- `tag:update` — when the import would rename a tag (under `--tag-conflict-policy rename`).
 
 When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:
