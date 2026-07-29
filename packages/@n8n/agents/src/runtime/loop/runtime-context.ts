@@ -49,13 +49,14 @@ export function getModelIdString(model: ModelConfig): string {
 export interface StaticLoopContext {
 	model: LanguageModel;
 	aiProviderTools: ReturnType<typeof toAiSdkProviderTools>;
+	reasoning: AgentRuntimeConfig['reasoning'];
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
 }
 
 /**
  * Builds the per-run and per-iteration dependencies the agentic loop hands to
- * the LLM call: the model instance, provider/thinking options, structured
+ * the LLM call: the model instance, reasoning, provider options, structured
  * output spec, and the effective tool surface (base + deferred + recall tools,
  * mapped to AI SDK shapes). Keeps tool/model assembly out of the loop body.
  */
@@ -97,6 +98,7 @@ export class RuntimeContextBuilder {
 		return {
 			model,
 			aiProviderTools,
+			reasoning: this.config.reasoning,
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
 		};

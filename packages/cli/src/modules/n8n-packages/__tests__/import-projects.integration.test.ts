@@ -1,6 +1,11 @@
 import { LicenseState } from '@n8n/backend-common';
-import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import {
+	createTeamProject,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import {
 	FolderRepository,
 	ProjectRelationRepository,
@@ -9,8 +14,10 @@ import {
 	VariablesRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
@@ -30,6 +37,9 @@ import {
 	serializedProject,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	serializedWorkflowWithSubWorkflow,
+	subWorkflowRefOf,
+	workflowRequirementsFromWorkflows,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
 
@@ -60,6 +70,9 @@ async function importProjects(
 }
 
 const licenseMocker = new LicenseMocker();
+
+// Publishing tests exercise the real publish path; mock the trigger infra it touches.
+mockInstance(ActiveWorkflowManager);
 
 async function findProject(id: string) {
 	return await Container.get(ProjectRepository).findOne({ where: { id } });
@@ -1076,6 +1089,93 @@ describe('project shell import', () => {
 		} finally {
 			emitSpy.mockRestore();
 		}
+	});
+
+	it('rewrites a sub-workflow reference that points into another project under the `new` policy', async () => {
+		// Project brie's workflow calls a sub-workflow that lives in project stilton.
+		const parent = serializedWorkflowWithSubWorkflow({
+			id: 'CHEDDAR',
+			name: 'Parent',
+			subWorkflowId: 'BRIE',
+		});
+		const subWorkflow = serializedWorkflow({ id: 'BRIE', name: 'Sub-workflow' });
+
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{ target: 'projects/brie/workflows/parent', workflow: parent },
+				{ target: 'projects/stilton/workflows/sub', workflow: subWorkflow },
+			],
+			manifestExtras: {
+				requirements: { workflows: workflowRequirementsFromWorkflows([parent, subWorkflow]) },
+			},
+		});
+
+		const result = await importProjects(owner, packageBuffer);
+
+		const importedParent = result.workflows.find((w) => w.sourceWorkflowId === 'CHEDDAR')!;
+		const importedSub = result.workflows.find((w) => w.sourceWorkflowId === 'BRIE')!;
+
+		// Each workflow landed in its own project with a freshly-minted id...
+		expect(importedParent.projectId).toBe('P1');
+		expect(importedSub.projectId).toBe('P2');
+		expect(importedSub.localId).not.toBe('BRIE');
+		// ...and the cross-project reference resolves to the sub-workflow's imported id.
+		expect(subWorkflowRefOf((await findWorkflow(importedParent.localId))!)).toBe(
+			importedSub.localId,
+		);
+	});
+
+	it('publishes a parent whose sub-workflow lives in a project written after it', async () => {
+		// Activation rejects a parent whose sub-workflow is not yet published. The calling project is
+		// listed first here, so only a publish phase that runs after every project is written — and
+		// orders dependencies first — can get both published.
+		const scheduleTrigger = {
+			id: 'schedule-trigger',
+			name: 'Schedule Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+		const parentBase = serializedWorkflowWithSubWorkflow({
+			id: 'CHEDDAR',
+			name: 'Parent',
+			subWorkflowId: 'BRIE',
+		});
+		const parent = { ...parentBase, nodes: [scheduleTrigger, ...parentBase.nodes] };
+		const subWorkflow = serializedWorkflow({
+			id: 'BRIE',
+			name: 'Sub-workflow',
+			nodes: [scheduleTrigger],
+		});
+
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{ target: 'projects/brie/workflows/parent', workflow: parent },
+				{ target: 'projects/stilton/workflows/sub', workflow: subWorkflow },
+			],
+			manifestExtras: {
+				requirements: { workflows: workflowRequirementsFromWorkflows([parent, subWorkflow]) },
+			},
+		});
+
+		const result = await importProjects(owner, packageBuffer, undefined, {
+			workflowPublishingPolicy: 'publish-all',
+		});
+
+		const summaryFor = (sourceWorkflowId: string) =>
+			result.workflows.find((entry) => entry.sourceWorkflowId === sourceWorkflowId);
+
+		expect(summaryFor('BRIE')?.publishing).toEqual({ state: 'published' });
+		expect(summaryFor('CHEDDAR')?.publishing).toEqual({ state: 'published' });
 	});
 });
 

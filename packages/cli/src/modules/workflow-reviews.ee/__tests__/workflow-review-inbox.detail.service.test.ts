@@ -1,31 +1,26 @@
-import type { LicenseState, Logger } from '@n8n/backend-common';
+import type { LicenseState } from '@n8n/backend-common';
 import type {
-	DbLockService,
-	ProjectRelationRepository,
-	SharedWorkflowRepository,
 	User,
 	UserRepository,
 	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
-	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { WorkflowReviewRequestService } from '../workflow-review-request.service';
+import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
+import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';
@@ -68,43 +63,28 @@ function historyVersion(versionId: string) {
 	} as unknown as WorkflowHistory;
 }
 
-describe('WorkflowReviewRequestService.getDetail', () => {
-	const logger = mock<Logger>();
+describe('WorkflowReviewInboxService.getDetail', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
-	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
-	const projectRelationRepository = mock<ProjectRelationRepository>();
-	const roleService = mock<RoleService>();
 	const projectService = mock<ProjectService>();
 	const licenseState = mock<LicenseState>();
-	const dbLockService = mock<DbLockService>();
-	const collaborationService = mock<CollaborationService>();
 
-	const service = new WorkflowReviewRequestService(
-		logger,
-		workflowReviewPolicyService,
+	const service = new WorkflowReviewInboxService(
+		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		workflowFinderService,
 		workflowHistoryService,
-		sharedWorkflowRepository,
 		publishedVersionRepository,
 		requestRepository,
 		workflowRepository,
-		authorRepository,
 		reviewerRepository,
 		userRepository,
-		projectRelationRepository,
-		roleService,
 		projectService,
-		licenseState,
-		dbLockService,
-		collaborationService,
 	);
 
 	beforeEach(() => {

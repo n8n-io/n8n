@@ -8,8 +8,9 @@ import {
 	User,
 } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { DateTime } from 'luxon';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
@@ -70,21 +71,34 @@ export class ExecutionRecoveryService {
 				}
 
 				if (workflow.activeVersionId !== null) {
-					await this.workflowRepository.updateActiveState(workflowId, false);
-					this.logger.warn(
-						`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
-					);
+					try {
+						// Lazy resolution breaks the DI cycle: WorkflowService →
+						// ActiveWorkflowManager → MessageEventBus → this service
+						const { WorkflowService } = await import('@/workflows/workflow.service.js');
+						await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
+						this.logger.warn(
+							`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
+						);
 
-					const recipient = await this.getAutodeactivationRecipient(workflow);
-					await this.userManagementMailer.notifyWorkflowAutodeactivated({
-						recipient,
-						workflow,
-					});
+						const recipient = await this.getAutodeactivationRecipient(workflow);
+						await this.userManagementMailer.notifyWorkflowAutodeactivated({
+							recipient,
+							workflow,
+						});
 
-					this.push.once('editorUiConnected', async () => {
-						await sleep(1000);
-						this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
-					});
+						this.push.once('editorUiConnected', async () => {
+							await sleep(1000);
+							this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+						});
+					} catch (error) {
+						// A throw here would abort startup recovery for the remaining
+						// workflows and leave the event bus's recovery-in-progress marker
+						// behind, making every future startup skip recovery entirely.
+						this.logger.error(`Failed to auto-deactivate workflow ${workflowId}`, {
+							workflowId,
+							error: ensureError(error),
+						});
+					}
 				}
 
 				await this.executionRepository.update(

@@ -1,5 +1,3 @@
-import type { NotificationOptions } from '@n8n/composables/types/notification';
-import type { VIEWS } from '@n8n/frontend-constants/views';
 import { defineStore } from 'pinia';
 import { ref, type Ref } from 'vue';
 
@@ -15,29 +13,22 @@ export type { NotificationOptions } from '@n8n/composables/types/notification';
 /**
  * Public surface of the notifications store. Declared explicitly so the emitted
  * type declarations reference these named types instead of inlining the
- * structural notification/Vue types, keeping the declarations portable across
- * the package boundary.
+ * structural Vue ref types, keeping the declarations portable across the package
+ * boundary.
  */
 export interface NotificationsStore {
-	pendingNotificationsForViews: Ref<Partial<Record<VIEWS, NotificationOptions[]>>>;
 	areNotificationsSuppressed: Ref<boolean>;
 	allowErrorNotificationsWhenSuppressed: Ref<boolean>;
-	setNotificationsForView: (view: VIEWS, notifications: NotificationOptions[]) => void;
 	setNotificationsSuppressed: (suppressed: boolean, options?: { allowErrors?: boolean }) => void;
 }
 
 /**
- * Notification state extracted from `ui.store`: the per-view queue of pending
- * notifications and the suppression flags read by the toast layer.
+ * Notification state extracted from `ui.store`: the suppression flags read by
+ * the toast layer.
  */
 export const useNotificationsStore = defineStore(STORES.NOTIFICATIONS, (): NotificationsStore => {
-	const pendingNotificationsForViews = ref<Partial<Record<VIEWS, NotificationOptions[]>>>({});
 	const areNotificationsSuppressed = ref(false);
 	const allowErrorNotificationsWhenSuppressed = ref(false);
-
-	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
-		pendingNotificationsForViews.value[view] = notifications;
-	};
 
 	const setNotificationsSuppressed = (suppressed: boolean, options?: { allowErrors?: boolean }) => {
 		areNotificationsSuppressed.value = suppressed;
@@ -45,10 +36,8 @@ export const useNotificationsStore = defineStore(STORES.NOTIFICATIONS, (): Notif
 	};
 
 	return {
-		pendingNotificationsForViews,
 		areNotificationsSuppressed,
 		allowErrorNotificationsWhenSuppressed,
-		setNotificationsForView,
 		setNotificationsSuppressed,
 	};
 });
