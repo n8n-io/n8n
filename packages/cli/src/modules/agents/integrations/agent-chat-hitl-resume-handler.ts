@@ -3,7 +3,11 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ActionEvent, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
-import type { BridgeResumeExecutionContext, PlatformAgentContext } from './agent-chat-integration';
+import type {
+	ApprovalDecisionMessageFormatter,
+	BridgeResumeExecutionContext,
+	PlatformAgentContext,
+} from './agent-chat-integration';
 import { onceStatusHandle } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
@@ -29,6 +33,7 @@ interface AgentChatHitlResumeHandlerOptions {
 	logger: Logger;
 	callbackStore?: CallbackStore;
 	deleteActionMessageBeforeResume: boolean;
+	formatApprovalDecisionMessage?: ApprovalDecisionMessageFormatter;
 	resolvePlatformThreadId: (thread: Thread<unknown, unknown>) => string;
 	toAgentThreadId: (platformThreadId: string) => InternalThread;
 	getPlatformAgentContext: () => PlatformAgentContext;
@@ -77,7 +82,7 @@ export class AgentChatHitlResumeHandler {
 			...this.options.getPlatformAgentContext(),
 		});
 
-		await this.cleanUpBeforeResume(event);
+		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData.kind);
 		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);
 	}
 
@@ -125,7 +130,7 @@ export class AgentChatHitlResumeHandler {
 		actionId: string,
 		value: string | undefined,
 		thread: Thread<unknown, unknown>,
-	): Promise<{ actionId: string; value: string | undefined } | null> {
+	): Promise<{ actionId: string; value: string | undefined; kind?: 'approval' } | null> {
 		if (!this.options.callbackStore) return { actionId, value };
 
 		const resolved = await this.options.callbackStore.resolve(actionId);
@@ -136,20 +141,56 @@ export class AgentChatHitlResumeHandler {
 			);
 			return null;
 		}
-		return { actionId: resolved.actionId, value: resolved.value };
+		return { actionId: resolved.actionId, value: resolved.value, kind: resolved.kind };
 	}
 
 	/** Clean up the action message according to integration policy before resuming. */
-	private async cleanUpBeforeResume(event: ActionEvent): Promise<void> {
-		if (!this.options.deleteActionMessageBeforeResume) return;
+	private async cleanUpBeforeResume(
+		event: ActionEvent,
+		resumeData: unknown,
+		callbackKind?: 'approval',
+	): Promise<void> {
+		if (this.options.deleteActionMessageBeforeResume) {
+			try {
+				await event.adapter.deleteMessage(event.threadId, event.messageId);
+			} catch (deleteError) {
+				this.options.logger.warn('[AgentChatBridge] Failed to delete card message', {
+					error: deleteError instanceof Error ? deleteError.message : String(deleteError),
+				});
+			}
+			return;
+		}
+
+		if (callbackKind !== 'approval') return;
+		const approved = this.getApprovalDecision(resumeData);
+		if (approved === undefined) return;
 
 		try {
-			await event.adapter.deleteMessage(event.threadId, event.messageId);
-		} catch (deleteError) {
-			this.options.logger.warn('[AgentChatBridge] Failed to delete card message', {
-				error: deleteError instanceof Error ? deleteError.message : String(deleteError),
+			const message = this.options.formatApprovalDecisionMessage?.({
+				approved,
+				raw: event.raw,
+				user: event.user,
+			});
+			if (message) {
+				await event.adapter.editMessage(event.threadId, event.messageId, message);
+			}
+		} catch (editError) {
+			this.options.logger.warn('[AgentChatBridge] Failed to settle approval card', {
+				error: editError instanceof Error ? editError.message : String(editError),
 			});
 		}
+	}
+
+	private getApprovalDecision(resumeData: unknown): boolean | undefined {
+		if (
+			typeof resumeData !== 'object' ||
+			resumeData === null ||
+			!('approved' in resumeData) ||
+			typeof resumeData.approved !== 'boolean'
+		) {
+			return undefined;
+		}
+		return resumeData.approved;
 	}
 
 	/**

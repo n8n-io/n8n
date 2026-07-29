@@ -4,6 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Thread, Author } from 'chat';
 import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
@@ -16,6 +17,7 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
+	type ApprovalDecisionMessageParams,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
@@ -95,6 +97,16 @@ export class TelegramIntegration extends AgentChatIntegration {
 	readonly deleteActionMessageBeforeResume = false;
 
 	readonly disableStreaming = true;
+
+	formatApprovalDecisionMessage({ approved, raw, user }: ApprovalDecisionMessageParams): string {
+		const originalText =
+			isRecord(raw) && isRecord(raw.message) && typeof raw.message.text === 'string'
+				? raw.message.text
+				: '';
+		const responder = user.fullName || user.userName || user.userId;
+		const outcome = approved ? `✅ Approved by ${responder}` : `🚫 Declined by ${responder}`;
+		return originalText ? `${originalText}\n\n${outcome}` : outcome;
+	}
 
 	readonly formatThreadId = {
 		fromSdk: (thread: Thread<unknown, unknown>) => {

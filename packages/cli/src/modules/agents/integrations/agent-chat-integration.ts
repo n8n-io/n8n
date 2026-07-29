@@ -102,6 +102,16 @@ export interface BridgeMessageContextParams {
 	isNewMention: boolean;
 }
 
+export interface ApprovalDecisionMessageParams {
+	approved: boolean;
+	raw: unknown;
+	user: Author;
+}
+
+export type ApprovalDecisionMessageFormatter = (
+	params: ApprovalDecisionMessageParams,
+) => string | undefined;
+
 /**
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
  *
@@ -292,6 +302,9 @@ export abstract class AgentChatIntegration {
 
 	/** Optional text normalization before the message is handed to the agent. */
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
+
+	/** Replacement text for approval cards preserved after a user responds. */
+	formatApprovalDecisionMessage?(params: ApprovalDecisionMessageParams): string | undefined;
 
 	/**
 	 * Optional per-message execution policy for platform-specific bridge behavior,

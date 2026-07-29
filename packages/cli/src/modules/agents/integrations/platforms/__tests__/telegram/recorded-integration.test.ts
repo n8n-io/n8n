@@ -1,8 +1,12 @@
+import type { StreamChunk } from '@n8n/agents';
 import { readFileSync } from 'fs';
 import { jsonParse } from 'n8n-workflow';
 import { join } from 'path';
 
-import type { TelegramReplayFixtures } from '../../../__tests__/helpers/telegram/replay-test-context';
+import type {
+	TelegramReplayContext,
+	TelegramReplayFixtures,
+} from '../../../__tests__/helpers/telegram/replay-test-context';
 import {
 	callbackPayloadWithData,
 	createTelegramReplayContext,
@@ -30,6 +34,49 @@ const recordedSession = jsonParse<ChannelIntegrationRecord[]>(
 		'utf8',
 	),
 );
+
+const approvalCardText = [
+	'Approval required',
+	'The agent wants to run this tool: Send Telegram message',
+	'Tool: Send Telegram message',
+	'Input: {',
+	'  "text": "Ship it?"',
+	'}',
+].join('\n');
+
+function approvalSuspensionStream(): StreamChunk[] {
+	return [
+		{
+			type: 'tool-call-suspended',
+			runId: 'run-telegram-1',
+			toolCallId: 'tool-approval-1',
+			toolName: 'approval',
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'send_telegram_message',
+				displayName: 'Send Telegram message',
+				args: { text: 'Ship it?' },
+			},
+			resumeSchema: {
+				type: 'object',
+				properties: { approved: { type: 'boolean' } },
+				required: ['approved'],
+			},
+		},
+		{ type: 'finish', finishReason: 'stop' },
+	];
+}
+
+async function clickTelegramCard(
+	ctx: TelegramReplayContext,
+	callbackData: string,
+	messageText = approvalCardText,
+): Promise<void> {
+	ctx.nextStream([{ type: 'finish', finishReason: 'stop' }]);
+	await ctx.sendTelegramWebhook(
+		callbackPayloadWithData(telegramFixtures.callbackBase, callbackData, 1000, messageText),
+	);
+}
 
 function getRecordedWebhook() {
 	const record = recordedSession.find(
@@ -170,19 +217,116 @@ describe('Telegram recorded integration replay', () => {
 		}
 	});
 
-	it('preserves Telegram callback messages and edits them in place', async () => {
+	it.each([
+		{ buttonIndex: 0, approved: true, outcome: '✅ Approved by Alice' },
+		{ buttonIndex: 1, approved: false, outcome: '🚫 Declined by Alice' },
+	])(
+		'automatically settles Telegram approval cards in place ($outcome)',
+		async ({ buttonIndex, approved, outcome }) => {
+			const ctx = await createTelegramReplayContext(telegramFixtures, {
+				stream: approvalSuspensionStream(),
+			});
+			try {
+				await ctx.sendTelegramWebhook(telegramFixtures.mention);
+
+				const cardMessage = ctx.lastApiCall('sendMessage');
+				const callbackData = getTelegramInlineCallbackData(cardMessage, buttonIndex);
+				expect(callbackData).toBeDefined();
+				expect(Buffer.byteLength(callbackData ?? '', 'utf8')).toBeLessThanOrEqual(64);
+				const sendMessageCountBeforeCallback = ctx.apiCalls.filter(
+					(call) => call.method === 'sendMessage',
+				).length;
+
+				await clickTelegramCard(ctx, callbackData ?? '');
+
+				expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
+					expect.objectContaining({
+						runId: 'run-telegram-1',
+						toolCallId: 'tool-approval-1',
+						resumeData: { approved },
+						integrationType: 'telegram',
+					}),
+				);
+				expect(ctx.latestContext()).toMatchObject({
+					platform: 'telegram',
+					messageId: '123456:1000',
+					target: { threadId: 'telegram:123456' },
+				});
+
+				expect(ctx.lastApiCall('deleteMessage')).toBeUndefined();
+				expect(ctx.lastApiCall('answerCallbackQuery')?.body).toMatchObject({
+					callback_query_id: 'callback-1',
+				});
+				expect(ctx.lastApiCall('editMessageText')?.body).toMatchObject({
+					chat_id: '123456',
+					message_id: 1000,
+					text: `${approvalCardText}\n\n${outcome}`,
+					reply_markup: { inline_keyboard: [] },
+				});
+				expect(ctx.apiCalls.filter((call) => call.method === 'sendMessage')).toHaveLength(
+					sendMessageCountBeforeCallback,
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		},
+	);
+
+	it('invalidates sibling Telegram approval callbacks after a decision', async () => {
+		const ctx = await createTelegramReplayContext(telegramFixtures, {
+			stream: approvalSuspensionStream(),
+		});
+		try {
+			await ctx.sendTelegramWebhook(telegramFixtures.mention);
+
+			const cardMessage = ctx.lastApiCall('sendMessage');
+			const approveCallback = getTelegramInlineCallbackData(cardMessage, 0);
+			const denyCallback = getTelegramInlineCallbackData(cardMessage, 1);
+			expect(approveCallback).toBeDefined();
+			expect(denyCallback).toBeDefined();
+
+			await clickTelegramCard(ctx, approveCallback ?? '');
+			await clickTelegramCard(ctx, denyCallback ?? '');
+
+			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledTimes(1);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('resumes Telegram approvals when settling the card fails', async () => {
+		const ctx = await createTelegramReplayContext(telegramFixtures, {
+			failedApiMethods: ['editMessageText'],
+			stream: approvalSuspensionStream(),
+		});
+		try {
+			await ctx.sendTelegramWebhook(telegramFixtures.mention);
+
+			const cardMessage = ctx.lastApiCall('sendMessage');
+			const callbackData = getTelegramInlineCallbackData(cardMessage);
+			await clickTelegramCard(ctx, callbackData ?? '');
+
+			expect(ctx.lastApiCall('editMessageText')).toBeDefined();
+			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledTimes(1);
+			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({ resumeData: { approved: true } }),
+			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('leaves non-approval Telegram cards unchanged after callbacks', async () => {
 		const ctx = await createTelegramReplayContext(telegramFixtures, {
 			stream: [
 				{
 					type: 'tool-call-suspended',
 					runId: 'run-telegram-1',
-					toolCallId: 'tool-approval-1',
-					toolName: 'approval',
+					toolCallId: 'tool-card-1',
+					toolName: 'custom_card',
 					suspendPayload: {
-						type: 'approval',
-						toolName: 'send_telegram_message',
-						displayName: 'Send Telegram message',
-						args: { text: 'Ship it?' },
+						title: 'Choose an action',
+						components: [{ type: 'button', label: 'Continue', value: 'continue' }],
 					},
 				},
 				{ type: 'finish', finishReason: 'stop' },
@@ -191,62 +335,11 @@ describe('Telegram recorded integration replay', () => {
 		try {
 			await ctx.sendTelegramWebhook(telegramFixtures.mention);
 
-			const cardMessage = ctx.lastApiCall('sendMessage');
-			const callbackData = getTelegramInlineCallbackData(cardMessage);
-			expect(callbackData).toBeDefined();
-			expect(Buffer.byteLength(callbackData ?? '', 'utf8')).toBeLessThanOrEqual(64);
-			const sendMessageCountBeforeCallback = ctx.apiCalls.filter(
-				(call) => call.method === 'sendMessage',
-			).length;
+			const callbackData = getTelegramInlineCallbackData(ctx.lastApiCall('sendMessage'));
+			await clickTelegramCard(ctx, callbackData ?? '', 'Choose an action');
 
-			ctx.nextStream([{ type: 'finish', finishReason: 'stop' }]);
-			await ctx.sendTelegramWebhook(
-				callbackPayloadWithData(telegramFixtures.callbackBase, callbackData ?? '', 1000),
-			);
-
-			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
-				expect.objectContaining({
-					runId: 'run-telegram-1',
-					toolCallId: 'tool-approval-1',
-					resumeData: { value: 'true' },
-					integrationType: 'telegram',
-				}),
-			);
-			expect(ctx.latestContext()).toMatchObject({
-				platform: 'telegram',
-				messageId: '123456:1000',
-				target: { threadId: 'telegram:123456' },
-			});
-
-			const result = await ctx.actionExecutor.execute({
-				descriptor: ctx.descriptor,
-				action: 'edit_message',
-				input: { messageId: '123456:1000', message: { text: 'Approved' } },
-				awaitResponse: false,
-				currentMessageContext: ctx.latestContext(),
-			});
-
-			expect(result).toMatchObject({
-				ok: true,
-				messageContext: {
-					platform: 'telegram',
-					messageId: '123456:1000',
-					target: { threadId: 'telegram:123456' },
-				},
-			});
-			expect(ctx.lastApiCall('deleteMessage')).toBeUndefined();
-			expect(ctx.lastApiCall('answerCallbackQuery')?.body).toMatchObject({
-				callback_query_id: 'callback-1',
-			});
-			expect(ctx.lastApiCall('editMessageText')?.body).toMatchObject({
-				chat_id: '123456',
-				message_id: 1000,
-				text: 'Approved',
-				reply_markup: { inline_keyboard: [] },
-			});
-			expect(ctx.apiCalls.filter((call) => call.method === 'sendMessage')).toHaveLength(
-				sendMessageCountBeforeCallback,
-			);
+			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledTimes(1);
+			expect(ctx.lastApiCall('editMessageText')).toBeUndefined();
 		} finally {
 			await ctx.shutdown();
 		}
