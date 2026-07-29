@@ -5,14 +5,14 @@ import {
 	TestDestinationQueryDto,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
-import { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { getExposedEventNames } from '@/eventbus/event-message-classes';
+import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import { createMessageEventBusDestination } from './create-message-event-bus-destination';
@@ -25,7 +25,6 @@ export class EventBusController {
 		private readonly destinationService: LogStreamingDestinationService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private assertNotManagedByEnv() {
@@ -38,7 +37,7 @@ export class EventBusController {
 
 	@Get('/eventnames')
 	async getEventNames(): Promise<string[]> {
-		return getExposedEventNames(this.globalConfig.endpoints.mcpLogStreamingEventsEnabled);
+		return eventNamesAll;
 	}
 
 	@Licensed('feat:logStreaming')

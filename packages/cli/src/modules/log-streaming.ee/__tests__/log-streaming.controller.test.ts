@@ -1,5 +1,5 @@
 import type { OutboundHttp } from '@n8n/backend-network';
-import type { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
+import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
@@ -19,36 +19,22 @@ describe('EventBusController', () => {
 		logStreamingManagedByEnv: false,
 	});
 	const outboundHttp = mock<OutboundHttp>();
-	const globalConfig = mock<GlobalConfig>({
-		endpoints: { mcpLogStreamingEventsEnabled: false },
-	});
 
 	let controller: EventBusController;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		instanceSettingsLoaderConfig.logStreamingManagedByEnv = false;
-		globalConfig.endpoints.mcpLogStreamingEventsEnabled = false;
 		controller = new EventBusController(
 			eventBus,
 			destinationService,
 			instanceSettingsLoaderConfig,
 			outboundHttp,
-			globalConfig,
 		);
 	});
 
 	describe('getEventNames', () => {
-		it('should exclude MCP event names when the env flag is disabled', async () => {
-			const result = await controller.getEventNames();
-
-			expect(result.some((name) => name.startsWith('n8n.mcp.'))).toBe(false);
-			expect(result.length).toBeGreaterThan(0);
-		});
-
-		it('should include MCP event names when the env flag is enabled', async () => {
-			globalConfig.endpoints.mcpLogStreamingEventsEnabled = true;
-
+		it('should include MCP event names', async () => {
 			const result = await controller.getEventNames();
 
 			expect(result).toEqual(

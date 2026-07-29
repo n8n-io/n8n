@@ -1,13 +1,13 @@
 import { PublicCreateDestinationDto } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
-import { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { getExposedEventNames } from '@/eventbus/event-message-classes';
+import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
@@ -51,11 +51,7 @@ const logStreamingHandlers: LogStreamingHandlers = {
 		isLicensed('feat:logStreaming'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:list' }),
 		async (_req, res) => {
-			return res.json({
-				data: getExposedEventNames(
-					Container.get(GlobalConfig).endpoints.mcpLogStreamingEventsEnabled,
-				),
-			});
+			return res.json({ data: eventNamesAll });
 		},
 	],
 

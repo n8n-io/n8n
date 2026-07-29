@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -36,7 +35,6 @@ export class LogStreamingEventRelay extends EventRelay {
 		readonly eventService: EventService,
 		private readonly eventBus: MessageEventBus,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly globalConfig: GlobalConfig,
 	) {
 		super(eventService);
 	}
@@ -144,17 +142,10 @@ export class LogStreamingEventRelay extends EventRelay {
 			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
 			'role-mapping-rule-deleted': (event) => this.roleMappingRuleDeleted(event),
 			'role-mapping-rules-bulk-deleted': (event) => this.roleMappingRulesBulkDeleted(event),
+			'mcp-oauth-completed': (event) => this.mcpOauthCompleted(event),
+			'mcp-tool-called': (event) => this.mcpToolCalled(event),
+			'mcp-access-updated': (event) => this.mcpAccessUpdated(event),
 		});
-
-		// MCP events are opt-in via N8N_MCP_LOG_STREAMING_EVENTS_ENABLED while
-		// the feature is validated; the flag will be removed afterwards.
-		if (this.globalConfig.endpoints.mcpLogStreamingEventsEnabled) {
-			this.setupListeners({
-				'mcp-oauth-completed': (event) => this.mcpOauthCompleted(event),
-				'mcp-tool-called': (event) => this.mcpToolCalled(event),
-				'mcp-access-updated': (event) => this.mcpAccessUpdated(event),
-			});
-		}
 	}
 
 	// #region Workflow

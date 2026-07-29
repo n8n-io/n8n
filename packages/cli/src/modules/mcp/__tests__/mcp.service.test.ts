@@ -80,7 +80,6 @@ describe('McpService', () => {
 	let instanceSettings: InstanceSettings;
 	let logger: Logger;
 	let eventService: EventService;
-	let globalConfig: GlobalConfig;
 
 	beforeEach(() => {
 		eventService = mockInstance(EventService);
@@ -93,13 +92,6 @@ describe('McpService', () => {
 			instanceId: 'test-instance-id',
 		});
 		logger = mockLogger();
-		globalConfig = mockInstance(GlobalConfig, {
-			endpoints: {
-				webhook: '/webhook',
-				webhookTest: '/webhook-test',
-				mcpLogStreamingEventsEnabled: true,
-			},
-		});
 
 		mcpService = new McpService(
 			logger,
@@ -110,7 +102,9 @@ describe('McpService', () => {
 			mockInstance(UrlService),
 			mockInstance(CredentialsService),
 			activeExecutions,
-			globalConfig,
+			mockInstance(GlobalConfig, {
+				endpoints: { webhook: '/webhook', webhookTest: '/webhook-test' },
+			}),
 			mockInstance(Telemetry),
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
@@ -665,17 +659,6 @@ describe('McpService', () => {
 					errorMessage: 'plain failure',
 				}),
 			);
-		});
-
-		it('should not instrument tool calls when the env flag is disabled', async () => {
-			globalConfig.endpoints.mcpLogStreamingEventsEnabled = false;
-			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
-
-			await registerAndInvoke(server, 'untracked_tool', async () => ({
-				content: [{ type: 'text', text: 'ok' }],
-			}));
-
-			expect(eventService.emit).not.toHaveBeenCalledWith('mcp-tool-called', expect.anything());
 		});
 
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {

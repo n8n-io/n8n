@@ -272,10 +272,6 @@ export class McpService {
 	 * registered, so it covers every tool including builder and data-table tools.
 	 */
 	private instrumentToolUsage(server: McpServer, user: User, clientInfo?: McpClientInfo) {
-		// Usage events are opt-in via N8N_MCP_LOG_STREAMING_EVENTS_ENABLED while
-		// the feature is validated; skip the wrapping entirely when disabled.
-		if (!this.globalConfig.endpoints.mcpLogStreamingEventsEnabled) return;
-
 		const originalRegisterTool: typeof server.registerTool = server.registerTool.bind(server);
 
 		server.registerTool = (name, config, handler) => {

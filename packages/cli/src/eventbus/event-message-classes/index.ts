@@ -178,19 +178,6 @@ export const eventNamesAll = [
 	...eventNamesMcp,
 ];
 
-const mcpEventNames: ReadonlySet<string> = new Set(eventNamesMcp);
-
-/**
- * Event names to advertise over the API. MCP events are opt-in via
- * N8N_MCP_LOG_STREAMING_EVENTS_ENABLED while the feature is validated;
- * hiding the names also hides the UI group.
- */
-export function getExposedEventNames(includeMcpEvents: boolean): string[] {
-	return includeMcpEvents
-		? eventNamesAll
-		: eventNamesAll.filter((name) => !mcpEventNames.has(name));
-}
-
 export type EventMessageTypes =
 	| EventMessageGeneric
 	| EventMessageWorkflow
