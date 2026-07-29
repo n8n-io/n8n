@@ -20,7 +20,15 @@ import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to retrieve'),
+	detailLevel: z
+		.enum(['full', 'execution'])
+		.optional()
+		.describe(
+			"Level of detail to return. 'full' (default) includes the complete workflow graph (nodes, connections, node groups, active version). 'execution' omits the graph and returns only the workflow metadata and trigger information needed to run it — prefer it when the goal is just to execute the workflow via execute_workflow.",
+		),
 } satisfies z.ZodRawShape;
+
+export type WorkflowDetailsLevel = NonNullable<z.infer<typeof inputSchema.detailLevel>>;
 
 export type WorkflowDetailsOutputSchema = typeof workflowDetailsOutputSchema;
 
@@ -55,8 +63,14 @@ export const createWorkflowDetailsTool = (
 				openWorldHint: false, // Works with internal n8n data only
 			},
 		},
-		handler: async ({ workflowId }: { workflowId: string }) => {
-			const parameters = { workflowId };
+		handler: async ({
+			workflowId,
+			detailLevel = 'full',
+		}: {
+			workflowId: string;
+			detailLevel?: WorkflowDetailsLevel;
+		}) => {
+			const parameters = { workflowId, detailLevel };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,
 				tool_name: 'get_workflow_details',
@@ -73,7 +87,7 @@ export const createWorkflowDetailsTool = (
 					endpoints,
 					roleService,
 					projectService,
-					{ workflowId },
+					{ workflowId, detailLevel },
 					testBaseWebhookUrl,
 				);
 
@@ -84,7 +98,7 @@ export const createWorkflowDetailsTool = (
 						workflow_id: workflowId,
 						workflow_name: payload.workflow.name,
 						trigger_count: payload.workflow.triggerCount,
-						node_count: payload.workflow.nodes.length,
+						node_count: payload.workflow.nodes?.length,
 					},
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -115,15 +129,16 @@ export async function getWorkflowDetails(
 	endpoints: WebhookEndpoints,
 	roleService: RoleService,
 	projectService: ProjectService,
-	{ workflowId }: { workflowId: string },
+	{ workflowId, detailLevel = 'full' }: { workflowId: string; detailLevel?: WorkflowDetailsLevel },
 	testBaseWebhookUrl: string = baseWebhookUrl,
 ): Promise<WorkflowDetailsResult> {
+	const includeGraph = detailLevel === 'full';
 	const workflow = await getMcpWorkflow(
 		workflowId,
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{ includeActiveVersion: true, includeTags: true },
+		{ includeActiveVersion: includeGraph, includeTags: true },
 	);
 
 	// Compute user scopes for this workflow
@@ -135,7 +150,7 @@ export async function getWorkflowDetails(
 	const nodes = workflow.nodes ?? [];
 	const connections = workflow.connections ?? {};
 	const activeVersion =
-		workflow.activeVersionId && workflow.activeVersion
+		includeGraph && workflow.activeVersionId && workflow.activeVersion
 			? {
 					nodes: (workflow.activeVersion.nodes ?? []).map(
 						({ credentials: _credentials, ...node }) => node,
@@ -174,17 +189,23 @@ export async function getWorkflowDetails(
 		triggerCount: workflow.triggerCount,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
-		settings: workflow.settings ?? null,
-		connections,
-		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
-		nodeGroups: toNodeGroupSummary(workflow.nodeGroups ?? [], nodes),
-		activeVersion,
 		tags: toTagSummary(workflow.tags),
-		meta: workflow.meta ?? null,
 		parentFolderId: workflow.parentFolder?.id ?? null,
 		description: workflow.description ?? undefined,
 		scopes,
 		canExecute,
+		// The graph fields dominate the response size; skip them when the caller
+		// only needs enough to execute the workflow.
+		...(includeGraph
+			? {
+					settings: workflow.settings ?? null,
+					connections,
+					nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
+					nodeGroups: toNodeGroupSummary(workflow.nodeGroups ?? [], nodes),
+					activeVersion,
+					meta: workflow.meta ?? null,
+				}
+			: {}),
 	};
 
 	return { workflow: sanitizedWorkflow, triggerInfo: triggerNotice };

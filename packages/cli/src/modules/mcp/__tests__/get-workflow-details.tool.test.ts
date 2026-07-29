@@ -91,7 +91,7 @@ describe('get-workflow-details MCP tool', () => {
 			);
 
 			expect('pinData' in payload.workflow).toBe(false);
-			expect(payload.workflow.nodes.every((n) => !('credentials' in n))).toBe(true);
+			expect(payload.workflow.nodes?.every((n) => !('credentials' in n))).toBe(true);
 			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
 			expect(payload.workflow.versionId).toBe(workflow.versionId);
 			expect(payload.workflow.activeVersionId).toBe(workflow.activeVersionId);
@@ -99,6 +99,51 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.activeVersion?.nodes.every((n) => !('credentials' in n))).toBe(true);
 			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
 			expect(payload.workflow.canExecute).toBe(true);
+		});
+
+		test("omits graph fields when detailLevel is 'execution'", async () => {
+			const workflow = createWorkflow({ activeVersionId: uuid() });
+			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser,
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+
+			// Skips loading the active version relation entirely
+			expect(findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-1',
+				user,
+				['workflow:read'],
+				expect.objectContaining({ includeActiveVersion: false }),
+			);
+
+			expect(payload.workflow.nodes).toBeUndefined();
+			expect(payload.workflow.connections).toBeUndefined();
+			expect(payload.workflow.nodeGroups).toBeUndefined();
+			expect(payload.workflow.activeVersion).toBeUndefined();
+			expect(payload.workflow.settings).toBeUndefined();
+			expect(payload.workflow.meta).toBeUndefined();
+
+			// Everything needed to execute is still present
+			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
+			expect(payload.workflow.id).toBe('wf-1');
+			expect(payload.workflow.active).toBe(true);
+			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
+			expect(payload.workflow.canExecute).toBe(true);
+			expect(payload.workflow.description).toBeUndefined();
 		});
 
 		test('presents node groups by member node names, dropping stale ids', async () => {

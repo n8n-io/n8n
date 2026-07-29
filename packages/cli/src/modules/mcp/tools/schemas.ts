@@ -112,6 +112,8 @@ export const toNodeGroupSummary = (
 	}));
 };
 
+const GRAPH_FIELD_OMISSION_NOTE = "Omitted when detailLevel is 'execution'.";
+
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z
 		.object({
@@ -127,10 +129,13 @@ export const workflowDetailsOutputSchema = z.object({
 			triggerCount: z.number(),
 			createdAt: z.string().nullable(),
 			updatedAt: z.string().nullable(),
-			settings: workflowSettingsSchema,
-			connections: z.record(z.unknown()),
-			nodes: z.array(nodeSchema),
-			nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the workflow'),
+			settings: workflowSettingsSchema.optional().describe(GRAPH_FIELD_OMISSION_NOTE),
+			connections: z.record(z.unknown()).optional().describe(GRAPH_FIELD_OMISSION_NOTE),
+			nodes: z.array(nodeSchema).optional().describe(GRAPH_FIELD_OMISSION_NOTE),
+			nodeGroups: z
+				.array(nodeGroupSchema)
+				.optional()
+				.describe(`Node groups in the workflow. ${GRAPH_FIELD_OMISSION_NOTE}`),
 			activeVersion: z
 				.object({
 					nodes: z.array(nodeSchema),
@@ -138,9 +143,10 @@ export const workflowDetailsOutputSchema = z.object({
 					nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the active version'),
 				})
 				.nullable()
-				.describe('Active workflow graph, if available'),
+				.optional()
+				.describe(`Active workflow graph, if available. ${GRAPH_FIELD_OMISSION_NOTE}`),
 			tags: z.array(tagSchema),
-			meta: workflowMetaSchema,
+			meta: workflowMetaSchema.optional().describe(GRAPH_FIELD_OMISSION_NOTE),
 			parentFolderId: z.string().nullable(),
 			description: z.string().optional().describe('The description of the workflow'),
 			scopes: z.array(z.string()).describe('User permissions for this workflow'),
