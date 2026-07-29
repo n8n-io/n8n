@@ -6,7 +6,12 @@ import { isRecord } from '@n8n/utils/is-record';
 import { createUserProxyAgent, type UserProxyAgent } from './agent';
 import { tryDeterministicConfirmationResponse } from './deterministic';
 import { buildConfirmationPrompt, buildFollowUpPrompt } from './prompts';
-import { encodeConfirmationDecision, type Decision, type SetupWizardParseContext } from './tools';
+import {
+	encodeConfirmationDecision,
+	type Decision,
+	type SetupWizardParseContext,
+	type CredentialSetupParseContext,
+} from './tools';
 import { buildAutoApprovePayload } from '../../harness/chat-loop';
 import type { NextMessageDecision } from '../../harness/chat-loop';
 import type { EvalLogger } from '../../harness/logger';
@@ -130,7 +135,9 @@ export class UserProxyLlm {
 			return this.responseByRequestId.get(requestId) ?? buildAutoApprovePayload(event);
 		}
 
-		const det = tryDeterministicConfirmationResponse(event);
+		const det = tryDeterministicConfirmationResponse(event, {
+			allowCredentialEngagement: hasCredentialEngagementDirection(this.script),
+		});
 		if (det) {
 			this.bumpStat('deterministic');
 			return this.rememberResponse(requestId, det);
@@ -157,6 +164,7 @@ export class UserProxyLlm {
 					`[user-proxy] nodeParametersJson failed to parse (${String(parseError)}); raw=${raw.slice(0, 200)}`,
 				),
 			extractSetupWizardParseContext(event),
+			extractCredentialSetupContext(event),
 		);
 		if (!encoded) {
 			this.logger?.warn(
@@ -329,6 +337,25 @@ function hasStageDirection(text: string): boolean {
 	return /\[[^\]]+\]/.test(text);
 }
 
+/**
+ * Does any stage direction in the script ask the user to
+ * engage with credential setup (rather than defer, which is the default)?
+ * Deliberately narrower than `hasStageDirection` above — that generic bracket
+ * check exists only to bump a low-consequence *scripted* fallback to the LLM.
+ * Gating the entire credential-engagement action on it instead would mean any
+ * of the ~250 existing cases carrying an unrelated stage direction (plan
+ * pushback, withheld values, ...) could unintentionally route its credential
+ * moment through the LLM for the first time, risking the ticket's
+ * non-negotiable "default behavior stays exactly as today" requirement. A
+ * credential-keyword-scoped match keeps that default airtight.
+ */
+const CREDENTIAL_ENGAGEMENT_PATTERN =
+	/\[[^\]]*\b(credential|oauth|api[\s-]?key|sign[\s-]?in|connect|authoriz)/i;
+
+function hasCredentialEngagementDirection(script: ConversationTurn[]): boolean {
+	return script.some((turn) => CREDENTIAL_ENGAGEMENT_PATTERN.test(turn.text));
+}
+
 function extractTextDelta(event: CapturedEvent): string | undefined {
 	const directText = event.data.text;
 	if (typeof directText === 'string') return directText;
@@ -373,6 +400,32 @@ function extractSetupWizardParseContext(event: CapturedEvent): SetupWizardParseC
 	});
 
 	return nodes.length > 0 ? { nodes } : undefined;
+}
+
+function extractCredentialSetupContext(
+	event: CapturedEvent,
+): CredentialSetupParseContext | undefined {
+	const payload = getEventPayload(event);
+	if (!Array.isArray(payload.credentialRequests)) return undefined;
+
+	const requests = payload.credentialRequests.flatMap((item) => {
+		if (!isRecord(item)) return [];
+		const credentialType = getString(item, 'credentialType');
+		if (!credentialType) return [];
+
+		const existingCredentials = Array.isArray(item.existingCredentials)
+			? item.existingCredentials.flatMap((cred) => {
+					if (!isRecord(cred)) return [];
+					const id = getString(cred, 'id');
+					const name = getString(cred, 'name');
+					return id && name ? [{ id, name }] : [];
+				})
+			: [];
+
+		return [{ credentialType, existingCredentials }];
+	});
+
+	return requests.length > 0 ? { requests } : undefined;
 }
 
 function extractParameterNames(item: Record<string, unknown>, key: string): string[] {

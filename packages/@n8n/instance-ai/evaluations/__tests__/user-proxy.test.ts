@@ -141,6 +141,36 @@ function credentialEvent(requestId: string): CapturedEvent {
 	};
 }
 
+/** Real `credentials.tool.ts` shape (`credentialType` + `existingCredentials`),
+ *  needed once the payload is actually parsed for `choose_credential_setup_option`. */
+function credentialEventWithRequests(
+	requestId: string,
+	requests: Array<{
+		credentialType: string;
+		existingCredentials?: Array<{ id: string; name: string }>;
+	}>,
+): CapturedEvent {
+	return {
+		timestamp: 100,
+		type: 'confirmation-request',
+		data: {
+			type: 'confirmation-request',
+			payload: {
+				requestId,
+				toolCallId: 'tc-x',
+				toolName: 'credential-setup',
+				args: {},
+				severity: 'info',
+				message: 'Set up credentials',
+				credentialRequests: requests.map((r) => ({
+					credentialType: r.credentialType,
+					existingCredentials: r.existingCredentials ?? [],
+				})),
+			},
+		},
+	};
+}
+
 function domainAccessEvent(requestId: string): CapturedEvent {
 	return {
 		timestamp: 100,
@@ -509,6 +539,244 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect(response.credentials).toEqual({});
 		}
 		expect(agent.callCount).toBe(0);
+	});
+
+	// -------------------------------------------------------------------------
+	// TRUST-349 — credential-setup engagement (choose_credential_setup_option)
+	// -------------------------------------------------------------------------
+
+	it('still defers credentials deterministically when the script has an unrelated stage direction', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Build a Slack digest.' },
+				{ role: 'user', text: '[Reject the plan unless it sorts descending by count.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(credentialEvent('req-cred-unrelated'));
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({});
+		}
+		expect(agent.callCount).toBe(0);
+	});
+
+	it('routes credential setup to the agent when a stage direction asks the user to engage', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{
+					role: 'user',
+					text: '[When the credential setup card for Slack appears, set up the credential now using the existing Slack credential shown on the card.]',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-manual', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-1', name: 'My Slack' }] },
+			]),
+		);
+
+		expect(agent.callCount).toBe(1);
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({ slackApi: 'cred-1' });
+		}
+	});
+
+	it('resolves manual selection by explicit credentialType among multiple requests', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'manual',
+			credentialType: 'notionApi',
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Summarize Notion pages to Slack.' },
+				{ role: 'user', text: '[Connect the Notion credential shown on the card.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-multi', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-slack', name: 'Slack' }] },
+				{
+					credentialType: 'notionApi',
+					existingCredentials: [{ id: 'cred-notion', name: 'Notion' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({ notionApi: 'cred-notion' });
+		}
+	});
+
+	it('declines manual selection when the requested type has no existing credential', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
+		const logger = {
+			warn: vi.fn(),
+			info: vi.fn(),
+			verbose: vi.fn(),
+			success: vi.fn(),
+			error: vi.fn(),
+			isVerbose: false,
+		};
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-none', [{ credentialType: 'slackApi' }]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it('requests automatic setup when the agent picks auto', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'auto',
+			credentialType: 'slackApi',
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Ask for automatic setup of the Slack credential on the card.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-auto', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-1', name: 'My Slack' }] },
+			]),
+		);
+
+		expect(response.kind).toBe('credentialAutoSetup');
+		if (response.kind === 'credentialAutoSetup') {
+			expect(response.credentialType).toBe('slackApi');
+		}
+	});
+
+	it('declines auto setup when no credentialType can be resolved from context or the decision', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'auto' });
+		const logger = {
+			warn: vi.fn(),
+			info: vi.fn(),
+			verbose: vi.fn(),
+			success: vi.fn(),
+			error: vi.fn(),
+			isVerbose: false,
+		};
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Summarize Notion pages to Slack.' },
+				{ role: 'user', text: '[Ask for automatic setup of the credential on the card.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-auto-ambiguous', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-slack', name: 'Slack' }] },
+				{
+					credentialType: 'notionApi',
+					existingCredentials: [{ id: 'cred-notion', name: 'Notion' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it('declines when the agent picks skip', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Explicitly decline the credential setup card for Slack.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-skip', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-1', name: 'My Slack' }] },
+			]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+	});
+
+	it('does not let a credential-engagement stage direction affect unrelated domain-access events', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Research competitors.' },
+				{ role: 'user', text: '[Set up the credential now using the existing one shown.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(domainAccessEvent('req-dom-2'));
+		expect(response.kind).toBe('domainAccessApprove');
+		expect(agent.callCount).toBe(0);
+	});
+
+	it.each([
+		['[set up the credential now]', true],
+		['[connect the OAuth account]', true],
+		['[use automatic setup for the API key]', true],
+		['[sign in to Slack now]', true],
+		['[reject the plan unless it sorts descending]', false],
+		['[withhold the channel until asked]', false],
+		['[keep requesting changes until the list is exhausted]', false],
+	])('stage direction %j routes credential card to agent = %s', async (note, shouldEngage) => {
+		const agent = new FakeAgent();
+		if (shouldEngage) {
+			agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
+		}
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: note },
+			],
+			agent,
+		});
+
+		await proxy.respondToConfirmation(credentialEvent(`req-note-${note}`));
+		expect(agent.callCount).toBe(shouldEngage ? 1 : 0);
 	});
 
 	it('handles domain-access events deterministically with allow_all', async () => {

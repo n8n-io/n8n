@@ -3,12 +3,17 @@
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 
 import type { CapturedEvent } from '../../types';
-import { getEventPayload, tryInfrastructureResponse } from '../confirmation-payload';
+import {
+	getEventPayload,
+	tryInfrastructureResponse,
+	type InfrastructureResponseOptions,
+} from '../confirmation-payload';
 
 export function tryDeterministicConfirmationResponse(
 	event: CapturedEvent,
+	options?: InfrastructureResponseOptions,
 ): InstanceAiConfirmRequest | undefined {
-	const infra = tryInfrastructureResponse(event);
+	const infra = tryInfrastructureResponse(event, options);
 	if (infra) return infra;
 
 	const payload = getEventPayload(event);

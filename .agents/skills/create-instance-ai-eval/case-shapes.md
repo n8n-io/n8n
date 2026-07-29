@@ -74,11 +74,14 @@ Rules that trip people up:
 3. **`conversation[0]` is sent to the builder *raw*.** Never put a director note
    in the opening turn — it leaks verbatim into the build prompt. Notes belong
    only in the proxy-driven turns ([1]+).
-4. **The proxy does not set credentials.** Verified against the proxy's action
-   set (`utils/user-proxy/tools.ts`): there is no credential action, and
-   `apply_setup_wizard` explicitly fills only non-credential params. Credentials
-   are deferred ("I'll set them up later"). A case that needs a credential
-   present must **declare** it (below), not expect the proxy to type one.
+4. **The proxy defers credentials by default.** `apply_setup_wizard` still
+   fills only non-credential params, and a standalone credential card
+   (`credentialRequests`) is auto-declined ("I'll set them up later") *unless*
+   a director note governing that exact moment asks the user to engage — see
+   "Engaging the credential-setup card" below (`choose_credential_setup_option`
+   in `utils/user-proxy/tools.ts`). A case that needs a credential present
+   must **declare** it (below) regardless — engaging only *selects* a declared
+   credential, it never creates one on the fly.
 
 ### Director-note vocabulary (`[bracketed]` in a `user` turn)
 
@@ -133,6 +136,45 @@ with a pointer to add a template. From
 `httpBasicAuth`. Need another? Add a `CredentialTemplate` to `seeder.ts` (a
 `defaultName`, optional `envVar`, and `buildData(token)`); that extends
 `SUPPORTED_CREDENTIAL_TYPES`, which the schema validates against.
+
+### Engaging the credential-setup card (TRUST-349)
+
+By default the proxy defers any standalone credential card
+(`credentialRequests`, not the workflow setup wizard) with an empty selection
+— this happens **before the LLM is even called** (`confirmation-payload.ts`'s
+`tryInfrastructureResponse`), so it's the same deterministic behavior for
+every case that doesn't opt in.
+
+To make the simulated user engage instead — select an existing credential,
+request automatic setup, or explicitly decline — add a director note that
+names the credential/OAuth/connect vocabulary at the moment the card would
+appear (matched by `hasCredentialEngagementDirection` in `utils/user-proxy/index.ts`):
+
+```json
+"conversation": [
+  { "role": "user", "text": "Post a daily summary to Slack every morning at 9am." },
+  { "role": "assistant", "text": "I'll need a Slack credential connected before I can post — I'll show you the setup card." },
+  { "role": "user", "text": "[When the credential setup card for Slack appears, don't defer it — set up the credential now using the existing Slack credential shown on the card.]" }
+]
+```
+
+The card only has something to *select* if the type is **declared** — pair
+this with a `credentials: [{ "type": "slackApi" }]` entry so the card's
+`existingCredentials` isn't empty. The four wire shapes this exercises (verified
+against `credentials.tool.ts`'s `handleSetup` state machine):
+
+| Director note asks for… | Proxy action | Resume payload | Tool result |
+|---|---|---|---|
+| Select the existing credential | `choose_credential_setup_option(manual)` | `{kind:'credentialSelection', credentials:{type: id}}` | `{success:true, credentials:{...}}` — assistant should stop asking and proceed |
+| Automatic/browser setup | `choose_credential_setup_option(auto)` | `{kind:'credentialAutoSetup', credentialType}` | `{success:false, needsBrowserSetup:true, ...}` |
+| Explicitly decline | `choose_credential_setup_option(skip)` | `{kind:'approval', approved:false}` | `{success:true, deferred:true}` |
+| (nothing — default) | *(short-circuited, no LLM call)* | `{kind:'credentialSelection', credentials:{}}` | `{success:true, deferred:true}` |
+
+**`auto` is reachable but inert** — the product genuinely rebuilds the agent
+and returns `needsBrowserSetup:true`, but this harness has no Computer Use
+tools attached, so the conversation stalls afterward (expected, not a bug).
+Keep any case scripting `auto` a local smoke test, never part of the gated
+suite — it will time out.
 
 ---
 

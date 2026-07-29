@@ -44,6 +44,35 @@ const pickResourceDecisionSchema = z.object({
 	decision: z.string(),
 });
 
+/**
+ * Response to a standalone credential-setup card (`credentials(action='setup')`
+ * suspending — TRUST-349). Only offered to the model when a stage direction
+ * governs this exact moment; the deterministic default (no direction) never
+ * reaches the LLM at all (see `confirmation-payload.ts`'s
+ * `allowCredentialEngagement` gate), so `skip` here is for the case where a
+ * direction explicitly asks the user to decline rather than the ambient default.
+ *
+ * Wire shapes, verified against `credentials.tool.ts`'s `handleSetup` state
+ * machine and `instance-ai.service.ts`'s `toConfirmationData`/`resumeSuspendedRun`
+ * (see doc block on `CredentialSetupParseContext` below for the full mapping):
+ *  - `manual` → `{kind:'credentialSelection', credentials:{[type]: id}}` — the
+ *    resume payload itself is how the assistant learns the credential exists
+ *    (tool State 5); no re-check round-trip.
+ *  - `auto`   → `{kind:'credentialAutoSetup', credentialType}` — triggers an
+ *    agent rebuild server-side and a `needsBrowserSetup:true` tool result
+ *    (tool State 4). Reachable for shape-completeness only — the harness has
+ *    no Computer Use tools attached, so a case scripting this will stall
+ *    afterward. Do not push such a case to the gated CI suite.
+ *  - `skip`   → `{kind:'approval', approved:false}` — tool State 2 (deferred).
+ */
+const chooseCredentialSetupOptionDecisionSchema = z.object({
+	action: z.literal('choose_credential_setup_option'),
+	option: z.enum(['auto', 'manual', 'skip']),
+	/** Which `credentialRequests[].credentialType` this applies to. Optional
+	 *  when the card requests exactly one credential (the common case). */
+	credentialType: z.string().optional(),
+});
+
 const sendFollowUpMessageDecisionSchema = z.object({
 	action: z.literal('send_follow_up_message'),
 	message: z.string(),
@@ -70,6 +99,7 @@ export const confirmationDecisionSchema = z.discriminatedUnion('action', [
 	approveOrRejectDecisionSchema,
 	respondToDomainAccessDecisionSchema,
 	pickResourceDecisionSchema,
+	chooseCredentialSetupOptionDecisionSchema,
 ]);
 
 export const userTurnDecisionSchema = z.discriminatedUnion('action', [
@@ -85,6 +115,7 @@ export const decisionSchema = z.discriminatedUnion('action', [
 	approveOrRejectDecisionSchema,
 	respondToDomainAccessDecisionSchema,
 	pickResourceDecisionSchema,
+	chooseCredentialSetupOptionDecisionSchema,
 	sendFollowUpMessageDecisionSchema,
 	declareDoneDecisionSchema,
 ]);
@@ -96,6 +127,20 @@ export interface SetupWizardParseContext {
 		nodeId?: string;
 		nodeName: string;
 		parameterNames: string[];
+	}>;
+}
+
+/**
+ * The credential-setup card's `credentialRequests[]`, carried through so
+ * `manual`/`auto` can resolve a `credentialType` (and, for `manual`, an
+ * existing credential id already visible under the thread's eval allowlist —
+ * see `EvalThreadCredentialAllowlistService` — to select) without re-deriving
+ * it from the model's free-form answer.
+ */
+export interface CredentialSetupParseContext {
+	requests: Array<{
+		credentialType: string;
+		existingCredentials: Array<{ id: string; name: string }>;
 	}>;
 }
 
@@ -113,7 +158,9 @@ export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmatio
 
 - respond_to_domain_access(response): The agent is asking for domain access permissions. Pick allow_once, allow_all, or deny. Default to allow_all unless the user would deny.
 
-- pick_resource_decision(decision): The agent is asking the user to pick a gateway resource access option. Pick the option the user would choose.`;
+- pick_resource_decision(decision): The agent is asking the user to pick a gateway resource access option. Pick the option the user would choose.
+
+- choose_credential_setup_option(option, credentialType?): The agent opened a standalone credential setup card (the event's payload has \`credentialRequests\`, not \`setupRequests\`). You are only ever shown this action when a stage direction governs this exact moment — outside that, credentials stay deferred automatically and you never see this event. Follow the direction: \`manual\` to select the existing credential the card lists for that type (the user "fills the form" with a credential they already have), \`auto\` to hand off to automatic browser-based setup (shape-only — the harness cannot actually drive that flow, so only script this in a throwaway local check, never in a case meant for the gated suite), or \`skip\` if the direction says to decline. Never pick this action on your own initiative — only in response to a direction that explicitly asks for credential engagement.`;
 
 export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user's turn. The agent finished its run, no widget is on screen, and the chat input is waiting. The user either types a message or ends the conversation:
 
@@ -134,6 +181,7 @@ export function encodeConfirmationDecision(
 	decision: Decision,
 	onParseFailure?: (raw: string, error: unknown) => void,
 	setupContext?: SetupWizardParseContext,
+	credentialSetupContext?: CredentialSetupParseContext,
 ): InstanceAiConfirmRequest | null {
 	switch (decision.action) {
 		case 'answer_questions':
@@ -173,10 +221,60 @@ export function encodeConfirmationDecision(
 			};
 		}
 
+		case 'choose_credential_setup_option':
+			return encodeCredentialSetupDecision(decision, onParseFailure, credentialSetupContext);
+
 		case 'send_follow_up_message':
 		case 'declare_done':
 			return null;
 	}
+}
+
+function encodeCredentialSetupDecision(
+	decision: Extract<Decision, { action: 'choose_credential_setup_option' }>,
+	onParseFailure?: (raw: string, error: unknown) => void,
+	credentialSetupContext?: CredentialSetupParseContext,
+): InstanceAiConfirmRequest {
+	if (decision.option === 'skip') return { kind: 'approval', approved: false };
+
+	const request = resolveCredentialRequest(decision.credentialType, credentialSetupContext);
+
+	if (decision.option === 'auto') {
+		const credentialType = request?.credentialType ?? decision.credentialType;
+		if (!credentialType) {
+			onParseFailure?.(
+				decision.action,
+				new Error('auto setup chosen with no resolvable credentialType'),
+			);
+			return { kind: 'approval', approved: false };
+		}
+		return { kind: 'credentialAutoSetup', credentialType };
+	}
+
+	// manual
+	const existingId = request?.existingCredentials[0]?.id;
+	if (!request || !existingId) {
+		onParseFailure?.(
+			decision.action,
+			new Error(
+				`manual credential selection: no existing credential found for type "${decision.credentialType ?? ''}"`,
+			),
+		);
+		return { kind: 'approval', approved: false };
+	}
+	return { kind: 'credentialSelection', credentials: { [request.credentialType]: existingId } };
+}
+
+function resolveCredentialRequest(
+	credentialType: string | undefined,
+	context: CredentialSetupParseContext | undefined,
+): CredentialSetupParseContext['requests'][number] | undefined {
+	if (!context || context.requests.length === 0) return undefined;
+	if (credentialType) {
+		return context.requests.find((r) => r.credentialType === credentialType);
+	}
+	// No type specified — fine when the card only asked for one credential.
+	return context.requests.length === 1 ? context.requests[0] : undefined;
 }
 
 function parseNodeParametersJson(

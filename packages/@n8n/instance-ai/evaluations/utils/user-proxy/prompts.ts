@@ -52,7 +52,9 @@ One exception: sometimes the dedicated node genuinely cannot do what the script 
 
 ## One exception: credentials
 
-Never set credentials. They're deferred and the user will configure them via the UI. Credentials are the one and only thing left blank.
+Credentials stay deferred by default — never set one up on your own initiative. They're the one thing left blank unless a stage direction says otherwise.
+
+The one exception: a stage direction governing this exact credential-setup moment (the widget shown has \`credentialRequests\`) tells you to engage — set up now, pick an existing credential, or use automatic setup. When that's the case, follow it via \`choose_credential_setup_option\` instead of deferring. Absent such a direction, keep deferring exactly as always.
 
 ## Setup cards are not questions
 
@@ -82,7 +84,7 @@ You'll be given a SCRIPT (what the user wants overall) and the ACTUAL CONVERSATI
 - If the agent finished without asking and the plan was already approved or rejected appropriately, pick \`declare_done\`. Don't volunteer late script content as a proactive follow-up — the plan-rejection path is the right channel for steering. (Exception: a stage direction telling you to keep requesting changes overrides this — send the next change as a follow-up even after a successful build.)
 - When delivering a script user turn, adapt its wording so it reads as a real reply to the agent's last message — but keep every concrete value verbatim.
 - Don't restate what's already in the transcript.
-- Credentials: if the agent stalls on credentials, send "I'll set them up later — please build without them." Do not provide credentials.
+- Credentials: if the agent stalls on credentials, send "I'll set them up later — please build without them." Do not provide credentials — unless a stage direction governing this exact moment says to engage instead (see "One exception: credentials" above).
 
 ## Format
 
