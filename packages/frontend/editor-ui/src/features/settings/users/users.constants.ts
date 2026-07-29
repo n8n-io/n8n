@@ -1,6 +1,9 @@
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
-export const PERSONALIZATION_MODAL_KEY = 'personalization';
+// Shared with `users.store` in `@n8n/stores`, which opens this modal through its
+// injected opener; re-exported here so app-side registration and openers keep
+// resolving from `users.constants`. (N8N-126)
+export { PERSONALIZATION_MODAL_KEY } from '@n8n/frontend-constants/users';
 
 /** PERSONALIZATION SURVEY */
 export const EMAIL_KEY = 'email';
