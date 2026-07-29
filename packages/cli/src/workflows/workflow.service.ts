@@ -1028,25 +1028,7 @@ export class WorkflowService {
 			});
 		}
 
-		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			await this._unpublishViaOutbox(user.id, workflowId, deactivatedVersionId, workflow.updatedAt);
-		} else {
-			await this.activeWorkflowManager.remove(workflowId);
-
-			await this.workflowRepository.update(workflowId, {
-				active: false,
-				activeVersionId: null,
-				// workflow content did not change, so we keep updatedAt as is
-				updatedAt: workflow.updatedAt,
-			});
-
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId,
-				versionId: deactivatedVersionId,
-				event: 'deactivated',
-				userId: user.id,
-			});
-		}
+		await this._teardownActiveVersion(workflow, deactivatedVersionId, user.id);
 
 		// Update the workflow object for response
 		workflow.active = false;
@@ -1102,8 +1084,23 @@ export class WorkflowService {
 			});
 		}
 
+		await this._teardownActiveVersion(workflow, deactivatedVersionId, null);
+	}
+
+	/**
+	 * Flag-branched teardown shared by user- and system-initiated deactivation.
+	 * Keeping it in one place prevents the two paths from drifting apart, which
+	 * is how system deactivation ended up skipping unpublishing (CAT-3814).
+	 */
+	private async _teardownActiveVersion(
+		workflow: WorkflowEntity,
+		deactivatedVersionId: string,
+		userId: string | null,
+	): Promise<void> {
+		const workflowId = workflow.id;
+
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			await this._unpublishViaOutbox(null, workflowId, deactivatedVersionId, workflow.updatedAt);
+			await this._unpublishViaOutbox(userId, workflowId, deactivatedVersionId, workflow.updatedAt);
 		} else {
 			await this.activeWorkflowManager.remove(workflowId);
 
@@ -1118,7 +1115,7 @@ export class WorkflowService {
 				workflowId,
 				versionId: deactivatedVersionId,
 				event: 'deactivated',
-				userId: null,
+				userId,
 			});
 		}
 	}
