@@ -32,13 +32,13 @@ export type TagResolutionFailureKind =
 
 export type TagResolutionFailure = {
 	kind: TagResolutionFailureKind;
-	/** Absent for import-wide failures (`permission-denied`). */
+	/** Absent for `permission-denied`, which is import-wide rather than per-tag. */
 	sourceId?: string;
-	/** The (trimmed) package tag name. */
+	/** Trimmed; absent for `permission-denied`. */
 	name?: string;
-	/** For `permission-denied`: the global scope the importing user lacks. */
+	/** Only set for `permission-denied`. */
 	missingScope?: 'tag:create' | 'tag:update';
-	/** The other tag involved in the conflict: the holder of the wanted name. */
+	/** The tag currently holding the wanted name. */
 	existingTagId?: string;
 	/** For `rename-drift`: the current name of the same-id target tag. */
 	existingName?: string;
@@ -52,13 +52,13 @@ export interface TagImportRequest {
 }
 
 export interface TagImportPlan {
-	/** Requirements resolved to an existing same-id, same-name tag; attach only. */
+	/** Exact same-id, same-name matches: attach only. */
 	matched: TagRef[];
-	/** Tags to create with their package (source) id and name. */
+	/** Created on the target with their source id and name. */
 	creations: TagRef[];
-	/** Same-id target tags to rename to the package name. */
+	/** Same-id target tags renamed to the package name. */
 	renames: TagRename[];
-	/** Tags dropped from the import: not created, not renamed, not attached anywhere. */
+	/** Neither created, renamed, nor attached (`skip` / `do-nothing`). */
 	dropped: TagRef[];
 	failures: TagResolutionFailure[];
 }

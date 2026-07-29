@@ -104,14 +104,14 @@ export const VariableParentPolicy = {
 export const TagMissingMode = {
 	/** Creates absent tags with their package (source) id and name. */
 	Create: 'create',
-	/** Imports the workflows without the missing tags; nothing is created. Dropped tags are listed under `tags.skipped`. */
+	/** Workflows import without their missing tags; dropped tags are listed under `tags.skipped`. */
 	DoNothing: 'do-nothing',
 } as const;
 
 export const TagConflictPolicy = {
 	/** Drops conflicted tags from the import: not created, not renamed, not attached anywhere; listed under `tags.skipped`. */
 	Skip: 'skip',
-	/** Fails the import when any referenced tag conflicts on the target instance. */
+	/** Blocks the import when any referenced tag conflicts. */
 	Fail: 'fail',
 	/** Renames a drifted target tag (same id, different name) to the package name; a name held by another tag still fails. */
 	Rename: 'rename',
@@ -414,7 +414,7 @@ export interface ImportVariableSummary {
 	stubbed: string[];
 }
 
-/** Tag names grouped by how the import resolved them against the target instance. */
+/** Tag names (not ids), grouped by how the import resolved them. */
 export interface ImportTagSummary {
 	matched: string[];
 	created: string[];
