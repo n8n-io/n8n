@@ -129,6 +129,7 @@ describe('CalTriggerV2', () => {
 					triggers: events,
 					active: true,
 					payloadTemplate: null,
+					secret: webhookSecret,
 				},
 			],
 		});
@@ -137,7 +138,7 @@ describe('CalTriggerV2', () => {
 
 		expect(result).toBe(true);
 		expect(calApiRequestV2).toHaveBeenCalledWith('GET', '/webhooks', {}, { take: 250, skip: 0 });
-		expect(webhookData.webhookId).toBe(123);
+		expect(webhookData).toEqual({ webhookId: 123, webhookSecret });
 	});
 
 	it('stops checking after ten full pages', async () => {

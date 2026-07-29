@@ -34,6 +34,7 @@ interface CalWebhook {
 	triggers: string[];
 	active: boolean;
 	payloadTemplate?: string | null;
+	secret?: string;
 }
 
 function getWebhookEndpoint(eventTypeId: IDataObject[string]): string {
@@ -184,6 +185,11 @@ export class CalTriggerV2 implements INodeType {
 							(webhook.payloadTemplate ?? '') === payloadTemplate
 						) {
 							webhookData.webhookId = webhook.id;
+							if (webhook.secret) {
+								webhookData.webhookSecret = webhook.secret;
+							} else {
+								delete webhookData.webhookSecret;
+							}
 							if (eventTypeId !== undefined && eventTypeId !== '') {
 								webhookData.webhookEventTypeId = eventTypeId;
 							} else {
