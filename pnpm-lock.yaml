@@ -5815,9 +5815,6 @@ importers:
       '@n8n/frontend-constants':
         specifier: workspace:*
         version: link:../@n8n/frontend-constants
-      '@n8n/frontend-module-sdk':
-        specifier: workspace:*
-        version: link:../@n8n/frontend-module-sdk
       '@n8n/frontend-utils':
         specifier: workspace:*
         version: link:../@n8n/frontend-utils
@@ -6071,6 +6068,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
+      '@n8n/frontend-module-sdk':
+        specifier: workspace:*
+        version: link:../@n8n/frontend-module-sdk
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../../testing/janitor

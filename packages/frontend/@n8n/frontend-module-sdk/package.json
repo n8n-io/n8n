@@ -1,9 +1,9 @@
 {
   "type": "module",
   "name": "@n8n/frontend-module-sdk",
+  "private": true,
   "version": "0.3.0",
   "main": "src/index.ts",
-  "import": "src/index.ts",
   "exports": {
     ".": "./src/index.ts"
   },

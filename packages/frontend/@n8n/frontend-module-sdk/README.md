@@ -14,3 +14,18 @@ only public entry point.
 ```ts
 import { modalRegistry, registerResource, type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 ```
+
+## Not published
+
+This package is `private` and deliberately not on npm. Being source-only, its
+entry point is TypeScript, so an installed copy cannot be imported by Node
+(type stripping is unsupported under `node_modules`), and its type surface
+reaches `@n8n/design-system` source that is not published either. The module
+list in `editor-ui` (`app/modules.manifest.ts`) is a static in-repo array, so
+there is no external-module-author story for this contract to serve.
+
+External frontend extensions are served by `@n8n/extension-sdk`
+(`defineFrontendExtension`), which is a separate, properly packaged contract.
+If this SDK ever needs to go public, it needs a real build, an `exports` map
+over `dist`, emitted declarations and a `files` allowlist — not just the flag
+flipped back.
