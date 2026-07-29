@@ -1,8 +1,8 @@
 {
-	"description": "Capability gap sourced from a real debugging thread. The seeded workflow is the PRE-FIX state: the image HTTP Request node points at a site homepage (returns HTML) and passes the prompt as a ?prompt= query param with no file response format, so the downstream Drive upload has no binary to send. Repairing it forces the agent to author a URL whose path carries a dynamic value — the exact moment it previously wrote the opening expression delimiter URL-encoded as %7B%7B, silently disabling interpolation so the node fetched the literal template path and uploaded an HTML page as the 'image'. Load-bearing assertion: the URL parameter must contain literal {{ }}, never %7B%7B / %7D%7D.",
+	"description": "Regression guard sourced from a real debugging thread. The seeded workflow is the PRE-FIX state: the image HTTP Request node points at a site homepage (returns HTML) and passes the prompt as a ?prompt= query param with no file response format, so the downstream Drive upload has no binary to send. Repairing it forces the agent to author a URL whose path carries a dynamic value — the moment it once wrote the opening expression delimiter URL-encoded as %7B%7B, which n8n does not evaluate, so the node fetched the literal template path and uploaded an HTML page as the 'image'. Calibrated 2026-07-29 against master: the agent authored the URL correctly (literal {{ }} plus encodeURIComponent) in two independent runs, so this is NOT a live capability gap — it locks in correct behaviour. If the %7B%7B assertion ever reds, expression interpolation has regressed.",
 	"conversationSeed": {
 		"source": {
-			"note": "Synthetic, sanitized reconstruction of the pre-fix workflow shape from a real thread. The upstream prompt producer is a Set node emitting a Gemini-shaped object, so the seed needs no LLM credential and the prompt path stays nested ($json.content.parts[0].text)."
+			"note": "Synthetic, sanitized reconstruction of the pre-fix workflow shape from a real thread. The upstream prompt producer is a Set node emitting a Gemini-shaped object, so the seed needs no LLM credential and the prompt path stays nested ($json.content.parts[0].text). The workflow name is deliberately distinct from the sibling cases' seeds — identically-named seeds in one instance let a concurrent run act on the wrong workflow."
 		},
 		"messages": [
 			{
@@ -24,7 +24,7 @@
 				"content": [
 					{
 						"type": "text",
-						"text": "Done — the workflow 'Prompt to AI image to Drive' now runs: Analyze video produces the prompt, HTTP Request1 fetches an image for it, and Upload file saves that image to Google Drive."
+						"text": "Done — the workflow 'Image prompt to Drive' now runs: Analyze video produces the prompt, HTTP Request1 fetches an image for it, and Upload file saves that image to Google Drive."
 					}
 				],
 				"createdAt": "2026-07-29T09:00:20.000Z"
@@ -33,7 +33,7 @@
 		"workflows": [
 			{
 				"id": "evalSeedImgUrl01",
-				"name": "Prompt to AI image to Drive",
+				"name": "Image prompt to Drive",
 				"nodes": [
 					{
 						"parameters": {},
@@ -126,8 +126,7 @@
 	"messageBudget": 4,
 	"datasets": ["full"],
 	"processExpectations": [
-		"The agent identifies that HTTP Request1 is not requesting an image endpoint — it targets a page that returns HTML — and that no file/binary response format is set.",
-		"The agent explains what it changed about the image URL so that the upstream prompt is actually substituted into the request at runtime."
+		"The agent identifies that HTTP Request1 is not requesting an image endpoint — it targets a page that returns HTML — and that no file/binary response format is set."
 	],
 	"outcomeExpectations": [
 		"The image-generation HTTP Request node's URL parameter contains literal n8n expression delimiters {{ and }} — it must NOT contain the URL-encoded forms %7B%7B or %7D%7D anywhere.",
