@@ -16,9 +16,9 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
-import { EventService } from '@/events/event.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -144,6 +144,14 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		if (!result.success) {
 			throw new UserError(result.message);
+		}
+
+		// this is the only import path that publishes, so load the license and
+		// backend modules here, otherwise the workflow-reviews module never
+		// registers its publish guard and the import bypasses an open review.
+		if (flags.activeState === 'fromJson') {
+			await this.initLicense();
+			await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 		}
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
