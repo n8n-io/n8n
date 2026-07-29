@@ -229,16 +229,22 @@ export async function getWorkflowDetails(
 					connections: workflow.connections ?? {},
 					nodes: nodes.map(sanitizeNodeCredentials),
 					nodeGroups: toNodeGroupSummary(workflow.nodeGroups ?? [], nodes),
+					// Publishing sets activeVersionId to the draft's versionId and every
+					// draft save regenerates versionId, so equality means the published
+					// graph is byte-identical to the draft — skip repeating it.
 					activeVersion:
 						workflow.activeVersionId && workflow.activeVersion
-							? {
-									nodes: (workflow.activeVersion.nodes ?? []).map(sanitizeNodeCredentials),
-									connections: workflow.activeVersion.connections ?? {},
-									nodeGroups: toNodeGroupSummary(
-										workflow.activeVersion.nodeGroups ?? [],
-										workflow.activeVersion.nodes ?? [],
-									),
-								}
+							? workflow.activeVersionId === workflow.versionId
+								? { sameAsDraft: true as const }
+								: {
+										sameAsDraft: false as const,
+										nodes: (workflow.activeVersion.nodes ?? []).map(sanitizeNodeCredentials),
+										connections: workflow.activeVersion.connections ?? {},
+										nodeGroups: toNodeGroupSummary(
+											workflow.activeVersion.nodeGroups ?? [],
+											workflow.activeVersion.nodes ?? [],
+										),
+									}
 							: null,
 					meta: workflow.meta ?? null,
 				}

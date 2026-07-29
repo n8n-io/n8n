@@ -102,7 +102,8 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.versionId).toBe(workflow.versionId);
 			expect(payload.workflow.activeVersionId).toBe(workflow.activeVersionId);
 			expect(payload.workflow.activeVersion).not.toBeNull();
-			expect(payload.workflow.activeVersion?.nodes.map((n) => n.credentials)).toEqual([
+			expect(payload.workflow.activeVersion?.sameAsDraft).toBe(false);
+			expect(payload.workflow.activeVersion?.nodes?.map((n) => n.credentials)).toEqual([
 				{ httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' } },
 				{ httpHeaderAuth: { id: 'cred-2', name: 'HeaderAuth2' } },
 			]);
@@ -292,6 +293,32 @@ describe('get-workflow-details MCP tool', () => {
 			// Second call receives the published version's triggers.
 			const [, publishedSupported] = getTriggerDetailsMock.mock.calls[1];
 			expect(publishedSupported.map((t) => t.name)).toEqual(['Webhook', 'Start']);
+		});
+
+		test('omits activeVersion graph when the published version matches the current draft', async () => {
+			// createWorkflow uses versionId 'some-version-id'; publishing that draft
+			// sets activeVersionId to the same value.
+			const workflow = createWorkflow({ activeVersionId: 'some-version-id' });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(payload.workflow.activeVersion).toEqual({ sameAsDraft: true });
+			expect(payload.workflow.nodes?.length).toBeGreaterThan(0);
 		});
 
 		test('presents node groups by member node names, dropping stale ids', async () => {

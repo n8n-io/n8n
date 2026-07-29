@@ -172,13 +172,23 @@ export const workflowDetailsOutputSchema = z.object({
 				.describe(`Node groups in the workflow. ${FULL_DETAIL_ONLY_NOTE}`),
 			activeVersion: z
 				.object({
-					nodes: z.array(nodeSchema),
-					connections: z.record(z.unknown()),
-					nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the active version'),
+					sameAsDraft: z
+						.boolean()
+						.describe(
+							'True when the published version is identical to the current draft. The graph fields are omitted then — use the top-level nodes, connections and nodeGroups.',
+						),
+					nodes: z.array(nodeSchema).optional(),
+					connections: z.record(z.unknown()).optional(),
+					nodeGroups: z
+						.array(nodeGroupSchema)
+						.optional()
+						.describe('Node groups in the active version'),
 				})
 				.nullable()
 				.optional()
-				.describe(`Active workflow graph, if available. ${FULL_DETAIL_ONLY_NOTE}`),
+				.describe(
+					`Published (active) workflow graph. Null when the workflow has no published version. ${FULL_DETAIL_ONLY_NOTE}`,
+				),
 			tags: z.array(tagSchema),
 			meta: workflowMetaSchema.optional().describe(FULL_DETAIL_ONLY_NOTE),
 			parentFolderId: z.string().nullable(),
