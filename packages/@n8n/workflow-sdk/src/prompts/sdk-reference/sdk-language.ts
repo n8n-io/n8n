@@ -9,6 +9,7 @@ import {
 	FORBIDDEN_NODE_TYPES,
 	SAFE_JSON_METHOD_NAMES,
 	SAFE_STRING_METHOD_NAMES,
+	SAFE_ARRAY_METHOD_NAMES,
 	BUILDER_BLOCKED_GLOBALS,
 	SDK_INLINE_CONSTRAINTS,
 	type SdkMethodGroup,
@@ -61,9 +62,10 @@ function renderInlineConstraintLines(): string {
 }
 
 const SAFE_METHODS_SENTENCE =
-	`The only non-builder methods available are ${SAFE_JSON_METHOD_NAMES.map((n) => `\`JSON.${n}\``).join(', ')} ` +
-	`and the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}. ` +
-	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
+	`The only non-builder methods available are ${SAFE_JSON_METHOD_NAMES.map((n) => `\`JSON.${n}\``).join(', ')}, ` +
+	`the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}, ` +
+	`and the array methods ${SAFE_ARRAY_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}. ` +
+	'Other native array/string methods such as `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
 
 /**
  * Node-groups documentation, extracted so consumers can import just this section
@@ -108,8 +110,15 @@ Rules:
 ${renderRulesLines()}
 `;
 
-/** Full reference, materialized into the knowledge base for on-demand reading. */
-export const SDK_LANGUAGE_REFERENCE = `# Workflow SDK language reference
+/**
+ * Render the full language reference. The node-groups section is included by
+ * default (Instance AI's knowledge base); pass `includeGroups: false` when the
+ * consumer gates groups docs behind a feature flag (the MCP SDK reference).
+ */
+export function buildSdkLanguageReference(options: { includeGroups?: boolean } = {}): string {
+	const { includeGroups = true } = options;
+
+	return `# Workflow SDK language reference
 
 SDK builder code is a **restricted subset of TypeScript**, not a Code node and
 not arbitrary JavaScript. It is parsed by an AST interpreter that builds a static
@@ -122,9 +131,7 @@ ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
 
-${NODE_GROUPS_REFERENCE}
-
-## Forbidden constructs
+${includeGroups ? `${NODE_GROUPS_REFERENCE}\n` : ''}## Forbidden constructs
 
 ${renderForbiddenLines()}
 
@@ -148,3 +155,11 @@ regex), do it in one of these:
 - Use an **n8n expression** via \`expr('{{ ... }}')\` for per-item values.
 - Use a **Code node** for multi-step aggregation or transformation.
 `;
+}
+
+/**
+ * Full reference including groups docs. Materialized into Instance AI's
+ * knowledge base and served (groups-gated, via `buildSdkLanguageReference`)
+ * through the MCP `get_sdk_reference` tool's "language" section.
+ */
+export const SDK_LANGUAGE_REFERENCE = buildSdkLanguageReference();

@@ -231,9 +231,15 @@ const ALLOWED_NODE_TYPES = new Set([
 /** Forbidden node types; remediation strings are reused in the SDK language reference. */
 export const FORBIDDEN_NODE_TYPES: Record<string, string> = {
 	ArrowFunctionExpression:
-		'Arrow functions are not allowed. Use fromAi() directly instead of ($) => $.fromAi()',
+		'Arrow functions are not allowed. SDK code cannot define functions or callbacks — ' +
+		'write each node() call out explicitly instead of building nodes via a helper. ' +
+		'For runtime per-item logic use an n8n expression inside expr() or a Code node, ' +
+		'and use fromAi() directly instead of ($) => $.fromAi()',
 	FunctionExpression: 'Function expressions are not allowed in SDK code',
-	FunctionDeclaration: 'Function declarations are not allowed in SDK code',
+	FunctionDeclaration:
+		'Function declarations are not allowed in SDK code. Helper functions cannot be defined — ' +
+		'write each node() call out explicitly and share values via const. ' +
+		'Put runtime logic in a Code node or an n8n expression instead',
 	ClassDeclaration: 'Class declarations are not allowed in SDK code',
 	ClassExpression: 'Class expressions are not allowed in SDK code',
 	ForStatement: 'For loops are not allowed in SDK code',
@@ -411,9 +417,40 @@ export function getSafeStringMethod(
 	return (...args: unknown[]) => factory(value, ...args);
 }
 
+/**
+ * Safe subset of array methods available in SDK code.
+ * All are pure (non-mutating) and take no function arguments, so they can be
+ * evaluated at build time without widening the interpreter's security surface.
+ */
+const SAFE_ARRAY_METHODS: Record<string, (arr: unknown[], ...args: unknown[]) => unknown> = {
+	join: (arr: unknown[], separator: unknown) => arr.join(separator as string | undefined),
+	concat: (arr: unknown[], ...items: unknown[]) => arr.concat(...items),
+	slice: (arr: unknown[], start: unknown, end: unknown) =>
+		arr.slice(start as number | undefined, end as number | undefined),
+	flat: (arr: unknown[], depth: unknown) => arr.flat(depth as number | undefined),
+	includes: (arr: unknown[], item: unknown) => arr.includes(item),
+	indexOf: (arr: unknown[], item: unknown) => arr.indexOf(item),
+};
+
+/**
+ * Check if a method call on an array value is a safe array method (e.g. ['a', 'b'].join(', ')).
+ * Returns a bound function if so, undefined otherwise.
+ */
+export function getSafeArrayMethod(
+	value: unknown,
+	methodName: string,
+): ((...args: unknown[]) => unknown) | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const factory = SAFE_ARRAY_METHODS[methodName];
+	if (!factory) return undefined;
+	return (...args: unknown[]) => factory(value, ...args);
+}
+
 export const SAFE_JSON_METHOD_NAMES = Object.keys(SAFE_JSON_METHODS);
 
 export const SAFE_STRING_METHOD_NAMES = Object.keys(SAFE_STRING_METHODS);
+
+export const SAFE_ARRAY_METHOD_NAMES = Object.keys(SAFE_ARRAY_METHODS);
 
 /** Constraints enforced inline by the interpreter, not via a table. */
 export const SDK_INLINE_CONSTRAINTS: readonly string[] = [

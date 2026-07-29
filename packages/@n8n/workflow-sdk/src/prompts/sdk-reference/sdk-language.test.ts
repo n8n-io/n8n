@@ -1,9 +1,14 @@
-import { NODE_GROUPS_REFERENCE, SDK_LANGUAGE_REFERENCE } from './sdk-language';
+import {
+	NODE_GROUPS_REFERENCE,
+	SDK_LANGUAGE_REFERENCE,
+	buildSdkLanguageReference,
+} from './sdk-language';
 import {
 	SDK_METHODS,
 	FORBIDDEN_NODE_TYPES,
 	SAFE_JSON_METHOD_NAMES,
 	SAFE_STRING_METHOD_NAMES,
+	SAFE_ARRAY_METHOD_NAMES,
 	BUILDER_BLOCKED_GLOBALS,
 	SDK_INLINE_CONSTRAINTS,
 	DANGEROUS_GLOBALS,
@@ -51,6 +56,17 @@ describe('SDK_LANGUAGE_REFERENCE rendering', () => {
 		for (const name of SAFE_STRING_METHOD_NAMES) {
 			expect(SDK_LANGUAGE_REFERENCE).toContain(`.${name}()`);
 		}
+		for (const name of SAFE_ARRAY_METHOD_NAMES) {
+			expect(SDK_LANGUAGE_REFERENCE).toContain(`.${name}()`);
+		}
+	});
+
+	it('does not list allowed array methods as unavailable', () => {
+		const unavailableSentence = SDK_LANGUAGE_REFERENCE.split('are NOT available')[0];
+		const tail = unavailableSentence.slice(unavailableSentence.indexOf('Other native'));
+		for (const name of SAFE_ARRAY_METHOD_NAMES) {
+			expect(tail).not.toContain(`.${name}()`);
+		}
 	});
 
 	it('includes every blocked global and inline constraint', () => {
@@ -68,6 +84,23 @@ describe('SDK_LANGUAGE_REFERENCE rendering', () => {
 	it('steers runtime logic to a Code node or expression', () => {
 		expect(SDK_LANGUAGE_REFERENCE).toContain('Code node');
 		expect(SDK_LANGUAGE_REFERENCE).toContain("expr('{{ ... }}')");
+	});
+});
+
+describe('buildSdkLanguageReference', () => {
+	it('includes the groups docs by default, matching SDK_LANGUAGE_REFERENCE', () => {
+		expect(buildSdkLanguageReference()).toBe(SDK_LANGUAGE_REFERENCE);
+		expect(buildSdkLanguageReference({ includeGroups: true })).toContain(NODE_GROUPS_REFERENCE);
+	});
+
+	it('omits the groups docs when includeGroups is false, keeping the rest intact', () => {
+		const withoutGroups = buildSdkLanguageReference({ includeGroups: false });
+
+		expect(withoutGroups).not.toContain('## Node groups');
+		expect(withoutGroups).toContain('## Forbidden constructs');
+		for (const message of Object.values(FORBIDDEN_NODE_TYPES)) {
+			expect(withoutGroups).toContain(message);
+		}
 	});
 });
 
