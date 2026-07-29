@@ -1052,7 +1052,7 @@ describe('useNodeHelpers()', () => {
 				expect(result).toBeNull();
 			});
 
-			it('warns when a private credential is used under a non-manual trigger', () => {
+			it('warns when a private credential is used under a webhook trigger not using n8n User Auth', () => {
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
 
@@ -1062,6 +1062,20 @@ describe('useNodeHelpers()', () => {
 				expect(result?.credentials?.[NOTION_API]).toEqual([
 					"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, Sub-workflow, and Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
 				]);
+			});
+
+			it('does not warn when a private credential is used under a webhook trigger set to n8n User Auth (OAuth2)', () => {
+				// The webhook's n8nOAuth2 mode seeds the triggering user's identity, so the
+				// system resolver can resolve end-user credentials — same as the MCP trigger.
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(WEBHOOK_TRIGGER, { parameters: { authentication: 'n8nOAuth2' } }),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
 			});
 
 			it('does not warn when a private credential is used under an MCP trigger', () => {
