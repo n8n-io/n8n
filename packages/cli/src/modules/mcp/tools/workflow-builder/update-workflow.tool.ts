@@ -400,10 +400,7 @@ const outputSchema = {
 				reason: z.string(),
 			}),
 		)
-		.optional()
-		.describe(
-			'Existing node groups removed because other operations in this batch made them invalid. Those operations still applied — nothing was skipped. Tell the user which groups were removed and offer to recreate them (e.g. with different members via addNodeGroup).',
-		),
+		.optional(),
 	settings: z
 		.record(z.string(), z.unknown())
 		.optional()
@@ -686,21 +683,9 @@ export const createUpdateWorkflowTool = (
 				throw new Error(result.error);
 			}
 
-			// "applyOperations" only runs basic checks on group ops (name
-			// resolution, uniqueness). Structural rules — no triggers, a single
-			// connected subgraph, no non-main connection crossing the group boundary —
-			// need the batch's FINAL nodes/connections/groups to judge correctly (an
-			// op earlier in the batch can still be joined by a connection added later),
-			// so they're validated once here instead of per-operation. A violation
-			// drops only that group and is reported, rather than aborting the update.
-			//
-			// This must run whenever the final workflow has ANY groups — not just when
-			// this batch's operations directly touched them. A non-group op (e.g.
-			// removeConnection) can still invalidate an untouched, pre-existing group by
-			// disconnecting it; validateWorkflowGroups is cheap and a no-op when there
-			// are no groups, so checking unconditionally is safe and mirrors the broader
-			// `saveNewVersion` condition WorkflowService.update itself uses to decide
-			// whether to re-validate groups.
+			// Group rules depend on how the workflow looks after the whole batch,
+			// so we check them here once rather than per operation. A broken group
+			// is dropped and reported; the update still goes through.
 			const skippedOperations: Array<{ opIndex: number; type: string; reason: string }> = [
 				...result.skippedOperations,
 			];

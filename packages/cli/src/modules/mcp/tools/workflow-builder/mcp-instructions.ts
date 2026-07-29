@@ -58,7 +58,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const GROUPS_HINT = canvasGroupsEnabled
 		? `
 
-Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group. An invalid group passed to ${MCP_UPDATE_WORKFLOW_TOOL.toolName} does not fail the whole update — it is skipped and reported in skippedOperations, with the rest of the batch still saved; fix and retry just that group.`
+Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group.`
 		: '';
 
 	const N8N_CONNECT_HINT = isN8nConnectAvailable
