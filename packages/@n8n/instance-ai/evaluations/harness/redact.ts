@@ -63,6 +63,17 @@ const SECRET_TEXT_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
 		/\b(api[-_]?key|access[-_]?key|x-api-key|access[-_]?token|refresh[-_]?token|client[-_]?secret|private[-_]?key|secret|token|password|passwd|cookie|set-cookie|session[-_]?id)("?\s*[:=]\s*"?)[^\s"',&}]+/gi,
 		'$1$2[REDACTED]',
 	],
+	// Bare well-known credential formats — recognizable with no key or scheme
+	// around them. Length floors keep prose lookalikes (sk-learn, xoxo, the
+	// AKIA prefix mentioned in text) unmatched.
+	// OpenAI/Anthropic-style: sk-…, sk-ant-…, sk-proj-….
+	[/\bsk-(?:[a-z0-9]+-)*[A-Za-z0-9_-]{16,}\b/g, '[REDACTED]'],
+	// Slack tokens: xoxb-/xoxp-/xoxa-/xoxs-… plus app-level xapp-….
+	[/\b(?:xox[a-z]|xapp)-[A-Za-z0-9-]{8,}\b/gi, '[REDACTED]'],
+	// GitHub tokens: ghp_/gho_/ghu_/ghs_/ghr_ + fine-grained github_pat_.
+	[/\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}\b/g, '[REDACTED]'],
+	// AWS access key ids.
+	[/\bAKIA[0-9A-Z]{16}\b/g, '[REDACTED]'],
 ];
 
 /** Mask secrets embedded inline in free text (e.g. a token in a tool-error string). */
@@ -71,6 +82,28 @@ export function redactSecretsInText(text: string): string {
 		(acc, [pattern, replacement]) => acc.replace(pattern, replacement),
 		text,
 	);
+}
+
+/**
+ * Content-based pass over a value tree: applies `redactSecretsInText` to every
+ * string leaf. Complements the key-based `redactSecrets` for payloads where a
+ * token sits inline in a value under a non-secret-shaped key. Same walk rules
+ * as `redactSecrets`: plain objects and arrays only, depth-capped.
+ */
+export function redactSecretsInTextDeep(value: unknown, depth = 0): unknown {
+	if (depth > 10 || value === null || value === undefined) return value;
+	if (typeof value === 'string') return redactSecretsInText(value);
+	if (Array.isArray(value)) {
+		return value.map((entry) => redactSecretsInTextDeep(entry, depth + 1));
+	}
+	if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+		const out: Record<string, unknown> = {};
+		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+			out[k] = redactSecretsInTextDeep(v, depth + 1);
+		}
+		return out;
+	}
+	return value;
 }
 
 /**

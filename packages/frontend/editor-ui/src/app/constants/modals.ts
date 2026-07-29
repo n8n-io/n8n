@@ -8,7 +8,6 @@ export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
-export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
@@ -30,7 +29,9 @@ export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
 export const STOP_MANY_EXECUTIONS_MODAL_KEY = 'stopManyExecutions';
 export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
-export const WHATS_NEW_MODAL_KEY = 'whatsNew';
+// Shared with `versions.store` in `@n8n/stores`; re-exported here so app-side
+// modal registration and openers keep resolving from `@/app/constants`. (N8N-70)
+export { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@n8n/frontend-constants/versions';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
 export const AI_GATEWAY_TOP_UP_MODAL_KEY = 'aiGatewayTopUp';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';

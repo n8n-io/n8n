@@ -62,6 +62,7 @@ import type {
 	ModelConfig,
 	Provider,
 	PromptCachingConfig,
+	ReasoningLevel,
 	RunOptions,
 	StreamResult,
 	ThinkingConfig,
@@ -118,8 +119,10 @@ export interface AgentSnapshot {
 	hasObservationalMemory: boolean;
 	/** True when episodic memory has been configured on the memory builder. */
 	hasEpisodicMemory: boolean;
-	/** The thinking config if set, otherwise null. */
+	/** The provider-specific thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
+	/** The provider-agnostic reasoning level if set, otherwise null. */
+	reasoning: ReasoningLevel | null;
 	/** The prompt caching config if set via `.promptCaching()`, otherwise null. */
 	promptCaching: PromptCachingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
@@ -180,6 +183,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private checkpointStore?: 'memory' | CheckpointStore;
 
 	private thinkingConfig?: ThinkingConfig;
+
+	private reasoningLevel?: ReasoningLevel;
 
 	private promptCachingConfig?: PromptCachingConfig;
 
@@ -456,6 +461,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
+	 * Enable provider-agnostic reasoning for the agent.
+	 *
+	 * @example
+	 * ```typescript
+	 * new Agent('thinker')
+	 *   .model('anthropic', 'claude-sonnet-4-5')
+	 *   .reasoning('high')
+	 * ```
+	 */
+	reasoning(level: ReasoningLevel = 'medium'): this {
+		this.reasoningLevel = level;
+		return this;
+	}
+
+	/**
 	 * Enable prompt caching with defaults tuned for agent workloads. Anthropic
 	 * models get a `1h` instruction-level cache breakpoint; OpenAI models get
 	 * `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
@@ -669,6 +689,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
 			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
+			reasoning: this.reasoningLevel ?? null,
 			promptCaching: this.promptCachingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
@@ -1070,6 +1091,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
+			reasoning: this.reasoningLevel,
 			promptCaching: this.promptCachingConfig,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
@@ -1174,6 +1196,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				promptCaching: this.promptCachingConfig,
 				checkpointStorage: this.checkpointStore,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
+				...(this.reasoningLevel !== undefined ? { reasoning: this.reasoningLevel } : {}),
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }

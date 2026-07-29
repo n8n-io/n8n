@@ -3,16 +3,17 @@ import type { EventService } from '@/events/event.service';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
-import type { WorkflowImportOutcome } from '../entities/workflow/workflow-import.types';
+import type { PersistedWorkflowOutcome } from '../entities/workflow/workflow-import.types';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
-import type { ImportOrchestrationResult } from './import-orchestrator';
+import type { ImportContentResult } from './import-orchestrator';
 import { reconcileVariableSummary } from './import-result';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 export interface PackageImportScope {
 	context: ImportContext;
-	imported: ImportOrchestrationResult;
+	/** The apply phase's output — telemetry counts what was written, not what was published. */
+	imported: ImportContentResult;
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
@@ -31,7 +32,7 @@ export function emitPackageImportedEvent(
 	const workflowOutcomes = scopes.flatMap(({ imported }) => imported.workflowOutcomes);
 	const credentialResults = scopes.map(({ imported }) => imported.credentialResult);
 	const importedWorkflows = workflowOutcomes.filter(({ status }) => status !== 'skipped');
-	const countByStatus = (status: WorkflowImportOutcome['status']) =>
+	const countByStatus = (status: PersistedWorkflowOutcome['status']) =>
 		workflowOutcomes.filter((outcome) => outcome.status === status).length;
 	const credentialRequirements = scopes.reduce(
 		(total, { credentialRequest }) => total + (credentialRequest.requirements?.length ?? 0),

@@ -1,11 +1,11 @@
+import { sleep } from '@n8n/utils/sleep';
+
 import { expectScheduleTriggerFires } from './schedule-trigger-helpers';
 import {
 	makeScheduleTriggerWorkflow,
 	makeCronScheduleTriggerWorkflow,
 } from './schedule-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
-
-const sleep = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
 
 // Durable scheduler path. Both flags are required: with only
 // `N8N_SCHEDULER_ENABLED` the job registrar early-returns and activation falls

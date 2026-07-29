@@ -311,6 +311,7 @@ export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/g
 export { ListWorkflowReviewRequestsQueryDto } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
 export * from './workflow-reviews/list-workflow-review-inbox.dto';
+export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
