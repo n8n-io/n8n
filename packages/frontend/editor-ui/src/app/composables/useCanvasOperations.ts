@@ -37,6 +37,8 @@ import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormaliza
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
@@ -1169,10 +1171,17 @@ export function useCanvasOperations() {
 	}
 
 	/**
-	 * Auto-select a default credential for pasted/imported nodes that have none
+	 * Auto-select a default credential for pasted/imported nodes that have none.
+	 * HTTP Request nodes are skipped: their credentials are generic (any API can
+	 * use e.g. header auth), so silently binding one is likely wrong. The setup
+	 * panel excludes them for the same reason.
 	 */
 	function autoSelectNodeCredentials(nodes: INode[]) {
 		const autoSelected = nodes.flatMap((node) => {
+			if (node.type === HTTP_REQUEST_NODE_TYPE || node.type === HTTP_REQUEST_TOOL_NODE_TYPE) {
+				return [];
+			}
+
 			const selection = getAutoSelectedCredential(node);
 			if (!selection) return [];
 

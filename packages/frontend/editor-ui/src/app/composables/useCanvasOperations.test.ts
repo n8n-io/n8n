@@ -32,10 +32,12 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
+	createMockNodeTypes,
 	createTestNode,
 	createTestNodeProperties,
 	createTestWorkflow,
 	createTestWorkflowObject,
+	mockLoadedNodeType,
 	mockNode,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
@@ -54,6 +56,7 @@ import {
 	AGENT_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
@@ -5408,6 +5411,38 @@ describe('useCanvasOperations', () => {
 			const canvasOperations = useCanvasOperations();
 			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
 
+			expect(result.nodes?.[0]?.credentials).toBeUndefined();
+			expect(toast.showMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Credentials auto-added' }),
+			);
+		});
+
+		it('should not auto-select credentials for HTTP Request nodes', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[HTTP_REQUEST_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: HTTP_REQUEST_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue({
+				credentialType: 'cred',
+				credential: { id: '1', name: 'credA' },
+			});
+
+			const nodes = [createTestNode({ name: 'HTTP Request', type: HTTP_REQUEST_NODE_TYPE })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({
+					nodes,
+					connections: {},
+					nodeTypes: createMockNodeTypes({
+						[HTTP_REQUEST_NODE_TYPE]: mockLoadedNodeType(HTTP_REQUEST_NODE_TYPE),
+					}),
+				}),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(getAutoSelectedCredentialMock).not.toHaveBeenCalled();
 			expect(result.nodes?.[0]?.credentials).toBeUndefined();
 			expect(toast.showMessage).not.toHaveBeenCalledWith(
 				expect.objectContaining({ title: 'Credentials auto-added' }),
