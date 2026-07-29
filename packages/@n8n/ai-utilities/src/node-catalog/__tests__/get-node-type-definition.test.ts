@@ -57,3 +57,36 @@ describe('getNodeTypeDefinition — split-node discriminator handling', () => {
 		expect(result.error).toContain('message (post, update)');
 	});
 });
+
+describe('getNodeTypeDefinition — latest version resolution', () => {
+	let defsDir: string;
+
+	beforeAll(() => {
+		defsDir = mkdtempSync(join(tmpdir(), 'ai-utils-node-defs-versions-'));
+		// Notion ships versions 1, 2, 2.1, 2.2 and 3, so its dirs are
+		// v1, v2, v21, v22, v3 (the dot is dropped when naming).
+		const notionDir = join(defsDir, 'nodes', 'n8n-nodes-base', 'notion');
+		mkdirSync(notionDir, { recursive: true });
+		for (const [file, content] of [
+			['v1.ts', '// notion v1 def'],
+			['v2.ts', '// notion v2 def'],
+			['v21.ts', '// notion v2.1 def'],
+			['v22.ts', '// notion v2.2 def'],
+			['v3.ts', '// notion v3 def'],
+		]) {
+			writeFileSync(join(notionDir, file), content);
+		}
+	});
+
+	afterAll(() => {
+		rmSync(defsDir, { recursive: true, force: true });
+	});
+
+	it('treats v3 as latest, not v2.2, when no version is requested', () => {
+		const result = getNodeTypeDefinition('n8n-nodes-base.notion', undefined, [defsDir]);
+
+		expect(result.error).toBeUndefined();
+		expect(result.version).toBe('v3');
+		expect(result.content).toBe('// notion v3 def');
+	});
+});
