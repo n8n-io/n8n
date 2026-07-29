@@ -7,12 +7,40 @@ import type {
 } from 'n8n-workflow';
 import z from 'zod';
 
+export const nodeCredentialSummarySchema = z
+	.object({
+		id: z.string().nullable().describe('The credential ID; null for n8n-managed credentials'),
+		name: z.string().describe('The credential name'),
+	})
+	.describe('The credential assigned to this slot (id and name only, never secret data)');
+
 export const nodeSchema = z
 	.object({
 		name: z.string(),
 		type: z.string(),
+		credentials: z
+			.record(z.string(), nodeCredentialSummarySchema)
+			.optional()
+			.describe(
+				'Credentials assigned to the node, keyed by credential type (e.g. "slackApi"). Reuse these when adding nodes for the same service to this workflow.',
+			),
 	})
 	.passthrough();
+
+/**
+ * Reduces a node's credentials to `{ id, name }` per slot for the read path,
+ * dropping internal fields (e.g. n8n Connect markers) while keeping enough for
+ * clients to reuse the workflow's existing credentials in write operations.
+ */
+export const sanitizeNodeCredentials = ({ credentials, ...node }: INode) => {
+	if (!credentials || Object.keys(credentials).length === 0) return node;
+	return {
+		...node,
+		credentials: Object.fromEntries(
+			Object.entries(credentials).map(([type, { id, name }]) => [type, { id, name }]),
+		),
+	};
+};
 
 export const connectionsSchema = z
 	.custom<IConnections>((_value): _value is IConnections => true)
