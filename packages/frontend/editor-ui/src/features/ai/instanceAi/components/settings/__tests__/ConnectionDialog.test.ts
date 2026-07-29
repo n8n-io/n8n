@@ -5,6 +5,7 @@ import { setActivePinia } from 'pinia';
 import type { ICredentialType, INodeCredentialTestResult } from 'n8n-workflow';
 import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ConnectionDialog from '../ConnectionDialog.vue';
 import { useInstanceAiSettingsStore } from '../../../instanceAiSettings.store';
@@ -160,6 +161,47 @@ describe('ConnectionDialog (real connection fields)', () => {
 		await findByTestId('n8n-agent-sandbox-provider-select');
 		expect(queryByTestId('n8n-agent-sandbox-connection-fields')).toBeNull();
 		expect(queryAllByTestId('credential-connection-parameter')).toHaveLength(0);
+	});
+
+	it('selects proxy-managed Daytona without requesting direct credentials', async () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				browserUseEnabled: true,
+				proxyEnabled: true,
+				cloudManaged: false,
+				sandboxEnabled: true,
+				workflowBuilderAvailable: true,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
+		store.$patch({
+			settings: {
+				...store.settings!,
+				sandboxProvider: 'n8n-sandbox',
+				sandboxEnvConfigured: true,
+			},
+		});
+		vi.mocked(store.save).mockResolvedValue(true);
+		const credentialsStore = useCredentialsStore();
+		const { findByText, findByTestId, getByTestId, queryByTestId } = renderDialog({
+			props: { kind: 'sandbox', open: true },
+		});
+
+		const select = await findByTestId('n8n-agent-sandbox-provider-select');
+		await fireEvent.click(select.querySelector('input')!);
+		await fireEvent.click(await findByText('Daytona'));
+
+		expect(queryByTestId('n8n-agent-sandbox-connection-fields')).toBeNull();
+		expect(getByTestId('n8n-agent-sandbox-dialog-save')).not.toBeDisabled();
+		await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
+
+		await waitFor(() => expect(store.save).toHaveBeenCalledOnce());
+		expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+		expect(store.draft).toMatchObject({ sandboxProvider: 'daytona' });
+		expect(store.draft).not.toHaveProperty('sandboxConnection');
 	});
 
 	it('renders only the minimal OpenAI fields while preserving hidden credential data', async () => {

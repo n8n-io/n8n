@@ -89,6 +89,32 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
+	describe('markAsRunning', () => {
+		it('marks the case running and stamps runAt', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsRunning('res-1');
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toMatchObject({ status: 'running' });
+			expect((callArgs?.[2] as { runAt: Date }).runAt).toBeInstanceOf(Date);
+		});
+	});
+
+	describe('markAsCancelled', () => {
+		it('marks the case cancelled and stamps completedAt', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsCancelled('res-1');
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toMatchObject({ status: 'cancelled' });
+			expect((callArgs?.[2] as { completedAt: Date }).completedAt).toBeInstanceOf(Date);
+		});
+	});
+
 	describe('findByRunId', () => {
 		it('scopes to runId ordered by runIndex ascending', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
@@ -97,6 +123,27 @@ describe('AgentEvalResultRepository', () => {
 
 			const callArgs = entityManager.find.mock.calls[0];
 			expect(callArgs?.[1]).toEqual({ where: { runId: 'run-1' }, order: { runIndex: 'ASC' } });
+		});
+	});
+
+	describe('countByStatus', () => {
+		it('groups counts by status in the DB and zero-fills missing statuses', async () => {
+			const qb = {
+				select: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				groupBy: vi.fn().mockReturnThis(),
+				getRawMany: vi.fn().mockResolvedValue([
+					{ status: 'success', count: '3' },
+					{ status: 'error', count: 1 },
+				]),
+			};
+			(entityManager.createQueryBuilder as Mock).mockReturnValue(qb);
+
+			const result = await repo.countByStatus('run-1');
+
+			expect(qb.where).toHaveBeenCalledWith('result.runId = :runId', { runId: 'run-1' });
+			expect(result).toEqual({ new: 0, running: 0, success: 3, error: 1, cancelled: 0 });
 		});
 	});
 });
