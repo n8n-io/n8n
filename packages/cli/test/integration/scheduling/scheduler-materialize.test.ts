@@ -100,14 +100,11 @@ describe('scheduler materialization', () => {
 	});
 
 	it('stops offering a coalesce occurrence once it is past its deadline', async () => {
-		// A queued run that outlived an outage must not fire alongside the catch-up run a
-		// later pass plans for the same backlog.
 		await createJob({ misfirePolicy: 'coalesce', misfireGraceSeconds: 60 });
 
 		await runMaterialization(0);
 
 		const [task] = await taskRepo.find();
-		// Recorded a day ago, so both instants are a day old.
 		await taskRepo.update(
 			{ id: task.id },
 			{ runAt: secondsFromNow(-86_400), missedAfter: secondsFromNow(-86_340) },
@@ -132,8 +129,6 @@ describe('scheduler materialization', () => {
 	);
 
 	it('retires the queued occurrences a later catch-up run supersedes', async () => {
-		// The already-queued row is part of the backlog the second pass coalesces, so it
-		// is retired rather than left to run alongside the catch-up.
 		const job = await createJob({ intervalSeconds: 10, misfireGraceSeconds: 30 });
 
 		await runMaterialization(0);
@@ -160,8 +155,7 @@ describe('scheduler materialization', () => {
 			defaultTimezone: 'UTC',
 		});
 
-		// The capped pass records nothing and advances the clock, rather than firing a
-		// run that is stale by construction.
+		// Records nothing: every fire in this backlog is already stale by the time it's discarded.
 		const first = await drainScheduler.materialize();
 		expect(first.occurrences).toBe(0);
 		expect(totalDiscarded(first.misfires)).toBe(5);
@@ -194,6 +188,32 @@ describe('scheduler materialization', () => {
 		// A sub-minute schedule fills the window in one pass instead of one fire at a time.
 		expect(summary.occurrences).toBeGreaterThan(1);
 		expect(await taskRepo.count()).toBe(summary.occurrences);
+	});
+
+	it('fires a backlog in full when every occurrence is still inside its grace window', async () => {
+		// Known residual: the misfire policy only acts once an occurrence is past its
+		// deadline. A backlog that fits entirely inside the grace window is not a
+		// misfire at all, so it is recorded and later claimed in full rather than
+		// coalesced/skipped down to one run: the burst this guards against is bounded by
+		// grace/interval, not eliminated.
+		await createJob({
+			intervalSeconds: 10,
+			misfireGraceSeconds: 60,
+			nextRunAt: secondsFromNow(-45),
+		});
+
+		const summary = await runMaterialization(0);
+
+		// -45s, -35s, -25s, -15s, -5s: five due instants, all newer than now-60s.
+		expect(summary.occurrences).toBe(5);
+		expect(totalDiscarded(summary.misfires)).toBe(0);
+		const tasks = await taskRepo.find();
+		expect(tasks).toHaveLength(5);
+
+		// Not just recorded: every one of them is still claimable, so this really is a
+		// five-execution burst on the next executor tick, not a discarded backlog.
+		const claimed = await taskRepo.claimDueTasks(claimOpts());
+		expect(claimed).toHaveLength(5);
 	});
 
 	it('records the same occurrence only once (idempotent)', async () => {

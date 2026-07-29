@@ -4,7 +4,11 @@ import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
-import { createScheduler, pollLookaheadSeconds } from '@n8n/scheduler';
+import {
+	createScheduler,
+	pollLookaheadSeconds,
+	DEFAULT_MATERIALIZER_OPTIONS,
+} from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
@@ -84,7 +88,10 @@ export class DurableScheduler implements Scheduler {
 					tracer,
 				})
 			: undefined;
-		if (enabled) warnOnMisfireGrace(logger, config);
+		if (enabled) {
+			warnOnMisfireGrace(logger, config);
+			warnOnDrainRate(logger, config);
+		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
 	}
@@ -112,7 +119,7 @@ export class DurableScheduler implements Scheduler {
 	}
 }
 
-/** Warn about the grace windows that leave a missed run with nowhere to go. */
+/** Warns when the configured grace window can't tolerate a normal restart or a short outage. */
 function warnOnMisfireGrace(logger: Logger, config: GlobalConfig['scheduler']): void {
 	const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } = config;
 	if (misfireGraceSeconds <= executorIntervalSeconds) {
@@ -128,6 +135,27 @@ function warnOnMisfireGrace(logger: Logger, config: GlobalConfig['scheduler']): 
 		logger.warn(
 			'Scheduler misfire grace is below the materialization window; runs missed during a short outage are dropped rather than caught up',
 			{ misfireGraceSeconds, materializationWindowSeconds },
+		);
+	}
+}
+
+/**
+ * Warn when a materialization pass can't drain backlog as fast as the fastest
+ * schedule on the instance can produce it. Under `coalesce`, a pass that always
+ * hits `maxPerJob` before reaching the current occurrence never catches up: the
+ * job's clock advances past a backlog it can never close, so it silently stops
+ * running.
+ */
+function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): void {
+	const { materializationIntervalSeconds, minIntervalSeconds } = config;
+	// The fastest a schedule can legally fire: the operator's floor if they set
+	// one, otherwise the fastest an interval can be at all.
+	const fastestIntervalSeconds = minIntervalSeconds > 0 ? minIntervalSeconds : 1;
+	const drainSeconds = DEFAULT_MATERIALIZER_OPTIONS.maxPerJob * fastestIntervalSeconds;
+	if (materializationIntervalSeconds > drainSeconds) {
+		logger.warn(
+			'Scheduler materialization interval is long enough that a pass may never fully drain the busiest possible schedule; under the coalesce misfire policy such a schedule could stop producing catch-up runs entirely',
+			{ materializationIntervalSeconds, fastestIntervalSeconds },
 		);
 	}
 }

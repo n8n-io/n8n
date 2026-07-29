@@ -195,11 +195,10 @@ export class ScheduledTask extends WithCreatedAt {
 	errorMessage: string | null;
 
 	/**
-	 * When this run stops being worth starting: {@link runAt} plus the job's misfire
-	 * grace, resolved when the occurrence was materialized so the claim can compare one
-	 * column against the clock. `null` means no deadline, so the run stays claimable
-	 * however late. Indexed over the pending rows that have one, which is what the
-	 * reaper sweeps.
+	 * Deadline past which this occurrence counts as missed: {@link runAt} plus the
+	 * job's misfire grace, resolved at materialization so the claim compares one
+	 * column against the clock instead of joining to the job. `null` means no
+	 * deadline.
 	 */
 	@DateTimeColumn({ nullable: true })
 	missedAfter: Date | null;

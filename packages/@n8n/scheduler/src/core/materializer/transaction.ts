@@ -88,8 +88,6 @@ export interface MaterializerTransaction {
 	 * older than the catch-up run that supersedes it, for each job in one batch.
 	 *
 	 * Only `pending` rows: one already claimed is in-flight work someone owns.
-	 *
-	 * @returns how many occurrences were retired
 	 */
 	retireSuperseded(superseded: SupersededOccurrences[]): Promise<number>;
 

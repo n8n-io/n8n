@@ -221,7 +221,7 @@ describe('planOccurrences misfire handling (fast-check)', () => {
 		const windowEnd = NOW.getTime() + windowSeconds * 1000;
 		const all: Date[] = [];
 		// Counted past the cap as well as up to it: a walk that filled the cap exactly
-		// and had nothing left in the window is not truncated, it is complete.
+		// with nothing left in the window counts as complete, not truncated.
 		let inWindow = 0;
 		for (let t = first; t <= windowEnd; t += intervalSeconds * 1000) {
 			inWindow++;

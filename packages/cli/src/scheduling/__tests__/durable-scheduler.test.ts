@@ -22,7 +22,13 @@ vi.mock('@n8n/scheduler', async (importOriginal) => ({
 }));
 
 describe('DurableScheduler', () => {
-	function makeScheduler({ enabled = true, instanceType = 'main', dbType = 'sqlite' } = {}) {
+	function makeScheduler({
+		enabled = true,
+		instanceType = 'main',
+		dbType = 'sqlite',
+		materializationIntervalSeconds = 10,
+		minIntervalSeconds = 0,
+	} = {}) {
 		const inner = mock<Scheduler & SchedulerPasses>();
 		vi.mocked(createScheduler).mockReturnValue(inner);
 		const logger = mockLogger();
@@ -44,7 +50,13 @@ describe('DurableScheduler', () => {
 			mock<GlobalConfig>({
 				generic: { timezone: 'UTC' },
 				database: { type: dbType as 'sqlite' | 'postgresdb' },
-				scheduler: { enabled, executorIntervalSeconds: 5, jitterRatio: 0.1 },
+				scheduler: {
+					enabled,
+					executorIntervalSeconds: 5,
+					jitterRatio: 0.1,
+					materializationIntervalSeconds,
+					minIntervalSeconds,
+				},
 			}),
 			tracing,
 			scheduleTriggerTaskHandler,
@@ -77,6 +89,42 @@ describe('DurableScheduler', () => {
 
 			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
 			expect(deps?.lifecycle?.concurrencyMode).toBe('sequential');
+		});
+	});
+
+	describe('drain rate warning', () => {
+		it('warns when a pass cannot drain the fastest possible schedule before the next one is due', () => {
+			// maxPerJob is 1000: a schedule as fast as this instance allows (the default
+			// floor of one second) can outrun a 1001s materialization interval.
+			const { logger } = makeScheduler({ materializationIntervalSeconds: 1001 });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.objectContaining({ materializationIntervalSeconds: 1001 }),
+			);
+		});
+
+		it('does not warn at the default materialization interval', () => {
+			const { logger } = makeScheduler();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.anything(),
+			);
+		});
+
+		it('scales the threshold by an operator-configured minimum interval floor', () => {
+			// A 60s floor makes 1001s safe again: even the fastest schedule now
+			// produces at most one occurrence per 60s, well within maxPerJob's reach.
+			const { logger } = makeScheduler({
+				materializationIntervalSeconds: 1001,
+				minIntervalSeconds: 60,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.anything(),
+			);
 		});
 	});
 

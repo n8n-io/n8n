@@ -184,6 +184,38 @@ describe('DurableJobProvisioner', () => {
 			});
 		});
 
+		it("recomputes the deadline of a reconciled job's already-queued tasks", async () => {
+			// The row's grace is now current; tasks queued under the old grace
+			// would keep honouring it until claimed or reaped.
+			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 90);
+		});
+
+		it("does not touch other jobs' queued tasks when nothing is outdated", async () => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
+		});
+
 		it('rewrites a changed job in place and withdraws its pending tasks', async () => {
 			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
 

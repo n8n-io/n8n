@@ -91,13 +91,13 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
-	describe('forceDueNowByWorkflowNode', () => {
-		it('sets nextRunAt to now for the node jobs', async () => {
+	describe('forceOverdueByWorkflowNode', () => {
+		it('sets nextRunAt to secondsAgo in the past for the node jobs', async () => {
 			const qb = updateQb();
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 
-			await repository.forceDueNowByWorkflowNode('wf', 'node');
+			await repository.forceOverdueByWorkflowNode('wf', 'node', 120);
 
 			expect(qb.update).toHaveBeenCalledWith(ScheduledJob);
 			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
@@ -105,6 +105,17 @@ describe('ScheduledJobRepository', () => {
 				workflowId: 'wf',
 				nodeId: 'node',
 			});
+			expect(qb.execute).toHaveBeenCalled();
+		});
+
+		it('sets nextRunAt to now when secondsAgo is 0', async () => {
+			const qb = updateQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			await repository.forceOverdueByWorkflowNode('wf', 'node', 0);
+
+			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
 			expect(qb.execute).toHaveBeenCalled();
 		});
 	});

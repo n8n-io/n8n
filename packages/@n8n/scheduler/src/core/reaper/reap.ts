@@ -65,7 +65,7 @@ export const DEFAULT_REAPER_OPTIONS: ReaperOptions = {
 export interface ReaperHooks {
 	/** Notified when recovering one expired-lease row fails, after the row is skipped. */
 	onRowError?: (taskId: string, error: unknown) => void;
-	/** Notified when retiring stale `pending` rows fails, after the rest of the sweep runs. */
+	/** Notified when retiring stale `pending` rows fails; the rest of the sweep still runs. */
 	onRetireError?: (error: unknown) => void;
 	/** Notified when a task is failed terminally: the lease of its last attempt expired. */
 	onDeadLetter?: (task: { taskId: string; attempts: number; maxAttempts: number }) => void;
@@ -74,6 +74,30 @@ export interface ReaperHooks {
 	 * completed as succeeded (its effect had already happened) instead of failed.
 	 */
 	onCompletedAfterDispatch?: (task: { taskId: string }) => void;
+}
+
+/**
+ * Retires the stale `pending` rows for one sweep. Reports a failure through
+ * `hooks.onRetireError` rather than throwing, so the rest of the sweep still runs;
+ * returns 0 when aborted or when retiring failed.
+ */
+async function retireStale(
+	store: ReaperTaskStore,
+	options: ReaperOptions,
+	hooks: ReaperHooks,
+	signal?: AbortSignal,
+): Promise<number> {
+	if (signal?.aborted === true) return 0;
+	try {
+		return await store.retireMissedPending(options.batchSize);
+	} catch (error) {
+		try {
+			hooks.onRetireError?.(error);
+		} catch {
+			// A host-supplied reporter must not break the sweep it observes.
+		}
+		return 0;
+	}
 }
 
 /**
@@ -106,32 +130,6 @@ export interface ReaperHooks {
  * Cancellation (`signal`, aborted when the driving loop times the pass out or
  * shuts down) is task-granular.
  */
-/**
- * Retire the stale `pending` rows of one sweep, reporting a failure rather than
- * raising it: the rest of the sweep recovers work an instance is waiting on, and
- * must still run when retiring fails.
- *
- * @returns how many rows were retired; 0 when the sweep was already cancelled.
- */
-async function retireStale(
-	store: ReaperTaskStore,
-	options: ReaperOptions,
-	hooks: ReaperHooks,
-	signal?: AbortSignal,
-): Promise<number> {
-	if (signal?.aborted === true) return 0;
-	try {
-		return await store.retireMissedPending(options.batchSize);
-	} catch (error) {
-		try {
-			hooks.onRetireError?.(error);
-		} catch {
-			// A broken reporter must not cost the sweep its stranded rows.
-		}
-		return 0;
-	}
-}
-
 export async function reap(
 	store: ReaperTaskStore,
 	options: ReaperOptions = DEFAULT_REAPER_OPTIONS,

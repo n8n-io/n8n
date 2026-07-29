@@ -576,7 +576,6 @@ describe('scheduled repositories', () => {
 			const after = await jobRepository.findOneByOrFail({ id: updated.id });
 			expect(after.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Skip);
 			expect(after.misfireGraceSeconds).toBe(120);
-			// The schedule and clock are the job's own, so reconciling a policy must not move them.
 			expect(after.intervalSeconds).toBe(updated.intervalSeconds);
 			expect(after.nextRunAt).toEqual(updated.nextRunAt);
 

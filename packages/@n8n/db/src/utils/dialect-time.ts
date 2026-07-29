@@ -29,6 +29,22 @@ export function dbNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
 }
 
 /**
+ * A column's value plus a millisecond offset, per dialect. Unlike
+ * {@link dbNowPlusMsLiteral}, the base is a stored column, not DB-now, so a value
+ * derived from another column isn't re-anchored to the current instant.
+ * `ms` is caller-computed (safe to inline); `columnExpr` must already be a safe
+ * SQL fragment (a quoted column name), never caller input.
+ */
+export function columnPlusMsLiteral(isPostgres: boolean, columnExpr: string, ms: number): string {
+	const rounded = Math.round(ms);
+	if (isPostgres) {
+		return `${columnExpr} + (${rounded} || ' milliseconds')::interval`;
+	}
+	const seconds = rounded / 1000;
+	return `STRFTIME('%Y-%m-%d %H:%M:%f', ${columnExpr}, '${seconds < 0 ? '' : '+'}${seconds} seconds')`;
+}
+
+/**
  * Parse a DB-clock value read back from a query.
  * Postgres returns a `Date`.
  * SQLite returns UTC wall-clock text with no zone.

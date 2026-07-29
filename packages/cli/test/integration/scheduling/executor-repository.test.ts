@@ -158,7 +158,6 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 
 		it('still claims a retry whose deadline passed while it waited out its backoff', async () => {
-			// The backoff, not staleness, is what put it past its deadline.
 			const retry = await createTask({
 				runAt: past(),
 				missedAfter: new Date(Date.now() - 30_000),
@@ -409,7 +408,6 @@ describe('ScheduledTaskRepository executor methods', () => {
 
 		it('releaseClaim keeps the deadline, so a released occurrence still expires', async () => {
 			const { id, epoch } = await claimOne();
-			// Lapsed while the claim was held.
 			await taskRepository.update(id, { missedAfter: past() });
 
 			expect(await taskRepository.releaseClaim({ host: HOST_A, id, claimedEpoch: epoch })).toBe(1);
@@ -908,7 +906,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 
 		describe('retireMissedPending', () => {
-			it('buries a pending occurrence the claim has stopped offering', async () => {
+			it('retires a pending occurrence the claim has stopped offering', async () => {
 				const stale = await createTask({
 					runAt: past(),
 					missedAfter: new Date(Date.now() - 30_000),
@@ -922,7 +920,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			});
 
 			it('leaves alone what the claim would still offer', async () => {
-				// The claim's three acceptances, which this sweep must mirror exactly.
+				// Mirrors the three cases `claimDueTasks` still accepts.
 				const live = await createTask({ missedAfter: new Date(Date.now() + 30_000) });
 				const noDeadline = await createTask({ missedAfter: null });
 				const retry = await createTask({
@@ -1000,7 +998,9 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(await taskRepository.retireSuperseded(taskRepository.manager, [])).toBe(0);
 		});
 
-		it('leaves an occurrence whose retry is already scheduled', async () => {
+		it('retires an occurrence whose retry is already scheduled, same as one never attempted', async () => {
+			// Coalesce means at most one run for the backlog: a failed attempt awaiting
+			// retry is still a second run alongside the catch-up if left alone.
 			const retrying = await createTask({ attempts: 1 });
 			const catchUp = await createTask();
 
@@ -1008,8 +1008,83 @@ describe('ScheduledTaskRepository executor methods', () => {
 				{ jobId: job.id, before: catchUp.scheduledFor },
 			]);
 
-			expect(retired).toBe(0);
-			expect((await reload(retrying.id)).status).toBe('pending');
+			expect(retired).toBe(1);
+			expect((await reload(retrying.id)).status).toBe('missed');
+		});
+	});
+
+	describe('updateMissedAfterForJobs', () => {
+		it("recomputes a pending row's deadline from its own runAt, not from now", async () => {
+			const runAt = past();
+			const task = await createTask({ runAt, missedAfter: new Date(runAt.getTime() + 30_000) });
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			const reloaded = await reload(task.id);
+			expect(reloaded.missedAfter!.getTime()).toBe(runAt.getTime() + 90_000);
+		});
+
+		it('leaves a row with no deadline without one', async () => {
+			const task = await createTask({ missedAfter: null });
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			expect((await reload(task.id)).missedAfter).toBeNull();
+		});
+
+		it('leaves a running or finished row alone', async () => {
+			const runAt = past();
+			const running = await createTask({
+				status: 'running',
+				claimedBy: HOST_A,
+				leaseExpiresAt: new Date(Date.now() + 60_000),
+				runAt,
+				missedAfter: new Date(runAt.getTime() + 30_000),
+			});
+			const done = await createTask({
+				status: 'succeeded',
+				finishedAt: past(),
+				runAt,
+				missedAfter: new Date(runAt.getTime() + 30_000),
+			});
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			expect((await reload(running.id)).missedAfter!.getTime()).toBe(runAt.getTime() + 30_000);
+			expect((await reload(done.id)).missedAfter!.getTime()).toBe(runAt.getTime() + 30_000);
+		});
+
+		it("leaves another job's rows alone", async () => {
+			const otherJob = await jobRepository.save(
+				jobRepository.create({ ...job, id: undefined, name: 'other-job' }),
+			);
+			const runAt = past();
+			const otherTask = await taskRepository.save(
+				taskRepository.create({
+					jobId: otherJob.id,
+					taskType: TASK_TYPE,
+					payload: {},
+					scheduledFor: new Date(),
+					runAt,
+					status: 'pending',
+					attempts: 0,
+					maxAttempts: 1,
+					missedAfter: new Date(runAt.getTime() + 30_000),
+				}),
+			);
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			expect((await reload(otherTask.id)).missedAfter!.getTime()).toBe(runAt.getTime() + 30_000);
+		});
+
+		it('is a no-op when given no jobs', async () => {
+			const runAt = past();
+			const task = await createTask({ runAt, missedAfter: new Date(runAt.getTime() + 30_000) });
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [], 90);
+
+			expect((await reload(task.id)).missedAfter!.getTime()).toBe(runAt.getTime() + 30_000);
 		});
 	});
 });

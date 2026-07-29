@@ -135,16 +135,18 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { id: In(ids) });
 	}
 
-	/** Test-only: how many jobs a node currently owns. */
 	async countByWorkflowNode(workflowId: string, nodeId: string): Promise<number> {
 		return await this.count({ where: { workflowId, nodeId } });
 	}
 
-	/** Test-only: sets `nextRunAt` to now, so the next sweep claims the job. */
-	async forceDueNowByWorkflowNode(workflowId: string, nodeId: string): Promise<void> {
+	async forceOverdueByWorkflowNode(
+		workflowId: string,
+		nodeId: string,
+		secondsAgo: number,
+	): Promise<void> {
 		await this.createQueryBuilder()
 			.update(ScheduledJob)
-			.set({ nextRunAt: () => dbNowLiteral(this.isPostgres) })
+			.set({ nextRunAt: () => dbNowPlusMsLiteral(this.isPostgres, -secondsAgo * 1000) })
 			.where('"workflowId" = :workflowId AND "nodeId" = :nodeId', { workflowId, nodeId })
 			.execute();
 	}
@@ -214,10 +216,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		await manager.update(ScheduledJob, { id }, update);
 	}
 
-	/**
-	 * Point jobs at a misfire policy and grace, leaving their schedule and clock
-	 * alone, so a policy change reaches jobs whose definition never changes.
-	 */
+	/** Updates misfire policy and grace only, leaving schedule and clock untouched. */
 	async updateMisfirePolicy(
 		manager: EntityManager,
 		ids: number[],

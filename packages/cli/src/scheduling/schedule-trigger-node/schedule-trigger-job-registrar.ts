@@ -293,8 +293,6 @@ export class ScheduleTriggerJobRegistrar {
 			SCHEDULE_TRIGGER_TASK_TYPE,
 			{ ...payload },
 			desired,
-			// A missed Schedule Trigger run should still happen, once: that is what a user
-			// means by "it should have run".
 			ScheduledJobMisfirePolicy.Coalesce,
 		);
 

@@ -27,11 +27,6 @@ interface ProvisionScope {
 	nodeId: string;
 	taskType: string;
 	payload: Record<string, unknown>;
-	/**
-	 * What the inserted jobs do with occurrences missed during downtime. The caller
-	 * decides rather than the column default, since it depends on what the task type
-	 * does when it runs.
-	 */
 	misfirePolicy: ScheduledJobMisfirePolicy;
 }
 
@@ -161,7 +156,6 @@ export class DurableJobProvisioner {
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
-				// Stored jobs whose policy or grace no longer matches, reconciled below.
 				const outdatedPolicyJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
@@ -215,14 +209,18 @@ export class DurableJobProvisioner {
 						await this.tasks.deletePendingByJobIds(manager, jobIds),
 					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
 				});
-				// A schedule that never changes never routes through `redefine`, so without
-				// this a job keeps the policy and grace it was inserted with: a poll trigger
-				// provisioned before the policy existed would coalesce its backlog instead of
-				// skipping it. Only the two columns are written, so queued tasks stay put.
+				// Only `redefine` touches a job's misfire policy and grace, so an unchanged
+				// schedule needs this to pick up a policy/grace change on its own.
 				await this.jobs.updateMisfirePolicy(manager, outdatedPolicyJobIds, {
 					misfirePolicy,
 					misfireGraceSeconds,
 				});
+				// Queued tasks were stamped with the previous grace; recompute their deadline.
+				await this.tasks.updateMissedAfterForJobs(
+					manager,
+					outdatedPolicyJobIds,
+					misfireGraceSeconds,
+				);
 				// After all of provisioning's own writes (including withdrawing a
 				// redefined job's stale tasks) so the seeded occurrences are the last word.
 				await this.seedInitialOccurrences(manager, seededJobIds);

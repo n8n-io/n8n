@@ -14,7 +14,7 @@ import type {
 
 export type { MaterializerOptions } from './options';
 
-/** Occurrences one task type's jobs discarded under one misfire policy. */
+/** Occurrences discarded under one misfire policy, for one task type. */
 export interface MisfireCount {
 	taskType: string;
 	policy: ScheduledJobMisfirePolicy;
@@ -35,15 +35,11 @@ export interface MaterializerSummary {
 	/** How many claimed jobs could not be planned and were deferred (see {@link OnJobPlanError}). */
 	deferredJobs: number;
 	/**
-	 * The due occurrences a misfire policy discarded rather than record — the size of
-	 * the backlog that will never run — grouped by the task type and policy that
-	 * discarded them. Groups with nothing discarded are left out.
+	 * Due occurrences a misfire policy discarded rather than record, grouped by task
+	 * type and policy. Groups with nothing discarded are left out.
 	 */
 	misfires: MisfireCount[];
-	/**
-	 * How many occurrences already recorded were retired as superseded by a catch-up
-	 * run: the part of the backlog that survived as rows across an outage.
-	 */
+	/** How many pending occurrences were retired because a catch-up run superseded them. */
 	retiredOccurrences: number;
 }
 
@@ -69,7 +65,8 @@ export interface MaterializerHooks {
  * 1) claim the jobs whose next run is due
  * 2) turn each into its upcoming occurrences (pure: {@link planOccurrences})
  * 3) record them all in one batch
- * 4) advance every job's clock in one batch
+ * 4) retire any pending occurrences a catch-up run superseded
+ * 5) advance every job's clock in one batch
  *
  * All in a single transaction, judged against database time. The claim and the
  * per-batch advance are one query each; the insert is chunked by the repository
@@ -153,7 +150,6 @@ export async function materialize(
 	});
 }
 
-/** @returns how many occurrences were discarded, across every group of {@link misfires}. */
 export function totalDiscarded(misfires: MisfireCount[]): number {
 	return misfires.reduce((total, { discarded }) => total + discarded, 0);
 }

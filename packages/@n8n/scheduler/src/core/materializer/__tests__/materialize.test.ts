@@ -31,7 +31,7 @@ const makeSkipJob = (id: number): ScheduledJob => ({
 	misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 });
 
-/** A transaction whose no-op operations resolve rather than return `undefined`. */
+/** A mock transaction whose `retireSuperseded` resolves to 0 rather than `undefined`. */
 function makeTx(): MockProxy<MaterializerTransaction> {
 	const tx = mock<MaterializerTransaction>();
 	tx.retireSuperseded.mockResolvedValue(0);

@@ -1,4 +1,4 @@
-import { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import { DEFAULT_MISFIRE_GRACE_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { ScheduledJobKind, RecurringCronUnit } from '@n8n/constants';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
@@ -133,8 +133,8 @@ export class ScheduledJob extends WithTimestamps {
 	nextRunAt: Date | null;
 
 	/**
-	 * Last instant this job's clock has moved past. A misfire policy advances it past
-	 * discarded occurrences too, so it is not proof that a run happened.
+	 * Last instant this job's clock has moved past. Not proof that a run happened:
+	 * a discarded occurrence still advances it.
 	 */
 	@DateTimeColumn({ nullable: true })
 	lastFiredAt: Date | null;
@@ -145,17 +145,17 @@ export class ScheduledJob extends WithTimestamps {
 	@Column({ type: 'int', default: 1 })
 	maxAttempts: number;
 
-	/**
-	 * What happens to occurrences that came due while nothing was there to run them,
-	 * once they are older than {@link misfireGraceSeconds}.
-	 */
+	/** What happens to an occurrence overdue by more than {@link misfireGraceSeconds}. */
 	@Column({ type: 'varchar', length: 16, default: ScheduledJobMisfirePolicy.Coalesce })
 	misfirePolicy: ScheduledJobMisfirePolicy;
 
 	/**
 	 * How late an occurrence may still be and count as on time, so that an ordinary
 	 * restart or a slow pass never reaches {@link misfirePolicy}.
+	 *
+	 * Copied from `N8N_SCHEDULER_MISFIRE_GRACE` onto each row rather than read live,
+	 * so every instance agrees on one job's deadline through a rolling config change.
 	 */
-	@Column({ type: 'int', default: 60 })
+	@Column({ type: 'int', default: DEFAULT_MISFIRE_GRACE_SECONDS })
 	misfireGraceSeconds: number;
 }

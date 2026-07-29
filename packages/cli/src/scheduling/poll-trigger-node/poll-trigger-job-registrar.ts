@@ -53,14 +53,14 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		const desired = this.toDesiredJobs(workflowId, node, pollTimes, seed, resolvedTimezone);
 
 		const payload: PollTriggerTaskPayload = { workflowId, nodeId: node.id };
+		// A poll fetches everything new since it last ran, so replaying missed polls
+		// would just repeat the same fetch.
 		const summary = await this.jobProvisioner.provision(
 			workflowId,
 			node.id,
 			POLL_TRIGGER_TASK_TYPE,
 			{ ...payload },
 			desired,
-			// One poll after downtime covers the whole gap; replaying the missed polls
-			// re-fetches the same window.
 			ScheduledJobMisfirePolicy.Skip,
 		);
 

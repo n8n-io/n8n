@@ -1,4 +1,4 @@
-import { Time } from '@n8n/constants';
+import { DEFAULT_MISFIRE_GRACE_SECONDS, Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
@@ -289,14 +289,15 @@ export class SchedulerConfig {
 	maxAttempts: number = 5;
 
 	/**
-	 * How late, in seconds, a scheduled run may start and still count as on time.
-	 * Defaults to 60 seconds. A run later than this counts as missed, and the
-	 * schedule's misfire policy decides whether it still runs at all. Raise it to
-	 * tolerate longer restarts. Must be greater than 0 and above
-	 * {@link executorIntervalSeconds}, since a run has to survive until the next
-	 * executor tick to be offered at all. Capped at 30 days, the largest value the
-	 * per-schedule `int` column holds.
+	 * How late, in seconds, a scheduled run may start and still count as on time. A
+	 * run later than this counts as missed, and the schedule's misfire policy decides
+	 * whether it still runs at all. Must be greater than 0, and capped at 30 days, the
+	 * largest value the per-schedule `int` column holds.
+	 *
+	 * Should exceed {@link executorIntervalSeconds} and {@link materializationWindowSeconds}:
+	 * a run has to survive until the next executor tick to be offered at all. The
+	 * scheduler warns at startup if it doesn't.
 	 */
 	@Env('N8N_SCHEDULER_MISFIRE_GRACE', positiveIntSchema.max(30 * Time.days.toSeconds))
-	misfireGraceSeconds: number = 60;
+	misfireGraceSeconds: number = DEFAULT_MISFIRE_GRACE_SECONDS;
 }

@@ -150,9 +150,9 @@ describe('planOccurrences', () => {
 });
 
 describe('planOccurrences misfire handling', () => {
-	// A job whose clock stopped two minutes ago: every 10s from NOW - 120s, so the pass
-	// sees 13 due instants, the last exactly at NOW. With a 60s grace the 7 at or before
-	// NOW - 60s are past their deadline, bringing the policy into play.
+	// A job whose clock stopped two minutes ago: fires every 10s from NOW-120s, giving
+	// 13 due instants ending at NOW. With a 60s grace, the 7 at or before NOW-60s are
+	// past their deadline.
 	const backloggedJob = (overrides: Partial<ScheduledJob> = {}) =>
 		makeJob({ nextRunAt: secondsBefore(NOW, 120), ...overrides });
 
@@ -195,7 +195,8 @@ describe('planOccurrences misfire handling', () => {
 	});
 
 	it('treats an occurrence exactly at its deadline as missed', () => {
-		// Asserted under skip, where the two readings of the boundary differ.
+		// Skip, not coalesce: under coalesce the boundary instant would still be
+		// recorded as the catch-up run either way, hiding whether it counted as missed.
 		const job = makeJob({ ...skipPolicy, nextRunAt: secondsBefore(NOW, 60) });
 
 		const plan = planOccurrences(job, NOW, options);
@@ -285,4 +286,35 @@ describe('planOccurrences misfire handling', () => {
 		// than silently reading an unknown policy as the most destructive one.
 		expect(() => planOccurrences(job, NOW, options)).toThrow(CorruptStorageRowError);
 	});
+
+	// Known gap, not yet fixed: `it.fails` so this turns red (telling us to remove
+	// the modifier) the day someone closes it, instead of silently staying green.
+	it.fails(
+		'eventually fires a catch-up under coalesce when production outpaces the drain rate',
+		() => {
+			// A 1s-interval job outrunning a pass that can only drain 1000 occurrences
+			// (maxPerJob) per materialization cycle: 2000s of new backlog accrues between
+			// passes, so every pass's walk hits maxPerJob before reaching `now`
+			// (truncated) with nothing ahead, and coalesce keeps deferring instead of
+			// firing the newest missed instant. The job never reaches its backlog's tail,
+			// so it never runs again: silently, with no warning at any point.
+			const job = makeJob({ intervalSeconds: 1 });
+			let now = NOW;
+			let nextRunAt = job.nextRunAt!;
+			let firedAtLeastOnce = false;
+
+			for (let pass = 0; pass < 30; pass++) {
+				now = secondsAfter(now, 2000);
+				const plan = planOccurrences({ ...job, nextRunAt }, now, {
+					windowSeconds: 60,
+					maxPerJob: 1000,
+					defaultTimezone: 'UTC',
+				});
+				if (plan.occurrences.length > 0) firedAtLeastOnce = true;
+				nextRunAt = plan.nextRunAt!;
+			}
+
+			expect(firedAtLeastOnce).toBe(true);
+		},
+	);
 });
