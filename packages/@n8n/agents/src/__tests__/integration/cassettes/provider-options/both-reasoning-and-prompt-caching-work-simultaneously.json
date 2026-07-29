@@ -1,14 +1,14 @@
 [
 	{
 		"scope": "https://api.anthropic.com:443",
-		"method": "POST",
 		"path": "/v1/messages",
+		"method": "POST",
 		"body": {
 			"model": "claude-sonnet-4-5",
 			"max_tokens": 64000,
 			"thinking": {
 				"type": "enabled",
-				"budget_tokens": 5000
+				"budget_tokens": 19200
 			},
 			"system": [
 				{
@@ -77,7 +77,7 @@
 			"max_tokens": 64000,
 			"thinking": {
 				"type": "enabled",
-				"budget_tokens": 5000
+				"budget_tokens": 19200
 			},
 			"system": [
 				{

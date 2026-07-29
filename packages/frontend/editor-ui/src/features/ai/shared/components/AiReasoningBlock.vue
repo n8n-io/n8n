@@ -2,29 +2,18 @@
 import { N8nAiActivityStep } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { firstSentence } from '../agentTimeline.utils';
+import { firstSentence } from '../thinking.utils';
 
-/**
- * Collapsible reasoning block, labeled with the first sentence of the
- * reasoning itself (a bare "Reasoning" toggle told the user nothing until
- * expanded). Takes an entry-like object (not a plain string) so the per-token
- * `entry.content` read stays inside this component's render — streamed
- * reasoning tokens re-render only this block, not the whole timeline.
- */
 const props = withDefaults(
 	defineProps<{
 		entry: { content: string };
-		/** True while this block is still receiving stream deltas (shimmers the trigger). */
 		streaming?: boolean;
 	}>(),
 	{ streaming: false },
 );
 
 const i18n = useI18n();
-
-const label = computed(
-	() => firstSentence(props.entry.content) || i18n.baseText('instanceAi.message.reasoning'),
-);
+const label = computed(() => firstSentence(props.entry.content) || i18n.baseText('ai.reasoning'));
 </script>
 
 <template>
