@@ -10,6 +10,9 @@ on:
   # schedule:
   #   - cron: 0 8 * * 2 # 9am CET (UTC+1), Tuesday
 
+permissions:
+  contents: read
+
 jobs:
   check-cadence:
     name: Check release cadence
@@ -36,6 +39,10 @@ jobs:
   create-release-pr:
     name: Create release PR
     needs: [check-cadence]
+    # The called workflow requires these; a caller cannot grant less than it requests.
+    permissions:
+      contents: write
+      pull-requests: write
     uses: ./.github/workflows/release-create-pr.yml
     secrets: inherit
     with:
