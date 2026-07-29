@@ -225,6 +225,7 @@ import { AddStoredAtToAgentExecution1784815940110 } from '../common/178481594011
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
 import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
+import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/1785247194306-CrashStaleEnqueuedExecutions';
 import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
 
 const sqliteMigrations: Migration[] = [
@@ -454,6 +455,7 @@ const sqliteMigrations: Migration[] = [
 	ChangeInstalledNodeVersionType1785162364000,
 	AddIsFirstPartyToOAuthClients1785162364001,
 	AddAgentFileStorageColumns1785186578138,
+	CrashStaleEnqueuedExecutions1785247194306,
 	CreateAgentChatAttachmentsTable1785255306000,
 ];
 

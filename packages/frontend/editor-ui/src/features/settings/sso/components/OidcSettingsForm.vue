@@ -9,7 +9,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
@@ -36,6 +36,7 @@ const showUserRoleProvisioningDialog = ref(false);
 const {
 	roleAssignment,
 	mappingMethod,
+	defaultInstanceRole,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
 	trackProvisioningChange,
@@ -344,12 +345,14 @@ onMounted(async () => {
 			<UserRoleProvisioningDropdown
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
+				v-model:default-instance-role="defaultInstanceRole"
 				auth-protocol="oidc"
 				:disabled="isSsoManagedByEnv"
 			/>
 			<RoleMappingRuleEditor
 				v-if="mappingMethod === 'rules_in_n8n'"
 				ref="roleMappingRuleEditorRef"
+				v-model:default-instance-role="defaultInstanceRole"
 				:show-project-rules="roleAssignment === 'instance_and_project'"
 			/>
 			<ConfirmProvisioningDialog

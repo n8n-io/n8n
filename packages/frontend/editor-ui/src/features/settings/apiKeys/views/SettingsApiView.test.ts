@@ -16,10 +16,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { ApiKey, ApiKeyOwner, ApiKeyOwnerSummary } from '@n8n/api-types';
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({ track }),

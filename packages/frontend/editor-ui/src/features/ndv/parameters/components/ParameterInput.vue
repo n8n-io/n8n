@@ -70,7 +70,7 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/app/event-bus';

@@ -32,7 +32,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/app/composables/useStyles';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';

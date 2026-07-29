@@ -11,12 +11,12 @@ import { nextTick } from 'vue';
 import { useApiKeysStore } from '../apiKeys.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { DateTime } from 'luxon';
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({ track }),
