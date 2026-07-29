@@ -282,6 +282,16 @@ export const describeCommonTests = (
 			context.setMetadata(metadata);
 			expect(context.getExecuteData().metadata?.subExecution).toEqual(metadata.subExecution);
 		});
+
+		it('merges tracing metadata across writers instead of overwriting', () => {
+			context.setMetadata({ tracing: { 'llm.tokens.total': 42, 'llm.cost.total': 0.01 } });
+			context.setMetadata({ tracing: { 'ai.agent.version': 'v3' } });
+			expect(context.getExecuteData().metadata?.tracing).toEqual({
+				'llm.tokens.total': 42,
+				'llm.cost.total': 0.01,
+				'ai.agent.version': 'v3',
+			});
+		});
 	});
 
 	describe('evaluateExpression', () => {

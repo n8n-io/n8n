@@ -93,10 +93,22 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	}
 
 	setMetadata(metadata: ITaskMetadata): void {
+		const existing = this.executeData.metadata ?? {};
 		this.executeData.metadata = {
-			...(this.executeData.metadata ?? {}),
+			...existing,
 			...metadata,
 		};
+		// `tracing` is a flat key-value bag several writers contribute to on the same
+		// task (Chat Model writes `llm.tokens.*` / `llm.cost.total` via the shared
+		// parent executeData; the Agent writes `ai.agent.*` in its `finally`). A
+		// shallow spread would let the later writer drop the earlier writer's keys,
+		// so merge the two bags rather than overwriting.
+		if (existing.tracing ?? metadata.tracing) {
+			this.executeData.metadata.tracing = {
+				...existing.tracing,
+				...metadata.tracing,
+			};
+		}
 	}
 
 	getContext(type: ContextType): IContextObject {
