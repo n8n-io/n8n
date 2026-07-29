@@ -4,7 +4,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { computed, onMounted, watch, ref } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRoute } from 'vue-router';
 
 /**

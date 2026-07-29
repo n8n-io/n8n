@@ -23,7 +23,7 @@ import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-clien
 import { isExpression, type IDataObject } from 'n8n-workflow';
 import { useToast } from './useToast';
 import { useExternalHooks } from './useExternalHooks';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isDebouncedFunction } from '@/app/utils/typeGuards';

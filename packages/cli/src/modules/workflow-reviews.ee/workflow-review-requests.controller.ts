@@ -13,11 +13,15 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { WorkflowReviewInboxService } from './workflow-review-inbox.service';
 import { WorkflowReviewRequestService } from './workflow-review-request.service';
 
 @RestController('/workflow-review-requests')
 export class WorkflowReviewRequestsController {
-	constructor(private readonly workflowReviewRequestService: WorkflowReviewRequestService) {}
+	constructor(
+		private readonly workflowReviewRequestService: WorkflowReviewRequestService,
+		private readonly workflowReviewInboxService: WorkflowReviewInboxService,
+	) {}
 
 	@Get('/')
 	@Licensed('feat:workflowReviews')
@@ -90,7 +94,7 @@ export class WorkflowReviewRequestsController {
 		_res: Response,
 		@Query query: ListWorkflowReviewInboxQueryDto,
 	): Promise<ListWorkflowReviewInboxResponse> {
-		return await this.workflowReviewRequestService.listForInbox(req.user, query);
+		return await this.workflowReviewInboxService.listForInbox(req.user, query);
 	}
 
 	@Get('/summary')
@@ -99,7 +103,7 @@ export class WorkflowReviewRequestsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 	): Promise<GetWorkflowReviewInboxSummaryResponse> {
-		return await this.workflowReviewRequestService.getInboxSummaryForUser(req.user);
+		return await this.workflowReviewInboxService.getInboxSummaryForUser(req.user);
 	}
 
 	/**
@@ -116,6 +120,6 @@ export class WorkflowReviewRequestsController {
 		_res: Response,
 		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
 	): Promise<WorkflowReviewRequestDetail> {
-		return await this.workflowReviewRequestService.getDetail(req.user, workflowReviewRequestId);
+		return await this.workflowReviewInboxService.getDetail(req.user, workflowReviewRequestId);
 	}
 }

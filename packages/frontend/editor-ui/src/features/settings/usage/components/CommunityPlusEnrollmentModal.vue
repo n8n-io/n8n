@@ -8,7 +8,7 @@ import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useUsageStore } from '../usage.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nButton, N8nFormInput, N8nText } from '@n8n/design-system';

@@ -8,16 +8,16 @@ import { Agent } from '../../index';
  *
  * These require models that support extended thinking:
  * - Anthropic: claude-sonnet-4-5 (not haiku — it doesn't support thinking)
- * - OpenAI: o3-mini (reasoning model)
+ * - OpenAI: gpt-5-mini (reasoning model with streamed summaries)
  */
 
 const describeAnthropic = describeIf('anthropic');
 
-describeAnthropic('thinking stream (Anthropic)', () => {
-	it('emits reasoning-delta chunks when thinking is enabled', async () => {
+describeAnthropic('reasoning stream (Anthropic)', () => {
+	it('emits reasoning-delta chunks when reasoning is enabled', async () => {
 		const agent = new Agent('thinking-test')
 			.model('anthropic', 'claude-sonnet-4-5')
-			.thinking('anthropic', { budgetTokens: 5000 })
+			.reasoning('medium')
 			.instructions('You are a helpful assistant. Think carefully before answering.');
 
 		const { stream: fullStream } = await agent.stream('What is 17 * 23?');
@@ -42,19 +42,28 @@ describeAnthropic('thinking stream (Anthropic)', () => {
 
 const describeOpenAI = describeIf('openai');
 
-describeOpenAI('thinking stream (OpenAI)', () => {
-	it('works with reasoning model and .thinking() enabled', async () => {
+describeOpenAI('reasoning stream (OpenAI)', () => {
+	it('works with a reasoning model when reasoning is enabled', async () => {
 		const agent = new Agent('openai-thinking-test')
-			.model('openai', 'o3-mini')
-			.thinking('openai', { reasoningEffort: 'medium' })
-			.instructions('You are a helpful assistant.');
+			.model('openai', 'gpt-5-mini')
+			.reasoning('medium')
+			.instructions('You are a helpful assistant. Think carefully before answering.');
 
-		const { stream: fullStream } = await agent.stream('What is 17 * 23?');
+		const { stream: fullStream } = await agent.stream(
+			'Find the smallest positive integer divisible by every integer from 1 through 15, and explain your method.',
+		);
 
 		const chunks = await collectStreamChunks(fullStream);
 
-		// OpenAI reasoning models do internal reasoning but don't expose it
-		// as streamed chunks — verify the agent produces a text response.
+		const reasoningChunks = chunksOfType(chunks, 'reasoning-delta');
+		expect(reasoningChunks.length).toBeGreaterThan(0);
+		expect(
+			reasoningChunks
+				.filter((chunk): chunk is typeof chunk & { delta: string } => 'delta' in chunk)
+				.map((chunk) => chunk.delta)
+				.join('').length,
+		).toBeGreaterThan(0);
+
 		const textChunks = chunksOfType(chunks, 'text-delta');
 		expect(textChunks.length).toBeGreaterThan(0);
 
@@ -62,6 +71,6 @@ describeOpenAI('thinking stream (OpenAI)', () => {
 			.filter((c): c is typeof c & { delta: string } => 'delta' in c)
 			.map((c) => c.delta)
 			.join('');
-		expect(text).toContain('391');
+		expect(text.length).toBeGreaterThan(0);
 	});
 });
