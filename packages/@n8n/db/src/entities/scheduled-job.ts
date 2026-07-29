@@ -153,8 +153,9 @@ export class ScheduledJob extends WithTimestamps {
 	 * How late an occurrence may still be and count as on time, so that an ordinary
 	 * restart or a slow pass never reaches {@link misfirePolicy}.
 	 *
-	 * Copied from `N8N_SCHEDULER_MISFIRE_GRACE` onto each row rather than read live,
-	 * so every instance agrees on one job's deadline through a rolling config change.
+	 * Copied from {@link SchedulerConfig.misfireGraceSeconds} onto each row rather than
+	 * read live, so every instance agrees on one job's deadline through a rolling
+	 * config change.
 	 */
 	@Column({ type: 'int', default: DEFAULT_MISFIRE_GRACE_SECONDS })
 	misfireGraceSeconds: number;

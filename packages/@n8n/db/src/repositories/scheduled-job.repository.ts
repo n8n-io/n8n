@@ -139,14 +139,14 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await this.count({ where: { workflowId, nodeId } });
 	}
 
-	async forceOverdueByWorkflowNode(
+	async backdateNextRunAt(
 		workflowId: string,
 		nodeId: string,
-		secondsAgo: number,
+		secondsInPast: number,
 	): Promise<void> {
 		await this.createQueryBuilder()
 			.update(ScheduledJob)
-			.set({ nextRunAt: () => dbNowPlusMsLiteral(this.isPostgres, -secondsAgo * 1000) })
+			.set({ nextRunAt: () => dbNowPlusMsLiteral(this.isPostgres, -secondsInPast * 1000) })
 			.where('"workflowId" = :workflowId AND "nodeId" = :nodeId', { workflowId, nodeId })
 			.execute();
 	}

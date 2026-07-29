@@ -173,7 +173,7 @@ export function buildMaterializerTransaction(
 						await jobs.claimDue(manager, limit, lookaheadMs),
 					recordOccurrences: async (occurrences) =>
 						await tasks.insertIgnoringDuplicates(manager, occurrences),
-					retireSuperseded: async (superseded) => await tasks.retireSuperseded(manager, superseded),
+					retireSuperseded: async (superseded) => await tasks.updateToMissed(manager, superseded),
 					advanceJobs: async (planned) => {
 						await jobs.advanceMany(
 							manager,

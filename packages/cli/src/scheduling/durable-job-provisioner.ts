@@ -263,7 +263,7 @@ export class DurableJobProvisioner {
 				recordOccurrences: async (occurrences) =>
 					await this.tasks.insertIgnoringDuplicates(manager, occurrences),
 				retireSuperseded: async (superseded) =>
-					await this.tasks.retireSuperseded(manager, superseded),
+					await this.tasks.updateToMissed(manager, superseded),
 				advanceJobs: async (planned) =>
 					await this.jobs.advanceMany(
 						manager,

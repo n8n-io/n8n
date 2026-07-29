@@ -91,13 +91,13 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
-	describe('forceOverdueByWorkflowNode', () => {
+	describe('backdateNextRunAt', () => {
 		it('sets nextRunAt to secondsAgo in the past for the node jobs', async () => {
 			const qb = updateQb();
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 
-			await repository.forceOverdueByWorkflowNode('wf', 'node', 120);
+			await repository.backdateNextRunAt('wf', 'node', 120);
 
 			expect(qb.update).toHaveBeenCalledWith(ScheduledJob);
 			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
@@ -113,7 +113,7 @@ describe('ScheduledJobRepository', () => {
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 
-			await repository.forceOverdueByWorkflowNode('wf', 'node', 0);
+			await repository.backdateNextRunAt('wf', 'node', 0);
 
 			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
 			expect(qb.execute).toHaveBeenCalled();

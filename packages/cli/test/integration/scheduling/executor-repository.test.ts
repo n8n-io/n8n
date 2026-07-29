@@ -957,13 +957,13 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 	});
 
-	describe('retireSuperseded', () => {
+	describe('updateToMissed', () => {
 		it('retires the pending occurrences older than the catch-up run that replaces them', async () => {
 			const older = await createTask();
 			const newer = await createTask();
 			const catchUp = await createTask();
 
-			const retired = await taskRepository.retireSuperseded(taskRepository.manager, [
+			const retired = await taskRepository.updateToMissed(taskRepository.manager, [
 				{ jobId: job.id, before: catchUp.scheduledFor },
 			]);
 
@@ -983,7 +983,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			const done = await createTask({ status: 'succeeded', finishedAt: past() });
 			const catchUp = await createTask();
 
-			const retired = await taskRepository.retireSuperseded(taskRepository.manager, [
+			const retired = await taskRepository.updateToMissed(taskRepository.manager, [
 				{ jobId: job.id, before: catchUp.scheduledFor },
 			]);
 
@@ -995,7 +995,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 		it('retires nothing when given nothing', async () => {
 			await createTask();
 
-			expect(await taskRepository.retireSuperseded(taskRepository.manager, [])).toBe(0);
+			expect(await taskRepository.updateToMissed(taskRepository.manager, [])).toBe(0);
 		});
 
 		it('retires an occurrence whose retry is already scheduled, same as one never attempted', async () => {
@@ -1004,12 +1004,54 @@ describe('ScheduledTaskRepository executor methods', () => {
 			const retrying = await createTask({ attempts: 1 });
 			const catchUp = await createTask();
 
-			const retired = await taskRepository.retireSuperseded(taskRepository.manager, [
+			const retired = await taskRepository.updateToMissed(taskRepository.manager, [
 				{ jobId: job.id, before: catchUp.scheduledFor },
 			]);
 
 			expect(retired).toBe(1);
 			expect((await reload(retrying.id)).status).toBe('missed');
+		});
+
+		it('applies each job its own cutoff in a single call, without crossing jobs', async () => {
+			const otherJob = await jobRepository.save(
+				jobRepository.create({
+					name: `job-${Math.random().toString(36).slice(2)}`,
+					workflowId: null,
+					nodeId: null,
+					taskType: TASK_TYPE,
+					payload: {},
+					kind: 'interval',
+					intervalSeconds: 60,
+					enabled: true,
+					nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+					maxAttempts: 1,
+				}),
+			);
+			const superseded = await createTask();
+			const catchUp = await createTask();
+			const otherSuperseded = await createTask({ jobId: otherJob.id });
+			// Older than otherCatchUp, so it would match otherJob's bracket by jobId and
+			// scheduledFor alone: proves the status filter still applies to every job's
+			// bracket, not only the first.
+			const otherRunning = await createTask({
+				jobId: otherJob.id,
+				status: 'running',
+				claimedBy: HOST_A,
+				leaseExpiresAt: new Date(Date.now() + 60_000),
+			});
+			const otherCatchUp = await createTask({ jobId: otherJob.id });
+
+			const retired = await taskRepository.updateToMissed(taskRepository.manager, [
+				{ jobId: job.id, before: catchUp.scheduledFor },
+				{ jobId: otherJob.id, before: otherCatchUp.scheduledFor },
+			]);
+
+			expect(retired).toBe(2);
+			expect((await reload(superseded.id)).status).toBe('missed');
+			expect((await reload(catchUp.id)).status).toBe('pending');
+			expect((await reload(otherSuperseded.id)).status).toBe('missed');
+			expect((await reload(otherRunning.id)).status).toBe('running');
+			expect((await reload(otherCatchUp.id)).status).toBe('pending');
 		});
 	});
 

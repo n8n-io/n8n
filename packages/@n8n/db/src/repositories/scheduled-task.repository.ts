@@ -1,11 +1,11 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import {
+	Brackets,
 	DataSource,
 	type EntityManager,
 	In,
 	IsNull,
-	LessThan,
 	Not,
 	Repository,
 } from '@n8n/typeorm';
@@ -214,33 +214,37 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Retires, as `missed`, the pending occurrences of each job older than the given
-	 * instant.
+	 * Updates to `missed` the pending occurrences of each job older than that job's
+	 * given instant, in one statement: an `OR` of per-job brackets, each on
+	 * `(jobId, scheduledFor)`, so Postgres and SQLite both resolve it as one index
+	 * scan per job (`BitmapOr`/OR-optimization) rather than a table scan.
 	 *
-	 * One statement per job, not a single `OR`-ed predicate across all of them: a
-	 * different `before` per `jobId` can't be served by an index, so a batched query
-	 * would scan the whole table.
-	 *
-	 * @returns how many occurrences were retired
+	 * @returns how many occurrences were updated
 	 */
-	async retireSuperseded(
+	async updateToMissed(
 		manager: EntityManager,
 		superseded: Array<{ jobId: number; before: Date }>,
 	): Promise<number> {
-		let retired = 0;
-		for (const { jobId, before } of superseded) {
-			const result = await manager.update(
-				ScheduledTask,
-				{
-					jobId,
-					status: ScheduledTaskStatus.Pending,
-					scheduledFor: LessThan(before),
-				},
-				{ status: ScheduledTaskStatus.Missed, finishedAt: () => dbNowLiteral(this.isPostgres) },
-			);
-			retired += result.affected ?? 0;
-		}
-		return retired;
+		// An empty Brackets renders as `(1=1)`, which would flip every pending row in
+		// the table to missed, so this guard is not optional.
+		if (superseded.length === 0) return 0;
+		const qb = manager
+			.createQueryBuilder()
+			.update(ScheduledTask)
+			.set({ status: ScheduledTaskStatus.Missed, finishedAt: () => dbNowLiteral(this.isPostgres) })
+			.where({ status: ScheduledTaskStatus.Pending });
+		qb.andWhere(
+			new Brackets((bracketQb) => {
+				superseded.forEach(({ jobId, before }, i) => {
+					const clause = `"jobId" = :jobId${i} AND "scheduledFor" < :before${i}`;
+					const params = { [`jobId${i}`]: jobId, [`before${i}`]: before };
+					if (i === 0) bracketQb.where(clause, params);
+					else bracketQb.orWhere(clause, params);
+				});
+			}),
+		);
+		const result = await qb.execute();
+		return result.affected ?? 0;
 	}
 
 	/**

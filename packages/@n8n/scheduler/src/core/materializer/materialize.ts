@@ -1,6 +1,7 @@
-import { Time, type ScheduledJobMisfirePolicy } from '@n8n/constants';
+import { Time } from '@n8n/constants';
 
 import type { ScheduledJob } from '../types';
+import { countMisfires, type MisfireCount } from './misfire';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
 import type {
@@ -13,13 +14,7 @@ import type {
 } from './transaction';
 
 export type { MaterializerOptions } from './options';
-
-/** Occurrences one task type's jobs discarded under one misfire policy. */
-export interface MisfireCount {
-	taskType: string;
-	policy: ScheduledJobMisfirePolicy;
-	discarded: number;
-}
+export type { MisfireCount } from './misfire';
 
 export interface MaterializerSummary {
 	/** How many due jobs this materialization claimed. */
@@ -152,26 +147,6 @@ export async function materialize(
 
 export function totalDiscarded(misfires: MisfireCount[]): number {
 	return misfires.reduce((total, { discarded }) => total + discarded, 0);
-}
-
-/** Groups a pass's discarded occurrences by the task type and policy that discarded them. */
-function countMisfires(planned: PlannedJob[]): MisfireCount[] {
-	const groups = new Map<string, MisfireCount>();
-	for (const { job, plan } of planned) {
-		if (plan.skippedOccurrences === 0) continue;
-		const key = JSON.stringify([job.taskType, job.misfirePolicy]);
-		const group = groups.get(key);
-		if (group === undefined) {
-			groups.set(key, {
-				taskType: job.taskType,
-				policy: job.misfirePolicy,
-				discarded: plan.skippedOccurrences,
-			});
-		} else {
-			group.discarded += plan.skippedOccurrences;
-		}
-	}
-	return [...groups.values()];
 }
 
 /** Flattens every planned occurrence into the row the storage layer inserts. */

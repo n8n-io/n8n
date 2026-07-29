@@ -291,8 +291,7 @@ export class SchedulerConfig {
 	/**
 	 * How late, in seconds, a scheduled run may start and still count as on time. A
 	 * run later than this counts as missed, and the schedule's misfire policy decides
-	 * whether it still runs at all. Must be greater than 0, and capped at 30 days, the
-	 * largest value the per-schedule `int` column holds.
+	 * whether it still runs at all. Must be greater than 0, and capped at 30 days.
 	 *
 	 * Should exceed {@link executorIntervalSeconds} and {@link materializationWindowSeconds}:
 	 * a run has to survive until the next executor tick to be offered at all. The

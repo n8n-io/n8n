@@ -265,7 +265,7 @@ export class E2EController {
 	@Post('/scheduled-jobs/fire-now', { skipAuth: true })
 	async fireScheduledJobsNow(req: Request<{}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.body;
-		await this.scheduledJobRepository.forceOverdueByWorkflowNode(workflowId, nodeId, 0);
+		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, 0);
 		return { success: true };
 	}
 
@@ -278,7 +278,7 @@ export class E2EController {
 		req: Request<{}, {}, { workflowId: string; nodeId: string; secondsAgo: number }>,
 	) {
 		const { workflowId, nodeId, secondsAgo } = req.body;
-		await this.scheduledJobRepository.forceOverdueByWorkflowNode(workflowId, nodeId, secondsAgo);
+		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
 		return { success: true };
 	}
 
