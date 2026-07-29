@@ -221,13 +221,9 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		data: Buffer.from('hello').toString('base64'),
 	});
 
-	function makeSseResponse() {
+	function makeCleanupSseResponse() {
 		const writes: string[] = [];
-		const res = mock<FlushableResponse>();
-		res.write.mockImplementation((chunk: string) => {
-			writes.push(String(chunk));
-			return true;
-		});
+		const res = makeSseResponse(writes);
 		const events = () =>
 			writes
 				.filter((line) => line.startsWith('data: '))
@@ -255,7 +251,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			yield* [];
 			throw new Error('model unavailable');
 		});
-		const { res, events } = makeSseResponse();
+		const { res, events } = makeCleanupSseResponse();
 
 		await controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
@@ -288,7 +284,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			yield* [];
 			throw new Error('flaky post-persist failure');
 		});
-		const { res } = makeSseResponse();
+		const { res } = makeCleanupSseResponse();
 
 		await controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
@@ -316,7 +312,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 				fileSizeBytes: 5,
 			} as never)
 			.mockRejectedValueOnce(new Error('storage down'));
-		const { res, events } = makeSseResponse();
+		const { res, events } = makeCleanupSseResponse();
 
 		await controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
@@ -333,7 +329,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 	it('rejects an empty attachment with a dedicated error message', async () => {
 		const { controller, agentExecutionService, agentChatAttachmentService } = makeController();
 		agentExecutionService.findThreadById.mockResolvedValue(null);
-		const { res, events } = makeSseResponse();
+		const { res, events } = makeCleanupSseResponse();
 
 		await controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
