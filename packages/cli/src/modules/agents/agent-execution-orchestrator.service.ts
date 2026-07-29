@@ -348,8 +348,16 @@ export class AgentExecutionOrchestratorService {
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, user, memory, attachments, onExecutionRecorded, abortSignal } =
-			config;
+		const {
+			agentId,
+			projectId,
+			message,
+			user,
+			memory,
+			attachments,
+			onExecutionRecorded,
+			abortSignal,
+		} = config;
 
 		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
 		// runtime scoped to this specific user's tool access.
