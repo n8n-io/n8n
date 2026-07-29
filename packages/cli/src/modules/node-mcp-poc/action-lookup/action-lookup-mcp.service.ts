@@ -58,9 +58,10 @@ function result(value: unknown) {
 
 function errorResult(error: unknown) {
 	const message = error instanceof Error ? error.message : 'Node action call failed';
-	const validation = message.startsWith('Invalid tool input');
-	const validationMatch = /^Invalid tool input at "([^"]+)": (.+)$/.exec(message);
-	const value = validation
+	const toolValidationMatch = /^Invalid tool input at "([^"]+)": (.+)$/.exec(message);
+	const actionValidationMatch = /^Invalid action input for "([^"]+)": (.+)$/.exec(message);
+	const validationMatch = toolValidationMatch ?? actionValidationMatch;
+	const value = validationMatch
 		? {
 				status: 'error',
 				code: 'VALIDATION_ERROR',

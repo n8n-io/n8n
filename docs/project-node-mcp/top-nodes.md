@@ -10,18 +10,20 @@ Complexity is assigned from the most complex operation in the default node
 version:
 
 - **Complex** — an operation has a `resourceMapper`, more than one dynamic
-  parameter/resource locator, or a dependency chain between dynamic parameters.
+  parameter (unless all of them are independent resource locators), or a
+  dependency chain between dynamic parameters.
 - **Medium** — dynamic values exist, but each operation has at most one
-  independent resource locator or load-options field and no resource mapper.
+  independent load-options field or any number of independent resource
+  locators, and no resource mapper.
 - **Easy** — no dynamic input fields.
 - **Unknown** — the external package schema is not available in this checkout.
 
 1. Google Sheets — `n8n-nodes-base.googleSheets` (3,690,801) — **Complex**
 2. Gmail — `n8n-nodes-base.gmail` (2,036,433) — **Medium**
 3. Telegram — `n8n-nodes-base.telegram` (1,714,858) — **Easy**
-4. Google Drive — `n8n-nodes-base.googleDrive` (1,118,065) — **Complex**
+4. Google Drive — `n8n-nodes-base.googleDrive` (1,118,065) — **Medium**
 5. ~~Airtable — `n8n-nodes-base.airtable` (585,984)~~ — **Complex**
-6. WhatsApp — `n8n-nodes-base.whatsApp` (516,699) — **Medium**
+6. WhatsApp — `n8n-nodes-base.whatsApp` (516,699) — **Complex**
 7. Supabase — `n8n-nodes-base.supabase` (416,828) — **Complex**
 8. Slack — `n8n-nodes-base.slack` (387,487) — **Complex**
 9. Google Docs — `n8n-nodes-base.googleDocs` (303,878) — **Complex**
@@ -37,16 +39,16 @@ version:
 19. YouTube — `n8n-nodes-base.youTube` (101,014) — **Complex**
 20. HubSpot — `n8n-nodes-base.hubspot` (99,409) — **Complex**
 21. Twilio — `n8n-nodes-base.twilio` (98,094) — **Easy**
-22. Microsoft OneDrive — `n8n-nodes-base.microsoftOneDrive` (97,656) — **Medium**
+22. Microsoft OneDrive — `n8n-nodes-base.microsoftOneDrive` (97,656) — **Easy**
 23. Facebook Graph API — `n8n-nodes-base.facebookGraphApi` (91,174) — **Easy**
 24. LinkedIn — `n8n-nodes-base.linkedIn` (79,336) — **Medium**
-25. Microsoft Teams — `n8n-nodes-base.microsoftTeams` (68,561) — **Complex**
+25. Microsoft Teams — `n8n-nodes-base.microsoftTeams` (68,561) — **Medium**
 26. MySQL — `n8n-nodes-base.mySql` (54,757) — **Complex**
 27. ClickUp — `n8n-nodes-base.clickUp` (53,769) — **Complex**
 28. Microsoft SharePoint — `n8n-nodes-base.microsoftSharePoint` (52,853) — **Complex**
 29. ElevenLabs — `@elevenlabs/n8n-nodes-elevenlabs.elevenLabs` (52,565) — **Unknown**
 30. Salesforce — `n8n-nodes-base.salesforce` (51,011) — **Complex**
-31. X (Twitter) — `n8n-nodes-base.twitter` (50,590) — **Complex**
+31. X (Twitter) — `n8n-nodes-base.twitter` (50,590) — **Medium**
 32. Redis — `n8n-nodes-base.redis` (49,710) — **Easy**
 33. OpenWeatherMap — `n8n-nodes-base.openWeatherMap` (49,329) — **Easy**
 34. Perplexity — `n8n-nodes-base.perplexity` (48,142) — **Medium**
@@ -58,7 +60,7 @@ version:
 40. Firecrawl — `@mendable/n8n-nodes-firecrawl.firecrawl` (35,005) — **Unknown**
 41. Google Chat — `n8n-nodes-base.googleChat` (31,891) — **Medium**
 42. MongoDB — `n8n-nodes-base.mongoDb` (31,399) — **Easy**
-43. GitHub — `n8n-nodes-base.github` (31,160) — **Complex**
+43. GitHub — `n8n-nodes-base.github` (31,160) — **Medium**
 44. Shopify — `n8n-nodes-base.shopify` (30,995) — **Complex**
 45. Tavily — `@tavily/n8n-nodes-tavily.tavily` (30,253) — **Unknown**
 46. GoHighLevel — `n8n-nodes-base.highLevel` (29,913) — **Complex**

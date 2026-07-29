@@ -299,7 +299,9 @@ function stripHtml(value: string) {
 
 function propertyDescription(property: INodeProperties, extra?: string) {
 	const parts = [
-		property.builderHint?.propertyHint,
+		property.builderHint?.jsonSchemaHint ??
+			property.builderHint?.mcpHint ??
+			property.builderHint?.propertyHint,
 		property.description,
 		property.hint,
 		property.placeholder ? `Example: ${property.placeholder}` : undefined,

@@ -21,6 +21,7 @@
     "lint:fix": "eslint . --fix",
     "recording:list": "node scripts/agent-integration-recordings.mjs --list",
     "recording:export": "node scripts/agent-integration-recordings.mjs",
+    "eval:node-mcp-poc": "tsx src/modules/node-mcp-poc/evaluations/cli.ts",
     "start": "node ../../scripts/os-normalize.mjs --dir bin n8n",
     "test": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest run",
     "test:unit": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest run",

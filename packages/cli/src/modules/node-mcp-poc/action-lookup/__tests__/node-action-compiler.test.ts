@@ -72,6 +72,11 @@ const description: INodeTypeDescription = {
 			name: 'columns',
 			type: 'resourceMapper',
 			default: { mappingMode: 'defineBelow', value: null },
+			builderHint: {
+				propertyHint: 'Editor-only mapper instructions.',
+				mcpHint: 'MCP-specific mapper instructions.',
+				jsonSchemaHint: 'JSON Schema-specific mapper instructions.',
+			},
 			typeOptions: {
 				resourceMapper: { resourceMapperMethod: 'getColumns', mode: 'add' },
 				loadOptionsDependsOn: ['documentId.value'],
@@ -165,6 +170,7 @@ describe('NodeActionCompiler', () => {
 			expect.objectContaining({
 				name: 'columns',
 				type: 'object',
+				description: 'MCP-specific mapper instructions.',
 				resolve: { dependsOn: ['documentId'] },
 			}),
 		]);

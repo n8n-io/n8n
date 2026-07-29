@@ -16,6 +16,7 @@ import {
 import { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { NodeTypes } from '@/node-types';
 
+import { executeNodeMcpEvalFixture } from '../evaluations/eval-context';
 import type { CompiledNodeToolset, CompiledOperationTool } from './node-mcp-poc.types';
 import { NodeToolResolverService } from './node-tool-resolver.service';
 
@@ -330,6 +331,9 @@ export class NodeToolExecutorService {
 				),
 			);
 		}
+
+		const fixtureResult = executeNodeMcpEvalFixture(toolset, tool, parameters);
+		if (fixtureResult) return fixtureResult;
 
 		return await this.ephemeralNodeExecutor.executeInline({
 			nodeType: toolset.endpoint.binding.nodeType,

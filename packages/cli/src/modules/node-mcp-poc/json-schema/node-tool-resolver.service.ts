@@ -12,6 +12,7 @@ import {
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 
+import { resolveNodeMcpEvalFixture } from '../evaluations/eval-context';
 import type {
 	CompiledNodeToolset,
 	CompiledOperationTool,
@@ -181,6 +182,17 @@ export class NodeToolResolverService {
 		};
 		if (tool.resource !== undefined) currentNodeParameters.resource = tool.resource;
 		if (tool.operation !== undefined) currentNodeParameters.operation = tool.operation;
+
+		const fixture = resolveNodeMcpEvalFixture(toolset, tool, path, filter);
+		if (fixture) {
+			if (fixture.fields) {
+				this.resourceMapperSchemas.set(
+					this.schemaKey(toolset, tool, descriptor, currentNodeParameters),
+					fixture.fields,
+				);
+			}
+			return fixture;
+		}
 
 		const additionalData = await getBase({
 			userId: toolset.endpoint.binding.userId,

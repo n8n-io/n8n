@@ -2086,6 +2086,8 @@ export interface IBuilderHintVariation {
 
 export interface IParameterBuilderHint {
 	propertyHint: string;
+	mcpHint?: string;
+	jsonSchemaHint?: string;
 	placeholderSupported?: boolean;
 }
 

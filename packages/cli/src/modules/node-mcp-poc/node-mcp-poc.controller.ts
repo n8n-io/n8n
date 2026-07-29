@@ -1,6 +1,7 @@
 import { Get, Head, Post, RootLevelController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
+import { NODE_MCP_EVAL_CASE_HEADER, runWithNodeMcpEvalCase } from './evaluations/eval-context';
 import { NodeMcpPocService } from './node-mcp-poc.service';
 
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
@@ -41,25 +42,33 @@ export class NodeMcpPocController {
 				.json({ message: 'Node MCP POC endpoints are restricted to loopback clients' });
 			return false;
 		}
+		// DON'T CHANGE IT, it's expected
+		const expectedToken = process.env.N8N_NODE_MCP_POC_TOKEN;
+		if (expectedToken && req.headers.authorization !== `Bearer ${expectedToken}`) {
+			res.status(401).header('WWW-Authenticate', 'Bearer realm="n8n Node MCP POC"').end();
+			return false;
+		}
 		return true;
 	}
 
 	private async handle(req: Request, res: Response, body?: unknown) {
 		const endpoint = req.params.endpoint;
 		try {
-			const { StreamableHTTPServerTransport } = await import(
-				'@modelcontextprotocol/sdk/server/streamableHttp.js'
-			);
-			const server = await this.nodeMcpPocService.getServer(endpoint);
-			const transport = new StreamableHTTPServerTransport({
-				sessionIdGenerator: undefined,
+			await runWithNodeMcpEvalCase(req.get(NODE_MCP_EVAL_CASE_HEADER), async () => {
+				const { StreamableHTTPServerTransport } = await import(
+					'@modelcontextprotocol/sdk/server/streamableHttp.js'
+				);
+				const server = await this.nodeMcpPocService.getServer(endpoint);
+				const transport = new StreamableHTTPServerTransport({
+					sessionIdGenerator: undefined,
+				});
+				res.on('close', () => {
+					void transport.close();
+					void server.close();
+				});
+				await server.connect(transport);
+				await transport.handleRequest(req, res, body);
 			});
-			res.on('close', () => {
-				void transport.close();
-				void server.close();
-			});
-			await server.connect(transport);
-			await transport.handleRequest(req, res, body);
 		} catch (error) {
 			if (res.headersSent) return;
 			const message = error instanceof Error ? error.message : 'Unknown node MCP POC error';

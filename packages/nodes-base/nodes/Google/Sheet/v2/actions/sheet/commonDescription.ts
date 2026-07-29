@@ -3,11 +3,19 @@ import type { INodeProperties, IParameterBuilderHint } from 'n8n-workflow';
 export const columnsResourceMapperBuilderHint: IParameterBuilderHint = {
 	propertyHint:
 		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation. `append` is plain insert \u2014 do NOT add `matchingColumns` here (that is for the `appendOrUpdate` and `update` operations).",
+	mcpHint:
+		'Map values by sheet column name using { "columnName": "value" }. Do not send schema or matchingColumns; the server resolves the schema.',
+	jsonSchemaHint:
+		'Map values by sheet column name using exactly { mappingMode: "defineBelow", value: { "columnName": "value" } }. Do not send schema or matchingColumns; the server resolves the schema.',
 };
 
 export const upsertColumnsResourceMapperBuilderHint: IParameterBuilderHint = {
 	propertyHint:
 		"Pass the full resourceMapper object: { mappingMode, value, schema, matchingColumns }. `matchingColumns` is REQUIRED for this operation \u2014 it must be a non-empty `string[]` of header names that uniquely identify the row to update; without it the node throws 'Could not get parameter' at runtime. Use the `append` operation instead if there is no key column to match on. A bare string like 'autoMapInputData' silently fails validation; always send the full resourceMapper object.",
+	mcpHint:
+		'Map values by sheet column name using { values: { "columnName2": "value" }, matchingColumns: ["columnName1"] }. Do not send schema; the server resolves it. Use append when there is no key column.',
+	jsonSchemaHint:
+		'Map values by sheet column name using exactly { mappingMode: "defineBelow", value: { "columnName2": "value" }, matchingColumns: ["columnName1"] }. Do not send schema; the server resolves it. Use append when there is no key column.',
 };
 
 export const dataLocationOnSheet: INodeProperties = {

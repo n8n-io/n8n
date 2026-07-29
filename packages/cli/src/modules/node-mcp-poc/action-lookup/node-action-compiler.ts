@@ -118,7 +118,7 @@ function when(displayOptions: IDisplayOptions | undefined) {
 
 function descriptionFor(property: INodeProperties) {
 	const description = [
-		property.builderHint?.propertyHint,
+		property.builderHint?.mcpHint ?? property.builderHint?.propertyHint,
 		property.description,
 		property.hint,
 		property.placeholder ? `Example: ${property.placeholder}` : undefined,

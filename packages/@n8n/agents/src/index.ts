@@ -426,3 +426,5 @@ export type {
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
 
 export { isZodSchema, zodToJsonSchema } from './utils/zod';
+
+globalThis.AI_SDK_LOG_WARNINGS = false;

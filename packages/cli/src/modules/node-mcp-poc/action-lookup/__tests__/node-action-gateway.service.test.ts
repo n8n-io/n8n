@@ -121,6 +121,29 @@ const plan: CompiledActionPlan = {
 	resourceModesByPath: new Map([['documentId', documentProperty.modes ?? []]]),
 };
 const catalog: VisibleActionCatalog = { endpoint: 'actions', actions: [plan] };
+const upsertColumnsProperty: INodeProperties = {
+	...columnsProperty,
+	typeOptions: {
+		resourceMapper: { resourceMapperMethod: 'getColumns', mode: 'upsert' },
+	},
+};
+const upsertTool: CompiledOperationTool = {
+	...tool,
+	name: 'sheet_appendOrUpdate',
+	operation: 'appendOrUpdate',
+	properties: [documentProperty, upsertColumnsProperty],
+	dynamicParameters: tool.dynamicParameters.map((descriptor) =>
+		descriptor.path === 'columns' ? { ...descriptor, property: upsertColumnsProperty } : descriptor,
+	),
+};
+const upsertToolset: CompiledNodeToolset = { ...toolset, tools: [upsertTool] };
+const upsertPlan: CompiledActionPlan = {
+	...plan,
+	id: 'n8n-nodes-base.test@1/sheet.appendOrUpdate',
+	toolset: upsertToolset,
+	tool: upsertTool,
+	dynamicParameters: upsertTool.dynamicParameters,
+};
 
 describe('NodeActionGatewayService', () => {
 	const catalogs = mock<VisibleActionCatalogRegistry>();
@@ -238,5 +261,108 @@ describe('NodeActionGatewayService', () => {
 			documentId: { mode: 'id', value: 'spreadsheet-id' },
 			columns: { mappingMode: 'defineBelow', value: { Amount: 10 } },
 		});
+	});
+
+	it('strips resource-locator metadata and preserves a mapper envelope', async () => {
+		catalogs.findAction.mockReturnValue(upsertPlan);
+		resolver.getResourceMapperSchema.mockReturnValue([
+			{
+				id: 'Order',
+				displayName: 'Order',
+				defaultMatch: true,
+				required: false,
+				display: true,
+			},
+		]);
+		executor.execute.mockResolvedValue({
+			status: 'success',
+			data: [{ json: { updatedRows: 1 } }],
+		});
+
+		await service.run('actions', upsertPlan.id, {
+			documentId: {
+				__rl: true,
+				mode: 'id',
+				value: 'spreadsheet-id',
+				cachedResultName: 'Financial reports',
+			},
+			columns: {
+				mappingMode: 'defineBelow',
+				value: { Order: 'O-23523', Status: 'Shipped' },
+				matchingColumns: ['Order'],
+				schema: [{ id: 'untrusted' }],
+			},
+		});
+
+		expect(executor.execute).toHaveBeenCalledWith(upsertToolset, upsertTool, {
+			documentId: { mode: 'id', value: 'spreadsheet-id' },
+			columns: {
+				mappingMode: 'defineBelow',
+				value: { Order: 'O-23523', Status: 'Shipped' },
+				matchingColumns: ['Order'],
+			},
+		});
+	});
+
+	it('derives default matching columns from the resolved mapper schema', async () => {
+		catalogs.findAction.mockReturnValue(upsertPlan);
+		resolver.getResourceMapperSchema.mockReturnValue([
+			{
+				id: 'Order',
+				displayName: 'Order',
+				defaultMatch: true,
+				required: false,
+				display: true,
+			},
+			{
+				id: 'Status',
+				displayName: 'Status',
+				defaultMatch: false,
+				required: false,
+				display: true,
+			},
+		]);
+		executor.execute.mockResolvedValue({
+			status: 'success',
+			data: [{ json: { updatedRows: 1 } }],
+		});
+
+		await service.run('actions', upsertPlan.id, {
+			documentId: 'spreadsheet-id',
+			columns: { Order: 'O-23523', Status: 'Shipped' },
+		});
+
+		expect(executor.execute).toHaveBeenCalledWith(upsertToolset, upsertTool, {
+			documentId: { mode: 'id', value: 'spreadsheet-id' },
+			columns: {
+				mappingMode: 'defineBelow',
+				value: { Order: 'O-23523', Status: 'Shipped' },
+				matchingColumns: ['Order'],
+			},
+		});
+	});
+
+	it('rejects malformed whole parameter values with a friendly error', async () => {
+		await expect(
+			service.run('actions', plan.id, {
+				documentId: { __rl: true, mode: 'id' },
+				columns: { Amount: 10 },
+			}),
+		).rejects.toThrow(
+			'Invalid action input for "documentId": expected a resource ID, URL, name, or valid { mode, value } object',
+		);
+
+		catalogs.findAction.mockReturnValue(upsertPlan);
+		await expect(
+			service.run('actions', upsertPlan.id, {
+				documentId: 'spreadsheet-id',
+				columns: {
+					values: { Order: 'O-23523' },
+					matchingColumns: 'Order',
+				},
+			}),
+		).rejects.toThrow(
+			'Invalid action input for "columns": expected matchingColumns to be a non-empty array of column names',
+		);
 	});
 });

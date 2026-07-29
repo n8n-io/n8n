@@ -50,6 +50,11 @@ const description: INodeTypeDescription = {
 			type: 'string',
 			default: '',
 			required: true,
+			builderHint: {
+				propertyHint: 'Editor-only recipient instructions.',
+				mcpHint: 'MCP-specific recipient instructions.',
+				jsonSchemaHint: 'JSON Schema-specific recipient instructions.',
+			},
 			displayOptions: { show: { resource: ['message'], operation: ['send'] } },
 		},
 		{
@@ -96,6 +101,15 @@ describe('NodeToolsetCompiler', () => {
 		expect(toolset.tools[0].name).toBe('message_send');
 		expect(toolset.tools[0].description).toContain('Send a message — Node: Test (v1).');
 		expect(toolset.tools[0].jsonSchema.required).toEqual(['recipient']);
+		expect(toolset.tools[0].jsonSchema.properties?.recipient?.description).toContain(
+			'JSON Schema-specific recipient instructions.',
+		);
+		expect(toolset.tools[0].jsonSchema.properties?.recipient?.description).not.toContain(
+			'MCP-specific recipient instructions.',
+		);
+		expect(toolset.tools[0].jsonSchema.properties?.recipient?.description).not.toContain(
+			'Editor-only recipient instructions.',
+		);
 		expect(toolset.tools[0].jsonSchema.properties?.tags).toMatchObject({
 			type: 'array',
 			items: { type: 'string' },

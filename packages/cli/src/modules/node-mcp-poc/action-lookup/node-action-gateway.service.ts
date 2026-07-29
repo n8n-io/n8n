@@ -8,10 +8,9 @@ import {
 	type INodePropertyMode,
 	type NodeParameterValue,
 	type NodeParameterValueType,
+	type ResourceMapperField,
 } from 'n8n-workflow';
 
-import { NodeToolExecutorService } from '../json-schema/node-tool-executor.service';
-import { NodeToolResolverService } from '../json-schema/node-tool-resolver.service';
 import type {
 	CompiledActionPlan,
 	ResolveNodeParameterInput,
@@ -19,6 +18,8 @@ import type {
 } from './action-lookup.types';
 import { fieldFromResourceMapper } from './node-action-compiler';
 import { VisibleActionCatalogRegistry } from './visible-action-catalog';
+import { NodeToolExecutorService } from '../json-schema/node-tool-executor.service';
+import { NodeToolResolverService } from '../json-schema/node-tool-resolver.service';
 
 function isScalar(value: unknown): value is NodeParameterValue {
 	return (
@@ -58,7 +59,15 @@ function isPropertyCollection(value: unknown): value is INodePropertyCollection 
 	return typeof value === 'object' && value !== null && 'values' in value && 'name' in value;
 }
 
-function preferredLocatorMode(modes: readonly INodePropertyMode[], value: NodeParameterValue) {
+function invalidParameter(property: INodeProperties, expected: string): never {
+	throw new Error(`Invalid action input for "${property.name}": expected ${expected}`);
+}
+
+function isLocatorValue(value: unknown): value is string | number {
+	return typeof value === 'string' || typeof value === 'number';
+}
+
+function preferredLocatorMode(modes: readonly INodePropertyMode[], value: string | number) {
 	const text = String(value);
 	const urlMode = modes.find(
 		(mode) => mode.name.toLowerCase().includes('url') || mode.type.toLowerCase().includes('url'),
@@ -70,22 +79,127 @@ function preferredLocatorMode(modes: readonly INodePropertyMode[], value: NodePa
 	return listMode?.name ?? modes[0]?.name ?? 'id';
 }
 
-function normalizePropertyValue(
-	property: INodeProperties,
-	value: NodeParameterValueType,
-): NodeParameterValueType {
-	if (property.type === 'resourceLocator' && isScalar(value)) {
+function normalizeResourceLocator(property: INodeProperties, value: unknown): INodeParameters {
+	const modes = property.modes ?? [];
+	if (isLocatorValue(value)) {
 		return {
-			mode: preferredLocatorMode(property.modes ?? [], value),
+			mode: preferredLocatorMode(modes, value),
 			value,
 		};
 	}
-	if (property.type === 'resourceMapper' && isPlainObject(value)) {
-		return {
-			mappingMode: 'defineBelow',
-			value: toNodeParameters(value),
-		};
+	if (!isPlainObject(value)) {
+		return invalidParameter(property, 'a resource ID, URL, name, or { mode, value } object');
 	}
+	const mode = value.mode;
+	const locatorValue = value.value;
+	if (
+		typeof mode !== 'string' ||
+		!isLocatorValue(locatorValue) ||
+		(modes.length > 0 && !modes.some((candidate) => candidate.name === mode))
+	) {
+		return invalidParameter(property, 'a resource ID, URL, name, or valid { mode, value } object');
+	}
+	return { mode, value: locatorValue };
+}
+
+function isMapperEnvelope(value: Record<string, unknown>) {
+	return (
+		Object.hasOwn(value, 'mappingMode') ||
+		Object.hasOwn(value, 'matchingColumns') ||
+		Object.hasOwn(value, 'values') ||
+		(Object.hasOwn(value, 'value') && Object.hasOwn(value, 'schema'))
+	);
+}
+
+function normalizeMatchingColumns(property: INodeProperties, value: unknown) {
+	if (
+		!Array.isArray(value) ||
+		value.length === 0 ||
+		!value.every((column): column is string => typeof column === 'string' && column.length > 0)
+	) {
+		return invalidParameter(property, 'matchingColumns to be a non-empty array of column names');
+	}
+	return value.filter((column): column is string => typeof column === 'string');
+}
+
+function normalizeMappingMode(
+	property: INodeProperties,
+	value: Record<string, unknown>,
+	envelope: boolean,
+) {
+	const allowed = property.typeOptions?.resourceMapper?.supportAutoMap
+		? ['defineBelow', 'autoMapInputData']
+		: ['defineBelow'];
+	const mappingMode =
+		envelope && Object.hasOwn(value, 'mappingMode') ? value.mappingMode : 'defineBelow';
+	if (typeof mappingMode !== 'string' || !allowed.includes(mappingMode)) {
+		return invalidParameter(property, `mappingMode to be one of: ${allowed.join(', ')}`);
+	}
+	return mappingMode;
+}
+
+function mapperMatchingColumns(
+	property: INodeProperties,
+	value: Record<string, unknown>,
+	envelope: boolean,
+	mapperSchema: ResourceMapperField[] | undefined,
+) {
+	const mapperMode = property.typeOptions?.resourceMapper?.mode ?? 'map';
+	const required = mapperMode === 'update' || mapperMode === 'upsert';
+	if (envelope && Object.hasOwn(value, 'matchingColumns')) {
+		if (!required) {
+			return invalidParameter(property, 'matchingColumns only for update or upsert mappers');
+		}
+		return normalizeMatchingColumns(property, value.matchingColumns);
+	}
+	if (!required) return undefined;
+	const defaults = (mapperSchema ?? [])
+		.filter((field) => field.defaultMatch)
+		.map((field) => field.id);
+	if (defaults.length === 0) {
+		return invalidParameter(
+			property,
+			'an object with mapped values and matchingColumns, for example { values: { id: "123" }, matchingColumns: ["id"] }',
+		);
+	}
+	return defaults;
+}
+
+function normalizeResourceMapper(
+	property: INodeProperties,
+	value: unknown,
+	mapperSchema: ResourceMapperField[] | undefined,
+): INodeParameters {
+	if (!isPlainObject(value)) {
+		return invalidParameter(property, 'an object containing mapped field values');
+	}
+	const envelope = isMapperEnvelope(value);
+	const mappingMode = normalizeMappingMode(property, value, envelope);
+	const rawValues = envelope
+		? Object.hasOwn(value, 'values')
+			? value.values
+			: value.value
+		: value;
+	if (!isPlainObject(rawValues)) {
+		return invalidParameter(property, 'mapped values to be an object');
+	}
+	const matchingColumns = mapperMatchingColumns(property, value, envelope, mapperSchema);
+
+	return {
+		mappingMode,
+		value: toNodeParameters(rawValues),
+		...(matchingColumns ? { matchingColumns } : {}),
+	};
+}
+
+function normalizePropertyValue(
+	property: INodeProperties,
+	value: NodeParameterValueType,
+	mapperSchema?: ResourceMapperField[],
+): NodeParameterValueType {
+	if (property.type === 'resourceLocator') return normalizeResourceLocator(property, value);
+	if (property.type === 'resourceMapper')
+		return normalizeResourceMapper(property, value, mapperSchema);
 	if (property.type === 'collection' && isPlainObject(value)) {
 		const result = toNodeParameters(value);
 		for (const child of (property.options ?? []).filter(
@@ -123,7 +237,11 @@ function normalizePropertyValue(
 	return value;
 }
 
-function normalizeInput(plan: CompiledActionPlan, input: Record<string, unknown>) {
+function normalizeInput(
+	plan: CompiledActionPlan,
+	input: Record<string, unknown>,
+	getMapperSchema?: (path: string, values: INodeParameters) => ResourceMapperField[] | undefined,
+) {
 	const normalized = toNodeParameters(input);
 	const seen = new Set<string>();
 	for (const property of plan.tool.properties) {
@@ -132,7 +250,13 @@ function normalizeInput(plan: CompiledActionPlan, input: Record<string, unknown>
 		setSafeObjectProperty(
 			normalized,
 			property.name,
-			normalizePropertyValue(property, normalized[property.name]),
+			normalizePropertyValue(
+				property,
+				normalized[property.name],
+				property.type === 'resourceMapper'
+					? getMapperSchema?.(property.name, normalized)
+					: undefined,
+			),
 		);
 	}
 	return normalized;
@@ -232,7 +356,9 @@ export class NodeActionGatewayService {
 		const result = await this.executor.execute(
 			plan.toolset,
 			plan.tool,
-			normalizeInput(plan, input),
+			normalizeInput(plan, input, (path, values) =>
+				this.resolver.getResourceMapperSchema(plan.toolset, plan.tool, path, values),
+			),
 		);
 		if (result.status === 'error') {
 			throw new Error(result.error ?? 'Node execution failed');
