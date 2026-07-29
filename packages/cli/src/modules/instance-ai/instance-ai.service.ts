@@ -5589,7 +5589,9 @@ export class InstanceAiService {
 				request !== null &&
 				(('credentialType' in request &&
 					request.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) ||
-					('setupHint' in request && request.setupHint != null)),
+					('setupHint' in request &&
+						request.setupHint !== null &&
+						request.setupHint !== undefined)),
 		);
 
 		this.telemetry.track('Builder asked for input', {
