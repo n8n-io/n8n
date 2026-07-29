@@ -3,8 +3,7 @@
  * because it has two consumers on opposite sides of the package boundary — the
  * store's `showPersonalizationSurvey`, and the app-side registration in
  * editor-ui's `users.constants` — and this package is a leaf both already
- * depend on, so nothing can invert. Previously duplicated as two literals that
- * had to stay equal, with nothing enforcing it (N8N-126).
+ * depend on, so nothing can invert.
  */
 
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
