@@ -34,13 +34,16 @@ import {
 	toMultiOptionsCsv,
 } from './GenericFunctions';
 import {
+	advancedInteractivityNotice,
 	approversField,
 	captureResponderField,
 	channelRLC,
 	messageFields,
 	messageOperations,
+	postDecisionBehaviorField,
 	replyToMessageField,
 	sendToSelector,
+	unauthorizedReplyField,
 	userRLC,
 } from './MessageDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
@@ -171,7 +174,13 @@ export class SlackV2 implements INodeType {
 						},
 					],
 					undefined,
-					[captureResponderField, approversField],
+					[
+						advancedInteractivityNotice,
+						captureResponderField,
+						approversField,
+						unauthorizedReplyField,
+						postDecisionBehaviorField,
+					],
 					{ extraOptions: [replyToMessageField] },
 				).filter((p) => p.name !== 'subject'),
 				...starOperations,

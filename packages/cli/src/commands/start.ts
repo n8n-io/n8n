@@ -14,7 +14,8 @@ import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
 import { BinaryDataConfig } from 'n8n-core';
-import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { jsonParse, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
@@ -71,6 +72,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	override needsCommunityPackages = true;
 
 	override needsTaskRunner = true;
+
+	override seedsInstanceIdentity = true;
 
 	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
 
@@ -239,7 +242,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
-		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
 

@@ -1,8 +1,8 @@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { Readable } from 'node:stream';
 
 import { N8N_VERSION } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
@@ -31,7 +31,9 @@ import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
 	MissingWorkflowDependencyPolicy,
+	type ExportPackageEventCounts,
 	type ExportPackageRequest,
+	type ExportPackageResult,
 	type ImportPackageRequest,
 	type ImportResult,
 } from './n8n-packages.types';
@@ -64,7 +66,7 @@ export class N8nPackagesService {
 		private readonly autoIncludedWorkflowExporter: AutoIncludedWorkflowExporter,
 	) {}
 
-	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
+	async exportPackage(request: ExportPackageRequest): Promise<ExportPackageResult> {
 		// TODO: remove this once reference-only is supported
 		const { missingWorkflowDependencyPolicy } = request;
 		if (missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly) {
@@ -249,6 +251,14 @@ export class N8nPackagesService {
 
 		const stream = writer.finalize();
 
+		const counts: ExportPackageEventCounts = {
+			workflows: allWorkflowsInPackage.length,
+			folders: allFolders.length,
+			credentials: credentialExportResult.entries.length,
+			dataTables: dataTableExportResult.entries.length,
+			variables: variableExportResult.entries.length,
+		};
+
 		this.eventService.emit('n8n-package-exported', {
 			user: request.user,
 			...(allWorkflowsInPackage.length
@@ -256,22 +266,21 @@ export class N8nPackagesService {
 				: {}),
 			...(allFolders.length ? { folderIds: allFolders.map(({ id }) => id) } : {}),
 			...(allProjects.length ? { projectIds: allProjects.map(({ id }) => id) } : {}),
-			counts: {
-				workflows: allWorkflowsInPackage.length,
-				folders: allFolders.length,
-				credentials: credentialExportResult.entries.length,
-				dataTables: dataTableExportResult.entries.length,
-				variables: variableExportResult.entries.length,
-			},
+			counts,
 		});
 
-		return stream;
+		return { stream, counts };
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
 		if (isProjectPackage(manifest)) {
+			if (request.variableParentPolicy !== undefined) {
+				throw new BadRequestError(
+					'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
+				);
+			}
 			return await this.projectPackageImporter.import(request, reader, manifest);
 		}
 		return await this.workflowPackageImporter.import(request, reader, manifest);

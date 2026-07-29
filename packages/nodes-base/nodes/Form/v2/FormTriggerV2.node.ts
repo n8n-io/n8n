@@ -143,6 +143,18 @@ const descriptionV2: INodeTypeDescription = {
 					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
 			},
 		},
+		{
+			displayName: 'Require Workflow Execute Permission',
+			name: 'requireExecuteAccess',
+			type: 'boolean',
+			default: true,
+			envFeatureFlag: 'FORM_TRIGGER_OAUTH2',
+			displayOptions: {
+				show: { authentication: ['n8nUserAuth'], '@version': [{ _cnd: { gte: 2.6 } }] },
+			},
+			description:
+				'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
 		formDescription,

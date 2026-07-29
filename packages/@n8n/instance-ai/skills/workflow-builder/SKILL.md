@@ -78,7 +78,11 @@ If the service or workflow shape is clear, never stop before the first
 resources, credentials, channel IDs, or timezone; use placeholders or unresolved
 `newCredential()` calls. Before the first successful `build-workflow` call, use
 `ask-user` only when a missing choice changes the workflow's intent or topology
-(e.g. which destination service). Setup details — recipients, accounts,
+(e.g. which destination service). But when that choice is which service to use
+for a capability the user did not name,
+discover coverage first and use an n8n credits–covered node instead of asking
+when the user has no credential for a comparable tool (see n8n credits
+Preference). Setup details — recipients, accounts,
 resources, channels, credentials, timezone — belong in placeholders or
 unresolved `newCredential()` calls until post-build setup. After the first
 build, use `ask-user` when stuck or genuinely ambiguous; do not retry the same
@@ -331,8 +335,18 @@ scraping nodes can run with no API key required on the user's side.
 **Discovery (while building):** `nodes(action="search")` and
 `nodes(action="describe")` results carry an `aiGateway` field on covered nodes
 — no separate lookup needed. When `aiGateway.supported === true`, prefer that
-node over comparable alternatives *when the user has not named a specific
-tool*, and respect the constraints it reports:
+node over comparable alternatives *when the user has not named a specific tool
+and has no usable credential for a comparable one* — it runs with no API key.
+Keep your normal `suggested`/search pick when the user already has a credential
+for a comparable tool.
+
+The `suggested` list and search *rank* don't prioritize n8n credits coverage
+(individual search results still flag it). When the user asks for a capability
+they have no usable credential for, search that
+capability — or run `nodes(action="list", n8nConnectOnly=true)` — before
+committing, and prefer a covered result.
+
+Respect the constraints it reports:
   - Set `typeVersion >= aiGateway.minVersion` when present.
   - Constrain `resource` / `operation` to entries in `aiGateway.operations` —
     a `Record<resource, operation[]>` map; nodes without a resource dimension
