@@ -122,23 +122,28 @@ type McpAppTelemetryResolution = {
 };
 
 /**
- * Tools report handled failures two ways: MCP's `isError` flag (most tools) or
- * a `status: 'error'` field in the structured output (`execute_workflow`).
- * The error message lives in `structuredContent.error`, with the first text
- * content item as fallback.
+ * There is no standard failure contract across MCP tools: most set MCP's
+ * `isError` flag, but several catch their own errors and return a normal
+ * result marked only in the structured output, via `status: 'error'`
+ * (`execute_workflow`, `test_workflow`) or just an `error` message string
+ * (`publish_workflow`, `unpublish_workflow`, `get_execution`). A string
+ * `structuredContent.error` is set by every handled-failure shape and never
+ * on success, so it doubles as failure marker and message source, with the
+ * first text content item as fallback.
  */
 function getToolCallOutcome(result: CallToolResult | undefined): {
 	status: 'success' | 'error';
 	errorMessage?: string;
 } {
 	if (!result) return { status: 'success' };
-	if (result.isError !== true && result.structuredContent?.status !== 'error') {
+
+	const structured = result.structuredContent;
+	const errorMessage = typeof structured?.error === 'string' ? structured.error : undefined;
+	if (result.isError !== true && structured?.status !== 'error' && errorMessage === undefined) {
 		return { status: 'success' };
 	}
 
-	if (typeof result.structuredContent?.error === 'string') {
-		return { status: 'error', errorMessage: result.structuredContent.error };
-	}
+	if (errorMessage !== undefined) return { status: 'error', errorMessage };
 
 	for (const item of result.content ?? []) {
 		if (item.type === 'text') return { status: 'error', errorMessage: item.text };

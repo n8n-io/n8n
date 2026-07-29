@@ -643,6 +643,27 @@ describe('McpService', () => {
 			);
 		});
 
+		it('should emit error status when a handled failure is marked only by `structuredContent.error`', async () => {
+			// `get_execution` catches its own errors and returns a normal result
+			// whose only failure marker is the `error` message string.
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			const output = { execution: null, error: 'Execution not found' };
+			await registerAndInvoke(server, 'error_only_tool', async () => ({
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+			}));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'error_only_tool',
+					status: 'error',
+					errorMessage: 'Execution not found',
+				}),
+			);
+		});
+
 		it('should fall back to text content for the error message when structured output has none', async () => {
 			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
 
