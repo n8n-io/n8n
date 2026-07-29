@@ -91,7 +91,12 @@ export type SelectEmits<
 	M extends boolean,
 > = Omit<SelectRootEmits, 'update:modelValue'> & GetModelValueEmits<A, VK, M>;
 
-type SlotProps = (props: { item: SelectItemProps; ui: Record<string, unknown> }) => unknown;
+export type SelectItemSlotProps = (props: {
+	item: SelectItemProps;
+	ui: Record<string, unknown>;
+}) => unknown;
+
+type SlotProps = SelectItemSlotProps;
 
 export type SelectSlots<
 	A extends SelectItem[] = SelectItem[],

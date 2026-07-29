@@ -68,7 +68,11 @@ defineSlots<{
 	'item-leading'?: (props: { item: AiModelSelectorMenuItem<TData>; ui: { class: string } }) => void;
 }>();
 
-const dropdownRef = useTemplateRef('dropdownRef');
+// Typed explicitly rather than inferred from the template: the published
+// declaration build skips template codegen, so `__VLS_TemplateRefs` is empty.
+// N8nDropdownMenu is a generic component, so `InstanceType` doesn't apply — this
+// names the part of its exposed API we actually use.
+const dropdownRef = useTemplateRef<{ open: () => void }>('dropdownRef');
 const $style = useCssModule();
 const instance = getCurrentInstance();
 const { t } = useI18n();

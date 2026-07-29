@@ -2,16 +2,10 @@
 import type { ComponentPublicInstance } from 'vue';
 import { computed, onMounted, onBeforeMount, ref, nextTick, watch } from 'vue';
 
+import type { RecycleScrollerProps } from './RecycleScroller.types';
 import type { ItemWithKey } from '../../types';
 
-interface RecycleScrollerProps {
-	itemSize: number;
-	items: Item[];
-	itemKey: Key;
-	offset?: number;
-}
-
-const props = withDefaults(defineProps<RecycleScrollerProps>(), {
+const props = withDefaults(defineProps<RecycleScrollerProps<Key, Item>>(), {
 	offset: 2,
 });
 

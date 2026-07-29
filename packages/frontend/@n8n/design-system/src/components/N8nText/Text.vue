@@ -3,7 +3,7 @@ import { computed, useCssModule } from 'vue';
 
 import type { TextAlign, TextColor, TextSize, TextStep } from '../../types/text';
 
-interface TextProps {
+export interface TextProps {
 	bold?: boolean;
 	size?: TextSize;
 	step?: TextStep;

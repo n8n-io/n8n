@@ -1,6 +1,6 @@
 import type { PaginationRootEmits, PaginationRootProps } from 'reka-ui';
 
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '../../../components/N8nIcon/icons';
 
 export type PaginationSizes = 'small' | 'medium';
 export type PaginationVariants = 'default' | 'ghost';
