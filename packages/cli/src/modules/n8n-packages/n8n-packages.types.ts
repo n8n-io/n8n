@@ -132,6 +132,7 @@ export interface ExportPackageRequest {
 	projectIds?: string[];
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
+	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
 }
 
@@ -235,6 +236,7 @@ export type ExportPackageEventCounts = {
 	credentials: number;
 	dataTables: number;
 	variables: number;
+	tags: number;
 };
 
 /**
@@ -247,12 +249,18 @@ export interface ExportPackageResult {
 	counts: ExportPackageEventCounts;
 }
 
+/**
+ * The outcome for one package workflow, folding in what the publish phase decided for it. Import
+ * writes and publishes in two separate phases, but a consumer cannot act on that distinction, so
+ * the response reports one row per workflow.
+ */
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;
 	localId: string;
 	name: string;
 	projectId: string;
 	parentFolderId: string | null;
+	/** Published version on the target instance, or `null` when not published after import. */
 	activeVersionId: string | null;
 	publishing: WorkflowPublishingOutcome;
 	status: 'created' | 'updated' | 'skipped';

@@ -218,6 +218,13 @@ for (const pattern of phantomDirs) {
 }
 echo(chalk.green('✅ Phantom dirs stripped'));
 
+// Strip non-runtime files (Node never loads these) to cut the image's file count,
+// which dominates layer extraction time on constrained hosts. .js.map is kept —
+// source-map-support needs it for production stack traces.
+echo(chalk.yellow('INFO: Stripping non-runtime files (.ts/.d.ts/.md) from production closure...'));
+await $`find ${config.compiledAppDir} \\( -name '*.ts' -o -name '*.d.ts.map' -o -name '*.md' -o -name '*.test.js' -o -name '*.spec.js' \\) -type f -delete 2>/dev/null || true`;
+echo(chalk.green('✅ Non-runtime files stripped'));
+
 await fs.ensureDir(config.compiledTaskRunnerDir);
 
 echo(

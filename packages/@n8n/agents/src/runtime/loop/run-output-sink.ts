@@ -1,5 +1,6 @@
 import type {
 	LanguageModel,
+	LanguageModelCallOptions,
 	ModelMessage,
 	Output,
 	SystemModelMessage,
@@ -65,6 +66,7 @@ export interface ModelCallContext {
 	abortSignal: AbortSignal;
 	hasTools: boolean;
 	aiTools: ToolSet;
+	reasoning?: LanguageModelCallOptions['reasoning'];
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
 	aiSdkOptions: {

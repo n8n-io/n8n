@@ -19,7 +19,7 @@ import { storeToRefs } from 'pinia';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { updateSemanticSearchSettingsApi } from './chat.api';
 import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { providerDisplayNames, vectorStoreProviderDisplayNames } from './constants';
 import { DEFAULT_SEMANTIC_SEARCH_SETTINGS, EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
 import { deepCopy } from 'n8n-workflow';

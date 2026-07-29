@@ -14,7 +14,7 @@ import {
 	getUpdatedTextareaValue,
 	getTextareaCursorPosition,
 } from '../../utils/buttonParameter.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 
 import { propertyNameFromExpression } from '@/app/utils/mappingUtils';

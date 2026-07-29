@@ -54,7 +54,15 @@ export function recurrenceCheck(
 	const lastExecution = recurrenceRules[index] ?? undefined;
 
 	const momentTz = moment.tz(timezone);
-	if (typeInterval === 'hours') {
+	if (typeInterval === 'minutes') {
+		// Absolute minute count (not the 0-59 wall-clock value) so a gap longer
+		// than the hour wrap can't delay the next fire by another interval.
+		const absoluteMinute = Math.floor(momentTz.valueOf() / 60_000);
+		if (lastExecution === undefined || absoluteMinute - lastExecution >= intervalSize) {
+			recurrenceRules[index] = absoluteMinute;
+			return true;
+		}
+	} else if (typeInterval === 'hours') {
 		const hour = momentTz.hour();
 		if (lastExecution === undefined || (hour - lastExecution + 24) % 24 >= intervalSize) {
 			recurrenceRules[index] = hour;
@@ -116,7 +124,13 @@ export const toCronExpression = (interval: ScheduleInterval, nodeKey: string): C
 	if (interval.field === 'seconds') return `*/${interval.secondsInterval} * * * * *`;
 
 	const second = stableInt(nodeKey, 'second', 0, 60);
-	if (interval.field === 'minutes') return `${second} */${interval.minutesInterval} * * * *`;
+	if (interval.field === 'minutes') {
+		const minutes = interval.minutesInterval;
+		if (60 % minutes === 0) return `${second} */${minutes} * * * *`;
+		// Non-dividing `*/n` fires unevenly (e.g. */50 at :00 and :50); fire every
+		// minute instead and let recurrenceCheck enforce elapsed time.
+		return `${second} * * * * *`;
+	}
 
 	const minute = interval.triggerAtMinute ?? stableInt(nodeKey, 'minute', 0, 60);
 	if (interval.field === 'hours') {
@@ -174,6 +188,18 @@ export const toCronSource = (interval: ScheduleInterval): CronSource => {
 
 export function intervalToRecurrence(interval: ScheduleInterval, index: number) {
 	let recurrence: IRecurrenceRule = { activated: false };
+
+	if (interval.field === 'minutes') {
+		const { minutesInterval } = interval;
+		if (minutesInterval > 0 && 60 % minutesInterval !== 0) {
+			recurrence = {
+				activated: true,
+				index,
+				intervalSize: minutesInterval,
+				typeInterval: 'minutes',
+			};
+		}
+	}
 
 	if (interval.field === 'hours') {
 		const { hoursInterval } = interval;
@@ -234,10 +260,14 @@ export function intervalToRecurrence(interval: ScheduleInterval, index: number) 
  * pre-signature value is the old 0-11 encoding and must be discarded.
  */
 function isRecurrenceValueValidForType(
-	typeInterval: 'hours' | 'days' | 'weeks' | 'months',
+	typeInterval: 'minutes' | 'hours' | 'days' | 'weeks' | 'months',
 	value: number,
 ): boolean {
 	switch (typeInterval) {
+		case 'minutes':
+			// Minutes recurrence is newer than signatures, so a signature-less value
+			// was never written by a minutes rule — it belongs to some earlier config.
+			return false;
 		case 'hours':
 			return value >= 0 && value <= 23;
 		case 'days':

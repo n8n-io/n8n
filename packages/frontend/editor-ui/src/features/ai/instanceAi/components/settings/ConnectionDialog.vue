@@ -76,6 +76,13 @@ let hydratedExtra = '';
 let hydratedSnapshot = '';
 
 const usingExisting = computed(() => readOnly.value || selectingExistingCredential.value);
+const isProxyDaytonaSelection = computed(
+	() =>
+		props.kind === 'sandbox' &&
+		store.isProxyEnabled &&
+		selection.value === 'daytona' &&
+		!usingExisting.value,
+);
 
 function credentialTypeLabel(type: string) {
 	return credentialsStore.getCredentialTypeByName(type)?.displayName ?? type;
@@ -220,6 +227,7 @@ function newConnectionIsComplete(selected: string): boolean {
 	if (props.kind === 'model') return true;
 	if (props.kind === 'sandbox') {
 		if (selected === 'n8n-sandbox') return extraValue.value.trim().length > 0;
+		if (isProxyDaytonaSelection.value) return true;
 		return (
 			typeof fieldsData.value.apiUrl === 'string' &&
 			fieldsData.value.apiUrl.trim().length > 0 &&
@@ -269,6 +277,10 @@ function stageNew(connectionData: ICredentialDataDecryptedObject): void {
 		return;
 	}
 	if (props.kind === 'sandbox') {
+		if (isProxyDaytonaSelection.value) {
+			store.setField('sandboxProvider', 'daytona');
+			return;
+		}
 		store.setField('sandboxConnection', {
 			type: credentialTypeFor(selection.value),
 			data: connectionData,
@@ -420,6 +432,7 @@ async function handlePrimary() {
 	if (
 		!usingExisting.value &&
 		selection.value &&
+		!isProxyDaytonaSelection.value &&
 		!(await testCredential({
 			id: selection.value === getAssignedSelection() ? (assignedId.value ?? '') : '',
 			name: copy.testName,
@@ -563,6 +576,7 @@ const primaryLabel = computed(() => {
 				v-if="
 					!usingExisting &&
 					selection &&
+					!isProxyDaytonaSelection &&
 					(kind !== 'sandbox' || selection === 'daytona') &&
 					!isLoading
 				"
