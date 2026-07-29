@@ -145,16 +145,37 @@ export const agentChatAttachmentSchema = z.object({
 
 export type AgentChatAttachmentPayload = z.infer<typeof agentChatAttachmentSchema>;
 
-// `message` may be empty when at least one attachment is present
-// (attachment-only sends); the controller enforces that invariant.
-export class AgentChatMessageDto extends Z.class({
+const agentChatMessageShape = {
+	// `message` may be empty when at least one attachment is present
+	// (attachment-only sends) — see the schema-level refinement below.
 	message: z.string(),
 	sessionId: z.string().min(1).optional(),
 	attachments: z
 		.array(agentChatAttachmentSchema)
 		.max(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)
 		.optional(),
-}) {}
+};
+
+const agentChatMessageSchema = z
+	.object(agentChatMessageShape)
+	.refine((value) => value.message.trim().length > 0 || (value.attachments?.length ?? 0) > 0, {
+		message: 'Message text or at least one attachment is required',
+		path: ['message'],
+	});
+
+export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
+	constructor(data: z.infer<typeof agentChatMessageSchema>) {
+		super(agentChatMessageSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return agentChatMessageSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return agentChatMessageSchema.parse(data);
+	}
+}
 
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),

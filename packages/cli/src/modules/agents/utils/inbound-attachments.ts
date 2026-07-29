@@ -5,9 +5,12 @@ import type { StoredAttachmentRef } from '../agent-chat-attachment.service';
 
 /** Media-type families that can be promoted to model file parts (see `isAttachmentMediaTypeSupported`). */
 function modelEligibleFamily(mimeType: string): 'image' | 'pdf' | 'audio' | null {
-	if (mimeType.startsWith('image/')) return 'image';
-	if (mimeType === 'application/pdf') return 'pdf';
-	if (mimeType.startsWith('audio/')) return 'audio';
+	// Classify by the bare media type — declarations may carry parameters
+	// (e.g. `application/pdf; charset=binary`).
+	const baseType = mimeType.split(';')[0].trim().toLowerCase();
+	if (baseType.startsWith('image/')) return 'image';
+	if (baseType === 'application/pdf') return 'pdf';
+	if (baseType.startsWith('audio/')) return 'audio';
 	return null;
 }
 

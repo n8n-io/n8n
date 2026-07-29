@@ -13,8 +13,8 @@ import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import { randomUUID } from 'crypto';
 import type { Response } from 'express';
-import { pipeline } from 'node:stream/promises';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
+import { pipeline } from 'node:stream/promises';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -109,10 +109,8 @@ export class AgentChatController {
 		@Body payload: AgentChatMessageDto,
 	) {
 		const { projectId } = req.params;
+		// The text-or-attachment invariant is enforced by the DTO schema.
 		const { message, sessionId, attachments } = payload;
-		if (!message.trim() && !attachments?.length) {
-			throw new BadRequestError('Message text or at least one attachment is required');
-		}
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,

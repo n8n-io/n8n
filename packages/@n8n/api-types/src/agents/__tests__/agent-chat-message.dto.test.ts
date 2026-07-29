@@ -17,9 +17,14 @@ describe('AgentChatMessageDto', () => {
 	});
 
 	it('accepts an attachment-only payload with empty message text', () => {
-		// The text-or-attachment invariant is enforced by the controller, not the DTO.
 		const result = AgentChatMessageDto.safeParse({ message: '', attachments: [attachment] });
 		expect(result.success).toBe(true);
+	});
+
+	it('rejects a payload with neither message text nor attachments', () => {
+		expect(AgentChatMessageDto.safeParse({ message: '' }).success).toBe(false);
+		expect(AgentChatMessageDto.safeParse({ message: '   ' }).success).toBe(false);
+		expect(AgentChatMessageDto.safeParse({ message: '   ', attachments: [] }).success).toBe(false);
 	});
 
 	it('rejects base64 data above the 10 MB cap', () => {

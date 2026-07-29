@@ -63,6 +63,14 @@ describe('resolveInboundMimeType', () => {
 		expect(await resolveInboundMimeType(undefined, TEXT_BYTES)).toBe('application/octet-stream');
 	});
 
+	it('classifies declarations that carry media-type parameters', async () => {
+		const pdfBytes = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF');
+		expect(await resolveInboundMimeType('application/pdf; charset=binary', pdfBytes)).toBe(
+			'application/pdf',
+		);
+		expect(await resolveInboundMimeType('image/png; foo=bar', PNG_BYTES)).toBe('image/png');
+	});
+
 	it('normalizes a declaration longer than the mimeType column to octet-stream', async () => {
 		const overlong = `text/${'x'.repeat(MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH)}`;
 		expect(await resolveInboundMimeType(overlong, TEXT_BYTES)).toBe('application/octet-stream');
