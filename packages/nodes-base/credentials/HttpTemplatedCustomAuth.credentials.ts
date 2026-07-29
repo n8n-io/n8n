@@ -84,6 +84,18 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			default: '',
 		},
 		{
+			// Machine-readable service identity: the credential type is shared by
+			// every service, so setup surfaces need this to offer a credential only
+			// to nodes calling the same service. The name field stays the human layer.
+			displayName: 'Service Host',
+			name: 'serviceHost',
+			type: 'string',
+			description:
+				'Host of the API this credential authenticates against (e.g. api.pexels.com). Setup surfaces only offer this credential to nodes calling the same host (subdomains match). Set from the recipe when the credential is created; when empty, the credential is never offered automatically.',
+			placeholder: 'api.pexels.com',
+			default: '',
+		},
+		{
 			displayName: 'Accepted Status Codes',
 			name: 'acceptedStatusCodes',
 			type: 'string',
