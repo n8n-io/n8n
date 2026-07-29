@@ -91,21 +91,29 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	/**
-	 * Fetch a page of MCP-available workflows, clamping to the last non-empty
-	 * page when the requested one shrank away (e.g. after removing access).
-	 * Returns the effective 1-based page so callers can sync their table state.
+	 * Runs a page fetch, clamping to the last non-empty page when the requested
+	 * one shrank away (e.g. after removing access). Returns the effective 1-based
+	 * page so callers can sync their table state.
 	 */
+	async function clampToLastPage<T>(
+		fetchPage: (page: number, pageSize: number) => Promise<{ data: T[]; count: number }>,
+		page: number,
+		pageSize: number,
+	): Promise<{ data: T[]; count: number; page: number }> {
+		const response = await fetchPage(page, pageSize);
+		if (response.data.length === 0 && response.count > 0 && page > 1) {
+			const maxPage = Math.max(1, Math.ceil(response.count / pageSize));
+			const clamped = await fetchPage(maxPage, pageSize);
+			return { ...clamped, page: maxPage };
+		}
+		return { ...response, page };
+	}
+
 	async function fetchWorkflowsAvailableForMCPPage(
 		page: number,
 		pageSize: number,
 	): Promise<{ data: WorkflowListItem[]; count: number; page: number }> {
-		const response = await fetchWorkflowsAvailableForMCP(page, pageSize);
-		if (response.data.length === 0 && response.count > 0 && page > 1) {
-			const maxPage = Math.max(1, Math.ceil(response.count / pageSize));
-			const clamped = await fetchWorkflowsAvailableForMCP(maxPage, pageSize);
-			return { ...clamped, page: maxPage };
-		}
-		return { ...response, page };
+		return await clampToLastPage(fetchWorkflowsAvailableForMCP, page, pageSize);
 	}
 
 	async function fetchAgentsAvailableForMCP(
@@ -120,22 +128,11 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return { data, count };
 	}
 
-	/**
-	 * Fetch a page of MCP-available agents, clamping to the last non-empty page
-	 * when the requested one shrank away (e.g. after removing access). Returns
-	 * the effective 1-based page so callers can sync their table state.
-	 */
 	async function fetchAgentsAvailableForMCPPage(
 		page: number,
 		pageSize: number,
 	): Promise<{ data: Agent[]; count: number; page: number }> {
-		const response = await fetchAgentsAvailableForMCP(page, pageSize);
-		if (response.data.length === 0 && response.count > 0 && page > 1) {
-			const maxPage = Math.max(1, Math.ceil(response.count / pageSize));
-			const clamped = await fetchAgentsAvailableForMCP(maxPage, pageSize);
-			return { ...clamped, page: maxPage };
-		}
-		return { ...response, page };
+		return await clampToLastPage(fetchAgentsAvailableForMCP, page, pageSize);
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
