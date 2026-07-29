@@ -59,10 +59,7 @@ export async function initializeCore() {
 		return;
 	}
 
-	// First, so nothing that can toast runs unregistered — including the
-	// startup-error toast a few lines down. Lives here rather than in the
-	// deprecated `@/app/composables/useToast` shim so retiring that shim cannot
-	// silently degrade toasts to a no-op notifier (N8N-104).
+	// Register toast notifier first, so nothing that can toast runs unregistered
 	registerToastNotifier();
 
 	const settingsStore = useSettingsStore();
