@@ -71,28 +71,6 @@ describe('TagService', () => {
 		});
 	});
 
-	describe('findByNames', () => {
-		test('returns existing tags by name, preserving input order', async () => {
-			const tags = [
-				makeTag({ id: 'tag-1', name: 'production' }),
-				makeTag({ id: 'tag-2', name: 'critical' }),
-			];
-			tagRepository.find.mockResolvedValue(tags);
-
-			const result = await tagService.findByNames(['critical', 'production', 'missing']);
-
-			expect(result.map((t) => t.name)).toEqual(['critical', 'production']);
-			expect(tagRepository.save).not.toHaveBeenCalled();
-		});
-
-		test('returns empty for whitespace-only inputs without querying', async () => {
-			const result = await tagService.findByNames(['', '   ']);
-
-			expect(result).toEqual([]);
-			expect(tagRepository.find).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('findOrCreateByNames', () => {
 		test('returns empty array for empty input', async () => {
 			const result = await tagService.findOrCreateByNames([]);
@@ -121,24 +99,33 @@ describe('TagService', () => {
 			expect(tagRepository.save).not.toHaveBeenCalled();
 		});
 
-		test('deduplicates the input case-insensitively before lookup', async () => {
+		test('trims names and collapses exact duplicates before lookup', async () => {
 			tagRepository.find.mockResolvedValue([]);
-			const createdTag = makeTag({ id: 'tag-new', name: 'Prod' });
+			const createdTag = makeTag({ id: 'tag-new', name: 'prod' });
 			tagRepository.create.mockReturnValue(createdTag);
 			tagRepository.save.mockResolvedValue(createdTag);
 
-			const result = await tagService.findOrCreateByNames(['Prod', 'prod', 'PROD']);
+			const result = await tagService.findOrCreateByNames(['  prod ', 'prod']);
 
 			expect(tagRepository.find).toHaveBeenCalledTimes(1);
 			const findArg = tagRepository.find.mock.calls[0][0] as unknown as {
 				where: { name: FindOperator<string[]> };
 			};
 			expect(findArg.where.name).toBeInstanceOf(FindOperator);
-			expect(findArg.where.name.value).toEqual(['Prod']);
-			// One create using the first-seen original case.
+			expect(findArg.where.name.value).toEqual(['prod']);
 			expect(tagRepository.save).toHaveBeenCalledTimes(1);
-			expect(tagRepository.create).toHaveBeenCalledWith({ name: 'Prod' });
-			expect(result.map((t) => t.name)).toEqual(['Prod']);
+			expect(result.map((t) => t.name)).toEqual(['prod']);
+		});
+
+		test('creates case-variant names as distinct tags', async () => {
+			tagRepository.find.mockResolvedValue([]);
+			tagRepository.create.mockImplementation((attrs) => makeTag(attrs as Partial<TagEntity>));
+			tagRepository.save.mockImplementation(async (tag) => tag as TagEntity);
+
+			const result = await tagService.findOrCreateByNames(['Prod', 'prod']);
+
+			expect(tagRepository.save).toHaveBeenCalledTimes(2);
+			expect(result.map((t) => t.name)).toEqual(['Prod', 'prod']);
 		});
 
 		test('matches the DB case-sensitively (parity with REST tags API)', async () => {

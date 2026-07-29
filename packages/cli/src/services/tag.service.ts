@@ -10,24 +10,6 @@ type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : 
 
 type Action = 'Create' | 'Update';
 
-// Trim and dedupe input names case-insensitively, keeping the first-seen case.
-// Inputs are matched against the DB exactly, so this only collapses obvious
-// duplicates like ['Prod','prod','PROD'] within a single batch — it does NOT
-// change the case-sensitive contract that the REST tag API exposes.
-function dedupeNamesPreservingCase(names: string[]): string[] {
-	const seen = new Set<string>();
-	const result: string[] = [];
-	for (const raw of names) {
-		const trimmed = raw.trim();
-		if (trimmed.length === 0) continue;
-		const key = trimmed.toLowerCase();
-		if (seen.has(key)) continue;
-		seen.add(key);
-		result.push(trimmed);
-	}
-	return result;
-}
-
 // n8n supports postgres (SQLSTATE 23505) and sqlite (SQLITE_CONSTRAINT_UNIQUE,
 // or the older SQLITE_CONSTRAINT with a "UNIQUE constraint" message).
 function isUniqueConstraintViolation(error: unknown): error is QueryFailedError {
@@ -125,11 +107,6 @@ export class TagService {
 		return await this.tagRepository.findMany(ids);
 	}
 
-	/**
-	 * Exact (case-sensitive) name lookup. Unlike `findByNames`, the input list
-	 * is passed through verbatim: case-variant names are distinct tags and must
-	 * all be looked up.
-	 */
 	async getByNames(names: string[]): Promise<TagEntity[]> {
 		if (names.length === 0) return [];
 		return await this.tagRepository.findManyByName(names);
@@ -163,31 +140,15 @@ export class TagService {
 	}
 
 	/**
-	 * Look up tags by name; never creates. Input is deduped case-insensitively
-	 * but matched against the DB exactly (REST tag API contract).
-	 */
-	async findByNames(names: string[]): Promise<TagEntity[]> {
-		const uniqueNames = dedupeNamesPreservingCase(names);
-		if (uniqueNames.length === 0) return [];
-
-		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
-		const existingByName = new Map(existing.map((t) => [t.name, t]));
-
-		const result: TagEntity[] = [];
-		for (const name of uniqueNames) {
-			const hit = existingByName.get(name);
-			if (hit) result.push(hit);
-		}
-		return result;
-	}
-
-	/**
-	 * Resolve names to tag entities, creating any missing. Input is deduped
-	 * case-insensitively (first-seen case wins) but matched against the DB
-	 * exactly. Race-safe against concurrent same-name creates.
+	 * Resolve names to tag entities, creating any missing. Names are trimmed
+	 * and exact duplicates collapsed, matching how tags are stored; case-variant
+	 * names resolve as distinct tags. Race-safe against concurrent same-name
+	 * creates.
 	 */
 	async findOrCreateByNames(names: string[]): Promise<TagEntity[]> {
-		const uniqueNames = dedupeNamesPreservingCase(names);
+		const uniqueNames = [
+			...new Set(names.map((name) => name.trim()).filter((name) => name.length > 0)),
+		];
 		if (uniqueNames.length === 0) return [];
 
 		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
