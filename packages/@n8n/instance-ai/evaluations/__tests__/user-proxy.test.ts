@@ -526,6 +526,244 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
+	// -------------------------------------------------------------------------
+	// TRUST-349 — setup-wizard credential slots (nodeCredentialsJson)
+	// -------------------------------------------------------------------------
+
+	it('fills both parameters and a credential slot on a mixed wizard card when engaged', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: JSON.stringify({ 'Post Standup Reminder': { channelId: 'general' } }),
+			nodeCredentialsJson: JSON.stringify({ 'Post Standup Reminder': { slackApi: 'cred-team' } }),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post a standup reminder to Slack every morning.' },
+				{
+					role: 'user',
+					text: '[Set up the Slack credential now, using Team Slack, on the setup card.]',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-mixed', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post Standup Reminder',
+					editableParameters: [{ name: 'channelId' }],
+				},
+				{
+					nodeId: 'n1',
+					nodeName: 'Post Standup Reminder',
+					credentialType: 'slackApi',
+					existingCredentials: [
+						{ id: 'cred-personal', name: 'Personal Slack' },
+						{ id: 'cred-team', name: 'Team Slack' },
+					],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeParameters).toEqual({
+				'Post Standup Reminder': { channelId: 'general' },
+			});
+			expect(response.nodeCredentials).toEqual({
+				'Post Standup Reminder': { slackApi: 'cred-team' },
+			});
+		}
+	});
+
+	it('routes a credential-only wizard card to the agent when engaged, instead of auto-declining', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'cred-team' } }),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now, using Team Slack.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-cred-only', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(agent.callCount).toBe(1);
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toEqual({ 'Post To Slack': { slackApi: 'cred-team' } });
+		}
+	});
+
+	it('still auto-declines a credential-only wizard card with no governing stage direction', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'Post to Slack every morning.' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-cred-only-default', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(agent.callCount).toBe(0);
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+	});
+
+	it('maps different credential types for two different nodes on the same wizard card', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({
+				'Get Notion Pages': { notionApi: 'cred-notion' },
+				'Post To Slack': { slackApi: 'cred-team' },
+			}),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Summarize Notion pages to Slack.' },
+				{ role: 'user', text: '[Set up both the Notion and Slack credentials now.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-two-nodes', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Get Notion Pages',
+					credentialType: 'notionApi',
+					existingCredentials: [{ id: 'cred-notion', name: 'Notion' }],
+				},
+				{
+					nodeId: 'n2',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toEqual({
+				'Get Notion Pages': { notionApi: 'cred-notion' },
+				'Post To Slack': { slackApi: 'cred-team' },
+			});
+		}
+	});
+
+	it('drops a nodeCredentialsJson entry naming a node not on the setup card', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Unknown Node': { slackApi: 'cred-team' } }),
+		});
+		const logger = {
+			warn: vi.fn(),
+			info: vi.fn(),
+			verbose: vi.fn(),
+			success: vi.fn(),
+			error: vi.fn(),
+			isVerbose: false,
+		};
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-unknown-node', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toBeUndefined();
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it('drops a nodeCredentialsJson entry naming a credential id not in that node/type existingCredentials', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'cred-bogus' } }),
+		});
+		const logger = {
+			warn: vi.fn(),
+			info: vi.fn(),
+			verbose: vi.fn(),
+			success: vi.fn(),
+			error: vi.fn(),
+			isVerbose: false,
+		};
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-bogus-id', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toBeUndefined();
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
 	it('handles credential events deterministically without invoking the agent', async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
@@ -619,6 +857,121 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		if (response.kind === 'credentialSelection') {
 			expect(response.credentials).toEqual({ notionApi: 'cred-notion' });
 		}
+	});
+
+	it('resolves manual selection to a specific credential by existingCredentialId when several match the same type', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'manual',
+			existingCredentialId: 'cred-team',
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the credential now, using the Team Slack one.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-disambiguate', [
+				{
+					credentialType: 'slackApi',
+					existingCredentials: [
+						{ id: 'cred-personal', name: 'Personal Slack' },
+						{ id: 'cred-team', name: 'Team Slack' },
+					],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({ slackApi: 'cred-team' });
+		}
+	});
+
+	it('declines manual selection when existingCredentialId does not match any listed credential', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'manual',
+			existingCredentialId: 'cred-does-not-exist',
+		});
+		const logger = {
+			warn: vi.fn(),
+			info: vi.fn(),
+			verbose: vi.fn(),
+			success: vi.fn(),
+			error: vi.fn(),
+			isVerbose: false,
+		};
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-bad-id', [
+				{
+					credentialType: 'slackApi',
+					existingCredentials: [
+						{ id: 'cred-personal', name: 'Personal Slack' },
+						{ id: 'cred-team', name: 'Team Slack' },
+					],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it('declines manual selection when several candidates exist and no existingCredentialId disambiguates', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
+		const logger = {
+			warn: vi.fn(),
+			info: vi.fn(),
+			verbose: vi.fn(),
+			success: vi.fn(),
+			error: vi.fn(),
+			isVerbose: false,
+		};
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-ambiguous', [
+				{
+					credentialType: 'slackApi',
+					existingCredentials: [
+						{ id: 'cred-personal', name: 'Personal Slack' },
+						{ id: 'cred-team', name: 'Team Slack' },
+					],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+		expect(logger.warn).toHaveBeenCalled();
 	});
 
 	it('declines manual selection when the requested type has no existing credential', async () => {

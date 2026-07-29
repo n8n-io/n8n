@@ -373,32 +373,52 @@ function extractRequestId(event: CapturedEvent): string | undefined {
 	return getString(event.data, 'requestId');
 }
 
+/**
+ * Workflow setup wizard shows one `setupRequests[]` entry per (node,
+ * credentialType) combo, plus a separate param-only entry — so a node needing
+ * both a credential and parameter fixes can appear across multiple entries.
+ * Group by node name/id and merge each field in as encountered.
+ */
 function extractSetupWizardParseContext(event: CapturedEvent): SetupWizardParseContext | undefined {
 	const payload = getEventPayload(event);
 	if (!Array.isArray(payload.setupRequests)) return undefined;
 
-	const nodes = payload.setupRequests.flatMap((item) => {
-		if (!isRecord(item)) return [];
+	const byNodeName = new Map<string, SetupWizardParseContext['nodes'][number]>();
+
+	for (const item of payload.setupRequests) {
+		if (!isRecord(item)) continue;
 		const node = isRecord(item.node) ? item.node : undefined;
 		const nodeName = (node ? getString(node, 'name') : undefined) ?? getString(item, 'nodeName');
-		if (!nodeName) return [];
+		if (!nodeName) continue;
 
 		const nodeId = (node ? getString(node, 'id') : undefined) ?? getString(item, 'nodeId');
+		const existing = byNodeName.get(nodeName) ?? {
+			...(nodeId ? { nodeId } : {}),
+			nodeName,
+			parameterNames: [],
+			credentialRequests: [],
+		};
+
 		const parameterNames = [
+			...existing.parameterNames,
 			...extractParameterNames(item, 'editableParameters'),
 			...extractParameterNames(item, 'parameterRequests'),
 			...extractParameterIssueNames(item),
 		];
+		existing.parameterNames = [...new Set(parameterNames)];
 
-		return [
-			{
-				...(nodeId ? { nodeId } : {}),
-				nodeName,
-				parameterNames: [...new Set(parameterNames)],
-			},
-		];
-	});
+		const credentialType = getString(item, 'credentialType');
+		if (credentialType) {
+			existing.credentialRequests = [
+				...existing.credentialRequests,
+				{ credentialType, existingCredentials: extractExistingCredentials(item) },
+			];
+		}
 
+		byNodeName.set(nodeName, existing);
+	}
+
+	const nodes = [...byNodeName.values()];
 	return nodes.length > 0 ? { nodes } : undefined;
 }
 
@@ -413,19 +433,22 @@ function extractCredentialSetupContext(
 		const credentialType = getString(item, 'credentialType');
 		if (!credentialType) return [];
 
-		const existingCredentials = Array.isArray(item.existingCredentials)
-			? item.existingCredentials.flatMap((cred) => {
-					if (!isRecord(cred)) return [];
-					const id = getString(cred, 'id');
-					const name = getString(cred, 'name');
-					return id && name ? [{ id, name }] : [];
-				})
-			: [];
-
-		return [{ credentialType, existingCredentials }];
+		return [{ credentialType, existingCredentials: extractExistingCredentials(item) }];
 	});
 
 	return requests.length > 0 ? { requests } : undefined;
+}
+
+function extractExistingCredentials(
+	item: Record<string, unknown>,
+): Array<{ id: string; name: string }> {
+	if (!Array.isArray(item.existingCredentials)) return [];
+	return item.existingCredentials.flatMap((cred) => {
+		if (!isRecord(cred)) return [];
+		const id = getString(cred, 'id');
+		const name = getString(cred, 'name');
+		return id && name ? [{ id, name }] : [];
+	});
 }
 
 function extractParameterNames(item: Record<string, unknown>, key: string): string[] {

@@ -18,13 +18,17 @@ export function tryDeterministicConfirmationResponse(
 
 	const payload = getEventPayload(event);
 
-	// Setup wizard with credentials-only requests: skip. The eval has no
-	// credentials and applying an empty payload loops the agent ("partial 0/N").
+	// Setup wizard with credentials-only requests: skip by default (the eval
+	// has no credentials to apply and an empty payload just loops the agent,
+	// "partial 0/N") — unless a stage direction asks the user to engage with
+	// this card (TRUST-349's `allowCredentialEngagement`), in which case fall
+	// through so the LLM's apply_setup_wizard can populate nodeCredentialsJson.
 	// Mixed (credential + parameter issues, or parameter-only) → LLM fills params.
 	if (Array.isArray(payload.setupRequests)) {
 		if (
 			payload.setupRequests.length > 0 &&
-			payload.setupRequests.every(isCredentialOnlySetupRequest)
+			payload.setupRequests.every(isCredentialOnlySetupRequest) &&
+			!options?.allowCredentialEngagement
 		) {
 			return { kind: 'approval', approved: false };
 		}

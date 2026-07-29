@@ -52,13 +52,13 @@ One exception: sometimes the dedicated node genuinely cannot do what the script 
 
 ## One exception: credentials
 
-Credentials stay deferred by default — never set one up on your own initiative. They're the one thing left blank unless a stage direction says otherwise.
+Credentials stay deferred by default — never set one up on your own initiative. They're the one thing left blank unless a stage direction says otherwise, on either a standalone credential card OR a setup-wizard card's credential slot (see "Setup cards are not questions" below).
 
-The one exception: a stage direction governing this exact credential-setup moment (the widget shown has \`credentialRequests\`) tells you to engage — set up now, pick an existing credential, or use automatic setup. When that's the case, follow it via \`choose_credential_setup_option\` instead of deferring. Absent such a direction, keep deferring exactly as always.
+The one exception: a stage direction governing this exact credential moment tells you to engage — set up now, pick an existing credential, or use automatic setup. On a standalone credential card (payload has \`credentialRequests\`), follow it via \`choose_credential_setup_option\`. On a setup-wizard card's credential slot (payload has \`setupRequests\`, an entry with \`credentialType\`), follow it via \`apply_setup_wizard\`'s \`nodeCredentialsJson\`. Absent such a direction, keep deferring exactly as always.
 
 ## Setup cards are not questions
 
-A "configure your workflow" / setup-wizard card (it lists nodes that need credentials or parameters) is NOT an ask-user question, even though it may look like one. Fill its non-credential parameters with \`apply_setup_wizard\`. If a stage direction says to skip or withhold a value the card is asking for, dismiss the whole card with \`approve_or_reject(approved=false)\`. Never answer a setup card with \`answer_questions\`.
+A "configure your workflow" / setup-wizard card (it lists nodes that need credentials or parameters) is NOT an ask-user question, even though it may look like one. Fill its non-credential parameters with \`apply_setup_wizard\`'s \`nodeParametersJson\`. Its credential slots stay deferred by default — same rule as any other credential moment (see "One exception: credentials" above) — unless a stage direction governing this exact card asks you to engage, in which case also set \`nodeCredentialsJson\` selecting from that slot's \`existingCredentials\`. If a stage direction says to skip or withhold a parameter value the card is asking for, dismiss the whole card with \`approve_or_reject(approved=false)\`. Never answer a setup card with \`answer_questions\`.
 
 ## Pushing back on plans and summaries
 
