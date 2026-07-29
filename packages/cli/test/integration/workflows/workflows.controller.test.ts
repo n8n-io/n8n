@@ -3274,7 +3274,7 @@ describe('PATCH /workflows/:workflowId', () => {
 					position: [240, 300],
 				},
 				{
-					id: 'uuid-1234',
+					id: 'uuid-5678',
 					parameters: {},
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
@@ -3311,6 +3311,70 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(newVersion).not.toBeNull();
 		expect(newVersion!.connections).toEqual(payload.connections);
 		expect(newVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	test('should allow a metadata-only update of a workflow whose stored nodes share a node id', async () => {
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						parameters: {},
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [240, 300],
+					},
+					{
+						id: 'uuid-1234',
+						parameters: {},
+						name: 'Cron',
+						type: 'n8n-nodes-base.cron',
+						typeVersion: 1,
+						position: [400, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'name updated' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.name).toBe('name updated');
+	});
+
+	test('should reject an update that sends nodes sharing a node id', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Duplicate node id "uuid-1234"');
 	});
 
 	test('should broadcast workflow update to collaborators', async () => {
