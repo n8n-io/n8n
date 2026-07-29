@@ -47,6 +47,16 @@ export class TagService {
 		return await savedTag;
 	}
 
+	/**
+	 * Re-keys an existing tag to a new id, moving its workflow and folder
+	 * mappings along. Does not run the `tag.beforeUpdate`/`afterUpdate`
+	 * external hooks: those model name edits, and no id-change hook contract
+	 * exists.
+	 */
+	async reconcileTagId(oldId: string, newId: string) {
+		await this.tagRepository.reconcileTagId(oldId, newId);
+	}
+
 	async delete(id: string) {
 		await this.externalHooks.run('tag.beforeDelete', [id]);
 
