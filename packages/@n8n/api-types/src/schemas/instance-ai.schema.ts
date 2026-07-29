@@ -323,6 +323,10 @@ export const credentialSetupHintSchema = z.object({
 	/** Status codes the probe must not treat as rejection (only relaxes the
 	 *  401/403 default — codes outside that pair never fail a probe anyway). */
 	acceptedStatusCodes: z.array(z.number().int()).max(10).optional(),
+	/** Host of the API the recipe targets, derived server-side from the node
+	 *  being set up (never model-supplied). Stamped into the created credential
+	 *  so setup surfaces only offer it to nodes calling the same service. */
+	serviceHost: z.string().optional(),
 });
 export type InstanceAiCredentialSetupHint = z.infer<typeof credentialSetupHintSchema>;
 

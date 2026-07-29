@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
-import { N8N_CONNECT_DISPLAY_NAME } from './workflows/credential-utils';
+import { extractServiceHost, N8N_CONNECT_DISPLAY_NAME } from './workflows/credential-utils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -98,15 +98,13 @@ export const setupHintField = z
 			.string()
 			.optional()
 			.describe(
-				'Side-effect-free endpoint that answers an authenticated GET, used to verify the credential on save and on later retests. Must be a documented account/profile/me-style endpoint that can never trigger billable work — never a resource or action URL. Omit when the provider documents none.',
+				"Side-effect-free endpoint that answers an authenticated GET, used to verify the credential on save and on later retests. Prefer a documented account/profile/me-style endpoint; when the provider has none, use another documented read-only GET that rejects invalid keys (usage, quota, list/discovery). Never a resource or action URL, never anything that can trigger billable work, never one of the workflow's own endpoints. Omit only when the provider documents no such endpoint.",
 			),
-		acceptedStatusCodes: z
-			.array(z.number().int())
-			.max(10)
-			.optional()
-			.describe(
-				'Almost always omit. Only when the provider is documented to answer 401 or 403 to a valid authenticated GET (e.g. auth scoped to POST), list that code (401/403 only) so the auth probe does not misread it as rejection. Never list success codes — anything outside 401/403 can never fail the probe.',
-			),
+		// acceptedStatusCodes is deliberately NOT model-facing: models pad the field
+		// regardless of instructions ([200] junk at best, [401] — which blinds the
+		// probe to real rejections — at worst). The credential's own field remains
+		// for the rare service that answers 401/403 to a valid GET; users can set it
+		// in the credential's raw view.
 	})
 	.describe(
 		`Recipe for creating a "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" credential so the user only has to paste their secret(s) — the rest is pre-filled. Provide it whenever the service has no dedicated credential type and its auth is expressible as header/query/body values; ground it in the provider's documentation, never guess the format.`,
@@ -128,11 +126,34 @@ export const TEMPLATABLE_PLAIN_AUTH_TYPES = new Set([
 const TEMPLATE_MARKER_REGEX = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
 /**
+ * Reduce a (possibly expression-typed) URL to a comparable `origin + pathname`
+ * prefix: strips the `=` expression marker, cuts at the first `{{`, drops the
+ * query string and trailing slashes. Returns undefined for non-http values.
+ */
+function normalizeUrlForComparison(raw: unknown): string | undefined {
+	if (typeof raw !== 'string') return undefined;
+	const plain = (raw.startsWith('=') ? raw.slice(1) : raw).split('{{')[0].trim();
+	if (!/^https?:\/\//i.test(plain)) return undefined;
+	try {
+		const url = new URL(plain);
+		return `${url.origin}${url.pathname}`.replace(/\/+$/, '');
+	} catch {
+		return undefined;
+	}
+}
+
+/**
  * A recipe whose template and placeholders disagree can't render a usable
  * setup form — collect the problems so the model corrects the recipe instead
- * of the card silently degrading.
+ * of the card silently degrading. `nodeUrls` (URLs of the nodes being set up)
+ * additionally rejects a testUrl that points at one of the workflow's own
+ * endpoints: the probe GETs it, so an action URL yields a meaningless verdict
+ * at best and a billable request at worst.
  */
-export function findSetupHintProblems(hint: InstanceAiCredentialSetupHint): string[] {
+export function findSetupHintProblems(
+	hint: InstanceAiCredentialSetupHint,
+	options: { nodeUrls?: unknown[] } = {},
+): string[] {
 	const markers = new Set<string>();
 	const collect = (value: unknown): void => {
 		if (typeof value === 'string') {
@@ -176,6 +197,22 @@ export function findSetupHintProblems(hint: InstanceAiCredentialSetupHint): stri
 	}
 	for (const name of defined) {
 		if (!markers.has(name)) problems.push(`placeholder "${name}" is never used in the template`);
+	}
+	// docsUrl quality (dashboard vs docs page) is deliberately NOT validated:
+	// where a service keeps its key page is research the model must do — the
+	// schema description states the contract, and any URL-shape heuristic here
+	// is a frozen guess with real false positives (developer portals and
+	// logged-in docs pages ARE the key source for some providers).
+	const normalizedTestUrl = normalizeUrlForComparison(hint.testUrl);
+	if (normalizedTestUrl) {
+		const collision = (options.nodeUrls ?? [])
+			.map(normalizeUrlForComparison)
+			.some((nodeUrl) => nodeUrl !== undefined && nodeUrl === normalizedTestUrl);
+		if (collision) {
+			problems.push(
+				`testUrl "${hint.testUrl}" is one of the workflow's own endpoints — the probe sends a GET, so it must be a separate documented read-only endpoint (account/usage/list); omit testUrl if the provider documents none`,
+			);
+		}
 	}
 	return problems;
 }
@@ -545,7 +582,7 @@ async function handleSearchTypes(
 	if (results.length === 0) {
 		return {
 			results,
-			guidance: `No dedicated credential type matches. If the service's auth fits header/query/body values, use "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" and provide a credentialHints recipe during setup (see the workflow-builder skill). This includes bearer tokens: when the provider documents \`Authorization: Bearer <token>\`, do NOT use httpBearerAuth — template it as {"headers":{"Authorization":"Bearer {{api_key}}"}}. Fall back to other generic types only for what a template cannot express (basic auth's base64 pair, digest, OAuth flows).`,
+			guidance: `No dedicated credential type matches. If the service's auth fits header/query/body values, use "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" and provide a credentialHints recipe during setup (see the workflow-builder skill). This includes bearer tokens: when the provider documents \`Authorization: Bearer <token>\`, do NOT use httpBearerAuth — template it as {"headers":{"Authorization":"Bearer {{api_key}}"}}. Fall back to other generic types for what a template cannot express (basic auth's base64 pair, digest, OAuth flows) — or when the user explicitly asks for a specific plain type: an explicit user choice wins (setup accepts it with allowPlainGenericAuth: true).`,
 		};
 	}
 
@@ -596,16 +633,30 @@ async function handleSetup(
 					suggestedName?: string;
 					setupHint?: InstanceAiCredentialSetupHint;
 				}) => {
-					const existing = await context.credentialService.list({
-						type: req.credentialType,
-						...(context.projectId ? { projectId: context.projectId } : {}),
-					});
+					// Templated Custom Auth is shared by every service, and this card
+					// has no node context to assert a candidate targets the same
+					// service — offer none (fail closed) instead of another service's
+					// key. The workflow setup path offers same-service matches.
+					const existing =
+						req.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+							? []
+							: await context.credentialService.list({
+									type: req.credentialType,
+									...(context.projectId ? { projectId: context.projectId } : {}),
+								});
+					// This card has no node context, so the service identity stamped
+					// into the created credential comes from the recipe's own test
+					// endpoint (the API host). Absent both, the credential stays
+					// untagged and is never offered automatically later.
+					const serviceHost = req.setupHint ? extractServiceHost(req.setupHint.testUrl) : undefined;
 					return {
 						credentialType: req.credentialType,
 						reason: req.reason ?? `Required for ${req.credentialType}`,
 						existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
 						...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
-						...(req.setupHint ? { setupHint: req.setupHint } : {}),
+						...(req.setupHint
+							? { setupHint: { ...req.setupHint, ...(serviceHost ? { serviceHost } : {}) } }
+							: {}),
 					};
 				},
 			),

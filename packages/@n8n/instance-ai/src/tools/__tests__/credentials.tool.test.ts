@@ -777,9 +777,49 @@ describe('credentials tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
+			// The service identity is stamped from the recipe's test endpoint —
+			// this card has no node context to derive it from.
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					credentialRequests: [expect.objectContaining({ setupHint })],
+					credentialRequests: [
+						expect.objectContaining({ setupHint: { ...setupHint, serviceHost: 'fal.run' } }),
+					],
+				}),
+			);
+		});
+
+		it('should offer no existing credentials for Templated Custom Auth', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-pexels', name: 'Pexels API', type: 'httpTemplatedCustomAuth' },
+			]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							reason: 'For calling the Apify API',
+							setupHint: {
+								template: { headers: { Authorization: 'Bearer {{api_token}}' } },
+								placeholders: [{ name: 'api_token', title: 'API token' }],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			// This card has no node context to assert a candidate targets the same
+			// service, so the shared type must not surface stored credentials at all.
+			expect(context.credentialService.list).not.toHaveBeenCalled();
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					credentialRequests: [expect.objectContaining({ existingCredentials: [] })],
 				}),
 			);
 		});

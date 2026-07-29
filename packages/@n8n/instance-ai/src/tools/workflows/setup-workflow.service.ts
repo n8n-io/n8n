@@ -20,8 +20,10 @@ import {
 	AI_GATEWAY_CREDENTIAL,
 	N8N_CONNECT_DISPLAY_NAME,
 	assignCredentialToNode,
+	extractServiceHost,
 	isAiGatewayManagedCredential,
 	resolveCredentialForApply,
+	serviceHostsMatch,
 	toSetupNodeCredential,
 	type SetupNodeCredential,
 } from './credential-utils';
@@ -308,6 +310,32 @@ interface CredentialState {
 }
 
 /**
+ * Same-service filter for Templated Custom Auth candidates: the type is shared
+ * by every service, so a credential is offered only when the host it was
+ * created for (its stored `serviceHost`) matches the node's own URL host.
+ * Untagged credentials — and every candidate when the node host can't be
+ * derived — are dropped: fail closed rather than offer another service's key.
+ * Same-service reuse survives; anything else goes through "create new".
+ */
+async function filterTemplatedCredentialsByServiceHost(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	candidates: Array<{ id: string; name: string }>,
+): Promise<Array<{ id: string; name: string }>> {
+	if (candidates.length === 0) return candidates;
+	const parameters = node.parameters as Record<string, unknown> | undefined;
+	const nodeHost = extractServiceHost(parameters?.url);
+	if (!nodeHost || !context.credentialService.getTemplatedCredentialHosts) return [];
+	const hosts = await context.credentialService
+		.getTemplatedCredentialHosts(candidates.map((c) => c.id))
+		.catch((): Record<string, string | null> => ({}));
+	return candidates.filter((candidate) => {
+		const host = hosts[candidate.id];
+		return typeof host === 'string' && host !== '' && serviceHostsMatch(host, nodeHost);
+	});
+}
+
+/**
  * For a single credential type, list existing credentials (cached + workflow-scoped),
  * decide whether to auto-apply the sole candidate, and test the resolved credential.
  */
@@ -331,7 +359,16 @@ async function resolveCredentialState(
 		cache?.lists.set(cacheKey, listPromise);
 	}
 	const sortedCreds = await listPromise;
-	const existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
+	let existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
+	if (credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+		// ponytail: per-node lookup, no cache — templated candidates are few;
+		// add a per-id cache if a workflow ever carries dozens of them.
+		existingCredentials = await filterTemplatedCredentialsByServiceHost(
+			context,
+			node,
+			existingCredentials,
+		);
+	}
 
 	const existingOnNode = node.credentials?.[credentialType];
 	const existingCredentialId =
@@ -362,7 +399,10 @@ async function resolveCredentialState(
 	// Fall back to auto-applying the sole stored credential when n8n credits
 	// is not available. With multiple candidates, picking the first is a
 	// silent guess — surface the list so the setup wizard can prompt.
-	if (!isAutoApplied) {
+	// Templated Custom Auth never auto-applies: candidates are host-filtered
+	// to the node's service above, but silently wiring the shared type stays
+	// off — the card must ask (a sole match arrives preselected, one click).
+	if (!isAutoApplied && credentialType !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
 		isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
 	}
 
@@ -660,7 +700,13 @@ export function applyCredentialHints(
 			hints.find((h) => h.nodeName === request.node.name) ?? hints.find((h) => !h.nodeName);
 		if (!hint) continue;
 		const { nodeName: _nodeName, ...setupHint } = hint;
-		request.setupHint = setupHint;
+		// Service identity is derived from the node being set up (falling back
+		// to the recipe's own test endpoint), never model-supplied. It is
+		// stamped into the created credential so setup surfaces only offer it
+		// to same-service nodes later.
+		const serviceHost =
+			extractServiceHost(request.node.parameters?.url) ?? extractServiceHost(setupHint.testUrl);
+		request.setupHint = { ...setupHint, ...(serviceHost ? { serviceHost } : {}) };
 	}
 }
 

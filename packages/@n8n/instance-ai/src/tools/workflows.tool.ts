@@ -125,7 +125,7 @@ const setupAction = z.object({
 		)
 		.optional()
 		.describe(
-			'Recipes for the Simplified Custom Auth credentials the user will create during setup: the card pre-fills the template and asks only for the placeholder values. Provide one per templated credential whose provider auth scheme you know — ground it in the provider documentation, never guess.',
+			'Recipes for the Simplified Custom Auth credentials the user will create during setup: the card pre-fills the template and asks only for the placeholder values. Provide one per templated credential. REQUIRED before composing: load the `credential-recipe-research` skill and execute its lookup procedure — the template, docsUrl and testUrl must come from provider pages fetched there, never from memory.',
 		),
 	allowPlainGenericAuth: z
 		.boolean()
@@ -752,8 +752,13 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
+		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+
+		// Validated against the workflow's node URLs so a recipe can't set one of
+		// the workflow's own (action) endpoints as its probe testUrl.
+		const nodeUrls = setupRequests.map((request) => request.node.parameters?.url);
 		const hintProblems = (input.credentialHints ?? []).flatMap((hint) =>
-			findSetupHintProblems(hint).map((problem) =>
+			findSetupHintProblems(hint, { nodeUrls }).map((problem) =>
 				hint.nodeName ? `${hint.nodeName}: ${problem}` : problem,
 			),
 		);
@@ -765,7 +770,6 @@ async function handleSetup(
 			};
 		}
 
-		const setupRequests = await analyzeWorkflow(context, input.workflowId);
 		applyCredentialHints(setupRequests, input.credentialHints);
 
 		// A provider documenting `Authorization: Bearer <token>` reliably lures the
