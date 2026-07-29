@@ -12,10 +12,13 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
 import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
+import { getTriggerDetails } from '../tools/webhook-utils';
 
 vi.mock('../tools/webhook-utils', () => ({
 	getTriggerDetails: vi.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),
 }));
+
+const getTriggerDetailsMock = vi.mocked(getTriggerDetails);
 
 describe('get-workflow-details MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -161,6 +164,55 @@ describe('get-workflow-details MCP tool', () => {
 				expect.objectContaining({ includeTags: true }),
 			);
 			expect(payload.workflow.tags).toEqual(tags);
+		});
+
+		test('passes triggers MCP cannot execute directly to getTriggerDetails', async () => {
+			getTriggerDetailsMock.mockClear();
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Gmail Trigger',
+						type: 'n8n-nodes-base.gmailTrigger',
+						typeVersion: 1.4,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					},
+					{
+						id: 'node-2',
+						name: 'Disabled Trigger',
+						type: 'n8n-nodes-base.telegramTrigger',
+						typeVersion: 1,
+						position: [100, 0],
+						disabled: true,
+						parameters: {},
+					},
+				],
+			});
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			const [, supportedTriggers, unsupportedTriggers] = getTriggerDetailsMock.mock.calls[0];
+			expect(supportedTriggers).toEqual([]);
+			// Only the enabled unsupported trigger is passed; the disabled one is excluded.
+			expect(unsupportedTriggers.map((t) => t.name)).toEqual(['Gmail Trigger']);
 		});
 
 		test('propagates errors from workflow validation', async () => {
