@@ -8,8 +8,23 @@ import { isEventBindingElementAttribute } from '../../utils';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
 
+/**
+ * `ElSelect.props` is typed as `any`, and spreading `any` collapses this whole
+ * object literal to `any` — which is why the emitted declarations published no
+ * prop names for this component. Casting the spread to element-plus' own
+ * resolved prop types restores the names. The cast is erased at build time, so
+ * the runtime prop declarations remain exactly the spread: every prop
+ * element-plus accepts is still declared here, and still forwarded.
+ */
+type ElSelectPropsOptions = {
+	[K in Exclude<
+		keyof InnerSelectRef['$props'],
+		`on${string}` | 'key' | 'ref' | 'ref_for' | 'ref_key' | 'class' | 'style'
+	>]-?: { type: PropType<InnerSelectRef['$props'][K]> };
+};
+
 const props = defineProps({
-	...ElSelect.props,
+	...(ElSelect.props as ElSelectPropsOptions),
 	modelValue: {},
 	size: {
 		type: String as PropType<SelectSize>,

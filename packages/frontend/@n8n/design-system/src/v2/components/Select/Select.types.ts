@@ -10,7 +10,12 @@ import type {
 
 type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
 
-export type SelectItemProps = {
+/**
+ * The props `N8nSelect2Item` declares. Kept free of the index signature below
+ * so the emitted declarations name them — a component typed with an index
+ * signature publishes no prop names at all.
+ */
+export type SelectItemBaseProps = {
 	label?: string;
 	/**
 	 * The item type.
@@ -23,6 +28,13 @@ export type SelectItemProps = {
 	icon?: IconName;
 	class?: VueCssClass;
 	strokeWidth?: number;
+};
+
+/**
+ * An entry in `N8nSelect2`'s `items`. Open by design: callers attach their own
+ * payload and read it back in the item slots.
+ */
+export type SelectItemProps = SelectItemBaseProps & {
 	[key: string]: unknown;
 };
 

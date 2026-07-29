@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { SelectItem, SelectItemIndicator, SelectItemText, type AcceptableValue } from 'reka-ui';
+// Aliased: this SFC is itself named `SelectItem`, so an unaliased import leaves
+// `<SelectItem>` in the template ambiguous with the component's own
+// self-reference. Runtime always picked reka-ui's, but the type checker resolved
+// it to this component's own props during declaration emit.
+import {
+	SelectItem as RekaSelectItem,
+	SelectItemIndicator,
+	SelectItemText,
+	type AcceptableValue,
+} from 'reka-ui';
 import { computed, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import type { SelectItemProps, SelectValue } from './Select.types';
+import type { SelectItemBaseProps, SelectValue } from './Select.types';
 
 defineOptions({ inheritAttrs: false });
-const props = defineProps<SelectItemProps>();
+const props = defineProps<SelectItemBaseProps>();
 const $style = useCssModule();
 
 function isAcceptable(value?: SelectValue) {
@@ -25,7 +34,7 @@ const trailingProps = computed(() => ({
 </script>
 
 <template>
-	<SelectItem
+	<RekaSelectItem
 		:disabled="props.disabled"
 		:value="isAcceptable(props.value)"
 		:class="props.class"
@@ -45,7 +54,7 @@ const trailingProps = computed(() => ({
 		<SelectItemIndicator as-child>
 			<Icon icon="check" :class="$style.itemIndicator" />
 		</SelectItemIndicator>
-	</SelectItem>
+	</RekaSelectItem>
 </template>
 
 <style module>
