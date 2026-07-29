@@ -390,8 +390,15 @@ export class InstanceAiSettingsService {
 		const providerModelApiKeyConfigured = Boolean(
 			modelProviderApiKeyEnv && process.env[modelProviderApiKeyEnv]?.trim(),
 		);
+		const vertexEnvConfigured = Boolean(
+			c.model.startsWith('vertex/') &&
+				(c.vertexProject.trim() ||
+					c.vertexCredentials.trim() ||
+					process.env.GOOGLE_VERTEX_PROJECT?.trim() ||
+					process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim()),
+		);
 		const modelConnectionEnvConfigured = Boolean(
-			c.modelApiKey.trim() || c.modelUrl.trim() || providerModelApiKeyConfigured,
+			c.modelApiKey.trim() || c.modelUrl.trim() || providerModelApiKeyConfigured || vertexEnvConfigured,
 		);
 		const sandboxEnvConfigured = this.hasEnvironmentSandboxConnection();
 		const searchEnvConfigured = this.hasEnvironmentSearchConnection();
@@ -1604,10 +1611,23 @@ export class InstanceAiSettingsService {
 	}
 
 	private envVarModelConfigForModel(model: string): ModelConfig {
-		const { modelUrl, modelApiKey } = this.config;
+		const { modelUrl, modelApiKey, vertexProject, vertexLocation, vertexCredentials } = this.config;
 		const id: `${string}/${string}` = model.includes('/')
 			? (model as `${string}/${string}`)
 			: `custom/${model}`;
+
+		if (id.startsWith('vertex/')) {
+			const project = vertexProject.trim() || process.env.GOOGLE_VERTEX_PROJECT?.trim() || '';
+			const location =
+				vertexLocation.trim() || process.env.GOOGLE_VERTEX_LOCATION?.trim() || 'global';
+			const googleCredentialsJson = vertexCredentials.trim();
+			return {
+				id,
+				...(project ? { project } : {}),
+				location,
+				...(googleCredentialsJson ? { googleCredentialsJson } : {}),
+			};
+		}
 
 		if (modelUrl) {
 			return { id, url: modelUrl, ...(modelApiKey ? { apiKey: modelApiKey } : {}) };

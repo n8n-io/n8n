@@ -140,6 +140,12 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 		return;
 	}
 
+	if (provider === 'vertex') {
+		// Claude on Vertex — same adaptive thinking as direct Anthropic.
+		agent.thinking('vertex', { mode: 'adaptive', effort: 'medium' });
+		return;
+	}
+
 	if (provider === 'fireworks') {
 		agent.thinking('fireworks', { reasoningEffort: 'medium' });
 		return;

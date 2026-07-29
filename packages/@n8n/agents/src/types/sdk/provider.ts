@@ -11,6 +11,7 @@ export type Provider =
 	| 'deepinfra'
 	| 'deepseek'
 	| 'google'
+	| 'vertex'
 	| 'groq'
 	| 'mistral'
 	| 'openai'
@@ -92,7 +93,7 @@ export interface XaiThinkingConfig {
  * Known providers get their specific config; unknown providers default
  * to OpenAI-style (reasoningEffort) since most providers follow that API.
  */
-export type ThinkingConfigFor<P> = P extends 'anthropic'
+export type ThinkingConfigFor<P> = P extends 'anthropic' | 'vertex'
 	? AnthropicThinkingConfig
 	: P extends 'google'
 		? GoogleThinkingConfig

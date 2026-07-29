@@ -30,6 +30,11 @@ const MODEL_ENV_KEYS = [
 	'OPENAI_API_KEY',
 	'GOOGLE_GENERATIVE_AI_API_KEY',
 	'XAI_API_KEY',
+	'N8N_INSTANCE_AI_VERTEX_PROJECT',
+	'N8N_INSTANCE_AI_VERTEX_LOCATION',
+	'N8N_INSTANCE_AI_VERTEX_CREDENTIALS',
+	'GOOGLE_VERTEX_PROJECT',
+	'GOOGLE_VERTEX_LOCATION',
 ];
 
 function resetModelEnv(): void {
@@ -119,6 +124,44 @@ describe('eval agent model config', () => {
 			id: 'anthropic/claude-sonnet-4-6',
 			apiKey: 'env-key',
 			url: undefined,
+		});
+	});
+
+	it('resolves vertex Claude without an API key', () => {
+		const sa = JSON.stringify({ type: 'service_account', project_id: 'gcp-proj' });
+		process.env.N8N_INSTANCE_AI_VERTEX_PROJECT = 'gcp-proj';
+		process.env.N8N_INSTANCE_AI_VERTEX_LOCATION = 'us-east5';
+		process.env.N8N_INSTANCE_AI_VERTEX_CREDENTIALS = sa;
+
+		const config = resolveEvalModelConfig('vertex/claude-opus-4-8');
+
+		expect(config).toEqual({
+			modelId: 'vertex/claude-opus-4-8',
+			provider: 'vertex',
+			providerModelId: 'claude-opus-4-8',
+			apiKey: '',
+			project: 'gcp-proj',
+			location: 'us-east5',
+			googleCredentialsJson: sa,
+		});
+	});
+
+	it('builds a vertex eval agent with adaptive thinking', () => {
+		process.env.N8N_INSTANCE_AI_VERTEX_PROJECT = 'gcp-proj';
+
+		createEvalAgent('test-agent', {
+			model: 'vertex/claude-opus-4-8',
+			instructions: 'Do the task.',
+		});
+
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
+			id: 'vertex/claude-opus-4-8',
+			project: 'gcp-proj',
+			location: 'global',
+		});
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('vertex', {
+			mode: 'adaptive',
+			effort: 'medium',
 		});
 	});
 });

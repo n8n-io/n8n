@@ -113,6 +113,13 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
 	},
+	// Claude on Google Vertex — Anthropic Messages API (adaptive / budgetTokens).
+	vertex: {
+		thinking: 'budgetTokens',
+		promptCaching: 'ttl',
+		webSearch: false,
+		providerTools: [],
+	},
 	xai: {
 		thinking: 'reasoningEffort',
 		promptCaching: false,
