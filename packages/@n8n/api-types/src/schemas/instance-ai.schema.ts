@@ -291,7 +291,8 @@ export const credentialPlaceholderDefSchema = z.object({
 	name: z.string(),
 	/** Input label shown to the user (e.g. "API key"). */
 	title: z.string(),
-	/** Where/how the user obtains this value. */
+	/** One-line clarification of the value itself (format, which token) —
+	 *  never where to obtain it; that's `docsUrl`'s job. */
 	info: z.string().optional(),
 	/** Defaults to `password` (masked input). */
 	type: z.enum(['password', 'plain']).optional(),

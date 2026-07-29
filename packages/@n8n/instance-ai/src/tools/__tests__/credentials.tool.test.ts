@@ -753,7 +753,15 @@ describe('credentials tool', () => {
 
 			const setupHint = {
 				template: { headers: { Authorization: 'Key {{api_key}}' } },
-				placeholders: [{ name: 'api_key', title: 'fal.ai API key', type: 'password' as const }],
+				placeholders: [
+					{
+						name: 'api_key',
+						title: 'fal.ai API key',
+						// a format-style info must pass the URL/domain-in-info validation
+						info: 'Key ID and secret, separated by a colon',
+						type: 'password' as const,
+					},
+				],
 				docsUrl: 'https://fal.ai/dashboard/keys',
 				suggestedName: 'fal.ai API Key',
 				testUrl: 'https://fal.run/v1/models',
@@ -872,6 +880,41 @@ describe('credentials tool', () => {
 										name: 'api_key',
 										title: 'API key',
 										info: 'Find it at https://example.com/tokens',
+									},
+								],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
+		});
+
+		it('should reject a setupHint whose placeholder info mentions a schemeless domain', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							setupHint: {
+								template: { headers: { Authorization: 'Bearer {{api_key}}' } },
+								placeholders: [
+									{
+										name: 'api_key',
+										title: 'Tavily API key',
+										// duplicates the docsUrl link the card renders — and slips
+										// past a scheme-only URL check
+										info: 'Your Tavily API key (starts with tvly-). Get it from app.tavily.com/home.',
 									},
 								],
 							},

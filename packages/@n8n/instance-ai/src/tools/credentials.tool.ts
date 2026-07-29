@@ -60,7 +60,7 @@ export const setupHintField = z
 						.string()
 						.optional()
 						.describe(
-							'Short plain-text pointer to where/how the user obtains this value (e.g. "Create one under Dashboard → API tokens"). No URLs — navigation belongs in docsUrl.',
+							'Optional one-line clarification of the value itself — its format or which of the provider\'s tokens it is (e.g. "Starts with tvly-"). NEVER where to obtain it: the card renders the docsUrl link for that. No URLs or domains.',
 						),
 					type: z
 						.enum(['password', 'plain'])
@@ -125,6 +125,15 @@ export const TEMPLATABLE_PLAIN_AUTH_TYPES = new Set([
 
 const TEMPLATE_MARKER_REGEX = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
+// Navigation belongs in docsUrl — the card renders it as the "Get your token
+// at {host}" link, so an info that names a URL or domain duplicates the line
+// right above it. Schemeless domains ("app.tavily.com/home") are the common
+// leak past a scheme-only check, so also catch domain-shaped tokens on the
+// TLDs API providers actually use. A heuristic, but a false positive only
+// costs the model one retriable correction.
+const INFO_LINK_REGEX =
+	/https?:\/\/|www\.|\b[\w-]+(?:\.[\w-]+)*\.(?:com|io|ai|dev|app|net|org|co|run|sh|cloud)\b/i;
+
 /**
  * Reduce a (possibly expression-typed) URL to a comparable `origin + pathname`
  * prefix: strips the `=` expression marker, cuts at the first `{{`, drops the
@@ -175,9 +184,9 @@ export function findSetupHintProblems(
 		problems.push('the template contains no {{placeholder}} marker');
 	}
 	for (const placeholder of hint.placeholders) {
-		if (/https?:\/\//.test(placeholder.info ?? '')) {
+		if (INFO_LINK_REGEX.test(placeholder.info ?? '')) {
 			problems.push(
-				`placeholder "${placeholder.name}" has a URL in its info — put the obtain-URL in docsUrl (rendered as a clickable link) and keep info as plain text`,
+				`placeholder "${placeholder.name}" mentions a URL or domain in its info — the card already renders the docsUrl link; keep info to the value itself (its format, or which of the provider's tokens it is)`,
 			);
 		}
 	}

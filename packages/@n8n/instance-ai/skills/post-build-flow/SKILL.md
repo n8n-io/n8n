@@ -82,12 +82,15 @@ it has you fetch, never from memory:
 
 - `template` — the auth request parts (headers/qs/body) exactly as documented,
   with `{{placeholder}}` markers where the user's values go.
-- `placeholders` — one entry per marker: `name`, user-facing `title`, `info`
-  as short plain text on where to find it (no URLs — that's `docsUrl`'s job),
-  and `type` (`password` unless clearly non-secret; at least one placeholder
-  must stay `password`). Add `optional: true` only when the provider documents
-  the value as optional (e.g. an org/region qualifier) — template entries
-  referencing an empty optional placeholder are omitted from the request.
+- `placeholders` — one entry per marker: `name`, user-facing `title`, an
+  optional `info` clarifying the value itself — its format or which of the
+  provider's tokens it is (e.g. "Starts with tvly-"). Never where to obtain
+  it, and never a URL or domain: the card already renders the `docsUrl` link
+  under the fields. `type` is `password` unless clearly non-secret (at least
+  one placeholder must stay `password`). Add `optional: true` only when the
+  provider documents the value as optional (e.g. an org/region qualifier) —
+  template entries referencing an empty optional placeholder are omitted from
+  the request.
 - `docsUrl` — the dashboard page where a logged-in user CREATES/COPIES the
   secret (e.g. `https://replicate.com/account/api-tokens`), rendered as the
   card's "Get it from" link — never the API reference. Found via the
@@ -123,7 +126,7 @@ Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
         {
           "name": "api_key",
           "title": "fal.ai API key",
-          "info": "Create one under Dashboard → Keys",
+          "info": "Key ID and secret, separated by a colon",
           "type": "password"
         }
       ],
