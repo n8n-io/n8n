@@ -223,6 +223,7 @@ function buildItem(
 	return {
 		id: connection?.id ?? server.slug,
 		kind: 'mcp-server',
+		category: 'mcp',
 		title: server.title,
 		description: server.tagline,
 		longDescription: server.description,
@@ -277,6 +278,7 @@ const serviceItems = computed<ServiceConnectionItem[]>(() => {
 		.map((service) => ({
 			id: service.id,
 			kind: 'service',
+			category: 'built-in',
 			serviceId: service.id,
 			title: i18n.baseText(service.titleKey),
 			description: i18n.baseText(service.descriptionKey),
@@ -490,7 +492,7 @@ async function handleConnect(item: ToolConnectionItem) {
 	<ToolsConnectionModal
 		v-model:open="isOpen"
 		:items="items"
-		:sections="['connected', 'built-in-services', 'nodes']"
+		:categories="['all', 'built-in', 'mcp']"
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
 		:hide-back-button="shouldHideBackButton"

@@ -17,8 +17,8 @@ import {
 	AgentChatStreamConsumer,
 	type SuspensionHandlingResult,
 } from './agent-chat-stream-consumer';
-import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
-import { CallbackStore } from './callback-store';
+import { buildSuspendCardPayload, isApprovalSuspendPayload } from './agent-chat-suspension-cards';
+import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
@@ -112,6 +112,10 @@ export class AgentChatBridge {
 			agentService,
 			logger,
 			callbackStore: this.callbackStore,
+			deleteActionMessageBeforeResume:
+				this.integrationImpl?.deleteActionMessageBeforeResume ?? true,
+			formatApprovalDecisionMessage: (params) =>
+				this.integrationImpl?.formatApprovalDecisionMessage?.(params),
 			resolvePlatformThreadId: this.resolvePlatformThreadId.bind(this),
 			toAgentThreadId: this.toAgentThreadId.bind(this),
 			getPlatformAgentContext: this.getPlatformAgentContext.bind(this),
@@ -237,11 +241,11 @@ export class AgentChatBridge {
 	 * Returns a callback shortener function for platforms with short callback
 	 * data limits (Telegram). Returns undefined for other platforms.
 	 */
-	getShortenCallback(): ShortenCallback | undefined {
+	getShortenCallback(metadata?: CallbackMetadata): ShortenCallback | undefined {
 		if (!this.callbackStore) return undefined;
 		const store = this.callbackStore;
 		return async (actionId: string, value: string) => {
-			const key = await store.store(actionId, value);
+			const key = await store.store(actionId, value, metadata);
 			return { id: key, value: '' };
 		};
 	}
@@ -354,6 +358,9 @@ export class AgentChatBridge {
 
 		const cardPayload = buildSuspendCardPayload(suspendPayload);
 		if (!cardPayload) return 'skipped';
+		const callbackMetadata: CallbackMetadata | undefined = isApprovalSuspendPayload(suspendPayload)
+			? { kind: 'approval', groupId: JSON.stringify([runId, toolCallId]) }
+			: undefined;
 
 		try {
 			const card = await this.componentMapper.toCard(
@@ -361,7 +368,7 @@ export class AgentChatBridge {
 				runId,
 				toolCallId,
 				chunk.resumeSchema,
-				this.getShortenCallback(),
+				this.getShortenCallback(callbackMetadata),
 				this.integration.type,
 			);
 			await thread.post({ card });

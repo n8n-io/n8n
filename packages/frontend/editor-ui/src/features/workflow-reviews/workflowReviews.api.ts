@@ -1,28 +1,24 @@
 import type {
+	CreateWorkflowReviewRequestDto,
+	GetWorkflowReviewEligibleReviewersQueryDto,
 	GetWorkflowReviewInboxSummaryResponse,
 	ListWorkflowReviewInboxResponse,
 	WorkflowReviewEligibleReviewersList,
+	WorkflowReviewRequestDecision,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
 import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
-export interface CreateWorkflowReviewRequestPayload {
-	title: string;
-	description?: string;
-	workflows: Array<{
-		workflowId: string;
-		workflowVersionId: string;
-	}>;
-	reviewerUserIds?: string[];
-}
-
 export type FetchWorkflowReviewInboxParams = {
 	state?: WorkflowReviewRequestState;
 	limit?: number;
 	cursor?: string;
 };
+
+/** A decision a reviewer can submit; `pending` is the initial state, never an input. */
+export type WorkflowReviewDecisionInput = Exclude<WorkflowReviewRequestDecision, 'pending'>;
 
 /** Workflow-scoped list used by review-required toggle sync. */
 export async function fetchWorkflowReviewRequests(
@@ -39,7 +35,7 @@ export async function fetchWorkflowReviewRequests(
 
 export async function fetchEligibleReviewers(
 	context: IRestApiContext,
-	query: { workflowId: string },
+	query: GetWorkflowReviewEligibleReviewersQueryDto,
 ): Promise<WorkflowReviewEligibleReviewersList> {
 	return await makeRestApiRequest<WorkflowReviewEligibleReviewersList>(
 		context,
@@ -51,7 +47,7 @@ export async function fetchEligibleReviewers(
 
 export async function createWorkflowReviewRequest(
 	context: IRestApiContext,
-	payload: CreateWorkflowReviewRequestPayload,
+	payload: CreateWorkflowReviewRequestDto,
 ): Promise<WorkflowReviewRequestSummary> {
 	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
 		context,
@@ -70,6 +66,19 @@ export async function updateWorkflowReviewRequestVersion(
 		context,
 		'POST',
 		`/workflow-review-requests/${workflowReviewRequestId}/update-version`,
+		{ ...payload },
+	);
+}
+
+export async function decideWorkflowReviewRequest(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+	payload: { decision: WorkflowReviewDecisionInput },
+): Promise<WorkflowReviewRequestSummary> {
+	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
+		context,
+		'POST',
+		`/workflow-review-requests/${workflowReviewRequestId}/decision`,
 		{ ...payload },
 	);
 }

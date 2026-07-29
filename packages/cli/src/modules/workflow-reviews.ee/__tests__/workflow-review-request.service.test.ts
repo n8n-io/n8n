@@ -8,6 +8,7 @@ import type {
 	AuthIdentity,
 	DbLockService,
 	Project,
+	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	WorkflowEntity,
@@ -26,12 +27,12 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
+import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
 const user = mock<User>({ id: 'user-1' });
@@ -59,8 +60,8 @@ describe('WorkflowReviewRequestService', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const roleService = mock<RoleService>();
-	const projectService = mock<ProjectService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
@@ -69,7 +70,7 @@ describe('WorkflowReviewRequestService', () => {
 
 	const service = new WorkflowReviewRequestService(
 		logger,
-		workflowReviewPolicyService,
+		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		workflowFinderService,
 		workflowHistoryService,
 		sharedWorkflowRepository,
@@ -78,9 +79,8 @@ describe('WorkflowReviewRequestService', () => {
 		authorRepository,
 		reviewerRepository,
 		userRepository,
+		projectRelationRepository,
 		roleService,
-		projectService,
-		licenseState,
 		dbLockService,
 		collaborationService,
 	);

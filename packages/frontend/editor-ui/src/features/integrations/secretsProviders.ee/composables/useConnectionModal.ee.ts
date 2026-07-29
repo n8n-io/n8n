@@ -5,7 +5,7 @@ import {
 	type ConnectionProjectSummary,
 } from '@n8n/api-types';
 import type { IUpdateInformation } from '@/Interface';
-import type { INodeProperties } from 'n8n-workflow';
+import type { DisplayCondition, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import { useSecretsProviderConnection } from './useSecretsProviderConnection.ee';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useToast } from '@/app/composables/useToast';
@@ -64,7 +64,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			visible =
 				visible &&
 				Object.entries(property.displayOptions.show).every(([key, value]) => {
-					return value?.includes(connectionSettings.value[key] as string);
+					return (value as Array<NodeParameterValue | DisplayCondition>)?.includes(
+						connectionSettings.value[key] as string,
+					);
 				});
 		}
 
