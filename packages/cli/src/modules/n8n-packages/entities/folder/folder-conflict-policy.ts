@@ -22,6 +22,6 @@ export function decideMatchedFolder(policy: FolderConflictPolicy): MatchedFolder
  * not contain is archived. A folder carries no state of its own worth overwriting, so this — not
  * the matched-folder decision — is what sets `overwrite` apart.
  */
-export function prunesUnpackagedWorkflows(policy: FolderConflictPolicy): boolean {
+export function removesUnpackagedWorkflows(policy: FolderConflictPolicy): boolean {
 	return policy === FolderConflictPolicy.Overwrite;
 }

@@ -5,7 +5,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
-import { prunesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
+import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
 import type { TagImportRequest } from '../entities/tag/tag.types';
@@ -296,7 +296,7 @@ export class ProjectPackageImporter {
 
 		// `overwrite` archives workflows the package omits, so require the scope up front rather than
 		// discovering mid-import that the caller may not remove what reconciliation demands.
-		if (prunesUnpackagedWorkflows(request.folderConflictPolicy)) {
+		if (removesUnpackagedWorkflows(request.folderConflictPolicy)) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete']);
 		}
 

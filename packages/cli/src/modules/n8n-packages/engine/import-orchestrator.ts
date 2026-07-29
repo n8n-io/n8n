@@ -20,7 +20,7 @@ import type {
 	FolderImportPlan,
 	PreparedFolder,
 } from '../entities/folder/folder-import.types';
-import { prunesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
+import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import { FolderImporter } from '../entities/folder/folder-importer';
 import { TagImporter } from '../entities/tag/tag-importer';
 import { droppedTagIds } from '../entities/tag/tag.types';
@@ -43,12 +43,12 @@ import type {
 	WorkflowImportPlan,
 } from '../entities/workflow/workflow-import.types';
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
-import { WorkflowPruner, type WorkflowPrunePlan } from '../entities/workflow/workflow-pruner';
+import type { WorkflowRemovalPlan } from '../entities/workflow/workflow-removal.types';
+import { WorkflowRemover } from '../entities/workflow/workflow-remover';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { WorkflowPublishingBlockedReason } from '../entities/workflow/workflow-publishing-policy.types';
 import { createBindings } from '../n8n-packages.types';
 import type {
-	RemovedWorkflowSummary,
 	BlockingIssue,
 	ImportBindingMap,
 	ImportContext,
@@ -57,6 +57,7 @@ import type {
 	ImportWorkflowProperties,
 	MissingNodeTypeMode,
 	PackageImportBindings,
+	RemovedWorkflowSummary,
 } from '../n8n-packages.types';
 import { toImportBlockedError } from './import-blocked.error';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
@@ -101,7 +102,7 @@ export interface ImportPlan {
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
 	tagPlan: TagImportPlan;
-	prunePlan: WorkflowPrunePlan;
+	removalPlan: WorkflowRemovalPlan;
 	missingNodeTypes: MissingNodeTypeRequirement[];
 	blockingIssues: BlockingIssue[];
 }
@@ -119,7 +120,7 @@ export class ImportOrchestrator {
 		private readonly tagImporter: TagImporter,
 		private readonly folderImporter: FolderImporter,
 		private readonly workflowImporter: WorkflowImporter,
-		private readonly workflowPruner: WorkflowPruner,
+		private readonly workflowRemover: WorkflowRemover,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly nodeTypes: NodeTypes,
 	) {}
@@ -170,14 +171,19 @@ export class ImportOrchestrator {
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
 		// Planned against a project that does not exist yet, there is nothing to reconcile.
-		const prunePlan =
-			prunesUnpackagedWorkflows(options.folderConflictPolicy) && !input.projectPendingCreation
-				? await this.workflowPruner.plan(context, {
+		const removalPlan =
+			removesUnpackagedWorkflows(options.folderConflictPolicy) && !input.projectPendingCreation
+				? await this.workflowRemover.plan(context, {
 						workflowItems: workflowPlan.items,
 						packageFolderIds: folders.map(({ sourceFolderId }) => sourceFolderId),
 						subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
+						deletionPolicy: options.overwriteDeletionPolicy,
 					})
-				: { removals: [], failures: [] };
+				: {
+						removals: [],
+						failures: [],
+						deletionPolicy: options.overwriteDeletionPolicy,
+					};
 
 		// Skipped workflows are never written, so their node types don't gate the import.
 		const missingNodeTypes = collectMissingNodeTypes(
@@ -194,7 +200,7 @@ export class ImportOrchestrator {
 			variableRequest,
 			variablePlan,
 			tagPlan,
-			prunePlan,
+			removalPlan,
 			missingNodeTypes,
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
@@ -208,7 +214,7 @@ export class ImportOrchestrator {
 			dataTablePlan,
 			variablePlan,
 			tagPlan,
-			prunePlan,
+			removalPlan,
 			missingNodeTypes,
 			blockingIssues,
 		};
@@ -279,11 +285,7 @@ export class ImportOrchestrator {
 
 		// Removal goes last: the package's own workflows are in place first, so a failure earlier
 		// in the apply leaves the target with more than the package asked for rather than less.
-		const removedWorkflows = await this.workflowPruner.apply(
-			context,
-			plan.prunePlan,
-			input.options.overwriteDeletionPolicy,
-		);
+		const removedWorkflows = await this.workflowRemover.apply(context, plan.removalPlan);
 
 		return {
 			workflowOutcomes: outcomes.map((outcome) =>
@@ -309,7 +311,7 @@ export class ImportOrchestrator {
 		variableRequest,
 		variablePlan,
 		tagPlan,
-		prunePlan,
+		removalPlan,
 		missingNodeTypes,
 		missingNodeTypeMode,
 	}: {
@@ -321,7 +323,7 @@ export class ImportOrchestrator {
 		variableRequest: VariableImportRequest;
 		variablePlan: VariableImportPlan;
 		tagPlan: TagImportPlan;
-		prunePlan: WorkflowPrunePlan;
+		removalPlan: WorkflowRemovalPlan;
 		missingNodeTypes: MissingNodeTypeRequirement[];
 		missingNodeTypeMode: MissingNodeTypeMode;
 	}): BlockingIssue[] {
@@ -338,7 +340,7 @@ export class ImportOrchestrator {
 			...folderPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'folder-conflict', ...conflict }),
 			),
-			...prunePlan.failures.map(
+			...removalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'workflow-removal-forbidden', ...failure }),
 			),
 			...dataTablePlan.failures.map(

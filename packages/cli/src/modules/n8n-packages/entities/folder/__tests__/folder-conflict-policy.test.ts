@@ -1,4 +1,4 @@
-import { decideMatchedFolder, prunesUnpackagedWorkflows } from '../folder-conflict-policy';
+import { decideMatchedFolder, removesUnpackagedWorkflows } from '../folder-conflict-policy';
 
 describe('decideMatchedFolder', () => {
 	it('does not block under merge', () => {
@@ -14,10 +14,10 @@ describe('decideMatchedFolder', () => {
 	});
 });
 
-describe('prunesUnpackagedWorkflows', () => {
+describe('removesUnpackagedWorkflows', () => {
 	it('prunes only under overwrite', () => {
-		expect(prunesUnpackagedWorkflows('overwrite')).toBe(true);
-		expect(prunesUnpackagedWorkflows('merge')).toBe(false);
-		expect(prunesUnpackagedWorkflows('fail')).toBe(false);
+		expect(removesUnpackagedWorkflows('overwrite')).toBe(true);
+		expect(removesUnpackagedWorkflows('merge')).toBe(false);
+		expect(removesUnpackagedWorkflows('fail')).toBe(false);
 	});
 });
