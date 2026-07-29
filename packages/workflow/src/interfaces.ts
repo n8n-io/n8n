@@ -2118,6 +2118,9 @@ export interface INodePropertyOptions {
 	// disabledOptions added for compatibility with INodeProperties and INodeCredentialDescription types
 	// it needs to be implemented, if needed
 	disabledOptions?: undefined;
+	// When set, the option is hidden in the editor unless the matching
+	// `N8N_ENV_FEAT_<envFeatureFlag>` flag is enabled.
+	envFeatureFlag?: Uppercase<string>;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {

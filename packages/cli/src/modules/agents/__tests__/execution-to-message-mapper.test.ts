@@ -112,6 +112,32 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
+	it('includes the execution outcome on assistant messages', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'slow_tool',
+						toolCallId: 'call-1',
+						input: {},
+						output: undefined,
+						startTime: 100,
+						endTime: 0,
+						success: false,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]).toMatchObject({
+			role: 'assistant',
+			executionStatus: 'error',
+		});
+	});
+
 	it('flattens multiple executions into a single message list', () => {
 		const result = executionsToMessagesDto([
 			execution({

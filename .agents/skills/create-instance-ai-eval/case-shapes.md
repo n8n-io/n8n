@@ -16,7 +16,7 @@ The schema
 ([`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts))
 enforces the rules you must respect:
 
-- `seedFile`, `priorConversation`, `seedThread` are **mutually exclusive** — pick
+- `conversationSeed`, `priorConversation`, `seedThread` are **mutually exclusive** — pick
   one seeding mode.
 - A case needs a `conversation` **or** a `seedThread` (which supplies the live
   turn from the trace).
@@ -149,7 +149,7 @@ Pick the lightest mode that fits:
 |---|---|---|
 | Reproduce a real conversation (common case) | `seedThread` — fetch + reconstruct its LangSmith trace at run time; nothing committed | supplies its own live turn (omit `conversation`) |
 | Prelude is just "what was discussed" (no tool calls, no workflows) | `priorConversation` — prose turns, authored inline | a normal `conversation` for the live turn |
-| A synthetic/sanitised fixture you want durable in git | `seedFile` — a committed seed JSON (never real conversation data) | a normal `conversation` for the live turn |
+| Prior work already exists (a workflow to repair) | `conversationSeed` — prior messages + the workflows they reference, in the case body | a normal `conversation` for the live turn |
 | Shallow 2–3 turn prelude where the agent's live replies matter | none — a plain multi-turn `conversation` re-drives it live | — |
 
 All three modes are implemented and wired (`harness/conversation-seed.ts` +
@@ -175,7 +175,7 @@ after the correction. Asserting on the seeded prelude itself proves nothing.
 ### Which mode — and when to avoid seedThread
 
 Default to a **synthetic** case (an authored prompt + director script, or a
-`priorConversation` / `seedFile` prelude): it's durable, carries no real user
+`priorConversation` / `conversationSeed` prelude): it's durable, carries no real user
 data, never expires, and you control the setup exactly. Reach for **`seedThread`** only when
 the misbehaviour genuinely needs real prior context that's impractical to
 synthesize — a long accumulated thread, specific built workflows/tables — **and**
@@ -236,10 +236,10 @@ which user turn goes live.
   (a synthetic case whose `executionScenarios` precondition builds the stand-in),
   or grade the live turn with `processExpectations` only.
 - **Can't be pushed to a lang-tracer suite either.** The case-write API rejects
-  every seeding mode (`seedThread` / `seedFile` / `priorConversation`), so
+  every seeding mode (`seedThread` / `conversationSeed` / `priorConversation`), so
   `eval:langtracer-push` silently lists them under `skipped:`. Combined with the
   don't-commit rule above, a `seedThread` case has **no durable home by design** —
-  the durable artifact is always the synthetic case you derive from it. (`seedFile`
+  the durable artifact is always the synthetic case you derive from it. (`conversationSeed`
   and `priorConversation` carry no thread dependency and can't be pushed either, so
   — unlike a normal case — they're the one exception to the skill's "push, don't
   commit the JSON" rule: they live as committed artifacts.)
@@ -256,11 +256,20 @@ which user turn goes live.
 Plain text only — no tool calls, no restored workflows. Paired with a normal
 `conversation` for the live turn.
 
-### `seedFile` — durable synthetic fixture
+### `conversationSeed` — durable synthetic fixture
 
-For a **synthetic, sanitised** fixture pinned in git (never a real user's
-conversation): hand-author `data/workflows/seeds/<name>.seed.json` (schema in
+For a **synthetic, sanitised** seed pinned in git (never a real user's
+conversation): author the prior messages, plus the workflows they reference, in
+the case body (schema in
 [`harness/conversation-seed.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts)
-— `messages` + optional `workflows` + `dataTables`) and point `seedFile` at it.
-Real conversations belong in `seedThread`, which keeps their content out of the
-repo.
+— `messages` + optional `workflows` + `dataTables`). Real conversations belong in
+`seedThread`, which keeps their content out of the repo.
+
+Two constraints that bite: a workflow `id` must be ≥8 characters (the id remap
+refuses shorter ones), and a seeded `build-workflow` tool call's
+`output.workflowId` must match the seeded workflow's `id` — otherwise the remap
+separates them and the agent can't find the workflow it should act on.
+
+The seed sits in the case body, not a sibling file, so it travels with the case
+whether it comes off disk, out of a LangTracer suite, or from a dispatched case
+body.

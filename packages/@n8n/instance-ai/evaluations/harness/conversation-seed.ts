@@ -1,12 +1,11 @@
-// Conversation seeding for eval builds — backs the `seedFile` (synthetic) and
-// `priorConversation` (prose) paths. Real conversations use `seedThread`
+// Conversation seeding for eval builds — backs the `conversationSeed` (synthetic)
+// and `priorConversation` (prose) paths. Real conversations use `seedThread`
 // (reconstructed from a LangSmith trace; see langsmith-seed.ts).
 
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
@@ -20,7 +19,7 @@ import {
 import type { ConversationTurn, TranscriptStep, TranscriptTurn } from '../types';
 
 // ---------------------------------------------------------------------------
-// Seed file schema
+// Seed schema
 // ---------------------------------------------------------------------------
 
 const SeedWorkflowSchema = z.object({
@@ -56,25 +55,6 @@ export const ConversationSeedSchema = z.object({
 });
 
 export type ConversationSeed = z.infer<typeof ConversationSeedSchema>;
-
-export function loadConversationSeed(filePath: string): ConversationSeed {
-	let raw: unknown;
-	try {
-		raw = JSON.parse(readFileSync(filePath, 'utf-8'));
-	} catch (error) {
-		throw new Error(
-			`Failed to read conversation seed ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
-		);
-	}
-	const parsed = ConversationSeedSchema.safeParse(raw);
-	if (!parsed.success) {
-		const issues = parsed.error.issues
-			.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
-			.join('\n');
-		throw new Error(`Invalid conversation seed ${filePath}:\n${issues}`);
-	}
-	return parsed.data;
-}
 
 // ---------------------------------------------------------------------------
 // Prose prior turns → seed messages

@@ -1,5 +1,8 @@
-import type { TelemetryIntegration } from 'ai';
+import { isRecord } from '@n8n/utils/is-record';
+import type { Tracer } from '@opentelemetry/api';
+import type { Telemetry as AiSdkTelemetry } from 'ai';
 
+import { createMetadataEnrichedTracer } from './metadata-enriched-tracer';
 import type {
 	AttributeValue,
 	BuiltTelemetry,
@@ -8,6 +11,16 @@ import type {
 } from '../types/telemetry';
 
 type RedactFn = (data: Record<string, unknown>) => Record<string, unknown>;
+type ExecuteHookKey = 'executeLanguageModelCall' | 'executeTool';
+// Future on* hooks are wrapped automatically; other SDK members must be classified explicitly.
+type RedactableTelemetry = AiSdkTelemetry &
+	Record<Exclude<keyof AiSdkTelemetry, `on${string}` | ExecuteHookKey>, never>;
+type UnknownMethod = (this: unknown, ...args: unknown[]) => unknown;
+
+const EXECUTION_CONTROL_FIELDS: Record<ExecuteHookKey, string[]> = {
+	executeLanguageModelCall: ['callId', 'execute'],
+	executeTool: ['callId', 'toolCallId', 'execute'],
+};
 
 /**
  * Recursively apply the redact function to plain objects found anywhere
@@ -22,7 +35,7 @@ function redactValue(value: unknown, redact: RedactFn): unknown {
 		value !== null &&
 		Object.getPrototypeOf(value) === Object.prototype
 	) {
-		const redacted = redact(value as Record<string, unknown>);
+		const redacted = { ...redact(value as Record<string, unknown>) };
 		// Recurse into the redacted result so deeply nested objects are also processed.
 		for (const key of Object.keys(redacted)) {
 			redacted[key] = redactValue(redacted[key], redact);
@@ -41,7 +54,7 @@ function redactValue(value: unknown, redact: RedactFn): unknown {
 function redactEvent<T extends object>(event: T, redact: RedactFn): T {
 	const cloned = { ...event };
 	// Redact the cloned event itself (it is a plain object).
-	const redacted = redact(cloned as unknown as Record<string, unknown>);
+	const redacted = { ...redact(cloned as unknown as Record<string, unknown>) };
 	// Then recurse into each value to handle arrays and nested objects.
 	for (const key of Object.keys(redacted)) {
 		const value = redacted[key];
@@ -50,42 +63,82 @@ function redactEvent<T extends object>(event: T, redact: RedactFn): T {
 	return redacted as T;
 }
 
+function isExecuteHookKey(property: PropertyKey): property is ExecuteHookKey {
+	return property === 'executeLanguageModelCall' || property === 'executeTool';
+}
+
+function isTelemetryHook(property: PropertyKey): boolean {
+	return (typeof property === 'string' && property.startsWith('on')) || isExecuteHookKey(property);
+}
+
+function isMethod(value: unknown): value is UnknownMethod {
+	return typeof value === 'function';
+}
+
+function redactHookArgument(property: PropertyKey, argument: unknown, redact: RedactFn): unknown {
+	if (property === 'onError' || !isRecord(argument)) return redactValue(argument, redact);
+
+	const redacted = redactEvent(argument, redact);
+	if (isExecuteHookKey(property)) {
+		const controlFields = Object.fromEntries(
+			EXECUTION_CONTROL_FIELDS[property].map((field) => [field, argument[field]]),
+		);
+		return { ...redacted, ...controlFields };
+	}
+	return redacted;
+}
+
 /**
- * Wrap a TelemetryIntegration so every hook passes event data through
+ * Wrap an AI SDK telemetry integration so every hook passes event data through
  * the redact callback before forwarding to the original hook.
  */
 function wrapIntegrationWithRedaction(
-	integration: TelemetryIntegration,
+	integration: RedactableTelemetry,
 	redact: RedactFn,
-): TelemetryIntegration {
-	const wrapped: TelemetryIntegration = {};
+): AiSdkTelemetry {
+	const methodCache = new Map<PropertyKey, { original: UnknownMethod; wrapped: UnknownMethod }>();
+	const facade: AiSdkTelemetry = {};
 
-	if (integration.onStart) {
-		const orig = integration.onStart;
-		wrapped.onStart = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onStepStart) {
-		const orig = integration.onStepStart;
-		wrapped.onStepStart = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onToolCallStart) {
-		const orig = integration.onToolCallStart;
-		wrapped.onToolCallStart = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onToolCallFinish) {
-		const orig = integration.onToolCallFinish;
-		wrapped.onToolCallFinish = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onStepFinish) {
-		const orig = integration.onStepFinish;
-		wrapped.onStepFinish = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onFinish) {
-		const orig = integration.onFinish;
-		wrapped.onFinish = (event) => orig(redactEvent(event, redact));
+	return new Proxy(facade, {
+		get(_target, property) {
+			const original: unknown = Reflect.get(integration, property, integration);
+			if (!isTelemetryHook(property) || !isMethod(original)) return original;
+
+			const cached = methodCache.get(property);
+			if (cached?.original === original) return cached.wrapped;
+
+			const wrapped: UnknownMethod = function (...args) {
+				const [argument, ...rest] = args;
+				return Reflect.apply(original, integration, [
+					redactHookArgument(property, argument, redact),
+					...rest,
+				]);
+			};
+			methodCache.set(property, { original, wrapped });
+			return wrapped;
+		},
+	});
+}
+
+function isOpenTelemetryTracer(value: unknown): value is Tracer {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, 'startSpan') === 'function' &&
+		typeof Reflect.get(value, 'startActiveSpan') === 'function'
+	);
+}
+
+async function createAiSdkOpenTelemetryIntegrationFactory(
+	tracer: OpaqueTracer,
+): Promise<(metadata: Record<string, AttributeValue> | undefined) => AiSdkTelemetry> {
+	if (!isOpenTelemetryTracer(tracer)) {
+		throw new Error('Telemetry tracer must implement startSpan() and startActiveSpan().');
 	}
 
-	return wrapped;
+	const { LegacyOpenTelemetry } = await import('@ai-sdk/otel');
+	return (metadata) =>
+		new LegacyOpenTelemetry({ tracer: createMetadataEnrichedTracer(tracer, metadata) });
 }
 
 /**
@@ -128,7 +181,7 @@ async function createOtlpTracer(endpoint: string): Promise<{
  *
  * Use `.tracer()` with a pre-built integration (e.g. `LangSmithTelemetry`,
  * `integrations.langsmith()`) or `.otlpEndpoint()` for a generic OTLP
- * collector. Add AI SDK `TelemetryIntegration` hooks via `.integration()`.
+ * collector. Add AI SDK `Telemetry` hooks via `.integration()`.
  *
  * @example
  * ```typescript
@@ -157,7 +210,7 @@ export class Telemetry {
 
 	protected redactFn?: RedactFn;
 
-	protected integrationsList: TelemetryIntegration[] = [];
+	protected integrationsList: AiSdkTelemetry[] = [];
 
 	protected tracerValue?: OpaqueTracer;
 
@@ -242,7 +295,7 @@ export class Telemetry {
 	}
 
 	/** Add a telemetry integration (e.g. for observability platforms). */
-	integration(value: TelemetryIntegration): this {
+	integration(value: AiSdkTelemetry): this {
 		this.integrationsList.push(value);
 		return this;
 	}
@@ -285,9 +338,26 @@ export class Telemetry {
 			provider = otlp.provider;
 		}
 
-		const integrations = this.redactFn
-			? this.integrationsList.map((i) => wrapIntegrationWithRedaction(i, this.redactFn!))
+		const redactFn = this.redactFn;
+		const customIntegrations = redactFn
+			? this.integrationsList.map((integration) =>
+					wrapIntegrationWithRedaction(integration, redactFn),
+				)
 			: [...this.integrationsList];
+		let resolveIntegrations: BuiltTelemetry['resolveIntegrations'];
+		let integrations = customIntegrations;
+		if (tracer !== undefined) {
+			const createOpenTelemetryIntegration =
+				await createAiSdkOpenTelemetryIntegrationFactory(tracer);
+			resolveIntegrations = (metadata) => {
+				const integration = createOpenTelemetryIntegration(metadata);
+				return [
+					redactFn ? wrapIntegrationWithRedaction(integration, redactFn) : integration,
+					...customIntegrations,
+				];
+			};
+			integrations = resolveIntegrations(this.metadataValue);
+		}
 
 		return {
 			enabled: this.enabledValue,
@@ -297,6 +367,7 @@ export class Telemetry {
 			recordOutputs: this.recordOutputsValue,
 			runtimeRootSpanEnabled: this.runtimeRootSpanEnabledValue,
 			integrations,
+			...(resolveIntegrations && { resolveIntegrations }),
 			tracer,
 			provider,
 			credentialName: this.credentialNameValue,

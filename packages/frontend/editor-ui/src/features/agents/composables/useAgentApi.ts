@@ -552,6 +552,19 @@ export const clearTestChatMessages = async (
 	);
 };
 
+export const cancelAgentChatRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	runId: string,
+): Promise<{ cancelled: boolean }> => {
+	return await makeRestApiRequest<{ cancelled: boolean }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/runs/${runId}`,
+	);
+};
+
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,
