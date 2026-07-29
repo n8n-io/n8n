@@ -5,7 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WHATS_NEW_MODAL_KEY, VERSIONS_MODAL_KEY } from '@/app/constants';
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 

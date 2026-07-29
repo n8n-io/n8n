@@ -1,6 +1,6 @@
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { CloudUpdateLinkSourceType, UTMCampaign } from '@/Interface';

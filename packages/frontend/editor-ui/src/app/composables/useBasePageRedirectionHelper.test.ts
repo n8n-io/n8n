@@ -6,7 +6,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { createPinia, setActivePinia } from 'pinia';
 import * as cloudPlanApi from '@n8n/rest-api-client/api/cloudPlans';
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useTelemetry } from './useTelemetry';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
