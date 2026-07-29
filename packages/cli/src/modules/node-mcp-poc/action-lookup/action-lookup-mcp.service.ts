@@ -37,7 +37,7 @@ Rules:
 - Use the exact actionId returned by search_node_actions.
 - Call get_node_action first and include only its public input fields.
 - Complete all visible required fields and required dynamic resolutions before running.
-- Send resource locators as scalars and resource-mapper values as ordinary objects. Never send credentials, resolver names, n8n expressions, or internal wrappers.
+- Send resource locators as scalars and resource-mapper values as ordinary objects. Fields with acceptsExpression support n8n expressions beginning with "=". Never send credentials, resolver names, or internal wrappers.
 - If validation fails, correct the reported field; do not repeatedly retry unchanged input.`;
 
 function isRecord(value: unknown): value is Record<string, unknown> {

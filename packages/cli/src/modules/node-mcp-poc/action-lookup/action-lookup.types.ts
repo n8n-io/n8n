@@ -46,6 +46,8 @@ export interface NodeActionField {
 	type: NodeActionFieldType;
 	description?: string;
 	required: boolean;
+	default?: unknown;
+	acceptsExpression?: boolean;
 	choices?: NodeActionChoice[];
 	accepts?: string[];
 	fields?: NodeActionField[];

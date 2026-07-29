@@ -7,7 +7,8 @@ const values = { Order: 'O-23523', Status: 'Shipped' };
 export const updateOrderStatusTask = benchmarkTaskSchema.parse({
 	id: 'update-order-status',
 	title: 'Google Sheets change row',
-	prompt: 'Can you update order O-23523 status to "Shipped" in spreadsheet "Financial reports"?',
+	prompt:
+		'Can you update order O-23523 status to "Shipped" in spreadsheet "Financial reports"? Don\'t stop to ask questions, just update the status.',
 	categories: [
 		'discovery',
 		'chained-resolution',

@@ -1,5 +1,5 @@
 import { mock } from 'vitest-mock-extended';
-import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { WorkflowExpression, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
@@ -113,10 +113,15 @@ describe('NodeToolExecutorService', () => {
 		);
 	});
 
-	it('rejects expressions and unsafe dynamic keys', async () => {
-		await expect(
-			service.execute(toolset, tool, { message: '={{ $json.message }}' }),
-		).rejects.toThrow('expressions are not accepted');
+	it('preserves expressions and rejects unsafe dynamic keys', async () => {
+		await service.execute(toolset, tool, { message: '={{ $json.message }}' });
+		expect(ephemeralNodeExecutor.executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				nodeParameters: expect.objectContaining({
+					message: '={{ $json.message }}',
+				}),
+			}),
+		);
 		const unsafe = JSON.parse('{"additionalFields":{"__proto__":{"polluted":true}}}') as Record<
 			string,
 			unknown
@@ -138,5 +143,87 @@ describe('NodeToolExecutorService', () => {
 				}),
 			}),
 		);
+	});
+
+	it('resolves hidden expression defaults before validating dependent fields', async () => {
+		const acquireIsolate = vi
+			.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
+			.mockResolvedValue(true);
+		const releaseIsolate = vi
+			.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+			.mockResolvedValue();
+		const conditionalDescription: INodeTypeDescription = {
+			...description,
+			properties: [
+				{
+					displayName: 'Properties',
+					name: 'propertiesUi',
+					type: 'fixedCollection',
+					typeOptions: { multipleValues: true },
+					default: {},
+					options: [
+						{
+							displayName: 'Property',
+							name: 'propertyValues',
+							values: [
+								{
+									displayName: 'Key',
+									name: 'key',
+									type: 'string',
+									default: '',
+								},
+								{
+									displayName: 'Type',
+									name: 'type',
+									type: 'hidden',
+									default: '={{$parameter["&key"].split("|").pop()}}',
+								},
+								{
+									displayName: 'Select Value',
+									name: 'selectValue',
+									type: 'string',
+									default: '',
+									displayOptions: { show: { type: ['select'] } },
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+		const conditionalTool = {
+			...tool,
+			inputSchema: z
+				.object({
+					propertiesUi: z.object({
+						propertyValues: z.array(
+							z.object({ key: z.string(), selectValue: z.string() }).strict(),
+						),
+					}),
+				})
+				.strict(),
+			properties: conditionalDescription.properties,
+		};
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: conditionalDescription,
+		} as INodeType);
+
+		await service.execute(toolset, conditionalTool, {
+			propertiesUi: {
+				propertyValues: [{ key: 'Status|select', selectValue: 'Todo' }],
+			},
+		});
+
+		expect(ephemeralNodeExecutor.executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				nodeParameters: expect.objectContaining({
+					propertiesUi: {
+						propertyValues: [{ key: 'Status|select', type: 'select', selectValue: 'Todo' }],
+					},
+				}),
+			}),
+		);
+		expect(acquireIsolate).toHaveBeenCalledOnce();
+		expect(releaseIsolate).toHaveBeenCalledOnce();
 	});
 });

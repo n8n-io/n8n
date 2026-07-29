@@ -71,6 +71,7 @@ const description: INodeTypeDescription = {
 			displayName: 'Columns',
 			name: 'columns',
 			type: 'resourceMapper',
+			noDataExpression: true,
 			default: { mappingMode: 'defineBelow', value: null },
 			builderHint: {
 				propertyHint: 'Editor-only mapper instructions.',
@@ -88,12 +89,110 @@ const description: INodeTypeDescription = {
 			type: 'boolean',
 			default: false,
 		},
+		{
+			displayName: 'Location',
+			name: 'locationDefine',
+			type: 'fixedCollection',
+			default: { values: {} },
+			options: [
+				{
+					displayName: 'Values',
+					name: 'values',
+					values: [
+						{
+							displayName: 'Header Row',
+							name: 'headerRow',
+							type: 'number',
+							default: 1,
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Addresses',
+			name: 'addressOptions',
+			type: 'fixedCollection',
+			default: {},
+			typeOptions: { multipleValues: true },
+			options: [
+				{
+					displayName: 'Address Properties',
+					name: 'addressProperties',
+					values: [
+						{
+							displayName: 'Address',
+							name: 'address',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					displayName: 'Retained Option',
+					name: 'retainedOption',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Handling Extra Data',
+					name: 'handlingExtraData',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: { '/dataMode': ['autoMapInputData'] },
+					},
+				},
+				{
+					displayName: 'Handling Extra Data',
+					name: 'handlingExtraData',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: { '/columns.mappingMode': ['autoMapInputData'] },
+					},
+				},
+			],
+		},
+		{
+			displayName: 'Content Type',
+			name: 'contentType',
+			type: 'options',
+			options: [
+				{ name: 'Block Builder', value: 'blockUi', mcp: { hide: true } },
+				{ name: 'JSON', value: 'json' },
+				{ name: 'Markdown', value: 'markdown' },
+			],
+			default: 'blockUi',
+			mcp: { overrideDefault: 'markdown' },
+		},
+		{
+			displayName: 'Block Builder',
+			name: 'blockUi',
+			type: 'fixedCollection',
+			default: {},
+			mcp: { hide: true },
+			options: [],
+		},
 	],
 };
 
 const documentProperty = description.properties[2];
 const columnsProperty = description.properties[3];
 const autoMapInputDataProperty = description.properties[4];
+const locationProperty = description.properties[5];
+const addressProperty = description.properties[6];
+const optionsProperty = description.properties[7];
+const contentTypeProperty = description.properties[8];
+const blockBuilderProperty = description.properties[9];
 const inputFields = {
 	documentId: z.object({ mode: z.string(), value: z.union([z.string(), z.number()]) }),
 	columns: z
@@ -112,7 +211,16 @@ const tool: CompiledOperationTool = {
 	inputSchema: z.object(inputFields).strict(),
 	inputFields,
 	jsonSchema: {},
-	properties: [documentProperty, columnsProperty, autoMapInputDataProperty],
+	properties: [
+		documentProperty,
+		columnsProperty,
+		autoMapInputDataProperty,
+		locationProperty,
+		addressProperty,
+		optionsProperty,
+		contentTypeProperty,
+		blockBuilderProperty,
+	],
 	hiddenDefaults: {},
 	dynamicParameters: [
 		{
@@ -170,8 +278,34 @@ describe('NodeActionCompiler', () => {
 			expect.objectContaining({
 				name: 'columns',
 				type: 'object',
+				acceptsExpression: false,
 				description: 'MCP-specific mapper instructions.',
 				resolve: { dependsOn: ['documentId'] },
+			}),
+			expect.objectContaining({
+				name: 'locationDefine',
+				type: 'object',
+				fields: [expect.objectContaining({ name: 'headerRow', type: 'number' })],
+			}),
+			expect.objectContaining({
+				name: 'addressOptions',
+				type: 'array',
+				items: expect.objectContaining({
+					type: 'object',
+					fields: [expect.objectContaining({ name: 'address', type: 'string' })],
+				}),
+			}),
+			expect.objectContaining({
+				name: 'options',
+				fields: [expect.objectContaining({ name: 'retainedOption' })],
+			}),
+			expect.objectContaining({
+				name: 'contentType',
+				default: 'markdown',
+				choices: [
+					expect.objectContaining({ value: 'json' }),
+					expect.objectContaining({ value: 'markdown' }),
+				],
 			}),
 		]);
 	});

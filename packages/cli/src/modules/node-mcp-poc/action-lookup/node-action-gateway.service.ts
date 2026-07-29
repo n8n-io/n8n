@@ -31,6 +31,10 @@ function isScalar(value: unknown): value is NodeParameterValue {
 	);
 }
 
+function isExpressionValue(value: unknown): value is string {
+	return typeof value === 'string' && value.startsWith('=');
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -192,11 +196,79 @@ function normalizeResourceMapper(
 	};
 }
 
+function normalizeFixedCollectionEntry(
+	property: INodeProperties,
+	option: INodePropertyCollection,
+	value: unknown,
+) {
+	if (!isPlainObject(value)) {
+		return invalidParameter(property, 'each fixed-collection value to be an object');
+	}
+	const normalized = toNodeParameters(value);
+	for (const child of option.values) {
+		if (!Object.hasOwn(normalized, child.name)) continue;
+		setSafeObjectProperty(
+			normalized,
+			child.name,
+			normalizePropertyValue(child, normalized[child.name]),
+		);
+	}
+	return normalized;
+}
+
+function normalizeFixedCollection(property: INodeProperties, value: unknown) {
+	const options = (property.options ?? []).filter(isPropertyCollection);
+	const onlyOption = options.length === 1 ? options[0] : undefined;
+	if (onlyOption) {
+		const internalValue =
+			isPlainObject(value) && Object.hasOwn(value, onlyOption.name)
+				? value[onlyOption.name]
+				: value;
+		if (property.typeOptions?.multipleValues) {
+			if (!Array.isArray(internalValue)) {
+				return invalidParameter(property, 'an array of objects');
+			}
+			return {
+				[onlyOption.name]: internalValue.map((entry) =>
+					normalizeFixedCollectionEntry(property, onlyOption, entry),
+				),
+			};
+		}
+		return {
+			[onlyOption.name]: normalizeFixedCollectionEntry(property, onlyOption, internalValue),
+		};
+	}
+	if (!isPlainObject(value)) {
+		return invalidParameter(property, 'an object keyed by fixed-collection option name');
+	}
+	const result: INodeParameters = {};
+	for (const option of options) {
+		if (!Object.hasOwn(value, option.name)) continue;
+		const optionValue = value[option.name];
+		const entries = Array.isArray(optionValue) ? optionValue : [optionValue];
+		const normalized = entries.map((entry) =>
+			normalizeFixedCollectionEntry(property, option, entry),
+		);
+		setSafeObjectProperty(
+			result,
+			option.name,
+			Array.isArray(optionValue) ? normalized : normalized[0],
+		);
+	}
+	return result;
+}
+
 function normalizePropertyValue(
 	property: INodeProperties,
 	value: NodeParameterValueType,
 	mapperSchema?: ResourceMapperField[],
 ): NodeParameterValueType {
+	if (isExpressionValue(value)) {
+		if (property.noDataExpression) {
+			return invalidParameter(property, 'a literal value because expressions are disabled');
+		}
+		if (property.type !== 'resourceLocator') return value;
+	}
 	if (property.type === 'resourceLocator') return normalizeResourceLocator(property, value);
 	if (property.type === 'resourceMapper')
 		return normalizeResourceMapper(property, value, mapperSchema);
@@ -211,29 +283,7 @@ function normalizePropertyValue(
 		}
 		return result;
 	}
-	if (property.type === 'fixedCollection' && isPlainObject(value)) {
-		const result = toNodeParameters(value);
-		for (const option of (property.options ?? []).filter(isPropertyCollection)) {
-			if (!Object.hasOwn(result, option.name)) continue;
-			const optionValue = result[option.name];
-			const entries = Array.isArray(optionValue) ? optionValue : [optionValue];
-			const normalized = entries.map((entry) => {
-				if (!isPlainObject(entry)) return entry;
-				const item = toNodeParameters(entry);
-				for (const child of option.values) {
-					if (!Object.hasOwn(item, child.name)) continue;
-					setSafeObjectProperty(item, child.name, normalizePropertyValue(child, item[child.name]));
-				}
-				return item;
-			});
-			setSafeObjectProperty(
-				result,
-				option.name,
-				Array.isArray(optionValue) ? normalized : normalized[0],
-			);
-		}
-		return result;
-	}
+	if (property.type === 'fixedCollection') return normalizeFixedCollection(property, value);
 	return value;
 }
 

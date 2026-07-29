@@ -47,12 +47,39 @@ function isPropertyCollection(value: unknown): value is INodePropertyCollection 
 	return typeof value === 'object' && value !== null && 'values' in value && 'name' in value;
 }
 
-function isIncludedField(property: INodeProperties) {
-	return !EXCLUDED_FIELD_NAMES.has(property.name);
-}
-
 function isDisplayCondition(value: unknown): value is DisplayCondition {
 	return typeof value === 'object' && value !== null && '_cnd' in value;
+}
+
+function isAutoMapInputDataCondition(value: NodeParameterValue | DisplayCondition) {
+	if (value === 'autoMapInputData') return true;
+	if (!isDisplayCondition(value)) return false;
+	const [operator, operand] = Object.entries(value._cnd)[0] ?? [];
+	return operator === 'eq' && operand === 'autoMapInputData';
+}
+
+function dependsOnAutoMapInputData(property: INodeProperties) {
+	return Object.entries(property.displayOptions?.show ?? {}).some(
+		([path, values]) =>
+			path.replace(/^\//, '').endsWith('.mappingMode') && values?.some(isAutoMapInputDataCondition),
+	);
+}
+
+function isIncludedField(property: INodeProperties) {
+	return (
+		!property.mcp?.hide &&
+		!EXCLUDED_FIELD_NAMES.has(property.name) &&
+		!dependsOnAutoMapInputData(property)
+	);
+}
+
+function includedFields(properties: INodeProperties[]) {
+	const autoMapDependentNames = new Set(
+		properties.filter(dependsOnAutoMapInputData).map((property) => property.name),
+	);
+	return properties.filter(
+		(property) => isIncludedField(property) && !autoMapDependentNames.has(property.name),
+	);
 }
 
 function displayCondition(
@@ -129,11 +156,13 @@ function descriptionFor(property: INodeProperties) {
 }
 
 function choices(options: INodePropertyOptions[]) {
-	return options.map((option) => ({
-		value: option.value,
-		label: option.name,
-		...(option.description ? { description: stripHtml(option.description) } : {}),
-	}));
+	return options
+		.filter((option) => !option.mcp?.hide)
+		.map((option) => ({
+			value: option.value,
+			label: option.name,
+			...(option.description ? { description: stripHtml(option.description) } : {}),
+		}));
 }
 
 function accepts(modes: readonly INodePropertyMode[]) {
@@ -187,7 +216,13 @@ function fieldForProperty(
 		label: property.displayName,
 		type,
 		required: property.required === true,
+		acceptsExpression: property.noDataExpression !== true,
 	};
+	const defaultValue =
+		property.mcp !== undefined && Object.hasOwn(property.mcp, 'overrideDefault')
+			? property.mcp.overrideDefault
+			: property.default;
+	if (defaultValue !== undefined) field.default = defaultValue;
 	const description = descriptionFor(property);
 	if (description) field.description = description;
 	const condition = when(property.displayOptions);
@@ -201,13 +236,32 @@ function fieldForProperty(
 	}
 	if (property.type === 'resourceLocator') field.accepts = accepts(property.modes ?? []);
 	if (property.type === 'collection') {
-		field.fields = (property.options ?? [])
-			.filter(isNodeProperty)
-			.filter(isIncludedField)
-			.map((child) => fieldForProperty(child, `${path}.${child.name}`, dynamicDependencies));
+		field.fields = includedFields((property.options ?? []).filter(isNodeProperty)).map((child) =>
+			fieldForProperty(child, `${path}.${child.name}`, dynamicDependencies),
+		);
 	}
 	if (property.type === 'fixedCollection') {
-		field.fields = (property.options ?? []).filter(isPropertyCollection).map((option) => ({
+		const options = (property.options ?? []).filter(isPropertyCollection);
+		const onlyOption = options.length === 1 ? options[0] : undefined;
+		if (onlyOption) {
+			const fields = includedFields(onlyOption.values).map((child) =>
+				fieldForProperty(child, `${path}.${onlyOption.name}.${child.name}`, dynamicDependencies),
+			);
+			if (property.typeOptions?.multipleValues) {
+				field.type = 'array';
+				field.items = {
+					name: 'item',
+					label: onlyOption.displayName,
+					type: 'object',
+					required: true,
+					fields,
+				};
+			} else {
+				field.fields = fields;
+			}
+			return field;
+		}
+		field.fields = options.map((option) => ({
 			name: option.name,
 			label: option.displayName,
 			type: property.typeOptions?.multipleValues ? 'array' : 'object',
@@ -219,27 +273,19 @@ function fieldForProperty(
 							label: option.displayName,
 							type: 'object',
 							required: true,
-							fields: option.values
-								.filter(isIncludedField)
-								.map((child) =>
-									fieldForProperty(
-										child,
-										`${path}.${option.name}.${child.name}`,
-										dynamicDependencies,
-									),
-								),
-						},
-					}
-				: {
-						fields: option.values
-							.filter(isIncludedField)
-							.map((child) =>
+							fields: includedFields(option.values).map((child) =>
 								fieldForProperty(
 									child,
 									`${path}.${option.name}.${child.name}`,
 									dynamicDependencies,
 								),
 							),
+						},
+					}
+				: {
+						fields: includedFields(option.values).map((child) =>
+							fieldForProperty(child, `${path}.${option.name}.${child.name}`, dynamicDependencies),
+						),
 					}),
 		}));
 	}
@@ -363,9 +409,9 @@ export class NodeActionCompiler {
 					}
 				}
 				const seen = new Set<string>();
-				const fields = tool.properties
+				const fields = includedFields(tool.properties)
 					.filter((property) => {
-						if (!isIncludedField(property) || seen.has(property.name)) return false;
+						if (seen.has(property.name)) return false;
 						seen.add(property.name);
 						return true;
 					})

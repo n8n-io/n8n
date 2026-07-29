@@ -1,22 +1,22 @@
 export const BENCHMARK_VARIANTS = [
 	{
 		id: 'eval-json-schema-generic-batch',
-		name: 'Generic batch',
+		name: 'JSON Schema',
 		flavor: 'generic-batch',
 	},
 	{
 		id: 'eval-action-lookup',
-		name: 'Action lookup',
+		name: 'Node Catalog',
 		flavor: 'action-lookup',
 	},
 	{
 		id: 'eval-gmail-json-schema-generic-batch',
-		name: 'Generic batch',
+		name: 'JSON Schema',
 		flavor: 'generic-batch',
 	},
 	{
 		id: 'eval-gmail-action-lookup',
-		name: 'Action lookup',
+		name: 'Node Catalog',
 		flavor: 'action-lookup',
 	},
 ] as const;

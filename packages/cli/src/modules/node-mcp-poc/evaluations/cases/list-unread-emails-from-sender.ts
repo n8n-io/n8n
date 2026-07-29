@@ -44,7 +44,7 @@ export const listUnreadEmailsFromSenderTask = benchmarkTaskSchema.parse({
 			},
 		],
 		forbiddenInputPaths: [],
-		finalAnswerIncludes: [sender, '3', 'unread'],
+		finalAnswerIncludes: ['Project Atlas kickoff', 'unread'],
 	},
 	fixtures: {
 		executionItems: [

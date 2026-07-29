@@ -202,6 +202,33 @@ function isPropertyCollection(value: unknown): value is INodePropertyCollection 
 	return typeof value === 'object' && value !== null && 'values' in value && 'name' in value;
 }
 
+function withMcpOverrides(property: INodeProperties): INodeProperties {
+	const options: INodeProperties['options'] = [];
+	for (const option of property.options ?? []) {
+		if (isPropertyOption(option)) {
+			if (!option.mcp?.hide) options.push(option);
+			continue;
+		}
+		if (isNodeProperty(option)) {
+			if (!option.mcp?.hide) options.push(withMcpOverrides(option));
+			continue;
+		}
+		if (isPropertyCollection(option)) {
+			options.push({
+				...option,
+				values: option.values.filter((value) => !value.mcp?.hide).map(withMcpOverrides),
+			});
+		}
+	}
+	const hasDefaultOverride =
+		property.mcp !== undefined && Object.hasOwn(property.mcp, 'overrideDefault');
+	return {
+		...property,
+		default: hasDefaultOverride ? property.mcp?.overrideDefault : property.default,
+		...(property.options ? { options } : {}),
+	};
+}
+
 function isDisplayCondition(value: unknown): value is DisplayCondition {
 	return typeof value === 'object' && value !== null && '_cnd' in value;
 }
@@ -684,10 +711,13 @@ function mapProperty(
 				const modeSchemas = modes.map((mode) => {
 					const pattern = resourceLocatorModePattern(mode);
 					const stringValue = pattern ? z.string().regex(new RegExp(pattern)) : z.string();
+					const locatorValue = property.noDataExpression
+						? z.union([stringValue, z.number()])
+						: z.union([stringValue, z.number(), z.string().regex(/^=/)]);
 					return z
 						.object({
 							mode: z.literal(mode.name),
-							value: z.union([stringValue, z.number()]),
+							value: locatorValue,
 						})
 						.passthrough();
 				});
@@ -696,7 +726,9 @@ function mapProperty(
 						? z
 								.object({
 									mode: z.string(),
-									value: z.union([z.string(), z.number()]),
+									value: property.noDataExpression
+										? z.union([z.string(), z.number()])
+										: z.union([z.string(), z.number(), z.string().regex(/^=/)]),
 								})
 								.passthrough()
 						: modeSchemas.length === 1
@@ -921,9 +953,17 @@ function mapProperty(
 	) {
 		jsonSchema.default = property.default;
 	}
+	const compiledJsonSchema = jsonSchemaFromZod(zodSchema, jsonSchema);
+	if (!property.noDataExpression && property.type !== 'json') {
+		zodSchema = z.union([
+			zodSchema,
+			z.string().regex(/^=/, 'Expected an n8n expression starting with "="'),
+		]);
+		if (fullDescription) zodSchema = zodSchema.describe(fullDescription);
+	}
 	return {
 		zod: zodSchema,
-		json: jsonSchemaFromZod(zodSchema, jsonSchema),
+		json: compiledJsonSchema,
 		dynamic: [...dynamicDescriptors(property, path), ...nestedDynamic],
 	};
 }
@@ -1054,7 +1094,12 @@ export class NodeToolsetCompiler {
 				`Trigger node "${endpoint.binding.nodeType}" cannot be exposed as an MCP toolset`,
 			);
 		}
-		const description = nodeType.description;
+		const description: INodeTypeDescription = {
+			...nodeType.description,
+			properties: nodeType.description.properties
+				.filter((property) => !property.mcp?.hide)
+				.map(withMcpOverrides),
+		};
 		const resourceProperty = description.properties.find(
 			(property) => property.name === 'resource' && property.type === 'options',
 		);

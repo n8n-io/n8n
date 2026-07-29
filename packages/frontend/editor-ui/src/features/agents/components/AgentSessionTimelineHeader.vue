@@ -74,21 +74,23 @@ const i18n = useI18n();
 				</template>
 			</N8nBreadcrumbs>
 		</div>
-		<div v-if="props.showMetrics" :class="$style.topBarRight">
-			<span v-if="props.triggerSource" :class="$style.metricItem">
-				<N8nIcon :icon="props.triggerIcon" :size="12" />
-				<span>{{ props.triggerLabel }}</span>
-			</span>
-			<span :class="$style.sep">·</span>
-			<span :class="$style.metricItem">
-				<N8nIcon icon="circle-dollar-sign" :size="12" />
-				<span>{{ props.totalTokens.toLocaleString() }}t (${{ props.totalCost.toFixed(4) }})</span>
-			</span>
-			<span :class="$style.sep">·</span>
-			<span :class="$style.metricItem">
-				<N8nIcon icon="clock" :size="12" />
-				<span>{{ props.durationLabel }}</span>
-			</span>
+		<div :class="$style.topBarRight">
+			<template v-if="props.showMetrics">
+				<span v-if="props.triggerSource" :class="$style.metricItem">
+					<N8nIcon :icon="props.triggerIcon" :size="12" />
+					<span>{{ props.triggerLabel }}</span>
+				</span>
+				<span :class="$style.sep">·</span>
+				<span :class="$style.metricItem">
+					<N8nIcon icon="circle-dollar-sign" :size="12" />
+					<span>{{ props.totalTokens.toLocaleString() }}t (${{ props.totalCost.toFixed(4) }})</span>
+				</span>
+				<span :class="$style.sep">·</span>
+				<span :class="$style.metricItem">
+					<N8nIcon icon="clock" :size="12" />
+					<span>{{ props.durationLabel }}</span>
+				</span>
+			</template>
 			<N8nButton
 				variant="ghost"
 				size="small"
@@ -96,9 +98,10 @@ const i18n = useI18n();
 				@click="emit('download')"
 			>
 				<N8nIcon icon="download" :size="14" />
-				{{ i18n.baseText('agentSessions.timeline.downloadJson') }}
+				{{ i18n.baseText('agentSessions.downloadJson') }}
 			</N8nButton>
 			<N8nButton
+				v-if="props.showMetrics"
 				variant="ghost"
 				icon-only
 				size="medium"

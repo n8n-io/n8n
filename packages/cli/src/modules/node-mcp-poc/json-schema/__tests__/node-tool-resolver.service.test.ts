@@ -72,6 +72,10 @@ describe('NodeToolResolverService', () => {
 	const dynamicService = mock<DynamicNodeParametersService>();
 	const resolver = new NodeToolResolverService(dynamicService);
 
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
 	it('returns missing dependencies without invoking a node method', async () => {
 		const result = await resolver.resolve(toolset, tool, 'sheetName', {});
 
@@ -97,7 +101,7 @@ describe('NodeToolResolverService', () => {
 
 		expect(dynamicService.getOptionsViaMethodName).toHaveBeenCalledWith(
 			'getSheets',
-			'sheetName',
+			'parameters.sheetName',
 			expect.anything(),
 			expect.anything(),
 			expect.objectContaining({
@@ -120,7 +124,7 @@ describe('NodeToolResolverService', () => {
 
 		expect(dynamicService.getResourceLocatorResults).toHaveBeenCalledWith(
 			'searchDocuments',
-			'documentId',
+			'parameters.documentId',
 			expect.anything(),
 			expect.anything(),
 			expect.anything(),
@@ -130,7 +134,7 @@ describe('NodeToolResolverService', () => {
 		);
 		expect(dynamicService.getOptionsViaMethodName).toHaveBeenCalledWith(
 			'getSheets',
-			'sheetName',
+			'parameters.sheetName',
 			expect.anything(),
 			expect.anything(),
 			expect.objectContaining({
@@ -178,7 +182,7 @@ describe('NodeToolResolverService', () => {
 
 		expect(dynamicService.getOptionsViaMethodName).toHaveBeenLastCalledWith(
 			'getVersions',
-			'additionalFields.version',
+			'parameters.additionalFields.version',
 			expect.anything(),
 			expect.anything(),
 			expect.objectContaining({
@@ -186,5 +190,90 @@ describe('NodeToolResolverService', () => {
 			}),
 			expect.anything(),
 		);
+	});
+
+	it('resolves ampersand dependencies relative to a repeated collection item', async () => {
+		const selectProperty = {
+			displayName: 'Select Value',
+			name: 'selectValue',
+			type: 'options' as const,
+			default: '',
+		};
+		const nestedTool: CompiledOperationTool = {
+			...tool,
+			dynamicParameters: [
+				{
+					path: 'propertiesUi.propertyValues.selectValue',
+					property: selectProperty,
+					kind: 'loadOptions',
+					methodName: 'getSelectValues',
+					dependencies: ['dataSourceId', '&key'],
+				},
+			],
+		};
+		dynamicService.getOptionsViaMethodName.mockResolvedValue([{ name: 'Todo', value: 'todo' }]);
+
+		const result = await resolver.resolve(
+			{ ...toolset, tools: [nestedTool] },
+			nestedTool,
+			'propertiesUi.propertyValues.selectValue',
+			{
+				dataSourceId: 'database-id',
+				propertiesUi: {
+					propertyValues: [{ key: 'Status|select' }],
+				},
+			},
+		);
+
+		expect(dynamicService.getOptionsViaMethodName).toHaveBeenCalledWith(
+			'getSelectValues',
+			'parameters.propertiesUi.propertyValues[0].selectValue',
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({
+				propertiesUi: {
+					propertyValues: [{ key: 'Status|select' }],
+				},
+			}),
+			expect.anything(),
+		);
+		expect(result).toEqual({
+			kind: 'options',
+			appliesTo: 'propertiesUi.propertyValues.selectValue',
+			values: [{ name: 'Todo', value: 'todo' }],
+			paginationToken: undefined,
+		});
+	});
+
+	it('reports a relative dependency without accepting a root ampersand alias', async () => {
+		const nestedTool: CompiledOperationTool = {
+			...tool,
+			dynamicParameters: [
+				{
+					path: 'propertiesUi.propertyValues.selectValue',
+					property: sheetProperty,
+					kind: 'loadOptions',
+					methodName: 'getSelectValues',
+					dependencies: ['dataSourceId', '&key'],
+				},
+			],
+		};
+
+		const result = await resolver.resolve(
+			{ ...toolset, tools: [nestedTool] },
+			nestedTool,
+			'propertiesUi.propertyValues.selectValue',
+			{
+				dataSourceId: 'database-id',
+				'&key': 'Status|select',
+			},
+		);
+
+		expect(result).toEqual({
+			kind: 'needsInput',
+			appliesTo: 'propertiesUi.propertyValues.selectValue',
+			missing: ['key'],
+		});
+		expect(dynamicService.getOptionsViaMethodName).not.toHaveBeenCalled();
 	});
 });

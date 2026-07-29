@@ -30,6 +30,7 @@ interface CliOptions {
 	concurrency: number;
 	outputDir: string;
 	reportOnly: boolean;
+	rescoreOnly: boolean;
 }
 
 function optionValue(name: string) {
@@ -57,6 +58,11 @@ function parseOptions(): CliOptions {
 	if (!Number.isInteger(concurrency) || concurrency < 1) {
 		throw new Error('--concurrency must be a positive integer');
 	}
+	const reportOnly = process.argv.includes('--report-only');
+	const rescoreOnly = process.argv.includes('--rescore-only');
+	if (reportOnly && rescoreOnly) {
+		throw new Error('--report-only and --rescore-only cannot be used together');
+	}
 	return {
 		baseUrl: (optionValue('--base-url') ?? 'http://127.0.0.1:5678').replace(/\/+$/, ''),
 		models: commaList(optionValue('--models') ?? process.env.N8N_NODE_MCP_EVAL_MODELS, [
@@ -66,7 +72,8 @@ function parseOptions(): CliOptions {
 		repetitions,
 		concurrency,
 		outputDir: path.resolve(optionValue('--output-dir') ?? '.data/node-mcp-eval'),
-		reportOnly: process.argv.includes('--report-only'),
+		reportOnly,
+		rescoreOnly,
 	};
 }
 
@@ -295,21 +302,25 @@ function markdown(summary: ReturnType<typeof summarizeRuns>) {
 		'|---|---|---|---:|---:|---:|---:|---:|---:|',
 		...summary.arms.map(
 			(arm) =>
-				`| ${arm.evaluationName ?? arm.taskId ?? ''} | ${arm.model ?? ''} | ${arm.flavor ?? ''} | ${(arm.successRate * 100).toFixed(1)}% | ${(arm.medianDurationMs / 1000).toFixed(2)}s | ${String(arm.medianToolCalls)} | ${(arm.invalidCallRate * 100).toFixed(1)}% | ${String(arm.medianTokens)} | $${arm.medianCostUsd.toFixed(4)} |`,
+				`| ${arm.evaluationName ?? arm.taskId ?? ''} | ${arm.model ?? ''} | ${arm.variantName ?? arm.flavor ?? ''} | ${(arm.successRate * 100).toFixed(1)}% | ${(arm.medianDurationMs / 1000).toFixed(2)}s | ${String(arm.medianToolCalls)} | ${(arm.invalidCallRate * 100).toFixed(1)}% | ${String(arm.medianTokens)} | $${arm.medianCostUsd.toFixed(4)} |`,
 		),
 	];
 	return lines.join('\n');
 }
 
-async function rescoreRun(run: BenchmarkRun, task: BenchmarkTask) {
+async function rescoreRun(run: BenchmarkRun, task: BenchmarkTask, allowJudgeCall = true) {
 	const toolCalls = run.toolCalls.map((call) => ({
 		...call,
 		outcome: call.output === undefined ? call.outcome : classifyToolOutcome(false, call.output),
 	}));
-	const judge =
+	const cachedJudge =
 		run.judge?.model === BENCHMARK_JUDGE_MODEL && run.judge.version === BENCHMARK_JUDGE_VERSION
 			? run.judge
-			: await judgeOrFailure(task, toolCalls);
+			: undefined;
+	if (!cachedJudge && !allowJudgeCall) {
+		throw new Error(`Run ${run.runId} has no current cached judge verdict`);
+	}
+	const judge = cachedJudge ?? (await judgeOrFailure(task, toolCalls));
 	const verdict = scoreRun(task, judge, run.finalAnswer);
 	return benchmarkRunSchema.parse({
 		...run,
@@ -326,6 +337,7 @@ async function main() {
 	const runsFile = path.join(options.outputDir, 'runs.jsonl');
 	const taskById = new Map(benchmarkTasks.map((task) => [task.id, task]));
 	const allExisting = await readExistingRuns(runsFile);
+	const offlineOnly = options.reportOnly || options.rescoreOnly;
 	const eligibleExisting = allExisting.filter((run) => {
 		const task = taskById.get(run.taskId);
 		return (
@@ -336,14 +348,14 @@ async function main() {
 			run.repetition <= options.repetitions
 		);
 	});
-	if (options.reportOnly && eligibleExisting.length === 0) {
+	if (offlineOnly && eligibleExisting.length === 0) {
 		throw new Error(`No cached evaluation runs found in ${options.outputDir}`);
 	}
 	const existing = options.reportOnly
 		? eligibleExisting
 		: await mapWithConcurrency(eligibleExisting, options.concurrency, async (run) => {
 				const task = taskById.get(run.taskId);
-				return task ? await rescoreRun(run, task) : run;
+				return task ? await rescoreRun(run, task, !options.rescoreOnly) : run;
 			});
 	const completed = new Set(existing.map((run) => run.runId));
 	const runs = [...existing];
@@ -355,7 +367,7 @@ async function main() {
 		runId: string;
 	}> = [];
 
-	for (let repetition = 1; !options.reportOnly && repetition <= options.repetitions; repetition++) {
+	for (let repetition = 1; !offlineOnly && repetition <= options.repetitions; repetition++) {
 		for (const task of benchmarkTasks) {
 			for (const model of options.models) {
 				for (const variant of options.variants) {

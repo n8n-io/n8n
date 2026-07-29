@@ -38,11 +38,55 @@ function isNodeParameters(value: unknown): value is INodeParameters {
 
 function getPath(value: INodeParameters, path: string): unknown {
 	let current: unknown = value;
-	for (const segment of path.split('.')) {
+	for (const match of path.matchAll(/([^[.\]]+)|\[(\d+)\]/g)) {
+		const segment = match[1] ?? Number(match[2]);
+		if (typeof segment === 'number') {
+			if (!Array.isArray(current)) return undefined;
+			current = current[segment];
+			continue;
+		}
 		if (typeof current !== 'object' || current === null || !(segment in current)) return undefined;
 		current = Reflect.get(current, segment);
 	}
 	return current;
+}
+
+function materializeParameterPath(descriptor: DynamicParameterDescriptor, values: INodeParameters) {
+	const segments = descriptor.path.split('.');
+	const relativeDependencies = descriptor.dependencies
+		.filter((dependency) => dependency.startsWith('&'))
+		.map((dependency) => dependency.slice(1));
+	let current: unknown = values;
+	let path = '';
+	for (const segment of segments) {
+		if (Array.isArray(current)) {
+			const matchingIndexes = current.flatMap((entry, index) =>
+				typeof entry === 'object' &&
+				entry !== null &&
+				relativeDependencies.every((dependency) => dependency in entry)
+					? [index]
+					: [],
+			);
+			const index = matchingIndexes.length === 1 ? matchingIndexes[0] : 0;
+			path += `[${index}]`;
+			current = current[index];
+		}
+		path = path ? `${path}.${segment}` : segment;
+		current =
+			typeof current === 'object' && current !== null ? Reflect.get(current, segment) : undefined;
+	}
+	return path;
+}
+
+function dependencyPath(
+	descriptor: DynamicParameterDescriptor,
+	dependency: string,
+	values: INodeParameters,
+) {
+	if (!dependency.startsWith('&')) return dependency;
+	const parameterPath = materializeParameterPath(descriptor, values);
+	const parentPath = parameterPath.slice(0, parameterPath.lastIndexOf('.'));
+	return `${parentPath}.${dependency.slice(1)}`;
 }
 
 function setPath(value: INodeParameters, path: string, child: NodeParameterValueType) {
@@ -96,7 +140,9 @@ function internalizeResourceLocators(
 }
 
 function dependenciesMissing(descriptor: DynamicParameterDescriptor, values: INodeParameters) {
-	return descriptor.dependencies.filter((path) => getPath(values, path) === undefined);
+	return descriptor.dependencies.filter(
+		(dependency) => getPath(values, dependencyPath(descriptor, dependency, values)) === undefined,
+	);
 }
 
 function credentialsFor(toolset: CompiledNodeToolset): INodeCredentials {
@@ -142,7 +188,10 @@ export class NodeToolResolverService {
 		descriptor: DynamicParameterDescriptor,
 		values: INodeParameters,
 	) {
-		const dependencies = descriptor.dependencies.map((path) => [path, getPath(values, path)]);
+		const dependencies = descriptor.dependencies.map((dependency) => [
+			dependency,
+			getPath(values, dependencyPath(descriptor, dependency, values)),
+		]);
 		return `${toolset.endpoint.endpoint}:${tool.name}:${descriptor.path}:${JSON.stringify(dependencies)}`;
 	}
 
@@ -173,7 +222,13 @@ export class NodeToolResolverService {
 		if (!descriptor) throw new Error(`Parameter "${path}" is not dynamically resolvable`);
 		const missing = dependenciesMissing(descriptor, knownValues);
 		if (missing.length > 0) {
-			return { kind: 'needsInput', appliesTo: path, missing };
+			return {
+				kind: 'needsInput',
+				appliesTo: path,
+				missing: missing.map((dependency) =>
+					dependency.startsWith('&') ? dependency.slice(1) : dependency,
+				),
+			};
 		}
 
 		const currentNodeParameters: INodeParameters = {
@@ -205,13 +260,14 @@ export class NodeToolResolverService {
 			version: toolset.endpoint.binding.nodeVersion,
 		};
 		const credentials = credentialsFor(toolset);
+		const contextPath = `parameters.${materializeParameterPath(descriptor, currentNodeParameters)}`;
 
 		switch (descriptor.kind) {
 			case 'listSearch': {
 				if (!descriptor.methodName) throw new Error(`Resolver method missing for "${path}"`);
 				const result = await this.dynamicNodeParametersService.getResourceLocatorResults(
 					descriptor.methodName,
-					descriptor.path,
+					contextPath,
 					additionalData,
 					nodeTypeAndVersion,
 					currentNodeParameters,
@@ -229,7 +285,7 @@ export class NodeToolResolverService {
 				if (!descriptor.methodName) throw new Error(`Resolver method missing for "${path}"`);
 				const result = await this.dynamicNodeParametersService.getOptionsViaMethodName(
 					descriptor.methodName,
-					descriptor.path,
+					contextPath,
 					additionalData,
 					nodeTypeAndVersion,
 					currentNodeParameters,
@@ -251,7 +307,7 @@ export class NodeToolResolverService {
 				if (!descriptor.methodName) throw new Error(`Resolver method missing for "${path}"`);
 				const result = await this.dynamicNodeParametersService.getResourceMappingFields(
 					descriptor.methodName,
-					descriptor.path,
+					contextPath,
 					additionalData,
 					nodeTypeAndVersion,
 					currentNodeParameters,
@@ -271,7 +327,7 @@ export class NodeToolResolverService {
 				if (!descriptor.methodName) throw new Error(`Resolver method missing for "${path}"`);
 				const result = await this.dynamicNodeParametersService.getLocalResourceMappingFields(
 					descriptor.methodName,
-					descriptor.path,
+					contextPath,
 					additionalData,
 					nodeTypeAndVersion,
 				);

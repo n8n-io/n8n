@@ -165,6 +165,22 @@ describe('Node MCP benchmark', () => {
 		});
 	});
 
+	it('accepts a Gmail summary that names the sender without repeating the email address', () => {
+		const result = scoreRun(
+			listUnreadEmailsFromSenderTask,
+			{
+				model: 'anthropic/claude-sonnet-5',
+				version: '1',
+				validExecution: true,
+				matchingToolCallId: 'call-email',
+				reason: 'The Gmail search used the requested sender and filters.',
+			},
+			'Found 3 unread emails from Jordan Lee in the last seven days:\n- Project Atlas kickoff',
+		);
+
+		expect(result).toEqual({ success: true, reasons: [] });
+	});
+
 	it('gives the judge correct examples and explicit resource-locator mistakes', () => {
 		const prompt = buildJudgePrompt(addFinancialReportRowTask, []);
 
@@ -279,8 +295,11 @@ describe('Node MCP benchmark', () => {
 		expect(summary.categories.map(({ category }) => category)).toContain('resource-mapping');
 		expect(summary.flavors.map(({ flavor }) => flavor)).toEqual(['generic-batch', 'action-lookup']);
 		expect(summary.arms[0]?.evaluationName).toBe('Google Sheets append row');
+		expect(summary.arms[0]?.variantName).toBe('Node Catalog');
 		expect(html).toContain('Results by flavor');
 		expect(html).toContain('Google Sheets append row');
+		expect(html).toContain('JSON Schema');
+		expect(html).toContain('Node Catalog');
 		expect(html).toContain('Evaluation × model × flavor');
 		expect(html).toContain('Individual runs');
 		expect(html).toContain('run-1');

@@ -26,6 +26,7 @@ const columnsProperty: INodeProperties = {
 	displayName: 'Columns',
 	name: 'columns',
 	type: 'resourceMapper',
+	noDataExpression: true,
 	default: { mappingMode: 'defineBelow', value: null },
 	typeOptions: {
 		resourceMapper: { resourceMapperMethod: 'getColumns', mode: 'add' },
@@ -143,6 +144,74 @@ const upsertPlan: CompiledActionPlan = {
 	toolset: upsertToolset,
 	tool: upsertTool,
 	dynamicParameters: upsertTool.dynamicParameters,
+};
+const locationProperty: INodeProperties = {
+	displayName: 'Location',
+	name: 'locationDefine',
+	type: 'fixedCollection',
+	default: { values: {} },
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					displayName: 'Header Row',
+					name: 'headerRow',
+					type: 'number',
+					default: 1,
+				},
+			],
+		},
+	],
+};
+const addressProperty: INodeProperties = {
+	displayName: 'Addresses',
+	name: 'addressOptions',
+	type: 'fixedCollection',
+	default: {},
+	typeOptions: { multipleValues: true },
+	options: [
+		{
+			displayName: 'Address Properties',
+			name: 'addressProperties',
+			values: [
+				{
+					displayName: 'Address',
+					name: 'address',
+					type: 'string',
+					default: '',
+				},
+			],
+		},
+	],
+};
+const optionsProperty: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	type: 'collection',
+	default: {},
+	options: [locationProperty],
+};
+const additionalFieldsProperty: INodeProperties = {
+	displayName: 'Additional Fields',
+	name: 'additionalFields',
+	type: 'collection',
+	default: {},
+	options: [addressProperty],
+};
+const fixedCollectionTool: CompiledOperationTool = {
+	...tool,
+	properties: [documentProperty, columnsProperty, optionsProperty, additionalFieldsProperty],
+};
+const fixedCollectionToolset: CompiledNodeToolset = {
+	...toolset,
+	tools: [fixedCollectionTool],
+};
+const fixedCollectionPlan: CompiledActionPlan = {
+	...plan,
+	toolset: fixedCollectionToolset,
+	tool: fixedCollectionTool,
 };
 
 describe('NodeActionGatewayService', () => {
@@ -263,6 +332,26 @@ describe('NodeActionGatewayService', () => {
 		});
 	});
 
+	it('preserves expressions in supported fields', async () => {
+		executor.execute.mockResolvedValue({
+			status: 'success',
+			data: [{ json: { updatedRows: 1 } }],
+		});
+
+		await service.run('actions', plan.id, {
+			documentId: '={{ $json.documentId }}',
+			columns: { Amount: '={{ $json.amount }}' },
+		});
+
+		expect(executor.execute).toHaveBeenCalledWith(toolset, tool, {
+			documentId: { mode: 'id', value: '={{ $json.documentId }}' },
+			columns: {
+				mappingMode: 'defineBelow',
+				value: { Amount: '={{ $json.amount }}' },
+			},
+		});
+	});
+
 	it('strips resource-locator metadata and preserves a mapper envelope', async () => {
 		catalogs.findAction.mockReturnValue(upsertPlan);
 		resolver.getResourceMapperSchema.mockReturnValue([
@@ -338,6 +427,38 @@ describe('NodeActionGatewayService', () => {
 				mappingMode: 'defineBelow',
 				value: { Order: 'O-23523', Status: 'Shipped' },
 				matchingColumns: ['Order'],
+			},
+		});
+	});
+
+	it('reintroduces single-option fixed-collection nesting before execution', async () => {
+		catalogs.findAction.mockReturnValue(fixedCollectionPlan);
+		executor.execute.mockResolvedValue({
+			status: 'success',
+			data: [{ json: { updatedRows: 1 } }],
+		});
+
+		await service.run('actions', fixedCollectionPlan.id, {
+			documentId: 'spreadsheet-id',
+			columns: { Amount: 10 },
+			options: {
+				locationDefine: { headerRow: 2 },
+			},
+			additionalFields: {
+				addressOptions: [{ address: 'First' }, { address: 'Second' }],
+			},
+		});
+
+		expect(executor.execute).toHaveBeenCalledWith(fixedCollectionToolset, fixedCollectionTool, {
+			documentId: { mode: 'id', value: 'spreadsheet-id' },
+			columns: { mappingMode: 'defineBelow', value: { Amount: 10 } },
+			options: {
+				locationDefine: { values: { headerRow: 2 } },
+			},
+			additionalFields: {
+				addressOptions: {
+					addressProperties: [{ address: 'First' }, { address: 'Second' }],
+				},
 			},
 		});
 	});

@@ -8,6 +8,8 @@ const SLACK_CREDENTIAL_ID =
 	process.env.N8N_SLACK_CREDENTIAL_ID ?? 'REPLACE_WITH_SLACK_CREDENTIAL_ID';
 const GOOGLE_SHEETS_CREDENTIAL_ID =
 	process.env.N8N_GOOGLE_SHEETS_CREDENTIAL_ID ?? 'REPLACE_WITH_GOOGLE_SHEETS_CREDENTIAL_ID';
+const NOTION_CREDENTIAL_ID =
+	process.env.N8N_NOTION_CREDENTIAL_ID ?? 'REPLACE_WITH_NOTION_CREDENTIAL_ID';
 
 const GMAIL_BINDING: NodeMcpPocBinding = {
 	nodeType: 'n8n-nodes-base.gmail',
@@ -32,6 +34,17 @@ const GOOGLE_SHEETS_BINDING: NodeMcpPocBinding = {
 		},
 	},
 	fixedParameters: { authentication: 'oAuth2' },
+};
+
+const NOTION_BINDING: NodeMcpPocBinding = {
+	nodeType: 'n8n-nodes-base.notion',
+	nodeVersion: 3,
+	projectId: PROJECT_ID,
+	userId: USER_ID,
+	credentials: {
+		notionApi: { id: NOTION_CREDENTIAL_ID, name: 'POC Notion' },
+	},
+	fixedParameters: { authentication: 'apiKey' },
 };
 
 /**
@@ -60,6 +73,11 @@ export const NODE_MCP_POC_ENDPOINTS: readonly NodeMcpPocEndpoint[] = [
 		endpoint: 'eval-gmail-action-lookup',
 		type: 'action-lookup',
 		bindings: [GMAIL_BINDING],
+	},
+	{
+		endpoint: 'eval-notion-action-lookup',
+		type: 'action-lookup',
+		bindings: [NOTION_BINDING],
 	},
 	{
 		endpoint: 'json-schema-generic-batch-gmail',

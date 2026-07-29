@@ -82,7 +82,6 @@ function toNodeParameterValue(value: unknown): NodeParameterValueType {
 		return value;
 	}
 	if (typeof value === 'string') {
-		if (value.startsWith('=')) throw new Error('n8n expressions are not accepted');
 		return value;
 	}
 	if (Array.isArray(value)) {

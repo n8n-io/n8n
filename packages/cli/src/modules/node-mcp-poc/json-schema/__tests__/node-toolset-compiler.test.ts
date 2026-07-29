@@ -395,6 +395,7 @@ describe('NodeToolsetCompiler', () => {
 			'x-sensitive': true,
 		});
 		expect(tool.inputSchema.safeParse({ count: 1, tags: ['one', 'one'] }).success).toBe(false);
+		expect(tool.inputSchema.safeParse({ count: '={{ 1 + 1 }}' }).success).toBe(true);
 		expect(
 			tool.inputSchema.safeParse({
 				count: 1,
@@ -423,5 +424,47 @@ describe('NodeToolsetCompiler', () => {
 				},
 			}).success,
 		).toBe(false);
+	});
+
+	it('applies MCP property defaults and hides properties and options', () => {
+		const mcpDescription: INodeTypeDescription = {
+			...description,
+			properties: [
+				...description.properties.slice(0, 2),
+				{
+					displayName: 'Content Type',
+					name: 'contentType',
+					type: 'options',
+					options: [
+						{ name: 'Block Builder', value: 'blockUi', mcp: { hide: true } },
+						{ name: 'JSON', value: 'json' },
+						{ name: 'Markdown', value: 'markdown' },
+					],
+					default: 'blockUi',
+					mcp: { overrideDefault: 'markdown' },
+				},
+				{
+					displayName: 'Block Builder',
+					name: 'blockUi',
+					type: 'fixedCollection',
+					default: {},
+					mcp: { hide: true },
+					options: [],
+				},
+			],
+		};
+		nodeTypes.getByNameAndVersion.mockReturnValue({ description: mcpDescription } as INodeType);
+
+		const compiled = compiler.compile(endpoint).tools[0];
+
+		expect(compiled.jsonSchema.properties?.contentType).toMatchObject({
+			default: 'markdown',
+			enum: ['json', 'markdown'],
+		});
+		expect(compiled.jsonSchema.properties).not.toHaveProperty('blockUi');
+		expect(compiled.properties).toContainEqual(
+			expect.objectContaining({ name: 'contentType', default: 'markdown' }),
+		);
+		expect(compiled.properties).not.toContainEqual(expect.objectContaining({ name: 'blockUi' }));
 	});
 });

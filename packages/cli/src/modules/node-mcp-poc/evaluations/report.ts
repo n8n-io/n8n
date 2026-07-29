@@ -41,11 +41,12 @@ const taskById=new Map(source.tasks.map(task=>[task.id,task]));
 const variantById=new Map(source.variants.map(variant=>[variant.id,variant]));
 const selects={model:document.querySelector('#model'),flavor:document.querySelector('#flavor'),evaluation:document.querySelector('#evaluation'),category:document.querySelector('#category'),status:document.querySelector('#status')};
 function fill(select,values){select.innerHTML='<option value="">All</option>'+[...values].sort().map(value=>'<option>'+escapeHtml(value)+'</option>').join('')}
+function fillFlavors(select,flavors){select.innerHTML='<option value="">All</option>'+[...flavors].map(flavor=>'<option value="'+escapeHtml(flavor)+'">'+escapeHtml(flavorName(flavor))+'</option>').join('')}
 function fillEvaluations(select,tasks){select.innerHTML='<option value="">All</option>'+tasks.map(task=>'<option value="'+escapeHtml(task.id)+'">'+escapeHtml(task.title)+'</option>').join('')}
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))}
-function flavorName(value){return value.split('-').map(part=>part[0].toUpperCase()+part.slice(1)).join(' ')}
+function flavorName(value){return source.variants.find(variant=>variant.flavor===value)?.name||value}
 fill(selects.model,new Set(source.runs.map(run=>run.model)));
-fill(selects.flavor,new Set(source.variants.map(variant=>variant.flavor)));
+fillFlavors(selects.flavor,new Set(source.variants.map(variant=>variant.flavor)));
 fillEvaluations(selects.evaluation,source.tasks.filter(task=>source.runs.some(run=>run.taskId===task.id)));
 fill(selects.category,new Set(source.tasks.flatMap(task=>task.categories)));
 Object.values(selects).forEach(select=>select.addEventListener('change',render));

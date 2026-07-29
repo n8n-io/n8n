@@ -430,11 +430,12 @@ export const description: INodeProperties[] = [
 		name: 'contentType',
 		type: 'options',
 		options: [
-			{ name: 'Block Builder', value: 'blockUi' },
+			{ name: 'Block Builder', value: 'blockUi', mcp: { hide: true } },
 			{ name: 'JSON Blocks', value: 'json' },
 			{ name: 'Markdown', value: 'markdown' },
 		],
 		default: 'blockUi',
+		mcp: { overrideDefault: 'markdown' },
 		displayOptions: { show: { resource: ['databasePage'], operation: ['create'] } },
 	},
 	{
@@ -447,7 +448,10 @@ export const description: INodeProperties[] = [
 			show: { resource: ['databasePage'], operation: ['create'], contentType: ['json'] },
 		},
 	},
-	blockBuilder('databasePage', 'create', { contentType: ['blockUi'] }),
+	{
+		...blockBuilder('databasePage', 'create', { contentType: ['blockUi'] }),
+		mcp: { hide: true },
+	},
 	{
 		displayName: 'Markdown',
 		name: 'markdown',

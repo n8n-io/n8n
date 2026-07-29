@@ -54,8 +54,7 @@ export function classifyToolOutcome(isError: boolean, result: unknown): ToolCall
 		text.includes('required parameter') ||
 		text.includes('hidden for the selected operation') ||
 		text.includes('resolve "') ||
-		text.includes('action not found') ||
-		text.includes('expressions are not accepted')
+		text.includes('action not found')
 	) {
 		return 'semantic_invalid';
 	}

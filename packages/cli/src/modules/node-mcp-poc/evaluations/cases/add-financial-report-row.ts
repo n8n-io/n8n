@@ -4,7 +4,7 @@ export const addFinancialReportRowTask = benchmarkTaskSchema.parse({
 	id: 'add-financial-report-row',
 	title: 'Google Sheets append row',
 	prompt:
-		'Can you add a new row to gsheet document "Financial reports"? Month=01/01/2027, Amount = 5000',
+		'Can you add a new row to gsheet document "Financial reports"? Month=01/01/2027, Amount = 5000. Don\'t stop to ask questions, just add the row.',
 	categories: ['discovery', 'chained-resolution', 'resource-mapping', 'execution'],
 	variants: ['eval-json-schema-generic-batch', 'eval-action-lookup'],
 	timeoutMs: 120_000,

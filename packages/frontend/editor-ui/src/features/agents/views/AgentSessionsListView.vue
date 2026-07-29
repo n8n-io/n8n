@@ -26,6 +26,7 @@ import {
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
+import { saveAs } from 'file-saver';
 
 const props = withDefaults(
 	defineProps<{
@@ -134,6 +135,12 @@ function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<stri
 	}
 
 	actions.push({
+		id: 'download',
+		label: i18n.baseText('agentSessions.downloadJson'),
+		icon: 'download',
+	});
+
+	actions.push({
 		id: 'delete',
 		label: i18n.baseText('generic.delete'),
 		icon: 'trash-2',
@@ -171,6 +178,22 @@ function onViewTrace(threadId: string) {
 	void router.push(target);
 }
 
+async function downloadSessionJson(thread: AgentExecutionThread) {
+	try {
+		const detail = await sessionsStore.getThreadDetail(projectId.value, agentId.value, thread.id);
+		const blob = new Blob([`${JSON.stringify(detail, null, 2)}\n`], {
+			type: 'application/json',
+		});
+		const name =
+			threadTitleOf(thread)
+				.trim()
+				.replace(/[\\/:*?"<>|]+/g, '-') || `session-${thread.id}`;
+		saveAs(blob, `${name}.json`);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.download'));
+	}
+}
+
 async function onAction(actionId: string, thread: AgentExecutionThread) {
 	if (actionId === 'goToParentRun') {
 		if (!thread.parentAgentId || !thread.parentThreadId) return;
@@ -182,6 +205,11 @@ async function onAction(actionId: string, thread: AgentExecutionThread) {
 				threadId: thread.parentThreadId,
 			},
 		});
+		return;
+	}
+
+	if (actionId === 'download') {
+		await downloadSessionJson(thread);
 		return;
 	}
 

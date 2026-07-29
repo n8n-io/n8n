@@ -4,6 +4,8 @@ import {
 	isSafeObjectProperty,
 	NodeHelpers,
 	setSafeObjectProperty,
+	Workflow,
+	type INode,
 	type INodeParameters,
 	type INodeProperties,
 	type INodePropertyCollection,
@@ -15,6 +17,7 @@ import {
 
 import { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 
 import { executeNodeMcpEvalFixture } from '../evaluations/eval-context';
 import type { CompiledNodeToolset, CompiledOperationTool } from './node-mcp-poc.types';
@@ -54,12 +57,7 @@ function sanitizeObject(value: object): INodeParameters {
 }
 
 function sanitizeValue(value: unknown): NodeParameterValueType {
-	if (isScalar(value)) {
-		if (typeof value === 'string' && value.startsWith('=')) {
-			throw new Error('n8n expressions are not accepted by the node MCP POC');
-		}
-		return value;
-	}
+	if (isScalar(value)) return value;
 	if (Array.isArray(value)) {
 		if (value.every(isScalar)) return value;
 		if (value.every(isPlainObject)) {
@@ -93,6 +91,11 @@ const NON_EXECUTION_INPUT_TYPES = new Set([
 	'notice',
 ]);
 
+type HiddenDefaultResolver = (
+	value: NodeParameterValueType,
+	siblingParameters: INodeParameters,
+) => NodeParameterValueType;
+
 function isExecutionInputProperty(value: unknown): value is INodeProperties {
 	return isNodeProperty(value) && !NON_EXECUTION_INPUT_TYPES.has(value.type);
 }
@@ -103,7 +106,27 @@ function applyDefaultsAndValidate(
 	rootValues: INodeParameters,
 	version: number,
 	description: INodeTypeDescription,
+	resolveHiddenDefault: HiddenDefaultResolver,
 ) {
+	for (const property of properties) {
+		if (
+			property.type !== 'hidden' ||
+			Object.hasOwn(values, property.name) ||
+			property.default === undefined
+		) {
+			continue;
+		}
+		const visible = NodeHelpers.displayParameter(
+			values,
+			property,
+			{ typeVersion: version },
+			description,
+			rootValues,
+		);
+		if (visible) {
+			setSafeObjectProperty(values, property.name, resolveHiddenDefault(property.default, values));
+		}
+	}
 	const visibility = properties.map((property) => ({
 		property,
 		visible:
@@ -152,6 +175,7 @@ function applyDefaultsAndValidate(
 				rootValues,
 				version,
 				description,
+				resolveHiddenDefault,
 			);
 		}
 		if (property.type === 'fixedCollection' && isPlainObject(propertyValue)) {
@@ -166,6 +190,7 @@ function applyDefaultsAndValidate(
 							rootValues,
 							version,
 							description,
+							resolveHiddenDefault,
 						);
 					}
 				}
@@ -312,13 +337,45 @@ export class NodeToolExecutorService {
 			toolset.endpoint.binding.nodeType,
 			toolset.endpoint.binding.nodeVersion,
 		);
-		applyDefaultsAndValidate(
-			tool.properties,
+		const validationNode: INode = {
+			id: randomUUID(),
+			name: `${tool.name} POC`,
+			type: toolset.endpoint.binding.nodeType,
+			typeVersion: toolset.endpoint.binding.nodeVersion,
+			position: [0, 0],
 			parameters,
-			parameters,
-			toolset.endpoint.binding.nodeVersion,
-			nodeType.description,
-		);
+		};
+		const validationWorkflow = new Workflow({
+			nodes: [],
+			connections: {},
+			active: false,
+			nodeTypes: this.nodeTypes,
+		});
+		validationWorkflow.nodes[validationNode.name] = validationNode;
+		const resolveHiddenDefault: HiddenDefaultResolver = (value, siblingParameters) => {
+			if (!isScalar(value)) return value;
+			return validationWorkflow.expression.resolveSimpleParameterValue(
+				value,
+				siblingParameters,
+				null,
+				0,
+				0,
+				validationNode.name,
+				[],
+				'internal',
+				{},
+			);
+		};
+		await withExpressionIsolate(validationWorkflow, async () => {
+			applyDefaultsAndValidate(
+				tool.properties,
+				parameters,
+				parameters,
+				toolset.endpoint.binding.nodeVersion,
+				nodeType.description,
+				resolveHiddenDefault,
+			);
+		});
 		for (const property of tool.properties) {
 			if (!Object.hasOwn(parameters, property.name)) continue;
 			setSafeObjectProperty(

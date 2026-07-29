@@ -2004,6 +2004,7 @@ export interface INodeProperties {
 	description?: string;
 	hint?: string;
 	builderHint?: IParameterBuilderHint;
+	mcp?: INodePropertyMcpConfig;
 	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
 	/**
@@ -2108,6 +2109,7 @@ export interface INodePropertyOptions {
 	description?: string;
 	disabled?: boolean;
 	builderHint?: IParameterBuilderHint;
+	mcp?: INodePropertyMcpConfig;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
 	inputSchema?: any;
@@ -2118,6 +2120,11 @@ export interface INodePropertyOptions {
 	// When set, the option is hidden in the editor unless the matching
 	// `N8N_ENV_FEAT_<envFeatureFlag>` flag is enabled.
 	envFeatureFlag?: Uppercase<string>;
+}
+
+export interface INodePropertyMcpConfig {
+	overrideDefault?: NodeParameterValueType;
+	hide?: boolean;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
