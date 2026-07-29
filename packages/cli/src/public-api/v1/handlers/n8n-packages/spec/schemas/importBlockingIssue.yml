@@ -230,8 +230,9 @@ oneOf:
       existingTagId:
         type: string
         description: >
-          For `name-collision` (and a `rename-drift` degraded from `rename`): the
-          id of the different target tag currently holding the wanted name.
+          Id of the different target tag currently holding the wanted name, when
+          one exists. Absent when two package tags collide with each other rather
+          than with a target tag.
       existingName:
         type: string
         description: 'For `rename-drift`: the current name of the same-id target tag.'
