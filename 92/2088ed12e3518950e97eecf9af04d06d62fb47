@@ -1,0 +1,30 @@
+packages/core/src/execution-engine/node-execution-context/supply-data-context.ts
+  s_a8c401b8f0e190::t_a62b425b723cb6 434
+  s_a8c401b8f0e190::t_30a69834e50bef 23
+packages/core/src/execution-engine/node-execution-context/execute-context.ts
+  s_a8c401b8f0e190::t_624f70d5fc00fa 23
+  s_a8c401b8f0e190::t_8cbe90e039a9d9 225
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_a8c401b8f0e190::t_beb8f039da51ea 319-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "922088ed12e3518950e97eecf9af04d06d62fb47",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a8c401b8f0e190": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0da7e193-7487-4290-bd0c-7b1221247534",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
