@@ -3465,6 +3465,34 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('unredact (field-level sentinel restore)', () => {
+		const saved = {
+			privateKey: '-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----',
+		};
+
+		it('should restore the saved value for an exact blanking sentinel', () => {
+			const result = service.unredact({ privateKey: CREDENTIAL_BLANKING_VALUE }, saved);
+			expect(result.privateKey).toBe(saved.privateKey);
+		});
+
+		it('should restore the saved value when the sentinel was switched to expression mode', () => {
+			// Toggling a redacted field to expression mode prepends `=`; the saved
+			// key must still be restored instead of persisting the sentinel.
+			const result = service.unredact({ privateKey: `=${CREDENTIAL_BLANKING_VALUE}` }, saved);
+			expect(result.privateKey).toBe(saved.privateKey);
+		});
+
+		it('should restore the saved value for an expression-prefixed empty sentinel', () => {
+			const result = service.unredact({ privateKey: `=${CREDENTIAL_EMPTY_VALUE}` }, saved);
+			expect(result.privateKey).toBe(saved.privateKey);
+		});
+
+		it('should keep a genuine new value that is not a sentinel', () => {
+			const result = service.unredact({ privateKey: '={{ $secrets.key }}' }, saved);
+			expect(result.privateKey).toBe('={{ $secrets.key }}');
+		});
+	});
+
 	describe('checkCredentialData', () => {
 		const testProjectId = 'test-project-id';
 
