@@ -140,6 +140,46 @@ describe('McpTrigger', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
+		it('should return 405 for a GET carrying a session id instead of opening an SSE stream', async () => {
+			const req = createMockRequest({
+				path: '/webhook',
+				method: 'GET',
+				headers: { 'mcp-session-id': 'existing-session' },
+			});
+			const resp = createMockResponse();
+			const node = mock<INode>({
+				typeVersion: 2,
+				name: 'MCP Server Trigger',
+			});
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(resp.writeHead).toHaveBeenCalledWith(405, { Allow: 'POST, DELETE' });
+			expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should still open the SSE stream for a GET without a session id', async () => {
+			const req = createMockRequest({ path: '/webhook', method: 'GET' });
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalled();
+			expect(resp.writeHead).not.toHaveBeenCalledWith(405, expect.anything());
+		});
+
 		it('should use n8n-mcp-server name for version 1', async () => {
 			const req = createMockRequest({ path: '/webhook/sse' });
 			const resp = createMockResponse();

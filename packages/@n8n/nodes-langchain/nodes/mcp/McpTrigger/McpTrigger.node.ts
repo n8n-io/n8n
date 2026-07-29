@@ -199,6 +199,20 @@ export class McpTrigger extends Node {
 		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {
+			// A GET with a session id is a Streamable HTTP listen stream, not an SSE
+			// handshake. Serving it as SSE would stall the client, so decline it per spec.
+			if (req.headers['mcp-session-id']) {
+				resp.writeHead(405, { Allow: 'POST, DELETE' });
+				resp.end(
+					JSON.stringify({
+						jsonrpc: '2.0',
+						error: { code: -32000, message: 'Method not allowed.' },
+						id: null,
+					}),
+				);
+				return { noWebhookResponse: true };
+			}
+
 			const postUrl =
 				node.typeVersion < 2
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
