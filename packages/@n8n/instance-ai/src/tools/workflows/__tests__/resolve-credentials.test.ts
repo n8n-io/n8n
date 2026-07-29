@@ -200,7 +200,9 @@ describe('resolveCredentials', () => {
 			(ctx.credentialService.list as Mock).mockResolvedValue([]);
 			(
 				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
-			).isAiGatewayCredentialType = vi.fn(async (type: string) => type === 'pdfcoApi');
+			).isAiGatewayCredentialType = vi.fn(
+				async (type: string) => await Promise.resolve(type === 'pdfcoApi'),
+			);
 			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
 				.fn()
 				.mockResolvedValue({
@@ -243,7 +245,9 @@ describe('resolveCredentials', () => {
 			(ctx.credentialService.list as Mock).mockResolvedValue([]);
 			(
 				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
-			).isAiGatewayCredentialType = vi.fn(async (type: string) => type === 'pdfcoApi');
+			).isAiGatewayCredentialType = vi.fn(
+				async (type: string) => await Promise.resolve(type === 'pdfcoApi'),
+			);
 			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
 				.fn()
 				.mockResolvedValue({
