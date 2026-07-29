@@ -128,7 +128,7 @@ export class TagService {
 	/** Exact (case-sensitive) name lookup; never creates, never dedupes input. */
 	async getByNames(names: string[]): Promise<TagEntity[]> {
 		if (names.length === 0) return [];
-		return await this.tagRepository.findAllByNames(names);
+		return await this.tagRepository.findManyByName(names);
 	}
 
 	/**

@@ -14,6 +14,14 @@ type BlockingIssue =
 			nodeType: string;
 			typeVersion: number;
 			usedByWorkflows: string[];
+	  }
+	| {
+			type: 'tag-unresolved';
+			kind: string;
+			sourceId?: string;
+			name?: string;
+			missingScope?: string;
+			usedByWorkflows: string[];
 	  };
 
 function formatIssue(issue: unknown): string {
@@ -33,6 +41,13 @@ function formatIssue(issue: unknown): string {
 	if (it.type === 'missing-node-type') {
 		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
 		return `node type ${it.nodeType} @ v${it.typeVersion} missing on this instance, used by workflow(s) ${usedBy}`;
+	}
+	if (it.type === 'tag-unresolved') {
+		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		if (it.kind === 'permission-denied') {
+			return `tag import requires the ${it.missingScope} scope, needed by workflow(s) ${usedBy}`;
+		}
+		return `tag "${it.name}" (${it.sourceId}) unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
 	}
 	return JSON.stringify(issue);
 }

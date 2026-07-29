@@ -20,7 +20,7 @@ export class TagRepository extends Repository<TagEntity> {
 	}
 
 	/** Exact (case-sensitive) name lookup; no input normalization. */
-	async findAllByNames(names: string[]) {
+	async findManyByName(names: string[]) {
 		return await this.find({
 			select: ['id', 'name'],
 			where: { name: In(names) },
