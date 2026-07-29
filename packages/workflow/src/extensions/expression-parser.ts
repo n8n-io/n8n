@@ -29,13 +29,22 @@ const isInsideString = (text: string, position: number): boolean => {
 	let inSingleQuote = false;
 	let inDoubleQuote = false;
 	let inBacktick = false;
+	let escaped = false;
 
 	for (let i = 0; i < position; i++) {
 		const char = text[i];
-		const prevChar = i > 0 ? text[i - 1] : '';
 
-		// Skip escaped characters
-		if (prevChar === '\\') {
+		// Skip the character following a backslash
+		if (escaped) {
+			escaped = false;
+			continue;
+		}
+
+		// A backslash escapes the next character; consecutive backslashes
+		// toggle the escape state (e.g. `\\` is an escaped backslash, so a
+		// quote right after it still closes the string)
+		if (char === '\\') {
+			escaped = true;
 			continue;
 		}
 

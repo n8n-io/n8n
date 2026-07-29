@@ -57,6 +57,37 @@ describe('expression-parser', () => {
 			]);
 		});
 
+		it('should close a string that ends with an escaped backslash', () => {
+			// Literal expression: {{ 'a\\' }}
+			// The `\\` is an escaped backslash, so the following quote closes the string
+			// and the `}}` is outside of it.
+			const result = splitExpression("{{ 'a\\\\' }}");
+			expect(result).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: " 'a\\\\' ", hasClosingBrackets: true },
+			]);
+		});
+
+		it('should not close a string on an escaped quote', () => {
+			// Literal expression: {{ 'a\'}}b' }}
+			// The `\'` is escaped, so the string only closes after `b`, which means the
+			// first `}}` is inside the string.
+			const result = splitExpression("{{ 'a\\'}}b' }}");
+			expect(result).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: " 'a\\'}}b' ", hasClosingBrackets: true },
+			]);
+		});
+
+		it('should still detect }} inside a string that contains an escaped backslash', () => {
+			// Literal expression: {{ 'a\\b}}c' }}
+			const result = splitExpression("{{ 'a\\\\b}}c' }}");
+			expect(result).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: " 'a\\\\b}}c' ", hasClosingBrackets: true },
+			]);
+		});
+
 		it('should handle multiple expressions with strings containing }}', () => {
 			const result = splitExpression("prefix {{ '{a}}' }} middle {{ '{b}}' }} suffix");
 			expect(result).toEqual([
