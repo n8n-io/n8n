@@ -1,3 +1,6 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
 /**
@@ -18,15 +21,19 @@ const MAX_ENQUEUED_EXECUTION_AGE_MS = 7 * 24 * 60 * 60 * 1000;
  * accumulated rows are surfaced as `crashed` - visible and retryable - instead.
  *
  * This runs as a migration rather than at startup because the backlog is a one-time
- * artifact of the bug, and because a migration reaches every instance regardless of
- * execution mode: in queue mode nothing sweeps these rows at all, since enqueued
- * executions are owned by workers and startup recovery is regular-mode only.
+ * artifact of the bug. Queue mode leaves these rows untouched because enqueued
+ * executions are owned by workers.
  *
  * Irreversible: a `down()` cannot tell the rows crashed here apart from those that
  * crashed on their own.
  */
 export class CrashStaleEnqueuedExecutions1785247194306 implements IrreversibleMigration {
 	async up({ escape, runQuery, logger, migrationName }: MigrationContext) {
+		if (Container.get(GlobalConfig).executions.mode === 'queue') {
+			logger.info(`[${migrationName}] Skipping stale enqueued execution cleanup in queue mode`);
+			return;
+		}
+
 		const table = escape.tableName('execution_entity');
 		const status = escape.columnName('status');
 		const createdAt = escape.columnName('createdAt');

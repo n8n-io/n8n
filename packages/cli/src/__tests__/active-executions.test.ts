@@ -144,17 +144,15 @@ describe('ActiveExecutions', () => {
 		},
 	);
 
-	test('Should set startedAt when claiming an enqueued execution', async () => {
+	test('Should set startedAt without overwriting an existing value when claiming an enqueued execution', async () => {
 		await activeExecutions.add(executionData, {
 			executionId: FAKE_SECOND_EXECUTION_ID,
 			expectedStatus: 'new',
 		});
 
-		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
-			FAKE_SECOND_EXECUTION_ID,
-			expect.objectContaining({ startedAt: expect.any(Date) }),
-			expect.anything(),
-		);
+		expect(executionRepository.setRunning).toHaveBeenCalledWith(FAKE_SECOND_EXECUTION_ID);
+		const update = executionPersistence.updateExistingExecution.mock.calls[0][1];
+		expect(update).not.toHaveProperty('startedAt');
 	});
 
 	test('Should preserve startedAt when resuming a waiting execution', async () => {
@@ -163,12 +161,9 @@ describe('ActiveExecutions', () => {
 			expectedStatus: 'waiting',
 		});
 
-		// `undefined` leaves the column untouched, keeping the original `startedAt`
-		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
-			FAKE_SECOND_EXECUTION_ID,
-			expect.objectContaining({ startedAt: undefined }),
-			expect.anything(),
-		);
+		expect(executionRepository.setRunning).not.toHaveBeenCalled();
+		const update = executionPersistence.updateExistingExecution.mock.calls[0][1];
+		expect(update).not.toHaveProperty('startedAt');
 	});
 
 	test('Should forward deduplicationKey to executionPersistence.create', async () => {

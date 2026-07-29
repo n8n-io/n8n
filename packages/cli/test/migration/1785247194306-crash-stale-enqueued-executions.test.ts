@@ -4,6 +4,7 @@ import {
 	runSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -23,6 +24,7 @@ type ExecutionRow = {
 describe('CrashStaleEnqueuedExecutions migration', () => {
 	let dataSource: DataSource;
 	let workflowId: string;
+	let originalExecutionMode: GlobalConfig['executions']['mode'];
 
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
 		const context = createTestMigrationContext(dataSource);
@@ -95,9 +97,11 @@ describe('CrashStaleEnqueuedExecutions migration', () => {
 		const dbConnection = Container.get(DbConnection);
 		await dbConnection.init();
 		dataSource = Container.get(DataSource);
+		originalExecutionMode = Container.get(GlobalConfig).executions.mode;
 	});
 
 	beforeEach(async () => {
+		Container.get(GlobalConfig).executions.mode = 'regular';
 		await withContext(async (context) => {
 			await context.queryRunner.clearDatabase();
 		});
@@ -106,6 +110,7 @@ describe('CrashStaleEnqueuedExecutions migration', () => {
 	});
 
 	afterAll(async () => {
+		Container.get(GlobalConfig).executions.mode = originalExecutionMode;
 		const dbConnection = Container.get(DbConnection);
 		await dbConnection.close();
 	});
@@ -141,6 +146,24 @@ describe('CrashStaleEnqueuedExecutions migration', () => {
 		expect(stale.status).toBe('crashed');
 		expect(recent.status).toBe('new');
 		expect(recent.stoppedAt).toBeNull();
+	});
+
+	test('leaves stale enqueued executions untouched in queue mode', async () => {
+		Container.get(GlobalConfig).executions.mode = 'queue';
+		await withContext(async (context) => {
+			await insertExecution(context, {
+				status: 'new',
+				createdAt: daysAgo(8),
+				waitTill: daysAgo(7),
+			});
+		});
+
+		await runSingleMigration(MIGRATION_NAME);
+
+		const [execution] = await withContext(fetchExecutions);
+		expect(execution.status).toBe('new');
+		expect(execution.stoppedAt).toBeNull();
+		expect(execution.waitTill).not.toBeNull();
 	});
 
 	test.each(['waiting', 'running', 'success', 'error'])(

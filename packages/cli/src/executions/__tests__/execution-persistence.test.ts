@@ -588,9 +588,7 @@ describe('ExecutionPersistence', () => {
 				expect(executionRepository.update).not.toHaveBeenCalled();
 			});
 
-			// CAT-3862: an execution enqueued as `new` is inserted without a `startedAt`,
-			// so whoever claims it must be able to stamp one.
-			it('should write startedAt', async () => {
+			it('should not overwrite startedAt', async () => {
 				const executionPersistence = createPersistenceService('db');
 				executionRepository.update.mockResolvedValue({
 					affected: 1,
@@ -607,7 +605,7 @@ describe('ExecutionPersistence', () => {
 				expect(result).toBe(true);
 				expect(executionRepository.update).toHaveBeenCalledWith(
 					{ id: executionId },
-					{ status: 'running', startedAt },
+					{ status: 'running' },
 				);
 			});
 		});
@@ -1141,11 +1139,10 @@ describe('ExecutionPersistence', () => {
 					status: 'success',
 				});
 
-				// `startedAt` is mutable: an execution claimed from `new` has none yet
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ status: 'success', startedAt },
+					{ status: 'success' },
 				);
 			});
 		});

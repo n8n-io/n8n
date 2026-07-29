@@ -119,16 +119,11 @@ export class ActiveExecutions {
 					await capacityReservation.reserve({ mode, executionId });
 				}
 
-				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> & {
-					startedAt?: Date;
-				} = {
+				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 					id: executionId,
 					data: executionData.executionData!,
 					waitTill: null,
 					status: executionStatus,
-					// An enqueued execution has no `startedAt` yet, so stamp it now.
-					// A resuming execution keeps the `startedAt` it already had.
-					startedAt: existingExecution.expectedStatus === 'new' ? new Date() : undefined,
 				};
 
 				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
@@ -141,6 +136,10 @@ export class ActiveExecutions {
 				if (!updateSucceeded) {
 					// Another process is already resuming this execution
 					throw new ExecutionAlreadyResumingError(executionId);
+				}
+
+				if (existingExecution.expectedStatus === 'new') {
+					await this.executionRepository.setRunning(executionId);
 				}
 			}
 		} catch (error) {
