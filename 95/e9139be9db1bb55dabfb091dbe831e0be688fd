@@ -1,0 +1,68 @@
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-import-decision.test.ts
+  s_66be2eb681ad3c::t_f06fa87fab077a 2-7,10,12-18,26-29,31,33-43,45-50,57-59,63-74,76-77,85-88,90-95,97,101-106,108,115-117,125-127,129-134,136-138,142,144,151-152,196,200-206,214-215,221-225,233-236,244-246,276-277,159,191
+  ai_agent 109-114,123,208-213,216-220,20-21,24,51-56,61,79,83,99,119-120,124,140,146,149,157,163,166,174,178,189,198,227,230-231,242,253
+  s_66be2eb681ad3c::t_2e1bba70adc661 143,153-155,160,170-171,182
+  s_46457fdbb606db::t_7df60493def2e3 247,255-259,161,168-169,172,180-181,183-185,240,193-195,19,22-23,25,60,62,78,80-82,84,98,100,139,141,145,147-148,150,156,158,162,164-165,167,173,175-177,179,188,190,197,199,207,226,228-229,232,241,243,248-252,254,260-275
+  s_66be2eb681ad3c::t_8ac94f1e78a2fe 238-239
+  s_66be2eb681ad3c::t_256fbe3c1910ec 186-187,192
+  s_66be2eb681ad3c::t_527cb7f8d78f91 1,8,11,32,44,89,107,128
+  s_66be2eb681ad3c::t_5c9760ee3830d4 9
+  s_66be2eb681ad3c::t_dc9d90cef38da4 30
+  s_66be2eb681ad3c::t_70319c846dfc70 75
+  s_66be2eb681ad3c::t_895c6b94f4bb16 96
+  s_66be2eb681ad3c::t_e725344556d121 135
+  s_66be2eb681ad3c::t_ac2b176d5c8257 237
+  s_46457fdbb606db::t_c0a4ab476e110f 118,121-122
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_66be2eb681ad3c::t_d5c08e93beeb76 1-3,14-25,32-40,42,44,48-60,62,64,66,70-76
+  s_81f9da72a79c26::t_7d562ea02cac6b 4-13
+  s_46457fdbb606db::t_0d57dd536dff6a 77,30-31
+  s_66be2eb681ad3c::t_5922e3daa2a921 46
+  s_66be2eb681ad3c::t_448ead19b5e871 41,43,45,47
+  s_66be2eb681ad3c::t_14016479aab7a2 61,63,65
+  s_46457fdbb606db::t_528c55b9cea120 26-29
+  s_46457fdbb606db::t_51a85138d7548c 67-69
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_66be2eb681ad3c::t_4a07ceeb3d511a 8-10,19-23,25-31,35,41-43,46-48,50,52-58,62,79,112-118,128-140,147-153,64-65,75,77,88,102-103
+  s_66be2eb681ad3c::t_8815ce3530ece3 78,141-146,61,87
+  s_46457fdbb606db::t_80f4a68b4a6cc5 119,120-127
+  s_66be2eb681ad3c::t_d09aa2dfc5d51c 1,3-7,11-18
+  s_66be2eb681ad3c::t_513d7982f6399f 32-34,36
+  s_66be2eb681ad3c::t_55b3b94fd748b1 37-40
+  s_66be2eb681ad3c::t_de5fad5f9455f1 44-45,49,51,59-60,63,66-74,76,80-86,92-101,104-111
+  s_46457fdbb606db::t_813ecbface2e84 2
+  s_46457fdbb606db::t_e99a8b2d30c317 24
+  s_46457fdbb606db::t_07e7c71a175cb1 89-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "95e9139be9db1bb55dabfb091dbe831e0be688fd",
+  "prompts": {},
+  "sessions": {
+    "s_46457fdbb606db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3c28356-f7a4-4aa1-baa1-0a7a42ab1b95",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
