@@ -2,7 +2,7 @@ import { Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { toPackagesError } from './shared';
+import { toPackagesError } from './package-error';
 import { BaseCommand } from '../../base-command';
 
 export default class PackageImport extends BaseCommand {

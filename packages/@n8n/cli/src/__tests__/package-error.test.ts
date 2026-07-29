@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { ApiError } from '../client';
-import { toPackagesError } from '../commands/package/shared';
+import { toPackagesError } from '../commands/package/package-error';
 
 describe('toPackagesError', () => {
 	it('returns non-ApiError values unchanged', () => {

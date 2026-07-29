@@ -125,7 +125,11 @@ export class TagService {
 		return await this.tagRepository.findMany(ids);
 	}
 
-	/** Exact (case-sensitive) name lookup; never creates, never dedupes input. */
+	/**
+	 * Exact (case-sensitive) name lookup. Unlike `findByNames`, the input list
+	 * is passed through verbatim: case-variant names are distinct tags and must
+	 * all be looked up.
+	 */
 	async getByNames(names: string[]): Promise<TagEntity[]> {
 		if (names.length === 0) return [];
 		return await this.tagRepository.findManyByName(names);
