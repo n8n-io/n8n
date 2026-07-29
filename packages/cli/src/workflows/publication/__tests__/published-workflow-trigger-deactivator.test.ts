@@ -197,6 +197,21 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 				expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
 			});
 
+			test('resolves and reports when a sweep listener throws', async () => {
+				activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-1', 'wf-2']);
+				eventService.emit.mockImplementation(() => {
+					throw new Error('listener blew up');
+				});
+
+				// Must resolve, not reject: the interval callback has nobody awaiting it.
+				const removed = await createDeactivator().sweepGhostTriggers();
+
+				expect(removed).toBe(2);
+				expect(errorReporter.error).toHaveBeenCalledWith(expect.any(Error), {
+					shouldBeLogged: true,
+				});
+			});
+
 			test('reports a failing teardown and keeps sweeping the remaining workflows', async () => {
 				activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([
 					'wf-stuck',

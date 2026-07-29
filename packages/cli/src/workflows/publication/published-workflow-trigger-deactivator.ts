@@ -73,32 +73,39 @@ export class PublishedWorkflowTriggerDeactivator {
 	async sweepGhostTriggers(): Promise<number> {
 		if (this.instanceSettings.isLeader) return 0;
 
-		const candidates = this.activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds();
 		const ghosts: string[] = [];
 
-		for (const candidate of candidates) {
-			if (this.lifecycleLock.isLocked(candidate)) continue;
+		// Nothing may escape this method: the interval callback driving it has
+		// nobody awaiting it, so an escaped rejection would crash the process.
+		try {
+			const candidates = this.activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds();
 
-			await this.lifecycleLock.runExclusive(candidate, async () => {
-				if (this.instanceSettings.isLeader) return;
+			for (const candidate of candidates) {
+				if (this.lifecycleLock.isLocked(candidate)) continue;
 
-				const result = await this.activeWorkflowTriggers
-					.remove(candidate)
-					.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }));
+				await this.lifecycleLock.runExclusive(candidate, async () => {
+					if (this.instanceSettings.isLeader) return;
 
-				if (result) {
-					ghosts.push(candidate);
-				}
-			});
-		}
+					const result = await this.activeWorkflowTriggers
+						.remove(candidate)
+						.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }));
 
-		if (ghosts.length > 0) {
-			this.logger.warn(`Found ${ghosts.length} ghost workflows. Removed them.`, {
-				workflowIds: ghosts,
-			});
-			this.eventService.emit('workflow-publication-ghost-trigger-sweep', {
-				removedCount: ghosts.length,
-			});
+					if (result) {
+						ghosts.push(candidate);
+					}
+				});
+			}
+
+			if (ghosts.length > 0) {
+				this.logger.warn(`Found ${ghosts.length} ghost workflows. Removed them.`, {
+					workflowIds: ghosts,
+				});
+				this.eventService.emit('workflow-publication-ghost-trigger-sweep', {
+					removedCount: ghosts.length,
+				});
+			}
+		} catch (error) {
+			this.errorReporter.error(error, { shouldBeLogged: true });
 		}
 
 		return ghosts.length;
