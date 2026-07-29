@@ -71,7 +71,7 @@ export type SearchWorkflowsResult = {
 
 export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;
 export type WorkflowDetailsWorkflow = WorkflowDetailsResult['workflow'];
-export type WorkflowDetailsNode = WorkflowDetailsWorkflow['nodes'][number];
+export type WorkflowDetailsNode = NonNullable<WorkflowDetailsWorkflow['nodes']>[number];
 
 // JSON-RPC types for MCP protocol
 export type JSONRPCRequest = {
