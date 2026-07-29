@@ -111,6 +111,23 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	},
 }));
 
+const instanceAiHandoffMock = vi.hoisted(() => ({
+	startThread: vi.fn(),
+}));
+
+vi.mock('../composables/useInstanceAiAvailability', async () => {
+	const { computed } = await import('vue');
+	return { useInstanceAiAvailable: () => computed(() => true) };
+});
+
+vi.mock('../composables/useInstanceAiHandoff', async (importOriginal) => {
+	const original = await importOriginal<typeof import('../composables/useInstanceAiHandoff')>();
+	return {
+		...original,
+		useInstanceAiHandoff: () => ({ startThread: instanceAiHandoffMock.startThread }),
+	};
+});
+
 const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
 
 // getUsableCredentialByType is a computed returning a function — vi.spyOn's accessor
@@ -269,7 +286,63 @@ describe('InstanceAiCredentialSetup', () => {
 				undefined,
 				undefined,
 				undefined,
-				{ closeOnSave: true, credentialSetupHint: setupHint },
+				{
+					closeOnSave: true,
+					credentialSetupHint: setupHint,
+					instanceAiCredentialHelp: expect.any(Function),
+				},
+			);
+		});
+
+		it('hands the modal a help handler that opens a new thread named after the recipe service', async () => {
+			instanceAiHandoffMock.startThread.mockClear();
+			stubUsableCredentials(useCredentialsStore(), () => []);
+
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'httpTemplatedCustomAuth',
+					reason: 'For calling the fal.ai API',
+					existingCredentials: [],
+					setupHint: {
+						template: { headers: { Authorization: 'Key {{api_key}}' } },
+						placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+						suggestedName: 'fal.ai API Key',
+					},
+				},
+			];
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+					projectId: 'project-1',
+				},
+			});
+
+			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
+
+			const options = vi.mocked(useUIStore().openNewCredential).mock.calls[0][7];
+			// The modal reports the generic type name; the recipe's service name replaces it.
+			const shouldCloseModal = await options?.instanceAiCredentialHelp?.({
+				credentialType: 'httpTemplatedCustomAuth',
+				displayName: 'Simplified Custom Auth',
+			});
+
+			// New tab → the credential modal stays open.
+			expect(shouldCloseModal).toBe(false);
+			expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
+				'project-1',
+				expect.stringContaining('fal.ai API Key'),
+				{ source: 'credential_edit', origin: 'internal' },
+				undefined,
+				undefined,
+				expect.objectContaining({
+					newTab: true,
+					context: expect.objectContaining({
+						source: 'credential-modal',
+						credential: expect.objectContaining({ displayName: 'fal.ai API Key' }),
+					}),
+				}),
 			);
 		});
 
@@ -624,7 +697,7 @@ describe('InstanceAiCredentialSetup', () => {
 				undefined,
 				undefined,
 				undefined,
-				{ closeOnSave: true },
+				{ closeOnSave: true, instanceAiCredentialHelp: expect.any(Function) },
 			);
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'Instance AI Browser Use User clicked credential setup option',

@@ -27,6 +27,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useThread } from '../instanceAi.store';
+import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 type CredentialSetupChoice = 'ai' | 'manual';
@@ -303,6 +304,16 @@ const credentialsFieldLabel = computed(() => {
 		: undefined;
 });
 
+// Ask-AI in the credential modal opens a NEW help thread in a new tab — this
+// thread's run is suspended on the setup card, so appending here would derail
+// it. When the recipe names the service, the help thread asks about that.
+const instanceAiCredentialHelpFactory = useInstanceAiCredentialHelp({
+	source: 'credential_edit',
+	projectId: () => props.projectId,
+	serviceName: () => deriveServiceName(currentRequest.value?.setupHint),
+});
+const instanceAiCredentialHelp = computed(() => instanceAiCredentialHelpFactory());
+
 /** Service logo: explicit https icon, else the docs page's favicon; hidden
  *  again (generic icon fallback) if the image fails to load. */
 const iconFailed = ref(false);
@@ -334,6 +345,7 @@ function openCreateCredential() {
 		{
 			closeOnSave: true,
 			credentialSetupHint: req.setupHint,
+			instanceAiCredentialHelp: instanceAiCredentialHelp.value,
 		},
 	);
 }
@@ -617,7 +629,7 @@ async function handleSetupAutomatically() {
 							:suggested-credential-name="currentRequest.suggestedName"
 							standalone
 							hide-issues
-							hide-ask-assistant
+							:instance-ai-credential-help="instanceAiCredentialHelp"
 							:skip-auto-select="
 								currentRequest.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
 							"

@@ -22,6 +22,7 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
+import { useInstanceAiCredentialHelp } from '../../composables/useInstanceAiCredentialHelp';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 
@@ -67,6 +68,16 @@ const hasTemplatedHint = computed(
 const isTemplatedType = computed(
 	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 );
+
+// Ask-AI in the credential modal opens a NEW help thread in a new tab — this
+// thread's run is suspended on the setup card, so appending here would derail
+// it. When the recipe names the service, the help thread asks about that.
+const instanceAiCredentialHelpFactory = useInstanceAiCredentialHelp({
+	source: 'credential_edit',
+	projectId: () => ctx.projectId.value,
+	serviceName: () => deriveServiceName(props.section.setupHint),
+});
+const instanceAiCredentialHelp = computed(() => instanceAiCredentialHelpFactory());
 
 // The type-derived selector label would read "Credential for Templated Custom
 // Auth" — name the service from the recipe instead ("fal.ai API Key credentials").
@@ -226,7 +237,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:project-id="ctx.projectId.value"
 			standalone
 			hide-issues
-			hide-ask-assistant
+			:instance-ai-credential-help="instanceAiCredentialHelp"
 			:skip-auto-select="isTemplatedType"
 			:credential-setup-hint="section.setupHint"
 			:credentials-field-label="credentialsFieldLabel"

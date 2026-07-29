@@ -86,6 +86,10 @@ type Props = {
 	/** Replaces the type-derived field label ("Credential for X"). Only
 	 *  meaningful with `overrideCredType` (a single credential row). */
 	credentialsFieldLabel?: string;
+	/** Host-supplied behavior for the credential modal's Instance AI help button,
+	 *  overriding the injected editor capability. Instance AI setup cards use it —
+	 *  the capability chain doesn't reach the chat panel they render in. */
+	instanceAiCredentialHelp?: InstanceAiCredentialHelpHandler;
 	/** Skip the component's own credential fetch on mount. Hosts with a
 	 *  synthetic workflow document (e.g. the tool config modal) own the fetch
 	 *  themselves — the component's own fetch would query the synthetic
@@ -119,9 +123,10 @@ const { instanceAi } = useEditorContext();
 const isToolContext = inject(ChatHubToolContextKey, false);
 
 // The host's credential-help behavior, handed to the (teleported) credential
-// modal that can't inject it. Undefined when Instance AI is off in this editor or
-// the host provides no credential action → the modal shows no Instance AI button.
-function instanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined {
+// modal that can't inject it. An explicit prop wins over the injected capability;
+// undefined when neither exists → the modal shows no Instance AI button.
+function resolveInstanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined {
+	if (props.instanceAiCredentialHelp) return props.instanceAiCredentialHelp;
 	const openCredential = instanceAiCapability.openCredential;
 	if (!instanceAi.value || !openCredential) return undefined;
 	return async (credential) => await openCredential(credential, 'credential_edit');
@@ -532,7 +537,7 @@ function createNewCredential(
 		{
 			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
-			instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
 			credentialSetupHint: props.credentialSetupHint,
 		},
 	);
@@ -767,7 +772,7 @@ function editCredential(credentialType: string): void {
 
 	uiStore.openExistingCredential(credential.id, {
 		hideAskAssistant: hideAskAssistant.value,
-		instanceAiCredentialHelp: instanceAiCredentialHelp(),
+		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
 	});
 
 	telemetry.track('User opened Credential modal', {

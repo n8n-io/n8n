@@ -33,6 +33,12 @@ const nodeCredentialsMock = vi.hoisted(() => ({
 	lastNodeProp: null as unknown,
 	lastFieldLabel: undefined as string | undefined,
 	lastSetupHint: undefined as unknown,
+	lastCredentialHelp: undefined as
+		| ((credential: { credentialType: string; displayName: string }) => Promise<boolean>)
+		| undefined,
+}));
+const instanceAiHandoffMock = vi.hoisted(() => ({
+	startThread: vi.fn(),
 }));
 const parameterListMock = vi.hoisted(() => ({
 	lastHiddenIssuesInputs: undefined as string[] | undefined,
@@ -62,16 +68,35 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 	const { defineComponent, h } = await import('vue');
 	return {
 		default: defineComponent({
-			props: ['node', 'credentialsFieldLabel', 'credentialSetupHint'],
+			props: ['node', 'credentialsFieldLabel', 'credentialSetupHint', 'instanceAiCredentialHelp'],
 			emits: ['credentialSelected'],
 			setup(props, { emit, slots }) {
 				nodeCredentialsMock.emitCredentialSelected = (update) => emit('credentialSelected', update);
 				nodeCredentialsMock.lastNodeProp = props.node;
 				nodeCredentialsMock.lastFieldLabel = props.credentialsFieldLabel as string | undefined;
 				nodeCredentialsMock.lastSetupHint = props.credentialSetupHint;
+				nodeCredentialsMock.lastCredentialHelp = props.instanceAiCredentialHelp as
+					| ((credential: { credentialType: string; displayName: string }) => Promise<boolean>)
+					| undefined;
 				return () => h('div', { 'data-test-id': 'node-credentials' }, slots['label-postfix']?.());
 			},
 		}),
+	};
+});
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', async () => {
+	const { computed } = await import('vue');
+	return { useInstanceAiAvailable: () => computed(() => true) };
+});
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', async (importOriginal) => {
+	const original =
+		await importOriginal<
+			typeof import('@/features/ai/instanceAi/composables/useInstanceAiHandoff')
+		>();
+	return {
+		...original,
+		useInstanceAiHandoff: () => ({ startThread: instanceAiHandoffMock.startThread }),
 	};
 });
 
@@ -331,6 +356,71 @@ describe('WorkflowSetupSectionBody', () => {
 
 		expect(workflowDocumentStoreRef.current?.getNodeByName('Typeform Trigger')?.parameters).toEqual(
 			{ formId: 'form-1' },
+		);
+	});
+
+	it('hands NodeCredentials a help handler that opens a new thread named after the recipe service', async () => {
+		instanceAiHandoffMock.startThread.mockClear();
+		const section = makeWorkflowSetupSection({
+			credentialType: 'httpTemplatedCustomAuth',
+			setupHint: {
+				template: { headers: { Authorization: 'Key {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+				suggestedName: 'fal.ai API Key',
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		const help = nodeCredentialsMock.lastCredentialHelp;
+		expect(help).toBeTypeOf('function');
+
+		// The modal reports the generic type name; the recipe's service name replaces it.
+		const shouldCloseModal = await help!({
+			credentialType: 'httpTemplatedCustomAuth',
+			displayName: 'Simplified Custom Auth',
+		});
+
+		// New tab → the credential modal stays open.
+		expect(shouldCloseModal).toBe(false);
+		expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
+			'project-1',
+			expect.stringContaining('fal.ai API Key'),
+			{ source: 'credential_edit', origin: 'internal' },
+			undefined,
+			undefined,
+			expect.objectContaining({
+				newTab: true,
+				context: expect.objectContaining({
+					source: 'credential-modal',
+					credential: expect.objectContaining({ displayName: 'fal.ai API Key' }),
+				}),
+			}),
+		);
+	});
+
+	it('keeps the modal display name in the help thread when the section has no recipe', async () => {
+		instanceAiHandoffMock.startThread.mockClear();
+		const section = makeWorkflowSetupSection({ credentialType: 'slackApi' });
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		await nodeCredentialsMock.lastCredentialHelp!({
+			credentialType: 'slackApi',
+			displayName: 'Slack API',
+		});
+
+		expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
+			'project-1',
+			expect.stringContaining('Slack API'),
+			{ source: 'credential_edit', origin: 'internal' },
+			undefined,
+			undefined,
+			expect.objectContaining({ newTab: true }),
 		);
 	});
 });
