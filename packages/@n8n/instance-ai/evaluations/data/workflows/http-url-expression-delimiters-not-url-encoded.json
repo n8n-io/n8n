@@ -1,0 +1,154 @@
+{
+	"description": "Capability gap sourced from a real debugging thread. The seeded workflow is the PRE-FIX state: the image HTTP Request node points at a site homepage (returns HTML) and passes the prompt as a ?prompt= query param with no file response format, so the downstream Drive upload has no binary to send. Repairing it forces the agent to author a URL whose path carries a dynamic value — the exact moment it previously wrote the opening expression delimiter URL-encoded as %7B%7B, silently disabling interpolation so the node fetched the literal template path and uploaded an HTML page as the 'image'. Load-bearing assertion: the URL parameter must contain literal {{ }}, never %7B%7B / %7D%7D.",
+	"conversationSeed": {
+		"source": {
+			"note": "Synthetic, sanitized reconstruction of the pre-fix workflow shape from a real thread. The upstream prompt producer is a Set node emitting a Gemini-shaped object, so the seed needs no LLM credential and the prompt path stays nested ($json.content.parts[0].text)."
+		},
+		"messages": [
+			{
+				"id": "9c1f4b2e-0f3a-4c5d-8e71-2a6b5d4c3e10",
+				"type": "llm",
+				"role": "user",
+				"content": [
+					{
+						"type": "text",
+						"text": "Build me a workflow that takes the image prompt my analysis step produces, generates a picture from it, and saves the picture to Google Drive."
+					}
+				],
+				"createdAt": "2026-07-29T09:00:00.000Z"
+			},
+			{
+				"id": "1d7e8a3c-5b90-4f21-9c6d-7e8f0a1b2c34",
+				"type": "llm",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "Done — the workflow 'Prompt to AI image to Drive' now runs: Analyze video produces the prompt, HTTP Request1 fetches an image for it, and Upload file saves that image to Google Drive."
+					}
+				],
+				"createdAt": "2026-07-29T09:00:20.000Z"
+			}
+		],
+		"workflows": [
+			{
+				"id": "evalSeedImgUrl01",
+				"name": "Prompt to AI image to Drive",
+				"nodes": [
+					{
+						"parameters": {},
+						"id": "3f2a1b0c-9d8e-4756-a1b2-c3d4e5f60718",
+						"name": "When clicking 'Execute workflow'",
+						"type": "n8n-nodes-base.manualTrigger",
+						"typeVersion": 1,
+						"position": [0, 0]
+					},
+					{
+						"parameters": {
+							"mode": "raw",
+							"jsonOutput": "{\n  \"content\": {\n    \"parts\": [\n      {\n        \"text\": \"a red fox in snow\"\n      }\n    ]\n  }\n}",
+							"options": {}
+						},
+						"id": "4a3b2c1d-0e9f-4867-b2c3-d4e5f6071829",
+						"name": "Analyze video",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [220, 0]
+					},
+					{
+						"parameters": {
+							"url": "https://pollinations.ai/",
+							"sendQuery": true,
+							"queryParameters": {
+								"parameters": [
+									{
+										"name": "prompt",
+										"value": "={{ $json.content.parts[0].text }}"
+									}
+								]
+							},
+							"options": {}
+						},
+						"id": "5b4c3d2e-1f0a-4978-c3d4-e5f60718293a",
+						"name": "HTTP Request1",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.4,
+						"position": [440, 0]
+					},
+					{
+						"parameters": {
+							"resource": "file",
+							"operation": "upload",
+							"inputDataFieldName": "data",
+							"name": "ai_media.jpg",
+							"driveId": {
+								"__rl": true,
+								"mode": "list",
+								"value": "My Drive"
+							},
+							"folderId": {
+								"__rl": true,
+								"mode": "list",
+								"value": "root"
+							},
+							"options": {}
+						},
+						"id": "6c5d4e3f-2a1b-4089-d4e5-f60718293a4b",
+						"name": "Upload file",
+						"type": "n8n-nodes-base.googleDrive",
+						"typeVersion": 3,
+						"position": [660, 0]
+					}
+				],
+				"connections": {
+					"When clicking 'Execute workflow'": {
+						"main": [[{ "node": "Analyze video", "type": "main", "index": 0 }]]
+					},
+					"Analyze video": {
+						"main": [[{ "node": "HTTP Request1", "type": "main", "index": 0 }]]
+					},
+					"HTTP Request1": {
+						"main": [[{ "node": "Upload file", "type": "main", "index": 0 }]]
+					}
+				}
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "The image step in my workflow isn't producing pictures — the Google Drive upload fails saying there's no binary file 'data'. Look into what went wrong and fix it."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["http-request", "expression", "url-encoding", "binary", "bugfix"],
+	"triggerType": "manual",
+	"messageBudget": 4,
+	"datasets": ["full"],
+	"processExpectations": [
+		"The agent identifies that HTTP Request1 is not requesting an image endpoint — it targets a page that returns HTML — and that no file/binary response format is set.",
+		"The agent explains what it changed about the image URL so that the upstream prompt is actually substituted into the request at runtime."
+	],
+	"outcomeExpectations": [
+		"The image-generation HTTP Request node's URL parameter contains literal n8n expression delimiters {{ and }} — it must NOT contain the URL-encoded forms %7B%7B or %7D%7D anywhere.",
+		"The URL reads the prompt from the upstream node at runtime (e.g. $json.content.parts[0].text) rather than hard-coding a prompt string into the path.",
+		"Only the interpolated prompt value is URL-encoded (e.g. wrapped in encodeURIComponent); the surrounding URL path remains a plain unencoded string.",
+		"The image HTTP Request node sets a file/binary response format, so it emits a binary field that the downstream Google Drive upload can consume."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path-prompt-interpolated-into-image-url",
+			"description": "The image HTTP Request node evaluates its URL expression and fetches a per-prompt image, emitting binary data for the downstream upload.",
+			"dataSetup": "Analyze video emits content.parts[0].text = 'a red fox in snow'. The image endpoint returns 200 with Content-Type image/jpeg and image bytes for a request to https://image.pollinations.ai/prompt/<url-encoded prompt>. No Google credential is configured, so grade this scenario on HTTP Request1's own output rather than a completed Drive upload.",
+			"successCriteria": "HTTP Request1 issues a request whose URL path contains the URL-encoded prompt text (e.g. a%20red%20fox%20in%20snow) — not a literal '{{', not '%7B%7B', and not the raw source text 'encodeURIComponent' — and the node outputs a binary field named 'data' with an image/* content type.",
+			"requires": "mock-server"
+		},
+		{
+			"name": "delimiters-must-not-be-url-encoded",
+			"description": "Load-bearing isolation: if the expression delimiters were URL-encoded, n8n never evaluates them and the node fetches the literal template path instead of an image.",
+			"dataSetup": "Same prompt value 'a red fox in snow'. The image endpoint discriminates on the requested path: a path containing '%7B%7B', a literal '{{', or the unevaluated source text 'encodeURIComponent($json' returns 200 with Content-Type text/html and an HTML error page body; a path containing a genuinely interpolated, URL-encoded prompt returns 200 with Content-Type image/jpeg and image bytes.",
+			"successCriteria": "HTTP Request1's binary output is an image (Content-Type image/*), NOT an HTML or text payload — confirming the URL expression was evaluated at runtime and the request did not hit the literal template path.",
+			"requires": "mock-server"
+		}
+	]
+}
