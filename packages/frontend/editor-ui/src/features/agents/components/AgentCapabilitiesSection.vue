@@ -1,0 +1,873 @@
+<script setup lang="ts">
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useToast } from '@/app/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
+import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, onMounted, ref, watch } from 'vue';
+import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
+import type { AgentSkill, CustomToolEntry } from '../types';
+import { getAgentTasks } from '../composables/useAgentApi';
+import { useProjectAgentsList } from '../composables/useProjectAgentsList';
+import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
+import { AGENT_SUB_AGENTS_MODAL_KEY, AGENT_TASK_MODAL_KEY } from '../constants';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
+import { buildToolRows } from './AgentCapabilitiesSection.utils';
+import AgentChipButton from './AgentChipButton.vue';
+
+export type AgentCapabilitySection = 'tools' | 'tasks' | 'skills' | 'subAgents';
+
+const props = withDefaults(
+	defineProps<{
+		config: AgentJsonConfig | null;
+		tools: AgentJsonToolRef[];
+		customTools?: Record<string, CustomToolEntry>;
+		skills: Array<{ id: string; skill: AgentSkill }>;
+		disabled?: boolean;
+		projectId: string;
+		agentId: string;
+		isPublished: boolean;
+		taskRefs?: AgentJsonTaskConfig[];
+		reloadKey?: number;
+
+		/** Structured backend validation issues — drives the invalid state on capability chips. */
+		validationIssues?: AgentConfigValidationIssue[];
+		/** Capability sections to render. */
+
+		sections?: AgentCapabilitySection[];
+	}>(),
+	{
+		disabled: false,
+		taskRefs: () => [],
+
+		validationIssues: () => [],
+
+		sections: () => ['tools', 'skills', 'subAgents', 'tasks'],
+	},
+);
+
+const visibleSections = computed(() => new Set(props.sections));
+function showSection(section: AgentCapabilitySection): boolean {
+	return visibleSections.value.has(section);
+}
+
+const emit = defineEmits<{
+	'open-tool': [target: ToolOpenTarget];
+	'open-skill': [id: string];
+	'add-tool': [];
+	'add-skill': [];
+	'remove-tool': [index: number];
+	'remove-skill': [id: string];
+	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'tasks-changed': [];
+	'update:config': [updates: Partial<AgentJsonConfig>];
+}>();
+
+const i18n = useI18n();
+const toast = useToast();
+const rootStore = useRootStore();
+const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
+
+const projectIdRef = computed(() => props.projectId);
+const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } =
+	useProjectAgentsList(projectIdRef);
+
+type TaskRow = AgentTaskDto & {
+	enabled: boolean;
+	invalid: boolean;
+	invalidReasons: string[];
+};
+
+const mcpServers = computed(() => props.config?.mcpServers ?? []);
+const selectedSubAgentRefs = computed(() => props.config?.subAgents?.agents ?? []);
+const selectedSubAgentIds = computed(() =>
+	selectedSubAgentRefs.value.map(({ agentId }) => agentId),
+);
+const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
+const availableSubAgents = computed(() =>
+	(projectAgents.value ?? []).filter(
+		(agent) =>
+			agent.id !== props.agentId &&
+			Boolean(agent.activeVersionId) &&
+			!selectedSubAgentIdSet.value.has(agent.id),
+	),
+);
+const selectedSubAgents = computed(() =>
+	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
+		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
+		const reasons = subAgentIssueMessages.value.get(agentId) ?? [];
+		return {
+			id: agentId,
+			name: agent?.name ?? agentId,
+			useWhen: useWhen ?? '',
+			invalid: reasons.length > 0,
+			invalidReasons: reasons,
+		};
+	}),
+);
+const taskBodies = ref<AgentTaskDto[]>([]);
+const taskErrorMessage = ref('');
+
+const taskRows = computed<TaskRow[]>(() => {
+	const bodiesById = new Map(taskBodies.value.map((body) => [body.id, body]));
+	return props.taskRefs
+		.map((taskRef) => {
+			const body = bodiesById.get(taskRef.id);
+			if (!body) return null;
+			const reasons = taskIssueMessages.value.get(taskRef.id) ?? [];
+			return {
+				...body,
+				enabled: taskRef.enabled,
+				invalid: reasons.length > 0,
+				invalidReasons: reasons,
+			};
+		})
+		.filter((task): task is TaskRow => task !== null);
+});
+
+// `as BaseTextKey`: these keys are new (see en.json) and not yet reflected in
+// @n8n/i18n's built type declarations — matches the same workaround already
+// used for `agents.builder.preview.disabledTooltip` in AgentBuilderHeader.vue.
+const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
+	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
+	invalid_value: 'agents.builder.validation.issue.invalidValue' as BaseTextKey,
+	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
+	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
+	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
+	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
+	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+};
+
+/** Kind-specific overrides, keyed `<kind>.<code>` or `tool.<toolType>.<code>`. */
+const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
+	'subAgent.missing_reference':
+		'agents.builder.validation.issue.subAgent.missingReference' as BaseTextKey,
+	'subAgent.incompatible_reference':
+		'agents.builder.validation.issue.subAgent.incompatibleReference' as BaseTextKey,
+	'skill.missing_reference':
+		'agents.builder.validation.issue.skill.missingReference' as BaseTextKey,
+	'task.invalid_value': 'agents.builder.validation.issue.task.invalidValue' as BaseTextKey,
+	'tool.workflow.missing_reference':
+		'agents.builder.validation.issue.tool.workflow.missingReference' as BaseTextKey,
+	'tool.workflow.incompatible_reference':
+		'agents.builder.validation.issue.tool.workflow.incompatibleReference' as BaseTextKey,
+	'tool.custom.missing_reference':
+		'agents.builder.validation.issue.tool.custom.missingReference' as BaseTextKey,
+	'tool.node.missing_reference':
+		'agents.builder.validation.issue.tool.node.missingReference' as BaseTextKey,
+	'mcpServer.incompatible_credential':
+		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
+};
+
+function issueMessage(issue: AgentConfigValidationIssue): string {
+	const { kind, toolType, id } = issue.capability;
+	const key =
+		(kind === 'tool' && toolType
+			? SPECIFIC_ISSUE_KEYS[`tool.${toolType}.${issue.code}`]
+			: undefined) ??
+		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
+		GENERIC_ISSUE_KEYS[issue.code];
+	return i18n.baseText(key, { interpolate: { id: id ?? '' } });
+}
+
+function issueMessages(issues: AgentConfigValidationIssue[]): string[] {
+	return [...new Set(issues.map(issueMessage))];
+}
+
+function issuesFor(kind: AgentConfigValidationIssue['capability']['kind']) {
+	return props.validationIssues.filter((issue) => issue.capability.kind === kind);
+}
+
+/** Group a capability kind's issues into per-key message lists, keyed by `keyOf`. */
+function groupIssueMessages<TKey>(
+	kind: AgentConfigValidationIssue['capability']['kind'],
+	keyOf: (issue: AgentConfigValidationIssue) => TKey | undefined,
+): Map<TKey, string[]> {
+	const byKey = new Map<TKey, AgentConfigValidationIssue[]>();
+	for (const issue of issuesFor(kind)) {
+		const key = keyOf(issue);
+		if (key === undefined) continue;
+		const existing = byKey.get(key);
+		if (existing) existing.push(issue);
+		else byKey.set(key, [issue]);
+	}
+	return new Map([...byKey].map(([key, issues]) => [key, issueMessages(issues)]));
+}
+
+const toolIssueMessages = computed(() =>
+	groupIssueMessages('tool', (issue) => issue.capability.index),
+);
+const mcpServerIssueMessages = computed(() =>
+	groupIssueMessages('mcpServer', (issue) => issue.capability.id),
+);
+const skillIssueMessages = computed(() =>
+	groupIssueMessages('skill', (issue) => issue.capability.id),
+);
+const taskIssueMessages = computed(() =>
+	groupIssueMessages('task', (issue) => issue.capability.id),
+);
+const subAgentIssueMessages = computed(() =>
+	groupIssueMessages('subAgent', (issue) => issue.capability.id),
+);
+
+async function reloadTasks() {
+	taskErrorMessage.value = '';
+	try {
+		taskBodies.value = await getAgentTasks(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+		);
+	} catch (error) {
+		taskErrorMessage.value =
+			error instanceof Error && error.message
+				? error.message
+				: i18n.baseText('agents.builder.tasks.loadError');
+	}
+}
+
+onMounted(() => {
+	if (showSection('tasks')) void reloadTasks();
+	if (showSection('subAgents')) void ensureProjectAgentsLoaded().catch(() => {});
+});
+
+watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () => {
+	if (showSection('tasks')) void reloadTasks();
+});
+
+function openTaskModal(task: TaskRow | null) {
+	uiStore.openModalWithData({
+		name: AGENT_TASK_MODAL_KEY,
+		data: {
+			projectId: props.projectId,
+			agentId: props.agentId,
+			task,
+			isPublished: props.isPublished,
+			taskState: task
+				? {
+						enabled: task.enabled,
+					}
+				: undefined,
+			onToggle: (payload: { id: string; enabled: boolean }) => emit('toggle-task', payload),
+			onSaved: () => emit('tasks-changed'),
+		},
+	});
+}
+
+type CapabilityToolEntry =
+	| {
+			kind: 'tool';
+			index: number;
+			tool: AgentJsonToolRef;
+			openTarget: ToolOpenTarget;
+	  }
+	| {
+			kind: 'mcpServer';
+			index: number;
+			server: AgentJsonMcpServerConfig;
+			openTarget: ToolOpenTarget;
+	  };
+
+function toToolOpenTarget(tool: AgentJsonToolRef): ToolOpenTarget {
+	if (tool.type === 'custom') {
+		return { kind: 'tool', toolType: 'custom', id: tool.id };
+	}
+
+	if (tool.type === 'workflow') {
+		return { kind: 'tool', toolType: 'workflow', id: tool.workflow };
+	}
+
+	return { kind: 'tool', toolType: 'node', id: tool.name };
+}
+
+const capabilityTools = computed<CapabilityToolEntry[]>(() => [
+	...props.tools.map((tool, index) => ({
+		kind: 'tool' as const,
+		index,
+		tool,
+		openTarget: toToolOpenTarget(tool),
+	})),
+	...mcpServers.value.map((server, index) => ({
+		kind: 'mcpServer' as const,
+		index: props.tools.length + index,
+		server,
+		openTarget: { kind: 'mcpServer' as const, serverName: server.name },
+	})),
+]);
+
+function toolLabel(entry: CapabilityToolEntry) {
+	if (entry.kind === 'mcpServer') {
+		return formatToolNameForDisplay(entry.server.name);
+	}
+
+	const { tool, index } = entry;
+	if (tool.type === 'custom') {
+		return formatToolNameForDisplay(
+			(tool.id ? props.customTools?.[tool.id]?.descriptor.name : undefined) ??
+				tool.id ??
+				`${tool.type}-${index + 1}`,
+		);
+	}
+
+	if (tool.type === 'workflow') {
+		return formatToolNameForDisplay(tool.name ?? tool.workflow ?? `${tool.type}-${index + 1}`);
+	}
+
+	return formatToolNameForDisplay(tool.name ?? `${tool.type}-${index + 1}`);
+}
+
+function toolIcon(entry: CapabilityToolEntry): IconName {
+	if (entry.kind === 'mcpServer') return 'mcp';
+	const { tool } = entry;
+	if (tool.type === 'workflow') return 'workflow';
+	if (tool.type === 'custom') return 'code';
+	return 'globe';
+}
+
+function toolNodeType(entry: CapabilityToolEntry) {
+	if (entry.kind === 'mcpServer') {
+		const preferredTypeName = entry.server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
+		return (
+			nodeTypesStore.getNodeType(preferredTypeName) ??
+			nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE) ??
+			null
+		);
+	}
+
+	const { tool } = entry;
+	const node = toolRefToNode(tool);
+	if (!node) return null;
+	return nodeTypesStore.getNodeType(node.type, node.typeVersion) ?? null;
+}
+
+function toolTypeLabel(entry: CapabilityToolEntry, nodeType = toolNodeType(entry)) {
+	if (entry.kind === 'mcpServer') {
+		return nodeType?.displayName ?? toolLabel(entry);
+	}
+
+	const { tool } = entry;
+	if (tool.type === 'node') {
+		return nodeType?.displayName.replace(/ Tool$/, '') ?? toolLabel(entry);
+	}
+
+	if (tool.type === 'workflow') return i18n.baseText('agents.builder.tools.type.workflow');
+	if (tool.type === 'custom') return i18n.baseText('agents.builder.tools.type.custom');
+	return toolLabel(entry);
+}
+
+function toolEntryReasons(entry: CapabilityToolEntry): string[] {
+	if (entry.kind === 'mcpServer') return mcpServerIssueMessages.value.get(entry.server.name) ?? [];
+	return toolIssueMessages.value.get(entry.index) ?? [];
+}
+
+const toolRows = computed<ToolRow[]>(() => {
+	return buildToolRows(
+		capabilityTools.value.map((entry) => {
+			const nodeType = toolNodeType(entry);
+			const reasons = toolEntryReasons(entry);
+			return {
+				index: entry.index,
+				label: toolLabel(entry),
+				typeLabel: toolTypeLabel(entry, nodeType),
+				nodeType,
+				fallbackIcon: toolIcon(entry),
+				toolType: entry.kind === 'tool' ? entry.tool.type : 'mcpServer',
+				openTarget: entry.openTarget,
+				invalid: reasons.length > 0,
+				invalidReasons: reasons,
+			};
+		}),
+	);
+});
+
+function toTargetKey(target: ToolOpenTarget): string {
+	if (target.kind === 'mcpServer') return `mcpServer:${encodeURIComponent(target.serverName)}`;
+	return `tool:${target.toolType}:${encodeURIComponent(target.id)}`;
+}
+
+function fromTargetKey(key: string): ToolOpenTarget | null {
+	const [scope, toolType, ...rest] = key.split(':');
+	if (scope === 'mcpServer') {
+		const encodedServerName = toolType;
+		if (!encodedServerName) return null;
+		return { kind: 'mcpServer', serverName: decodeURIComponent(encodedServerName) };
+	}
+
+	if (scope !== 'tool') return null;
+	if (toolType !== 'node' && toolType !== 'workflow' && toolType !== 'custom') return null;
+	const encodedId = rest.join(':');
+	if (!encodedId) return null;
+	return {
+		kind: 'tool',
+		toolType,
+		id: decodeURIComponent(encodedId),
+	};
+}
+
+function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
+	if (!tool.isGrouped) return [];
+
+	return tool.tools.map((item) => ({
+		id: toTargetKey(item.openTarget),
+		label: item.label,
+		data: { nodeType: item.nodeType, openTarget: item.openTarget },
+	}));
+}
+
+function onToolMenuSelect(key: string) {
+	const target = fromTargetKey(key);
+	if (!target) return;
+	emit('open-tool', target);
+}
+
+function emitSubAgentRefs(agents: typeof selectedSubAgentRefs.value) {
+	emit('update:config', {
+		subAgents: {
+			...(props.config?.subAgents ?? {}),
+			agents,
+		},
+	});
+}
+
+function toSubAgentRef(agentId: string, useWhen?: string) {
+	return {
+		agentId,
+		...(useWhen ? { useWhen } : {}),
+	};
+}
+
+async function openSubAgentsModal() {
+	try {
+		await ensureProjectAgentsLoaded();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.subAgents.loadError'));
+		return;
+	}
+
+	uiStore.openModalWithData({
+		name: AGENT_SUB_AGENTS_MODAL_KEY,
+		data: {
+			agents: availableSubAgents.value.map(({ id, name }) => ({
+				id,
+				name,
+			})),
+			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
+				if (selectedSubAgentIdSet.value.has(agentId)) return;
+
+				emitSubAgentRefs([...selectedSubAgentRefs.value, toSubAgentRef(agentId, useWhen)]);
+			},
+		},
+	});
+}
+
+function openExistingSubAgentModal(subAgent: {
+	id: string;
+	name: string;
+	useWhen: string;
+	invalidReasons: string[];
+}) {
+	uiStore.openModalWithData({
+		name: AGENT_SUB_AGENTS_MODAL_KEY,
+		data: {
+			selectedAgent: {
+				id: subAgent.id,
+				name: subAgent.name,
+			},
+			useWhen: subAgent.useWhen,
+			invalidReasons: subAgent.invalidReasons,
+			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
+				emitSubAgentRefs(
+					selectedSubAgentRefs.value.map((ref) =>
+						ref.agentId === agentId ? toSubAgentRef(agentId, useWhen) : ref,
+					),
+				);
+			},
+			onRemove: (agentId: string) => {
+				emitSubAgentRefs(selectedSubAgentRefs.value.filter((ref) => ref.agentId !== agentId));
+			},
+		},
+	});
+}
+</script>
+
+<template>
+	<div>
+		<div :class="$style.section" data-testid="agent-capabilities-section">
+			<div v-if="showSection('tools')" :class="$style.capabilityRow">
+				<N8nText v-if="toolRows.length > 0" bold :class="$style.rowLabel">
+					{{ i18n.baseText('agents.builder.tools.title') }}
+				</N8nText>
+
+				<div :class="$style.chips">
+					<div
+						v-for="(tool, toolIndex) in toolRows"
+						:key="`tool-${tool.index}`"
+						:class="$style.chipGroup"
+					>
+						<N8nDropdownMenu
+							v-if="tool.isGrouped"
+							:items="toolMenuItems(tool)"
+							:disabled="props.disabled"
+							placement="bottom-start"
+							data-testid="agent-capabilities-tool-group"
+							@select="onToolMenuSelect"
+						>
+							<template #trigger>
+								<AgentChipButton
+									:invalid="tool.invalid"
+									:invalid-reasons="tool.invalidReasons"
+									:disabled="props.disabled"
+									:class="$style.capabilityChip"
+									data-testid="agent-capabilities-tool-row"
+								>
+									<template #icon>
+										<NodeIcon :node-type="tool.nodeType" :size="16" />
+									</template>
+									<span :class="$style.groupChipLabel">
+										{{ tool.label }}
+										<N8nIcon icon="chevron-down" :size="12" color="text-light" />
+									</span>
+								</AgentChipButton>
+							</template>
+							<template #item-leading="{ item, ui }">
+								<NodeIcon
+									v-if="item.data?.nodeType"
+									:node-type="item.data.nodeType"
+									:size="16"
+									:class="ui.class"
+								/>
+							</template>
+						</N8nDropdownMenu>
+						<AgentChipButton
+							v-else-if="tool.nodeType"
+							:invalid="tool.invalid"
+							:invalid-reasons="tool.invalidReasons"
+							:disabled="props.disabled"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-tool-row"
+							@click="emit('open-tool', tool.tool.openTarget)"
+						>
+							<template #icon>
+								<NodeIcon :node-type="tool.nodeType" :size="16" />
+							</template>
+							{{ tool.label }}
+						</AgentChipButton>
+						<AgentChipButton
+							v-else
+							:icon="tool.fallbackIcon"
+							:invalid="tool.invalid"
+							:invalid-reasons="tool.invalidReasons"
+							:disabled="props.disabled"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-tool-row"
+							@click="emit('open-tool', tool.tool.openTarget)"
+						>
+							{{ tool.label }}
+						</AgentChipButton>
+						<N8nTooltip
+							v-if="toolIndex === toolRows.length - 1"
+							:content="i18n.baseText('agents.builder.tools.add')"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-tool"
+								@click="emit('add-tool')"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="toolRows.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							disabled
+							:content="i18n.baseText('agents.builder.tools.add')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-tool"
+								@click="emit('add-tool')"
+							>
+								{{ i18n.baseText('agents.builder.tools.add') }}
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+				</div>
+			</div>
+
+			<div v-if="showSection('skills')" :class="$style.capabilityRow">
+				<N8nText v-if="skills.length > 0" bold :class="$style.rowLabel">
+					{{ i18n.baseText('agents.builder.skills.title') }}
+				</N8nText>
+
+				<div :class="$style.chips">
+					<div v-for="({ id, skill }, skillIndex) in skills" :key="id" :class="$style.chipGroup">
+						<AgentChipButton
+							icon="sparkles"
+							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
+							:invalid-reasons="skillIssueMessages.get(id) ?? []"
+							:disabled="props.disabled"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-skill-row"
+							@click="emit('open-skill', id)"
+						>
+							{{ skill.name || id }}
+						</AgentChipButton>
+
+						<N8nTooltip
+							v-if="skillIndex === skills.length - 1"
+							:content="i18n.baseText('agents.builder.skills.add')"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-skill"
+								@click="emit('add-skill')"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="skills.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							disabled
+							:content="i18n.baseText('agents.builder.skills.add')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-skill"
+								@click="emit('add-skill')"
+							>
+								{{ i18n.baseText('agents.builder.skills.add') }}
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+				</div>
+			</div>
+			<div v-if="showSection('subAgents')" :class="$style.capabilityRow">
+				<N8nText v-if="selectedSubAgents.length > 0" bold :class="$style.rowLabel">
+					{{ i18n.baseText('agents.builder.subAgents.title') }}
+				</N8nText>
+
+				<div :class="$style.chips">
+					<div
+						v-for="(subAgent, subAgentIndex) in selectedSubAgents"
+						:key="subAgent.id"
+						:class="$style.chipGroup"
+					>
+						<AgentChipButton
+							icon="bot"
+							:invalid="subAgent.invalid"
+							:invalid-reasons="subAgent.invalidReasons"
+							:disabled="props.disabled"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-sub-agent-row"
+							@click="openExistingSubAgentModal(subAgent)"
+						>
+							{{ subAgent.name }}
+						</AgentChipButton>
+
+						<N8nTooltip
+							v-if="subAgentIndex === selectedSubAgents.length - 1"
+							:content="i18n.baseText('agents.builder.subAgents.modal.title')"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-sub-agent"
+								@click="openSubAgentsModal"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="selectedSubAgents.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							disabled
+							:content="i18n.baseText('agents.builder.subAgents.modal.title')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-sub-agent"
+								@click="openSubAgentsModal"
+							>
+								{{ i18n.baseText('agents.builder.subAgents.add') }}
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+				</div>
+			</div>
+			<div v-if="showSection('tasks')" :class="$style.capabilityRow">
+				<N8nText v-if="taskRows.length > 0" bold :class="$style.rowLabel">
+					{{ i18n.baseText('agents.builder.tasks.title') }}
+				</N8nText>
+
+				<div :class="$style.chips">
+					<div v-for="(task, taskIndex) in taskRows" :key="task.id" :class="$style.chipGroup">
+						<AgentChipButton
+							icon="clipboard-list"
+							:invalid="task.invalid"
+							:invalid-reasons="task.invalidReasons"
+							:disabled="props.disabled"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-task-row"
+							@click="openTaskModal(task)"
+						>
+							{{ task.name }}
+						</AgentChipButton>
+
+						<N8nTooltip
+							v-if="taskIndex === taskRows.length - 1"
+							:content="i18n.baseText('agents.builder.tasks.add')"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-task"
+								@click="openTaskModal(null)"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="taskRows.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							disabled
+							:content="i18n.baseText('agents.builder.tasks.add')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-task"
+								@click="openTaskModal(null)"
+							>
+								{{ i18n.baseText('agents.builder.tasks.add') }}
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<N8nText v-if="taskErrorMessage" size="small" :class="$style.error">
+						{{ taskErrorMessage }}
+					</N8nText>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
+
+<style module lang="scss">
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.capabilityRow {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+}
+
+.rowLabel {
+	--n8n--row-label-width: max(7%, calc(var(--spacing--3xl) + var(--spacing--sm)));
+	flex: 0 0 var(--n8n--row-label-width);
+	line-height: var(--line-height--sm);
+	margin-top: var(--spacing--3xs);
+}
+
+.chips {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.chipGroup {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: var(--spacing--3xs);
+	max-width: 100%;
+	min-width: 0;
+}
+
+.addButtonEmpty {
+	--button--color: var(--text-color--subtler);
+	margin-left: calc(-1 * var(--spacing--xs));
+	margin-top: calc(-1 * var(--spacing--4xs));
+}
+
+.capabilityChip {
+	max-width: min(12rem, 100%);
+}
+
+.groupChipLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.error {
+	color: var(--color--danger);
+}
+
+@media (max-width: 768px) {
+	.capabilityRow {
+		flex-direction: column;
+		gap: var(--spacing--xs);
+	}
+
+	.rowLabel {
+		flex-basis: auto;
+		line-height: var(--line-height--sm);
+	}
+}
+</style>

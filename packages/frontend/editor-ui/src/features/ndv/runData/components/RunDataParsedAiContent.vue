@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { type ParsedAiContent } from '@/app/utils/aiUtils';
@@ -135,9 +135,9 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 			<!-- We weren't able to parse text or raw switch -->
 			<div v-else :class="$style.rawContent">
 				<N8nIconButton
+					variant="subtle"
 					size="small"
 					:class="$style.copyToClipboard"
-					type="secondary"
 					:title="i18n.baseText('nodeErrorView.copyToClipboard')"
 					icon="files"
 					@click="onCopyToClipboard(raw)"

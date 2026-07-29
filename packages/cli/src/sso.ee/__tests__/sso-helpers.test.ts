@@ -1,26 +1,26 @@
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
 
 import { isSsoCurrentAuthenticationMethod, reloadAuthenticationMethod } from '../sso-helpers';
 
-jest.mock('@/config');
+vi.mock('@/config');
 
 describe('sso-helpers', () => {
 	let settingsRepository: SettingsRepository;
 	let mockConfig: any;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.reset();
 
 		settingsRepository = mock<SettingsRepository>();
 		Container.set(SettingsRepository, settingsRepository);
 
 		mockConfig = {
-			set: jest.fn(),
+			set: vi.fn(),
 		};
 		(config as any).set = mockConfig.set;
 	});
@@ -32,7 +32,7 @@ describe('sso-helpers', () => {
 				value: 'oidc',
 			};
 
-			settingsRepository.findByKey = jest.fn().mockResolvedValue(mockSetting);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockSetting);
 
 			await reloadAuthenticationMethod();
 
@@ -51,7 +51,7 @@ describe('sso-helpers', () => {
 					value: method,
 				};
 
-				settingsRepository.findByKey = jest.fn().mockResolvedValue(mockSetting);
+				settingsRepository.findByKey = vi.fn().mockResolvedValue(mockSetting);
 
 				await reloadAuthenticationMethod();
 
@@ -65,7 +65,7 @@ describe('sso-helpers', () => {
 				value: 'invalid-method',
 			};
 
-			settingsRepository.findByKey = jest.fn().mockResolvedValue(mockSetting);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockSetting);
 
 			await reloadAuthenticationMethod();
 
@@ -73,7 +73,7 @@ describe('sso-helpers', () => {
 		});
 
 		it('should handle missing authentication method setting', async () => {
-			settingsRepository.findByKey = jest.fn().mockResolvedValue(null);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(null);
 
 			await reloadAuthenticationMethod();
 
@@ -85,7 +85,7 @@ describe('sso-helpers', () => {
 
 		it('should handle database errors gracefully', async () => {
 			const error = new Error('Database connection failed');
-			settingsRepository.findByKey = jest.fn().mockRejectedValue(error);
+			settingsRepository.findByKey = vi.fn().mockRejectedValue(error);
 
 			await expect(reloadAuthenticationMethod()).rejects.toThrow('Database connection failed');
 
@@ -95,18 +95,18 @@ describe('sso-helpers', () => {
 
 	describe('isSsoCurrentAuthenticationMethod', () => {
 		it('should return true if the current authentication method is SAML, LDAP, or OIDC', () => {
-			jest.spyOn(config, 'getEnv').mockReturnValue('saml');
+			vi.spyOn(config, 'getEnv').mockReturnValue('saml');
 			expect(isSsoCurrentAuthenticationMethod()).toBe(true);
 
-			jest.spyOn(config, 'getEnv').mockReturnValue('ldap');
+			vi.spyOn(config, 'getEnv').mockReturnValue('ldap');
 			expect(isSsoCurrentAuthenticationMethod()).toBe(true);
 
-			jest.spyOn(config, 'getEnv').mockReturnValue('oidc');
+			vi.spyOn(config, 'getEnv').mockReturnValue('oidc');
 			expect(isSsoCurrentAuthenticationMethod()).toBe(true);
 		});
 
 		it('should return false if the current authentication method is email', () => {
-			jest.spyOn(config, 'getEnv').mockReturnValue('email');
+			vi.spyOn(config, 'getEnv').mockReturnValue('email');
 			expect(isSsoCurrentAuthenticationMethod()).toBe(false);
 		});
 	});

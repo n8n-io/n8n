@@ -1,20 +1,30 @@
-import { ChatAnthropic } from '@langchain/anthropic';
+import { ChatAnthropic, type ChatAnthropicInput } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
-	type INodePropertyOptions,
+	NodeOperationError,
 	type INodeProperties,
-	type ISupplyDataFunctions,
+	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getCustomCredentialHeader } from '@utils/helpers';
+
 import { searchModels } from './methods/searchModels';
+
+const ANTHROPIC_MODEL_BUILDER_HINT = {
+	propertyHint:
+		'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices. When extended thinking is needed on Opus 4.7+, set Thinking Mode to Adaptive and choose an Effort level. The legacy Manual thinking mode is rejected by Opus 4.7.',
+};
 
 const modelField: INodeProperties = {
 	displayName: 'Model',
@@ -66,10 +76,44 @@ const modelField: INodeProperties = {
 	description:
 		'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 	default: 'claude-2',
+	builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
 };
 
 const MIN_THINKING_BUDGET = 1024;
 const DEFAULT_MAX_TOKENS = 4096;
+
+/**
+ * Anthropic is dropping temperature/top_p/top_k from every new model generation (Opus 4.7+,
+ * Sonnet 5, Fable, ...), so a deny-list would need an edit per release. Allow-listing the older
+ * models that still accept them instead only shrinks over time as those models retire; unknown
+ * `claude-*` models are assumed to reject them, non-Claude IDs (e.g. AI gateways) always pass.
+ */
+function modelSupportsSamplingParams(modelName: string): boolean {
+	if (!modelName.startsWith('claude-')) {
+		return true;
+	}
+
+	if (
+		modelName.startsWith('claude-2') ||
+		modelName.startsWith('claude-instant') ||
+		modelName.startsWith('claude-3')
+	) {
+		return true;
+	}
+
+	if (modelName.startsWith('claude-sonnet-4') || modelName.startsWith('claude-haiku-4')) {
+		return true;
+	}
+
+	// Opus 4 through 4.6 (bare or with a dated suffix, e.g. "claude-opus-4-5-20251101") still
+	// accept sampling params; 4.7 and later ("claude-opus-4-7", "claude-opus-4-8", ...) don't.
+	if (/^claude-opus-4(-[0-6])?(-\d{8})?$/.test(modelName)) {
+		return true;
+	}
+
+	return false;
+}
+
 export class LmChatAnthropic implements INodeType {
 	methods = {
 		listSearch: {
@@ -83,8 +127,8 @@ export class LmChatAnthropic implements INodeType {
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
-		defaultVersion: 1.3,
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		defaultVersion: 1.5,
 		description: 'Language Model Anthropic',
 		defaults: {
 			name: 'Anthropic Chat Model',
@@ -155,6 +199,7 @@ export class LmChatAnthropic implements INodeType {
 					value: 'claude-sonnet-4-5-20250929',
 					cachedResultName: 'Claude Sonnet 4.5',
 				},
+				builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
 				required: true,
 				modes: [
 					{
@@ -178,7 +223,81 @@ export class LmChatAnthropic implements INodeType {
 					'The model. Choose from the list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.3 } }],
+						'@version': [1.3],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'resourceLocator',
+				default: {
+					mode: 'list',
+					value: 'claude-sonnet-4-6',
+					cachedResultName: 'Claude Sonnet 4.6',
+				},
+				builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'searchModels',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'Claude Sonnet',
+					},
+				],
+				description:
+					'The model. Choose from the list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
+				displayOptions: {
+					show: {
+						'@version': [1.4],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'resourceLocator',
+				default: {
+					mode: 'list',
+					value: 'claude-sonnet-4-6',
+					cachedResultName: 'Claude Sonnet 4.6',
+				},
+				builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'searchModels',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'Claude Sonnet',
+					},
+				],
+				description:
+					'The model. Choose from the list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.5 } }],
 					},
 				},
 			},
@@ -203,11 +322,12 @@ export class LmChatAnthropic implements INodeType {
 						default: 0.7,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 						description:
-							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
+							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Not supported on newer Anthropic models (Claude Opus 4.7+, Claude Sonnet 5+) — ignored there.',
 						type: 'number',
 						displayOptions: {
 							hide: {
 								thinking: [true],
+								thinkingMode: ['adaptive', 'manual'],
 							},
 						},
 					},
@@ -217,11 +337,12 @@ export class LmChatAnthropic implements INodeType {
 						default: -1,
 						typeOptions: { maxValue: 1, minValue: -1, numberPrecision: 1 },
 						description:
-							'Used to remove "long tail" low probability responses. Defaults to -1, which disables it.',
+							'Used to remove "long tail" low probability responses. Defaults to -1, which disables it. Not supported on newer Anthropic models (Claude Opus 4.7+, Claude Sonnet 5+) — ignored there.',
 						type: 'number',
 						displayOptions: {
 							hide: {
 								thinking: [true],
+								thinkingMode: ['adaptive', 'manual'],
 							},
 						},
 					},
@@ -231,11 +352,12 @@ export class LmChatAnthropic implements INodeType {
 						default: 1,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 						description:
-							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
+							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both. Not supported on newer Anthropic models (Claude Opus 4.7+, Claude Sonnet 5+) — ignored there.',
 						type: 'number',
 						displayOptions: {
 							hide: {
 								thinking: [true],
+								thinkingMode: ['adaptive', 'manual'],
 							},
 						},
 					},
@@ -245,6 +367,11 @@ export class LmChatAnthropic implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether to enable thinking mode for the model',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { lte: 1.4 } }],
+							},
+						},
 					},
 					{
 						displayName: 'Thinking Budget (Tokens)',
@@ -254,9 +381,101 @@ export class LmChatAnthropic implements INodeType {
 						description: 'The maximum number of tokens to use for thinking',
 						displayOptions: {
 							show: {
+								'@version': [{ _cnd: { lte: 1.4 } }],
 								thinking: [true],
 							},
 						},
+					},
+					{
+						displayName: 'Thinking Mode',
+						name: 'thinkingMode',
+						type: 'options',
+						default: 'disabled',
+						description: 'How extended thinking should be configured for the model',
+						options: [
+							{
+								name: 'Disabled',
+								value: 'disabled',
+								description: 'No extended thinking',
+							},
+							{
+								name: 'Adaptive (Recommended)',
+								value: 'adaptive',
+								description: 'Claude decides how much to think; control with Effort',
+							},
+							{
+								name: 'Manual (Deprecated)',
+								value: 'manual',
+								description: 'Legacy fixed-budget mode; rejected by Opus 4.7+',
+							},
+						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Effort',
+						name: 'effort',
+						type: 'options',
+						default: 'medium',
+						description: 'Effort level for adaptive thinking',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+						options: [
+							{ name: 'Low', value: 'low' },
+							{ name: 'Medium', value: 'medium' },
+							{ name: 'High', value: 'high' },
+							{ name: 'X-High', value: 'xhigh' },
+							{ name: 'Max', value: 'max' },
+						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+								thinkingMode: ['adaptive'],
+								'/model.value': [{ _cnd: { includes: 'opus' } }],
+							},
+						},
+					},
+					{
+						displayName: 'Effort',
+						name: 'effort',
+						type: 'options',
+						default: 'medium',
+						description: 'Effort level for adaptive thinking',
+						options: [
+							{ name: 'Low', value: 'low' },
+							{ name: 'Medium', value: 'medium' },
+							{ name: 'High', value: 'high' },
+						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+								thinkingMode: ['adaptive'],
+								'/model.value': [{ _cnd: { regex: '^(?!.*opus).*' } }],
+							},
+						},
+					},
+					{
+						displayName: 'Thinking Budget (Tokens)',
+						name: 'thinkingBudget',
+						type: 'number',
+						default: MIN_THINKING_BUDGET,
+						description: 'Maximum tokens used for thinking. Manual mode is rejected by Opus 4.7+.',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+								thinkingMode: ['manual'],
+							},
+						},
+					},
+					{
+						displayName: 'Stream Responses',
+						name: 'streaming',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether the model should stream its response over Server-Sent Events instead of returning a single non-streamed payload. Final output shape is unchanged.',
 					},
 				],
 			},
@@ -278,32 +497,51 @@ export class LmChatAnthropic implements INodeType {
 				? (this.getNodeParameter('model.value', itemIndex) as string)
 				: (this.getNodeParameter('model', itemIndex) as string);
 
+		if (!modelName) {
+			throw new NodeOperationError(this.getNode(), 'No model selected. Please choose a model.', {
+				itemIndex,
+			});
+		}
+
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			maxTokensToSample?: number;
-			temperature: number;
+			temperature?: number;
 			topK?: number;
 			topP?: number;
 			thinking?: boolean;
 			thinkingBudget?: number;
-		};
-		let invocationKwargs = {};
-
-		const tokensUsageParser = (result: LLMResult) => {
-			const usage = (result?.llmOutput?.usage as {
-				input_tokens: number;
-				output_tokens: number;
-			}) ?? {
-				input_tokens: 0,
-				output_tokens: 0,
-			};
-			return {
-				completionTokens: usage.output_tokens,
-				promptTokens: usage.input_tokens,
-				totalTokens: usage.input_tokens + usage.output_tokens,
-			};
+			thinkingMode?: 'disabled' | 'adaptive' | 'manual';
+			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+			streaming?: boolean;
 		};
 
-		if (options.thinking) {
+		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
+		const thinkingMode: 'disabled' | 'adaptive' | 'manual' =
+			version >= 1.5
+				? (options.thinkingMode ?? 'disabled')
+				: options.thinking
+					? 'manual'
+					: 'disabled';
+
+		if (thinkingMode === 'manual' && isOpus47Model) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Manual thinking mode is not supported on "${modelName}". Use Thinking Mode = Adaptive (with Effort) instead.`,
+				{ itemIndex },
+			);
+		}
+
+		let invocationKwargs: Record<string, unknown> = {};
+		if (thinkingMode === 'adaptive') {
+			invocationKwargs = {
+				thinking: { type: 'adaptive' },
+				output_config: { effort: options.effort ?? 'medium' },
+				max_tokens: options.maxTokensToSample ?? DEFAULT_MAX_TOKENS,
+				top_k: undefined,
+				top_p: undefined,
+				temperature: undefined,
+			};
+		} else if (thinkingMode === 'manual') {
 			invocationKwargs = {
 				thinking: {
 					type: 'enabled',
@@ -323,8 +561,23 @@ export class LmChatAnthropic implements INodeType {
 			};
 		}
 
+		const tokensUsageParser = (result: LLMResult) => {
+			const usage = (result?.llmOutput?.usage as {
+				input_tokens: number;
+				output_tokens: number;
+			}) ?? {
+				input_tokens: 0,
+				output_tokens: 0,
+			};
+			return {
+				completionTokens: usage.output_tokens,
+				promptTokens: usage.input_tokens,
+				totalTokens: usage.input_tokens + usage.output_tokens,
+			};
+		};
+
 		const clientOptions: {
-			fetchOptions?: { dispatcher: any };
+			fetchOptions?: { dispatcher: ReturnType<typeof getProxyAgent> };
 			defaultHeaders?: Record<string, string>;
 		} = {
 			fetchOptions: {
@@ -332,30 +585,79 @@ export class LmChatAnthropic implements INodeType {
 			},
 		};
 
-		if (
-			credentials.header &&
-			typeof credentials.headerName === 'string' &&
-			credentials.headerName &&
-			typeof credentials.headerValue === 'string'
-		) {
+		const customHeader = getCustomCredentialHeader(credentials);
+		if (customHeader) {
 			clientOptions.defaultHeaders = {
-				[credentials.headerName]: credentials.headerValue,
+				[customHeader.name]: customHeader.value,
 			};
 		}
 
-		const model = new ChatAnthropic({
+		const isUsingGateway = baseURL !== 'https://api.anthropic.com';
+		const gatewayErrorHandler = isUsingGateway
+			? (error: unknown) => {
+					const message = error instanceof Error ? error.message : String(error);
+					const isModelError =
+						/model.*not found|not found.*model|invalid model|does not exist/i.test(message);
+					if (isModelError) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The model "${modelName}" was not found at ${baseURL}. If you're using an AI gateway, select a model that your gateway supports.`,
+							{ itemIndex },
+						);
+					}
+				}
+			: undefined;
+
+		// Backstop for the sampling-parameter deprecation that modelSupportsSamplingParams
+		// allow-lists against: catches the same 400 for gateway traffic (whose capabilities we
+		// can't inspect from the model name) and for any Claude model the allow-list doesn't yet
+		// account for, turning a generic "Bad request" into an actionable message.
+		const deprecatedSamplingParamErrorHandler = (error: unknown) => {
+			const message = error instanceof Error ? error.message : String(error);
+			const isDeprecatedSamplingParamError =
+				/(temperature|top_p|top_k).*(deprecated|not supported)/i.test(message);
+			if (isDeprecatedSamplingParamError) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`The model "${modelName}" does not support the Sampling Temperature, Top K, or Top P options. Remove them from Options and try again.`,
+					{ itemIndex },
+				);
+			}
+		};
+
+		const failedAttemptHandler = (error: unknown) => {
+			gatewayErrorHandler?.(error);
+			deprecatedSamplingParamErrorHandler(error);
+		};
+
+		const chatAnthropicParams: ChatAnthropicInput = {
 			anthropicApiKey: credentials.apiKey,
 			model: modelName,
 			anthropicApiUrl: baseURL,
 			maxTokens: options.maxTokensToSample,
-			temperature: options.temperature,
-			topK: options.topK,
-			topP: options.topP,
-			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			callbacks: [
+				new N8nLlmTracing(this, {
+					tokensUsageParser,
+					redactedHeaders: customHeader ? [customHeader.name] : [],
+				}),
+			],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, failedAttemptHandler),
 			invocationKwargs,
 			clientOptions,
-		});
+			streaming: options.streaming ?? false,
+		};
+
+		// Models that reject sampling params (see modelSupportsSamplingParams) get them silently
+		// dropped rather than erroring, for backwards compatibility: workflows built before a
+		// model existed (e.g. an Opus 4.7 node with Sampling Temperature already set) must keep
+		// running unchanged rather than start failing once that model rejects the parameter.
+		if (modelSupportsSamplingParams(modelName)) {
+			chatAnthropicParams.temperature = options.temperature;
+			chatAnthropicParams.topK = options.topK;
+			chatAnthropicParams.topP = options.topP;
+		}
+
+		const model = new ChatAnthropic(chatAnthropicParams);
 
 		// Some Anthropic models do not support Langchain default of -1 for topP so we need to unset it
 		if (options.topP === undefined) {

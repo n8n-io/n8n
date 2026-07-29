@@ -18,17 +18,15 @@ const onVoteClick = (vote: AnnotationVote) => {
 <template>
 	<div :class="$style.ratingIcon">
 		<N8nIconButton
+			variant="ghost"
 			:class="[$style.icon, vote === 'up' && $style.up]"
-			type="tertiary"
-			text
 			size="small"
 			icon="thumbs-up"
 			@click="onVoteClick('up')"
 		/>
 		<N8nIconButton
+			variant="ghost"
 			:class="[$style.icon, vote === 'down' && $style.down]"
-			type="tertiary"
-			text
 			size="small"
 			icon="thumbs-down"
 			@click="onVoteClick('down')"

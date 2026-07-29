@@ -2,16 +2,18 @@
 
 💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 
+🔧 This rule is automatically fixable by the [`--fix` CLI option](https://eslint.org/docs/latest/user-guide/command-line-interface#--fix).
+
 <!-- end auto-generated rule header -->
 
 ## Options
 
 <!-- begin auto-generated rule options list -->
 
-| Name         | Description                                            | Type    |
-| :----------- | :----------------------------------------------------- | :------ |
+| Name         | Description                                                | Type    |
+| :----------- | :--------------------------------------------------------- | :------ |
 | `allowSlugs` | Whether to allow lowercase alphanumeric slugs with slashes | Boolean |
-| `allowUrls`  | Whether to allow valid URLs                            | Boolean |
+| `allowUrls`  | Whether to allow valid URLs                                | Boolean |
 
 <!-- end auto-generated rule options list -->
 

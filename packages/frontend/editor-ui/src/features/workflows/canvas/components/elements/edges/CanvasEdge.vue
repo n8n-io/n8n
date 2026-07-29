@@ -10,6 +10,7 @@ import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
 import { useCanvas } from '../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
+import { resolveCanonicalConnection } from '../../../canvas.utils';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -76,7 +77,7 @@ const edgeClasses = computed(() => ({
 
 const edgeToolbarStyle = computed(() => ({
 	transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px, ${labelPosition.value[1]}px)`,
-	...(delayedHovered.value ? { zIndex: 1 } : {}),
+	...(delayedHovered.value && props.bringToFront ? { zIndex: 1 } : {}),
 }));
 
 const edgeToolbarClasses = computed(() => ({
@@ -96,12 +97,15 @@ const segments = computed(() => renderData.value.segments);
 
 const labelPosition = computed(() => renderData.value.labelPosition);
 
-const connection = computed<Connection>(() => ({
-	source: props.source,
-	target: props.target,
-	sourceHandle: props.sourceHandleId,
-	targetHandle: props.targetHandleId,
-}));
+const connection = computed<Connection>(() =>
+	resolveCanonicalConnection({
+		source: props.source,
+		target: props.target,
+		sourceHandle: props.sourceHandleId,
+		targetHandle: props.targetHandleId,
+		data: props.data,
+	}),
+);
 
 const edgeColor = computed(() => {
 	if (status.value === 'success') {
@@ -182,6 +186,8 @@ function onEdgeLabelMouseLeave() {
 			<CanvasEdgeToolbar
 				v-if="renderToolbar"
 				:type="connectionType"
+				:target-node="targetNode"
+				:source-node="sourceNode"
 				@add="onAdd"
 				@delete="onDelete"
 			/>

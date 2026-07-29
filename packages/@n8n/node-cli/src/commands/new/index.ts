@@ -4,7 +4,13 @@ import { camelCase } from 'change-case';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { declarativeTemplatePrompt, nodeNamePrompt, nodeTypePrompt } from './prompts';
+import {
+	chatModelTypePrompt,
+	declarativeTemplatePrompt,
+	nodeNamePrompt,
+	nodeTypePrompt,
+	programmaticNodeTypePrompt,
+} from './prompts';
 import { createIntro } from './utils';
 import type { TemplateData, TemplateWithRun } from '../../template/core';
 import { getTemplate, isTemplateName, isTemplateType, templates } from '../../template/templates';
@@ -33,7 +39,15 @@ export default class New extends Command {
 		}),
 		'skip-install': Flags.boolean({ description: 'Skip installing dependencies' }),
 		template: Flags.string({
-			options: ['declarative/github-issues', 'declarative/custom', 'programmatic/example'] as const,
+			options: [
+				'declarative/github-issues',
+				'declarative/custom',
+				'programmatic/example',
+				'programmatic/openai-chat-model',
+				'programmatic/custom-chat-model',
+				'programmatic/custom-chat-model-example',
+				'programmatic/custom-chat-memory',
+			] as const,
 		}),
 	};
 
@@ -77,6 +91,23 @@ export default class New extends Command {
 		} else if (type === 'declarative') {
 			const chosenTemplate = await declarativeTemplatePrompt();
 			template = getTemplate('declarative', chosenTemplate) as TemplateWithRun;
+		} else if (type === 'programmatic') {
+			const programmaticNodeType = await programmaticNodeTypePrompt();
+
+			if (programmaticNodeType === 'basic') {
+				template = templates.programmatic.example;
+			} else if (programmaticNodeType === 'chatModel') {
+				const chatModelType = await chatModelTypePrompt();
+				if (chatModelType === 'openaiCompatible') {
+					template = templates.programmatic.openaiChatModel as TemplateWithRun;
+				} else if (chatModelType === 'custom') {
+					template = templates.programmatic.customChatModel as TemplateWithRun;
+				} else if (chatModelType === 'customExample') {
+					template = templates.programmatic.customChatModelExample as TemplateWithRun;
+				}
+			} else if (programmaticNodeType === 'chatMemory') {
+				template = templates.programmatic.customChatMemory as TemplateWithRun;
+			}
 		}
 
 		const config = (await template.prompts?.()) ?? {};

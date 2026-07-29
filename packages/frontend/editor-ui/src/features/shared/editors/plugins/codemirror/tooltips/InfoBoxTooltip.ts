@@ -1,4 +1,5 @@
 import {
+	closeCompletion,
 	CompletionContext,
 	completionStatus,
 	type Completion,
@@ -13,6 +14,7 @@ import {
 	keymap,
 	showTooltip,
 	tooltips,
+	ViewPlugin,
 	type Command,
 	type EditorView,
 	type Tooltip,
@@ -20,6 +22,7 @@ import {
 import type { SyntaxNode } from '@lezer/common';
 import type { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/app/constants';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 
 const findNearestParentOfType =
 	(type: string) =>
@@ -90,6 +93,29 @@ function findActiveArgIndex(node: SyntaxNode, index: number) {
 	return -1;
 }
 
+function isArgSlotEmpty(argList: SyntaxNode, pos: number): boolean {
+	const separators: SyntaxNode[] = [];
+	const expressions: SyntaxNode[] = [];
+	for (let child = argList.firstChild; child; child = child.nextSibling) {
+		if (child.name === '(' || child.name === ',' || child.name === ')') {
+			separators.push(child);
+		} else {
+			expressions.push(child);
+		}
+	}
+
+	// Resolve the slot bracketing the caret, delimited by the surrounding separators.
+	let slotStart = argList.from;
+	let slotEnd = argList.to;
+	for (const separator of separators) {
+		if (separator.to <= pos) slotStart = separator.to;
+		if (separator.from >= pos && slotEnd === argList.to) slotEnd = separator.from;
+	}
+
+	// The slot is empty when no argument expression overlaps it.
+	return !expressions.some((expression) => expression.from < slotEnd && expression.to > slotStart);
+}
+
 const createStateReader = (state: EditorState) => (node?: SyntaxNode | null) => {
 	return node ? state.sliceDoc(node.from, node.to) : '';
 };
@@ -137,19 +163,18 @@ function getJsNodeAtPosition(state: EditorState, pos: number, anchor?: number) {
 	};
 }
 
-function getCompletion(
+async function getCompletion(
 	state: EditorState,
 	pos: number,
 	filter: (completion: Completion) => boolean,
-): Completion | null {
+): Promise<Completion | null> {
 	const context = new CompletionContext(state, pos, true);
-	const sources = state.languageDataAt<(context: CompletionContext) => CompletionResult>(
-		'autocomplete',
-		pos,
-	);
+	const sources = state.languageDataAt<
+		(context: CompletionContext) => CompletionResult | Promise<CompletionResult | null>
+	>('autocomplete', pos);
 
 	for (const source of sources) {
-		const result = source(context);
+		const result = await source(context);
 
 		const options = result?.options.filter(filter);
 		if (options && options.length > 0) {
@@ -166,7 +191,15 @@ const isInfoBoxRenderer = (
 	return typeof info === 'function';
 };
 
-function getInfoBoxTooltip(state: EditorState): Tooltip | null {
+interface TooltipContext {
+	state: EditorState;
+	head: number;
+	argIndex: number;
+	globalPosition: number;
+	methodName: string;
+}
+
+function getTooltipContext(state: EditorState): TooltipContext | null {
 	const { head, anchor } = state.selection.ranges[0];
 	const jsNodeResult = getJsNodeAtPosition(state, head, anchor);
 
@@ -181,6 +214,12 @@ function getInfoBoxTooltip(state: EditorState): Tooltip | null {
 		return null;
 	}
 
+	// Only surface the cursor info-box while the active argument slot is still empty; hide it as
+	// soon as a value is being written. The hover-on-name path is unaffected (it doesn't call this).
+	if (!isArgSlotEmpty(argList, pos)) {
+		return null;
+	}
+
 	const callExpression = findNearestCallExpression(argList);
 	if (!callExpression) {
 		return null;
@@ -191,32 +230,53 @@ function getInfoBoxTooltip(state: EditorState): Tooltip | null {
 	switch (subject?.name) {
 		case 'MemberExpression': {
 			const methodName = readNode(subject.lastChild);
-			const completion = getCompletion(
+			return {
 				state,
-				getGlobalPosition(subject.to - 1),
-				(c) => c.label === methodName + '()',
-			);
-
-			return completionToTooltip(completion, head, { argIndex });
+				head,
+				argIndex,
+				globalPosition: getGlobalPosition(subject.to - 1),
+				methodName: methodName + '()',
+			};
 		}
 		case 'VariableName': {
 			const methodName = readNode(subject);
-			const completion = getCompletion(
+			return {
 				state,
-				getGlobalPosition(subject.to - 1),
-				(c) => c.label === methodName + '()',
-			);
-
-			return completionToTooltip(completion, head, { argIndex });
+				head,
+				argIndex,
+				globalPosition: getGlobalPosition(subject.to - 1),
+				methodName: methodName + '()',
+			};
 		}
 		default:
 			return null;
 	}
 }
 
-const cursorInfoBoxTooltip = StateField.define<{ tooltip: Tooltip | null }>({
+async function getInfoBoxTooltip(state: EditorState): Promise<Tooltip | null> {
+	const ctx = getTooltipContext(state);
+	if (!ctx) return null;
+
+	const completion = await getCompletion(
+		ctx.state,
+		ctx.globalPosition,
+		(c) => c.label === ctx.methodName,
+	);
+	return completionToTooltip(completion, ctx.head, { argIndex: ctx.argIndex });
+}
+
+const setAsyncTooltipEffect = StateEffect.define<Tooltip | null>();
+
+const cursorInfoBoxTooltip = StateField.define<{
+	tooltip: Tooltip | null;
+	contextKey: string | null;
+}>({
 	create(state) {
-		return { tooltip: getInfoBoxTooltip(state) };
+		const ctx = getTooltipContext(state);
+		return {
+			tooltip: null,
+			contextKey: ctx ? `${ctx.globalPosition}:${ctx.methodName}:${ctx.argIndex}` : null,
+		};
 	},
 
 	update(value, tr) {
@@ -225,22 +285,82 @@ const cursorInfoBoxTooltip = StateField.define<{ tooltip: Tooltip | null }>({
 			tr.state.selection.ranges[0].head === 0 ||
 			completionStatus(tr.state) === 'active'
 		) {
-			return { tooltip: null };
+			return { tooltip: null, contextKey: null };
 		}
 
 		if (tr.effects.find((effect) => effect.is(closeInfoBoxEffect))) {
-			return { tooltip: null };
+			return { tooltip: null, contextKey: null };
 		}
 
-		if (!tr.docChanged && !tr.selection) return { tooltip: value.tooltip };
+		// Check for async tooltip update effect
+		for (const effect of tr.effects) {
+			if (effect.is(setAsyncTooltipEffect)) {
+				return { ...value, tooltip: effect.value };
+			}
+		}
 
-		return { ...value, tooltip: getInfoBoxTooltip(tr.state) };
+		if (!tr.docChanged && !tr.selection) return value;
+
+		const ctx = getTooltipContext(tr.state);
+		const newContextKey = ctx ? `${ctx.globalPosition}:${ctx.methodName}:${ctx.argIndex}` : null;
+
+		// Context changed - clear tooltip, ViewPlugin will load new one async
+		if (newContextKey !== value.contextKey) {
+			return { tooltip: null, contextKey: newContextKey };
+		}
+
+		return value;
 	},
 
 	provide: (f) => showTooltip.compute([f], (state) => state.field(f).tooltip),
 });
 
-export const hoverTooltipSource = (view: EditorView, pos: number) => {
+// ViewPlugin to handle async tooltip loading
+const asyncTooltipLoader = ViewPlugin.define((view) => {
+	let pendingLoad: { key: string; aborted: boolean } | null = null;
+
+	const loadAsync = async () => {
+		const ctx = getTooltipContext(view.state);
+		if (!ctx) return;
+
+		const contextKey = `${ctx.globalPosition}:${ctx.methodName}:${ctx.argIndex}`;
+		const currentField = view.state.field(cursorInfoBoxTooltip, false);
+
+		// If we already have a tooltip or context hasn't changed, skip
+		if (currentField?.tooltip || currentField?.contextKey !== contextKey) return;
+
+		// Abort any pending load
+		if (pendingLoad) {
+			pendingLoad.aborted = true;
+		}
+
+		const load = { key: contextKey, aborted: false };
+		pendingLoad = load;
+
+		const tooltip = await getInfoBoxTooltip(view.state);
+
+		// Only dispatch if not aborted and context is still the same
+		if (!load.aborted && view.state.field(cursorInfoBoxTooltip, false)?.contextKey === contextKey) {
+			view.dispatch({ effects: setAsyncTooltipEffect.of(tooltip) });
+		}
+	};
+
+	// Initial load
+	void loadAsync();
+
+	return {
+		update(update) {
+			if (update.docChanged || update.selectionSet) {
+				void loadAsync();
+			}
+		},
+	};
+});
+
+export const hoverTooltipSource = async (
+	view: EditorView,
+	pos: number,
+): Promise<Tooltip | null> => {
 	const state = view.state.field(cursorInfoBoxTooltip, false);
 	const cursorTooltipOpen = !!state?.tooltip;
 
@@ -255,8 +375,8 @@ export const hoverTooltipSource = (view: EditorView, pos: number) => {
 
 	const { node, getGlobalPosition, readNode } = jsNodeResult;
 
-	const tooltipForNode = (subject: SyntaxNode) => {
-		const completion = getCompletion(
+	const tooltipForNode = async (subject: SyntaxNode): Promise<Tooltip | null> => {
+		const completion = await getCompletion(
 			view.state,
 			getGlobalPosition(subject.to - 1),
 			(c) => c.label === readNode(subject) || c.label === readNode(subject) + '()',
@@ -276,7 +396,7 @@ export const hoverTooltipSource = (view: EditorView, pos: number) => {
 	switch (node.name) {
 		case 'VariableName':
 		case 'PropertyName': {
-			return tooltipForNode(node);
+			return await tooltipForNode(node);
 		}
 		case 'String':
 		case 'Number':
@@ -286,7 +406,7 @@ export const hoverTooltipSource = (view: EditorView, pos: number) => {
 
 			if (!callExpression) return null;
 
-			return tooltipForNode(callExpression);
+			return await tooltipForNode(callExpression);
 		}
 
 		default:
@@ -308,13 +428,33 @@ export const closeCursorInfoBox: Command = (view) => {
 	return true;
 };
 
+const closeTooltipsOnCommandBarOpen = ViewPlugin.fromClass(
+	class {
+		private readonly listener: () => void;
+
+		constructor(view: EditorView) {
+			this.listener = () => {
+				closeCompletion(view);
+				closeCursorInfoBox(view);
+			};
+			commandBarEventBus.on('open', this.listener);
+		}
+
+		destroy() {
+			commandBarEventBus.off('open', this.listener);
+		}
+	},
+);
+
 export const infoBoxTooltips = (): Extension[] => {
 	return [
 		tooltips({
 			parent: document.getElementById(CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID) ?? undefined,
 		}),
 		cursorInfoBoxTooltip,
+		asyncTooltipLoader,
 		hoverInfoBoxTooltip,
+		closeTooltipsOnCommandBarOpen,
 		keymap.of([
 			{
 				key: 'Escape',

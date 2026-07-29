@@ -1,5 +1,7 @@
 import type { Locator } from '@playwright/test';
 
+import { closeDialogIfOpen } from './dialogLocators';
+
 /**
  * Variable modal component for canvas and variables interactions.
  * Used within VariablesPage as `n8n.variables.modal.*`
@@ -11,10 +13,6 @@ import type { Locator } from '@playwright/test';
  */
 export class VariableModal {
 	constructor(private root: Locator) {}
-
-	getModal(): Locator {
-		return this.root;
-	}
 
 	getKeyInput(): Locator {
 		return this.root.getByTestId('variable-modal-key-input').getByRole('textbox');
@@ -38,10 +36,7 @@ export class VariableModal {
 	}
 
 	async close(): Promise<void> {
-		const closeBtn = this.root.locator('.el-dialog__close').first();
-		if (await closeBtn.isVisible()) {
-			await closeBtn.click();
-		}
+		await closeDialogIfOpen(this.root);
 	}
 
 	/**

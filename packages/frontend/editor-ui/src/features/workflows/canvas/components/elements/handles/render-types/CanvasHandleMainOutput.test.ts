@@ -2,18 +2,43 @@ import CanvasHandleMainOutput from './CanvasHandleMainOutput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
 	createCanvasHandleProvide,
+	createCanvasNodeProvide,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
+import type { ComputedRef } from 'vue';
+import type { CanvasConnectionPort } from '../../../../canvas.types';
+
+const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({
+			value: actual.createEmptyCanvasRenderData({
+				nodeInputsByNodeId: renderNodeInputsMap,
+				nodeOutputsByNodeId: renderNodeOutputsMap,
+			}),
+		})),
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasHandleMainOutput, {
 	global: {
 		provide: {
 			...createCanvasProvide(),
+			...createCanvasNodeProvide(),
 		},
 	},
 });
 
 describe('CanvasHandleMainOutput', () => {
+	beforeEach(() => {
+		renderNodeInputsMap.clear();
+		renderNodeOutputsMap.clear();
+	});
+
 	it('should render correctly', async () => {
 		const label = 'Test Label';
 		const { container, getByText, getByTestId } = renderComponent({
@@ -55,7 +80,7 @@ describe('CanvasHandleMainOutput', () => {
 			},
 		});
 
-		expect(queryByTestId('canvas-handle-plus-wrapper')).toHaveClass('success');
+		expect(queryByTestId('canvas-handle-plus-wrapper')?.firstChild).toHaveClass('success');
 	});
 
 	it('should render run data label', async () => {

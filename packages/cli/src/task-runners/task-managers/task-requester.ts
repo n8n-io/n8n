@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
 import { isSerializedBuffer, toBuffer, ErrorReporter } from 'n8n-core';
-import { createResultOk, createResultError } from 'n8n-workflow';
+import { createResultOk, createResultError, type Result } from '@n8n/utils/result';
 import type {
 	EnvProviderState,
 	IExecuteFunctions,
@@ -17,12 +17,12 @@ import type {
 	IExecuteData,
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
-	Result,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
+import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
 import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
@@ -72,7 +72,7 @@ export abstract class TaskRequester {
 		private readonly eventService: EventService,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly globalConfig: GlobalConfig,
-		private readonly errorReporter: ErrorReporter,
+		protected readonly errorReporter: ErrorReporter,
 	) {}
 
 	setRunnerUnavailable(taskType: string, reason: string) {
@@ -238,7 +238,7 @@ export abstract class TaskRequester {
 
 		const acceptReject = this.taskAcceptRejects.get(taskId);
 		if (acceptReject) {
-			acceptReject.reject(new Error(`Task cancelled: ${reason}`));
+			acceptReject.reject(new TaskCancelledError(reason));
 			this.taskAcceptRejects.delete(taskId);
 		}
 	}
@@ -442,7 +442,7 @@ export abstract class TaskRequester {
 				}
 			}
 
-			const data = (await func.call(funcs, ...params)) as unknown;
+			const data = await func.call(funcs, ...params);
 
 			this.sendMessage({
 				type: 'requester:rpcresponse',

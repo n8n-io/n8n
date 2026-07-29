@@ -4,6 +4,10 @@
 # This file defines skip rules for known-safe patterns.
 # Add new entries only after security review.
 
+# Custom rules for additional security checks
+include:
+  - path: .github/poutine-rules
+
 skip:
   # === SELF-HOSTED RUNNERS ===
   # We use Blacksmith (trusted CI provider) for self-hosted runners.
@@ -44,10 +48,16 @@ skip:
       - .github/workflows/sbom-generation-callable.yml
       # Uses merge commit SHA from GitHub - the code has already been reviewed
       # and merged, not arbitrary PR code.
-      - .github/workflows/linting-reusable.yml
+      - .github/workflows/test-linting-reusable.yml
       # Uses merge commit SHA from GitHub - the code has already been reviewed
       # and merged, not arbitrary PR code.
-      - .github/workflows/units-tests-reusable.yml
+      - .github/workflows/test-unit-reusable.yml
       # Permission-gated: only maintainers (admin/write/maintain) can trigger
       # via /test-workflows comment. Verified in test-workflows-pr-comment.yml.
       - .github/workflows/test-workflows-callable.yml
+      # Reusable workflow reachable only via workflow_dispatch (manual) or from
+      # ci-mcp-evals.yml, which is itself workflow_dispatch-only — never from a
+      # pull_request / fork. The flagged step (`npm install -g
+      # @anthropic-ai/claude-code`) installs a fixed package from the npm
+      # registry, not the checked-out code.
+      - .github/workflows/test-evals-mcp.yml

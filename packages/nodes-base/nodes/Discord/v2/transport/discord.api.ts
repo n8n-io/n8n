@@ -8,9 +8,9 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { sleep, NodeApiError, jsonParse } from 'n8n-workflow';
+import { NodeApiError, jsonParse } from 'n8n-workflow';
 
-import { getCredentialsType, requestApi } from './helpers';
+import { getCredentialsType, handleRateLimitHeaders, requestApi } from './helpers';
 
 export async function discordApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -41,14 +41,7 @@ export async function discordApiRequest(
 	try {
 		const response = await requestApi.call(this, options, credentialType, endpoint);
 
-		const resetAfter = Number(response.headers['x-ratelimit-reset-after']);
-		const remaining = Number(response.headers['x-ratelimit-remaining']);
-
-		if (remaining === 0) {
-			await sleep(resetAfter);
-		} else {
-			await sleep(20); //prevent exceeding global rate limit of 50 requests per second
-		}
+		await handleRateLimitHeaders(response.headers as IDataObject);
 
 		return response.body || { success: true };
 	} catch (error) {
@@ -84,14 +77,7 @@ export async function discordApiMultiPartRequest(
 	try {
 		const response = await requestApi.call(this, options, credentialType, endpoint);
 
-		const resetAfter = Number(response.headers['x-ratelimit-reset-after']);
-		const remaining = Number(response.headers['x-ratelimit-remaining']);
-
-		if (remaining === 0) {
-			await sleep(resetAfter);
-		} else {
-			await sleep(20); //prevent exceeding global rate limit of 50 requests per second
-		}
+		await handleRateLimitHeaders(response.headers as IDataObject);
 
 		return jsonParse<IDataObject[]>(response.body);
 	} catch (error) {

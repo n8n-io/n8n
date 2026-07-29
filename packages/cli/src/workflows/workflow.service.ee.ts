@@ -18,13 +18,18 @@ import {
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { hasGlobalScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
-import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } from 'n8n-workflow';
-
-import { WorkflowFinderService } from './workflow-finder.service';
+import type { INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	jsonParse,
+	NodeOperationError,
+	PROJECT_ROOT,
+	UserError,
+	WorkflowActivationError,
+} from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -36,6 +41,8 @@ import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflo
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
+
+import { WorkflowFinderService } from './workflow-finder.service';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -151,7 +158,9 @@ export class EnterpriseWorkflowService {
 				return;
 			}
 			Object.keys(node.credentials).forEach((credentialType) => {
-				const credentialId = node.credentials?.[credentialType].id;
+				const credential = node.credentials?.[credentialType];
+				if (credential?.__aiGatewayManaged && credential?.id === null) return;
+				const credentialId = credential?.id;
 				if (credentialId === undefined) return;
 				const matchedCredential = allowedCredentials.find(({ id }) => id === credentialId);
 				if (!matchedCredential) {
@@ -260,15 +269,119 @@ export class EnterpriseWorkflowService {
 			return [];
 		}
 		return workflow.nodes.filter((node) => {
-			if (!node.credentials) return false;
-
-			const allUsedCredentials = Object.values(node.credentials);
-
-			const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
-			return allUsedCredentialIds.some(
-				(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
-			);
+			const usedCredentialIds = this.getCredentialIdsUsedByNode(node);
+			return usedCredentialIds.some((credId) => !userCredIds.includes(credId));
 		});
+	}
+
+	/**
+	 * Collect every credential id a node references. Besides the node's own
+	 * `credentials`, an Execute Sub-workflow node with an inline source embeds a
+	 * whole workflow — including its nodes' credentials — inside a single string
+	 * parameter, so those references are parsed out and returned as well.
+	 */
+	private getCredentialIdsUsedByNode(node: INode): string[] {
+		const credentialIds: string[] = [];
+
+		if (node.credentials) {
+			for (const nodeCred of Object.values(node.credentials)) {
+				const id = nodeCred.id?.toString();
+				if (id) credentialIds.push(id);
+			}
+		}
+
+		if (node.type === EXECUTE_WORKFLOW_NODE_TYPE) {
+			credentialIds.push(...this.getCredentialIdsFromInlineWorkflow(node.parameters?.workflowJson));
+		}
+
+		return credentialIds;
+	}
+
+	/**
+	 * Extract the credential ids referenced by the nodes of an inline sub-workflow
+	 * passed as the `workflowJson` parameter of an Execute Sub-workflow node.
+	 * Non-string or unparseable values reference no resolvable credentials and are
+	 * ignored (the node would fail at run time).
+	 */
+	private getCredentialIdsFromInlineWorkflow(workflowJson: unknown): string[] {
+		if (typeof workflowJson !== 'string') return [];
+
+		let parsed: Partial<IWorkflowBase>;
+		try {
+			parsed = jsonParse<Partial<IWorkflowBase>>(workflowJson);
+		} catch {
+			return [];
+		}
+		if (!parsed || !Array.isArray(parsed.nodes)) return [];
+
+		const credentialIds: string[] = [];
+		for (const subNode of parsed.nodes) {
+			if (!subNode?.credentials) continue;
+			for (const nodeCred of Object.values(subNode.credentials)) {
+				const id = nodeCred?.id?.toString();
+				if (id) credentialIds.push(id);
+			}
+		}
+		return credentialIds;
+	}
+
+	/**
+	 * Get workflow IDs that use at least one resolvable credential.
+	 * Used to populate `hasResolvableCredentials` in workflow list responses.
+	 */
+	async getWorkflowIdsWithResolvableCredentials(workflowIds: string[]): Promise<Set<string>> {
+		if (workflowIds.length === 0) {
+			return new Set();
+		}
+
+		// Fetch workflows with just the nodes field
+		const workflows = await this.workflowRepository.findByIds(workflowIds, {
+			fields: ['id', 'nodes'],
+		});
+
+		// Extract all credential IDs from all workflows
+		const credentialIdToWorkflowIds = new Map<string, string[]>();
+		for (const workflow of workflows) {
+			if (!workflow.nodes) continue;
+			for (const node of workflow.nodes) {
+				if (!node.credentials) continue;
+				for (const credentialType of Object.keys(node.credentials)) {
+					const credentialId = node.credentials[credentialType]?.id;
+					if (credentialId) {
+						const workflowIdsList = credentialIdToWorkflowIds.get(credentialId) ?? [];
+						workflowIdsList.push(workflow.id);
+						credentialIdToWorkflowIds.set(credentialId, workflowIdsList);
+					}
+				}
+			}
+		}
+
+		if (credentialIdToWorkflowIds.size === 0) {
+			return new Set();
+		}
+
+		// Query credentials that are resolvable
+		const resolvableCredentials = await this.credentialsRepository.find({
+			where: {
+				id: In(Array.from(credentialIdToWorkflowIds.keys())),
+				isResolvable: true,
+				usageScope: 'project',
+			},
+			select: ['id'],
+		});
+
+		// Build set of workflow IDs that have resolvable credentials
+		const workflowIdsWithResolvableCredentials = new Set<string>();
+		for (const credential of resolvableCredentials) {
+			const workflowIdsList = credentialIdToWorkflowIds.get(credential.id);
+			if (workflowIdsList) {
+				for (const workflowId of workflowIdsList) {
+					workflowIdsWithResolvableCredentials.add(workflowId);
+				}
+			}
+		}
+
+		return workflowIdsWithResolvableCredentials;
 	}
 
 	async transferWorkflow(
@@ -346,7 +459,7 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 7. transfer the workflow
-		await this.transferWorkflowOwnership([workflow], destinationProject.id);
+		await this.transferWorkflowOwnership([workflow], destinationProject);
 
 		// 8. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
@@ -354,10 +467,7 @@ export class EnterpriseWorkflowService {
 		// 9. Move workflow to the right folder if any
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
-		// 10. Update potential cached project association
-		await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
-
-		// 11. try to activate it again if it was active
+		// 10. try to activate it again if it was active
 		if (wasActive) {
 			return await this.attemptWorkflowReactivation(workflowId, workflow.activeVersionId, user.id);
 		}
@@ -459,7 +569,7 @@ export class EnterpriseWorkflowService {
 		await Promise.all(deactivateWorkflowsPromises);
 
 		// 6. transfer the workflows
-		await this.transferWorkflowOwnership(workflows, destinationProject.id);
+		await this.transferWorkflowOwnership(workflows, destinationProject);
 
 		// 7. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
@@ -496,6 +606,19 @@ export class EnterpriseWorkflowService {
 
 			return;
 		} catch (error) {
+			// Reactivation may have failed partway with triggers already registered,
+			// in memory and as durable schedule jobs. Tear them down before the
+			// rollback below so the active version is still resolvable, or they
+			// keep firing a workflow marked inactive.
+			try {
+				await this.activeWorkflowManager.remove(workflowId);
+			} catch (cleanupError) {
+				this.logger.error(`Failed to roll back partial reactivation of workflow "${workflowId}"`, {
+					workflowId,
+					error: cleanupError,
+				});
+			}
+
 			await this.workflowRepository.updateActiveState(workflowId, false);
 
 			// If reactivation failed we track deactivation of the workflow
@@ -516,7 +639,7 @@ export class EnterpriseWorkflowService {
 
 	private async transferWorkflowOwnership(
 		workflows: WorkflowEntity[],
-		destinationProjectId: string,
+		destinationProject: Project,
 	) {
 		await this.workflowRepository.manager.transaction(async (trx) => {
 			for (const workflow of workflows) {
@@ -527,12 +650,17 @@ export class EnterpriseWorkflowService {
 				await trx.save(
 					trx.create(SharedWorkflow, {
 						workflowId: workflow.id,
-						projectId: destinationProjectId,
+						projectId: destinationProject.id,
 						role: 'workflow:owner',
 					}),
 				);
 			}
 		});
+
+		// Update workflow project cache entries
+		for (const workflow of workflows) {
+			await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
+		}
 	}
 
 	private async shareCredentialsWithProject(
@@ -541,18 +669,25 @@ export class EnterpriseWorkflowService {
 		projectId: string,
 	) {
 		await this.workflowRepository.manager.transaction(async (trx) => {
-			const allCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
-				user,
-				['credential:share'],
-				trx,
-			);
+			let credentialIdsToShare: string[];
 
-			const credentialsToShare = allCredentials.filter((c) => credentialIds.includes(c.id));
+			if (hasGlobalScope(user, ['credential:share'], { mode: 'allOf' })) {
+				credentialIdsToShare = credentialIds;
+			} else {
+				const accessibleIds = new Set(
+					await this.credentialsFinderService.getCredentialIdsByUserAndRole(
+						[user.id],
+						{ scopes: ['credential:share'] },
+						trx,
+					),
+				);
+				credentialIdsToShare = credentialIds.filter((id) => accessibleIds.has(id));
+			}
 
-			for (const credential of credentialsToShare) {
+			for (const credentialId of credentialIdsToShare) {
 				await this.enterpriseCredentialsService.shareWithProjects(
 					user,
-					credential.id,
+					credentialId,
 					[projectId],
 					trx,
 				);

@@ -51,34 +51,46 @@ export interface Content {
 	role: string;
 }
 
+export interface TextPart {
+	text: string;
+}
+
+export interface InlineDataPart {
+	inlineData: {
+		mimeType: string;
+		data: string;
+	};
+}
+
+export interface FunctionCallPart {
+	functionCall: {
+		id?: string;
+		name: string;
+		args?: IDataObject;
+	};
+}
+
+export interface FunctionResponsePart {
+	functionResponse: {
+		id?: string;
+		name: string;
+		response: IDataObject;
+	};
+}
+
+export interface FileDataPart {
+	fileData?: {
+		mimeType?: string;
+		fileUri?: string;
+	};
+}
+
 export type Part =
-	| { text: string }
-	| {
-			inlineData: {
-				mimeType: string;
-				data: string;
-			};
-	  }
-	| {
-			functionCall: {
-				id?: string;
-				name: string;
-				args?: IDataObject;
-			};
-	  }
-	| {
-			functionResponse: {
-				id?: string;
-				name: string;
-				response: IDataObject;
-			};
-	  }
-	| {
-			fileData?: {
-				mimeType?: string;
-				fileUri?: string;
-			};
-	  };
+	| TextPart
+	| InlineDataPart
+	| FunctionCallPart
+	| FunctionResponsePart
+	| FileDataPart;
 
 export interface ImagenResponse {
 	predictions: Array<{

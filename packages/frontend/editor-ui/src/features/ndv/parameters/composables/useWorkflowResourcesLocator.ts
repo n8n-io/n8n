@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue';
+import { useWorkflowsListStore, type WorkflowListFilters } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Router } from 'vue-router';
 import { VIEWS } from '@/app/constants';
@@ -6,11 +7,14 @@ import { VIEWS } from '@/app/constants';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import type { NodeParameterValue } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export function useWorkflowResourcesLocator(router: Router) {
+	const workflowsListStore = useWorkflowsListStore();
 	const workflowsStore = useWorkflowsStore();
-	const ndvStore = useNDVStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const { renameNode } = useCanvasOperations();
 
 	const workflowsResources = ref<
@@ -34,7 +38,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	}
 
 	function getWorkflowName(id: string): string {
-		const workflow = workflowsStore.getWorkflowById(id);
+		const workflow = workflowsListStore.getWorkflowById(id);
 		if (workflow) {
 			return constructName(workflow);
 		}
@@ -42,7 +46,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	}
 
 	function getWorkflowBaseName(id: string): string | null {
-		const workflow = workflowsStore.getWorkflowById(id);
+		const workflow = workflowsListStore.getWorkflowById(id);
 		if (workflow) {
 			return workflow.name;
 		}
@@ -50,7 +54,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	}
 
 	function getWorkflowUrl(workflowId: string) {
-		const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+		const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } });
 		return href;
 	}
 
@@ -70,17 +74,28 @@ export function useWorkflowResourcesLocator(router: Router) {
 		}
 
 		currentPage.value++;
-		const workflows = await workflowsStore.fetchWorkflowsPage(
+
+		const parentWorkflowId = workflowsStore.workflowId;
+
+		const filters: WorkflowListFilters = {
+			triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+		};
+		if (searchFilter.value) {
+			filters.query = searchFilter.value;
+		}
+		if (parentWorkflowId) {
+			filters.includeCallableSubworkflows = true;
+			filters.parentWorkflowId = parentWorkflowId;
+		}
+
+		const workflows = await workflowsListStore.fetchWorkflowsPage(
 			undefined,
 			currentPage.value,
 			PAGE_SIZE,
 			'updatedAt:desc',
-			{
-				...(searchFilter.value ? { query: searchFilter.value } : {}),
-				triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
-			},
+			filters,
 		);
-		totalCount.value = workflowsStore.totalWorkflowCount;
+		totalCount.value = workflowsListStore.totalWorkflowCount;
 
 		if (reset) {
 			workflowsResources.value = workflows.map(workflowDbToResourceMapper);
@@ -103,11 +118,12 @@ export function useWorkflowResourcesLocator(router: Router) {
 	function applyDefaultExecuteWorkflowNodeName(workflowId: NodeParameterValue) {
 		if (typeof workflowId !== 'string') return;
 
-		const nodeName = ndvStore.activeNodeName;
+		const nodeName = ndvStore.value.activeNodeName;
 		if (
-			nodeName === 'Execute Workflow' ||
-			nodeName === 'Call n8n Workflow Tool' ||
-			(nodeName?.startsWith("Call '") && nodeName?.endsWith("'"))
+			nodeName &&
+			(/^Execute Workflow\d*$/.test(nodeName) ||
+				/^Call n8n Workflow Tool\d*$/.test(nodeName) ||
+				(nodeName.startsWith("Call '") && nodeName.endsWith("'")))
 		) {
 			const baseName = getWorkflowBaseName(workflowId);
 			if (baseName !== null) {

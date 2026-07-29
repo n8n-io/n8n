@@ -1,0 +1,92 @@
+<script lang="ts" setup>
+import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import BaseLayout from './BaseLayout.vue';
+import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
+import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
+import { useReportWorkflowFailuresToParent } from '@/app/composables/useReportWorkflowFailuresToParent';
+import { usePushConnection } from '@/app/composables/usePushConnection/usePushConnection';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { randomString } from 'n8n-workflow';
+
+const route = useRoute();
+const canExecute = computed(() => route.query.canExecute === 'true');
+
+// The iframe shares sessionStorage with the parent page (same origin), so both
+// get the same pushRef by default. This causes the backend to replace one
+// push connection with the other. Generate a unique pushRef for this iframe
+// so it can have its own independent push connection.
+if (window !== window.parent) {
+	useRootStore().setPushRef(randomString(10).toLowerCase());
+}
+
+const workflowId = useWorkflowId();
+
+const {
+	initializeData,
+	initializeWorkflow,
+	currentWorkflowDocumentStore,
+	cleanup: cleanupInitialization,
+} = useWorkflowInitialization();
+
+const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
+	currentWorkflowDocumentStore,
+});
+
+useReportWorkflowFailuresToParent();
+
+// Initialize push event handlers so relayed execution events (via postMessage
+// from the parent) are processed for node highlighting, execution state, etc.
+// When canExecute is enabled, the iframe also establishes its own WebSocket
+// connection for user-triggered executions (pushConnect below).
+const pushConnection = usePushConnection({ router: useRouter() });
+const pushConnectionStore = usePushConnectionStore();
+
+// When canExecute is disabled (read-only preview), set activeExecutionId to null
+// so the iframe accepts incoming execution push events relayed from the parent
+// via postMessage. When canExecute is enabled, leave it as undefined so the run
+// button is not disabled — the normal execution flow will set it to null when
+// the user actually starts an execution.
+if (!canExecute.value) {
+	useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId.value)).setActiveExecutionId(
+		null,
+	);
+}
+
+onMounted(async () => {
+	await initializeData();
+	await initializeWorkflow();
+	pushConnection.initialize();
+
+	// When canExecute is enabled, establish a real WebSocket/SSE connection
+	// so the iframe can trigger and receive its own execution events directly.
+	if (canExecute.value) {
+		pushConnectionStore.pushConnect();
+	}
+
+	setupPostMessages();
+});
+
+onBeforeUnmount(() => {
+	if (canExecute.value) {
+		pushConnectionStore.pushDisconnect();
+	}
+	pushConnection.terminate();
+	cleanupPostMessages();
+	cleanupInitialization();
+});
+</script>
+
+<template>
+	<BaseLayout>
+		<RouterView v-if="currentWorkflowDocumentStore" />
+		<template #footer>
+			<DemoFooter />
+		</template>
+	</BaseLayout>
+</template>

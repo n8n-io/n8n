@@ -18,8 +18,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 export interface ITemplateState {
 	categories: ITemplatesCategory[];
@@ -84,7 +85,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 	const rootStore = useRootStore();
 	const userStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 
 	const allCategories = computed(() => {
 		return categories.value.sort((a: ITemplatesCategory, b: ITemplatesCategory) =>
@@ -175,15 +176,30 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 				: undefined),
 	);
 
+	// Capabilities beaconed to the website alongside utm_instance, so n8n.io can
+	// offer instance-aware entry points (e.g. "Customize with AI" on templates)
+	// only when this user can actually use them on this instance.
+	const instanceAiAvailable = useInstanceAiAvailable();
+	const instanceFeatures = computed(() => {
+		const features: string[] = [];
+		if (instanceAiAvailable.value) {
+			features.push('assistant');
+		}
+		return features;
+	});
+
 	const websiteTemplateRepositoryParameters = computed(() => {
 		const defaultParameters: Record<string, string> = {
 			...TEMPLATES_URLS.UTM_QUERY,
 			utm_instance: currentN8nPath.value,
 			utm_n8n_version: rootStore.versionCli,
-			utm_awc: String(workflowsStore.activeWorkflows.length),
+			utm_awc: String(workflowsListStore.activeWorkflows.length),
 		};
 		if (userRole.value) {
 			defaultParameters.utm_user_role = userRole.value;
+		}
+		if (instanceFeatures.value.length > 0) {
+			defaultParameters.utm_instance_features = instanceFeatures.value.join(',');
 		}
 		return new URLSearchParams({
 			...defaultParameters,

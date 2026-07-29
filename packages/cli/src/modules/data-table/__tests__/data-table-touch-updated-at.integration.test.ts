@@ -264,7 +264,7 @@ describe('DataTable touchUpdatedAt', () => {
 			await dataTableService.insertRows(dataTable.id, project.id, [{ name: 'Initial' }]);
 
 			// Mock touchUpdatedAt to simulate an error scenario
-			const touchSpy = jest.spyOn(dataTableRepository, 'touchUpdatedAt');
+			const touchSpy = vi.spyOn(dataTableRepository, 'touchUpdatedAt');
 
 			// Insert rows - operation should succeed
 			const result = await dataTableService.insertRows(dataTable.id, project.id, [
@@ -286,7 +286,7 @@ describe('DataTable touchUpdatedAt', () => {
 			});
 
 			// Mock touchUpdatedAt to verify it's called
-			const touchSpy = jest.spyOn(dataTableRepository, 'touchUpdatedAt');
+			const touchSpy = vi.spyOn(dataTableRepository, 'touchUpdatedAt');
 
 			// Add column - operation should succeed
 			const addColumnDto: AddDataTableColumnDto = {
@@ -307,7 +307,7 @@ describe('DataTable touchUpdatedAt', () => {
 			// by checking it doesn't throw when given an invalid ID
 
 			// Spy on the logger
-			const loggerSpy = jest.spyOn(dataTableRepository['logger'], 'debug');
+			const loggerSpy = vi.spyOn(dataTableRepository['logger'], 'debug');
 
 			// Call touchUpdatedAt with a non-existent ID
 			// The method should not throw, even though the update will affect 0 rows

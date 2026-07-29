@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen } from '@testing-library/vue';
+import { screen, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { ROLE, type UsersList } from '@n8n/api-types';
@@ -44,12 +44,15 @@ describe('SettingsUsersActionsCell', () => {
 		expect(container.firstChild).toBeEmptyDOMElement();
 	});
 
-	it('should render the action toggle with provided actions', () => {
+	it('should render the action toggle with provided actions', async () => {
 		const props = { data: baseUser, actions: mockActions };
 		renderComponent({ props });
+		const user = userEvent.setup();
 
-		expect(screen.getByTestId('action-copyInviteLink')).toBeInTheDocument();
-		expect(screen.getByTestId('action-copyPasswordResetLink')).toBeInTheDocument();
+		await user.click(within(screen.getByTestId('action-toggle')).getByRole('button'));
+
+		expect(await screen.findByTestId('action-copyInviteLink')).toBeInTheDocument();
+		expect(await screen.findByTestId('action-copyPasswordResetLink')).toBeInTheDocument();
 	});
 
 	it('should emit "action" with correct payload when an action is clicked', async () => {
@@ -57,7 +60,9 @@ describe('SettingsUsersActionsCell', () => {
 		const { emitted } = renderComponent({ props });
 		const user = userEvent.setup();
 
-		await user.click(screen.getByTestId('action-copyInviteLink'));
+		await user.click(within(screen.getByTestId('action-toggle')).getByRole('button'));
+
+		await user.click(await screen.findByTestId('action-copyInviteLink'));
 
 		expect(emitted()).toHaveProperty('action');
 		expect(emitted().action[0]).toEqual([{ action: 'copyInviteLink', userId: '1' }]);

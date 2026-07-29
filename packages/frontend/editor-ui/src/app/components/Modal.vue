@@ -4,7 +4,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ModalKey } from '@/Interface';
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 
 import { ElDialog } from 'element-plus';
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
@@ -213,6 +213,8 @@ function getCustomClass() {
 		overflow: hidden;
 		overflow-y: auto;
 		flex-grow: 1;
+		padding-inline: var(--spacing--4xs);
+		margin-inline: calc(var(--spacing--4xs) * -1);
 	}
 
 	&.scrollable .modal-content {

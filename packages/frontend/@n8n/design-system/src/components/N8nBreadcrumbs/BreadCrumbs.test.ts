@@ -11,7 +11,7 @@ const N8nActionToggleMock = defineComponent({
 	name: 'N8nActionToggle',
 	props: {
 		actions: {
-			type: Array as () => Array<{ value: string; label: string }>,
+			type: Array as () => Array<{ id: string; label: string }>,
 			required: true,
 		},
 		loading: {
@@ -43,16 +43,16 @@ const N8nActionToggleMock = defineComponent({
         <div v-if="loading" data-test-id="loading-state">
           Loading...
         </div>
-        <template v-else>
-          <div
-            v-for="action in actions"
-            :key="action.value"
-            :data-test-id="'action-' + action.value"
-            class="dropdown-item"
-            @click="$emit('action', action.value)"
-          >
-            {{ action.label }}
-          </div>
+	      <template v-else>
+	          <div
+	            v-for="action in actions"
+	            :key="action.id"
+	            :data-test-id="'action-' + action.id"
+	            class="dropdown-item"
+	            @click="$emit('action', action.id)"
+	          >
+	            {{ action.label }}
+	          </div>
         </template>
       </div>
     </div>
@@ -157,9 +157,6 @@ describe('Breadcrumbs', async () => {
 		expect(getByTestId('ellipsis')).toBeTruthy();
 		expect(getByTestId('hidden-items-menu')).toBeTruthy();
 		expect(getByTestId('ellipsis')).toHaveClass('disabled');
-		expect(getByTestId('hidden-items-menu').querySelector('.el-dropdown')).toHaveClass(
-			'is-disabled',
-		);
 	});
 
 	it('does not highlight last item for "highlightLastItem = false" ', () => {

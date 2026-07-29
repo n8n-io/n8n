@@ -24,16 +24,16 @@ export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow Trigger',
 		name: 'executeWorkflowTrigger',
-		icon: 'fa:sign-out-alt',
+		icon: 'node:sub-workflow-trigger',
+		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description:
 			'Helpers for calling other n8n workflows. Used for designing modular, microservice-like workflows.',
 		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
 			name: 'When Executed by Another Workflow',
-			color: '#ff6d5a',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
@@ -190,6 +190,32 @@ export class ExecuteWorkflowTrigger implements INodeType {
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Items to Return',
+				name: 'returnOutput',
+				type: 'options',
+				noDataExpression: true,
+				default: 'lastRunOnly',
+				description:
+					'Choose what to send back when the last node ran multiple times (for example, after a Loop Over Items)',
+				options: [
+					{
+						name: 'All Items From Every Run',
+						value: 'allRuns',
+						description: 'Send every item the last node produced, across all its runs',
+					},
+					{
+						name: 'Items From the Last Run Only',
+						value: 'lastRunOnly',
+						description: "Send only the items from the last node's final run",
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.2 } }],
+					},
+				},
 			},
 		],
 	};

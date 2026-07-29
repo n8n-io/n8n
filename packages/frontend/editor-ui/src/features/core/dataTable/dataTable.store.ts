@@ -17,6 +17,7 @@ import {
 	deleteDataTableRowsApi,
 	fetchDataTableGlobalLimitInBytes,
 	downloadDataTableCsvApi,
+	importCsvToDataTableApi,
 	uploadCsvFileApi,
 } from '@/features/core/dataTable/dataTable.api';
 import type {
@@ -25,11 +26,13 @@ import type {
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { reorderItem } from '@/features/core/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import type { DataTableListSortBy } from '@n8n/api-types';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -70,11 +73,27 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		hasPermission(['rbac'], { rbac: { scope: 'dataTable:list' } }),
 	);
 
-	const fetchDataTables = async (projectId: string, page: number, pageSize: number) => {
-		const response = await fetchDataTablesApi(rootStore.restApiContext, projectId, {
-			skip: (page - 1) * pageSize,
-			take: pageSize,
-		});
+	const fetchDataTables = async (
+		projectId: string,
+		page: number,
+		pageSize: number,
+		filter?: {
+			id?: string | string[];
+			name?: string | string[];
+			projectId?: string | string[];
+		},
+		sortBy?: DataTableListSortBy,
+	) => {
+		const response = await fetchDataTablesApi(
+			rootStore.restApiContext,
+			projectId,
+			{
+				skip: (page - 1) * pageSize,
+				take: pageSize,
+			},
+			filter,
+			sortBy,
+		);
 		dataTables.value = response.data;
 		totalCount.value = response.count;
 	};
@@ -107,6 +126,51 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 
 	const uploadCsvFile = async (file: File, hasHeaders: boolean = true) => {
 		return await uploadCsvFileApi(rootStore.restApiContext, file, hasHeaders);
+	};
+
+	const findAvailableDataTableName = async (
+		baseName: string,
+		projectId: string,
+	): Promise<string> => {
+		const MAX_NAME_LENGTH = 128;
+		const PAGE_SIZE = 250;
+		const trimmed = baseName.trim().slice(0, MAX_NAME_LENGTH).trim();
+		if (!trimmed || !projectId) return trimmed;
+
+		const existingNames = new Set<string>();
+		let skip = 0;
+		while (true) {
+			const response = await fetchDataTablesApi(
+				rootStore.restApiContext,
+				projectId,
+				{ skip, take: PAGE_SIZE },
+				{ name: trimmed },
+			);
+			for (const t of response.data) {
+				existingNames.add(t.name.toLowerCase());
+			}
+			skip += response.data.length;
+			if (response.data.length < PAGE_SIZE || skip >= response.count) break;
+		}
+
+		if (!existingNames.has(trimmed.toLowerCase())) return trimmed;
+
+		const buildCandidate = (n: number): string => {
+			const suffix = ` ${n}`;
+			const maxBaseLen = MAX_NAME_LENGTH - suffix.length;
+			const base = trimmed.length > maxBaseLen ? trimmed.slice(0, maxBaseLen).trim() : trimmed;
+			return `${base}${suffix}`;
+		};
+
+		let n = 2;
+		while (existingNames.has(buildCandidate(n).toLowerCase())) {
+			n++;
+		}
+		return buildCandidate(n);
+	};
+
+	const importCsvToDataTable = async (dataTableId: string, projectId: string, fileId: string) => {
+		return await importCsvToDataTableApi(rootStore.restApiContext, dataTableId, projectId, fileId);
 	};
 
 	const deleteDataTable = async (dataTableId: string, projectId: string) => {
@@ -152,6 +216,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			if (index !== -1) {
 				dataTables.value[index] = { ...dataTables.value[index], name };
 			}
+			useFavoritesStore().renameFavorite(dataTableId, 'dataTable', name);
 		}
 		return updated;
 	};
@@ -166,6 +231,16 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			return response.data[0];
 		}
 		return null;
+	};
+
+	// Looks up a data table across every project the user can access, without
+	// mutating the store's list. Used to resolve a link for an id typed by hand.
+	const fetchDataTableById = async (dataTableId: string): Promise<DataTable | null> => {
+		if (!canViewDataTables.value) return null;
+		const response = await fetchDataTablesApi(rootStore.restApiContext, '', undefined, {
+			id: dataTableId,
+		});
+		return response.data[0] ?? null;
 	};
 
 	const fetchOrFindDataTable = async (dataTableId: string, projectId: string) => {
@@ -334,11 +409,16 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		}
 	};
 
-	const downloadDataTableCsv = async (dataTableId: string, projectId: string) => {
+	const downloadDataTableCsv = async (
+		dataTableId: string,
+		projectId: string,
+		includeSystemColumns = true,
+	) => {
 		const { csvContent, filename } = await downloadDataTableCsvApi(
 			rootStore.restApiContext,
 			dataTableId,
 			projectId,
+			includeSystemColumns,
 		);
 
 		const csvBlob = createCsvBlob(csvContent);
@@ -356,9 +436,12 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		maxSizeMB,
 		createDataTable,
 		uploadCsvFile,
+		findAvailableDataTableName,
+		importCsvToDataTable,
 		deleteDataTable,
 		updateDataTable,
 		fetchDataTableDetails,
+		fetchDataTableById,
 		fetchOrFindDataTable,
 		addDataTableColumn,
 		deleteDataTableColumn,

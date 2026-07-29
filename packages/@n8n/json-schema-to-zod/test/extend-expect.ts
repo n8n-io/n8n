@@ -1,7 +1,8 @@
+import { expect, type MatcherState } from 'vitest';
 import type { z } from 'zod';
 
 expect.extend({
-	toMatchZod(this: jest.MatcherContext, actual: z.ZodTypeAny, expected: z.ZodTypeAny) {
+	toMatchZod(this: MatcherState, actual: z.ZodTypeAny, expected: z.ZodTypeAny) {
 		const actualSerialized = JSON.stringify(actual._def, null, 2);
 		const expectedSerialized = JSON.stringify(expected._def, null, 2);
 		const pass = this.equals(actualSerialized, expectedSerialized);
@@ -14,3 +15,14 @@ expect.extend({
 		};
 	},
 });
+
+interface CustomMatchers<R = unknown> {
+	toMatchZod(expected: z.ZodTypeAny): R;
+}
+
+declare module 'vitest' {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- must mirror Vitest's `Matchers<T = any>` default type param
+	interface Matchers<T = any> extends CustomMatchers<T> {
+		toMatchZod(expected: z.ZodTypeAny): T;
+	}
+}

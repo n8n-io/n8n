@@ -1,24 +1,31 @@
 <script lang="ts" setup generic="Value extends string | number">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
 import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
+import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
 interface TabsProps {
 	modelValue?: Value;
 	options?: Array<TabOptions<Value>>;
 	size?: 'small' | 'medium';
 	variant?: 'modern' | 'legacy';
+	/**
+	 * Spread the tabs over the full width in equal slots. Keeps every tab in
+	 * place when a label changes width, at the cost of truncating long ones.
+	 */
+	justified?: boolean;
 }
 
-withDefaults(defineProps<TabsProps>(), {
+const props = withDefaults(defineProps<TabsProps>(), {
 	modelValue: undefined,
 	options: () => [],
 	size: 'medium',
 	variant: 'legacy',
+	justified: false,
 });
 
 const scrollPosition = ref(0);
@@ -26,32 +33,42 @@ const canScrollRight = ref(false);
 const tabs = ref<Element | undefined>(undefined);
 let resizeObserver: ResizeObserver | null = null;
 
+const updateScrollState = () => {
+	const container = tabs.value;
+	if (!container) return;
+
+	scrollPosition.value = container.scrollLeft;
+	canScrollRight.value = container.scrollWidth - container.clientWidth > container.scrollLeft;
+};
+
 onMounted(() => {
-	const container = tabs.value as Element;
-	if (container) {
-		container.addEventListener('scroll', (event: Event) => {
-			const width = container.clientWidth;
-			const scrollWidth = container.scrollWidth;
-			scrollPosition.value = (event.target as Element).scrollLeft;
-			canScrollRight.value = scrollWidth - width > scrollPosition.value;
-		});
+	const container = tabs.value;
+	if (!container) return;
 
-		resizeObserver = new ResizeObserver(() => {
-			const width = container.clientWidth;
-			const scrollWidth = container.scrollWidth;
-			canScrollRight.value = scrollWidth - width > scrollPosition.value;
-		});
-		resizeObserver.observe(container);
-
-		const width = container.clientWidth;
-		const scrollWidth = container.scrollWidth;
-		canScrollRight.value = scrollWidth - width > scrollPosition.value;
-	}
+	container.addEventListener('scroll', updateScrollState);
+	resizeObserver = new ResizeObserver(updateScrollState);
+	resizeObserver.observe(container);
+	updateScrollState();
 });
 
 onUnmounted(() => {
+	tabs.value?.removeEventListener('scroll', updateScrollState);
 	resizeObserver?.disconnect();
 });
+
+/**
+ * The observer only fires when the container itself resizes. Options that
+ * arrive or change label after mount grow scrollWidth without touching it, so
+ * the arrows would otherwise stay hidden until the next mount.
+ */
+watch(
+	() => props.options,
+	async () => {
+		await nextTick();
+		updateScrollState();
+	},
+	{ deep: true },
+);
 
 const emit = defineEmits<{
 	tooltipClick: [tab: Value, e: MouseEvent];
@@ -78,6 +95,7 @@ const scrollRight = () => scroll(50);
 			$style.container,
 			size === 'small' ? $style.small : '',
 			variant === 'modern' ? $style.modern : '',
+			justified ? $style.justified : '',
 		]"
 	>
 		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
@@ -86,7 +104,7 @@ const scrollRight = () => scroll(50);
 		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
 			<N8nIcon :class="$style.positionIcon" icon="chevron-right" size="small" />
 		</div>
-		<div ref="tabs" :class="$style.tabs">
+		<div ref="tabs" role="tablist" :class="$style.tabs">
 			<div
 				v-for="option in options"
 				:id="option.value.toString()"
@@ -106,13 +124,15 @@ const scrollRight = () => scroll(50);
 						:class="[$style.link, $style.tab, option.label ? '' : $style.noText]"
 						@click="() => handleTabClick(option.value)"
 					>
-						<div>
+						<div :class="$style.externalLinkContent">
 							{{ option.label }}
 							<N8nIcon
 								:class="$style.external"
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
+							<PreviewTag v-if="option.preview" />
+							<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 						</div>
 					</a>
 					<RouterLink
@@ -125,10 +145,14 @@ const scrollRight = () => scroll(50);
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
+						<PreviewTag v-if="option.preview" />
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</RouterLink>
 					<div
 						v-else
+						role="tab"
+						tabindex="0"
+						:aria-selected="modelValue === option.value"
 						:class="{
 							[$style.tab]: true,
 							[$style.activeTab]: modelValue === option.value,
@@ -136,6 +160,8 @@ const scrollRight = () => scroll(50);
 							[$style.dangerTab]: option.variant === 'danger',
 						}"
 						@click="() => handleTabClick(option.value)"
+						@keydown.enter.prevent="() => handleTabClick(option.value)"
+						@keydown.space.prevent="() => handleTabClick(option.value)"
 					>
 						<N8nIcon
 							v-if="option.icon && option.iconPosition !== 'right'"
@@ -153,6 +179,7 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
+						<PreviewTag v-if="option.preview" />
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</div>
 				</N8nTooltip>
@@ -213,6 +240,13 @@ const scrollRight = () => scroll(50);
 		color: var(--color--primary);
 	}
 
+	/* Inset outline so the ring isn't clipped by the scroll container and adds no layout shift. */
+	&:focus-visible {
+		outline: var(--border-width) solid var(--focus--border-color);
+		outline-offset: calc(-1 * var(--border-width));
+		border-radius: var(--radius--3xs);
+	}
+
 	span + span {
 		margin-left: var(--spacing--4xs);
 	}
@@ -230,6 +264,14 @@ const scrollRight = () => scroll(50);
 	.small.modern & {
 		padding-inline: 0;
 	}
+
+	/**
+	 * A tag is taller than the label's line box, so it would sit flush against the
+	 * tab's top edge and collide with the inset focus ring.
+	 */
+	.tabs:has(:global(.n8n-tag)) & {
+		padding-top: var(--spacing--4xs);
+	}
 }
 
 .activeTab {
@@ -239,6 +281,35 @@ const scrollRight = () => scroll(50);
 
 	.modern & {
 		padding-bottom: var(--spacing--xs);
+	}
+}
+
+// Equal slots rather than natural widths: a tab's own label can then grow or
+// shrink — a count going from (0) to (99+) — without nudging its neighbours.
+// Slots always add up to the container, so the scroll arrows never engage.
+.justified {
+	.tabs > div {
+		flex: 1 1 0;
+		min-width: 0;
+	}
+
+	.tab {
+		justify-content: center;
+		min-width: 0;
+	}
+
+	// `overflow: hidden` ellipsises a long label but would also clip the
+	// notification dot, which overhangs the box. Reserve its width as padding
+	// and pull it back inside so both survive.
+	.notificationContainer {
+		display: block;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		padding-right: 0.5em;
+	}
+
+	.notification {
+		right: 0;
 	}
 }
 
@@ -261,6 +332,16 @@ const scrollRight = () => scroll(50);
 
 	.noText & {
 		display: block;
+		margin-left: 0;
+	}
+}
+
+.externalLinkContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+
+	.external {
 		margin-left: 0;
 	}
 }

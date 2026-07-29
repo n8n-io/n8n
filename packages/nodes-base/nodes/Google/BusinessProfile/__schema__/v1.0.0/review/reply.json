@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "comment": {
+            "type": "string"
+        },
+        "updateTime": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

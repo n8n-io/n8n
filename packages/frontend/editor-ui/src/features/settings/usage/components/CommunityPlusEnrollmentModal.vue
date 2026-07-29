@@ -8,7 +8,7 @@ import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useUsageStore } from '../usage.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nButton, N8nFormInput, N8nText } from '@n8n/design-system';
@@ -150,15 +150,10 @@ const confirm = async () => {
 				</N8nText>
 			</div>
 			<div :class="$style.buttons">
-				<N8nButton
-					:class="$style.skip"
-					type="secondary"
-					text
-					:disabled="isLoading"
-					@click="closeModal"
-					>{{ i18n.baseText('communityPlusModal.button.skip') }}</N8nButton
-				>
-				<N8nButton :disabled="!valid || isLoading" type="primary" @click="confirm">
+				<N8nButton variant="ghost" :class="$style.skip" :disabled="isLoading" @click="closeModal">{{
+					i18n.baseText('communityPlusModal.button.skip')
+				}}</N8nButton>
+				<N8nButton :disabled="!valid || isLoading" variant="solid" @click="confirm">
 					{{ i18n.baseText('communityPlusModal.button.confirm') }}
 				</N8nButton>
 			</div>
@@ -197,9 +192,5 @@ const confirm = async () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-}
-
-.skip {
-	padding: 0;
 }
 </style>

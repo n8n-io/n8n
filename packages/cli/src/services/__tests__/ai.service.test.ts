@@ -3,19 +3,21 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
-import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
 import type { License } from '@/license';
 
 import { AiService } from '../ai.service';
 
-jest.mock('@n8n_io/ai-assistant-sdk', () => ({
-	AiAssistantClient: jest.fn(),
+vi.mock('@n8n_io/ai-assistant-sdk', () => ({
+	AiAssistantClient: vi.fn(),
 }));
 
 describe('AiService', () => {
@@ -31,15 +33,19 @@ describe('AiService', () => {
 		aiAssistant: { baseUrl },
 	});
 	const instanceSettings = mock<InstanceSettings>({ instanceId });
+	const logger = mock<Logger>();
+	const errorReporter = mock<ErrorReporter>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		(AiAssistantClient as jest.Mock).mockImplementation(() => client);
-		aiService = new AiService(license, globalConfig, instanceSettings);
+		vi.clearAllMocks();
+		(AiAssistantClient as Mock).mockImplementation(function () {
+			return client;
+		});
+		aiService = new AiService(license, globalConfig, instanceSettings, logger, errorReporter);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('init', () => {
@@ -86,7 +92,9 @@ describe('AiService', () => {
 		it('should throw error if client is not initialized', async () => {
 			license.isAiAssistantEnabled.mockReturnValue(false);
 
-			await expect(aiService.chat(payload, user)).rejects.toThrow('Assistant client not setup');
+			await expect(aiService.chat(payload, user)).rejects.toThrow(
+				'AI Assistant client not initialized',
+			);
 		});
 	});
 
@@ -108,7 +116,7 @@ describe('AiService', () => {
 			license.isAiAssistantEnabled.mockReturnValue(false);
 
 			await expect(aiService.applySuggestion(payload, user)).rejects.toThrow(
-				'Assistant client not setup',
+				'AI Assistant client not initialized',
 			);
 		});
 	});
@@ -172,7 +180,120 @@ describe('AiService', () => {
 		it('should throw error if client is not initialized', async () => {
 			license.isAiAssistantEnabled.mockReturnValue(false);
 
-			await expect(aiService.askAi(payload, user)).rejects.toThrow('Assistant client not setup');
+			await expect(aiService.askAi(payload, user)).rejects.toThrow(
+				'AI Assistant client not initialized',
+			);
+		});
+	});
+
+	describe('isProxyEnabled', () => {
+		it('should return true when license enabled and base URL configured', () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+
+			expect(aiService.isProxyEnabled()).toBe(true);
+		});
+
+		it('should return false when license not enabled', () => {
+			license.isAiAssistantEnabled.mockReturnValue(false);
+
+			expect(aiService.isProxyEnabled()).toBe(false);
+		});
+
+		it('should return false when base URL is empty', () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+			const configWithoutUrl = mock<GlobalConfig>({
+				logging: { level: 'info' },
+				aiAssistant: { baseUrl: '' },
+			});
+			const serviceNoUrl = new AiService(
+				license,
+				configWithoutUrl,
+				instanceSettings,
+				logger,
+				errorReporter,
+			);
+
+			expect(serviceNoUrl.isProxyEnabled()).toBe(false);
+		});
+	});
+
+	describe('getClient', () => {
+		it('should return initialized client when license is enabled', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+			license.loadCertStr.mockResolvedValue('cert');
+			license.getConsumerId.mockReturnValue('consumer-1');
+
+			const result = await aiService.getClient();
+
+			expect(result).toBe(client);
+		});
+
+		it('should throw when client cannot be initialized', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(false);
+
+			await expect(aiService.getClient()).rejects.toThrow('AI Assistant client not initialized');
+		});
+
+		it('should only initialize once on repeated calls', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+			license.loadCertStr.mockResolvedValue('cert');
+			license.getConsumerId.mockReturnValue('consumer-1');
+
+			await aiService.getClient();
+			await aiService.getClient();
+
+			expect(AiAssistantClient).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('createFreeAiCredits', () => {
+		const credits = mock<AiAssistantSDK.AiCreditResponsePayload>();
+
+		beforeEach(() => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should retry transient upstream errors before succeeding', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Bad Gateway'), { statusCode: 502 });
+			client.generateAiCreditsCredentials
+				.mockRejectedValueOnce(transient)
+				.mockResolvedValue(credits);
+
+			const promise = aiService.createFreeAiCredits(user);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toEqual(credits);
+			expect(client.generateAiCreditsCredentials).toHaveBeenCalledTimes(2);
+			expect(client.generateAiCreditsCredentials).toHaveBeenCalledWith(user);
+		});
+
+		it('should not retry timed-out credential generation', async () => {
+			vi.useFakeTimers();
+			client.generateAiCreditsCredentials.mockImplementation(
+				async () => await new Promise<never>(() => {}),
+			);
+
+			const promise = aiService.createFreeAiCredits(user);
+			const assertion = expect(promise).rejects.toThrow(
+				'The AI assistant service is temporarily unavailable',
+			);
+			await vi.runAllTimersAsync();
+
+			await assertion;
+			expect(client.generateAiCreditsCredentials).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not retry definite client errors', async () => {
+			const alreadyClaimed = Object.assign(new Error('Already claimed'), { statusCode: 400 });
+			client.generateAiCreditsCredentials.mockRejectedValue(alreadyClaimed);
+
+			await expect(aiService.createFreeAiCredits(user)).rejects.toBe(alreadyClaimed);
+			expect(client.generateAiCreditsCredentials).toHaveBeenCalledTimes(1);
 		});
 	});
 });

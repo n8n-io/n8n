@@ -10,6 +10,7 @@ export default [
 			'ms-playwright-cache/**/*',
 			'coverage/**/*',
 			'scripts/**/*',
+			'janitor.config.mjs',
 		],
 	},
 	{

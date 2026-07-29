@@ -1,6 +1,6 @@
-import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
-import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
+import type { StreamEvent } from '@langchain/core/types/stream';
+import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import type { AgentResult, ToolCallRequest } from './types';
@@ -60,6 +60,8 @@ export async function processEventStream(
 					// Check if this LLM response contains tool calls
 					if (output?.tool_calls && output.tool_calls.length > 0) {
 						// Collect tool calls for request building
+						// Note: For Gemini, we pass additional_kwargs to ALL tool calls
+						// so the signature can be applied to each when rebuilding
 						for (const toolCall of output.tool_calls) {
 							toolCalls.push({
 								tool: toolCall.name,
@@ -70,6 +72,8 @@ export async function processEventStream(
 									output.content ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 								messageLog: [output],
+								// Pass additional_kwargs to ALL tool calls so signature is available
+								additionalKwargs: output.additional_kwargs as Record<string, unknown> | undefined,
 							});
 						}
 					}

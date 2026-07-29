@@ -14,7 +14,14 @@ import {
 	type INodeTypeDescription,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, unref, type ComputedRef, type MaybeRef } from 'vue';
+import {
+	computed,
+	toValue,
+	unref,
+	type ComputedRef,
+	type MaybeRef,
+	type MaybeRefOrGetter,
+} from 'vue';
 
 export interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -24,10 +31,15 @@ export function useNodeCredentialOptions(
 	node: ComputedRef<INodeUi | null>,
 	nodeType: ComputedRef<INodeTypeDescription | null>,
 	overrideCredType: MaybeRef<NodeParameterValueType | undefined>,
+	displayAllOptions: MaybeRefOrGetter<boolean> = false,
 ) {
 	const nodeHelpers = useNodeHelpers();
 	const credentialsStore = useCredentialsStore();
 	const mainNodeAuthField = computed(() => getMainAuthField(nodeType.value));
+	const hasOverride = computed(() => {
+		const override = unref(overrideCredType);
+		return typeof override === 'string' && override !== '';
+	});
 
 	const credentialTypesNodeDescriptions = computed(() =>
 		credentialsStore.getCredentialTypesNodeDescriptions(unref(overrideCredType), nodeType.value),
@@ -57,6 +69,8 @@ export function useNodeCredentialOptions(
 			);
 		});
 
+		options = options.filter((option) => (option.usageScope ?? 'project') === 'project');
+
 		if (node.value?.type === HTTP_REQUEST_NODE_TYPE) {
 			options = options.filter((option) => !option.isManaged);
 		}
@@ -82,7 +96,7 @@ export function useNodeCredentialOptions(
 	}
 
 	function showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
-		if (!node.value) {
+		if (!node.value || hasOverride.value) {
 			return false;
 		}
 
@@ -91,28 +105,49 @@ export function useNodeCredentialOptions(
 		return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(node.value.type) && isRequired;
 	}
 
+	function isMainAuthCredential(credentialType: INodeCredentialDescription): boolean {
+		const authFieldName = mainNodeAuthField.value?.name;
+		return (
+			authFieldName !== undefined &&
+			credentialType.displayOptions?.show?.[authFieldName] !== undefined
+		);
+	}
+
+	function shouldShowRelatedCredentials(credentialType: INodeCredentialDescription): boolean {
+		/**
+		 * Show related credentials if:
+		 * - the credential type is mixed - one selector combines multiple credential types
+		 * - the credential type is the main auth credential - the main auth field is shown in the node UI
+		 * - the display all options is enabled
+		 */
+		return (
+			showMixedCredentials(credentialType) ||
+			(toValue(displayAllOptions) && isMainAuthCredential(credentialType))
+		);
+	}
+
 	function getAllRelatedCredentialTypes(credentialType: INodeCredentialDescription): string[] {
-		const credentialIsRequired = showMixedCredentials(credentialType);
-		if (credentialIsRequired) {
-			if (mainNodeAuthField.value) {
-				const credentials = getAllNodeCredentialForAuthType(
-					nodeType.value,
-					mainNodeAuthField.value.name,
-				);
-				return credentials.map((cred) => cred.name);
-			}
+		if (hasOverride.value || !shouldShowRelatedCredentials(credentialType)) {
+			return [credentialType.name];
 		}
-		return [credentialType.name];
+
+		const authFieldName = mainNodeAuthField.value?.name;
+		// if no main auth field exists, return the credential type itself
+		if (!authFieldName) {
+			return [credentialType.name];
+		}
+
+		// otherwise, return all related credential types
+		return getAllNodeCredentialForAuthType(nodeType.value, authFieldName).map((cred) => cred.name);
 	}
 
 	function isCredentialExisting(credentialType: INodeCredentialDescription): boolean {
-		if (!node.value?.credentials?.[credentialType.name]?.id) {
-			return false;
-		}
-		const { id } = node.value.credentials[credentialType.name];
+		const credential = node.value?.credentials?.[credentialType.name];
+		// Gateway-managed credentials have no real DB record but are properly configured
+		if (credential?.__aiGatewayManaged) return true;
+		if (!credential?.id) return false;
 		const options = getCredentialOptions([credentialType.name]);
-
-		return !!options.find((option: ICredentialsResponse) => option.id === id);
+		return !!options.find((option: ICredentialsResponse) => option.id === credential.id);
 	}
 
 	return {

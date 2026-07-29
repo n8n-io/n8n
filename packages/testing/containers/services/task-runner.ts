@@ -2,7 +2,7 @@ import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { Service, ServiceResult } from './types';
+import { EXTERNAL_HOST, type Service, type ServiceResult } from './types';
 
 export interface TaskRunnerConfig {
 	taskBrokerUri: string;
@@ -16,9 +16,12 @@ export type TaskRunnerResult = ServiceResult<TaskRunnerMeta>;
 
 export const taskRunner: Service<TaskRunnerResult> = {
 	description: 'Task Runner',
-	shouldStart: () => true,
+	shouldStart: (ctx) => ctx.mains > 0 || ctx.workers > 0,
 
 	getOptions(ctx) {
+		if (ctx.external) {
+			return { taskBrokerUri: `http://${EXTERNAL_HOST}:5679` } as TaskRunnerConfig;
+		}
 		const { workers, mains, projectName } = ctx;
 		const taskBrokerHost =
 			workers > 0
@@ -43,7 +46,7 @@ export const taskRunner: Service<TaskRunnerResult> = {
 					N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug',
 					N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 					N8N_RUNNERS_MAX_CONCURRENCY: '5',
-					N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '15',
+					N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '0', // Disabled in tests to prevent cold-start delays
 				})
 				.withWaitStrategy(Wait.forListeningPorts())
 				.withLabels({

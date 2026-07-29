@@ -6,6 +6,19 @@ import {
 } from './node-configuration.utils';
 
 /**
+ * Input type for mermaidStringify when you only have workflow data
+ * without full template metadata.
+ * The workflow object must have nodes and connections, name is optional.
+ */
+export interface MermaidWorkflowInput {
+	workflow: {
+		name?: string;
+		nodes: WorkflowMetadata['workflow']['nodes'];
+		connections: WorkflowMetadata['workflow']['connections'];
+	};
+}
+
+/**
  * Options for mermaid diagram generation
  */
 export interface MermaidOptions {
@@ -15,6 +28,8 @@ export interface MermaidOptions {
 	includeNodeParameters?: boolean;
 	/** Include node name in node definition (default: true) */
 	includeNodeName?: boolean;
+	/** Include node UUID in comments for Builder/Configurator reference (default: true) */
+	includeNodeId?: boolean;
 	/** Collect node configurations while processing (default: false) */
 	collectNodeConfigurations?: boolean;
 }
@@ -31,6 +46,7 @@ const DEFAULT_MERMAID_OPTIONS: Required<MermaidOptions> = {
 	includeNodeType: true,
 	includeNodeParameters: true,
 	includeNodeName: true,
+	includeNodeId: true,
 	collectNodeConfigurations: false,
 };
 
@@ -366,15 +382,20 @@ class MermaidBuilder {
 			}
 		}
 
-		if (this.options.includeNodeType || this.options.includeNodeParameters) {
+		if (
+			this.options.includeNodeType ||
+			this.options.includeNodeParameters ||
+			this.options.includeNodeId
+		) {
+			const idPart = this.options.includeNodeId && node.id ? `[${node.id}] ` : '';
 			const typePart = this.options.includeNodeType ? this.buildNodeTypePart(node) : '';
 			const paramsPart =
 				this.options.includeNodeParameters && Object.keys(node.parameters).length > 0
 					? ` | ${JSON.stringify(node.parameters)}`
 					: '';
 
-			if (typePart || paramsPart) {
-				lines.push(`%% ${typePart}${paramsPart}`);
+			if (idPart || typePart || paramsPart) {
+				lines.push(`%% ${idPart}${typePart}${paramsPart}`);
 			}
 		}
 
@@ -830,10 +851,11 @@ class MermaidBuilder {
 				if (this.isInNestedSticky(nodeName, nestedStickyIds)) continue;
 				if (this.isInNestedSticky(targetName, nestedStickyIds)) continue;
 
-				const sourceSubgraphType = this.getSubgraphType(nodeName, nestedStickyIds);
-				const targetSubgraphType = this.getSubgraphType(targetName, nestedStickyIds);
+				const sourceSubgraphId = this.getSubgraphId(nodeName, nestedStickyIds);
+				const targetSubgraphId = this.getSubgraphId(targetName, nestedStickyIds);
 
-				if (sourceSubgraphType === targetSubgraphType) continue;
+				// Skip if both nodes are in the same subgraph (connections already handled internally)
+				if (sourceSubgraphId === targetSubgraphId) continue;
 
 				const sourceId = this.nodeIdMap.get(nodeName);
 				const targetId = this.nodeIdMap.get(targetName);
@@ -855,21 +877,28 @@ class MermaidBuilder {
 		);
 	}
 
-	private getSubgraphType(
-		nodeName: string,
-		nestedStickyIds: Set<string>,
-	): 'sticky' | 'agent' | 'none' {
-		const inStandaloneSticky = this.stickyOverlaps.multiNodeOverlap.some(
+	/**
+	 * Returns a unique identifier for the subgraph a node belongs to.
+	 * This allows distinguishing between different sticky subgraphs or different agent subgraphs.
+	 */
+	private getSubgraphId(nodeName: string, nestedStickyIds: Set<string>): string {
+		// Check if in a standalone sticky subgraph
+		const stickySubgraph = this.stickyOverlaps.multiNodeOverlap.find(
 			({ sticky, nodeNames }) =>
 				nodeNames.includes(nodeName) && !nestedStickyIds.has(sticky.node.id ?? ''),
 		);
-		if (inStandaloneSticky) return 'sticky';
+		if (stickySubgraph) {
+			return `sticky:${stickySubgraph.sticky.node.id}`;
+		}
 
-		const inAgentSubgraph = this.agentSubgraphs.some(
+		// Check if in an agent subgraph
+		const agentSubgraph = this.agentSubgraphs.find(
 			({ agentNode, aiConnectedNodeNames }) =>
 				agentNode.name === nodeName || aiConnectedNodeNames.includes(nodeName),
 		);
-		if (inAgentSubgraph) return 'agent';
+		if (agentSubgraph) {
+			return `agent:${agentSubgraph.agentNode.id}`;
+		}
 
 		return 'none';
 	}
@@ -880,8 +909,11 @@ class MermaidBuilder {
 /**
  * Generates a Mermaid flowchart diagram from a workflow
  */
-export function mermaidStringify(workflow: WorkflowMetadata, options?: MermaidOptions): string {
-	const { workflow: wf } = workflow;
+export function mermaidStringify(
+	input: WorkflowMetadata | MermaidWorkflowInput,
+	options?: MermaidOptions,
+): string {
+	const { workflow: wf } = input;
 	const mergedOptions: Required<MermaidOptions> = {
 		...DEFAULT_MERMAID_OPTIONS,
 		...options,

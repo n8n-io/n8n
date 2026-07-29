@@ -13,9 +13,12 @@
         "id": {
             "type": "integer"
         },
+        "story_id": {
+            "type": "integer"
+        },
         "type": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

@@ -1,7 +1,12 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
-import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
+import type {
+	DeepPartial,
+	EntityManager,
+	FindOptionsWhere,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
@@ -151,6 +156,43 @@ export class UserRepository extends Repository<User> {
 	}
 
 	/**
+	 * Find enabled users whose global/project is in the given slug sets. Role slugs
+	 * are passed in so this package stays scope-agnostic.
+	 *
+	 * Loads `role` and `authIdentities` because the `@AfterLoad` hook needs
+	 * both to compute `isPending` (a raw `password IS NOT NULL` filter would
+	 * wrongly drop SSO/LDAP users).
+	 */
+	async findEligibleByProjectOrGlobalRoles({
+		projectId,
+		projectRoleSlugs,
+		globalRoleSlugs,
+	}: {
+		projectId: string;
+		projectRoleSlugs: string[];
+		globalRoleSlugs: string[];
+	}): Promise<User[]> {
+		const where: Array<FindOptionsWhere<User>> = [];
+		if (globalRoleSlugs.length > 0) {
+			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+		}
+		if (projectRoleSlugs.length > 0) {
+			where.push({
+				disabled: false,
+				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
+			});
+		}
+		if (where.length === 0) {
+			return [];
+		}
+
+		return await this.find({
+			where,
+			relations: { role: true, authIdentities: true },
+		});
+	}
+
+	/**
 	 * Find the user that owns the personal project that owns the workflow.
 	 *
 	 * Returns null if the workflow does not exist or is owned by a team project.
@@ -242,6 +284,22 @@ export class UserRepository extends Repository<User> {
 			}
 		}
 
+		if (filter?.ids !== undefined && filter.ids.length > 0) {
+			queryBuilder.andWhere('user.id IN (:...ids)', {
+				ids: filter.ids,
+			});
+		}
+
+		if (filter?.isPending !== undefined) {
+			if (filter.isPending) {
+				queryBuilder.andWhere('user.password IS NULL AND user.role <> :ownerRole', {
+					ownerRole: 'global:owner',
+				});
+			} else {
+				queryBuilder.andWhere('user.password IS NOT NULL');
+			}
+		}
+
 		if (filter?.fullText !== undefined) {
 			const fullTextFilter = `%${filter.fullText}%`;
 			queryBuilder.andWhere(
@@ -256,6 +314,15 @@ export class UserRepository extends Repository<User> {
 							email: fullTextFilter,
 						});
 				}),
+			);
+		}
+
+		if (filter?.projectId !== undefined) {
+			queryBuilder.innerJoin(
+				'user.projectRelations',
+				'userListProjectFilter',
+				'userListProjectFilter.projectId = :userListProjectId',
+				{ userListProjectId: filter.projectId },
 			);
 		}
 
@@ -330,7 +397,6 @@ export class UserRepository extends Repository<User> {
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);
 		queryBuilder.leftJoinAndSelect('user.role', 'role');
-		queryBuilder.leftJoinAndSelect('role.scopes', 'scopes');
 
 		return queryBuilder;
 	}

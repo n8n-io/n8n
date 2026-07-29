@@ -10,8 +10,21 @@ export type CredentialResolveMetadata = {
 	/** Credential type (e.g., 'oAuth2Api') */
 	type: string;
 	resolverId?: string;
-	resolvableAllowFallback?: boolean;
 	isResolvable: boolean;
+};
+
+export type CredentialResolutionResult = {
+	data: ICredentialDataDecryptedObject;
+	/** True only when the credential was actually resolved via a dynamic resolver (not a fallback to static data). */
+	isDynamic: boolean;
+	/**
+	 * The n8n user the resolved private credentials belong to, when the resolver
+	 * maps the context identity to an n8n user (n8n JWT resolver). Undefined for
+	 * external-identity resolvers (Slack, OAuth subjects) and static fallbacks.
+	 * Used by the redaction layer to grant the executing user access to their
+	 * own data.
+	 */
+	resolvedUserId?: string;
 };
 
 /**
@@ -25,14 +38,20 @@ export interface ICredentialResolutionProvider {
 	 *
 	 * @param credentialsResolveMetadata The credential resolve metadata
 	 * @param staticData The decrypted static credential data
-	 * @param executionContext Optional execution context containing credential context
-	 * @param workflowSettings Optional workflow settings containing resolver ID fallback
-	 * @returns Resolved credential data (either dynamic or static)
+	 * @param additionalData Additional workflow execution data for context and settings
+	 * @returns Resolved credential data and a flag indicating whether dynamic resolution occurred
 	 */
 	resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
-	): Promise<ICredentialDataDecryptedObject>;
+	): Promise<CredentialResolutionResult>;
+
+	/**
+	 * Returns the seeded system resolver id used to store private credentials
+	 * on the running user's behalf (e.g. OAuth2 callback for `isResolvable`
+	 * credentials). Returns null when the system resolver has not been seeded.
+	 */
+	getSystemResolverId(): string | null;
 }

@@ -1,4 +1,5 @@
 import { randomValidPassword, uniqueId, testDb, mockInstance } from '@n8n/backend-test-utils';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -9,12 +10,14 @@ import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
 import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
+import { MFA_CACHE_KEY } from '@/mfa/mfa.service';
 import { TOTPService } from '@/mfa/totp.service';
+import { CacheService } from '@/services/cache/cache.service';
 
 import { createOwner, createUser, createUserWithMfaEnabled } from '../shared/db/users';
 import * as utils from '../shared/utils';
 
-jest.mock('@/telemetry');
+vi.mock('@/telemetry');
 
 let owner: User;
 
@@ -413,16 +416,39 @@ describe('Login', () => {
 });
 
 describe('Enforce MFA', () => {
+	test('should return 403 when security policy is managed by env', async () => {
+		const instanceSettingsLoaderConfig = Container.get(InstanceSettingsLoaderConfig);
+		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = true;
+
+		try {
+			owner.mfaEnabled = true;
+			await testServer
+				.authAgentFor(owner)
+				.post('/mfa/enforce-mfa')
+				.send({ enforce: true })
+				.expect(403);
+		} finally {
+			owner.mfaEnabled = false;
+			instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
+		}
+	});
+
 	test('Enforce MFA for the instance', async () => {
 		const settingsRepository = Container.get(SettingsRepository);
+		const cacheService = Container.get(CacheService);
 
 		await settingsRepository.delete({
 			key: MFA_ENFORCE_SETTING,
 		});
 
+		await cacheService.delete(MFA_CACHE_KEY);
+
 		let enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
 
+		let enforcedCache = await cacheService.get(MFA_CACHE_KEY);
+
 		expect(enforced).toBe(null);
+		expect(enforcedCache).toBe(undefined);
 
 		owner.mfaEnabled = true;
 		await testServer
@@ -433,24 +459,34 @@ describe('Enforce MFA', () => {
 		owner.mfaEnabled = false;
 
 		enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+		enforcedCache = await cacheService.get(MFA_CACHE_KEY);
 
 		expect(enforced?.value).toBe('true');
+		expect(enforcedCache).toBe('true');
 
 		await settingsRepository.delete({
 			key: MFA_ENFORCE_SETTING,
 		});
+		await cacheService.delete(MFA_CACHE_KEY);
 	});
 
 	test('Disable MFA for the instance', async () => {
 		const settingsRepository = Container.get(SettingsRepository);
+		const cacheService = Container.get(CacheService);
 
-		await settingsRepository.delete({
+		await settingsRepository.save({
 			key: MFA_ENFORCE_SETTING,
+			value: 'true',
+			loadOnStartup: true,
 		});
 
-		let enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+		await cacheService.set(MFA_CACHE_KEY, 'true');
 
-		expect(enforced).toBe(null);
+		let enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+		let enforcedCache = await cacheService.get(MFA_CACHE_KEY);
+
+		expect(enforced?.value).toBe('true');
+		expect(enforcedCache).toBe('true');
 
 		owner.mfaEnabled = true;
 		await testServer
@@ -461,12 +497,15 @@ describe('Enforce MFA', () => {
 		owner.mfaEnabled = false;
 
 		enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+		enforcedCache = await cacheService.get(MFA_CACHE_KEY);
 
 		expect(enforced?.value).toBe('false');
+		expect(enforcedCache).toBe('false');
 
 		await settingsRepository.delete({
 			key: MFA_ENFORCE_SETTING,
 		});
+		await cacheService.delete(MFA_CACHE_KEY);
 	});
 
 	test('User without MFA should be able to access MFA setup endpoints when enforcement is enabled', async () => {

@@ -12,6 +12,10 @@ const commonDescription: INodeProperties = {
 	description:
 		'Python code to execute.<br><br>Tip: You can use built-in methods and variables like <code>_today</code> for dates and <code>_jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/code/builtin/">Learn more</a>.',
 	noDataExpression: true,
+	builderHint: {
+		propertyHint:
+			'The sandbox has NO network access: requests, urllib, httpx and other HTTP libraries are unavailable and fail at runtime. NEVER make HTTP requests here — use the HTTP Request node and process its output in this node instead.',
+	},
 };
 
 const PRINT_INSTRUCTION =
@@ -22,7 +26,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		...commonDescription,
 		displayOptions: {
 			show: {
-				language: ['pythonNative'],
+				language: ['python', 'pythonNative'],
 				mode: ['runOnceForAllItems'],
 			},
 		},
@@ -31,7 +35,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		...commonDescription,
 		displayOptions: {
 			show: {
-				language: ['pythonNative'],
+				language: ['python', 'pythonNative'],
 				mode: ['runOnceForEachItem'],
 			},
 		},
@@ -42,7 +46,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		type: 'notice',
 		displayOptions: {
 			show: {
-				language: ['pythonNative'],
+				language: ['python', 'pythonNative'],
 			},
 		},
 		default: '',

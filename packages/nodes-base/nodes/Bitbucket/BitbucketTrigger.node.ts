@@ -215,7 +215,9 @@ export class BitbucketTrigger implements INodeType {
 
 				try {
 					const response = await this.helpers.request(options);
-					if (!response.username) {
+					// Bitbucket scoped API tokens may not include a `username` field,
+					// but always return `account_id` and `uuid` for valid credentials.
+					if (!response.account_id && !response.uuid) {
 						return {
 							status: 'Error',
 							message: `Token is not valid: ${response.error}`,
@@ -292,11 +294,11 @@ export class BitbucketTrigger implements INodeType {
 					this,
 					'values',
 					'GET',
-					'/workspaces',
+					'/user/workspaces',
 				);
-				for (const workspace of workspaces) {
+				for (const { workspace } of workspaces) {
 					returnData.push({
-						name: workspace.name,
+						name: workspace.name ?? workspace.slug,
 						value: workspace.slug,
 					});
 				}

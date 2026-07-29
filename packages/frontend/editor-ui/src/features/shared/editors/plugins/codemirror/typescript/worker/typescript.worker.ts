@@ -4,6 +4,7 @@ import { indexedDbCache } from '@/app/plugins/cache';
 import { bufferChangeSets, fnPrefix } from './utils';
 
 import type { CodeExecutionMode } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 
 import { pascalCase } from 'change-case';
 import { computed, reactive, ref, watch } from 'vue';
@@ -22,6 +23,8 @@ import { getUsedNodeNames } from './typescriptAst';
 
 import runOnceForAllItemsTypes from './type-declarations/n8n-once-for-all-items.d.ts?raw';
 import runOnceForEachItemTypes from './type-declarations/n8n-once-for-each-item.d.ts?raw';
+import runOnceForAllItemsCombinedTypes from './type-declarations/n8n-once-for-all-items-combined.d.ts?raw';
+import runOnceForEachItemCombinedTypes from './type-declarations/n8n-once-for-each-item-combined.d.ts?raw';
 import { loadTypes } from './npmTypesLoader';
 import { ChangeSet, Text } from '@codemirror/state';
 import { until } from '@vueuse/core';
@@ -36,6 +39,7 @@ export const worker: LanguageServiceWorkerInit = {
 		const allNodeNames = options.allNodeNames;
 		const codeFileName = `${options.id}.js`;
 		const mode = ref<CodeExecutionMode>(options.mode);
+		const binaryMode = ref(options.binaryMode);
 		const busyApplyingChangesToCode = ref(false);
 
 		const cache = await indexedDbCache('typescript-cache', 'fs-map');
@@ -141,16 +145,21 @@ export const worker: LanguageServiceWorkerInit = {
 			{ immediate: true },
 		);
 
-		watch(
-			mode,
-			(newMode) => {
-				updateFile(
-					TYPESCRIPT_FILES.MODE_TYPES,
-					newMode === 'runOnceForAllItems' ? runOnceForAllItemsTypes : runOnceForEachItemTypes,
-				);
-			},
-			{ immediate: true },
-		);
+		const updateModeTypes = () => {
+			const isCombined = binaryMode.value === BINARY_MODE_COMBINED;
+			const modeTypes =
+				mode.value === 'runOnceForAllItems'
+					? isCombined
+						? runOnceForAllItemsCombinedTypes
+						: runOnceForAllItemsTypes
+					: isCombined
+						? runOnceForEachItemCombinedTypes
+						: runOnceForEachItemTypes;
+
+			updateFile(TYPESCRIPT_FILES.MODE_TYPES, modeTypes);
+		};
+
+		watch([mode, binaryMode], updateModeTypes, { immediate: true });
 
 		watch(prefix, (newPrefix, oldPrefix) => {
 			env.updateFile(codeFileName, newPrefix, { start: 0, length: oldPrefix.length });

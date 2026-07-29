@@ -10,6 +10,7 @@ import {
 	CREDENTIALS_SHARING_SCOPE_MAP,
 	GLOBAL_SCOPE_MAP,
 	PROJECT_SCOPE_MAP,
+	SECRETS_PROVIDER_CONNECTION_SHARING_SCOPE_MAP,
 	WORKFLOW_SHARING_SCOPE_MAP,
 } from './role-maps.ee';
 import type { AllRolesMap, AllRoleTypes, Scope } from '../types.ee';
@@ -29,13 +30,15 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
 	'workflow:editor': 'Workflow Editor',
+	'secretsProviderConnection:owner': 'Secrets Provider Connection Owner',
+	'secretsProviderConnection:user': 'Secrets Provider Connection User',
 };
 
 const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 	'global:owner': 'Owner',
-	'global:admin': 'Admin',
-	'global:member': 'Member',
-	'global:chatUser': 'Chat User',
+	'global:admin': 'Full control of the instance, including all workflows and credentials',
+	'global:member': 'Can create and use their own workflows and credentials',
+	'global:chatUser': 'Can only use workflows through the chat interface, not build them',
 	[PROJECT_OWNER_ROLE_SLUG]: 'Project Owner',
 	[PROJECT_ADMIN_ROLE_SLUG]:
 		'Full control of settings, members, workflows, credentials and executions',
@@ -47,11 +50,14 @@ const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
 	'workflow:editor': 'Workflow Editor',
+	'secretsProviderConnection:owner':
+		'Full control of secrets provider connection settings and secrets',
+	'secretsProviderConnection:user': 'Read-only access to use secrets from the connection',
 };
 
 const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(
 	roles: Record<T, Scope[]>,
-	roleType: 'global' | 'project' | 'credential' | 'workflow',
+	roleType: 'global' | 'project' | 'credential' | 'workflow' | 'secretsProviderConnection',
 ) =>
 	(Object.keys(roles) as T[]).map((role) => ({
 		slug: role,
@@ -63,12 +69,16 @@ const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(
 		roleType,
 	}));
 
-export const ALL_ROLES: AllRolesMap = {
+export const ALL_ROLES: AllRolesMap = Object.freeze({
 	global: mapToRoleObject(GLOBAL_SCOPE_MAP, 'global'),
 	project: mapToRoleObject(PROJECT_SCOPE_MAP, 'project'),
 	credential: mapToRoleObject(CREDENTIALS_SHARING_SCOPE_MAP, 'credential'),
 	workflow: mapToRoleObject(WORKFLOW_SHARING_SCOPE_MAP, 'workflow'),
-};
+	secretsProviderConnection: mapToRoleObject(
+		SECRETS_PROVIDER_CONNECTION_SHARING_SCOPE_MAP,
+		'secretsProviderConnection',
+	),
+});
 
 export const isBuiltInRole = (role: string): role is AllRoleTypes => {
 	return Object.prototype.hasOwnProperty.call(ROLE_NAMES, role);

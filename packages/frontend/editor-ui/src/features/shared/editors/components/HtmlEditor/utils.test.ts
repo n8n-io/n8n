@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'; // Change to jest if needed
+import { describe, it, expect, vi } from 'vitest';
 import { pasteHandler } from './utils';
 import type { EditorView } from '@codemirror/view';
 

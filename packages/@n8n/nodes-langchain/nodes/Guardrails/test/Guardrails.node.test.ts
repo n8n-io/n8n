@@ -1,19 +1,20 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { execute } from '../actions/execute';
 import * as ProcessActions from '../actions/process';
 import * as ModelHelpers from '../helpers/model';
-import { execute } from '../actions/execute';
 
 describe('Guardrails', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockNode: jest.Mocked<INode>;
-	let mockModel: jest.Mocked<BaseChatModel>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockNode: Mocked<INode>;
+	let mockModel: Mocked<BaseChatModel>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockNode = mock<INode>({
@@ -50,10 +51,10 @@ describe('Guardrails', () => {
 					return params[paramName];
 				});
 
-				const getChatModelSpy = jest.spyOn(ModelHelpers, 'getChatModel');
+				const getChatModelSpy = vi.spyOn(ModelHelpers, 'getChatModel');
 				getChatModelSpy.mockResolvedValue(mockModel);
 
-				const processSpy = jest.spyOn(ProcessActions, 'process');
+				const processSpy = vi.spyOn(ProcessActions, 'process');
 				processSpy.mockResolvedValue({
 					guardrailsInput: 'processed text',
 					passed: {
@@ -98,10 +99,10 @@ describe('Guardrails', () => {
 					return params[paramName];
 				});
 
-				const getChatModelSpy = jest.spyOn(ModelHelpers, 'getChatModel');
+				const getChatModelSpy = vi.spyOn(ModelHelpers, 'getChatModel');
 				getChatModelSpy.mockResolvedValue(mockModel);
 
-				const processSpy = jest.spyOn(ProcessActions, 'process');
+				const processSpy = vi.spyOn(ProcessActions, 'process');
 				processSpy
 					.mockResolvedValueOnce({
 						guardrailsInput: 'processed text 1',
@@ -151,10 +152,10 @@ describe('Guardrails', () => {
 					return params[paramName];
 				});
 
-				const getChatModelSpy = jest.spyOn(ModelHelpers, 'getChatModel');
+				const getChatModelSpy = vi.spyOn(ModelHelpers, 'getChatModel');
 				getChatModelSpy.mockResolvedValue(mockModel);
 
-				const processSpy = jest.spyOn(ProcessActions, 'process');
+				const processSpy = vi.spyOn(ProcessActions, 'process');
 				processSpy
 					.mockResolvedValueOnce({
 						guardrailsInput: 'processed text 1',
@@ -222,10 +223,10 @@ describe('Guardrails', () => {
 				});
 				mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-				const getChatModelSpy = jest.spyOn(ModelHelpers, 'getChatModel');
+				const getChatModelSpy = vi.spyOn(ModelHelpers, 'getChatModel');
 				getChatModelSpy.mockResolvedValue(mockModel);
 
-				const processSpy = jest.spyOn(ProcessActions, 'process');
+				const processSpy = vi.spyOn(ProcessActions, 'process');
 				const testError = new NodeOperationError(mockNode, 'Process failed');
 				processSpy.mockRejectedValue(testError);
 
@@ -244,10 +245,10 @@ describe('Guardrails', () => {
 				});
 				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 
-				const getChatModelSpy = jest.spyOn(ModelHelpers, 'getChatModel');
+				const getChatModelSpy = vi.spyOn(ModelHelpers, 'getChatModel');
 				getChatModelSpy.mockResolvedValue(mockModel);
 
-				const processSpy = jest.spyOn(ProcessActions, 'process');
+				const processSpy = vi.spyOn(ProcessActions, 'process');
 				const testError = new Error('Process failed');
 				processSpy.mockRejectedValue(testError);
 
@@ -278,10 +279,10 @@ describe('Guardrails', () => {
 				});
 				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 
-				const getChatModelSpy = jest.spyOn(ModelHelpers, 'getChatModel');
+				const getChatModelSpy = vi.spyOn(ModelHelpers, 'getChatModel');
 				getChatModelSpy.mockResolvedValue(mockModel);
 
-				const processSpy = jest.spyOn(ProcessActions, 'process');
+				const processSpy = vi.spyOn(ProcessActions, 'process');
 				processSpy
 					.mockResolvedValueOnce({
 						guardrailsInput: 'processed text 1',
@@ -339,10 +340,10 @@ describe('Guardrails', () => {
 					return params[paramName];
 				});
 
-				const getChatModelSpy = jest.spyOn(ModelHelpers, 'getChatModel');
+				const getChatModelSpy = vi.spyOn(ModelHelpers, 'getChatModel');
 				getChatModelSpy.mockResolvedValue(mockModel);
 
-				const processSpy = jest.spyOn(ProcessActions, 'process');
+				const processSpy = vi.spyOn(ProcessActions, 'process');
 				processSpy.mockResolvedValue({
 					guardrailsInput: 'processed text',
 					passed: {
@@ -368,10 +369,10 @@ describe('Guardrails', () => {
 					return params[paramName];
 				});
 
-				const getChatModelSpy = jest.spyOn(ModelHelpers, 'getChatModel');
+				const getChatModelSpy = vi.spyOn(ModelHelpers, 'getChatModel');
 				getChatModelSpy.mockResolvedValue(mockModel);
 
-				const processSpy = jest.spyOn(ProcessActions, 'process');
+				const processSpy = vi.spyOn(ProcessActions, 'process');
 				processSpy.mockResolvedValue({
 					guardrailsInput: 'processed text',
 					passed: {

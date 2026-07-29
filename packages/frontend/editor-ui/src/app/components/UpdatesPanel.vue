@@ -3,7 +3,7 @@ import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
@@ -53,8 +53,7 @@ const i18n = useI18n();
 
 				<N8nButton
 					v-if="versionsStore.infoUrl"
-					:text="true"
-					type="primary"
+					variant="ghost"
 					size="large"
 					:class="$style['link']"
 					:bold="true"

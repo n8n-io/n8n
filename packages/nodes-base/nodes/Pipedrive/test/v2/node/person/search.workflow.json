@@ -1,0 +1,98 @@
+{
+	"name": "Pipedrive v2 person search test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "b1000005-0001-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "person",
+				"operation": "search",
+				"term": "John",
+				"exactMatch": false,
+				"returnAll": false,
+				"limit": 100,
+				"additionalFields": {}
+			},
+			"id": "b1000005-0001-4000-8000-000000000002",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "b1000005-0001-4000-8000-000000000003",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"result_score": 0.489265,
+					"id": 10,
+					"type": "person",
+					"name": "John Test",
+					"phones": ["555-0100"],
+					"emails": ["john@test.com"],
+					"primary_email": "john@test.com",
+					"visible_to": 3,
+					"owner": {
+						"id": 25455458
+					},
+					"organization": {
+						"id": 7,
+						"name": "Test Org LLC",
+						"address": null
+					},
+					"custom_fields": [],
+					"notes": [],
+					"update_time": "2026-04-01 22:03:28"
+				}
+			},
+			{
+				"json": {
+					"result_score": 0.489265,
+					"id": 9,
+					"type": "person",
+					"name": "John Updated",
+					"phones": ["555-0100"],
+					"emails": ["john@test.com"],
+					"primary_email": null,
+					"visible_to": 3,
+					"owner": {
+						"id": 25455458
+					},
+					"organization": null,
+					"custom_fields": [],
+					"notes": [],
+					"update_time": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}

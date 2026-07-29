@@ -73,12 +73,14 @@ export function useFolders() {
 				id: dragTarget.id,
 				name: dragTarget.name,
 			};
+			document.body.classList.add('dragging-resource');
 		}
 	}
 
 	function onDragEnd(): void {
 		foldersStore.draggedElement = null;
 		foldersStore.activeDropTarget = null;
+		document.body.classList.remove('dragging-resource');
 	}
 
 	function onDragEnter(event: MouseEvent): void {
@@ -142,6 +144,11 @@ export function useFolders() {
 
 		const dropTarget = getDragAndDropTarget(eventTarget);
 		if (!dropTarget || !isDropTarget(dropTarget)) return {};
+
+		// prevent dropping a resource onto itself
+		if (dropTarget.id === draggedResourceId && dropTarget.type === draggedResourceType) {
+			return {};
+		}
 
 		return {
 			draggedResource: {

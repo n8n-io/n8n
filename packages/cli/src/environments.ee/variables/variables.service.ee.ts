@@ -1,5 +1,10 @@
-import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
+import {
+	CreateVariableRequestDto,
+	UpdateVariableRequestDto,
+	NEW_VARIABLE_KEY_REGEX,
+} from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -9,6 +14,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
+import { VariableValidationError } from '@/errors/variable-validation.error';
 import { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -176,20 +182,21 @@ export class VariablesService {
 		await this.updateCache();
 	}
 
+	async getRemainingVariableQuota(): Promise<{ limit: number; remaining: number } | null> {
+		const limit = this.licenseState.getMaxVariables();
+		if (limit === UNLIMITED_LICENSE_QUOTA) return null;
+
+		const variablesCount = (await this.getAllCached()).length;
+		return { limit, remaining: Math.max(0, limit - variablesCount) };
+	}
+
 	private async canCreateNewVariable() {
 		if (!this.licenseState.isVariablesLicensed()) {
 			throw new FeatureNotLicensedError('feat:variables');
 		}
 
-		// This defaults to -1 which is what we want if we've enabled
-		// variables via the config
-		const limit = this.licenseState.getMaxVariables();
-		if (limit === -1) {
-			return;
-		}
-
-		const variablesCount = (await this.getAllCached()).length;
-		if (limit <= variablesCount) {
+		const quota = await this.getRemainingVariableQuota();
+		if (quota && quota.remaining === 0) {
 			throw new VariableCountLimitReachedError('Variables limit reached');
 		}
 	}
@@ -268,6 +275,17 @@ export class VariablesService {
 		);
 		if (!userHasRightOnExistingVariable) {
 			throw new ForbiddenError('You are not allowed to update this variable');
+		}
+
+		// Enforce strict format when changing the key (must be valid JavaScript identifier)
+		const isChangingLegacyInvalidVariableKeyToNewInvalidOne =
+			variable.key &&
+			variable.key !== existingVariable.key &&
+			!NEW_VARIABLE_KEY_REGEX.test(variable.key);
+		if (isChangingLegacyInvalidVariableKeyToNewInvalidOne) {
+			throw new VariableValidationError(
+				"When changing the variable key, it can only contain letters, numbers, and underscores (A-Za-z0-9_). Existing keys that don't follow this rule can be kept as-is for backwards-compatibility",
+			);
 		}
 
 		// Project id can be undefined (not provided, keep the existing) or null (move to global scope) or a string (move to project)

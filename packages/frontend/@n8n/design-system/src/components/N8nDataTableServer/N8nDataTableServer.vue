@@ -39,9 +39,11 @@ import type {
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
-import { ElCheckbox, ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
+import { ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
 import get from 'lodash/get';
-import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
+import { computed, h, shallowRef, useSlots, watch } from 'vue';
+
+import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
 
 import N8nPagination from '../N8nPagination';
 
@@ -261,30 +263,20 @@ const selectColumn: ColumnDef<T> = {
 	size: 38,
 	enablePinning: true,
 	header: ({ table }) => {
-		const checkboxRef = ref<typeof ElCheckbox>();
-		return h(ElCheckbox, {
-			ref: checkboxRef,
+		return h(N8nCheckbox, {
 			modelValue: table.getIsAllRowsSelected(),
 			indeterminate: table.getIsSomeRowsSelected(),
-			onChange: () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const input = checkboxRef.value?.$el.getElementsByTagName('input')[0];
-				if (!input) return;
-				table.getToggleAllRowsSelectedHandler()?.({ target: input });
+			'onUpdate:modelValue': (value: boolean) => {
+				table.toggleAllRowsSelected(value);
 			},
 		});
 	},
 	cell: ({ row }) => {
-		const checkboxRef = ref<typeof ElCheckbox>();
-		return h(ElCheckbox, {
-			ref: checkboxRef,
+		return h(N8nCheckbox, {
 			modelValue: row.getIsSelected(),
 			disabled: !row.getCanSelect(),
-			onChange: () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const input = checkboxRef.value?.$el.getElementsByTagName('input')[0];
-				if (!input) return;
-				row.getToggleSelectedHandler()?.({ target: input });
+			'onUpdate:modelValue': (value: boolean) => {
+				row.toggleSelected(value);
 			},
 		});
 	},
@@ -304,21 +296,21 @@ function getRowId(originalRow: T, index: number, parent?: Row<T>): string {
 }
 
 function handleRowSelectionChange(updaterOrValue: Updater<RowSelectionState>) {
-	if (typeof updaterOrValue === 'function') {
-		rowSelection.value = updaterOrValue(rowSelection.value);
-	} else {
-		rowSelection.value = updaterOrValue;
-	}
+	const newValue =
+		typeof updaterOrValue === 'function' ? updaterOrValue(rowSelection.value) : updaterOrValue;
 
 	if (props.returnObject) {
-		selection.value = Object.keys(rowSelection.value).map((id) => table.getRow(id).original);
+		selection.value = Object.keys(newValue).map((id) => table.getRow(id).original);
 	} else {
-		selection.value = Object.keys(rowSelection.value);
+		selection.value = Object.keys(newValue);
 	}
 }
 
 const selection = defineModel<string[] | T[]>('selection');
-const rowSelection = ref(
+
+// Derived from the selection model so external writes (e.g. a parent
+// clearing it) reach the row checkboxes
+const rowSelection = computed(() =>
 	(selection.value ?? []).reduce<RowSelectionState>((acc, item, index) => {
 		const key = typeof item === 'string' ? item : getRowId(item, index);
 		acc[key] = true;
@@ -344,7 +336,11 @@ function handlePageSizeChange(newPageSize: number) {
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
 	data,
-	columns: columnsDefinition.value,
+	// A getter keeps the column set reactive, so tables can add/remove columns
+	// after mount (e.g. contextual columns that depend on the active tab).
+	get columns() {
+		return columnsDefinition.value;
+	},
 	get rowCount() {
 		return props.itemsLength;
 	},

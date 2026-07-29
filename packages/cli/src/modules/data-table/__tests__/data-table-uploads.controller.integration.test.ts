@@ -124,6 +124,23 @@ describe('POST /data-tables/uploads', () => {
 				{ name: 'createdDate', type: 'date', compatibleTypes: ['date', 'string'] },
 			]);
 		});
+
+		test('should infer types from later rows when first row has empty values', async () => {
+			const csvContent = 'name,isActive,count\nJohn,,\nJane,true,42\nBob,false,7';
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(csvContent), 'empty-first-row.csv')
+				.expect(200);
+
+			expect(response.body.data).toHaveProperty('rowCount', 3);
+			expect(response.body.data).toHaveProperty('columnCount', 3);
+			expect(response.body.data.columns).toEqual([
+				{ name: 'name', type: 'string', compatibleTypes: ['string'] },
+				{ name: 'isActive', type: 'boolean', compatibleTypes: ['boolean', 'string'] },
+				{ name: 'count', type: 'number', compatibleTypes: ['number', 'string'] },
+			]);
+		});
 	});
 
 	describe('header handling', () => {
@@ -220,7 +237,21 @@ describe('POST /data-tables/uploads', () => {
 				.expect(400);
 		});
 
-		test('should reject non-CSV files based on MIME type', async () => {
+		test('should accept .csv files even when the browser reports a non-text/csv MIME type', async () => {
+			// Windows Firefox derives the MIME from the registry (Excel sets it to
+			// application/vnd.ms-excel), so the extension is the authoritative signal.
+			const csvContent = 'a,b\n1,2';
+
+			await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(csvContent), {
+					filename: 'test.csv',
+					contentType: 'application/vnd.ms-excel',
+				})
+				.expect(200);
+		});
+
+		test('should reject non-CSV files based on extension', async () => {
 			const textContent = 'This is a plain text file';
 
 			const response = await authOwnerAgent

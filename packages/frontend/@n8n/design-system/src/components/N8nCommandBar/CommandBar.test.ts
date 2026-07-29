@@ -63,6 +63,25 @@ describe('components', () => {
 			expect(wrapper.emitted()).toBeDefined();
 		});
 
+		it('emits update:open when opened via Cmd+K and when closed via Escape', async () => {
+			const wrapper = render(N8nCommandBar, {
+				props: { items: createSampleItems() },
+			});
+
+			await openCommandBar();
+
+			const openEvents = wrapper.emitted('update:open') ?? [];
+			expect(openEvents.length).toBeGreaterThanOrEqual(1);
+			expect(openEvents[openEvents.length - 1]).toEqual([true]);
+
+			document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+			await waitFor(() => {
+				const events = wrapper.emitted('update:open') ?? [];
+				expect(events[events.length - 1]).toEqual([false]);
+			});
+		});
+
 		it('emits inputChange and filters results as user types', async () => {
 			const wrapper = render(N8nCommandBar, {
 				props: { items: createSampleItems() },
@@ -138,6 +157,43 @@ describe('components', () => {
 			await waitFor(() =>
 				expect(screen.queryByPlaceholderText('Type a command...')).not.toBeInTheDocument(),
 			);
+		});
+
+		describe('loading state', () => {
+			it('shows spinner only when isLoading is true', async () => {
+				const { rerender } = render(N8nCommandBar, {
+					props: { items: createSampleItems(), isLoading: false },
+				});
+				await openCommandBar();
+
+				expect(screen.queryByTestId('command-bar-input-spinner')).not.toBeInTheDocument();
+
+				await rerender({ items: createSampleItems(), isLoading: true });
+
+				expect(screen.getByTestId('command-bar-input-spinner')).toBeInTheDocument();
+			});
+
+			it('shows loading items when isLoading is true', async () => {
+				render(N8nCommandBar, {
+					props: { items: [], isLoading: true },
+				});
+				await openCommandBar();
+
+				expect(screen.getByTestId('command-bar-items-list')).toBeInTheDocument();
+			});
+
+			it('hides spinner when isLoading becomes false', async () => {
+				const { rerender } = render(N8nCommandBar, {
+					props: { items: createSampleItems(), isLoading: true },
+				});
+				await openCommandBar();
+
+				expect(screen.getByTestId('command-bar-input-spinner')).toBeInTheDocument();
+
+				await rerender({ items: createSampleItems(), isLoading: false });
+
+				expect(screen.queryByTestId('command-bar-input-spinner')).not.toBeInTheDocument();
+			});
 		});
 
 		describe('matchAnySearchTerm', () => {

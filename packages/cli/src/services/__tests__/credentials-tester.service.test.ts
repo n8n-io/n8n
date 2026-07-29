@@ -1,5 +1,6 @@
-import mock from 'jest-mock-extended/lib/Mock';
 import type { ICredentialType, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
@@ -20,7 +21,7 @@ describe('CredentialsTester', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should find the OAuth2 credential test for a generic OAuth2 API credential', () => {
@@ -35,16 +36,16 @@ describe('CredentialsTester', () => {
 
 		const testFn = credentialsTester.getCredentialTestFunction('oAuth2Api');
 
-		if (typeof testFn !== 'function') fail();
+		if (typeof testFn !== 'function') expect.fail();
 
 		expect(testFn.name).toBe('oauth2CredTest');
 	});
 
 	describe('testCredentials', () => {
-		let mockTestFunction: jest.Mock;
+		let mockTestFunction: Mock;
 
 		beforeEach(() => {
-			mockTestFunction = jest.fn();
+			mockTestFunction = vi.fn();
 			credentialTypes.getByName.mockReturnValue(mock<ICredentialType>({ test: undefined }));
 			credentialTypes.getSupportedNodes.mockReturnValue(['testCredentials']);
 			credentialTypes.getParentTypes.mockReturnValue([]);
@@ -60,9 +61,9 @@ describe('CredentialsTester', () => {
 					},
 				}),
 			);
-			jest
-				.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-				.mockResolvedValue({} as IWorkflowExecuteAdditionalData);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				{} as IWorkflowExecuteAdditionalData,
+			);
 		});
 
 		it('should redact secrets in error messages', async () => {
@@ -87,6 +88,46 @@ describe('CredentialsTester', () => {
 					...computedCredentialsData.testNestedData,
 					secretData: {
 						apiKey: '{{ $secrets.apiKey }}',
+					},
+				},
+			};
+			const redactedMessage = await credentialsTester.testCredentials(
+				'user-id',
+				'testCredentials',
+				{
+					id: 'credential-id',
+					name: 'credential-name',
+					type: 'oAuth2Api',
+					data: rawCredentialsData,
+				},
+			);
+
+			expect(redactedMessage.status).toBe('Error');
+			expect(redactedMessage.message).toBe('Test failed for apiKey *****key');
+		});
+
+		it('should redact secrets for bracket-notation external secret expressions', async () => {
+			mockTestFunction.mockResolvedValue({
+				status: 'Error',
+				message: 'Test failed for apiKey secret_api_key',
+			});
+
+			const computedCredentialsData = {
+				testNestedData: {
+					access_token: 'abc123',
+					secretData: {
+						apiKey: 'secret_api_key',
+					},
+				},
+			};
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(computedCredentialsData);
+
+			const rawCredentialsData = {
+				...computedCredentialsData,
+				testNestedData: {
+					...computedCredentialsData.testNestedData,
+					secretData: {
+						apiKey: "={{ $secrets['vault']['apiKey'] }}",
 					},
 				},
 			};

@@ -1,10 +1,11 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/app/constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
@@ -15,7 +16,7 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 	const cloudPlanStore = useCloudPlanStore();
 	const settingsStore = useSettingsStore();
 	const templatesStore = useTemplatesStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 
 	const INTERACTION_STORAGE_KEY = 'n8n-personalizedTemplatesV3-hasInteracted';
 
@@ -46,7 +47,7 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 	});
 
 	const shouldShowTemplateTooltip = computed(() => {
-		const allWorkflows = workflowsStore.allWorkflows;
+		const allWorkflows = workflowsListStore.allWorkflows;
 
 		return (
 			isFeatureEnabled() &&
@@ -117,7 +118,7 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 
 		const variant = posthogStore.getVariant(PERSONALIZED_TEMPLATES_V3.name);
 		if (variant) {
-			telemetry.track('User is part of experiment', {
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT, {
 				name: PERSONALIZED_TEMPLATES_V3.name,
 				variant,
 			});

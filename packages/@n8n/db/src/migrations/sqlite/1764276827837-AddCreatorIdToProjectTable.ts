@@ -8,16 +8,18 @@ const table = {
 const FOREIGN_KEY_NAME = 'projects_creatorId_foreign';
 
 export class AddCreatorIdToProjectTable1764276827837 implements ReversibleMigration {
-	transaction = false as const;
+	withFKsDisabled = true as const;
 
 	async up({
 		escape,
 		schemaBuilder: { addColumns, addForeignKey, column },
 		queryRunner,
 	}: MigrationContext) {
-		await addColumns(table.project, [
-			column('creatorId').uuid.comment('ID of the user who created the project'),
-		]);
+		await addColumns(
+			table.project,
+			[column('creatorId').uuid.comment('ID of the user who created the project')],
+			{ recreatesOnSqlite: true },
+		);
 
 		await addForeignKey(table.project, 'creatorId', ['user', 'id'], FOREIGN_KEY_NAME, 'SET NULL');
 
@@ -38,6 +40,6 @@ export class AddCreatorIdToProjectTable1764276827837 implements ReversibleMigrat
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns(table.project, ['creatorId']);
+		await dropColumns(table.project, ['creatorId'], { recreatesOnSqlite: true });
 	}
 }

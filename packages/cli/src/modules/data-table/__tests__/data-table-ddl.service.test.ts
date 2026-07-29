@@ -1,21 +1,23 @@
 import { testModules } from '@n8n/backend-test-utils';
 import type { DataSource, DataSourceOptions, EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { DataTableDDLService } from '../data-table-ddl.service';
 import * as sqlUtils from '../utils/sql-utils';
 
 // Mock the sql-utils module
-jest.mock('../utils/sql-utils', () => ({
-	...jest.requireActual('../utils/sql-utils'),
-	renameColumnQuery: jest.fn(),
-	toTableName: jest.fn(),
+vi.mock('../utils/sql-utils', async () => ({
+	...(await vi.importActual<typeof import('../utils/sql-utils')>('../utils/sql-utils')),
+	renameColumnQuery: vi.fn(),
+	renameTableQuery: vi.fn(),
+	toTableName: vi.fn(),
 }));
 
 describe('DataTableDDLService', () => {
 	let ddlService: DataTableDDLService;
 	let mockDataSource: DataSource;
-	let mockEntityManager: jest.Mocked<EntityManager>;
+	let mockEntityManager: Mocked<EntityManager>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -29,14 +31,14 @@ describe('DataTableDDLService', () => {
 		});
 
 		// Mock the transaction method to execute the callback immediately
-		(mockEntityManager.transaction as jest.Mock) = jest.fn(
+		(mockEntityManager.transaction as Mock) = vi.fn(
 			async (callback: (em: EntityManager) => Promise<any>) => {
 				return await callback(mockEntityManager);
 			},
 		);
 
 		// Mock the query method
-		mockEntityManager.query = jest.fn().mockResolvedValue(undefined);
+		mockEntityManager.query = vi.fn().mockResolvedValue(undefined);
 
 		mockDataSource = mock<DataSource>({
 			manager: mockEntityManager,
@@ -45,7 +47,48 @@ describe('DataTableDDLService', () => {
 		ddlService = new DataTableDDLService(mockDataSource);
 
 		// Reset all mocks
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+	});
+
+	describe('renameTable', () => {
+		beforeEach(() => {
+			(sqlUtils.toTableName as Mock).mockImplementation(
+				(id: string) => `n8n_data_table_user_${id}`,
+			);
+		});
+
+		it('should execute the rename table query', async () => {
+			const expectedQuery =
+				'ALTER TABLE "n8n_data_table_user_oldId1" RENAME TO "n8n_data_table_user_newId1"';
+			(sqlUtils.renameTableQuery as Mock).mockReturnValue(expectedQuery);
+
+			await ddlService.renameTable('oldId1', 'newId1', 'postgres');
+
+			expect(sqlUtils.renameTableQuery).toHaveBeenCalledWith(
+				'n8n_data_table_user_oldId1',
+				'n8n_data_table_user_newId1',
+				'postgres',
+			);
+			expect(mockEntityManager.query).toHaveBeenCalledWith(expectedQuery);
+		});
+
+		it('should reject invalid data table ids', async () => {
+			await expect(ddlService.renameTable('old-id!', 'newId1', 'postgres')).rejects.toThrow(
+				'Invalid data table ID',
+			);
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('tableExists', () => {
+		it('should check the physical table via the query runner', async () => {
+			(sqlUtils.toTableName as Mock).mockReturnValue('n8n_data_table_user_dt1');
+			const hasTable = vi.fn().mockResolvedValue(true);
+			(mockEntityManager as any).queryRunner = { hasTable };
+
+			await expect(ddlService.tableExists('dt1')).resolves.toBe(true);
+			expect(hasTable).toHaveBeenCalledWith('n8n_data_table_user_dt1');
+		});
 	});
 
 	describe('renameColumn', () => {
@@ -55,7 +98,7 @@ describe('DataTableDDLService', () => {
 		const tableName = 'n8n_data_table_user_test-table-id';
 
 		beforeEach(() => {
-			(sqlUtils.toTableName as jest.Mock).mockReturnValue(tableName);
+			(sqlUtils.toTableName as Mock).mockReturnValue(tableName);
 		});
 
 		describe('successful rename', () => {
@@ -65,7 +108,7 @@ describe('DataTableDDLService', () => {
 				const expectedQuery =
 					'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"';
 
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
+				(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
 
 				// Act
 				await ddlService.renameColumn(dataTableId, oldColumnName, newColumnName, dbType);
@@ -81,34 +124,13 @@ describe('DataTableDDLService', () => {
 				expect(mockEntityManager.query).toHaveBeenCalledWith(expectedQuery);
 			});
 
-			it('should execute rename column query for MySQL', async () => {
-				// Arrange
-				const dbType: DataSourceOptions['type'] = 'mysql';
-				const expectedQuery =
-					'ALTER TABLE `n8n_data_table_user_test-table-id` RENAME COLUMN `old_column` TO `new_column`';
-
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
-
-				// Act
-				await ddlService.renameColumn(dataTableId, oldColumnName, newColumnName, dbType);
-
-				// Assert
-				expect(sqlUtils.renameColumnQuery).toHaveBeenCalledWith(
-					tableName,
-					oldColumnName,
-					newColumnName,
-					dbType,
-				);
-				expect(mockEntityManager.query).toHaveBeenCalledWith(expectedQuery);
-			});
-
 			it('should execute rename column query for SQLite', async () => {
 				// Arrange
 				const dbType: DataSourceOptions['type'] = 'sqlite';
 				const expectedQuery =
 					'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"';
 
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
+				(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
 
 				// Act
 				await ddlService.renameColumn(dataTableId, oldColumnName, newColumnName, dbType);
@@ -130,17 +152,17 @@ describe('DataTableDDLService', () => {
 					'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"';
 				const callOrder: string[] = [];
 
-				(sqlUtils.toTableName as jest.Mock).mockImplementation(() => {
+				(sqlUtils.toTableName as Mock).mockImplementation(() => {
 					callOrder.push('toTableName');
 					return tableName;
 				});
 
-				(sqlUtils.renameColumnQuery as jest.Mock).mockImplementation(() => {
+				(sqlUtils.renameColumnQuery as Mock).mockImplementation(() => {
 					callOrder.push('renameColumnQuery');
 					return expectedQuery;
 				});
 
-				mockEntityManager.query = jest.fn().mockImplementation(async () => {
+				mockEntityManager.query = vi.fn().mockImplementation(async () => {
 					callOrder.push('query');
 					return undefined;
 				});
@@ -161,9 +183,9 @@ describe('DataTableDDLService', () => {
 					'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"';
 				const customTrx = mock<EntityManager>();
 
-				customTrx.query = jest.fn().mockResolvedValue(undefined) as any;
+				customTrx.query = vi.fn().mockResolvedValue(undefined) as any;
 
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
+				(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
 
 				// Act
 				await ddlService.renameColumn(dataTableId, oldColumnName, newColumnName, dbType, customTrx);
@@ -184,7 +206,7 @@ describe('DataTableDDLService', () => {
 				const expectedQuery =
 					'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"';
 
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
+				(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
 
 				// Act
 				await ddlService.renameColumn(dataTableId, oldColumnName, newColumnName, dbType);
@@ -203,8 +225,8 @@ describe('DataTableDDLService', () => {
 					'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"';
 				const queryError = new Error('Database query failed');
 
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
-				mockEntityManager.query = jest.fn().mockRejectedValue(queryError);
+				(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
+				mockEntityManager.query = vi.fn().mockRejectedValue(queryError);
 
 				// Act & Assert
 				await expect(
@@ -219,7 +241,7 @@ describe('DataTableDDLService', () => {
 				const dbType: DataSourceOptions['type'] = 'postgres';
 				const queryError = new Error('Invalid column name');
 
-				(sqlUtils.renameColumnQuery as jest.Mock).mockImplementation(() => {
+				(sqlUtils.renameColumnQuery as Mock).mockImplementation(() => {
 					throw queryError;
 				});
 
@@ -242,7 +264,7 @@ describe('DataTableDDLService', () => {
 				const expectedQuery =
 					'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column_2024" TO "new_column_v2"';
 
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
+				(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
 
 				// Act
 				await ddlService.renameColumn(
@@ -270,8 +292,8 @@ describe('DataTableDDLService', () => {
 				const expectedQuery =
 					'ALTER TABLE "n8n_data_table_user_different-table-id" RENAME COLUMN "old_column" TO "new_column"';
 
-				(sqlUtils.toTableName as jest.Mock).mockReturnValue(differentTableName);
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
+				(sqlUtils.toTableName as Mock).mockReturnValue(differentTableName);
+				(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
 
 				// Act
 				await ddlService.renameColumn(differentTableId, oldColumnName, newColumnName, dbType);
@@ -298,16 +320,6 @@ describe('DataTableDDLService', () => {
 						'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"',
 				},
 				{
-					dbType: 'mysql',
-					expectedQuery:
-						'ALTER TABLE `n8n_data_table_user_test-table-id` RENAME COLUMN `old_column` TO `new_column`',
-				},
-				{
-					dbType: 'mariadb',
-					expectedQuery:
-						'ALTER TABLE `n8n_data_table_user_test-table-id` RENAME COLUMN `old_column` TO `new_column`',
-				},
-				{
 					dbType: 'sqlite',
 					expectedQuery:
 						'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"',
@@ -317,7 +329,7 @@ describe('DataTableDDLService', () => {
 			testCases.forEach(({ dbType, expectedQuery }) => {
 				it(`should generate correct query for ${dbType}`, async () => {
 					// Arrange
-					(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
+					(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
 
 					// Act
 					await ddlService.renameColumn(dataTableId, oldColumnName, newColumnName, dbType);
@@ -343,8 +355,8 @@ describe('DataTableDDLService', () => {
 				const expectedQuery =
 					'ALTER TABLE "n8n_data_table_user_custom-uuid-1234" RENAME COLUMN "old_column" TO "new_column"';
 
-				(sqlUtils.toTableName as jest.Mock).mockReturnValue(expectedTableName);
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
+				(sqlUtils.toTableName as Mock).mockReturnValue(expectedTableName);
+				(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
 
 				// Act
 				await ddlService.renameColumn(customTableId, oldColumnName, newColumnName, dbType);
@@ -362,10 +374,10 @@ describe('DataTableDDLService', () => {
 
 			it('should pass all parameters to renameColumnQuery utility', async () => {
 				// Arrange
-				const dbType: DataSourceOptions['type'] = 'mysql';
+				const dbType: DataSourceOptions['type'] = 'postgres';
 				const expectedQuery = 'ALTER TABLE query';
 
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
+				(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
 
 				// Act
 				await ddlService.renameColumn(dataTableId, oldColumnName, newColumnName, dbType);

@@ -1,5 +1,8 @@
 import type { Page } from '@playwright/test';
 
+import { InstanceAiPage } from '../pages/InstanceAiPage';
+import { SecretsProviderSettingsPage } from '../pages/SecretsProviderSettingsPage';
+
 /**
  * NavigationHelper provides centralized navigation methods for all n8n routes.
  * Handles both project-specific and global routes with proper URL construction.
@@ -13,7 +16,14 @@ import type { Page } from '@playwright/test';
  * - Executions: /home/executions or /projects/{projectId}/executions
  */
 export class NavigationHelper {
-	constructor(private page: Page) {}
+	private readonly instanceAi: InstanceAiPage;
+
+	private readonly secretsProviderSettings: SecretsProviderSettingsPage;
+
+	constructor(private page: Page) {
+		this.instanceAi = new InstanceAiPage(page);
+		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
+	}
 
 	/**
 	 * Navigate to the home dashboard
@@ -45,17 +55,6 @@ export class NavigationHelper {
 		await this.page.goto(url);
 	}
 
-	/**
-	 * Navigate to executions page
-	 * URLs:
-	 * - Home executions: /home/executions
-	 * - Project executions: /projects/{projectId}/executions
-	 */
-	async toExecutions(projectId?: string): Promise<void> {
-		const url = projectId ? `/projects/${projectId}/executions` : '/home/executions';
-		await this.page.goto(url);
-	}
-
 	async toDatatables(projectId?: string): Promise<void> {
 		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
 		await this.page.goto(url);
@@ -71,27 +70,11 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to settings page (global only)
-	 * URL: /settings
-	 */
-	async toSettings(): Promise<void> {
-		await this.page.goto('/settings');
-	}
-
-	/**
 	 * Navigate to personal settings
 	 * URL: /settings/personal
 	 */
 	async toPersonalSettings(): Promise<void> {
 		await this.page.goto('/settings/personal');
-	}
-
-	/**
-	 * Navigate to projects page
-	 * URL: /projects
-	 */
-	async toProjects(): Promise<void> {
-		await this.page.goto('/projects');
 	}
 
 	/**
@@ -115,10 +98,34 @@ export class NavigationHelper {
 	 * URLs:
 	 * - New workflow: /workflow/new
 	 * - Existing workflow: /workflow/{workflowId}
-	 * - Project workflow: /projects/{projectId}/workflow/{workflowId}
+	 * - New workflow in a project: /workflow/new?projectId={projectId}
 	 */
-	async toWorkflow(workflowId: string = 'new'): Promise<void> {
-		const url = `/workflow/${workflowId}`;
+	async toWorkflow(workflowId: string = 'new', options?: { projectId?: string }): Promise<void> {
+		let url = `/workflow/${workflowId}`;
+		if (options?.projectId) {
+			url += `?projectId=${options.projectId}`;
+		}
+		await this.page.goto(url);
+	}
+
+	/**
+	 * Navigate to a project's executions list
+	 * URL: /projects/{projectId}/executions
+	 */
+	async toProjectExecutions(
+		projectId: string,
+		options?: Parameters<Page['goto']>[1],
+	): Promise<void> {
+		await this.page.goto(`/projects/${projectId}/executions`, options);
+	}
+
+	/**
+	 * Navigate to a specific execution within a workflow
+	 * URLs:
+	 * - Existing workflow: /workflow/{workflowId}/executions/{executionId}
+	 */
+	async toExecution(workflowId: string, executionId: string): Promise<void> {
+		const url = `/workflow/${workflowId}/executions/${executionId}`;
 		await this.page.goto(url);
 	}
 
@@ -205,14 +212,6 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to worker view
-	 * URL: /settings/workers
-	 */
-	async toWorkerView(): Promise<void> {
-		await this.page.goto('/settings/workers');
-	}
-
-	/**
 	 * Navigate to users management
 	 * URL: /settings/users
 	 */
@@ -229,22 +228,6 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to LDAP settings
-	 * URL: /settings/ldap
-	 */
-	async toLdapSettings(): Promise<void> {
-		await this.page.goto('/settings/ldap');
-	}
-
-	/**
-	 * Navigate to SSO settings
-	 * URL: /settings/sso
-	 */
-	async toSsoSettings(): Promise<void> {
-		await this.page.goto('/settings/sso');
-	}
-
-	/**
 	 * Navigate to environments settings
 	 * URL: /settings/environments
 	 */
@@ -253,19 +236,19 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to external secrets settings
-	 * URL: /settings/external-secrets
-	 */
-	async toExternalSecrets(): Promise<void> {
-		await this.page.goto('/settings/external-secrets');
-	}
-
-	/**
 	 * Navigate to settings page
 	 * URL: /settings/chat
 	 */
 	async toChatHubSettings(): Promise<void> {
 		await this.page.goto('/settings/chat');
+	}
+
+	/**
+	 * Navigate to Instance AI page
+	 * URL: /assistant
+	 */
+	async toInstanceAi() {
+		await this.instanceAi.goto();
 	}
 
 	/**
@@ -290,5 +273,18 @@ export class NavigationHelper {
 	 */
 	async toChatHubWorkflowAgents() {
 		await this.page.goto('/home/chat/workflow-agents');
+	}
+
+	/**
+	 * Navigate to external secrets settings page
+	 * URL: /settings/external-secrets
+	 */
+	async toExternalSecrets(): Promise<void> {
+		await this.secretsProviderSettings.goto();
+	}
+
+	/** Current page URL — use instead of reaching into n8n.page.url() from flows. */
+	currentUrl(): string {
+		return this.page.url();
 	}
 }

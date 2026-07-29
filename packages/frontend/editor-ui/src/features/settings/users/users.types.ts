@@ -1,20 +1,14 @@
+import type { AssignableGlobalRole } from '@n8n/permissions';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import type { Role, ROLE } from '@n8n/api-types';
 
 export type ILogInStatus = 'LoggedIn' | 'LoggedOut';
 
-export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin' | 'ChatUser'];
+// Any global role that can be assigned to a user (system roles except owner, plus custom instance roles).
+export type InvitableRoleName = AssignableGlobalRole;
 
-export interface IInviteResponse {
-	user: {
-		id: string;
-		email: string;
-		emailSent: boolean;
-		inviteAcceptUrl: string;
-		role: Role;
-	};
-	error?: string;
-}
+// `IInviteResponse` moved to `@n8n/stores/invitation.api` alongside the invitation
+// API; re-exported here so existing importers stay unchanged.
+export type { IInviteResponse } from '@n8n/stores/invitation.api';
 
 export interface IUserListAction {
 	label: string;

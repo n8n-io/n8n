@@ -1,0 +1,120 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "extract",
+						"description": "A function available to call.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"name": {
+									"type": "string",
+									"minLength": 10,
+									"maxLength": 128,
+									"description": "Name of the workflow based on the prompt"
+								}
+							},
+							"required": ["name"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"tool_choice": {
+					"type": "tool",
+					"name": "extract"
+				},
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "<role>\nBased on the initial user prompt, please generate a name for the workflow that captures its essence and purpose\n</role>\n\n<initial_prompt>\nCreate an automation that checks the weather for my location every morning at 5 a.m using OpenWeather. Send me a short weather report by email using Gmail. Use OpenAI `gpt-4.1-mini` to write a short, fun formatted email body by adding personality when describing the weather and how the day might feel. Include all details relevant to decide on my plans and clothes for the day.\n</initial_prompt>\n\n<output_rules>\nThis name should be concise, descriptive, and suitable for a workflow that automates tasks related to the given prompt. The name should be in a format that is easy to read and understand. Do not include the word \"workflow\" in the name.\n</output_rules>"
+					}
+				]
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01IiwidGVtcGVyYXR1cmUiOjAsInN0cmVhbSI6ZmFsc2UsIm1heF90b2tlbnMiOjE2MDAwLCJ0b29scyI6W3sibmFtZSI6ImV4dHJhY3QiLCJkZXNjcmlwdGlvbiI6IkEgZnVuY3Rpb24gYXZhaWxhYmxlIHRvIGNhbGwuIiwiaW5wdXRfc2NoZW1hIjp7InR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7Im5hbWUiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTAsIm1heExlbmd0aCI6MTI4LCJkZXNjcmlwdGlvbiI6Ik5hbWUgb2YgdGhlIHdvcmtmbG93IGJhc2VkIG9uIHRoZSBwcm9tcHQifX0sInJlcXVpcmVkIjpbIm5hbWUiXSwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlLCIkc2NoZW1hIjoiaHR0cDovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC0wNy9zY2hlbWEjIn19XSwidG9vbF9jaG9pY2UiOnsidHlwZSI6InRvb2wiLCJuYW1lIjoiZXh0cmFjdCJ9LCJ0aGlua2luZyI6eyJ0eXBlIjoiZGlzYWJsZWQifSwibWVzc2FnZXMiOlt7InJvbGUiOiJ1c2VyIiwiY29udGVudCI6Ijxyb2xlPlxuQmFzZWQgb24gdGhlIGluaXRpYWwgdXNlciBwcm9tcHQsIHBsZWFzZSBnZW5lcmF0ZSBhIG5hbWUgZm9yIHRoZSB3b3JrZmxvdyB0aGF0IGNhcHR1cmVzIGl0cyBlc3NlbmNlIGFuZCBwdXJwb3NlXG48L3JvbGU+XG5cbjxpbml0aWFsX3Byb21wdD5cbkNyZWF0ZSBhbiBhdXRvbWF0aW9uIHRoYXQgY2hlY2tzIHRoZSB3ZWF0aGVyIGZvciBteSBsb2NhdGlvbiBldmVyeSBtb3JuaW5nIGF0IDUgYS5tIHVzaW5nIE9wZW5XZWF0aGVyLiBTZW5kIG1lIGEgc2hvcnQgd2VhdGhlciByZXBvcnQgYnkgZW1haWwgdXNpbmcgR21haWwuIFVzZSBPcGVuQUkgYGdwdC00LjEtbWluaWAgdG8gd3JpdGUgYSBzaG9ydCwgZnVuIGZvcm1hdHRlZCBlbWFpbCBib2R5IGJ5IGFkZGluZyBwZXJzb25hbGl0eSB3aGVuIGRlc2NyaWJpbmcgdGhlIHdlYXRoZXIgYW5kIGhvdyB0aGUgZGF5IG1pZ2h0IGZlZWwuIEluY2x1ZGUgYWxsIGRldGFpbHMgcmVsZXZhbnQgdG8gZGVjaWRlIG9uIG15IHBsYW5zIGFuZCBjbG90aGVzIGZvciB0aGUgZGF5LlxuPC9pbml0aWFsX3Byb21wdD5cblxuPG91dHB1dF9ydWxlcz5cblRoaXMgbmFtZSBzaG91bGQgYmUgY29uY2lzZSwgZGVzY3JpcHRpdmUsIGFuZCBzdWl0YWJsZSBmb3IgYSB3b3JrZmxvdyB0aGF0IGF1dG9tYXRlcyB0YXNrcyByZWxhdGVkIHRvIHRoZSBnaXZlbiBwcm9tcHQuIFRoZSBuYW1lIHNob3VsZCBiZSBpbiBhIGZvcm1hdCB0aGF0IGlzIGVhc3kgdG8gcmVhZCBhbmQgdW5kZXJzdGFuZC4gRG8gbm90IGluY2x1ZGUgdGhlIHdvcmQgXCJ3b3JrZmxvd1wiIGluIHRoZSBuYW1lLlxuPC9vdXRwdXRfcnVsZXM+In1dfQ=="
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["1961"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"request-id": ["req_011CX3pLkciCme3ExFoxCoGf"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-01-12T16:41:45Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15500000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-01-12T16:41:46Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-01-12T16:41:45Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["15000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Mon, 12 Jan 2026 16:41:46 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["9bce1a627da983da-PRG"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01Bs7quR6DerJHU8Zci4mPYg",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01Qb6Yd8Max52Avqg1n8REpG",
+						"name": "extract",
+						"input": {
+							"name": "Daily Morning Weather Report with Personalized Email"
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 896,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 41,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFCczdxdVI2RGVySkhVOFpjaTRtUFlnIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMVFiNllkOE1heDUyQXZxZzFuOFJFcEciLCJuYW1lIjoiZXh0cmFjdCIsImlucHV0Ijp7Im5hbWUiOiJEYWlseSBNb3JuaW5nIFdlYXRoZXIgUmVwb3J0IHdpdGggUGVyc29uYWxpemVkIEVtYWlsIn19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6ODk2LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NDEsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIn19"
+		},
+		"delay": {
+			"timeUnit": "MILLISECONDS",
+			"value": 2000
+		}
+	},
+	"id": "1768236114968-unknown-host-POST-_v1_messages-764da75c.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

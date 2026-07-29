@@ -22,6 +22,7 @@ import type {
 	WhereClause,
 } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
+import { operatorOptions } from '../actions/common.descriptions';
 
 export function isJSON(str: string) {
 	try {
@@ -127,8 +128,8 @@ export function parsePostgresError(
 }
 
 export function addWhereClauses(
-	node: INode,
-	itemIndex: number,
+	_node: INode,
+	_itemIndex: number,
 	query: string,
 	clauses: WhereClause[],
 	replacements: QueryValues,
@@ -152,21 +153,10 @@ export function addWhereClauses(
 			clause.condition = '=';
 		}
 		if (['>', '<', '>=', '<='].includes(clause.condition)) {
-			const value = Number(clause.value);
-
-			if (Number.isNaN(value)) {
-				throw new NodeOperationError(
-					node,
-					`Operator in entry ${index + 1} of 'Select Rows' works with numbers, but value ${
-						clause.value
-					} is not a number`,
-					{
-						itemIndex,
-					},
-				);
+			const numericValue = Number(clause.value);
+			if (String(clause.value).trim() !== '' && !Number.isNaN(numericValue)) {
+				clause.value = numericValue;
 			}
-
-			clause.value = value;
 		}
 		const columnReplacement = `$${replacementIndex}:name`;
 		values.push(clause.column);
@@ -226,13 +216,144 @@ export function addReturning(
 	return [`${query} RETURNING $${replacementIndex}:name`, [...replacements, outputColumns]];
 }
 
-const isSelectQuery = (query: string) => {
-	return query
-		.replace(/\/\*.*?\*\//g, '') // remove multiline comments
-		.replace(/\n/g, '')
+// Strip SQL comments and string literals so they can't interfere with statement
+// classification. Strings collapse to empty quotes / empty dollar tags so paren and
+// semicolon structure outside strings is preserved.
+
+// `\` is an escape only inside E-strings (`E'...'`). For standard strings, with
+// `standard_conforming_strings = on` (PG default since 9.1), `\` is a literal.
+// The `E` prefix must be a standalone token, not the trailing char of an identifier.
+const isEStringPrefix = (query: string, quoteIndex: number): boolean => {
+	if (quoteIndex === 0) return false;
+	const prev = query[quoteIndex - 1];
+	if (prev !== 'E' && prev !== 'e') return false;
+	if (quoteIndex === 1) return true;
+	return !/[A-Za-z0-9_]/.test(query[quoteIndex - 2]);
+};
+
+const stripStringsAndComments = (query: string): string => {
+	const len = query.length;
+	let out = '';
+	let i = 0;
+	while (i < len) {
+		const c = query[i];
+		const next = query[i + 1];
+
+		if (c === '/' && next === '*') {
+			const end = query.indexOf('*/', i + 2);
+			i = end === -1 ? len : end + 2;
+			out += ' ';
+			continue;
+		}
+
+		if (c === '-' && next === '-') {
+			const newline = query.indexOf('\n', i + 2);
+			i = newline === -1 ? len : newline;
+			out += ' ';
+			continue;
+		}
+
+		if (c === "'") {
+			const allowBackslashEscape = isEStringPrefix(query, i);
+			i++;
+			while (i < len) {
+				if (allowBackslashEscape && query[i] === '\\' && i + 1 < len) {
+					i += 2;
+					continue;
+				}
+				if (query[i] === "'") {
+					if (query[i + 1] === "'") {
+						i += 2;
+						continue;
+					}
+					i++;
+					break;
+				}
+				i++;
+			}
+			out += "''";
+			continue;
+		}
+
+		if (c === '"') {
+			i++;
+			while (i < len && query[i] !== '"') {
+				if (query[i] === '\\' && i + 1 < len) {
+					i += 2;
+					continue;
+				}
+				i++;
+			}
+			if (i < len) i++;
+			out += '""';
+			continue;
+		}
+
+		if (c === '$') {
+			const tagMatch = query.slice(i).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/);
+			if (tagMatch) {
+				const tag = tagMatch[0];
+				const end = query.indexOf(tag, i + tag.length);
+				i = end === -1 ? len : end + tag.length;
+				out += ' ';
+				continue;
+			}
+		}
+
+		out += c;
+		i++;
+	}
+	return out;
+};
+
+// Split on `;` outside of string literals. Since `stripStringsAndComments` already
+// removes string contents, a simple split on the stripped query is safe.
+const splitStatements = (stripped: string): string[] =>
+	stripped
 		.split(';')
-		.filter((statement) => statement && !statement.startsWith('--')) // remove comments and empty statements
-		.every((statement) => statement.trim().toLowerCase().startsWith('select'));
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+
+// Returns the top-level command keyword (SELECT/INSERT/UPDATE/DELETE/MERGE) of a
+// single statement, skipping anything inside parentheses (CTE bodies, subqueries).
+// `WITH foo AS (...) UPDATE ...` resolves to UPDATE, not WITH.
+const TOP_LEVEL_COMMANDS = new Set(['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'MERGE']);
+
+const findTopLevelCommand = (statement: string): string | null => {
+	const upper = statement.toUpperCase();
+	let depth = 0;
+	let i = 0;
+	while (i < statement.length) {
+		const c = statement[i];
+		if (c === '(') {
+			depth++;
+			i++;
+			continue;
+		}
+		if (c === ')') {
+			if (depth > 0) depth--;
+			i++;
+			continue;
+		}
+		if (depth === 0 && /[A-Za-z_]/.test(c)) {
+			let j = i;
+			while (j < statement.length && /[A-Za-z0-9_]/.test(statement[j])) j++;
+			const word = upper.slice(i, j);
+			if (TOP_LEVEL_COMMANDS.has(word)) {
+				return word;
+			}
+			i = j;
+			continue;
+		}
+		i++;
+	}
+	return null;
+};
+
+export const isSelectQuery = (query: string): boolean => {
+	const statements = splitStatements(stripStringsAndComments(query));
+	if (statements.length === 0) return true;
+	return statements.every((statement) => findTopLevelCommand(statement) === 'SELECT');
 };
 
 export function configureQueryRunner(
@@ -241,7 +362,7 @@ export function configureQueryRunner(
 	continueOnFail: boolean,
 	pgp: PgpClient,
 	db: PgpDatabase,
-) {
+): QueriesRunner {
 	return async (queries: QueryWithValues[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
 		const emptyReturnData: INodeExecutionData[] =
@@ -624,6 +745,37 @@ export const convertArraysToPostgresFormat = (
 	}
 
 	return newData;
+};
+
+// operations use 'equal' instead of '=' because of the way expressions are handled
+// manually add '=' to allow entering it instead of 'equal'
+const conditionSet = new Set(operatorOptions.map((option) => option.value)).add('=');
+
+export const isWhereClause = (clause: unknown): clause is WhereClause => {
+	if (typeof clause !== 'object' || clause === null) return false;
+	if (!('column' in clause)) return false;
+	if (
+		!('condition' in clause) ||
+		typeof clause.condition !== 'string' ||
+		!conditionSet.has(clause.condition)
+	)
+		return false;
+	return true;
+};
+
+export const getWhereClauses = (ctx: IExecuteFunctions, itemIndex: number): WhereClause[] => {
+	const whereClauses = ctx.getNodeParameter('where', itemIndex, []) as IDataObject;
+	const whereClausesValues = whereClauses.values as unknown[];
+	if (!Array.isArray(whereClausesValues)) {
+		return [];
+	}
+	const someInvalid = whereClausesValues.some((clause) => !isWhereClause(clause));
+	if (someInvalid) {
+		throw new NodeOperationError(ctx.getNode(), 'Invalid where clause', {
+			itemIndex,
+		});
+	}
+	return whereClausesValues as WhereClause[];
 };
 
 export const runQueriesAndHandleErrors = async (

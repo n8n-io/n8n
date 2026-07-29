@@ -1,15 +1,25 @@
-ARG NODE_VERSION=22.21.1
+ARG NODE_VERSION=24.16.0
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
 # ==============================================================================
-FROM node:${NODE_VERSION}-alpine AS javascript-runner-builder
+FROM node:${NODE_VERSION}-alpine3.22 AS javascript-runner-builder
 COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
 
-RUN corepack enable pnpm
+# Pin pnpm to the repo's packageManager version. `pnpm deploy` drops the
+# packageManager field from the deployed package.json, so a bare
+# `corepack enable pnpm` resolves to corepack's bundled latest (pnpm 11.x).
+# pnpm 11 defaults minimumReleaseAge to 1440 (24h), so the `pnpm add` below
+# re-resolves the deployed graph and rejects any dependency published less
+# than a day ago — e.g. a first-party @n8n_io/ai-assistant-sdk bump landed
+# within hours of its npm publish. This container step only re-resolves an
+# already-vetted, already-pinned dependency set; the real supply-chain age
+# policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
+ARG PNPM_VERSION=10.32.1
+RUN corepack enable pnpm && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
 # Remove `catalog` and `workspace` references from package.json to allow `pnpm add` in extended images
 RUN node -e "const pkg = require('./package.json'); \
@@ -74,12 +84,15 @@ RUN uv sync \
 			--all-extras \
       --no-editable
 
+# Install the python runner package itself into site packages. We can remove the src directory then
+RUN uv pip install . && rm -rf /app/task-runner-python/src
+
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
-FROM alpine:3.22.1 AS launcher-downloader
+FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.2
+ARG LAUNCHER_VERSION=1.4.7
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -99,7 +112,7 @@ RUN set -e; \
 # ==============================================================================
 # STAGE 4: Node alpine base for JS task runner
 # ==============================================================================
-FROM node:${NODE_VERSION}-alpine AS node-alpine
+FROM node:${NODE_VERSION}-alpine3.22 AS node-alpine
 
 # ==============================================================================
 # STAGE 5: Runtime
@@ -121,6 +134,8 @@ COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 # libstdc++ is required by Node
 # libc6-compat is required by task-runner-launcher
 RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
+    apk upgrade --no-cache && \
+    pip install --no-cache-dir "pip>=26.0" && \
     apk del apk-tools
 
 # Bring corepack and pnpm over, to make the image easier to extend

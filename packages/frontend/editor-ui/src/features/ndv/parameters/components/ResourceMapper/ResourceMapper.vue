@@ -14,25 +14,28 @@ import type {
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { deepCopy, NodeHelpers } from 'n8n-workflow';
-import { computed, onMounted, reactive, watch } from 'vue';
+import { computed, inject, onMounted, reactive, watch } from 'vue';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
 import {
 	fieldCannotBeDeleted,
 	isResourceMapperFieldListStale,
+	isResourceMapperSchemaIncomplete,
 	parseResourceMapperFieldName,
 } from '@/app/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/app/utils/typeGuards';
 import { i18n as locale } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import isEqual from 'lodash/isEqual';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ParameterInputFull from '../ParameterInputFull.vue';
 
 import { N8nButton, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 type Props = {
 	parameter: INodeProperties;
 	node: INode | null;
@@ -46,9 +49,11 @@ type Props = {
 };
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const ndvStore = injectNDVStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const projectsStore = useProjectsStore();
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
@@ -125,18 +130,23 @@ onDocumentVisible(async () => {
 
 async function checkStaleFields(): Promise<void> {
 	const fetchedFields = await fetchFields();
-	if (fetchedFields) {
-		const isSchemaStale = isResourceMapperFieldListStale(
-			state.paramValue.schema,
-			fetchedFields.fields,
-		);
-		state.hasStaleFields = isSchemaStale;
+	if (!fetchedFields) {
+		return;
 	}
+	const isSchemaStale = isResourceMapperFieldListStale(
+		state.paramValue.schema,
+		fetchedFields.fields,
+	);
+	if (isSchemaStale && props.parameter.typeOptions?.resourceMapper?.refreshStaleSchemaOnOpen) {
+		await initFetching(true, fetchedFields);
+		return;
+	}
+	state.hasStaleFields = isSchemaStale;
 }
 
 // Reload fields to map when node is executed
 watch(
-	() => workflowsStore.getWorkflowExecution,
+	() => workflowExecutionStateStore.value.activeExecution,
 	async (data) => {
 		if (
 			data &&
@@ -168,9 +178,14 @@ onMounted(async () => {
 	}
 	let hasSchema = false;
 	const nodeValues = params[parameterName] as unknown as ResourceMapperValue;
+	// deepCopy so state.paramValue does not share nested references (value, schema,
+	// matchingColumns) with the store's node.parameters. The deepCopy in
+	// emitValueChanged is the intended write-out boundary; this is the matching
+	// read-in boundary that prevents in-place mutations (deleteField, addField,
+	// addAllFields) from leaking into the store before the explicit emit/save path.
 	state.paramValue = {
 		...state.paramValue,
-		...nodeValues,
+		...deepCopy(nodeValues),
 	};
 	if (!state.paramValue.schema) {
 		state.paramValue = {
@@ -200,6 +215,16 @@ onMounted(async () => {
 	if (!hasSchema) {
 		// Only fetch a schema if it's not already set
 		await initFetching();
+	} else if (
+		props.parameter.typeOptions?.resourceMapper?.refreshIncompleteSchemaOnOpen &&
+		isResourceMapperSchemaIncomplete(state.paramValue.schema)
+	) {
+		// Opt-in: the cached schema is structurally incomplete (e.g. authored by
+		// an AI builder rather than loaded from the source), so it would render
+		// with broken/outdated inputs. Reconcile it against the live source
+		// instead. A complete-but-drifted schema falls through to the stale-data
+		// check below, leaving the refresh up to the user.
+		await initFetching(true);
 	} else {
 		await checkStaleFields();
 	}
@@ -295,7 +320,10 @@ const pluralFieldWord = computed<string>(() => {
 	);
 });
 
-async function initFetching(inlineLoading = false): Promise<void> {
+async function initFetching(
+	inlineLoading = false,
+	preFetchedFields?: ResourceMapperFields | null,
+): Promise<void> {
 	state.loadingError = false;
 	if (inlineLoading) {
 		state.refreshInProgress = true;
@@ -303,7 +331,7 @@ async function initFetching(inlineLoading = false): Promise<void> {
 		state.loading = true;
 	}
 	try {
-		await loadAndSetFieldsToMap();
+		await loadAndSetFieldsToMap(preFetchedFields);
 		if (!state.paramValue.matchingColumns || state.paramValue.matchingColumns.length === 0) {
 			onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
 		}
@@ -320,7 +348,7 @@ async function initFetching(inlineLoading = false): Promise<void> {
 	}
 }
 
-const createRequestParams = (methodName: string) => {
+const createRequestParams = async (methodName: string) => {
 	if (!props.node) {
 		return;
 	}
@@ -329,14 +357,17 @@ const createRequestParams = (methodName: string) => {
 			name: props.node.type,
 			version: props.node.typeVersion,
 		},
-		currentNodeParameters: resolveRequiredParameters(
+		currentNodeParameters: (await resolveRequiredParameters(
 			props.parameter,
 			props.node.parameters,
-		) as INodeParameters,
+			workflowDocumentStore.value.documentId,
+			expressionLocalResolveCtx?.value ?? {},
+		)) as INodeParameters,
 		path: props.path,
 		methodName,
 		credentials: props.node.credentials,
 		projectId: projectsStore.currentProjectId,
+		workflowId: workflowDocumentStore.value.workflowId,
 	};
 
 	return requestParams;
@@ -347,16 +378,15 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 		props.parameter.typeOptions?.resourceMapper ?? {};
 
 	let fetchedFields: ResourceMapperFields | null = null;
-
 	if (typeof resourceMapperMethod === 'string') {
-		const requestParams = createRequestParams(
+		const requestParams = (await createRequestParams(
 			resourceMapperMethod,
-		) as ResourceMapperFieldsRequestDto;
+		)) as ResourceMapperFieldsRequestDto;
 		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	} else if (typeof localResourceMapperMethod === 'string') {
-		const requestParams = createRequestParams(
+		const requestParams = (await createRequestParams(
 			localResourceMapperMethod,
-		) as ResourceMapperFieldsRequestDto;
+		)) as ResourceMapperFieldsRequestDto;
 
 		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
 	}
@@ -366,18 +396,26 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 	return fetchedFields;
 }
 
-async function loadAndSetFieldsToMap(): Promise<void> {
+async function loadAndSetFieldsToMap(
+	preFetchedFields?: ResourceMapperFields | null,
+): Promise<void> {
 	if (!props.node) {
 		return;
 	}
 
-	const fetchedFields = await fetchFields();
+	const fetchedFields = preFetchedFields !== undefined ? preFetchedFields : await fetchFields();
 
 	if (fetchedFields !== null) {
 		const newSchema = fetchedFields.fields.map((field) => {
 			const existingField = state.paramValue.schema.find((f) => f.id === field.id);
 			if (existingField) {
-				field.removed = existingField.removed;
+				// Keep the user's removed state, but don't let an incomplete cached
+				// field (e.g. an AI-authored schema missing `removed`) overwrite the
+				// loader-populated value with `undefined`.
+				field.removed =
+					typeof existingField.removed === 'boolean'
+						? existingField.removed
+						: (field.removed ?? false);
 			} else if (state.paramValue.value !== null && !(field.id in state.paramValue.value)) {
 				// New fields are shown by default
 				field.removed = false;
@@ -433,7 +471,7 @@ function updateNodeIssues(): void {
 			nodeType.value,
 		);
 		if (parameterIssues) {
-			ndvStore.updateNodeParameterIssues(parameterIssues);
+			ndvStore.value.updateNodeParameterIssues(parameterIssues);
 		}
 	}
 }
@@ -659,9 +697,9 @@ defineExpose({
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
 			<template #trailingContent>
 				<N8nButton
-					size="mini"
+					variant="subtle"
+					size="xsmall"
 					icon="refresh-cw"
-					type="secondary"
 					:loading="state.refreshInProgress"
 					@click="initFetching(true)"
 				>

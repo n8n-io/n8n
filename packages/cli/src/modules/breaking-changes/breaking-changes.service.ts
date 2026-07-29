@@ -7,21 +7,24 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
+import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
 
+import { CacheService } from '@/services/cache/cache.service';
+
+import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
-import { allRules, RuleInstances } from './rules';
+import { groupNodesByType } from './group-nodes-by-type';
 import type {
 	IBreakingChangeBatchWorkflowRule,
 	IBreakingChangeInstanceRule,
+	IBreakingChangeRule,
 	IBreakingChangeWorkflowRule,
 } from './types';
 import { N8N_VERSION } from '../../constants';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 interface WorkflowMetadata {
 	name: string;
@@ -43,20 +46,22 @@ export class BreakingChangeService {
 
 	constructor(
 		private readonly ruleRegistry: RuleRegistry,
+		private readonly migrationRegistry: MigrationRegistry,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = logger.scoped('breaking-changes');
-		this.registerRules();
 	}
 
 	registerRules() {
-		const rulesServices: RuleInstances[] = allRules.map((rule) =>
-			Container.get<RuleInstances>(rule),
-		);
-		this.ruleRegistry.registerAll(rulesServices);
+		const ruleMetadata = Container.get(BreakingChangeRuleMetadata);
+		const ruleInstances = ruleMetadata
+			.getEntries()
+			.map((entry) => Container.get(entry.class) as IBreakingChangeRule);
+		this.ruleRegistry.registerAll(ruleInstances);
 	}
 
 	async getAllInstanceRulesResults(
@@ -75,6 +80,7 @@ export class BreakingChangeService {
 						ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 						instanceIssues: ruleResult.instanceIssues,
 						recommendations: ruleResult.recommendations,
+						migratable: this.migrationRegistry.has(rule.id),
 					});
 				}
 			} catch (error) {
@@ -83,17 +89,6 @@ export class BreakingChangeService {
 			}
 		}
 		return instanceLevelResults;
-	}
-
-	private groupNodesByType(nodes: INode[]): Map<string, INode[]> {
-		const nodesGroupedByType: Map<string, INode[]> = new Map();
-		for (const node of nodes) {
-			if (!nodesGroupedByType.has(node.type)) {
-				nodesGroupedByType.set(node.type, []);
-			}
-			nodesGroupedByType.get(node.type)!.push(node);
-		}
-		return nodesGroupedByType;
 	}
 
 	private async aggregateRegularRuleResults(
@@ -114,6 +109,7 @@ export class BreakingChangeService {
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows: workflowResults,
 					recommendations: await rule.getRecommendations(workflowResults),
+					migratable: this.migrationRegistry.has(rule.id),
 				});
 			}
 		}
@@ -162,6 +158,7 @@ export class BreakingChangeService {
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows,
 					recommendations: await rule.getRecommendations(affectedWorkflows),
+					migratable: this.migrationRegistry.has(rule.id),
 				});
 			}
 		}
@@ -188,23 +185,41 @@ export class BreakingChangeService {
 
 		for (let skip = 0; skip < totalWorkflows; skip += this.batchSize) {
 			const workflows = await this.workflowRepository.find({
-				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'updatedAt', 'statistics'],
+				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'updatedAt'],
 				skip,
 				take: this.batchSize,
 				order: { id: 'ASC' },
-				relations: { statistics: true },
 			});
 
 			this.logger.debug('Processing batch', { skip, workflowsInBatch: workflows.length });
 
+			// Load statistics separately for all workflows in this batch
+			const workflowIds = workflows.map((w) => w.id);
+			const allStatistics = await this.workflowStatisticsRepository.find({
+				where: { workflowId: In(workflowIds) },
+			});
+
+			// Group statistics by workflowId
+			const statisticsByWorkflowId = new Map<string, typeof allStatistics>();
+			for (const stat of allStatistics) {
+				if (!stat.workflowId) continue;
+				const existing = statisticsByWorkflowId.get(stat.workflowId);
+				if (existing) {
+					existing.push(stat);
+				} else {
+					statisticsByWorkflowId.set(stat.workflowId, [stat]);
+				}
+			}
+
 			for (const workflow of workflows) {
-				const nodesGroupedByType = this.groupNodesByType(workflow.nodes);
+				const nodesGroupedByType = groupNodesByType(workflow.nodes);
+				const statistics = statisticsByWorkflowId.get(workflow.id) ?? [];
 
 				const workflowMetadata: WorkflowMetadata = {
 					name: workflow.name,
 					active: !!workflow.activeVersionId,
-					numberOfExecutions: workflow.statistics.reduce((acc, cur) => acc + (cur.count || 0), 0),
-					lastExecutedAt: workflow.statistics.sort(
+					numberOfExecutions: statistics.reduce((acc, cur) => acc + (cur.count || 0), 0),
+					lastExecutedAt: statistics.sort(
 						(a, b) => b.latestEvent.getTime() - a.latestEvent.getTime(),
 					)[0]?.latestEvent,
 					lastUpdatedAt: workflow.updatedAt,

@@ -1,6 +1,6 @@
 import { defineConfig, mergeConfig, PluginOption } from 'vite';
 import { resolve } from 'path';
-import { renameSync, writeFileSync, readFileSync } from 'fs';
+import { renameSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import vue from '@vitejs/plugin-vue';
 import icons from 'unplugin-icons/vite';
 import dts from 'vite-plugin-dts';
@@ -22,7 +22,8 @@ export default mergeConfig(
 				compiler: 'vue3',
 				autoInstall: true,
 			}),
-			dts(),
+			// The bundle pass emits the same declarations as the lib pass — skip the ~12s duplicate run.
+			...(includeVue ? [] : [dts()]),
 			{
 				name: 'rename-css-file',
 				closeBundle() {
@@ -32,7 +33,9 @@ export default mergeConfig(
 					const cssPath = resolve(__dirname, 'dist', 'chat.css');
 					const newCssPath = resolve(__dirname, 'dist', 'style.css');
 					try {
-						renameSync(cssPath, newCssPath);
+						if (existsSync(cssPath)) {
+							renameSync(cssPath, newCssPath);
+						}
 					} catch (error) {
 						console.error('Failed to rename chat.css file:', error);
 					}

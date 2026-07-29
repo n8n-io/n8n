@@ -6,9 +6,9 @@ import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { ref, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 
 import { N8nButton, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
 const props = defineProps<{
@@ -152,9 +152,10 @@ watch(
 					<div :class="$style.buttons" data-test-id="nps-survey-ratings">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
 							<N8nButton
-								type="tertiary"
+								variant="subtle"
+								iconOnly
+								:aria-label="(value - 1).toString()"
 								:label="(value - 1).toString()"
-								square
 								@click="selectSurveyValue((value - 1).toString())"
 							/>
 						</div>

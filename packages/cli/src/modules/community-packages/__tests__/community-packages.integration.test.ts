@@ -1,3 +1,8 @@
+vi.mock('../npm-utils', async () => ({
+	...(await vi.importActual<typeof import('../npm-utils')>('../npm-utils')),
+	executeNpmCommand: vi.fn(),
+}));
+
 import { mockInstance } from '@n8n/backend-test-utils';
 import path from 'path';
 
@@ -5,6 +10,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
+import { executeNpmCommand } from '@/modules/community-packages/npm-utils';
 
 import { COMMUNITY_PACKAGE_VERSION } from '../../../../test/integration/shared/constants';
 import { createOwner } from '../../../../test/integration/shared/db/users';
@@ -19,6 +25,7 @@ import {
 const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,
 });
+const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 mockInstance(LoadNodesAndCredentials);
 
 const testServer = setupTestServer({
@@ -46,7 +53,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 });
 
 describe('GET /community-packages', () => {
@@ -114,7 +121,7 @@ describe('GET /community-packages', () => {
 	test('should not check for updates if no packages installed', async () => {
 		await authAgent.get('/community-packages');
 
-		expect(communityPackagesService.executeNpmCommand).not.toHaveBeenCalled();
+		expect(mockedExecuteNpmCommand).not.toHaveBeenCalled();
 	});
 
 	test('should check for updates if packages installed', async () => {
@@ -122,16 +129,16 @@ describe('GET /community-packages', () => {
 
 		await authAgent.get('/community-packages').expect(200);
 
-		const args = [['outdated', '--json'], { doNotHandleError: true }];
+		const args = [['outdated', '--json'], { doNotHandleError: true, cwd: expect.any(String) }];
 
-		expect(communityPackagesService.executeNpmCommand).toHaveBeenCalledWith(...args);
+		expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(...args);
 	});
 
 	test('should report package updates if available', async () => {
 		const pkg = mockPackage();
 		communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
 
-		communityPackagesService.executeNpmCommand.mockImplementation(() => {
+		mockedExecuteNpmCommand.mockImplementation(() => {
 			throw {
 				code: 1,
 				stdout: JSON.stringify({

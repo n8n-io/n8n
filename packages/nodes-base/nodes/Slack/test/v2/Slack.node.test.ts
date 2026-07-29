@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -9,12 +9,13 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { SlackV2 } from '../../V2/SlackV2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
+import type { Mock, Mocked, MockInstance } from 'vitest';
 
 describe('SlackV2', () => {
 	let node: SlackV2;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let slackApiRequestSpy: jest.SpyInstance;
-	let slackApiRequestAllItemsSpy: jest.SpyInstance;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let slackApiRequestSpy: MockInstance;
+	let slackApiRequestAllItemsSpy: MockInstance;
 
 	const mockNode: INode = {
 		id: 'test-node-id',
@@ -34,10 +35,10 @@ describe('SlackV2', () => {
 		});
 
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		slackApiRequestSpy = jest.spyOn(GenericFunctions, 'slackApiRequest');
-		slackApiRequestAllItemsSpy = jest.spyOn(GenericFunctions, 'slackApiRequestAllItems');
+		slackApiRequestSpy = vi.spyOn(GenericFunctions, 'slackApiRequest');
+		slackApiRequestAllItemsSpy = vi.spyOn(GenericFunctions, 'slackApiRequestAllItems');
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Default mocks
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
@@ -52,7 +53,7 @@ describe('SlackV2', () => {
 		});
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 		// Mock helper functions
-		(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 			(data: any, options: any) => {
 				return data.map((item: any, index: number) => ({
 					...item,
@@ -60,14 +61,14 @@ describe('SlackV2', () => {
 				}));
 			},
 		);
-		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: any) => {
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
 			// returnJsonArray should always return array with single item containing the data
 			return [{ json: data }];
 		});
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Channel Operations - Kick and Join', () => {
@@ -148,6 +149,56 @@ describe('SlackV2', () => {
 			const result = await node.execute.call(mockExecuteFunctions);
 
 			expect(result).toEqual([[{ json: { error: 'Channel not found' } }]]);
+		});
+	});
+
+	describe('Channel List Operations - multiOptions types filter', () => {
+		it('should send types as CSV when filters.types is an array', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: ['public_channel', 'private_channel'] },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channels: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/conversations.list',
+				{},
+				expect.objectContaining({ types: 'public_channel,private_channel' }),
+			);
+		});
+
+		it('should normalize types when filters.types is a comma-joined string', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: 'public_channel,private_channel ' },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channels: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/conversations.list',
+				{},
+				expect.objectContaining({ types: 'public_channel,private_channel' }),
+			);
 		});
 	});
 
@@ -316,6 +367,32 @@ describe('SlackV2', () => {
 					},
 				],
 			]);
+		});
+
+		it('should invite users when userIds is a comma-joined string (whitespace-coerced expression)', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'invite',
+					channelId: 'C123456789',
+					userIds: 'U111111111,U222222222 ',
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channel: { id: 'C123456789' } });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/conversations.invite',
+				{
+					channel: 'C123456789',
+					users: 'U111111111,U222222222',
+				},
+				{},
+			);
 		});
 
 		it('should leave channel', async () => {
@@ -651,11 +728,11 @@ describe('SlackV2', () => {
 
 	describe('Message Operations - Ephemeral Messages', () => {
 		beforeEach(() => {
-			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
-			jest.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
+			vi.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
 				text: 'Test ephemeral message',
 			});
-			jest.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+			vi.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
 		});
 
 		it('should send ephemeral message to channel', async () => {
@@ -746,7 +823,7 @@ describe('SlackV2', () => {
 		});
 
 		it('should send ephemeral message to user directly', async () => {
-			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {
 					resource: 'message',
@@ -1117,7 +1194,7 @@ describe('SlackV2', () => {
 				mimeType: 'text/plain',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			const mockResponse = {
 				file: {
@@ -1176,9 +1253,9 @@ describe('SlackV2', () => {
 			const mockStream = Buffer.from('file content');
 			const mockMetadata = { fileSize: 12 };
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryStream as jest.Mock).mockResolvedValue(mockStream);
-			(mockExecuteFunctions.helpers.getBinaryMetadata as jest.Mock).mockResolvedValue(mockMetadata);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryStream as Mock).mockResolvedValue(mockStream);
+			(mockExecuteFunctions.helpers.getBinaryMetadata as Mock).mockResolvedValue(mockMetadata);
 
 			// Mock the upload URL response
 			const mockUploadUrlResponse = {
@@ -1325,7 +1402,7 @@ describe('SlackV2', () => {
 				mimeType: 'text/plain',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			const mockUploadUrlResponse = {
 				upload_url: 'https://files.slack.com/upload/v1',
@@ -1388,11 +1465,9 @@ describe('SlackV2', () => {
 				mimeType: 'text/plain',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryStream as jest.Mock).mockResolvedValue(
-				Buffer.from('test'),
-			);
-			(mockExecuteFunctions.helpers.getBinaryMetadata as jest.Mock).mockResolvedValue({
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryStream as Mock).mockResolvedValue(Buffer.from('test'));
+			(mockExecuteFunctions.helpers.getBinaryMetadata as Mock).mockResolvedValue({
 				fileSize: 4,
 			});
 
@@ -1412,6 +1487,56 @@ describe('SlackV2', () => {
 					filename: 'custom-name.txt',
 					length: 4,
 				},
+			);
+		});
+	});
+
+	describe('File List Operations - multiOptions types filter', () => {
+		it('should send types as CSV when filters.types is an array', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'file',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: ['images', 'pdfs'] },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ files: [{ id: 'F1' }] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/files.list',
+				{},
+				expect.objectContaining({ types: 'images,pdfs' }),
+			);
+		});
+
+		it('should normalize types when filters.types is a comma-joined string with trailing whitespace', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'file',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: 'images,pdfs ' },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ files: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/files.list',
+				{},
+				expect.objectContaining({ types: 'images,pdfs' }),
 			);
 		});
 	});
@@ -1551,11 +1676,11 @@ describe('SlackV2', () => {
 		});
 
 		it('should throw error for ephemeral message with username when select is user', async () => {
-			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
-			jest.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
+			vi.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
 				text: 'Test message',
 			});
-			jest.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+			vi.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'resource') return 'message';
@@ -1579,6 +1704,679 @@ describe('SlackV2', () => {
 			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
 				'You cannot send ephemeral messages using User type "By username". Please use "From List" or "By ID".',
 			);
+		});
+	});
+
+	describe('User Group Operations', () => {
+		describe('Add Users to User Group', () => {
+			it('should add users to user group successfully', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'updateUsers',
+						userGroupId: 'S123456789',
+						users: ['U111111111', 'U222222222'],
+						options: {
+							include_count: true,
+						},
+					};
+					return params[paramName];
+				});
+
+				// Mock the current user group data
+				const mockCurrentGroup = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							name: 'test-group',
+							users: ['U000000000'], // Existing user
+						},
+					],
+				};
+
+				// Mock the update response
+				const mockUpdateResponse = {
+					ok: true,
+					usergroup: {
+						id: 'S123456789',
+						name: 'test-group',
+						users: ['U000000000', 'U111111111', 'U222222222'],
+						user_count: 3,
+					},
+				};
+
+				slackApiRequestSpy
+					.mockResolvedValueOnce(mockCurrentGroup) // Get current users
+					.mockResolvedValueOnce(mockUpdateResponse); // Update users
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				// Verify GET request to fetch current users
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					1,
+					'GET',
+					'/usergroups.list',
+					{},
+					{
+						include_users: true,
+						usergroup: 'S123456789',
+					},
+				);
+
+				// Verify POST request to update users (should merge existing and new)
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					2,
+					'POST',
+					'/usergroups.users.update',
+					{
+						usergroup: 'S123456789',
+						users: 'U000000000,U111111111,U222222222',
+						include_count: true,
+					},
+					{},
+				);
+
+				expect(result).toEqual([
+					[
+						{
+							json: mockUpdateResponse.usergroup,
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+
+			it('should handle adding duplicate users (deduplication)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'updateUsers',
+						userGroupId: 'S123456789',
+						users: ['U111111111', 'U222222222'], // U111111111 already exists
+						options: {},
+					};
+					return params[paramName];
+				});
+
+				const mockCurrentGroup = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							users: ['U111111111'], // User already in group
+						},
+					],
+				};
+
+				const mockUpdateResponse = {
+					ok: true,
+					usergroup: {
+						id: 'S123456789',
+						users: ['U111111111', 'U222222222'],
+					},
+				};
+
+				slackApiRequestSpy
+					.mockResolvedValueOnce(mockCurrentGroup)
+					.mockResolvedValueOnce(mockUpdateResponse);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				// Verify duplicates are removed
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					2,
+					'POST',
+					'/usergroups.users.update',
+					expect.objectContaining({
+						users: 'U111111111,U222222222', // No duplicates
+					}),
+					{},
+				);
+			});
+
+			it('should handle empty user group (no existing users)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'updateUsers',
+						userGroupId: 'S123456789',
+						users: ['U111111111'],
+						options: {},
+					};
+					return params[paramName];
+				});
+
+				const mockCurrentGroup = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							users: [], // Empty group
+						},
+					],
+				};
+
+				const mockUpdateResponse = {
+					ok: true,
+					usergroup: {
+						id: 'S123456789',
+						users: ['U111111111'],
+					},
+				};
+
+				slackApiRequestSpy
+					.mockResolvedValueOnce(mockCurrentGroup)
+					.mockResolvedValueOnce(mockUpdateResponse);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					2,
+					'POST',
+					'/usergroups.users.update',
+					expect.objectContaining({
+						users: 'U111111111',
+					}),
+					{},
+				);
+
+				expect(result).toEqual([
+					[
+						{
+							json: mockUpdateResponse.usergroup,
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+		});
+
+		describe('Get Users from User Group', () => {
+			it('should get users from user group with resolve data', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'getUsers',
+						userGroupId: 'S123456789',
+						options: {
+							resolveData: true,
+						},
+					};
+					return params[paramName];
+				});
+
+				const mockGroupData = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							name: 'test-group',
+							users: ['U111111111', 'U222222222'],
+						},
+					],
+				};
+
+				// Mock user info responses
+				const mockUser1 = {
+					ok: true,
+					user: {
+						id: 'U111111111',
+						name: 'john.doe',
+						real_name: 'John Doe',
+						profile: {
+							email: 'john@example.com',
+						},
+					},
+				};
+
+				const mockUser2 = {
+					ok: true,
+					user: {
+						id: 'U222222222',
+						name: 'jane.smith',
+						real_name: 'Jane Smith',
+						profile: {
+							email: 'jane@example.com',
+						},
+					},
+				};
+
+				slackApiRequestSpy
+					.mockResolvedValueOnce(mockGroupData) // Get user group
+					.mockResolvedValueOnce(mockUser1) // Get user 1 info
+					.mockResolvedValueOnce(mockUser2); // Get user 2 info
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				// Verify user group list call
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					1,
+					'GET',
+					'/usergroups.list',
+					{},
+					{
+						include_users: true,
+						usergroup: 'S123456789',
+					},
+				);
+
+				// Verify user info calls
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					2,
+					'GET',
+					'/users.info',
+					{},
+					{ user: 'U111111111' },
+				);
+
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					3,
+					'GET',
+					'/users.info',
+					{},
+					{ user: 'U222222222' },
+				);
+
+				expect(result).toEqual([
+					[
+						{
+							json: [mockUser1.user, mockUser2.user],
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+
+			it('should get users from user group without resolve data (IDs only)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'getUsers',
+						userGroupId: 'S123456789',
+						options: {
+							resolveData: false,
+						},
+					};
+					return params[paramName];
+				});
+
+				const mockGroupData = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							users: ['U111111111', 'U222222222'],
+						},
+					],
+				};
+
+				slackApiRequestSpy.mockResolvedValueOnce(mockGroupData);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				// Should only call usergroups.list, not users.info
+				expect(slackApiRequestSpy).toHaveBeenCalledTimes(1);
+
+				expect(result).toEqual([
+					[
+						{
+							json: [{ id: 'U111111111' }, { id: 'U222222222' }],
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+
+			it('should handle empty user group', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'getUsers',
+						userGroupId: 'S123456789',
+						options: {
+							resolveData: true,
+						},
+					};
+					return params[paramName];
+				});
+
+				const mockGroupData = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							users: [], // Empty group
+						},
+					],
+				};
+
+				slackApiRequestSpy.mockResolvedValueOnce(mockGroupData);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				// Should only call usergroups.list
+				expect(slackApiRequestSpy).toHaveBeenCalledTimes(1);
+
+				expect(result).toEqual([
+					[
+						{
+							json: [],
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+
+			it('should throw error when user group not found', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'getUsers',
+						userGroupId: 'S999999999',
+						options: {},
+					};
+					return params[paramName];
+				});
+
+				const mockGroupData = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789', // Different ID
+							users: ['U111111111'],
+						},
+					],
+				};
+
+				slackApiRequestSpy.mockResolvedValue(mockGroupData);
+
+				const executePromise = node.execute.call(mockExecuteFunctions);
+				await expect(executePromise).rejects.toThrow(NodeOperationError);
+				await expect(executePromise).rejects.toThrow('User group with ID "S999999999" not found');
+			});
+
+			it('should handle missing users field in group', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'getUsers',
+						userGroupId: 'S123456789',
+						options: {
+							resolveData: false,
+						},
+					};
+					return params[paramName];
+				});
+
+				const mockGroupData = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							// users field missing
+						},
+					],
+				};
+
+				slackApiRequestSpy.mockResolvedValueOnce(mockGroupData);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result).toEqual([
+					[
+						{
+							json: [],
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+		});
+	});
+
+	describe('User Operations - Look Up by Email', () => {
+		it('should look up a user by email and return the user object', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'user',
+					operation: 'lookupByEmail',
+					email: 'jane@example.com',
+				};
+				return params[paramName];
+			});
+
+			const mockResponse = {
+				ok: true,
+				user: {
+					id: 'U111111111',
+					name: 'jane.smith',
+					profile: { email: 'jane@example.com' },
+				},
+			};
+			slackApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/users.lookupByEmail',
+				{},
+				{ email: 'jane@example.com' },
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: mockResponse.user,
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('should propagate API errors when continueOnFail is false', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'user',
+					operation: 'lookupByEmail',
+					email: 'missing@example.com',
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockRejectedValue(new Error('users_not_found'));
+
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('users_not_found');
+		});
+	});
+
+	describe('Message Operations - Schedule', () => {
+		beforeEach(() => {
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
+			vi.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+				text: 'Scheduled hello',
+			});
+			vi.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+		});
+
+		it('should schedule a message to a channel with post_at as unix seconds', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'schedule',
+					authentication: 'accessToken',
+					select: 'channel',
+					postAt: '2030-01-01T00:00:00.000Z',
+					otherOptions: {},
+				};
+				return params[paramName];
+			});
+
+			const mockResponse = {
+				ok: true,
+				channel: 'C123456789',
+				scheduled_message_id: 'Q1298393284',
+				post_at: 1893456000,
+			};
+			slackApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/chat.scheduleMessage',
+				{
+					channel: 'C123456789',
+					post_at: 1893456000,
+					text: 'Scheduled hello',
+				},
+				{},
+			);
+			expect(result).toEqual([[{ json: mockResponse, pairedItem: { item: 0 } }]]);
+		});
+	});
+
+	describe('Message Operations - Delete Scheduled', () => {
+		it('should delete a scheduled message by id', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'deleteScheduled',
+					channelId: 'C123456789',
+					scheduledMessageId: 'Q1298393284',
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ ok: true });
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/chat.deleteScheduledMessage',
+				{
+					channel: 'C123456789',
+					scheduled_message_id: 'Q1298393284',
+				},
+				{},
+			);
+			expect(result).toEqual([[{ json: { ok: true }, pairedItem: { item: 0 } }]]);
+		});
+	});
+
+	describe('Message Operations - Get Many Scheduled', () => {
+		it('should list scheduled messages with a limit', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'getManyScheduled',
+					returnAll: false,
+					limit: 10,
+					filters: {},
+				};
+				return params[paramName];
+			});
+
+			const mockResponse = {
+				ok: true,
+				scheduled_messages: [
+					{ id: 'Q1', channel_id: 'C1', post_at: 1893456000, text: 'one' },
+					{ id: 'Q2', channel_id: 'C2', post_at: 1893456100, text: 'two' },
+				],
+			};
+			slackApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/chat.scheduledMessages.list',
+				{},
+				{ limit: 10 },
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: mockResponse.scheduled_messages,
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('should apply channel + latest + oldest filters as unix seconds', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _i: number, fallback?: unknown, _options?: unknown) => {
+					const params: Record<string, any> = {
+						resource: 'message',
+						operation: 'getManyScheduled',
+						returnAll: false,
+						limit: 50,
+						filters: {
+							channelId: 'C123456789',
+							latest: '2030-01-02T00:00:00.000Z',
+							oldest: '2030-01-01T00:00:00.000Z',
+						},
+						'filters.channelId': 'C123456789',
+					};
+					if (paramName in params) return params[paramName];
+					return fallback;
+				},
+			);
+
+			slackApiRequestSpy.mockResolvedValue({ scheduled_messages: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/chat.scheduledMessages.list',
+				{},
+				{
+					channel: 'C123456789',
+					latest: 1893542400,
+					oldest: 1893456000,
+					limit: 50,
+				},
+			);
+		});
+
+		it('should return all scheduled messages when returnAll is true', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'getManyScheduled',
+					returnAll: true,
+					filters: {},
+				};
+				return params[paramName];
+			});
+
+			const mockMessages = [
+				{ id: 'Q1', channel_id: 'C1', post_at: 1893456000 },
+				{ id: 'Q2', channel_id: 'C2', post_at: 1893456100 },
+				{ id: 'Q3', channel_id: 'C3', post_at: 1893456200 },
+			];
+			slackApiRequestAllItemsSpy.mockResolvedValue(mockMessages);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
+				'scheduled_messages',
+				'GET',
+				'/chat.scheduledMessages.list',
+				{},
+				{},
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: mockMessages,
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
 		});
 	});
 });

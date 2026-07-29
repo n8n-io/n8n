@@ -195,7 +195,7 @@ export function useCredentialNavigationCommands(options: {
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
 
 		if (isInCredentialParent || isRootWithQuery) {
-			isLoading.value = isInCredentialParent;
+			isLoading.value = true;
 			void fetchCredentialsDebounced(trimmed);
 		}
 	}
@@ -207,6 +207,7 @@ export function useCredentialNavigationCommands(options: {
 			isLoading.value = true;
 			void fetchCredentialsImpl('');
 		} else if (to === null) {
+			isLoading.value = false;
 			credentialResults.value = [];
 		}
 	}

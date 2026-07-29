@@ -1,6 +1,7 @@
-import { mock } from 'jest-mock-extended';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import * as core from 'n8n-core';
 import { DirectedGraph, recreateNodeExecutionStack, WorkflowExecute } from 'n8n-core';
+import { NodeHelpers, UserError } from 'n8n-workflow';
 import type {
 	Workflow,
 	IWorkflowExecutionDataProcess,
@@ -14,12 +15,15 @@ import type {
 	IWaitingForExecutionSource,
 	INodeExecutionData,
 	IDestinationNode,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ManualExecutionService } from '@/manual-execution.service';
 
-jest.mock('n8n-core');
+vi.mock('n8n-core');
 
 describe('ManualExecutionService', () => {
 	const manualExecutionService = new ManualExecutionService(mock());
@@ -106,22 +110,24 @@ describe('ManualExecutionService', () => {
 		const mockFilteredGraph = mock<DirectedGraph>();
 
 		beforeEach(() => {
-			jest.spyOn(DirectedGraph, 'fromWorkflow').mockReturnValue(mock<DirectedGraph>());
-			jest.spyOn(core, 'WorkflowExecute').mockReturnValue(
-				mock<WorkflowExecute>({
-					processRunExecutionData: jest.fn().mockReturnValue(mock<PCancelable<IRun>>()),
-				}),
-			);
-			jest.spyOn(core, 'recreateNodeExecutionStack').mockReturnValue({
+			vi.spyOn(DirectedGraph, 'fromWorkflow').mockReturnValue(mock<DirectedGraph>());
+			// Source does `new WorkflowExecute(...)`; Vitest constructs the implementation,
+			// so return the instance from a (constructable) function, not mockReturnValue.
+			vi.spyOn(core, 'WorkflowExecute').mockImplementation(function () {
+				return mock<WorkflowExecute>({
+					processRunExecutionData: vi.fn().mockReturnValue(mock<PCancelable<IRun>>()),
+				});
+			} as never);
+			vi.spyOn(core, 'recreateNodeExecutionStack').mockReturnValue({
 				nodeExecutionStack,
 				waitingExecution,
 				waitingExecutionSource,
 			});
-			jest.spyOn(core, 'filterDisabledNodes').mockReturnValue(mockFilteredGraph);
+			vi.spyOn(core, 'filterDisabledNodes').mockReturnValue(mockFilteredGraph);
 		});
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should correctly process triggerToStartFrom data when data.triggerToStartFrom.data is present', async () => {
@@ -140,7 +146,7 @@ describe('ManualExecutionService', () => {
 
 			const startNode = mock<INode>({ name: startNodeName });
 			const workflow = mock<Workflow>({
-				getNode: jest.fn((name) => {
+				getNode: vi.fn((name) => {
 					if (name === startNodeName) return startNode;
 					return null;
 				}),
@@ -208,7 +214,7 @@ describe('ManualExecutionService', () => {
 
 			const startNode = mock<INode>({ name: startNodeName });
 			const workflow = mock<Workflow>({
-				getNode: jest.fn((name) => {
+				getNode: vi.fn((name) => {
 					if (name === startNodeName) return startNode;
 					return null;
 				}),
@@ -246,25 +252,36 @@ describe('ManualExecutionService', () => {
 			});
 
 			const workflow = mock<Workflow>({
-				getNode: jest.fn().mockReturnValue(null),
-				getTriggerNodes: jest.fn().mockReturnValue([]),
+				getNode: vi.fn().mockReturnValue(null),
+				getTriggerNodes: vi.fn().mockReturnValue([]),
 			});
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			const executionId = 'test-execution-id';
 
-			const mockRun = jest.fn().mockReturnValue('mockRunReturn');
-			require('n8n-core').WorkflowExecute.mockImplementationOnce(() => ({
-				run: mockRun,
-				processRunExecutionData: jest.fn(),
-			}));
+			const mockRun = vi.fn().mockReturnValue('mockRunReturn');
+			vi.mocked(WorkflowExecute).mockImplementationOnce(function () {
+				return {
+					run: mockRun,
+					processRunExecutionData: vi.fn(),
+				};
+			});
 
-			await manualExecutionService.runManually(data, workflow, additionalData, executionId);
+			await manualExecutionService.runManually(
+				data as IWorkflowExecutionDataProcess,
+				workflow,
+				additionalData,
+				executionId,
+			);
 
-			expect(mockRun.mock.calls[0][0]).toBe(workflow);
-			expect(mockRun.mock.calls[0][1]).toBeUndefined(); // startNode
-			expect(mockRun.mock.calls[0][2]).toBeUndefined(); // destinationNode
-			expect(mockRun.mock.calls[0][3]).toBeUndefined(); // pinData
+			expect(mockRun).toHaveBeenCalledWith({
+				workflow,
+				startNode: undefined,
+				destinationNode: undefined,
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
 		});
 
 		it('should use execution start node when available for full execution', async () => {
@@ -278,20 +295,22 @@ describe('ManualExecutionService', () => {
 
 			const startNode = mock<INode>({ name: 'startNode' });
 			const workflow = mock<Workflow>({
-				getNode: jest.fn().mockReturnValue(startNode),
+				getNode: vi.fn().mockReturnValue(startNode),
 			});
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			const executionId = 'test-execution-id';
 			const emptyPinData = {};
 
-			jest.spyOn(manualExecutionService, 'getExecutionStartNode').mockReturnValue(startNode);
+			vi.spyOn(manualExecutionService, 'getExecutionStartNode').mockReturnValue(startNode);
 
-			const mockRun = jest.fn().mockReturnValue('mockRunReturn');
-			require('n8n-core').WorkflowExecute.mockImplementationOnce(() => ({
-				run: mockRun,
-				processRunExecutionData: jest.fn(),
-			}));
+			const mockRun = vi.fn().mockReturnValue('mockRunReturn');
+			vi.mocked(WorkflowExecute).mockImplementationOnce(function () {
+				return {
+					run: mockRun,
+					processRunExecutionData: vi.fn(),
+				};
+			});
 
 			await manualExecutionService.runManually(
 				data,
@@ -301,12 +320,19 @@ describe('ManualExecutionService', () => {
 				emptyPinData,
 			);
 
-			expect(manualExecutionService.getExecutionStartNode).toHaveBeenCalledWith(data, workflow);
+			expect(vi.spyOn(manualExecutionService, 'getExecutionStartNode')).toHaveBeenCalledWith(
+				data,
+				workflow,
+			);
 
-			expect(mockRun.mock.calls[0][0]).toBe(workflow);
-			expect(mockRun.mock.calls[0][1]).toBe(startNode); // startNode
-			expect(mockRun.mock.calls[0][2]).toBeUndefined(); // destinationNode
-			expect(mockRun.mock.calls[0][3]).toBe(data.pinData); // pinData
+			expect(mockRun).toHaveBeenCalledWith({
+				workflow,
+				startNode,
+				destinationNode: undefined,
+				pinData: data.pinData,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
 		});
 
 		it('should pass the triggerToStartFrom to workflowExecute.run for full execution', async () => {
@@ -325,29 +351,37 @@ describe('ManualExecutionService', () => {
 
 			const startNode = mock<INode>({ name: 'startNode' });
 			const workflow = mock<Workflow>({
-				getNode: jest.fn().mockReturnValue(startNode),
+				getNode: vi.fn().mockReturnValue(startNode),
 			});
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			const executionId = 'test-execution-id';
 
-			jest.spyOn(manualExecutionService, 'getExecutionStartNode').mockReturnValue(startNode);
+			vi.spyOn(manualExecutionService, 'getExecutionStartNode').mockReturnValue(startNode);
 
-			const mockRun = jest.fn().mockReturnValue('mockRunReturn');
-			require('n8n-core').WorkflowExecute.mockImplementationOnce(() => ({
-				run: mockRun,
-				processRunExecutionData: jest.fn(),
-			}));
+			const mockRun = vi.fn().mockReturnValue('mockRunReturn');
+			vi.mocked(WorkflowExecute).mockImplementationOnce(function () {
+				return {
+					run: mockRun,
+					processRunExecutionData: vi.fn(),
+				};
+			});
 
-			await manualExecutionService.runManually(data, workflow, additionalData, executionId);
-
-			expect(mockRun).toHaveBeenCalledWith(
+			await manualExecutionService.runManually(
+				data as IWorkflowExecutionDataProcess,
 				workflow,
-				startNode, // startNode
-				undefined, // destinationNode
-				undefined, // pinData
-				data.triggerToStartFrom, // triggerToStartFrom
+				additionalData,
+				executionId,
 			);
+
+			expect(mockRun).toHaveBeenCalledWith({
+				workflow,
+				startNode,
+				destinationNode: undefined,
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
 		});
 
 		it('should not call `runPartialWorkflow2` when destinationNode is undefined', async () => {
@@ -364,10 +398,12 @@ describe('ManualExecutionService', () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			const executionId = 'test-execution-id';
 
-			const mockRunPartialWorkflow = jest.fn().mockReturnValue('mockPartialReturn');
-			require('n8n-core').WorkflowExecute.mockImplementationOnce(() => ({
-				runPartialWorkflow2: mockRunPartialWorkflow,
-			}));
+			const mockRunPartialWorkflow = vi.fn().mockReturnValue('mockPartialReturn');
+			vi.mocked(WorkflowExecute).mockImplementationOnce(function () {
+				return {
+					runPartialWorkflow2: mockRunPartialWorkflow,
+				};
+			});
 
 			await expect(
 				async () =>
@@ -395,18 +431,20 @@ describe('ManualExecutionService', () => {
 			});
 
 			const workflow = mock<Workflow>({
-				getNode: jest.fn((name) => mock<INode>({ name })),
+				getNode: vi.fn((name) => mock<INode>({ name })),
 			});
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			const executionId = 'test-execution-id';
 			const pinData: IPinData = { node1: [{ json: { pinned: true } }] };
 
-			const mockRunPartialWorkflow2 = jest.fn().mockReturnValue('mockPartial2Return');
-			require('n8n-core').WorkflowExecute.mockImplementationOnce(() => ({
-				runPartialWorkflow2: mockRunPartialWorkflow2,
-				processRunExecutionData: jest.fn(),
-			}));
+			const mockRunPartialWorkflow2 = vi.fn().mockReturnValue('mockPartial2Return');
+			vi.mocked(WorkflowExecute).mockImplementationOnce(function () {
+				return {
+					runPartialWorkflow2: mockRunPartialWorkflow2,
+					processRunExecutionData: vi.fn(),
+				};
+			});
 
 			await manualExecutionService.runManually(
 				data,
@@ -433,7 +471,7 @@ describe('ManualExecutionService', () => {
 			});
 
 			const workflow = mock<Workflow>({
-				getNode: jest.fn((name) => {
+				getNode: vi.fn((name) => {
 					if (name === startNodeName) return mock<INode>({ name: startNodeName });
 					return null;
 				}),
@@ -442,7 +480,12 @@ describe('ManualExecutionService', () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			const executionId = 'test-execution-id';
 
-			await manualExecutionService.runManually(data, workflow, additionalData, executionId);
+			await manualExecutionService.runManually(
+				data as IWorkflowExecutionDataProcess,
+				workflow,
+				additionalData,
+				executionId,
+			);
 
 			expect(workflow.getNode).toHaveBeenCalledWith(startNodeName);
 		});
@@ -466,7 +509,7 @@ describe('ManualExecutionService', () => {
 
 			const startNode = mock<INode>({ name: startNodeName });
 			const workflow = mock<Workflow>({
-				getNode: jest.fn((name) => {
+				getNode: vi.fn((name) => {
 					if (name === startNodeName) return startNode;
 					return null;
 				}),
@@ -511,18 +554,20 @@ describe('ManualExecutionService', () => {
 			});
 
 			const workflow = mock<Workflow>({
-				getNode: jest.fn((name) => mock<INode>({ name })),
+				getNode: vi.fn((name) => mock<INode>({ name })),
 			});
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			const executionId = 'test-exec-id-v2-empty-start';
 
-			const mockRunPartialWorkflow2 = jest.fn().mockReturnValue('mockPartial2Return-v2-empty');
-			(core.WorkflowExecute as jest.Mock).mockImplementationOnce(() => ({
-				runPartialWorkflow2: mockRunPartialWorkflow2,
-				processRunExecutionData: jest.fn(),
-				run: jest.fn(),
-			}));
+			const mockRunPartialWorkflow2 = vi.fn().mockReturnValue('mockPartial2Return-v2-empty');
+			(core.WorkflowExecute as Mock).mockImplementationOnce(function () {
+				return {
+					runPartialWorkflow2: mockRunPartialWorkflow2,
+					processRunExecutionData: vi.fn(),
+					run: vi.fn(),
+				};
+			});
 
 			await manualExecutionService.runManually(
 				data,
@@ -553,25 +598,393 @@ describe('ManualExecutionService', () => {
 		});
 
 		const workflow = mock<Workflow>({
-			getNode: jest.fn().mockReturnValue(null),
-			getTriggerNodes: jest.fn().mockReturnValue([]),
+			getNode: vi.fn().mockReturnValue(null),
+			getTriggerNodes: vi.fn().mockReturnValue([]),
 		});
 
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const executionId = 'test-execution-id-evaluation';
 
-		const mockRun = jest.fn().mockReturnValue('mockRunReturnEvaluation');
-		require('n8n-core').WorkflowExecute.mockImplementationOnce(() => ({
-			run: mockRun,
-			processRunExecutionData: jest.fn(),
-		}));
+		const mockRun = vi.fn().mockReturnValue('mockRunReturnEvaluation');
+		vi.mocked(WorkflowExecute).mockImplementationOnce(function () {
+			return {
+				run: mockRun,
+				processRunExecutionData: vi.fn(),
+			};
+		});
 
 		await manualExecutionService.runManually(data, workflow, additionalData, executionId);
 
-		expect(mockRun.mock.calls[0][0]).toBe(workflow);
-		expect(mockRun.mock.calls[0][1]).toBeUndefined(); // startNode
-		expect(mockRun.mock.calls[0][2]).toBeUndefined(); // destinationNode
-		expect(mockRun.mock.calls[0][3]).toBe(data.pinData); // pinData
-		expect(mockRun.mock.calls[0][4]).toBeUndefined(); // triggerToStartFrom
+		expect(mockRun).toHaveBeenCalledWith({
+			workflow,
+			startNode: undefined,
+			destinationNode: undefined,
+			pinData: data.pinData,
+			triggerToStartFrom: undefined,
+			additionalRunFilterNodes: [],
+		});
+	});
+
+	describe('tool partial execution', () => {
+		const mockRewiredGraph = mock<DirectedGraph>();
+		const mockRewiredWorkflow = mock<Workflow>();
+		const mockGraphFromWorkflow = mock<DirectedGraph>();
+
+		// Mocks workflow.getNode for a workflow as it appears after a successful
+		// rewireGraph — both the original tool and the synthetic Tool Executor resolve.
+		const getNodeForRewiredWorkflow = (toolNode: INode) =>
+			vi.fn((name: string) => {
+				switch (name) {
+					case toolNode.name:
+						return toolNode;
+					case TOOL_EXECUTOR_NODE_NAME:
+						return mock<INode>({ name: TOOL_EXECUTOR_NODE_NAME });
+					default:
+						return null;
+				}
+			});
+
+		beforeEach(() => {
+			vi.spyOn(core, 'rewireGraph').mockReturnValue(mockRewiredGraph);
+			vi.spyOn(DirectedGraph, 'fromWorkflow').mockReturnValue(mockGraphFromWorkflow);
+			mockRewiredGraph.toWorkflow.mockImplementation(() => mockRewiredWorkflow);
+		});
+
+		afterEach(() => {
+			vi.resetAllMocks();
+		});
+
+		it('should rewire graph and change destination to ToolExecutor when destination node is a tool', async () => {
+			const toolNodeName = 'toolNode';
+			const destinationNode: IDestinationNode = {
+				nodeName: toolNodeName,
+				mode: 'inclusive',
+			};
+
+			const toolNode = mock<INode>({
+				name: toolNodeName,
+				type: 'n8n-nodes-base.toolTest',
+				typeVersion: 1,
+			});
+
+			const nodeTypeDescription = mock<INodeTypeDescription>({
+				outputs: ['ai_tool'],
+			});
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'manual',
+				destinationNode,
+				pinData: undefined,
+				runData: undefined,
+				executionData: {
+					startData: {},
+				},
+			});
+
+			const workflow = mock<Workflow>({
+				getNode: getNodeForRewiredWorkflow(toolNode),
+				nodeTypes: mock({
+					getByNameAndVersion: vi.fn().mockReturnValue(nodeTypeDescription),
+				}),
+				getParentNodes: vi.fn().mockReturnValue([]),
+			});
+
+			vi.spyOn(NodeHelpers, 'isTool').mockReturnValue(true);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			const executionId = 'test-execution-id-tool';
+
+			const mockRun = vi.fn().mockReturnValue('mockRunReturnTool');
+			(core.WorkflowExecute as Mock).mockImplementationOnce(function () {
+				return {
+					run: mockRun,
+					processRunExecutionData: vi.fn(),
+				};
+			});
+
+			mockRewiredGraph.toWorkflow.mockImplementation(() => workflow);
+
+			await manualExecutionService.runManually(
+				data as IWorkflowExecutionDataProcess,
+				workflow,
+				additionalData,
+				executionId,
+			);
+
+			expect(core.rewireGraph).toHaveBeenCalledWith(
+				toolNode,
+				mockGraphFromWorkflow,
+				data.agentRequest,
+			);
+
+			expect(mockRewiredGraph.toWorkflow).toHaveBeenCalledWith({
+				...workflow,
+			});
+
+			expect(data.destinationNode).toEqual({
+				nodeName: TOOL_EXECUTOR_NODE_NAME,
+				mode: 'inclusive',
+			});
+
+			expect(data.executionData?.startData?.originalDestinationNode).toEqual(destinationNode);
+
+			expect(mockRun).toHaveBeenCalledWith({
+				workflow,
+				startNode: undefined,
+				destinationNode: { nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' },
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
+		});
+
+		it('should add connected tools to additionalRunFilterNodes when tool is connected through HITL node', async () => {
+			const toolNodeName = 'toolNode';
+			const connectedTool1 = 'connectedTool1';
+			const connectedTool2 = 'connectedTool2';
+
+			const destinationNode: IDestinationNode = {
+				nodeName: toolNodeName,
+				mode: 'inclusive',
+			};
+
+			const toolNode = mock<INode>({
+				name: toolNodeName,
+				type: 'n8n-nodes-base.toolTest',
+				typeVersion: 1,
+			});
+
+			const nodeTypeDescription = mock<INodeTypeDescription>({
+				outputs: ['ai_tool'],
+			});
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'manual',
+				destinationNode,
+				pinData: undefined,
+				runData: undefined,
+				executionData: {
+					startData: {},
+				},
+			});
+
+			const workflow = mock<Workflow>({
+				getNode: getNodeForRewiredWorkflow(toolNode),
+				nodeTypes: mock({
+					getByNameAndVersion: vi.fn().mockReturnValue(nodeTypeDescription),
+				}),
+				getParentNodes: vi.fn((nodeName) => {
+					if (nodeName === TOOL_EXECUTOR_NODE_NAME) {
+						return [connectedTool1, connectedTool2];
+					}
+					return [];
+				}),
+			});
+
+			vi.spyOn(NodeHelpers, 'isTool').mockReturnValue(true);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			const executionId = 'test-execution-id-tool-connected';
+
+			const mockRun = vi.fn().mockReturnValue('mockRunReturnToolConnected');
+			(core.WorkflowExecute as Mock).mockImplementationOnce(function () {
+				return {
+					run: mockRun,
+					processRunExecutionData: vi.fn(),
+				};
+			});
+
+			mockRewiredGraph.toWorkflow.mockImplementation(() => workflow);
+
+			await manualExecutionService.runManually(
+				data as IWorkflowExecutionDataProcess,
+				workflow,
+				additionalData,
+				executionId,
+			);
+
+			expect(workflow.getParentNodes).toHaveBeenCalledWith(TOOL_EXECUTOR_NODE_NAME, 'ALL_NON_MAIN');
+
+			expect(mockRun).toHaveBeenCalledWith({
+				workflow,
+				startNode: undefined,
+				destinationNode: { nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' },
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [connectedTool1, connectedTool2],
+			});
+		});
+
+		it('should not rewire graph when destination node is not a tool', async () => {
+			const regularNodeName = 'regularNode';
+			const destinationNode: IDestinationNode = {
+				nodeName: regularNodeName,
+				mode: 'inclusive',
+			};
+
+			const regularNode = mock<INode>({
+				name: regularNodeName,
+				type: 'n8n-nodes-base.code',
+				typeVersion: 1,
+			});
+
+			const nodeTypeDescription = mock<INodeTypeDescription>({
+				outputs: ['main'],
+			});
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'manual',
+				destinationNode,
+				pinData: undefined,
+				runData: undefined,
+			});
+
+			const workflow = mock<Workflow>({
+				getNode: vi.fn((name) => {
+					if (name === regularNodeName) return regularNode;
+					return null;
+				}),
+				nodeTypes: mock({
+					getByNameAndVersion: vi.fn().mockReturnValue(nodeTypeDescription),
+				}),
+				getParentNodes: vi.fn().mockReturnValue([]),
+			});
+
+			vi.spyOn(NodeHelpers, 'isTool').mockReturnValue(false);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			const executionId = 'test-execution-id-regular';
+
+			const mockRun = vi.fn().mockReturnValue('mockRunReturnRegular');
+			(core.WorkflowExecute as Mock).mockImplementationOnce(function () {
+				return {
+					run: mockRun,
+					processRunExecutionData: vi.fn(),
+				};
+			});
+
+			mockRewiredGraph.toWorkflow.mockImplementation(() => workflow);
+
+			await manualExecutionService.runManually(
+				data as IWorkflowExecutionDataProcess,
+				workflow,
+				additionalData,
+				executionId,
+			);
+
+			expect(core.rewireGraph).not.toHaveBeenCalled();
+			expect(data.destinationNode).toEqual(destinationNode);
+			expect(mockRun).toHaveBeenCalledWith({
+				workflow, // original workflow, not rewired
+				startNode: undefined,
+				destinationNode,
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
+		});
+
+		it('throws a UserError when executing a tool that has no consumer', async () => {
+			const toolNode = mock<INode>({
+				name: 'leafTool',
+				type: 'n8n-nodes-base.toolTest',
+				typeVersion: 1,
+			});
+
+			const workflow = mock<Workflow>({
+				getNode: vi.fn((name) => (name === toolNode.name ? toolNode : null)),
+				nodeTypes: mock({
+					getByNameAndVersion: vi
+						.fn()
+						.mockReturnValue(mock<INodeTypeDescription>({ outputs: ['ai_tool'] })),
+				}),
+			});
+
+			vi.spyOn(NodeHelpers, 'isTool').mockReturnValue(true);
+
+			// Simulate rewireGraph short-circuiting because the tool has no consumer: it returns the original graph, so the workflow has no Tool Executor.
+			(core.rewireGraph as Mock).mockReturnValue(mockGraphFromWorkflow);
+			mockGraphFromWorkflow.toWorkflow.mockImplementation(() => workflow);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'manual',
+				destinationNode: { nodeName: toolNode.name, mode: 'inclusive' },
+				pinData: undefined,
+				runData: undefined,
+			});
+
+			await expect(
+				async () =>
+					await manualExecutionService.runManually(
+						data,
+						workflow,
+						mock<IWorkflowExecuteAdditionalData>(),
+						'test-execution-id',
+					),
+			).rejects.toThrow(UserError);
+		});
+
+		it('should save originalDestinationNode even when executionData.startData is undefined', async () => {
+			const toolNodeName = 'toolNode';
+			const destinationNode: IDestinationNode = {
+				nodeName: toolNodeName,
+				mode: 'inclusive',
+			};
+
+			const toolNode = mock<INode>({
+				name: toolNodeName,
+				type: 'n8n-nodes-base.toolTest',
+				typeVersion: 1,
+			});
+
+			const nodeTypeDescription = mock<INodeTypeDescription>({
+				outputs: ['ai_tool'],
+			});
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'manual',
+				destinationNode,
+				pinData: undefined,
+				runData: undefined,
+				executionData: undefined,
+			});
+
+			const workflow = mock<Workflow>({
+				getNode: getNodeForRewiredWorkflow(toolNode),
+				nodeTypes: mock({
+					getByNameAndVersion: vi.fn().mockReturnValue(nodeTypeDescription),
+				}),
+				getParentNodes: vi.fn().mockReturnValue([]),
+			});
+
+			vi.spyOn(NodeHelpers, 'isTool').mockReturnValue(true);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			const executionId = 'test-execution-id-tool-no-exec-data';
+
+			const mockRun = vi.fn().mockReturnValue('mockRunReturnToolNoExecData');
+			(core.WorkflowExecute as Mock).mockImplementationOnce(function () {
+				return {
+					run: mockRun,
+					processRunExecutionData: vi.fn(),
+				};
+			});
+
+			mockRewiredGraph.toWorkflow.mockImplementation(() => workflow);
+
+			await manualExecutionService.runManually(
+				data as IWorkflowExecutionDataProcess,
+				workflow,
+				additionalData,
+				executionId,
+			);
+
+			// When executionData is undefined, originalDestinationNode should not be saved
+			expect(data.executionData).toBeUndefined();
+			expect(data.destinationNode).toEqual({
+				nodeName: TOOL_EXECUTOR_NODE_NAME,
+				mode: 'inclusive',
+			});
+		});
 	});
 });
