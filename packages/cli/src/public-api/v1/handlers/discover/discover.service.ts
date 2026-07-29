@@ -3,7 +3,14 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 
-import type { ScopeTaggedMiddleware } from '../../shared/middlewares/global.middleware';
+import {
+	extractScopeFromEovHandlerChain,
+	loadPublicControllerScopeMap,
+	publicApiRouteKey,
+	resolvePublicApiImplementedScope,
+} from '../../shared/public-api-scope-lookup';
+
+import '../../controllers';
 
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'] as const;
 
@@ -49,23 +56,6 @@ export interface DiscoverOptions {
 
 let cachedEndpointsPromise: Promise<EndpointInfo[]> | undefined;
 
-function isScopeTagged(value: unknown): value is ScopeTaggedMiddleware {
-	return typeof value === 'function' && '__apiKeyScope' in value;
-}
-
-/**
- * Extract the required ApiKeyScope from a handler's middleware chain
- * by looking for a middleware tagged with __apiKeyScope.
- */
-function extractScopeFromHandler(handlerChain: unknown[]): ApiKeyScope | null {
-	for (const middleware of handlerChain) {
-		if (isScopeTagged(middleware)) {
-			return middleware.__apiKeyScope;
-		}
-	}
-	return null;
-}
-
 /**
  * Extract the request body schema from an operation.
  * The spec is already fully dereferenced by RefParser.dereference().
@@ -93,13 +83,13 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 	const specPath = path.join(__dirname, '..', '..', 'openapi.yml');
 	const publicApiRoot = path.join(__dirname, '..', '..', '..');
 
-	// Load and fully dereference the spec in one operation
 	const spec = await RefParser.dereference(specPath);
 
 	if (!isRecord(spec) || !isRecord(spec.paths)) return [];
 
 	const endpoints: EndpointInfo[] = [];
 	const handlerCache = new Map<string, Record<string, unknown>>();
+	const controllerScopes = loadPublicControllerScopeMap();
 
 	for (const [pathKey, pathValue] of Object.entries(spec.paths)) {
 		if (!isRecord(pathValue)) continue;
@@ -108,47 +98,64 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 			const operation = pathValue[method];
 			if (!isRecord(operation)) continue;
 
-			const operationId = operation['x-eov-operation-id'];
+			const eovOperationId = operation['x-eov-operation-id'];
 			const handlerPath = operation['x-eov-operation-handler'];
-			if (typeof operationId !== 'string' || typeof handlerPath !== 'string') continue;
+			const openApiOperationId = operation.operationId;
+			const hasEovHandler = typeof eovOperationId === 'string' && typeof handlerPath === 'string';
+			const routeKey = publicApiRouteKey(method, pathKey);
+			const hasControllerHandler = controllerScopes.has(routeKey);
+
+			if (!hasEovHandler && !hasControllerHandler) {
+				continue;
+			}
+
+			const operationId =
+				(typeof eovOperationId === 'string' ? eovOperationId : undefined) ??
+				(typeof openApiOperationId === 'string' ? openApiOperationId : undefined);
+			if (!operationId) {
+				continue;
+			}
 
 			const tags = Array.isArray(operation.tags) ? operation.tags : [];
 			const tag = typeof tags[0] === 'string' ? tags[0] : 'Other';
 
-			let handlerModule = handlerCache.get(handlerPath);
-			if (!handlerModule) {
-				try {
-					// The `.js` extension is required: under NodeNext, `await import()` is emitted
-					// as a native dynamic import, which (unlike `require`) does no extension guessing.
-					// The spec's handler paths are extensionless, so append it here.
-					const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
-					const imported: unknown = await import(fullHandlerPath);
-					if (!isRecord(imported)) continue;
-					// Handlers use `export = xHandlers`, which surfaces as `.default`
-					// under both tsc's CJS downleveling and Vitest's Vite interop.
-					const loaded = isRecord(imported.default) ? imported.default : imported;
-					if (!isRecord(loaded)) continue;
-					handlerModule = loaded;
-					handlerCache.set(handlerPath, handlerModule);
-				} catch {
-					continue;
+			let eovHandlerScope: ApiKeyScope | undefined;
+			if (hasEovHandler) {
+				let handlerModule = handlerCache.get(handlerPath);
+				if (!handlerModule) {
+					try {
+						const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
+						const imported: unknown = await import(fullHandlerPath);
+						if (!isRecord(imported)) continue;
+						const loaded = isRecord(imported.default) ? imported.default : imported;
+						if (!isRecord(loaded)) continue;
+						handlerModule = loaded;
+						handlerCache.set(handlerPath, handlerModule);
+					} catch {
+						continue;
+					}
 				}
+
+				const middlewareChain = handlerModule[eovOperationId];
+				eovHandlerScope = Array.isArray(middlewareChain)
+					? extractScopeFromEovHandlerChain(middlewareChain)
+					: undefined;
 			}
 
-			const middlewareChain = handlerModule[operationId];
-			const scope = Array.isArray(middlewareChain)
-				? extractScopeFromHandler(middlewareChain)
-				: null;
-
-			const requestSchema = extractRequestSchema(operation);
+			const implemented = resolvePublicApiImplementedScope(
+				controllerScopes,
+				method,
+				pathKey,
+				eovHandlerScope,
+			);
 
 			endpoints.push({
 				method: method.toUpperCase(),
 				path: `/api/v1${pathKey}`,
 				operationId,
 				tag,
-				scope,
-				requestSchema,
+				scope: (implemented as ApiKeyScope | undefined) ?? null,
+				requestSchema: extractRequestSchema(operation),
 			});
 		}
 	}
@@ -187,7 +194,6 @@ export async function buildDiscoverResponse(
 
 		resources[resourceKey].endpoints.push(entry);
 
-		// Extract operation name from scope (e.g. 'workflow:read' → 'read')
 		const operation = ep.scope?.split(':')[1];
 		if (operation && !resources[resourceKey].operations.includes(operation)) {
 			resources[resourceKey].operations.push(operation);

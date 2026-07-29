@@ -38,7 +38,9 @@
 						}
 					]
 				}
-			]
+			],
+			"transcriptPerRun": [null],
+			"buildErrorPerRun": [null]
 		},
 		{
 			"name": "build me something",
@@ -69,7 +71,9 @@
 						}
 					]
 				}
-			]
+			],
+			"transcriptPerRun": [null],
+			"buildErrorPerRun": ["TimeoutError: The operation was aborted due to timeout"]
 		}
 	]
 }

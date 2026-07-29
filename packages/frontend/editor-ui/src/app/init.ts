@@ -24,7 +24,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { getPersonalizedNodeTypes } from '@/features/settings/users/users.utils';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useI18n } from '@n8n/i18n';
@@ -135,12 +134,11 @@ export async function initializeAuthenticatedFeatures(
 	usersStore.registerModalOpeners(modalOpeners);
 	versionsStore.registerModalOpeners(modalOpeners);
 
-	// Provide the app-side capabilities `users.store` no longer imports directly
-	// after moving into `@n8n/stores` (RBAC check + survey-to-node-types mapping).
+	// Provide the app-side capability `users.store` no longer imports directly
+	// after moving into `@n8n/stores` (RBAC check).
 	usersStore.setPermissionsResolvers({
 		listUsers: () => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }),
 	});
-	usersStore.setNodeTypesResolver(getPersonalizedNodeTypes);
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);

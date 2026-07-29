@@ -72,4 +72,42 @@ describe('ApiKeyTable', () => {
 		expect(emitted('edit')).toEqual([[own]]);
 		expect(emitted('revoke')).toBeUndefined();
 	});
+
+	it('emits open-scopes, not edit, when the scopes count is clicked', async () => {
+		const key = makeKey();
+
+		const { emitted } = renderComponent(ApiKeyTable, {
+			props: {
+				apiKeys: [key],
+				itemsLength: 1,
+				currentUserId: 'u1',
+			},
+		});
+
+		await fireEvent.click(screen.getByTestId('api-key-scopes-cell'));
+
+		expect(emitted('open-scopes')).toEqual([[key]]);
+		// @click.stop on the cell: the row's edit handler must not also fire.
+		expect(emitted('edit')).toBeUndefined();
+	});
+
+	it('toggles the Owner column when showOwner changes after mount', async () => {
+		// Tab switches flip showOwner at runtime, so the column set must be reactive
+		// (regression test for N8nDataTableServer receiving columns as a static array).
+		const { rerender } = renderComponent(ApiKeyTable, {
+			props: {
+				apiKeys: [makeKey()],
+				itemsLength: 1,
+				currentUserId: 'u1',
+			},
+		});
+
+		expect(screen.getByText('Owner')).toBeInTheDocument();
+		expect(screen.getAllByTestId('api-key-owner-cell')).toHaveLength(1);
+
+		await rerender({ showOwner: false });
+
+		expect(screen.queryByText('Owner')).toBeNull();
+		expect(screen.queryAllByTestId('api-key-owner-cell')).toHaveLength(0);
+	});
 });

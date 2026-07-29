@@ -279,6 +279,27 @@ describe('SettingsApiView', () => {
 		expect(screen.getByText(/Revoke "test-key-1" API key/)).toBeInTheDocument();
 	});
 
+	it('opens the scopes modal when the scopes count is clicked', async () => {
+		settingsStore.isPublicApiEnabled = true;
+		cloudStore.userIsTrialing = false;
+		apiKeysStore.apiKeys = [
+			makeKey({ id: '1', label: 'test-key-1', scopes: ['user:create', 'workflow:read'] }),
+		];
+		apiKeysStore.allCount = 1;
+		apiKeysStore.mineCount = 1;
+		apiKeysStore.totalMineCount = 1;
+		apiKeysStore.totalAllCount = 1;
+
+		renderComponent(SettingsApiView);
+
+		await fireEvent.click(screen.getByTestId('api-key-scopes-cell'));
+
+		// The dialog renders via a portal; its title interpolates the key label.
+		expect(await screen.findByText('test-key-1 scopes')).toBeInTheDocument();
+		expect(screen.getByText('user:create')).toBeInTheDocument();
+		expect(screen.getByText('workflow:read')).toBeInTheDocument();
+	});
+
 	describe('rotation', () => {
 		const singleOwnedKey = (overrides: Partial<ApiKey> = {}) => {
 			settingsStore.isPublicApiEnabled = true;
@@ -464,6 +485,37 @@ describe('SettingsApiView', () => {
 			await fireEvent.click(screen.getByText('Mine'));
 
 			expect(track).not.toHaveBeenCalledWith('User viewed all API keys');
+		});
+
+		it('hides the Owner column on the Mine tab', () => {
+			settingsStore.isPublicApiEnabled = true;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 2;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+			apiKeysStore.ownership = 'mine';
+
+			renderComponent(SettingsApiView);
+
+			// Ownership is implied on "Mine": no Owner header, no owner cells.
+			expect(screen.queryByText('Owner')).toBeNull();
+			expect(screen.queryAllByTestId('api-key-owner-cell')).toHaveLength(0);
+		});
+
+		it('shows the Owner column on the All tab', () => {
+			settingsStore.isPublicApiEnabled = true;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 2;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+			apiKeysStore.ownership = 'all';
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.getByText('Owner')).toBeInTheDocument();
+			expect(screen.getAllByTestId('api-key-owner-cell')).toHaveLength(1);
 		});
 	});
 

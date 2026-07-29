@@ -102,6 +102,16 @@ be a direct agent tool or a workflow tool:
   reusable, manually callable, or usable outside the agent. Build the workflow
   first, pass it to `build-agent` via `workflowContext`, and set
   `embeds_other: true`.
+- Create required **data tables** via `data-table-manager` → `data-tables`
+  before `build-agent` when the agent will store or query tabular data — the
+  builder cannot create tables.
+- Before the first `build-agent` call, create every prerequisite the builder
+  cannot: required data tables and any workflow tools the agent will invoke.
+  Pass built workflows in `workflowContext` and list every prerequisite
+  name/schema in `message`. Then let the builder gather remaining agent-specific
+  requirements (model, credentials, integrations).
+- If a `builderReply` lists missing workflows or tables, create them and call
+  `build-agent` again — never ask the user to create them manually.
 
 Count the nodes required inside one tool invocation, not the total number of
 tools on the agent. For example, looking up and inserting Data Table rows are

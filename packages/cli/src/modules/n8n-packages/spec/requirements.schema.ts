@@ -19,6 +19,12 @@ export const packageWorkflowRequirementSchema = z.object({
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
 });
 
+export const packageTagRequirementSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	usedByWorkflows: z.array(z.string().min(1)).min(1),
+});
+
 // Node types used by the packaged workflows, folded into unique
 // `(type, typeVersion)` pairs. Informational/derived only: import re-derives
 // node type usage from workflow content and never trusts this section.
@@ -84,6 +90,10 @@ export const packageRequirementsSchema = z.object({
 		.superRefine((variables, ctx) =>
 			assertNoDuplicateKey(variables, ({ name }) => name, 'variable name', ctx),
 		),
+	tags: z
+		.array(packageTagRequirementSchema)
+		.optional()
+		.superRefine((tags, ctx) => assertNoDuplicateKey(tags, ({ id }) => id, 'tag id', ctx)),
 	nodeTypes: z
 		.array(packageNodeTypeRequirementSchema)
 		.optional()
@@ -100,6 +110,7 @@ export const packageRequirementsSchema = z.object({
 export type PackageCredentialRequirement = z.infer<typeof packageCredentialRequirementSchema>;
 export type PackageDataTableRequirement = z.infer<typeof packageDataTableRequirementSchema>;
 export type PackageWorkflowRequirement = z.infer<typeof packageWorkflowRequirementSchema>;
+export type PackageTagRequirement = z.infer<typeof packageTagRequirementSchema>;
 export type PackageVariableRequirement = z.infer<typeof packageVariableRequirementSchema>;
 export type PackageNodeTypeRequirement = z.infer<typeof packageNodeTypeRequirementSchema>;
 export type PackageRequirements = z.infer<typeof packageRequirementsSchema>;

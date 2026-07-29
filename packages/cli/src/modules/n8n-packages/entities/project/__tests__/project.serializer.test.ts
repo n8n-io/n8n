@@ -12,6 +12,7 @@ describe('ProjectSerializer', () => {
 		type: 'team',
 		description: null,
 		icon: null,
+		customTelemetryTags: [],
 	});
 
 	it('should serialize a project with only id and name when no optional fields', () => {
@@ -43,6 +44,32 @@ describe('ProjectSerializer', () => {
 			name: 'billing',
 			icon: { type: 'emoji', value: 'receipt' },
 		});
+	});
+
+	it('should include customTelemetryTags when non-empty', () => {
+		const project = {
+			...baseProject,
+			customTelemetryTags: [
+				{ key: 'team', value: 'ligo' },
+				{ key: 'env', value: 'prod' },
+			],
+		};
+		const result = serializer.serialize(project as Project);
+
+		expect(result).toEqual({
+			id: '550e8400-e29b-41d4-a716-446655440000',
+			name: 'billing',
+			customTelemetryTags: [
+				{ key: 'team', value: 'ligo' },
+				{ key: 'env', value: 'prod' },
+			],
+		});
+	});
+
+	it('should omit customTelemetryTags when empty', () => {
+		const result = serializer.serialize(baseProject);
+
+		expect(result).not.toHaveProperty('customTelemetryTags');
 	});
 
 	it('should omit timestamps and relations', () => {
