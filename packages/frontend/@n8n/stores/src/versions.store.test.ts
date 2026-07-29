@@ -1,5 +1,6 @@
 import type { IVersionNotificationSettings } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@n8n/frontend-constants/versions';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import type { Version, WhatsNewArticle, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
@@ -10,7 +11,6 @@ import type { ModalOpeners } from './modalOpeners';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from './useRootStore';
 import { useUsersStore } from './users.store';
-import { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from './versions.constants';
 import { useVersionsStore } from './versions.store';
 
 vi.mock('@n8n/composables/useToast', () => {

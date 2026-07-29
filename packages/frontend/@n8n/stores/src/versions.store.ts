@@ -2,6 +2,12 @@ import type { IVersionNotificationSettings } from '@n8n/api-types';
 import { useStorage } from '@n8n/composables/useStorage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
+import {
+	LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT,
+	LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES,
+	VERSIONS_MODAL_KEY,
+	WHATS_NEW_MODAL_KEY,
+} from '@n8n/frontend-constants/versions';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import type { Version, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
 import { jsonParse } from 'n8n-workflow';
@@ -13,12 +19,6 @@ import type { ModalOpeners } from './modalOpeners';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from './useRootStore';
 import { useUsersStore } from './users.store';
-import {
-	LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT,
-	LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES,
-	VERSIONS_MODAL_KEY,
-	WHATS_NEW_MODAL_KEY,
-} from './versions.constants';
 
 type SetVersionParams = { versions: Version[]; currentVersion: string };
 

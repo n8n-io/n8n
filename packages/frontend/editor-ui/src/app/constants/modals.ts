@@ -29,9 +29,9 @@ export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
 export const STOP_MANY_EXECUTIONS_MODAL_KEY = 'stopManyExecutions';
 export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
-// Owned by `versions.store` in `@n8n/stores`; re-exported here so app-side
+// Shared with `versions.store` in `@n8n/stores`; re-exported here so app-side
 // modal registration and openers keep resolving from `@/app/constants`. (N8N-70)
-export { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@n8n/stores/versions.constants';
+export { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@n8n/frontend-constants/versions';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
 export const AI_GATEWAY_TOP_UP_MODAL_KEY = 'aiGatewayTopUp';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
