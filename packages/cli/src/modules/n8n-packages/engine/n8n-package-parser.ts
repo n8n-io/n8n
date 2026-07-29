@@ -140,14 +140,7 @@ export class N8nPackageParser {
 		};
 	}
 
-	/**
-	 * Node groups are cosmetic, so a package whose groups don't hold together
-	 * imports without them rather than failing outright.
-	 *
-	 * This runs the same rules the save path applies (hence the node-type
-	 * resolver, which the trigger-node rule needs) — a group this drops would
-	 * otherwise fail the whole package in `WorkflowCreationService`.
-	 */
+	/** Drops groups that wouldn't survive the save path, so they can't fail the whole import. */
 	private normalizeNodeGroups(entity: WorkflowEntity, path: string): void {
 		try {
 			WorkflowHelpers.validateWorkflowNodeGroups(
