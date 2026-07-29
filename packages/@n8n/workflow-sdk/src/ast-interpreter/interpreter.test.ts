@@ -1050,6 +1050,95 @@ describe('AST Interpreter', () => {
 		});
 	});
 
+	describe('Array safe methods', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		it('should allow join on an array literal', () => {
+			const code = 'export default ["a", "b", "c"].join(", ");';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toBe('a, b, c');
+		});
+
+		it('should allow join without a separator', () => {
+			const code = 'export default [1, 2, 3].join();';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toBe('1,2,3');
+		});
+
+		it('should allow join on a variable holding an array', () => {
+			const code = 'const lines = ["first", "second"]; export default lines.join("\\n");';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toBe('first\nsecond');
+		});
+
+		it('should allow concat', () => {
+			const code = 'export default ["a"].concat(["b", "c"]);';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should allow slice', () => {
+			const code = 'export default [1, 2, 3, 4].slice(1, 3);';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toEqual([2, 3]);
+		});
+
+		it('should allow flat', () => {
+			const code = 'export default [["a"], ["b"]].flat();';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toEqual(['a', 'b']);
+		});
+
+		it('should allow includes and indexOf', () => {
+			expect(interpretSDKCode('export default ["x", "y"].includes("y");', sdkFunctions)).toBe(true);
+			expect(interpretSDKCode('export default ["x", "y"].indexOf("y");', sdkFunctions)).toBe(1);
+		});
+
+		it('should not mutate the original array via concat', () => {
+			const code = 'const base = ["a"]; const extended = base.concat(["b"]); export default base;';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toEqual(['a']);
+		});
+
+		it('should still reject mutating array methods', () => {
+			expect(() => interpretSDKCode('export default [1, 2].push(3);', sdkFunctions)).toThrow(
+				SecurityError,
+			);
+			expect(() => interpretSDKCode('export default [1, 2].reverse();', sdkFunctions)).toThrow(
+				SecurityError,
+			);
+		});
+
+		it('should still reject callback-taking array methods', () => {
+			const code = 'const names = ["a", "b"]; export default names.map(n => n);';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject join on non-array values', () => {
+			const code = "const wf = workflow('id', 'name'); export default wf.join(', ');";
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('names the safe string and array methods in the disallowed-method error', () => {
+			let caught: unknown;
+			try {
+				interpretSDKCode('export default ["a", "b"].map("x");', sdkFunctions);
+			} catch (error) {
+				caught = error;
+			}
+			expect(caught).toBeInstanceOf(SecurityError);
+			const message = (caught as SecurityError).message;
+			expect(message).toContain("Method 'map' is not an allowed SDK method");
+			expect(message).toContain('.join()');
+			expect(message).toContain('.trim()');
+			expect(message).toContain('JSON.stringify');
+		});
+	});
+
 	describe('expr(placeholder(...)) round-trip', () => {
 		it('prepends = to the placeholder marker so it parses as an n8n expression', () => {
 			const funcs: SDKFunctions = {

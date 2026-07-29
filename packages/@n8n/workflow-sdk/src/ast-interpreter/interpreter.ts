@@ -22,6 +22,9 @@ import {
 	allowedMethodNames,
 	getSafeJSONMethod,
 	getSafeStringMethod,
+	getSafeArrayMethod,
+	SAFE_STRING_METHOD_NAMES,
+	SAFE_ARRAY_METHOD_NAMES,
 } from './validators';
 
 /**
@@ -268,6 +271,13 @@ class SDKInterpreter {
 				return safeStringMethod(...args);
 			}
 
+			// Handle safe array methods (e.g. ['a', 'b'].join(', '))
+			const safeArrayMethod = getSafeArrayMethod(thisArg, methodName);
+			if (safeArrayMethod) {
+				const args = node.arguments.map((arg) => this.evaluate(arg));
+				return safeArrayMethod(...args);
+			}
+
 			// Validate method name against allowlist
 			if (!isAllowedMethod(methodName)) {
 				throw new SecurityError(
@@ -276,8 +286,10 @@ class SDKInterpreter {
 					this.sourceCode,
 					`Method '${methodName}' is not an allowed SDK method. ` +
 						`Allowed methods: ${allowedMethodNames().join(', ')}. ` +
-						'Native array/string methods are not available in SDK code; ' +
-						'use a Code node or an n8n expression for runtime logic.',
+						'The only native methods available are JSON.stringify, ' +
+						`the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `.${n}()`).join(', ')} ` +
+						`and the array methods ${SAFE_ARRAY_METHOD_NAMES.map((n) => `.${n}()`).join(', ')}; ` +
+						'for other runtime logic use a Code node or an n8n expression.',
 				);
 			}
 

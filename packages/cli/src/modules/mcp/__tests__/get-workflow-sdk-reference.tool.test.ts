@@ -4,6 +4,7 @@ import {
 	NODE_GROUPS_REFERENCE,
 	WORKFLOW_PATTERNS_DETAILED,
 	WORKFLOW_SDK_PATTERNS,
+	buildSdkLanguageReference,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
 import { Telemetry } from '@/telemetry';
@@ -50,6 +51,52 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 		expect(content).toContain('<zero_item_safety>');
 		expect(content).toContain('## Workflow Patterns Detailed');
 		expect(content).toContain('output: [{}]');
+	});
+
+	describe('language section', () => {
+		test('returns the SDK language reference for section="language"', () => {
+			const content = getSdkReferenceContent('language');
+
+			expect(content).toContain('restricted subset of TypeScript');
+			expect(content).toContain('## Forbidden constructs');
+			expect(content).toContain('Arrow functions are not allowed');
+			expect(content).toContain('## Global objects are unavailable');
+		});
+
+		test('includes the language reference in the full reference', () => {
+			const content = getSdkReferenceContent('all');
+
+			expect(content).toContain('restricted subset of TypeScript');
+			expect(content).toContain('## Forbidden constructs');
+		});
+
+		test('embeds the groups docs only via the flag-gated groups section, never twice', () => {
+			const withGroups = getSdkReferenceContent(undefined, { includeGroups: true });
+			expect(withGroups.split('## Node groups')).toHaveLength(2);
+
+			const withoutGroups = getSdkReferenceContent(undefined, { includeGroups: false });
+			expect(withoutGroups).not.toContain('## Node groups');
+		});
+
+		test('serves the groups docs inside section="language" only when enabled', () => {
+			expect(getSdkReferenceContent('language', { includeGroups: true })).toBe(
+				buildSdkLanguageReference({ includeGroups: true }),
+			);
+			expect(getSdkReferenceContent('language', { includeGroups: false })).toBe(
+				buildSdkLanguageReference({ includeGroups: false }),
+			);
+		});
+
+		test('the tool accepts section="language" and serves the language reference', async () => {
+			const tool = createGetWorkflowSdkReferenceTool(user, telemetry, {
+				canvasGroupsEnabled: false,
+			});
+
+			expect(tool.config.inputSchema?.section.safeParse('language').success).toBe(true);
+
+			const result = await tool.handler({ section: 'language' }, {} as never);
+			expect(result.structuredContent?.reference).toContain('restricted subset of TypeScript');
+		});
 	});
 
 	test('accepts patterns_detailed as a tool section', async () => {
