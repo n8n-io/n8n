@@ -18,6 +18,7 @@ import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
 	IContextObject,
+	ICredentialsDisplayOptions,
 	INode,
 	INodeCredentialDescription,
 	INodeIssueObjectProperty,
@@ -2138,4 +2139,70 @@ export function nodeHasOutputType(nodeType: INodeTypeDescription, connectionType
 		}
 		return output.type === connectionType;
 	});
+}
+
+/**
+ * Node parameters to write so a credential's `displayOptions.show` is satisfied,
+ * i.e. it becomes the active slot (e.g. `{ authentication: ['apiKey'] }` →
+ * `{ authentication: 'apiKey' }`). `@version` is not a settable parameter (it
+ * gates the node's typeVersion), so it's excluded here — version reachability is
+ * enforced by `resolveSupportedCredentialActivation` via `displayParameter`.
+ *
+ * The first `show` value is only a switching fallback, not a canonical
+ * assignment: a credential can be shown by several values, so callers must not
+ * apply these parameters when the credential is already active.
+ */
+export function getCredentialActivationParameters(
+	displayOptions: ICredentialsDisplayOptions | undefined,
+): INodeParameters {
+	const parameters: INodeParameters = {};
+	const show = displayOptions?.show;
+	if (!show) return parameters;
+
+	for (const [name, values] of Object.entries(show)) {
+		if (name === '@version') continue;
+		const value = values?.[0];
+		if (value !== undefined && value !== null) {
+			parameters[name] = value;
+		}
+	}
+	return parameters;
+}
+
+/**
+ * Resolve the credential type a node should use for an n8n-credits (managed)
+ * credential and the parameters that activate it. Prefers `preferredType`, else
+ * the first supported declared type. A candidate that is already active under
+ * the node's current parameters is returned with no parameter changes, so an
+ * already-valid value (e.g. the second entry of a multi-value `show` clause) is
+ * never overwritten. Candidates whose display condition the node can't satisfy
+ * (e.g. version-gated by `@version`) are skipped; returns `undefined` when none
+ * qualifies.
+ */
+export function resolveSupportedCredentialActivation(
+	nodeTypeDescription: INodeTypeDescription,
+	node: Pick<INode, 'typeVersion' | 'parameters'>,
+	isSupported: (credentialType: string) => boolean,
+	preferredType?: string,
+): { credentialType: string; parameters: INodeParameters } | undefined {
+	const credentials = nodeTypeDescription.credentials ?? [];
+	const ordered = preferredType
+		? [
+				...credentials.filter((cred) => cred.name === preferredType),
+				...credentials.filter((cred) => cred.name !== preferredType),
+			]
+		: credentials;
+
+	for (const cred of ordered) {
+		if (!isSupported(cred.name)) continue;
+		if (displayParameter(node.parameters, cred, node, nodeTypeDescription)) {
+			return { credentialType: cred.name, parameters: {} };
+		}
+		const parameters = getCredentialActivationParameters(cred.displayOptions);
+		const activatedValues = { ...node.parameters, ...parameters };
+		if (displayParameter(activatedValues, cred, node, nodeTypeDescription)) {
+			return { credentialType: cred.name, parameters };
+		}
+	}
+	return undefined;
 }

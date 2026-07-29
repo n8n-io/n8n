@@ -1,7 +1,11 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { INode, INodeParameters, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	getCredentialActivationParameters,
+	resolveSupportedCredentialActivation,
+} from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
@@ -16,6 +20,71 @@ import { MCP_CREDENTIALS_AUTOASSIGN_EVENT } from '../../mcp.constants';
 
 /** Display name written into AI Gateway-managed credential sentinels. User-facing brand. */
 const AI_GATEWAY_CREDENTIAL_NAME = 'n8n credits';
+
+/**
+ * Attach the n8n-credits (managed) sentinel to `credentialType` and, when that
+ * credential isn't already the active slot, switch the node's parameters so it
+ * becomes one. Auth is tied to the managed assignment here so the two can never
+ * drift — every managed assignment goes through this function. An already-active
+ * slot is left untouched: a credential can be shown by several parameter values,
+ * and rewriting a valid value with the first `show` entry would change what the
+ * node does.
+ */
+function setManagedCredential(
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription,
+	credentialType: string,
+	resolvedParameters: INodeParameters,
+): void {
+	node.credentials = node.credentials ?? {};
+	node.credentials[credentialType] = {
+		id: null,
+		name: AI_GATEWAY_CREDENTIAL_NAME,
+		__aiGatewayManaged: true,
+	};
+	const credentialDescription = nodeTypeDescription.credentials?.find(
+		(cred) => cred.name === credentialType,
+	);
+	if (
+		credentialDescription &&
+		!NodeHelpers.displayParameter(
+			resolvedParameters,
+			credentialDescription,
+			node,
+			nodeTypeDescription,
+		)
+	) {
+		node.parameters = {
+			...node.parameters,
+			...getCredentialActivationParameters(credentialDescription.displayOptions),
+		};
+	}
+}
+
+/** `setManagedCredential` plus the assignment/outcome bookkeeping shared by both assign sites. */
+function assignAiGatewayCredential(
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription,
+	credentialType: string,
+	resolvedParameters: INodeParameters,
+	assignments: CredentialAssignment[],
+	outcomes: SlotOutcome[],
+): void {
+	setManagedCredential(node, nodeTypeDescription, credentialType, resolvedParameters);
+	assignments.push({
+		nodeName: node.name,
+		credentialName: AI_GATEWAY_CREDENTIAL_NAME,
+		credentialType,
+		source: 'aiGateway',
+	});
+	outcomes.push({
+		nodeName: node.name,
+		credentialType,
+		source: 'aiGateway',
+		hadUserCredential: false,
+		aiGatewayAvailable: true,
+	});
+}
 
 export interface CredentialAssignment {
 	nodeName: string;
@@ -86,8 +155,13 @@ export function reconcileAiGatewayMarkers(
 		);
 		if (markerTypes.length === 0) continue;
 
-		const nodeParameters = aiGatewayConfig ? resolveNodeParameters(node, nodeTypes) : undefined;
-		if (!aiGatewayConfig || !nodeParameters) {
+		const nodeTypeDescription = aiGatewayConfig
+			? resolveNodeTypeDescription(node, nodeTypes)
+			: undefined;
+		const nodeParameters = nodeTypeDescription
+			? resolveNodeParameters(node, nodeTypeDescription)
+			: undefined;
+		if (!aiGatewayConfig || !nodeTypeDescription || !nodeParameters) {
 			for (const credentialType of markerTypes) delete credentials[credentialType];
 			continue;
 		}
@@ -96,11 +170,7 @@ export function reconcileAiGatewayMarkers(
 			if (
 				checkAiGatewayEligibility(node, credentialType, aiGatewayConfig, nodeParameters).eligible
 			) {
-				credentials[credentialType] = {
-					id: null,
-					name: AI_GATEWAY_CREDENTIAL_NAME,
-					__aiGatewayManaged: true,
-				};
+				setManagedCredential(node, nodeTypeDescription, credentialType, nodeParameters);
 			} else {
 				delete credentials[credentialType];
 			}
@@ -108,14 +178,20 @@ export function reconcileAiGatewayMarkers(
 	}
 }
 
-/** Resolves a node's parameters with defaults applied, or `undefined` if its type can't be resolved. */
-function resolveNodeParameters(node: INode, nodeTypes: NodeTypes): INodeParameters | undefined {
-	let description: INodeTypeDescription;
+/** Resolves a node's type description, or `undefined` if its type can't be resolved. */
+function resolveNodeTypeDescription(
+	node: INode,
+	nodeTypes: NodeTypes,
+): INodeTypeDescription | undefined {
 	try {
-		description = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
 	} catch {
 		return undefined;
 	}
+}
+
+/** Resolves a node's parameters with defaults applied so displayOptions can be evaluated. */
+function resolveNodeParameters(node: INode, description: INodeTypeDescription): INodeParameters {
 	return (
 		NodeHelpers.getNodeParameters(
 			description.properties,
@@ -256,27 +332,51 @@ export async function autoPopulateNodeCredentials(
 					nodeParametersWithDefaults,
 				);
 				if (eligibility.eligible) {
-					node.credentials = node.credentials ?? {};
-					node.credentials[credDesc.name] = {
-						id: null,
-						name: AI_GATEWAY_CREDENTIAL_NAME,
-						__aiGatewayManaged: true,
-					};
-					assignments.push({
-						nodeName: node.name,
-						credentialName: AI_GATEWAY_CREDENTIAL_NAME,
-						credentialType: credDesc.name,
-						source: 'aiGateway',
-					});
-					outcomes.push({
-						nodeName: node.name,
-						credentialType: credDesc.name,
-						source: 'aiGateway',
-						hadUserCredential: false,
-						aiGatewayAvailable: true,
-					});
+					assignAiGatewayCredential(
+						node,
+						nodeTypeDescription,
+						credDesc.name,
+						nodeParametersWithDefaults,
+						assignments,
+						outcomes,
+					);
 					continue;
 				}
+
+				// The shown credential type isn't covered by n8n credits, but the node's
+				// default auth pointing at an unsupported type shouldn't block it: fall
+				// back to a supported sibling type (with no explicit credential on the
+				// node and no stored user credential), assigning the managed sentinel and
+				// switching auth to match. Only reachable with no user credential on this
+				// slot — the branch above returns.
+				if (eligibility.reason === 'credentialTypeNotCovered') {
+					const activation = resolveSupportedCredentialActivation(
+						nodeTypeDescription,
+						{ typeVersion: node.typeVersion, parameters: nodeParametersWithDefaults },
+						(credentialType) =>
+							credentialType !== credDesc.name &&
+							!node.credentials?.[credentialType]?.id &&
+							!credentialsByType.get(credentialType)?.length &&
+							checkAiGatewayEligibility(
+								node,
+								credentialType,
+								aiGatewayConfig,
+								nodeParametersWithDefaults,
+							).eligible,
+					);
+					if (activation) {
+						assignAiGatewayCredential(
+							node,
+							nodeTypeDescription,
+							activation.credentialType,
+							nodeParametersWithDefaults,
+							assignments,
+							outcomes,
+						);
+						continue;
+					}
+				}
+
 				outcomes.push({
 					nodeName: node.name,
 					credentialType: credDesc.name,
