@@ -867,6 +867,8 @@ For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-ev
 
 `lanes` / `eval-concurrency` default to **10 / 32** (Anthropic-sized). For `baseten/*` models they auto-throttle to **1 / 2** (~0.5M TPM / ~12 RPM — fits [Baseten Basic verified](https://docs.baseten.co/inference/model-apis/rate-limits-and-budgets) 500k TPM / 120 RPM); override the inputs to raise them if your workspace has Pro/Enterprise headroom.
 
+For **Azure Foundry Claude** (Anthropic-compatible), also set `model-url` to the Foundry base (e.g. `https://<resource>.services.ai.azure.com/anthropic`) and use `anthropic/<deployment-name>` as `model`. Lanes authenticate with `EVALS_AZURE_FOUNDRY_KEY`; the eval CLI verifier/mocks keep `EVALS_ANTHROPIC_KEY`.
+
 ## Architecture
 
 ```

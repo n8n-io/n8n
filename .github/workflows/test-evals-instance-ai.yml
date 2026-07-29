@@ -59,7 +59,12 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY.'
+        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY. With model-url (Azure Foundry Anthropic): EVALS_AZURE_FOUNDRY_KEY.'
+        required: false
+        type: string
+        default: ''
+      model-url:
+        description: 'Optional Anthropic-compatible base URL for lane backends (e.g. https://<resource>.services.ai.azure.com/anthropic). When set, lanes use EVALS_AZURE_FOUNDRY_KEY and N8N_INSTANCE_AI_MODEL_URL. Eval CLI verifier/mocks keep EVALS_ANTHROPIC_KEY.'
         required: false
         type: string
         default: ''
@@ -104,7 +109,11 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, anthropic/claude-opus-4-8 (+ model-url for Azure Foundry), openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct.'
+        required: false
+        default: ''
+      model-url:
+        description: 'Optional Anthropic-compatible base URL (e.g. https://<resource>.services.ai.azure.com/anthropic for Azure Foundry). When set, lanes use EVALS_AZURE_FOUNDRY_KEY. Leave empty for provider defaults.'
         required: false
         default: ''
       lanes:
@@ -190,6 +199,7 @@ jobs:
           EVALS_XAI_KEY: ${{ secrets.EVALS_XAI_KEY }}
           EVALS_BASETEN_KEY: ${{ secrets.EVALS_BASETEN_KEY }}
           EVALS_FIREWORKS_KEY: ${{ secrets.EVALS_FIREWORKS_KEY }}
+          EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
@@ -202,6 +212,7 @@ jobs:
           SANDBOX_NAME_PREFIX: evals-ci-${{ github.head_ref || inputs.branch || github.ref_name }}
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
           INSTANCE_AI_MODEL: ${{ inputs.model }}
+          INSTANCE_AI_MODEL_URL: ${{ inputs.model-url }}
         run: |
           # Build provider-specific env args
           SANDBOX_ARGS=()
@@ -231,11 +242,25 @@ jobs:
           if [ -n "$INSTANCE_AI_MODEL" ]; then
             MODEL_ARGS+=(-e N8N_INSTANCE_AI_MODEL="$INSTANCE_AI_MODEL")
           fi
+          # Anthropic-compatible custom base (Azure Foundry Claude). Drop /v1/messages
+          # if pasted from the Foundry Details "Endpoint" field — the Anthropic SDK
+          # appends /v1/messages itself.
+          if [ -n "$INSTANCE_AI_MODEL_URL" ]; then
+            MODEL_ARGS+=(-e N8N_INSTANCE_AI_MODEL_URL="$INSTANCE_AI_MODEL_URL")
+          fi
 
           # Lane builds use the provider matching N8N_INSTANCE_AI_MODEL.
           # The eval CLI step keeps EVALS_ANTHROPIC_KEY for Sonnet verifier/mocks.
+          # model-url wins over provider-prefix key selection so Azure Foundry
+          # can keep anthropic/<deployment> while authenticating with the Foundry key.
           MODEL_API_KEY="$EVALS_ANTHROPIC_KEY"
-          if [[ "$INSTANCE_AI_MODEL" == openai/* ]]; then
+          if [ -n "$INSTANCE_AI_MODEL_URL" ]; then
+            if [ -z "$EVALS_AZURE_FOUNDRY_KEY" ]; then
+              echo "::error::model-url is set but EVALS_AZURE_FOUNDRY_KEY secret is empty"
+              exit 1
+            fi
+            MODEL_API_KEY="$EVALS_AZURE_FOUNDRY_KEY"
+          elif [[ "$INSTANCE_AI_MODEL" == openai/* ]]; then
             if [ -z "$EVALS_OPENAI_KEY" ]; then
               echo "::error::model is openai/* but EVALS_OPENAI_KEY secret is empty"
               exit 1
@@ -486,6 +511,7 @@ jobs:
           EVALS_XAI_KEY: ${{ secrets.EVALS_XAI_KEY }}
           EVALS_BASETEN_KEY: ${{ secrets.EVALS_BASETEN_KEY }}
           EVALS_FIREWORKS_KEY: ${{ secrets.EVALS_FIREWORKS_KEY }}
+          EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
@@ -497,7 +523,8 @@ jobs:
           # (e.g. N8N_LICENSE_CERT is PEM-encoded) must be masked one line at
           # a time, otherwise only the first line is registered.
           for v in "$EVALS_ANTHROPIC_KEY" "$EVALS_OPENAI_KEY" "$EVALS_OPENROUTER_KEY" \
-                   "$EVALS_XAI_KEY" "$EVALS_BASETEN_KEY" "$EVALS_FIREWORKS_KEY" "$DAYTONA_API_KEY" "$N8N_LICENSE_ACTIVATION_KEY" \
+                   "$EVALS_XAI_KEY" "$EVALS_BASETEN_KEY" "$EVALS_FIREWORKS_KEY" \
+                   "$EVALS_AZURE_FOUNDRY_KEY" "$DAYTONA_API_KEY" "$N8N_LICENSE_ACTIVATION_KEY" \
                    "$N8N_LICENSE_CERT" "$N8N_ENCRYPTION_KEY" "$EVALS_LANGSMITH_API_KEY"; do
             [ -z "$v" ] && continue
             while IFS= read -r line; do
