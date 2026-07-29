@@ -85,11 +85,14 @@ env N8N_DIR="$WORK/b" sh "$SCRIPT" --no-start >/dev/null 2>&1
 [ "$(env_value "$WORK/b" SANDBOX_API_KEYS)" != "$api_key" ] && pass "secrets unique per install" ||
 	fail "secrets unique per install"
 
-# idempotency: re-run leaves files byte-identical
+# idempotency: re-run leaves files byte-identical and tells the user the URL
 before="$(cat "$WORK/a/.env" "$WORK/a/compose.yml")"
-check "re-run on existing install is a no-op" env N8N_DIR="$WORK/a" sh "$SCRIPT"
+rerun_out="$(env N8N_DIR="$WORK/a" sh "$SCRIPT" 2>&1)" && pass "re-run on existing install is a no-op" ||
+	fail "re-run on existing install is a no-op"
 [ "$(cat "$WORK/a/.env" "$WORK/a/compose.yml")" = "$before" ] && pass "re-run leaves files untouched" ||
 	fail "re-run leaves files untouched"
+echo "$rerun_out" | grep -q 'http://localhost:5678' && pass "re-run tells the user where n8n runs" ||
+	fail "re-run tells the user where n8n runs"
 
 # version pinning
 env N8N_DIR="$WORK/pin" sh "$SCRIPT" --version 2.31.4 --no-start >/dev/null 2>&1
@@ -102,6 +105,33 @@ check_not "--upgrade without install fails" env N8N_DIR="$WORK/missing" sh "$SCR
 mkdir -p "$WORK/dirty" && touch "$WORK/dirty/keep"
 check_not "refuses non-empty directory" env N8N_DIR="$WORK/dirty" sh "$SCRIPT"
 check "foreign directory untouched" test -f "$WORK/dirty/keep"
+
+# a pull rate-limit failure must print recovery advice, not a raw error.
+# A fake docker on PATH passes the preflight checks and fails pulls the way
+# Docker Hub's limit does; --upgrade reaches the pull without the port probe.
+env N8N_DIR="$WORK/ratelimit" sh "$SCRIPT" --no-start >/dev/null 2>&1
+mkdir -p "$WORK/shim"
+cat >"$WORK/shim/docker" <<'EOF'
+#!/bin/sh
+case "$1 ${2:-}" in
+"--version ") echo "Docker version 0.0.0-fake, build 0000000" ;;
+"compose version") echo "2.99.0" ;;
+"compose -f")
+	case "$*" in
+	*" up "* | *" pull "*)
+		echo "Error response from daemon: toomanyrequests: You have reached your pull rate limit." >&2
+		exit 1
+		;;
+	esac
+	;;
+esac
+exit 0
+EOF
+chmod +x "$WORK/shim/docker"
+ratelimit_out="$(env PATH="$WORK/shim:$PATH" N8N_DIR="$WORK/ratelimit" sh "$SCRIPT" --upgrade 2>&1)" &&
+	fail "rate-limited run fails" || pass "rate-limited run fails"
+echo "$ratelimit_out" | grep -q 'pull rate limit reached' && pass "rate-limit failure prints recovery advice" ||
+	fail "rate-limit failure prints recovery advice"
 
 # truncated download must execute nothing
 mkdir -p "$WORK/trunc" && cd "$WORK/trunc" || exit 1

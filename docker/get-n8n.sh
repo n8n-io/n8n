@@ -87,14 +87,18 @@ check_deps() {
   Install it first:
     Linux:         https://docs.docker.com/engine/install/
     macOS:         https://docs.docker.com/desktop/setup/install/mac-install/
-    Windows (WSL): https://docs.docker.com/desktop/setup/install/windows-install/"
+    Windows (WSL): https://docs.docker.com/desktop/setup/install/windows-install/
+  Podman, Colima and other Docker-compatible engines work too: install the
+  'docker' CLI with the compose plugin and point DOCKER_HOST at their socket."
 
 	docker compose version >/dev/null 2>&1 || fail "Docker Compose v2 plugin is not available.
   ('docker compose version' failed — the legacy 'docker-compose' binary is not supported.)
   See https://docs.docker.com/compose/install/"
 
-	docker info >/dev/null 2>&1 || fail "The Docker daemon is not running.
-  Start Docker (e.g. open Docker Desktop, or 'sudo systemctl start docker') and re-run."
+	docker info >/dev/null 2>&1 || fail "The Docker daemon is not running (or DOCKER_HOST points at a dead socket).
+  Start Docker (e.g. open Docker Desktop, or 'sudo systemctl start docker') and re-run.
+  Podman/Colima users: make sure the machine/socket is running, e.g.
+  'podman machine start' or 'colima start', and DOCKER_HOST points at it."
 
 	ok "Docker found ($(docker --version | awk '{print $3}' | tr -d ','))"
 	ok "Docker Compose found ($(docker compose version --short 2>/dev/null))"
@@ -261,6 +265,28 @@ compose() {
 	docker compose -f "${N8N_DIR}/compose.yml" "$@"
 }
 
+# For compose commands that pull images: Docker Hub's anonymous pull rate
+# limit is a common first-run failure, so turn it into recovery advice
+# instead of a raw error dump.
+compose_checked() {
+	log="$(mktemp)"
+	if compose "$@" >"$log" 2>&1; then
+		cat "$log"
+		rm -f "$log"
+		return 0
+	fi
+	cat "$log" >&2
+	if grep -qiE 'toomanyrequests|rate ?limit' "$log"; then
+		rm -f "$log"
+		fail "Docker Hub pull rate limit reached — your configuration in ${N8N_DIR} is
+  unaffected. Wait about an hour, then start n8n with:
+    docker compose -f ${N8N_DIR}/compose.yml up -d
+  Or 'docker login' with a Docker Hub account to raise the limit and re-run."
+	fi
+	rm -f "$log"
+	fail "starting n8n failed — check 'docker compose -f ${N8N_DIR}/compose.yml logs'."
+}
+
 do_upgrade() {
 	if [ ! -f "${N8N_DIR}/.env" ] || [ ! -f "${N8N_DIR}/compose.yml" ]; then
 		fail "no existing install found in ${N8N_DIR} — run without --upgrade to install."
@@ -278,8 +304,8 @@ do_upgrade() {
 	fi
 	ok "n8n version: ${current:-unset} -> ${target}"
 
-	compose pull -q
-	compose up -d --quiet-pull
+	compose_checked pull -q
+	compose_checked up -d --quiet-pull
 	ok "Restarted with n8n ${target}"
 }
 
@@ -337,8 +363,13 @@ main() {
 		fi
 		say "Found an existing install in ${N8N_DIR} — leaving it untouched."
 		say ""
-		say "To start:   docker compose -f ${N8N_DIR}/compose.yml up -d"
-		say "To upgrade: curl -fsSL https://get.n8n.io | sh -s -- --upgrade"
+		if http_get "http://127.0.0.1:${N8N_PORT}/healthz"; then
+			say "n8n is already running at: http://localhost:${N8N_PORT}"
+		else
+			say "To start it: docker compose -f ${N8N_DIR}/compose.yml up -d"
+			say "Once started, n8n runs at: http://localhost:${N8N_PORT}"
+		fi
+		say "To upgrade:  curl -fsSL https://get.n8n.io | sh -s -- --upgrade"
 		exit 0
 	fi
 	[ "$UPGRADE" -eq 0 ] || fail "no existing install found in ${N8N_DIR} — run without --upgrade to install."
@@ -367,7 +398,7 @@ main() {
 	fi
 
 	say "Pulling images and starting (this can take a few minutes on first run)..."
-	compose up -d --quiet-pull
+	compose_checked up -d --quiet-pull
 	ok "Started n8n ${INSTALL_VERSION} and sandbox services"
 	wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
 	print_summary
