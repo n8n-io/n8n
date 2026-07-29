@@ -1,8 +1,8 @@
 {
-	"description": "Regression guard sourced from a real debugging thread. The seeded workflow is the PRE-FIX state: the image HTTP Request node points at a site homepage (returns HTML) and passes the prompt as a ?prompt= query param with no file response format, so the downstream Drive upload has no binary to send. Repairing it forces the agent to author a URL whose path carries a dynamic value — the moment it once wrote the opening expression delimiter URL-encoded as %7B%7B, which n8n does not evaluate, so the node fetched the literal template path and uploaded an HTML page as the 'image'. Calibrated 2026-07-29 against master over 3 iterations: all four workflow assertions passed 3/3 and the agent authored the URL correctly (literal {{ }} plus encodeURIComponent) every time, so this is NOT a live capability gap — it locks in correct behaviour. If the %7B%7B assertion ever reds, expression interpolation has regressed. Graded on the built workflow only: process expectations about how the agent narrates its own fix were dropped after measuring 2/3 — the workflow was correct in all three runs, so judging the wording of the summary only added flake to a regression gate.",
+	"description": "Regression guard sourced from a real debugging thread. The seeded workflow is the PRE-FIX state: the image HTTP Request node points at a site homepage (returns HTML) and passes the prompt as a ?prompt= query param with no file response format, so the downstream Drive upload has no binary to send. Repairing it forces the agent to author a URL whose path carries a dynamic value — the moment it once wrote the opening expression delimiter URL-encoded as %7B%7B, which n8n does not evaluate, so the node fetched the literal template path and uploaded an HTML page as the 'image'. Calibration found the agent authors the URL correctly (literal {{ }} plus encodeURIComponent) on every iteration, so this is NOT a live capability gap — it locks in correct behaviour. If the %7B%7B assertion ever reds, expression interpolation has regressed. That assertion is known to discriminate rather than pass vacuously: the sibling case verifies-node-output-not-just-the-endpoint seeds a workflow that still carries %7B%7B, and on iterations where the agent left it in place the same assertion failed. Graded on the built workflow and its scenarios only — process expectations about how the agent narrates its own fix were dropped because they flipped between runs while the workflow was correct every time, which only adds flake to a regression gate.",
 	"conversationSeed": {
 		"source": {
-			"note": "Synthetic, sanitized reconstruction of the pre-fix workflow shape from a real thread. The upstream prompt producer is a Set node emitting a Gemini-shaped object, so the seed needs no LLM credential and the prompt path stays nested ($json.content.parts[0].text). The workflow name is deliberately distinct from the sibling cases' seeds — identically-named seeds in one instance let a concurrent run act on the wrong workflow."
+			"note": "Synthetic, sanitized reconstruction of the pre-fix workflow shape from a real thread. The upstream prompt producer is a Set node emitting a Gemini-shaped object, so the seed needs no LLM credential and the prompt path stays nested ($json.content.parts[0].text). Two deliberate choices: the workflow name is distinct from the sibling cases' seeds, because identically-named seeds in one instance let a concurrent run act on the wrong workflow; and the node names are kept as the source thread had them, which means the unscored descriptive_node_names check will always report failing for this case."
 		},
 		"messages": [
 			{
@@ -22,6 +22,14 @@
 				"type": "llm",
 				"role": "assistant",
 				"content": [
+					{
+						"type": "tool-call",
+						"toolCallId": "tc-seed-img-url-01",
+						"toolName": "build-workflow",
+						"state": "resolved",
+						"input": {},
+						"output": { "success": true, "workflowId": "evalSeedImgUrl01" }
+					},
 					{
 						"type": "text",
 						"text": "Done — the workflow 'Image prompt to Drive' now runs: Analyze video produces the prompt, HTTP Request1 fetches an image for it, and Upload file saves that image to Google Drive."

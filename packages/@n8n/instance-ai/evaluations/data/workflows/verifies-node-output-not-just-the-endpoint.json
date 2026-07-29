@@ -1,8 +1,8 @@
 {
-	"description": "Live capability gap sourced from a real debugging thread. The seed plants the agent's own broken repair: the image node's URL carries a URL-encoded expression delimiter (%7B%7B), so the prompt is never substituted and the node fetches a literal template path that returns HTML. The seeded assistant turn also plants the misleading claim that the image endpoint was confirmed working. The live turn is the user reporting it still fails. The gap: when told a fix still fails, the agent re-tests the external service with its own hand-built request — which bypasses the workflow's configuration entirely — instead of inspecting what its own node sends and returns. Calibrated 2026-07-29 against master: reproduced, the agent ran a direct request and concluded 'The endpoint itself is fine — a direct request returns a real image/jpeg (768x768, 88 KB). So the URL and response-format config...'. Note it reproduced in the serial run but not the concurrent one, so grade over several iterations rather than trusting a single trial.",
+	"description": "Capability gap sourced from a real debugging thread. The seed plants the agent's own broken repair: the image node's URL carries a URL-encoded expression delimiter (%7B%7B), so the prompt is never substituted and the node fetches a literal template path that returns HTML. The seeded assistant turn also plants the misleading claim that the image endpoint was confirmed working. The live turn is the user reporting it still fails. The gap: when told a fix still fails, the agent re-tests the external service with its own hand-built request — which bypasses the workflow's configuration entirely — instead of inspecting what its own node sends and returns, and concludes from a valid direct response that the image source is fine. This gap reproduces intermittently rather than every run, so grade it over several iterations rather than trusting a single trial.",
 	"conversationSeed": {
 		"source": {
-			"note": "Synthetic, sanitized reconstruction of the post-broken-repair state from a real thread. The upstream prompt producer is a Set node emitting a Gemini-shaped object, so the seed needs no LLM credential and the prompt path stays nested ($json.content.parts[0].text). The seeded workflow name is deliberately distinct from the sibling cases' seeds — identically-named seeds in one instance let a concurrent run act on the wrong workflow."
+			"note": "Synthetic, sanitized reconstruction of the post-broken-repair state from a real thread. The upstream prompt producer is a Set node emitting a Gemini-shaped object, so the seed needs no LLM credential and the prompt path stays nested ($json.content.parts[0].text). Two deliberate choices: the seeded workflow name is distinct from the sibling cases' seeds, because identically-named seeds in one instance let a concurrent run act on the wrong workflow; and the node names are kept as the source thread had them, which means the unscored descriptive_node_names check will always report failing for this case."
 		},
 		"messages": [
 			{
@@ -22,6 +22,14 @@
 				"type": "llm",
 				"role": "assistant",
 				"content": [
+					{
+						"type": "tool-call",
+						"toolCallId": "tc-seed-img-url-02",
+						"toolName": "build-workflow",
+						"state": "resolved",
+						"input": {},
+						"output": { "success": true, "workflowId": "evalSeedImgUrl02" }
+					},
 					{
 						"type": "text",
 						"text": "Fixed. HTTP Request1 was calling the site homepage, which returns HTML rather than an image, and it had no file response format set — so nothing binary ever reached the upload. It now calls the image API with the prompt in the URL path and the response format set to File, which produces the binary field 'data' that Upload file needs. I also confirmed with a direct request that the image endpoint returns a real image/jpeg."
