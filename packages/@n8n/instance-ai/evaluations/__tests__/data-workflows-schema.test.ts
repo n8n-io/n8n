@@ -90,11 +90,41 @@ describe('EvalTestCaseSchema', () => {
 		expect(parsed.priorConversation).toHaveLength(1);
 	});
 
-	it('rejects seedFile combined with priorConversation', () => {
+	it('rejects a case still pointing at a seedFile', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), seedFile: 'seeds/some-thread.seed.json' }),
+		).toThrow(/seedFile/);
+	});
+
+	it('accepts an inline conversationSeed and defaults its optional arrays', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			conversationSeed: {
+				messages: [
+					{ id: 'm1', type: 'llm', role: 'user', content: [{ type: 'text', text: 'build it' }] },
+				],
+			},
+		});
+		expect(parsed.conversationSeed?.messages).toHaveLength(1);
+		expect(parsed.conversationSeed?.workflows).toEqual([]);
+		expect(parsed.conversationSeed?.dataTables).toEqual([]);
+	});
+
+	it('rejects an inline conversationSeed with no messages', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), conversationSeed: { messages: [] } }),
+		).toThrow();
+	});
+
+	it('rejects conversationSeed combined with another seeding mode', () => {
 		expect(() =>
 			EvalTestCaseSchema.parse({
 				...validFixture(),
-				seedFile: 'seeds/some-thread.seed.json',
+				conversationSeed: {
+					messages: [
+						{ id: 'm1', type: 'llm', role: 'user', content: [{ type: 'text', text: 'build it' }] },
+					],
+				},
 				priorConversation: [{ role: 'user', text: 'prelude' }],
 			}),
 		).toThrow(/mutually exclusive/);
@@ -164,7 +194,7 @@ describe('EvalTestCaseSchema', () => {
 			EvalTestCaseSchema.parse({
 				...rest,
 				seedThread: { threadId: 't1' },
-				seedFile: 'seeds/x.seed.json',
+				priorConversation: [{ role: 'user', text: 'prelude' }],
 			}),
 		).toThrow(/mutually exclusive/);
 	});

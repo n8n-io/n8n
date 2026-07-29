@@ -154,6 +154,10 @@ export type N8nOAuth2ValidationResult =
 	| { valid: true; user: IUser }
 	| { valid: false; reason: OAuth2FailureReason };
 
+export type N8nOAuth2FlowResult =
+	| { valid: true; token: string; user: IUser; metadata?: Record<string, string> }
+	| { valid: false; reason: string };
+
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
@@ -1166,7 +1170,9 @@ export type CredentialCheckResult = {
 export type DynamicCredentialCheckProxyProvider = {
 	checkCredentialStatus(
 		workflowId: string,
-		executionContext: IExecutionContext,
+		executionContext: {
+			credentials?: string;
+		},
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1174,7 +1180,9 @@ export type CredentialCheckProxyFunctions = {
 	// Optional to account for situations where the dynamic-credentials module is disabled
 	checkCredentialStatus?(
 		workflowId: string,
-		executionContext: IExecutionContext,
+		executionContext: {
+			credentials?: string;
+		},
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1452,7 +1460,58 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	/**
+	 * Identity pipeline for identity-bearing triggers (Form, MCP).
+	 *
+	 * These let a trigger run a workflow as the *caller* — resolving that user's own
+	 * private (per-user) credentials instead of a shared/static credential — by
+	 * proving the caller's n8n identity against the internal Authorization Server (AS)
+	 * and binding it to the execution. The shape is acquire → verify → bind:
+	 *
+	 * - Browser-facing triggers (Form) acquire a token interactively:
+	 *   `beginN8nOAuth2Flow` → (AS redirect) → `completeN8nOAuth2Flow`.
+	 * - Resource-server triggers (MCP) receive a bearer token directly and only
+	 *   `validateN8nOAuth2Token` it.
+	 * - Either way, `establishTriggerIdentity` binds the verified token to the run.
+	 */
+
+	/**
+	 * Starts the interactive authorization-code + PKCE flow against n8n's internal AS
+	 * for `resourceUrl` (the trigger's own protected-resource URL). Returns the
+	 * `/oauth/authorize` URL to redirect the browser to; the AS identifies the
+	 * already-logged-in user from their n8n session (no login prompt for the
+	 * first-party trigger client) and redirects back to the trigger URL with a code.
+	 * Used on the initial GET of a browser-facing trigger. Pair with
+	 * `completeN8nOAuth2Flow`.
+	 *
+	 * Optional `metadata` is stashed server-side against this flow's one-time `state`
+	 * (never sent to the browser) and returned by `completeN8nOAuth2Flow` on success —
+	 * a per-flow slot for carrying data (e.g. the original request query) across the bounce.
+	 */
+	beginN8nOAuth2Flow(resourceUrl: string, metadata?: Record<string, string>): Promise<string>;
+	/**
+	 * Completes the flow started by `beginN8nOAuth2Flow` once the AS redirects back to
+	 * the trigger URL with `?code&state`. Consumes the one-time `state`, verifies PKCE,
+	 * exchanges the code for an access token **server-side** (the code never reaches the
+	 * sandboxed form page), and validates it. Returns the token and resolved user on
+	 * success, or a failure reason.
+	 */
+	completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult>;
+	/**
+	 * Verifies an AS access token against `resourceUrl` (the expected audience) without
+	 * running a redirect flow. Used by resource-server triggers (MCP) that receive a
+	 * bearer token directly, and by browser triggers on the POST leg to re-check the
+	 * token the page presents. Returns validity + resolved user, or a failure reason
+	 * (`invalid_token`, `insufficient_scope`, …).
+	 */
 	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
+	/**
+	 * Binds the verified submitter to the current execution: builds an encrypted
+	 * credential context from `token`/`resource` and threads it into the execution's
+	 * runtime context, so downstream nodes resolve *that user's* per-user credentials.
+	 * Call only after the token is validated. The identity persists for the whole
+	 * execution (including across a Wait), within the token's validity window.
+	 */
 	establishTriggerIdentity(token: string, resource: string): Promise<void>;
 	/**
 	 * Checks the status of the triggering identity's resolvable (private) credentials
@@ -2056,6 +2115,9 @@ export interface INodePropertyOptions {
 	// disabledOptions added for compatibility with INodeProperties and INodeCredentialDescription types
 	// it needs to be implemented, if needed
 	disabledOptions?: undefined;
+	// When set, the option is hidden in the editor unless the matching
+	// `N8N_ENV_FEAT_<envFeatureFlag>` flag is enabled.
+	envFeatureFlag?: Uppercase<string>;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -3452,7 +3514,7 @@ export interface IWorkflowExecutionDataProcess {
 	deduplicationKey?: string;
 	/** W3C trace context extracted from inbound webhook headers. */
 	tracingContext?: { traceparent: string; tracestate?: string };
-	/** Encrypted credential context for a manual editor-triggered execution. */
+	/** Encrypted credential context for a triggered execution. */
 	encryptedRunnerIdentity?: string;
 	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
 	evaluationRunId?: string;
@@ -3543,6 +3605,14 @@ export interface IWorkflowExecuteAdditionalData {
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
+	/**
+	 * Backing implementations for the trigger identity pipeline exposed to nodes on
+	 * `IWebhookFunctions` (see the docs there). Optional here because they are only
+	 * wired in by the CLI webhook layer when the OAuth server is available; the
+	 * context methods throw if a node reaches them while unset.
+	 */
+	beginN8nOAuth2Flow?: (resourceUrl: string, metadata?: Record<string, string>) => Promise<string>;
+	completeN8nOAuth2Flow?: (code: string, state: string) => Promise<N8nOAuth2FlowResult>;
 	validateN8nOAuth2Token?: (
 		token: string,
 		resourceUrl: string,
@@ -3557,7 +3627,9 @@ export interface IWorkflowExecuteAdditionalData {
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
+	formBaseUrl: string;
 	formWaitingBaseUrl: string;
+	formTestBaseUrl: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;

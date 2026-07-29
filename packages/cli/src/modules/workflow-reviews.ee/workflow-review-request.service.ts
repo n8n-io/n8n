@@ -1,5 +1,6 @@
 import type {
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
@@ -11,25 +12,37 @@ import type {
 	GetWorkflowReviewInboxSummaryResponse,
 	WorkflowReviewInboxItem,
 	WorkflowReviewEligibleReviewer,
+	WorkflowReviewRequestDetail,
+	WorkflowReviewRequestWorkflowDetail,
+	WorkflowReviewVersionSnapshot,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	DbLock,
 	DbLockService,
+	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type InboxCursor,
 	type User,
+	type WorkflowHistory,
 	type WorkflowReviewRequest,
 	type WorkflowReviewRequestLinkedWorkflow,
 	type WorkflowReviewRequestReviewer,
+	type WorkflowReviewRequestWorkflowDetailRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import {
+	GLOBAL_ADMIN_ROLE_SLUG,
+	GLOBAL_OWNER_ROLE_SLUG,
+	PROJECT_ADMIN_ROLE_SLUG,
+	hasGlobalScope,
+} from '@n8n/permissions';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
@@ -51,11 +64,13 @@ export class WorkflowReviewRequestService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly userRepository: UserRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
 		private readonly licenseState: LicenseState,
@@ -380,6 +395,138 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
+	 * Decide an open review request: approve (terminal, closes the request) or
+	 * request changes (the request stays open awaiting a new version).
+	 */
+	async decide(
+		user: User,
+		workflowReviewRequestId: string,
+		dto: DecideWorkflowReviewRequestDto,
+	): Promise<WorkflowReviewRequestSummary> {
+		const policy = await this.workflowReviewPolicyService.get();
+		if (!policy.enabled) {
+			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
+		}
+
+		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		if (!request) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const workflowRows =
+			await this.workflowReviewRequestWorkflowRepository.findByRequestId(workflowReviewRequestId);
+		const workflowRow = workflowRows[0];
+		if (!workflowRow) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		// 404 (not 403) so callers without access can't probe which requests exist
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowRow.workflowId,
+			user,
+			['workflow:publish'],
+		);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		this.assertRequestUpdatable(request);
+
+		// Resolved before the lock: this query must not run inside the lock
+		// transaction, where it would need a second pooled connection while the
+		// transaction holds one — a deadlock on a single-connection pool.
+		const hasAdminOverride = await this.hasDecisionAdminOverride(user, request.projectId);
+
+		// Fast path: reject a known author before queueing on the lock.
+		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor({
+			workflowReviewRequestId,
+			userId: user.id,
+		});
+		this.assertDecisionAllowed(isAuthor, hasAdminOverride);
+
+		const { request: saved, pinnedVersionId } = await this.dbLockService.withLock(
+			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			async (tx) => {
+				// Re-check under the lock so a decision can't race a concurrent
+				// version sync (which resets the decision to pending) or another decision.
+				const current = await this.workflowReviewRequestRepository.findById(
+					workflowReviewRequestId,
+					tx,
+				);
+				if (!current) {
+					throw new NotFoundError('Could not find review request');
+				}
+				this.assertRequestUpdatable(current);
+
+				// Re-check authorship here — a sync that won the lock first has
+				// added its syncer to the author set since the pre-lock check, and that
+				// syncer must not be able to decide.
+				const isAuthorNow = await this.workflowReviewRequestAuthorRepository.isAuthor(
+					{ workflowReviewRequestId, userId: user.id },
+					tx,
+				);
+				this.assertDecisionAllowed(isAuthorNow, hasAdminOverride);
+
+				// Re-read the pinned row too: a concurrent sync that won the lock may
+				// have re-pinned, and the summary must reflect the version being decided on.
+				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+					workflowReviewRequestId,
+					tx,
+				);
+				const currentRow = currentRows.find((row) => row.workflowId === workflowRow.workflowId);
+				if (!currentRow) {
+					throw new NotFoundError('Could not find review request');
+				}
+
+				current.decision = dto.decision;
+				current.updatedById = user.id;
+				if (dto.decision === 'approved') {
+					current.state = 'closed';
+					current.closedById = user.id;
+					current.approvedAt = new Date();
+				}
+
+				// save (not update) so @BeforeUpdate bumps updatedAt
+				const savedRequest = await tx.save(current);
+				return { request: savedRequest, pinnedVersionId: currentRow.workflowVersionId };
+			},
+		);
+
+		this.broadcastReviewStateChanged(workflowRow.workflowId);
+
+		return this.toSummary(saved, pinnedVersionId);
+	}
+
+	/**
+	 * Authors cannot decide their own review request, unless an admin override
+	 * applies. Called before and again inside the decision lock, since the author
+	 * set can change while the caller waits for the lock. The override is resolved
+	 * once, pre-lock: the lock guards the author set, not role membership — like
+	 * every other authorization check in `decide`, roles are evaluated up front.
+	 */
+	private assertDecisionAllowed(isAuthor: boolean, hasAdminOverride: boolean): void {
+		if (isAuthor && !hasAdminOverride) {
+			throw new ForbiddenError('Authors cannot decide on their own review request');
+		}
+	}
+
+	/**
+	 * Admins may decide reviews they authored. Limitation: only the built-in
+	 * global/project admin roles qualify — custom roles never grant the override.
+	 */
+	private async hasDecisionAdminOverride(user: User, projectId: string): Promise<boolean> {
+		if (user.role.slug === GLOBAL_ADMIN_ROLE_SLUG || user.role.slug === GLOBAL_OWNER_ROLE_SLUG) {
+			return true;
+		}
+
+		const adminProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
+			user.id,
+			[PROJECT_ADMIN_ROLE_SLUG],
+		);
+		return adminProjectIds.includes(projectId);
+	}
+
+	/**
 	 * Fire-and-forget: the transaction has committed, a failed broadcast
 	 * must not fail the request. Viewers heal via focus/reconnect refetch.
 	 */
@@ -391,7 +538,11 @@ export class WorkflowReviewRequestService {
 			);
 	}
 
-	/** A closed or already-approved request can no longer be re-pinned to a new version. */
+	/**
+	 * A closed or already-approved request can no longer be re-pinned to a new
+	 * version, nor decided again — this is what makes approval terminal, so don't
+	 * relax it for the re-pin case alone.
+	 */
 	private assertRequestUpdatable(request: WorkflowReviewRequest): void {
 		if (request.state === 'closed' || request.decision === 'approved') {
 			throw new ConflictError('The review request is no longer open');
@@ -520,6 +671,139 @@ export class WorkflowReviewRequestService {
 			projectIds,
 			requesterId: user.id,
 		});
+	}
+
+	/**
+	 * Visibility starts from the inbox rule (requester OR `workflow:publish` in the
+	 * review's project OR globally), then narrows per workflow to what the caller can
+	 * currently read — see {@link filterReadableWorkflowRows}.
+	 */
+	async getDetail(
+		user: User,
+		workflowReviewRequestId: string,
+	): Promise<WorkflowReviewRequestDetail> {
+		await this.assertFeatureAvailable();
+
+		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		if (!request || !(await this.canAccessRequest(user, request))) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const [workflowRows, reviewerRows] = await Promise.all([
+			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowDetailsByRequestId(request.id),
+			this.workflowReviewRequestReviewerRepository.findByRequestIds([request.id]),
+		]);
+
+		const readableRows = await this.filterReadableWorkflowRows(user, workflowRows);
+		// Someone who reaches this review through its project has no reason to learn it
+		// exists once they can read none of the workflows it covers. The requester already
+		// knows, and their inbox still lists it, so they keep the record — narrowed to the
+		// workflows they can currently read.
+		if (request.createdById !== user.id && workflowRows.length > 0 && readableRows.length === 0) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const [workflows, participantsByRequestId] = await Promise.all([
+			Promise.all(readableRows.map(async (row) => await this.toWorkflowDetail(row))),
+			this.hydrateParticipants([request], reviewerRows),
+		]);
+
+		const { requester, reviewers } = participantsByRequestId.get(request.id) ?? {
+			requester: null,
+			reviewers: [],
+		};
+		return {
+			// One workflow per review for now, so the summary fields mirror the first row
+			...this.toInboxItem(request, workflows.at(0) ?? null, requester, reviewers),
+			description: request.description,
+			workflows,
+		};
+	}
+
+	/** Inbox visibility rule: requester, or `workflow:publish` in the review's project. */
+	private async canAccessRequest(user: User, request: WorkflowReviewRequest): Promise<boolean> {
+		if (request.createdById === user.id) {
+			return true;
+		}
+
+		const projectIds = await this.resolveAccessibleProjectIds(user);
+		return projectIds === null || projectIds.includes(request.projectId);
+	}
+
+	/**
+	 * A review's `projectId` is fixed at creation and nothing closes open reviews when a
+	 * workflow is transferred, so the stored project does not prove the caller may still
+	 * read a covered workflow. Re-check every row against the workflow's *current* owner
+	 * before returning its content.
+	 *
+	 * This applies to the requester too. They held publish rights when they opened the
+	 * review, but may have lost them since — and because the baseline is resolved at read
+	 * time, an exemption would leave them reading versions published after they lost
+	 * access.
+	 */
+	private async filterReadableWorkflowRows(
+		user: User,
+		rows: WorkflowReviewRequestWorkflowDetailRow[],
+	): Promise<WorkflowReviewRequestWorkflowDetailRow[]> {
+		const readable = await Promise.all(
+			rows.map(async (row) =>
+				(await this.workflowFinderService.findWorkflowForUser(row.workflowId, user, [
+					'workflow:read',
+				]))
+					? row
+					: null,
+			),
+		);
+
+		return readable.filter((row): row is WorkflowReviewRequestWorkflowDetailRow => row !== null);
+	}
+
+	/**
+	 * Both diff sides for one child row. The baseline is resolved at read time, so
+	 * a publish during an open review moves what reviewers are diffing against.
+	 */
+	private async toWorkflowDetail(
+		row: WorkflowReviewRequestWorkflowDetailRow,
+	): Promise<WorkflowReviewRequestWorkflowDetail> {
+		const publishedVersionId = await this.workflowPublishedVersionRepository.getPublishedVersionId(
+			row.workflowId,
+		);
+
+		const [pinnedVersion, baselineVersion] = await Promise.all([
+			this.findVersionSnapshot(row.workflowId, row.workflowVersionId),
+			this.findVersionSnapshot(row.workflowId, publishedVersionId),
+		]);
+
+		return {
+			workflowId: row.workflowId,
+			workflowName: row.workflowName,
+			workflowVersionId: row.workflowVersionId,
+			pinnedVersion,
+			baselineVersion,
+		};
+	}
+
+	/** `null` version id, or a version whose history row was pruned, both mean "no content". */
+	private async findVersionSnapshot(
+		workflowId: string,
+		versionId: string | null,
+	): Promise<WorkflowReviewVersionSnapshot | null> {
+		if (!versionId) {
+			return null;
+		}
+
+		const version = await this.workflowHistoryService.findVersion(workflowId, versionId);
+		return version ? this.toVersionSnapshot(version) : null;
+	}
+
+	private toVersionSnapshot(version: WorkflowHistory): WorkflowReviewVersionSnapshot {
+		return {
+			versionId: version.versionId,
+			nodes: version.nodes,
+			connections: version.connections,
+			nodeGroups: version.nodeGroups,
+			createdAt: version.createdAt.toISOString(),
+		};
 	}
 
 	private async assertFeatureAvailable(): Promise<void> {

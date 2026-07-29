@@ -113,13 +113,14 @@ export class StreamSink implements RunOutputSink<void> {
 		const { streamText } = loadAi();
 		const result = streamText({
 			model: ctx.model,
-			system: ctx.system,
+			instructions: ctx.system,
 			messages: ctx.messages,
+			allowSystemInMessages: true,
 			abortSignal: ctx.abortSignal,
 			// Surface the provider's raw message_start/message_delta events so an
 			// aborted run can recover its usage — the SDK reports none on abort.
 			...(this.rawUsageReader !== undefined || this.rawErrorReader !== undefined
-				? { includeRawChunks: true }
+				? { include: { rawChunks: true } }
 				: {}),
 			...(ctx.hasTools ? { tools: ctx.aiTools } : {}),
 			...(ctx.providerOptions ? { providerOptions: ctx.providerOptions } : {}),
@@ -131,7 +132,7 @@ export class StreamSink implements RunOutputSink<void> {
 		// Consume the stream. When the AbortSignal fires mid-stream the AI SDK
 		// cancels the underlying fetch and the async iterator throws; the error
 		// propagates to the StreamSession which closes the consumer stream.
-		for await (const chunk of result.fullStream) {
+		for await (const chunk of result.stream) {
 			// Track usage from raw provider events so an aborted turn (which never
 			// reaches the post-loop awaits) can still be billed via getAbortFinish.
 			if (chunk.type === 'raw') {

@@ -3,7 +3,7 @@ import type {
 	ModelMessage,
 	Output,
 	SystemModelMessage,
-	TelemetrySettings,
+	TelemetryOptions,
 	ToolCallRepairFunction,
 	ToolSet,
 } from 'ai';
@@ -68,8 +68,8 @@ export interface ModelCallContext {
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
 	aiSdkOptions: {
-		experimental_telemetry?: TelemetrySettings;
-		experimental_repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
+		telemetry?: TelemetryOptions;
+		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 	};
 }
 
