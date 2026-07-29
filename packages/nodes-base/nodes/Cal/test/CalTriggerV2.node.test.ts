@@ -140,6 +140,28 @@ describe('CalTriggerV2', () => {
 		expect(webhookData.webhookId).toBe(123);
 	});
 
+	it('stops checking after ten full pages', async () => {
+		const fullPage = Array.from({ length: 250 }, (_, id) => ({
+			id,
+			subscriberUrl: 'https://example.com/other-webhook',
+			triggers: events,
+			active: true,
+			payloadTemplate: null,
+		}));
+		(calApiRequestV2 as Mock).mockResolvedValue({ data: fullPage });
+
+		const result = await trigger.webhookMethods.default.checkExists.call(hookFunctions);
+
+		expect(result).toBe(false);
+		expect(calApiRequestV2).toHaveBeenCalledTimes(10);
+		expect(calApiRequestV2).toHaveBeenLastCalledWith(
+			'GET',
+			'/webhooks',
+			{},
+			{ take: 250, skip: 2250 },
+		);
+	});
+
 	it('deletes an event-type webhook using its stored scope', async () => {
 		webhookData.webhookId = 456;
 		webhookData.webhookSecret = webhookSecret;

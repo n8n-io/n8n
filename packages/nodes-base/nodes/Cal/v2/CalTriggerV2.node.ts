@@ -17,6 +17,7 @@ import { verifySignature } from '../CalTriggerHelpers';
 import { calApiRequestV2, sortOptionParameters } from '../GenericFunctions';
 
 const WEBHOOK_PAGE_SIZE = 250;
+const MAX_WEBHOOK_PAGES = 10;
 
 interface CalApiResponse<T> {
 	data: T;
@@ -164,7 +165,8 @@ export class CalTriggerV2 implements INodeType {
 				const payloadTemplate =
 					typeof options.payloadTemplate === 'string' ? options.payloadTemplate : '';
 
-				for (let skip = 0; ; skip += WEBHOOK_PAGE_SIZE) {
+				for (let page = 0; page < MAX_WEBHOOK_PAGES; page++) {
+					const skip = page * WEBHOOK_PAGE_SIZE;
 					const response = await (calApiRequestV2<CalApiResponse<CalWebhook[]>>).call(
 						this,
 						'GET',
@@ -194,6 +196,8 @@ export class CalTriggerV2 implements INodeType {
 
 					if (response.data.length < WEBHOOK_PAGE_SIZE) return false;
 				}
+
+				return false;
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
