@@ -38,6 +38,7 @@ import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
@@ -77,8 +78,11 @@ describe('McpService', () => {
 	let executionsConfig: ExecutionsConfig;
 	let instanceSettings: InstanceSettings;
 	let logger: Logger;
+	// Real instance so the constructor's event subscription is exercised.
+	let eventService: EventService;
 
 	beforeEach(() => {
+		eventService = new EventService();
 		activeExecutions = mockInstance(ActiveExecutions);
 		executionsConfig = mockInstance(ExecutionsConfig, {
 			mode: 'regular',
@@ -125,6 +129,7 @@ describe('McpService', () => {
 			mockInstance(SubworkflowPolicyChecker),
 			mockAiGatewayService(),
 			mockInstance(ModuleRegistry),
+			eventService,
 		);
 	});
 
@@ -175,6 +180,7 @@ describe('McpService', () => {
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
+				mockInstance(EventService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -242,6 +248,27 @@ describe('McpService', () => {
 				expect(logger.warn).toHaveBeenCalledWith('Received MCP response for unknown execution', {
 					executionId: 'unknown-exec',
 				});
+			});
+
+			it('should resolve a pending response when a mcp-worker-response event is emitted', async () => {
+				// In queue mode ScalingService forwards worker responses as this event
+				// instead of calling McpService directly.
+				const executionId = 'exec-evt';
+				const deferred = mcpService.createPendingResponse(executionId);
+
+				const runData: IRun = {
+					status: 'success',
+					mode: 'trigger',
+					startedAt: new Date(),
+					finished: true,
+					storedAt: 'db',
+					data: createEmptyRunExecutionData(),
+				};
+
+				eventService.emit('mcp-worker-response', { executionId, runData });
+
+				await expect(deferred.promise).resolves.toBe(runData);
+				expect(mcpService.pendingExecutionCount).toBe(0);
 			});
 		});
 
@@ -380,6 +407,7 @@ describe('McpService', () => {
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
+				mockInstance(EventService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -575,6 +603,7 @@ describe('McpService', () => {
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
+				mockInstance(EventService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -627,6 +656,7 @@ describe('McpService', () => {
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
+				mockInstance(EventService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -704,6 +734,7 @@ describe('McpService', () => {
 					mockInstance(SubworkflowPolicyChecker),
 					mockAiGatewayService(),
 					mockInstance(ModuleRegistry),
+					mockInstance(EventService),
 				);
 			};
 
