@@ -21,7 +21,6 @@ import {
 } from './chat-loop';
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
-	loadConversationSeed,
 	remapSeedWorkflowIds,
 	seedFromProse,
 	transcriptPrefixFromSeed,
@@ -192,8 +191,8 @@ export interface BuildWorkflowConfig {
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
-	/** Synthetic seed file (path) restored before the live message. */
-	seedFile?: string;
+	/** Prior messages + workflows restored before the live message. */
+	conversationSeed?: ConversationSeed;
 	/** Prose turns seeded as plain-text history. */
 	priorConversation?: ConversationTurn[];
 	/** Reproduce a real conversation from its LangSmith trace (seed = before the
@@ -299,8 +298,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				logger.info(
 					`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s)${contSuffix} [${wsLabel}]${config.laneTag ?? ''}`,
 				);
-			} else if (config.seedFile) {
-				seed = loadConversationSeed(config.seedFile);
+			} else if (config.conversationSeed) {
+				seed = config.conversationSeed;
 			} else if (config.priorConversation && config.priorConversation.length > 0) {
 				seed = seedFromProse(config.priorConversation);
 			}

@@ -148,7 +148,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: vi.fn().mockReturnValue(mockMessage),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({
 		track: vi.fn(),
 		trackAiTransform: vi.fn(),

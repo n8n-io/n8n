@@ -1,5 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
+import type { TelemetryOptions, ToolCallRepairFunction, ToolSet } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
 
@@ -31,6 +31,7 @@ import type {
 	ObservationLogMemoryConfig,
 	PendingToolCall,
 	RunOptions,
+	ReasoningLevel,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
@@ -96,6 +97,7 @@ export interface AgentRuntimeConfig {
 	structuredOutput?: z.ZodType | JSONSchema7;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
+	reasoning?: ReasoningLevel;
 	promptCaching?: PromptCachingConfig;
 	eventBus?: AgentEventBus;
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
@@ -618,16 +620,18 @@ export class AgentRuntime {
 		toolMap: Map<string, BuiltTool>,
 		options?: ExecutionOptions,
 	): {
-		experimental_telemetry?: TelemetrySettings;
-		experimental_repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
-		experimental_onStepStart?: ExecutionOptions['onStepStart'];
-		onStepFinish?: ExecutionOptions['onStepFinish'];
+		telemetry?: TelemetryOptions;
+		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
+		onStepStart?: ExecutionOptions['onStepStart'];
+		onStepEnd?: ExecutionOptions['onStepEnd'];
 	} {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
-			...(options?.onStepStart ? { experimental_onStepStart: options.onStepStart } : {}),
-			...(options?.onStepFinish ? { onStepFinish: options.onStepFinish } : {}),
-			experimental_repairToolCall: async (options) => {
+			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
+			...(options?.onStepEnd || options?.onStepFinish
+				? { onStepEnd: options.onStepEnd ?? options.onStepFinish }
+				: {}),
+			repairToolCall: async (options) => {
 				return await fixToolCall(
 					{
 						toolCall: options.toolCall,
@@ -804,6 +808,7 @@ export class AgentRuntime {
 				abortSignal: abortScope.signal,
 				hasTools,
 				aiTools: cached.aiTools,
+				reasoning: staticLoopContext.reasoning,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),

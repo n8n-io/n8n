@@ -21,7 +21,7 @@ import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -74,6 +74,7 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
+import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
@@ -149,6 +150,11 @@ const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissio
 const effectiveCanEditAgent = computed(() => canEditAgent.value && !props.artifactEditingLocked);
 
 const isVersionHistoryOpen = ref(false);
+
+// Whether the preview shows the session trace (true) instead of the chat
+// (false). Local toggle only — no URL sync; the standalone session route
+// covers shareable deep-links.
+const isPreviewTraceOpen = ref(false);
 
 async function onSendPreviewToAssistant(executionId?: string) {
 	const threadId = effectiveSessionId.value;
@@ -1243,7 +1249,15 @@ watch(
 watch(isPreviewMode, (preview) => {
 	if (preview) {
 		bindPreviewSession();
+	} else {
+		isPreviewTraceOpen.value = false;
 	}
+});
+
+// Leaving a session (switching sessions) should drop back to the chat rather
+// than carry the trace-open state across to a different session.
+watch(effectiveSessionId, () => {
+	isPreviewTraceOpen.value = false;
 });
 
 function exitContinueMode() {
@@ -1367,13 +1381,14 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			v-if="isPreviewMode"
 			:breadcrumb-items="previewBreadcrumbItems"
 			:session-title="currentSessionTitle"
-			:session-id="effectiveSessionId"
 			:has-session="currentSessionHasMessages"
 			:session-options="sessionOptions"
+			:trace-open="isPreviewTraceOpen"
 			@breadcrumb-select="onPreviewBreadcrumbSelect"
 			@session-select="onSessionPick"
 			@new-chat="onNewChat"
 			@close-preview="closePreview"
+			@toggle-trace="isPreviewTraceOpen = !isPreviewTraceOpen"
 		/>
 		<AgentBuilderHeader
 			v-else
@@ -1430,7 +1445,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			</div>
 			<template v-else>
 				<AgentPreviewChatPage
-					v-if="isPreviewMode"
+					v-if="isPreviewMode && !isPreviewTraceOpen"
 					:initialized="initialized"
 					:project-id="projectId"
 					:agent-id="agentId"
@@ -1441,6 +1456,13 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:can-send-to-assistant="canSendPreviewToInstanceAi"
 					@continue-loaded="onContinueLoaded"
 					@send-to-assistant="onSendPreviewToAssistant"
+				/>
+
+				<AgentSessionTimelinePanel
+					v-else-if="isPreviewMode && isPreviewTraceOpen && effectiveSessionId"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:thread-id="effectiveSessionId"
 				/>
 
 				<AgentBuilderEditorColumn

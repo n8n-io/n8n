@@ -1122,6 +1122,42 @@ describe('CredentialsService', () => {
 				encrypted,
 			);
 		});
+
+		it('enriches the returned credential with connectedByMe when a user is passed', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'private-credential',
+				isResolvable: true,
+			});
+			const transactionManager = mock<EntityManager>();
+			transactionManager.findOneBy.mockResolvedValue(credential);
+			setRepositoryTransaction(transactionManager);
+			const encrypted = mock<ICredentialsDb>({ id: credential.id });
+			connectionStatusProxy.findConnectedCredentialIds.mockResolvedValue(new Set([credential.id]));
+
+			const result = await service.update(credential.id, encrypted, undefined, {
+				user: ownerUser,
+			});
+
+			expect(connectionStatusProxy.findConnectedCredentialIds).toHaveBeenCalledWith(ownerUser.id, [
+				credential.id,
+			]);
+			expect(result).toMatchObject({ connectedByMe: true });
+		});
+
+		it('does not enrich the returned credential when no user is passed', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'private-credential',
+				isResolvable: true,
+			});
+			const transactionManager = mock<EntityManager>();
+			transactionManager.findOneBy.mockResolvedValue(credential);
+			setRepositoryTransaction(transactionManager);
+			const encrypted = mock<ICredentialsDb>({ id: credential.id });
+
+			await service.update(credential.id, encrypted);
+
+			expect(connectionStatusProxy.findConnectedCredentialIds).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('updateInstanceCredential', () => {
@@ -3462,6 +3498,34 @@ describe('CredentialsService', () => {
 				jsonLeafProps,
 			);
 			expect(p(result.json)).toEqual({ data: { key: '***' } });
+		});
+	});
+
+	describe('unredact (field-level sentinel restore)', () => {
+		const saved = {
+			privateKey: '-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----',
+		};
+
+		it('should restore the saved value for an exact blanking sentinel', () => {
+			const result = service.unredact({ privateKey: CREDENTIAL_BLANKING_VALUE }, saved);
+			expect(result.privateKey).toBe(saved.privateKey);
+		});
+
+		it('should restore the saved value when the sentinel was switched to expression mode', () => {
+			// Toggling a redacted field to expression mode prepends `=`; the saved
+			// key must still be restored instead of persisting the sentinel.
+			const result = service.unredact({ privateKey: `=${CREDENTIAL_BLANKING_VALUE}` }, saved);
+			expect(result.privateKey).toBe(saved.privateKey);
+		});
+
+		it('should restore the saved value for an expression-prefixed empty sentinel', () => {
+			const result = service.unredact({ privateKey: `=${CREDENTIAL_EMPTY_VALUE}` }, saved);
+			expect(result.privateKey).toBe(saved.privateKey);
+		});
+
+		it('should keep a genuine new value that is not a sentinel', () => {
+			const result = service.unredact({ privateKey: '={{ $secrets.key }}' }, saved);
+			expect(result.privateKey).toBe('={{ $secrets.key }}');
 		});
 	});
 

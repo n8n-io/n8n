@@ -57,4 +57,10 @@ export type WorkflowPublicationMetricsEventMap = {
 		versionSkewCount: number;
 		durationMs: number;
 	};
+
+	/** Emitted only when a sweep found something, so idle follower passes stay off the bus. */
+	'workflow-publication-ghost-trigger-sweep': {
+		/** Workflows whose ghost triggers were torn down on a non-leader instance. */
+		removedCount: number;
+	};
 };

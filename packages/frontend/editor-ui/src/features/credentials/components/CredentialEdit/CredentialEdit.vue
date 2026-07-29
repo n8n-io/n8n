@@ -36,7 +36,7 @@ import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -564,11 +564,14 @@ async function onResolvableChange(value: boolean) {
 	}
 
 	isResolvable.value = value;
-	// Switching sharing mode invalidates any carried-over connection state: a
-	// freshly-private credential has no per-user connection for the current
-	// user yet, so reset it to avoid rendering a stale "connected" state with a
-	// Disconnect button that has nothing to disconnect.
+	// Switching sharing mode invalidates any carried-over connection state: `connectedByMe`
+	// doesn't apply to the new mode, and `oauthTokenData` (mirrored true for a connected
+	// end-user credential) would otherwise be read as "connected" once static.
 	connectedByMe.value = false;
+	credentialData.value = {
+		...credentialData.value,
+		oauthTokenData: null as unknown as CredentialInformation,
+	};
 	hasUnsavedChanges.value = true;
 }
 
@@ -691,6 +694,8 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (credential) {
 		credentialId.value = credential.id;
 		currentCredential.value = credential;
+		// Resync in case the save cleared this user's connection server-side.
+		connectedByMe.value = credential.connectedByMe === true;
 
 		// Re-fetch to display server-redacted JSON shape for credentials with leaf-redacted fields
 		if (credentialProperties.value.some((p) => p.typeOptions?.redactJsonLeaves)) {
