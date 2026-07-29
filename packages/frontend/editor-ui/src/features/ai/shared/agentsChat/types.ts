@@ -13,6 +13,8 @@ export interface ToolCall {
 	output?: unknown;
 	canceled?: boolean;
 	state: ToolCallState;
+	/** Run id for a currently suspended call, used to cancel non-card HITL waits. */
+	runId?: string;
 	/** Epoch ms when the tool started executing (live: client clock; reload: recorded). */
 	startTime?: number;
 	/** Epoch ms when the tool settled. Absent while still running. */

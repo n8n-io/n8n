@@ -121,41 +121,42 @@ export class AgentChatController {
 		);
 
 		const { send } = initSseStream(res);
-
-		// If the client supplied a sessionId and a thread already exists under that id,
-		// the thread must belong to this (project, agent). Otherwise a caller could
-		// append messages to another user's thread. A non-existent id is fine -
-		// executeForChat will create the thread on first persisted message.
-		if (sessionId) {
-			const existing = await this.agentExecutionService.findThreadById(sessionId);
-			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
-				send({ type: 'error', message: 'Session not found' });
-				res.end();
-				return;
-			}
-		}
-
-		const threadId = sessionId ?? randomUUID();
-
-		const { missing } = await this.agentValidationService.validateAgentIsRunnable(
-			agentId,
-			projectId,
-			credentialProvider,
-		);
-		if (missing.length > 0) {
-			send({
-				type: 'error',
-				message: 'This agent is not ready to run yet.',
-				errorCode: 'agent_misconfigured',
-				missing,
-			});
-			res.end();
-			return;
-		}
-
+		const abortController = new AbortController();
+		const abortOnClose = () => abortController.abort();
+		res.once('close', abortOnClose);
 		let executionId: string | undefined;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
+			// If the client supplied a sessionId and a thread already exists under that id,
+			// the thread must belong to this (project, agent). Otherwise a caller could
+			// append messages to another user's thread. A non-existent id is fine -
+			// executeForChat will create the thread on first persisted message.
+			if (sessionId) {
+				const existing = await this.agentExecutionService.findThreadById(sessionId);
+				if (abortController.signal.aborted) return;
+				if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+					send({ type: 'error', message: 'Session not found' });
+					return;
+				}
+			}
+
+			const threadId = sessionId ?? randomUUID();
+			const { missing } = await this.agentValidationService.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider,
+			);
+			if (abortController.signal.aborted) return;
+			if (missing.length > 0) {
+				send({
+					type: 'error',
+					message: 'This agent is not ready to run yet.',
+					errorCode: 'agent_misconfigured',
+					missing,
+				});
+				return;
+			}
+
 			storedAttachments = await this.storeChatAttachments({
 				attachments,
 				agentId,
@@ -178,6 +179,7 @@ export class AgentChatController {
 					onExecutionRecorded: (id) => {
 						executionId = id;
 					},
+					abortSignal: abortController.signal,
 				}),
 				send,
 			);
@@ -186,17 +188,21 @@ export class AgentChatController {
 			}
 		} catch (error) {
 			// No execution recorded means nothing references this turn's attachments —
-			// remove them so failed turns can't accumulate orphans. Best-effort.
+			// remove them so failed turns can't accumulate orphans. Best-effort, and
+			// deliberately also on aborted turns.
 			if (!executionId && storedAttachments?.length) {
 				await this.agentChatAttachmentService
 					.deleteByIds(storedAttachments.map((ref) => ref.id))
 					.catch(() => {});
 			}
-			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-			send({ type: 'error', message: errorMessage });
+			if (!abortController.signal.aborted) {
+				const errorMessage = error instanceof Error ? error.message : 'Chat failed';
+				send({ type: 'error', message: errorMessage });
+			}
+		} finally {
+			res.off('close', abortOnClose);
+			res.end();
 		}
-
-		res.end();
 	}
 
 	@Post('/:agentId/chat/resume', { usesTemplates: true })
@@ -211,6 +217,9 @@ export class AgentChatController {
 		const { runId, toolCallId, resumeData } = payload;
 		const { send } = initSseStream(res);
 
+		const abortController = new AbortController();
+		const abortOnClose = () => abortController.abort();
+		res.once('close', abortOnClose);
 		try {
 			let executionId: string | undefined;
 			const suspended = await pumpChunks(
@@ -226,6 +235,7 @@ export class AgentChatController {
 					onExecutionRecorded: (id) => {
 						executionId = id;
 					},
+					abortSignal: abortController.signal,
 				}),
 				send,
 			);
@@ -233,11 +243,34 @@ export class AgentChatController {
 				send({ type: 'done', ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
-			send({ type: 'error', message: errorMessage });
+			if (!abortController.signal.aborted) {
+				const errorMessage = error instanceof Error ? error.message : 'Resume failed';
+				send({ type: 'error', message: errorMessage });
+			}
+		} finally {
+			res.off('close', abortOnClose);
+			res.end();
 		}
+	}
 
-		res.end();
+	@Delete('/:agentId/chat/runs/:runId')
+	@ProjectScope('agent:execute')
+	async cancelChatRun(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('runId') runId: string,
+	) {
+		const { projectId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const cancelled = await this.agentExecutionOrchestratorService.cancelChatRun({
+			agentId,
+			runId,
+			resourceId: draftChatMemoryResourceId(req.user.id),
+		});
+		return { cancelled };
 	}
 
 	@Get('/:agentId/chat/:threadId/messages')
