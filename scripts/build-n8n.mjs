@@ -232,11 +232,11 @@ echo(chalk.green('✅ Non-runtime files stripped'));
 
 // Stripping the trees above leaves a bootable image whose agent has no skills and
 // no knowledge base, so the damage only surfaces on the first request. Fail here.
+// `.nothrow()` because zx runs with `pipefail`: one unreadable path would
+// otherwise turn a healthy build into an unhandled rejection.
 for (const glob of runtimeAssetGlobs) {
-	const kept = Number(
-		(await $`find ${config.compiledAppDir} -type f -path ${glob} | wc -l`).stdout.trim(),
-	);
-	if (kept === 0) {
+	const found = await $`find ${config.compiledAppDir} -type f -path ${glob}`.nothrow();
+	if (found.stdout.split('\n').filter(Boolean).length === 0) {
 		echo(chalk.red(`ERROR: no files left under ${glob} — runtime assets were stripped`));
 		process.exit(1);
 	}
