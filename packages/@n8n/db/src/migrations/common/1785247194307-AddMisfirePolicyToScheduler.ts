@@ -25,7 +25,7 @@ const DEFAULT_GRACE_SECONDS = 60;
  * Both job columns are NOT NULL with defaults, so existing rows need no backfill.
  * `missedAfter` is nullable, which the claim reads as "no deadline".
  */
-export class AddMisfirePolicyToScheduler1785159600000 implements ReversibleMigration {
+export class AddMisfirePolicyToScheduler1785247194307 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.addJobPolicyColumns(context);
 		await this.addTaskDeadlineColumn(context);

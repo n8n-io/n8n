@@ -1,4 +1,4 @@
-import { AddMisfirePolicyToScheduler1785159600000 as BaseMigration } from '../common/1785159600000-AddMisfirePolicyToScheduler';
+import { AddMisfirePolicyToScheduler1785247194307 as BaseMigration } from '../common/1785247194307-AddMisfirePolicyToScheduler';
 
 /**
  * Only the rollback needs this: `up` adds its columns with raw `ALTER TABLE`, which
@@ -9,6 +9,6 @@ import { AddMisfirePolicyToScheduler1785159600000 as BaseMigration } from '../co
  * so the recreate's DROP would cascade and wipe queued tasks. Disable foreign keys for
  * the migration so the drop stays local to `scheduled_job`.
  */
-export class AddMisfirePolicyToScheduler1785159600000 extends BaseMigration {
+export class AddMisfirePolicyToScheduler1785247194307 extends BaseMigration {
 	withFKsDisabled = true as const;
 }
