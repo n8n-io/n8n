@@ -185,8 +185,12 @@ export function parseNodeId(nodeId: string): { packageName: string; nodeName: st
  * Version dirs drop the dot (2.2 -> v22, 3.1 -> v31, 3 -> v3), so a naive
  * `parseInt` reads v22 as 22 and ranks it above v3. A two-digit suffix is a
  * major.minor pair; anything else is the number as-is.
+ *
+ * The encoding stays ambiguous for a two-digit major (a future `v10` reads as
+ * 1.0), but no node is anywhere near that, and this matches the `parseRequestedVersion`
+ * convention used elsewhere. Fixing it properly means an unambiguous dir name at generation time.
  */
-function versionDirToNumber(versionDir: string): number {
+export function versionDirToNumber(versionDir: string): number {
 	const digits = versionDir.slice(1);
 	if (/^\d{2}$/.test(digits)) {
 		return Number(`${digits[0]}.${digits[1]}`);
