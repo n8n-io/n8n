@@ -22,6 +22,7 @@ import {
 	type IWorkflowBase,
 	type IWorkflowSettings,
 	type RelatedExecution,
+	type WorkflowGroupViolation,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -194,6 +195,41 @@ export function validateWorkflowNodeGroups(
 	if (!result.valid) {
 		throw new BadRequestError(result.violations[0].message);
 	}
+}
+
+/**
+ * Non-fatal counterpart of `validateWorkflowNodeGroups`: drops every group that
+ * breaks a rule instead of throwing on the first one, and returns the violations
+ * so the caller can report which groups went and why. Mutates `nodeGroups`.
+ *
+ * Groups are cosmetic, so surfaces that would rather keep the rest of the change
+ * (the MCP builder tools) drop the offenders; the save path still throws.
+ */
+export function dropInvalidNodeGroups(
+	workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'> & {
+		connections?: IWorkflowBase['connections'];
+	},
+	getNodeType: GetNodeTypeForGrouping | null,
+): WorkflowGroupViolation[] {
+	if (!workflow.nodeGroups?.length) {
+		return [];
+	}
+
+	const result = validateWorkflowGroups({
+		nodes: workflow.nodes,
+		connectionsBySourceNode: workflow.connections,
+		nodeGroups: workflow.nodeGroups,
+		getNodeType,
+	});
+
+	if (result.valid) {
+		return [];
+	}
+
+	const invalidGroupIds = new Set(result.violations.map((violation) => violation.groupId));
+	workflow.nodeGroups = workflow.nodeGroups.filter((group) => !invalidGroupIds.has(group.id));
+
+	return result.violations;
 }
 
 /**

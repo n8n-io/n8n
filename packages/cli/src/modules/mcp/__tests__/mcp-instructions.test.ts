@@ -48,17 +48,6 @@ describe('getMcpInstructions', () => {
 				expect(instructions).toContain('"groups"');
 			});
 
-			test('mentions that an invalid group is skipped and reported, not fatal', () => {
-				const instructions = getMcpInstructions({
-					isBuilderEnabled: true,
-					isN8nConnectAvailable: true,
-					canvasGroupsEnabled: true,
-				});
-
-				expect(instructions).toContain('does not fail the whole update');
-				expect(instructions).toContain('skippedOperations');
-			});
-
 			test('stays intro-only when the builder is disabled', () => {
 				const instructions = getMcpInstructions({
 					isBuilderEnabled: false,

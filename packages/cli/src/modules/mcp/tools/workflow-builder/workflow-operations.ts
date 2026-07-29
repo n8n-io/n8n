@@ -1148,10 +1148,6 @@ export function applyOperations(
 	operations: PartialUpdateOperation[],
 	options: { canvasGroupsEnabled?: boolean } = {},
 ): ApplyOperationsResult {
-	const nonFatalOperationTypes = options.canvasGroupsEnabled
-		? NON_FATAL_OPERATION_TYPES
-		: new Set<PartialUpdateOperation['type']>();
-
 	const skippedOperations: SkippedOperation[] = [];
 
 	const workflow = cloneWorkflow(input);
@@ -1175,7 +1171,7 @@ export function applyOperations(
 
 		const error = handler(op, ctx, i);
 		if (error) {
-			if (nonFatalOperationTypes.has(op.type)) {
+			if (options.canvasGroupsEnabled && NON_FATAL_OPERATION_TYPES.has(op.type)) {
 				skippedOperations.push({ opIndex: i, type: op.type, reason: error });
 				continue;
 			}

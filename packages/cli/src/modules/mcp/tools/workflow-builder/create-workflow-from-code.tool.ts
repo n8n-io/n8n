@@ -1,5 +1,4 @@
 import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
-import { validateWorkflowGroups } from 'n8n-workflow';
 import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
@@ -29,7 +28,11 @@ import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
-import { makeGetNodeTypeForGrouping, resolveNodeWebhookIds } from '@/workflow-helpers';
+import {
+	dropInvalidNodeGroups,
+	makeGetNodeTypeForGrouping,
+	resolveNodeWebhookIds,
+} from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -255,7 +258,6 @@ export const createCreateWorkflowFromCodeTool = (
 
 		let newWorkflow: WorkflowEntity | undefined;
 		let landingProject: Project | null = null;
-		let skippedGroups: Array<{ groupName: string; reason: string }> = [];
 
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
@@ -304,26 +306,11 @@ export const createCreateWorkflowFromCodeTool = (
 			// parser above. Validate them here, before the shared persistence layer's
 			// own (fatal) check, so an invalid group is dropped and reported instead
 			// of aborting the whole creation.
-			if (options.canvasGroupsEnabled && newWorkflow.nodeGroups?.length) {
-				const groupValidation = validateWorkflowGroups({
-					nodes: newWorkflow.nodes,
-					connectionsBySourceNode: newWorkflow.connections,
-					nodeGroups: newWorkflow.nodeGroups,
-					getNodeType: makeGetNodeTypeForGrouping(nodeTypes),
-				});
-
-				if (!groupValidation.valid) {
-					const invalidGroupIds = new Set(groupValidation.violations.map((v) => v.groupId));
-					newWorkflow.nodeGroups = newWorkflow.nodeGroups.filter(
-						(group) => !invalidGroupIds.has(group.id),
-					);
-
-					skippedGroups = groupValidation.violations.map((violation) => ({
-						groupName: violation.groupName,
-						reason: violation.message,
-					}));
-				}
-			}
+			const skippedGroups = options.canvasGroupsEnabled
+				? dropInvalidNodeGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
+						(violation) => ({ groupName: violation.groupName, reason: violation.message }),
+					)
+				: [];
 
 			landingProject = projectId
 				? await projectRepository.findOneBy({ id: projectId })

@@ -3,7 +3,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { validateWorkflowGroups, Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
+import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -32,6 +32,7 @@ import {
 	workflowSettingsObjectSchema,
 	type ApplyOperationsSuccess,
 	type PartialUpdateOperation,
+	type SkippedOperation,
 } from './workflow-operations';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -45,7 +46,11 @@ import type { TagService } from '@/services/tag.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
-import { makeGetNodeTypeForGrouping, resolveNodeWebhookIds } from '@/workflow-helpers';
+import {
+	dropInvalidNodeGroups,
+	makeGetNodeTypeForGrouping,
+	resolveNodeWebhookIds,
+} from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -278,7 +283,7 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
  * group only the second operation is discounted.
  */
 const countOperationsWithNoEffect = (
-	skippedOperations: Array<{ opIndex: number }>,
+	skippedOperations: Array<Pick<SkippedOperation, 'opIndex'>>,
 	groupOperations: ApplyOperationsSuccess['groupOperations'],
 ): number => {
 	const producedPerOp = new Map<number, number>();
@@ -686,35 +691,27 @@ export const createUpdateWorkflowTool = (
 			// Group rules depend on how the workflow looks after the whole batch,
 			// so we check them here once rather than per operation. A broken group
 			// is dropped and reported; the update still goes through.
-			const skippedOperations: Array<{ opIndex: number; type: string; reason: string }> = [
-				...result.skippedOperations,
-			];
+			const skippedOperations: SkippedOperation[] = [...result.skippedOperations];
 			// Groups the batch never asked for, removed because these operations made
 			// them invalid. Reported apart from skippedOperations: no submitted
 			// operation failed here, an existing group was destroyed as a side effect.
 			const removedGroups: Array<{ groupName: string; reason: string }> = [];
 			let nodeGroupsNeedPersisting = result.nodeGroupsChanged;
 
-			if (options.canvasGroupsEnabled && result.workflow.nodeGroups?.length) {
-				const groupValidation = validateWorkflowGroups({
-					nodes: result.workflow.nodes,
-					connectionsBySourceNode: result.workflow.connections,
-					nodeGroups: result.workflow.nodeGroups,
-					getNodeType: makeGetNodeTypeForGrouping(nodeTypes),
-				});
+			if (options.canvasGroupsEnabled) {
+				const violations = dropInvalidNodeGroups(
+					result.workflow,
+					makeGetNodeTypeForGrouping(nodeTypes),
+				);
 
-				if (!groupValidation.valid) {
-					const invalidGroupIds = new Set(groupValidation.violations.map((v) => v.groupId));
-					result.workflow.nodeGroups = result.workflow.nodeGroups.filter(
-						(group) => !invalidGroupIds.has(group.id),
-					);
+				if (violations.length > 0) {
 					// A violation found here always changes what must be persisted, even if
 					// no group op ran this batch — otherwise the omitted `nodeGroups` key
 					// falls back to preserve-on-omit and the still-invalid stored groups get
 					// re-validated (and rejected) by WorkflowService.update right after.
 					nodeGroupsNeedPersisting = true;
 
-					for (const violation of groupValidation.violations) {
+					for (const violation of violations) {
 						const requestedBy = result.groupOperations[violation.groupId];
 						if (requestedBy) {
 							skippedOperations.push({ ...requestedBy, reason: violation.message });
