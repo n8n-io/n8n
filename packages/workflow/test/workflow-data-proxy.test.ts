@@ -143,6 +143,29 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
+	describe('$agentInfo', () => {
+		const fixture = loadFixture('multiple_outputs');
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		test('should compute $agentInfo on first access and memoize it', () => {
+			const agentInfoSpy = vi.spyOn(
+				WorkflowDataProxy.prototype as unknown as { agentInfo: () => unknown },
+				'agentInfo',
+			);
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Edit Fields');
+			expect(agentInfoSpy).not.toHaveBeenCalled();
+
+			const first = proxy.$agentInfo;
+			const second = proxy.$agentInfo;
+
+			expect(agentInfoSpy).toHaveBeenCalledTimes(1);
+			expect(first).toBe(second);
+		});
+	});
+
 	describe('$(If))', () => {
 		const fixture = loadFixture('multiple_outputs');
 		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Edit Fields');
