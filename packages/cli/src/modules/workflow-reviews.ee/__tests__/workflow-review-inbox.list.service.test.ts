@@ -1,53 +1,38 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { LicenseState, type Logger } from '@n8n/backend-common';
+import { LicenseState } from '@n8n/backend-common';
 import type {
-	DbLockService,
-	ProjectRelationRepository,
-	SharedWorkflowRepository,
 	User,
 	UserRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestReviewerRepository,
 } from '@n8n/db';
-import {
-	WorkflowReviewRequestAuthorRepository,
-	WorkflowReviewRequestRepository,
-	WorkflowReviewRequestWorkflowRepository,
-} from '@n8n/db';
+import { WorkflowReviewRequestRepository, WorkflowReviewRequestWorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { WorkflowReviewRequestService } from '../workflow-review-request.service';
+import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
+import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 
-describe('WorkflowReviewRequestService list', () => {
-	const logger = mock<Logger>();
+describe('WorkflowReviewInboxService', () => {
 	const workflowReviewPolicyService = mockInstance(WorkflowReviewPolicyService);
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowReviewRequestRepository = mockInstance(WorkflowReviewRequestRepository);
 	const workflowReviewRequestWorkflowRepository = mockInstance(
 		WorkflowReviewRequestWorkflowRepository,
 	);
-	const workflowReviewRequestAuthorRepository = mockInstance(WorkflowReviewRequestAuthorRepository);
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
-	const projectRelationRepository = mock<ProjectRelationRepository>();
-	const roleService = mock<RoleService>();
 	const projectService = mockInstance(ProjectService);
 	const licenseState = mockInstance(LicenseState);
-	const dbLockService = mock<DbLockService>();
-	const collaborationService = mock<CollaborationService>();
 
-	let service: WorkflowReviewRequestService;
+	let service: WorkflowReviewInboxService;
 
 	const user = mock<User>({ id: 'user-1', role: { slug: 'global:member', scopes: [] } });
 
@@ -59,24 +44,16 @@ describe('WorkflowReviewRequestService list', () => {
 		reviewerRepository.findByRequestIds.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
 
-		service = new WorkflowReviewRequestService(
-			logger,
-			workflowReviewPolicyService,
+		service = new WorkflowReviewInboxService(
+			new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 			workflowFinderService,
 			workflowHistoryService,
-			sharedWorkflowRepository,
 			publishedVersionRepository,
 			workflowReviewRequestRepository,
 			workflowReviewRequestWorkflowRepository,
-			workflowReviewRequestAuthorRepository,
 			reviewerRepository,
 			userRepository,
-			projectRelationRepository,
-			roleService,
 			projectService,
-			licenseState,
-			dbLockService,
-			collaborationService,
 		);
 	});
 

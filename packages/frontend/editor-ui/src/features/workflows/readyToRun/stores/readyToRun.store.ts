@@ -9,7 +9,7 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRouter, type RouteLocationNormalized } from 'vue-router';
 import { READY_TO_RUN_AI_WORKFLOW } from '../workflows/aiWorkflow';
 import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';

@@ -10,7 +10,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 
 import WhatsNewModal from './WhatsNewModal.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
@@ -22,7 +22,7 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {
