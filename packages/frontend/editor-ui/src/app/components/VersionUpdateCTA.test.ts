@@ -5,10 +5,10 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WHATS_NEW_MODAL_KEY } from '@/app/constants';
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import VersionUpdateCTA from './VersionUpdateCTA.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	const goToVersions = vi.fn();
@@ -19,7 +19,7 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {

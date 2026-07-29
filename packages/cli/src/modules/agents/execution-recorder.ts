@@ -200,6 +200,7 @@ export interface RecordedUsage {
 
 export type TimelineEvent =
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
+	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
 	| {
 			type: 'tool-call';
 			kind: 'tool' | 'workflow' | 'node';
@@ -255,6 +256,9 @@ export class ExecutionRecorder {
 	/** Text buffer for the current segment (flushed to timeline on boundaries). */
 	private textBuffer: string[] = [];
 
+	/** Reasoning buffer for the current segment (kept separate from user-facing text). */
+	private reasoningBuffer: string[] = [];
+
 	private model: string | null = null;
 
 	private finishReason = 'unknown';
@@ -268,6 +272,9 @@ export class ExecutionRecorder {
 	/** Wall-clock when the first text-delta of the current segment arrived. */
 	private textStartTime: number | null = null;
 
+	/** Wall-clock when the current reasoning segment started. */
+	private reasoningStartTime: number | null = null;
+
 	private _suspended = false;
 
 	private error: string | null = null;
@@ -278,9 +285,23 @@ export class ExecutionRecorder {
 	record(chunk: StreamChunk): void {
 		switch (chunk.type) {
 			case 'text-delta':
+				this.flushReasoningBuffer();
 				if (this.textStartTime === null) this.textStartTime = Date.now();
 				this.textParts.push(chunk.delta);
 				this.textBuffer.push(chunk.delta);
+				break;
+			case 'reasoning-start':
+				this.flushTextBuffer();
+				this.flushReasoningBuffer();
+				this.reasoningStartTime = Date.now();
+				break;
+			case 'reasoning-delta':
+				this.flushTextBuffer();
+				if (this.reasoningStartTime === null) this.reasoningStartTime = Date.now();
+				this.reasoningBuffer.push(chunk.delta);
+				break;
+			case 'reasoning-end':
+				this.flushReasoningBuffer();
 				break;
 			case 'tool-call':
 				this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
@@ -300,6 +321,7 @@ export class ExecutionRecorder {
 				);
 				break;
 			case 'finish':
+				this.flushReasoningBuffer();
 				this.flushTextBuffer();
 				this.finishReason = chunk.finishReason;
 				if (chunk.usage) {
@@ -313,6 +335,7 @@ export class ExecutionRecorder {
 				this.totalCost = chunk.usage?.cost ?? null;
 				break;
 			case 'tool-call-suspended':
+				this.flushReasoningBuffer();
 				this.flushTextBuffer();
 				this._suspended = true;
 				this.timeline.push({
@@ -323,6 +346,8 @@ export class ExecutionRecorder {
 				});
 				break;
 			case 'error': {
+				this.flushReasoningBuffer();
+				this.flushTextBuffer();
 				this.error = normaliseStreamError(chunk.error);
 				break;
 			}
@@ -336,6 +361,7 @@ export class ExecutionRecorder {
 
 	/** Build the final message record after the stream has ended. */
 	getMessageRecord(): MessageRecord {
+		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 		return {
 			assistantResponse: this.textParts.join(''),
@@ -369,11 +395,32 @@ export class ExecutionRecorder {
 		this.textStartTime = null;
 	}
 
+	/** Flush accumulated reasoning without including it in `assistantResponse`. */
+	private flushReasoningBuffer(): void {
+		if (this.reasoningBuffer.length === 0) {
+			this.reasoningStartTime = null;
+			return;
+		}
+		const content = this.reasoningBuffer.join('');
+		if (content.trim()) {
+			const now = Date.now();
+			this.timeline.push({
+				type: 'reasoning',
+				content,
+				timestamp: this.reasoningStartTime ?? now,
+				endTime: now,
+			});
+		}
+		this.reasoningBuffer = [];
+		this.reasoningStartTime = null;
+	}
+
 	/**
 	 * Record a discrete `tool-call` chunk from the stream. The matching
 	 * `tool-result` chunk closes the timeline entry.
 	 */
 	private recordToolCall(toolCallId: string, name: string, input: unknown): void {
+		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 
 		const recordedInput = sanitizeExecutionLogValue(input);
@@ -494,6 +541,7 @@ export class ExecutionRecorder {
 			return;
 		}
 
+		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 		const entry = this.registry.get(name);
 		const now = Date.now();

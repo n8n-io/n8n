@@ -10,6 +10,7 @@ import type {
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentCatalogModel,
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
@@ -323,13 +324,7 @@ export const getSlackAgentAppManifest = async (
 	);
 };
 
-export interface ModelInfo {
-	id: string;
-	name: string;
-	releaseDate?: string;
-	reasoning: boolean;
-	toolCall: boolean;
-}
+export type ModelInfo = AgentCatalogModel;
 
 export interface ProviderInfo {
 	id: string;
@@ -549,6 +544,19 @@ export const clearTestChatMessages = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const cancelAgentChatRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	runId: string,
+): Promise<{ cancelled: boolean }> => {
+	return await makeRestApiRequest<{ cancelled: boolean }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/runs/${runId}`,
 	);
 };
 

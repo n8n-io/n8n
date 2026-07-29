@@ -10,7 +10,7 @@ import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { INodeUi, Schema } from '@/Interface';
 import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';

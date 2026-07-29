@@ -4,7 +4,11 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import { DATA_TABLES_TOOL_ID, DOMAIN_TOOL_IDS, EVAL_CONFIG_TOOL_ID } from '../../src/tools/tool-ids';
+import {
+	DATA_TABLES_TOOL_ID,
+	DOMAIN_TOOL_IDS,
+	EVAL_CONFIG_TOOL_ID,
+} from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
 	ArtifactRef,

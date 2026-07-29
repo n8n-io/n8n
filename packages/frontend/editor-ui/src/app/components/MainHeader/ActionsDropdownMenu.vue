@@ -33,7 +33,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';

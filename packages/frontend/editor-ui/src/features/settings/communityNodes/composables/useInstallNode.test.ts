@@ -15,7 +15,7 @@ import { setActivePinia } from 'pinia';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useInstallNode } from './useInstallNode';
 import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 
 vi.mock('@/app/composables/useCanvasOperations', () => ({
@@ -31,7 +31,7 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {

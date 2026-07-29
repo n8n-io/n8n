@@ -20,7 +20,7 @@ import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
 const props = defineProps<{
 	items: WorkflowReviewInboxItem[];
-	activeState: WorkflowReviewRequestState;
+	activeTab: WorkflowReviewRequestState;
 	openCount: number;
 	closedCount: number;
 	selectedId: string | null;
@@ -33,7 +33,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	select: [id: string];
 	clear: [];
-	'update:activeState': [state: WorkflowReviewRequestState];
+	'update:activeTab': [tab: WorkflowReviewRequestState];
 	loadMore: [];
 }>();
 
@@ -82,7 +82,7 @@ watch(
 );
 
 function onTabChange(value: string | number | boolean) {
-	emit('update:activeState', String(value) as WorkflowReviewRequestState);
+	emit('update:activeTab', String(value) as WorkflowReviewRequestState);
 }
 
 function onListBackgroundClick() {
@@ -101,7 +101,7 @@ function onListBackgroundClick() {
 		</div>
 		<div :class="$style.header">
 			<N8nTabs
-				:model-value="activeState"
+				:model-value="activeTab"
 				:options="tabOptions"
 				data-test-id="workflow-reviews-tabs"
 				@update:model-value="onTabChange"
@@ -123,7 +123,7 @@ function onListBackgroundClick() {
 					size="small"
 					data-test-id="workflow-reviews-empty"
 				>
-					{{ i18n.baseText(`workflowReviews.sidebar.empty.${activeState}`) }}
+					{{ i18n.baseText(`workflowReviews.sidebar.empty.${activeTab}`) }}
 				</N8nText>
 				<N8nCard
 					v-for="item in items"

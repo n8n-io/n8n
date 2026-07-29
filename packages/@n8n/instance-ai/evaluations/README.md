@@ -672,7 +672,7 @@ To record an isolated cohort without touching the shared dataset or baseline —
 
 ## Adding test cases
 
-The corpus lives in **LangTracer** — suite `baseline` is what CI runs. Author a case as a local JSON file in `evaluations/data/workflows/` (disk mode picks it up, no registration step), calibrate it against a real build, then push it to the suite with `pnpm eval:langtracer-push --suite baseline <slug>` and delete the local file rather than committing it. Seeded cases (`priorConversation`/`seedFile`) are the exception — the case-write API can't represent them yet, so they stay as committed JSON. Every case is validated against `harness/schema.ts`.
+The corpus lives in **LangTracer** — suite `baseline` is what CI runs. Author a case as a local JSON file in `evaluations/data/workflows/` (disk mode picks it up, no registration step), calibrate it against a real build, then push it to the suite with `pnpm eval:langtracer-push --suite baseline <slug>` and delete the local file rather than committing it. Seeded cases (`priorConversation`/`conversationSeed`) are the exception — the case-write API can't represent them yet, so they stay as committed JSON. Every case is validated against `harness/schema.ts`.
 
 > The essentials are below. For the full authoring guide — picking a case archetype, sizing assertions so a wrong build fails, multi-turn director scripts, seeding vs synthetic, and calibrating against a real build — follow the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) (with [`case-shapes.md`](../../../../.agents/skills/create-instance-ai-eval/case-shapes.md) and [`running-evals.md`](../../../../.agents/skills/create-instance-ai-eval/running-evals.md)).
 
@@ -759,7 +759,7 @@ Pick the lightest path that fits:
 |---|---|
 | Reproduce a real conversation (the common case) | `seedThread` — fetch + reconstruct its LangSmith trace at run time; nothing committed |
 | Prelude is just "what was discussed" (no tool calls, no workflows) | `priorConversation` — prose turns, authored inline |
-| A synthetic/sanitized fixture you want durable | `seedFile` — a committed seed JSON (no real conversation data) |
+| Prior work already exists (a workflow to repair) | `conversationSeed` — prior messages + the workflows they reference, in the case body |
 | Shallow 2–3 turn prelude where the agent's live replies matter | Neither — a plain multi-turn `conversation` script re-drives it live |
 
 #### `seedThread` — reproduce a real conversation (no repo content)
@@ -805,9 +805,22 @@ To find the thread id, open the conversation's trace in LangSmith (or read it fr
 
 Paired with a normal `conversation` for the live turn. Plain text only — no tool calls, no restored workflows.
 
-#### `seedFile` — durable synthetic fixture
+#### `conversationSeed` — durable synthetic fixture
 
-For a **synthetic, sanitized** fixture you want pinned in git (never a real user's conversation): hand-author a `data/workflows/seeds/<name>.seed.json` (schema in `harness/conversation-seed.ts` — `messages` + optional `workflows`) and point `seedFile` at it. Real conversations belong in `seedThread`, which keeps their content out of the repo entirely. Paired with a normal `conversation` for the live turn.
+For a **synthetic, sanitized** seed you want pinned in git (never a real user's conversation): author the prior messages, plus the workflows they reference, in the case body. Real conversations belong in `seedThread`, which keeps their content out of the repo entirely. Paired with a normal `conversation` for the live turn.
+
+```json
+"conversationSeed": {
+  "messages": [ … ],
+  "workflows": [ { "id": "wKk3RmT9xQ2bVn7L", "name": "Batch loop", "nodes": [], "connections": {} } ]
+}
+```
+
+Schema in `harness/conversation-seed.ts` — `messages` plus optional `workflows` and `dataTables`. Two constraints worth knowing: a workflow `id` must be ≥8 characters (`remapSeedWorkflowIds` refuses to rewrite shorter ids safely), and a seeded `build-workflow` tool call's `output.workflowId` must match the seeded workflow's `id`, or the remap separates them and the agent can't find the workflow it's meant to act on.
+
+**Each message must carry the envelope** — `id`, `role` (`user` or `assistant`), `type` (`llm`, `custom`, …), `createdAt` (a parseable timestamp; ordering before the live turn depends on it), and `content` as an array of blocks each with a `type`. Only the envelope is validated: **unknown block types are accepted**, because block shapes belong to the agent's message store rather than to the harness, and unknown keys are preserved rather than stripped. A `type: 'custom'` message is the one exception — it's stored but never rendered, so it may omit `role` and carry any `content` shape. The envelope is checked because a malformed message would otherwise be stored verbatim *and* skipped by `transcriptPrefixFromSeed`, leaving the case graded against a transcript that doesn't match what the agent saw.
+
+The seed lives **in the case body** rather than in a sibling file, so it travels with the case whatever the source — a JSON on disk, a suite pulled with `--source langtracer`, or a case body handed to a dispatcher. (There used to be a `seedFile` path pointing at a sibling JSON. Only the disk loader could resolve it, so a case delivered any other way lost its seed; the key is gone and a case still carrying it fails at load.)
 
 #### How restore works (all paths)
 
@@ -816,7 +829,7 @@ At build time the seed is restored right after the credential pin: seeded workfl
 Rules of thumb:
 
 - **A seeded case is only worth shipping with `buildExpectations` that detect the misbehaviour recurring** — without them it passes vacuously. Sanity-check by running the case once with the seed removed: it should fail.
-- `seedThread`, `priorConversation` and `seedFile` are mutually exclusive; all order strictly before the live turn. `seedThread` provides its own live turn (omit `conversation`); the other two pair with `conversation`.
+- `seedThread`, `priorConversation` and `conversationSeed` are mutually exclusive; all order strictly before the live turn. `seedThread` provides its own live turn (omit `conversation`); the other two pair with `conversation`.
 
 ## Failure categories
 
@@ -860,7 +873,7 @@ evaluations/
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
 ├── data/agents/          # authoring dir for intent-resolution cases (the corpus lives in LangTracer suite `agents`)
-├── data/workflows/       # seeded carve-out case JSONs + seeds/ (the corpus lives in LangTracer)
+├── data/workflows/       # seeded carve-out case JSONs (the corpus lives in LangTracer)
 ├── data/subagent/        # workflow-build compatibility fixture JSON files
 ├── data/pairwise/        # Local pairwise fixture (small smoke set)
 ├── harness/              # Runners: buildWorkflow + executeScenario (e2e), in-memory event bus (discovery)

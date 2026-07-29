@@ -144,6 +144,15 @@ describe('N8nClient packages', () => {
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'] }));
 		});
+
+		it('includes includeTags=false in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeTags: false });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeTags: false }));
+		});
 	});
 
 	describe('importPackage', () => {
@@ -253,13 +262,40 @@ describe('N8nClient packages', () => {
 		});
 
 		describe('variableMissingMode', () => {
-			it.each(['do-nothing', 'must-preexist'])('sends %s when provided', async (policy) => {
+			it.each(['do-nothing', 'must-preexist', 'create-stub'])(
+				'sends %s when provided',
+				async (policy) => {
+					fetchMock.mockResolvedValue(
+						jsonResponse(200, {
+							workflows: [],
+							bindings: {},
+							credentials: { matched: [], stubbed: [] },
+							variables: { matched: [], missing: [], stubbed: [] },
+						}),
+					);
+
+					await client.importPackage(
+						{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+						{
+							workflowConflictPolicy: 'fail',
+							variableMissingMode: policy,
+						},
+					);
+
+					const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+					expect(form.get('variableMissingMode')).toBe(policy);
+				},
+			);
+		});
+
+		describe('variableParentPolicy', () => {
+			it.each(['project', 'global'])('sends %s when provided', async (policy) => {
 				fetchMock.mockResolvedValue(
 					jsonResponse(200, {
 						workflows: [],
 						bindings: {},
 						credentials: { matched: [], stubbed: [] },
-						variables: { matched: [], missing: [] },
+						variables: { matched: [], missing: [], stubbed: [] },
 					}),
 				);
 
@@ -267,12 +303,12 @@ describe('N8nClient packages', () => {
 					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
 					{
 						workflowConflictPolicy: 'fail',
-						variableMissingMode: policy,
+						variableParentPolicy: policy,
 					},
 				);
 
 				const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
-				expect(form.get('variableMissingMode')).toBe(policy);
+				expect(form.get('variableParentPolicy')).toBe(policy);
 			});
 		});
 

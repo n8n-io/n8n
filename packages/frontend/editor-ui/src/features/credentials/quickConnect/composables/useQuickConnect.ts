@@ -1,6 +1,6 @@
 import type { QuickConnectOption, QuickConnectPineconeOption } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { computed, onBeforeUnmount, ref, h } from 'vue';

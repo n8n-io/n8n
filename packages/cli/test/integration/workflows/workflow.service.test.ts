@@ -31,6 +31,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -93,6 +94,7 @@ beforeAll(async () => {
 		mock(), // scheduleTriggerJobRegistrar
 		mock(), // pollTriggerJobRegistrar
 		workflowPublishedVersionRepository,
+		Container.get(WorkflowHookContextService), // workflowHookContextService
 	);
 });
 
