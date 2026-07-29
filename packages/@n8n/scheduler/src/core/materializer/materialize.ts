@@ -14,7 +14,7 @@ import type {
 
 export type { MaterializerOptions } from './options';
 
-/** Occurrences discarded under one misfire policy, for one task type. */
+/** Occurrences one task type's jobs discarded under one misfire policy. */
 export interface MisfireCount {
 	taskType: string;
 	policy: ScheduledJobMisfirePolicy;

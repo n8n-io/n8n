@@ -9,12 +9,16 @@ import type { ScheduledJob } from '../types';
  * What a due job expands into for one materialization pass.
  */
 export interface OccurrencePlan {
-	/** The instants to record, oldest first; each becomes one task, unique per (job, instant). */
+	/**
+	 * The instants to record, oldest first.
+	 * Each becomes one task, unique per (job, instant).
+	 */
 	occurrences: Date[];
 
 	/**
-	 * How many due instants the misfire policy discarded. The clock still advances
-	 * past them (see {@link nextRunAt}), so they are gone, not deferred.
+	 * How many due instants the misfire policy discarded rather than record.
+	 * The job's clock still advanced past them (see {@link nextRunAt}), so they
+	 * are gone, not deferred.
 	 */
 	skippedOccurrences: number;
 
