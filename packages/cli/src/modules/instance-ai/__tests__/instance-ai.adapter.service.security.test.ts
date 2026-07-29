@@ -112,6 +112,8 @@ const eventService = mock<EventService>();
 const roleService = mock<RoleService>();
 const telemetry = mock<Telemetry>();
 const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
+const executionContextService = mock<ExecutionContextService>();
+const dynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
 
 const nodeResourceExplorerService = new NodeResourceExplorerService(
 	logger,
@@ -157,8 +159,8 @@ const service = new InstanceAiAdapterService(
 	mock<OutboundHttp>(),
 	mock<AiGatewayService>(),
 	mock<WorkflowTemplatesService>(),
-	mock<ExecutionContextService>(),
-	mock<DynamicCredentialsProxy>(),
+	executionContextService,
+	dynamicCredentialsProxy,
 );
 
 const user = mock<User>({
@@ -551,5 +553,107 @@ describe('credentialService.get — credential ownership revalidation', () => {
 			'Credential with ID "cred-other" could not be found.',
 		);
 		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-other', false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// credentialService.test — end-user credential resolution
+// ---------------------------------------------------------------------------
+
+describe('credentialService.test — end-user credential resolution', () => {
+	const resolvableCredential = {
+		id: 'cred-eu',
+		name: 'My Drive',
+		type: 'googleDriveOAuth2Api',
+		isResolvable: true,
+		resolverId: 'resolver-1',
+	};
+
+	beforeEach(() => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(resolvableCredential as never);
+		credentialsService.decrypt.mockResolvedValue({ stored: 'placeholder' } as never);
+		credentialsService.test.mockResolvedValue({ status: 'OK', message: 'Connection OK' } as never);
+	});
+
+	it('tests the resolved per-user connection, not the stored placeholder data', async () => {
+		executionContextService.buildManualExecutionContext.mockResolvedValue({
+			version: 1,
+			establishedAt: 0,
+			source: 'manual',
+			credentials: 'enc-identity',
+		} as never);
+		dynamicCredentialsProxy.resolveIfNeeded.mockResolvedValue({
+			data: { accessToken: 'the-users-own-token' },
+			isDynamic: true,
+		} as never);
+
+		const ctx = service.createContext(user, { n8nAuthCookie: 'cookie-abc' });
+		const result = await ctx.credentialService.test('cred-eu');
+
+		expect(executionContextService.buildManualExecutionContext).toHaveBeenCalledWith('cookie-abc');
+		expect(dynamicCredentialsProxy.resolveIfNeeded).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'cred-eu', isResolvable: true, resolverId: 'resolver-1' }),
+			{ stored: 'placeholder' },
+			expect.objectContaining({ credentials: 'enc-identity' }),
+			undefined,
+		);
+		expect(credentialsService.test).toHaveBeenCalledWith(
+			user.id,
+			expect.objectContaining({ data: { accessToken: 'the-users-own-token' } }),
+		);
+		expect(result).toEqual({ success: true, message: 'Connection OK' });
+	});
+
+	it('reports a connected credential as unverifiable, not broken, when no user identity is in scope', async () => {
+		executionContextService.buildManualExecutionContext.mockResolvedValue(undefined);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.credentialService.test('cred-eu');
+
+		// Resolution can only fail without an identity, and that reads as a broken credential.
+		expect(dynamicCredentialsProxy.resolveIfNeeded).not.toHaveBeenCalled();
+		expect(credentialsService.test).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ success: false, skipped: true });
+	});
+
+	it('surfaces a resolution failure as a failed test', async () => {
+		executionContextService.buildManualExecutionContext.mockResolvedValue({
+			version: 1,
+			establishedAt: 0,
+			source: 'manual',
+			credentials: 'enc-identity',
+		} as never);
+		dynamicCredentialsProxy.resolveIfNeeded.mockRejectedValue(
+			new Error("'My Drive' end-user credential is not connected for you."),
+		);
+
+		const ctx = service.createContext(user, { n8nAuthCookie: 'cookie-abc' });
+		const result = await ctx.credentialService.test('cred-eu');
+
+		expect(credentialsService.test).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			success: false,
+			message: "'My Drive' end-user credential is not connected for you.",
+		});
+	});
+
+	it('skips resolution entirely for a fixed credential', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'cred-fixed',
+			name: 'Shared Slack',
+			type: 'slackApi',
+			isResolvable: false,
+		} as never);
+
+		const ctx = service.createContext(user, { n8nAuthCookie: 'cookie-abc' });
+		const result = await ctx.credentialService.test('cred-fixed');
+
+		expect(dynamicCredentialsProxy.resolveIfNeeded).not.toHaveBeenCalled();
+		expect(executionContextService.buildManualExecutionContext).not.toHaveBeenCalled();
+		expect(credentialsService.test).toHaveBeenCalledWith(
+			user.id,
+			expect.objectContaining({ data: { stored: 'placeholder' } }),
+		);
+		expect(result).toEqual({ success: true, message: 'Connection OK' });
 	});
 });

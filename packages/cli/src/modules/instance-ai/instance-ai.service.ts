@@ -517,13 +517,12 @@ export class InstanceAiService {
 	private readonly threadPushRef = new Map<string, string>();
 
 	/**
-	 * Tracks the n8n-auth cookie per thread, so end-user (dynamic) credentials
-	 * can resolve the acting user's own connection when this thread runs/tests
-	 * a workflow — including background continuations (planned tasks) within
-	 * the same thread. Mirrors threadPushRef's lifecycle: set on startRun, kept
-	 * alive across follow-ups/planned tasks, cleared on thread dispose.
+	 * Latest n8n-auth cookie per *user*, so end-user credentials resolve to that user's
+	 * own connection. Keyed by user, not thread, so every request refreshes it (a revoked
+	 * token can't linger) and a run rebuilt on another main still finds an identity.
+	 * Best-effort — callers must treat a miss as "no identity available".
 	 */
-	private readonly threadN8nAuthCookie = new Map<string, string>();
+	private readonly userN8nAuthCookie = new Map<string, string>();
 
 	/** Counts plan-review confirmations per thread, to tell the first plan apart from later revisions. */
 	private readonly planRequestsByThread = new Map<string, number>();
@@ -1066,9 +1065,7 @@ export class InstanceAiService {
 			this.threadPushRef.set(threadId, pushRef);
 		}
 
-		if (n8nAuthCookie !== undefined) {
-			this.threadN8nAuthCookie.set(threadId, n8nAuthCookie);
-		}
+		this.rememberUserAuthCookie(user.id, n8nAuthCookie);
 
 		this.startExecuteRun(
 			user,
@@ -1537,7 +1534,7 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
-		this.threadN8nAuthCookie.delete(threadId);
+		// Not userN8nAuthCookie: it's keyed by user, and their other threads still need it.
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
 		this.tracing.deleteTraceContextsForThread(threadId);
@@ -2132,7 +2129,7 @@ export class InstanceAiService {
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
 			modelId,
-			n8nAuthCookie: this.threadN8nAuthCookie.get(threadId),
+			n8nAuthCookie: this.userN8nAuthCookie.get(user.id),
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -4356,8 +4353,12 @@ export class InstanceAiService {
 		requestingUserId: string,
 		requestId: string,
 		request: InstanceAiConfirmRequest,
+		n8nAuthCookie?: string,
 	): Promise<InstanceAiConfirmResponse | null> {
 		const data = toConfirmationData(request);
+		// Confirming can rebuild the run on a main that never handled the original chat
+		// request, so refresh the identity before any of those paths build a context.
+		this.rememberUserAuthCookie(requestingUserId, n8nAuthCookie);
 		const freshUser = await this.revalidateActiveUser(requestingUserId);
 		if (!freshUser) {
 			this.runState.rejectPendingConfirmation(requestId);
@@ -4632,15 +4633,28 @@ export class InstanceAiService {
 		};
 	}
 
+	/**
+	 * Call from every entry point that can start or resume a run — refreshing on each
+	 * request is what keeps a revoked or rotated token from being replayed.
+	 */
+	private rememberUserAuthCookie(userId: string, n8nAuthCookie: string | undefined): void {
+		if (n8nAuthCookie === undefined) return;
+		this.userN8nAuthCookie.set(userId, n8nAuthCookie);
+	}
+
 	private async revalidateActiveUser(userId: string): Promise<User | null> {
 		try {
 			const user = await this.userRepository.findOne({
 				where: { id: userId },
 				relations: ['role'],
 			});
-			if (!user || user.disabled) return null;
+			if (!user || user.disabled) {
+				this.userN8nAuthCookie.delete(userId);
+				return null;
+			}
 			const hasInstanceAiMessageScope =
 				user.role?.scopes?.some((scope) => scope.slug === 'instanceAi:message') ?? false;
+			if (!hasInstanceAiMessageScope) this.userN8nAuthCookie.delete(userId);
 			return hasInstanceAiMessageScope ? user : null;
 		} catch (error: unknown) {
 			this.logger.warn('Failed to revalidate user', {

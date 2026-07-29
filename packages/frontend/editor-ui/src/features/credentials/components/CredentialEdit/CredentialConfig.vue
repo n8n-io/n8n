@@ -72,6 +72,8 @@ type Props = {
 	requiredPropertiesFilled?: boolean;
 	isManaged?: boolean;
 	isPrivateCredentialsEnabled?: boolean;
+	/** Whether End-user mode is offerable for this credential (OAuth type + permission). */
+	canUseEndUserMode?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
 	isNewCredential?: boolean;
@@ -562,11 +564,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				<CredentialTypeSelector
 					v-if="
 						isPrivateCredentialsEnabled &&
-						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
-						isOAuthType &&
-						// Only users who can manage end-user credentials see the selector at all;
-						// it's disabled for them when they lack edit access to the credential.
-						!!credentialPermissions.createEndUser
+						// Shared with the composable's `defaultIsResolvable` gate so the two can't
+						// disagree; still disabled below without edit access to the credential.
+						canUseEndUserMode
 					"
 					:model-value="Boolean(isResolvable)"
 					:disabled="!canSelectEndUserType"

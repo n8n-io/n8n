@@ -198,6 +198,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: false,
 					isOAuthType: true,
+					canUseEndUserMode: false,
 					isNewCredential: true,
 					credentialPermissions: {
 						create: true,
@@ -214,7 +215,7 @@ describe('CredentialConfig', () => {
 			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
-		it('should not display dynamic credentials section when isOAuthType is false', async () => {
+		it('should not display dynamic credentials section when end-user mode is unavailable for the type', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -224,6 +225,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: false,
+					canUseEndUserMode: false,
 					isNewCredential: true,
 					credentialPermissions: {
 						create: true,
@@ -250,6 +252,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
+					canUseEndUserMode: false,
 					isNewCredential: true,
 					credentialPermissions: {
 						create: false,
@@ -276,6 +279,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
+					canUseEndUserMode: false,
 					isNewCredential: false,
 					credentialPermissions: {
 						create: false,
@@ -302,6 +306,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
+					canUseEndUserMode: true,
 					isNewCredential: true,
 					isResolvable: false,
 					credentialPermissions: {
@@ -331,6 +336,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
+					canUseEndUserMode: true,
 					isNewCredential: false,
 					isResolvable: false,
 					credentialPermissions: {
@@ -360,6 +366,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
+					canUseEndUserMode: true,
 					isNewCredential: false,
 					isResolvable: false,
 					credentialPermissions: {
@@ -389,6 +396,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
+					canUseEndUserMode: false,
 					isNewCredential: false,
 					isResolvable: false,
 					credentialPermissions: {
@@ -417,6 +425,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
+					canUseEndUserMode: false,
 					isNewCredential: false,
 					isResolvable: true,
 					credentialPermissions: {
@@ -445,6 +454,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
+					canUseEndUserMode: true,
 					isNewCredential: false,
 					isResolvable: true,
 					credentialPermissions: {
@@ -475,6 +485,7 @@ describe('CredentialConfig', () => {
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
+					canUseEndUserMode: true,
 					isNewCredential: false,
 					isResolvable: true,
 					credentialPermissions: {
@@ -686,6 +697,7 @@ describe('CredentialConfig', () => {
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isOAuthType: true,
+					canUseEndUserMode: false,
 					managedOauthAvailable: false,
 					useCustomOauth: false,
 					credentialPermissions: writePermissions,
@@ -714,6 +726,7 @@ describe('CredentialConfig', () => {
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isOAuthType: true,
+					canUseEndUserMode: false,
 					managedOauthAvailable: true,
 					useCustomOauth: true,
 					credentialPermissions: writePermissions,
@@ -742,6 +755,7 @@ describe('CredentialConfig', () => {
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isOAuthType: true,
+					canUseEndUserMode: false,
 					managedOauthAvailable: true,
 					useCustomOauth: false,
 					credentialPermissions: writePermissions,
@@ -760,6 +774,7 @@ describe('CredentialConfig', () => {
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
 					isOAuthType: false,
+					canUseEndUserMode: false,
 					managedOauthAvailable: false,
 					useCustomOauth: false,
 					credentialPermissions: writePermissions,

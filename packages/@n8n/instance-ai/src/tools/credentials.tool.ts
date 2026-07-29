@@ -438,12 +438,8 @@ async function handleSetup(
 	if (resumeData === undefined || resumeData === null) {
 		const credentialRequests = await Promise.all(
 			input.credentials.map(
-				async (req: {
-					credentialType: string;
-					reason?: string;
-					suggestedName?: string;
-					isResolvable?: boolean;
-				}) => {
+				// Shape comes from the zod schema — no hand-written duplicate to keep in sync.
+				async (req) => {
 					const existing = await context.credentialService.list({
 						type: req.credentialType,
 						...(context.projectId ? { projectId: context.projectId } : {}),
@@ -459,9 +455,7 @@ async function handleSetup(
 			),
 		);
 
-		const typeNames = input.credentials
-			.map((c: { credentialType: string }) => c.credentialType)
-			.join(', ');
+		const typeNames = input.credentials.map((c) => c.credentialType).join(', ');
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: isFinalize

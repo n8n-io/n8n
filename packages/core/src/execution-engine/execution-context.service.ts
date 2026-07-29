@@ -58,6 +58,23 @@ export class ExecutionContextService {
 		return await this.cipher.encryptV2(payload);
 	}
 
+	/**
+	 * For callers resolving credentials outside a workflow run (e.g. testing one
+	 * credential as the acting user). Returns `undefined` with no cookie, so callers can
+	 * branch on "no identity available" without hand-rolling the context shape.
+	 */
+	async buildManualExecutionContext(
+		n8nAuthCookie: string | undefined,
+	): Promise<IExecutionContext | undefined> {
+		if (!n8nAuthCookie) return undefined;
+		return {
+			version: 1,
+			establishedAt: Date.now(),
+			source: 'manual',
+			credentials: await this.buildManualExecutionCredentials(n8nAuthCookie),
+		};
+	}
+
 	async buildTriggerIdentityCredentials(token: string, resource: string): Promise<string> {
 		const payload: ICredentialContext = {
 			version: 1,

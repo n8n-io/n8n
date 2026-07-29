@@ -32,6 +32,9 @@ import type { InstanceAiContext } from '../../types';
 
 // ── Credential cache ────────────────────────────────────────────────────────
 
+/** Result of a credential connection test; `skipped` means "couldn't be verified either way". */
+type CredentialTestOutcome = { success: boolean; message?: string; skipped?: boolean };
+
 /** Cache for deduplicating credential fetches across nodes with the same types. */
 export interface CredentialCache {
 	/** Credential list promises, keyed by `${workflowId ?? ''}|${credentialType}` —
@@ -40,7 +43,7 @@ export interface CredentialCache {
 	/** Testability check promises, keyed by credential type (workflow-independent). */
 	testability: Map<string, Promise<boolean>>;
 	/** Credential test result promises, keyed by credential ID (workflow-independent). */
-	tests: Map<string, Promise<{ success: boolean; message?: string }>>;
+	tests: Map<string, Promise<CredentialTestOutcome>>;
 }
 
 export function createCredentialCache(): CredentialCache {
@@ -456,7 +459,7 @@ async function resolveCredentialState(
 	const canTest = await testabilityPromise;
 	if (!canTest) return { existingCredentials, isAutoApplied };
 
-	let testPromise = cache?.tests.get(credToTest);
+	let testPromise: Promise<CredentialTestOutcome> | undefined = cache?.tests.get(credToTest);
 	if (!testPromise) {
 		testPromise = context.credentialService.test(credToTest).catch((testError) => ({
 			success: false,
@@ -464,7 +467,10 @@ async function resolveCredentialState(
 		}));
 		cache?.tests.set(credToTest, testPromise);
 	}
-	const credentialTestResult = await testPromise;
+	const { skipped, ...credentialTestResult } = await testPromise;
+	// Unverifiable isn't a failure — omit the result so the card reads "untested"
+	// instead of marking a working credential broken.
+	if (skipped) return { existingCredentials, isAutoApplied };
 	return { existingCredentials, isAutoApplied, credentialTestResult };
 }
 

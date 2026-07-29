@@ -329,6 +329,32 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('buildManualExecutionContext()', () => {
+		it('should wrap the encrypted identity in a manual execution context', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const result = await service.buildManualExecutionContext('n8n-auth-cookie-jwt');
+
+			expect(result).toEqual({
+				version: 1,
+				establishedAt: expect.any(Number),
+				source: 'manual',
+				credentials: 'encrypted-credential-blob',
+			});
+		});
+
+		// Callers branch on undefined to mean "no identity available".
+		it.each([undefined, ''])(
+			'should return undefined when there is no cookie to identify anyone (%p)',
+			async (cookie) => {
+				const result = await service.buildManualExecutionContext(cookie);
+
+				expect(result).toBeUndefined();
+				expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+			},
+		);
+	});
+
 	describe('buildTriggerIdentityCredentials()', () => {
 		it('should encrypt the credential context with the token as identity and resource in metadata', async () => {
 			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');

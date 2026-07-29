@@ -2992,10 +2992,19 @@ function createRunAdapterForTests(
 		postExecutePromise?: Promise<unknown>;
 		threadId?: string;
 		queueMode?: boolean;
+		n8nAuthCookie?: string;
 	},
 ) {
 	const mockWorkflowFinderService = {
 		findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+	};
+
+	const mockExecutionContextService = {
+		buildManualExecutionContext: vi.fn(async (cookie?: string) =>
+			cookie
+				? { version: 1, establishedAt: 0, source: 'manual', credentials: `enc(${cookie})` }
+				: undefined,
+		),
 	};
 
 	const mockWorkflowRunner = {
@@ -3068,11 +3077,16 @@ function createRunAdapterForTests(
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[35],
+		mockExecutionContextService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[36],
 	);
 
-	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
+	const adapter = service.createContext(mockUser, {
+		threadId: options?.threadId,
+		n8nAuthCookie: options?.n8nAuthCookie,
+	}).executionService;
 
 	return {
 		adapter,
@@ -3080,6 +3094,7 @@ function createRunAdapterForTests(
 		mockExecutionPersistence,
 		mockTelemetry,
 		mockWorkflowRunner,
+		mockExecutionContextService,
 	};
 }
 
@@ -3110,6 +3125,47 @@ describe('createExecutionAdapter run()', () => {
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
 		});
+	});
+
+	it('attaches the acting user identity so end-user credentials resolve', async () => {
+		const { adapter, mockWorkflowRunner, mockExecutionContextService } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [] },
+			{ n8nAuthCookie: 'cookie-abc' },
+		);
+
+		await adapter.run('wf-1');
+
+		expect(mockExecutionContextService.buildManualExecutionContext).toHaveBeenCalledWith(
+			'cookie-abc',
+		);
+		expect(mockWorkflowRunner.run.mock.calls[0][0].encryptedRunnerIdentity).toBe('enc(cookie-abc)');
+	});
+
+	it('leaves the identity unset when no cookie is in scope', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({ id: 'wf-1', nodes: [] });
+
+		await adapter.run('wf-1');
+
+		expect(mockWorkflowRunner.run.mock.calls[0][0].encryptedRunnerIdentity).toBeUndefined();
+	});
+
+	it('reports the run as failed in telemetry when building the identity throws', async () => {
+		const { adapter, mockTelemetry, mockWorkflowRunner, mockExecutionContextService } =
+			createRunAdapterForTests(
+				{ id: 'wf-1', nodes: [] },
+				{ threadId: 'thread-1', n8nAuthCookie: 'cookie-abc' },
+			);
+		mockExecutionContextService.buildManualExecutionContext.mockRejectedValueOnce(
+			new Error('cipher unavailable'),
+		);
+
+		await expect(adapter.run('wf-1')).rejects.toThrow('cipher unavailable');
+
+		expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({ status: 'error' }),
+		);
 	});
 
 	it('still applies overrides when the workflow has no settings', async () => {

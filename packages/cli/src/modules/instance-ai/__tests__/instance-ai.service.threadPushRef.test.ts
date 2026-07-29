@@ -69,7 +69,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		// dependencies clearThreadState reaches.
 		type Internals = {
 			threadPushRef: Map<string, string>;
-			threadN8nAuthCookie: Map<string, string>;
+			userN8nAuthCookie: Map<string, string>;
 			planRequestsByThread: Map<string, number>;
 			runState: { clearThread: Mock };
 			backgroundTasks: { cancelThread: Mock };
@@ -96,7 +96,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 
 		service.threadPushRef = new Map<string, string>([['thread-a', 'push-ref-a']]);
-		service.threadN8nAuthCookie = new Map<string, string>([['thread-a', 'cookie-a']]);
+		service.userN8nAuthCookie = new Map<string, string>([['user-a', 'cookie-a']]);
 		service.planRequestsByThread = new Map<string, number>([['thread-a', 2]]);
 		service.runState = {
 			clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })),
@@ -125,7 +125,8 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		await service.clearThreadState('thread-a');
 
 		expect(service.threadPushRef.has('thread-a')).toBe(false);
-		expect(service.threadN8nAuthCookie.has('thread-a')).toBe(false);
+		// Keyed by user: the user's other threads still need it.
+		expect(service.userN8nAuthCookie.get('user-a')).toBe('cookie-a');
 		expect(service.planRequestsByThread.has('thread-a')).toBe(false);
 		expect(service.evalCredentialAllowlists.get('thread-a')).toBeUndefined();
 	});

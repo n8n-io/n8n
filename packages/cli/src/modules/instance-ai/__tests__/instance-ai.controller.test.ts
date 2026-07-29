@@ -910,7 +910,29 @@ describe('InstanceAiController', () => {
 				ok: true,
 				runId: 'run-1',
 			});
-			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(USER_ID, 'req-1', body);
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
+				USER_ID,
+				'req-1',
+				body,
+				undefined,
+			);
+		});
+
+		// Confirming can rebuild the run on a main that never saw the chat request.
+		it('should forward the n8n-auth cookie so end-user credentials still resolve', async () => {
+			instanceAiService.resolveConfirmation.mockResolvedValue({ ok: true });
+			authService.getCookieToken.mockReturnValueOnce('n8n-auth-cookie-value');
+			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			await controller.confirm(reqWithBody, res, 'req-1');
+
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
+				USER_ID,
+				'req-1',
+				body,
+				'n8n-auth-cookie-value',
+			);
 		});
 
 		it('should pass resourceDecision through to resolveConfirmation', async () => {
@@ -923,7 +945,12 @@ describe('InstanceAiController', () => {
 
 			await controller.confirm(reqWithBody, res, 'req-1');
 
-			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(USER_ID, 'req-1', body);
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
+				USER_ID,
+				'req-1',
+				body,
+				undefined,
+			);
 		});
 
 		it('should throw NotFoundError when confirmation not found', async () => {

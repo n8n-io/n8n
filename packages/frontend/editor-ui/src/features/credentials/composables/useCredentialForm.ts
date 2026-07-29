@@ -324,6 +324,15 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			).credential,
 	);
 
+	/**
+	 * Whether End-user mode is offerable here (OAuth-only, and only with permission).
+	 * Shared by the connection-mode selector and the `defaultIsResolvable` hint — if the
+	 * two disagree, `isResolvable` can be set with no control to unset it.
+	 */
+	const canUseEndUserMode = computed(
+		() => isOAuthType.value && !!credentialPermissions.value.createEndUser,
+	);
+
 	// --- helpers -----------------------------------------------------------
 	function getParentTypes(name: string): string[] {
 		const type = credentialsStore.getCredentialTypeByName(name);
@@ -501,7 +510,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			detectCustomOAuth();
 			return;
 		}
-		isResolvable.value = toValue(options.defaultIsResolvable) ?? false;
 		credentialName.value =
 			toValue(options.suggestedName) ||
 			(credentialTypeName.value
@@ -510,6 +518,9 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 					})
 				: (credentialType.value?.displayName ?? ''));
 		setCredentialPropertyDefaults();
+		// Must run after defaults: `isOAuthType` reads `grantType`. Ignoring the hint when
+		// the mode isn't offerable keeps us from setting a flag the user can't see or undo.
+		isResolvable.value = !!toValue(options.defaultIsResolvable) && canUseEndUserMode.value;
 		if (homeProject.value) {
 			credentialData.value = { ...credentialData.value, homeProject: homeProject.value };
 		}
@@ -627,6 +638,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		isCredentialTestable,
 		credentialPermissions,
 		canUseCustomOAuth,
+		canUseEndUserMode,
 		// helpers
 		getParentTypes,
 		getCredentialProperties,

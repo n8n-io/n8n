@@ -319,6 +319,26 @@ describe('buildSetupRequests', () => {
 		expect(result[0].needsAction).toBe(false);
 	});
 
+	it('treats an unverifiable test as unknown, not a failure', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Drive', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		// Can't be checked either way, so it must not be reported broken.
+		(context.credentialService.test as Mock).mockResolvedValue({
+			success: false,
+			skipped: true,
+			message: 'Could not verify this end-user credential',
+		});
+
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Drive' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0]?.credentialTestResult).toBeUndefined();
+		expect(result[0]?.needsAction).toBe(false);
+	});
+
 	it('keeps AI Gateway-managed credentials complete without testing them', async () => {
 		(context.nodeService.getDescription as Mock).mockResolvedValue({
 			group: [],

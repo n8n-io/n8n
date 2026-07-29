@@ -6,6 +6,7 @@ import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow'
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsDecryptedResponse } from '../../credentials.types';
 import { useCredentialForm } from '../useCredentialForm';
@@ -99,6 +100,25 @@ const betaApi: ICredentialType = {
 	properties: [],
 };
 
+// `isOAuthType` needs the oAuth2Api lineage plus an authorizationCode/pkce grant.
+const endUserOAuth: ICredentialType = {
+	name: 'endUserOAuth2Api',
+	displayName: 'End-user OAuth2 API',
+	extends: ['oAuth2Api'],
+	properties: [
+		{ displayName: 'Grant Type', name: 'grantType', type: 'hidden', default: 'authorizationCode' },
+		{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '' },
+	],
+};
+
+const oAuth2Api: ICredentialType = {
+	name: 'oAuth2Api',
+	displayName: 'OAuth2 API',
+	properties: [
+		{ displayName: 'Grant Type', name: 'grantType', type: 'hidden', default: 'authorizationCode' },
+	],
+};
+
 const typesByName: Record<string, ICredentialType> = {
 	httpBasicAuth,
 	acmeOAuth2Api: managedOAuth,
@@ -107,11 +127,22 @@ const typesByName: Record<string, ICredentialType> = {
 	httpTemplatedCustomAuth: templatedCustomAuth,
 	alphaApi,
 	betaApi,
+	endUserOAuth2Api: endUserOAuth,
+	oAuth2Api,
 };
 
 describe('useCredentialForm', () => {
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+
+	/** Credential permissions derive from the home project's scopes. */
+	function grantEndUserCredentialScope() {
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProject = {
+			id: 'project-1',
+			scopes: ['credential:create', 'credential:createEndUser'],
+		} as unknown as typeof projectsStore.currentProject;
+	}
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
@@ -198,15 +229,43 @@ describe('useCredentialForm', () => {
 		});
 
 		it('seeds isResolvable from defaultIsResolvable for a new credential', async () => {
+			grantEndUserCredentialScope();
 			const form = useCredentialForm({
 				mode: 'new',
-				activeId: 'privateOAuth2Api',
+				activeId: 'endUserOAuth2Api',
 				defaultIsResolvable: true,
 			});
 
 			await form.initialize();
 
 			expect(form.isResolvable.value).toBe(true);
+		});
+
+		// The selector only renders for OAuth types with the createEndUser scope; a hint
+		// that outran it would set a mode the user can't undo and the backend rejects.
+		it('ignores defaultIsResolvable for a non-OAuth credential type', async () => {
+			grantEndUserCredentialScope();
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'httpBasicAuth',
+				defaultIsResolvable: true,
+			});
+
+			await form.initialize();
+
+			expect(form.isResolvable.value).toBe(false);
+		});
+
+		it('ignores defaultIsResolvable when the user cannot manage end-user credentials', async () => {
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'endUserOAuth2Api',
+				defaultIsResolvable: true,
+			});
+
+			await form.initialize();
+
+			expect(form.isResolvable.value).toBe(false);
 		});
 
 		it('flags custom OAuth when editing a credential with overridden client fields', async () => {

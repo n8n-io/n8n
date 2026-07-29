@@ -99,7 +99,6 @@ import {
 	type IConnections,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
-	type IExecutionContext,
 	type DataTableFilter,
 	type DataTableRow,
 	type DataTableRows,
@@ -1294,14 +1293,15 @@ export class InstanceAiAdapterService {
 					});
 				};
 
-				// Mirrors workflow-execution.service.ts's executeManually: without this,
-				// end-user (dynamic) credentials silently skip resolution in manual mode
-				// and nodes fall back to static/placeholder data.
-				runData.encryptedRunnerIdentity = n8nAuthCookie
-					? await executionContextService.buildManualExecutionCredentials(n8nAuthCookie)
-					: undefined;
-
 				try {
+					// Identify the acting user so end-user credentials resolve to their own
+					// connection; without it, nodes fall back to placeholder data. Not gated on
+					// `executionMode` — this is always an editor-initiated run, and the trigger
+					// modes above are set to force-save, not by a real inbound request.
+					const runnerContext =
+						await executionContextService.buildManualExecutionContext(n8nAuthCookie);
+					runData.encryptedRunnerIdentity = runnerContext?.credentials;
+
 					const executionId = await workflowRunner.run(runData);
 					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
 						try {
@@ -1614,23 +1614,23 @@ export class InstanceAiAdapterService {
 
 				let data = await credentialsService.decrypt(credential, true);
 
-				// An end-user (dynamic) credential holds no real secret on the stored
-				// entity itself — the actual connection lives in a per-user resolver
-				// entry. Testing the raw decrypted data would always report a false
-				// failure, so resolve this user's own connection first, the same way
-				// a real execution would (see credentials-helper.ts).
+				// The real connection lives in a per-user resolver entry, not on the stored
+				// entity, so testing the raw decrypted data always reports a false failure.
 				if (credential.isResolvable) {
-					const encryptedRunnerIdentity = n8nAuthCookie
-						? await executionContextService.buildManualExecutionCredentials(n8nAuthCookie)
-						: undefined;
-					const executionContext: IExecutionContext | undefined = encryptedRunnerIdentity
-						? {
-								version: 1,
-								establishedAt: Date.now(),
-								source: 'manual',
-								credentials: encryptedRunnerIdentity,
-							}
-						: undefined;
+					const executionContext =
+						await executionContextService.buildManualExecutionContext(n8nAuthCookie);
+
+					// Without an identity, resolution can only fail — and that would be reported
+					// as a broken credential. Report "not verifiable" instead, mirroring
+					// credentials-helper.ts, which skips resolution rather than failing.
+					if (!executionContext) {
+						return {
+							success: false,
+							skipped: true,
+							message:
+								'Could not verify this end-user credential: no signed-in user is available for this run to resolve it against.',
+						};
+					}
 
 					try {
 						const resolveResult = await dynamicCredentialsProxy.resolveIfNeeded(
@@ -1643,7 +1643,9 @@ export class InstanceAiAdapterService {
 							},
 							data,
 							executionContext,
-							undefined, // no workflowId in scope for a standalone credential test
+							// No workflow in scope, so a workflow-level `credentialResolverId`
+							// override can't apply; the credential's own or system resolver is used.
+							undefined,
 						);
 						data = resolveResult.data;
 					} catch (error) {

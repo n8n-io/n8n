@@ -597,6 +597,9 @@ export class InstanceAiController {
 			req.user.id,
 			requestId,
 			parseResult.data,
+			// Refreshes the acting user's identity for end-user credential resolution:
+			// confirming can resume a run, or rebuild one on a different main.
+			this.authService.getCookieToken(req),
 		);
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');

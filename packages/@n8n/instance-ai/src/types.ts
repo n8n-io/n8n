@@ -463,7 +463,10 @@ export interface InstanceAiCredentialService {
 	}): Promise<CredentialSummary[]>;
 	get(credentialId: string): Promise<CredentialDetail>;
 	delete(credentialId: string): Promise<void>;
-	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
+	/** `skipped: true` means the connection couldn't be verified either way (e.g. no
+	 *  signed-in user to resolve an end-user credential against) — treat as unknown,
+	 *  not a failure, so a working credential isn't reported broken. */
+	test(credentialId: string): Promise<{ success: boolean; message?: string; skipped?: boolean }>;
 	/** Whether a credential type has a test function. When false, skip testing. */
 	isTestable?(credentialType: string): Promise<boolean>;
 	getDocumentationUrl?(credentialType: string): Promise<string | null>;

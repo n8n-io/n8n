@@ -211,15 +211,12 @@ const form = useCredentialForm({
 		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		return isCredentialModalState(modalState) ? modalState.suggestedName : undefined;
 	},
-	// Ignored when private/end-user credentials aren't available (unlicensed, or an
-	// instance-scoped credential) — the connection-mode toggle wouldn't be shown either.
+	// Ignored when end-user credentials aren't available here (unlicensed, or instance
+	// scope). The composable also gates on `canUseEndUserMode` (OAuth type + permission).
 	defaultIsResolvable: () => {
-		if (!isPrivateCredentialsEnabled.value) return undefined;
+		if (!isPrivateCredentialsEnabled.value || isInstanceCredential.value) return undefined;
 		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-		if (!isCredentialModalState(modalState) || modalState.usageScope === 'instance') {
-			return undefined;
-		}
-		return modalState.defaultIsResolvable;
+		return isCredentialModalState(modalState) ? modalState.defaultIsResolvable : undefined;
 	},
 	// Scroll the auth-error/success banner into view after a test (parity with the
 	// modal's former testCredential, which ended with scrollToTop).
@@ -254,6 +251,7 @@ const {
 	requiredPropertiesFilled,
 	isCredentialTestable,
 	credentialPermissions,
+	canUseEndUserMode,
 	usesExternalSecrets,
 	homeProject,
 	setCredentialPropertyDefaults,
@@ -1422,6 +1420,7 @@ const { width } = useElementSize(credNameRef);
 							:mode="mode"
 							:selected-credential="selectedCredential"
 							:is-private-credentials-enabled="isPrivateCredentialsEnabled && !isInstanceCredential"
+							:can-use-end-user-mode="canUseEndUserMode"
 							:is-resolvable="isResolvable"
 							:connected-by-me="connectedByMe"
 							:is-new-credential="isNewCredential"
