@@ -52,6 +52,13 @@ describe('jsonSizeExceeds', () => {
 			expect(smallestExceededLimit(value)).toBeLessThanOrEqual(realSize(value));
 		});
 
+		it('holds for a container reached twice, which serialization repeats', () => {
+			const shared = { s: 'x', n: [1, 2] };
+			const value = { a: shared, b: shared };
+
+			expect(smallestExceededLimit(value)).toBeLessThanOrEqual(realSize(value));
+		});
+
 		it('holds for a sparse array, whose holes serialize as null', () => {
 			const sparse = new Array<number>(4);
 			sparse[0] = 1;
@@ -113,11 +120,20 @@ describe('jsonSizeExceeds', () => {
 		});
 	});
 
-	it('measures a reference reached twice only once', () => {
-		const shared = { blob: 'x'.repeat(ONE_MIB) };
+	it('measures every occurrence of a container reached twice', () => {
+		const shared = { blob: 'x'.repeat(1.5 * ONE_MIB) };
 
-		expect(jsonSizeExceeds({ a: shared, b: shared }, 2 * ONE_MIB)).toBe(false);
+		expect(jsonSizeExceeds({ a: shared, b: shared }, 2 * ONE_MIB)).toBe(true);
 		expect(realSize({ a: shared, b: shared })).toBeGreaterThan(2 * ONE_MIB);
+	});
+
+	it('answers on a structure whose paths outnumber its containers', () => {
+		let node: Record<string, unknown> = { leaf: 'x'.repeat(1000) };
+		for (let depth = 0; depth < 40; depth++) {
+			node = { a: node, b: node };
+		}
+
+		expect(jsonSizeExceeds(node, 2 * ONE_MIB)).toBe(true);
 	});
 
 	it('answers on a cyclic value instead of throwing', () => {

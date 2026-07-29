@@ -1,5 +1,8 @@
 type JsonContainer = Record<string, unknown> | unknown[];
 
+/** Either a container left to measure, or the end of a container's descendants. */
+type Step = { measure: JsonContainer } | { leave: JsonContainer };
+
 /**
  * Tells whether a value exceeds a JSON size limit, without serializing it.
  *
@@ -17,19 +20,25 @@ export function jsonSizeExceeds(value: unknown, maxBytes: number): boolean {
 		return minSerializedSize(value) > maxBytes;
 	}
 
-	const measured = new WeakSet<object>();
-	const containers: JsonContainer[] = [value];
+	// Only ancestors are tracked, because serialization repeats a container reached
+	// twice and fails on a cycle alone.
+	const ancestors = new Set<JsonContainer>();
+	const steps: Step[] = [{ measure: value }];
 	let size = 0;
 
-	for (
-		let container = containers.pop();
-		container !== undefined && size <= maxBytes;
-		container = containers.pop()
-	) {
-		if (!measured.has(container)) {
-			measured.add(container);
-			size += measureMembers(container, containers, maxBytes - size);
+	for (let step = steps.pop(); step !== undefined && size <= maxBytes; step = steps.pop()) {
+		if ('leave' in step) {
+			ancestors.delete(step.leave);
+			continue;
 		}
+
+		if (ancestors.has(step.measure)) {
+			continue;
+		}
+
+		ancestors.add(step.measure);
+		steps.push({ leave: step.measure });
+		size += measureMembers(step.measure, steps, maxBytes - size);
 	}
 
 	return size > maxBytes;
@@ -39,27 +48,27 @@ export function jsonSizeExceeds(value: unknown, maxBytes: number): boolean {
  * Lower bound of the bytes `container`'s own members occupy. *
  * @param budget Bytes left before the limit. Measuring stops above it.
  */
-function measureMembers(container: JsonContainer, nested: JsonContainer[], budget: number): number {
+function measureMembers(container: JsonContainer, steps: Step[], budget: number): number {
 	if (Buffer.isBuffer(container)) {
 		return container.length;
 	}
 
 	if (Array.isArray(container)) {
-		return measureElements(container, nested, budget);
+		return measureElements(container, steps, budget);
 	}
 
-	return measureEntries(container, nested, budget);
+	return measureEntries(container, steps, budget);
 }
 
 const COMMA_SIZE = 1;
-function measureElements(elements: unknown[], nested: JsonContainer[], budget: number): number {
+function measureElements(elements: unknown[], steps: Step[], budget: number): number {
 	let size = 0;
 	for (let index = 0; index < elements.length && size <= budget; index++) {
 		const element = elements[index];
 		size += minSerializedSize(element) + (index === 0 ? 0 : COMMA_SIZE);
 
 		if (isContainer(element)) {
-			nested.push(element);
+			steps.push({ measure: element });
 		}
 	}
 	return size;
@@ -67,11 +76,7 @@ function measureElements(elements: unknown[], nested: JsonContainer[], budget: n
 
 const QUOTES_SIZE = 2;
 const COLON_SIZE = 1;
-function measureEntries(
-	entries: Record<string, unknown>,
-	nested: JsonContainer[],
-	budget: number,
-): number {
+function measureEntries(entries: Record<string, unknown>, steps: Step[], budget: number): number {
 	const keys = serializedKeys(entries);
 	let size = 0;
 	for (let index = 0; index < keys.length && size <= budget; index++) {
@@ -81,7 +86,7 @@ function measureEntries(
 		size += (index === 0 ? 0 : COMMA_SIZE) + minEntrySize(key, value);
 
 		if (isContainer(value)) {
-			nested.push(value);
+			steps.push({ measure: value });
 		}
 	}
 	return size;
