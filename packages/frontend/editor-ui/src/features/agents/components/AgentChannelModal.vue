@@ -118,6 +118,17 @@ const {
 	isIntegrationConnected,
 });
 
+const hasPendingCredentialReplacement = computed(() => pendingCredentialReplacement.value !== null);
+const isCredentialReplacementInProgress = computed(
+	() => hasPendingCredentialReplacement.value && !credentialReplacementError.value,
+);
+
+function clearFailedCredentialReplacement() {
+	if (!credentialReplacementError.value) return;
+	pendingCredentialReplacement.value = null;
+	credentialReplacementError.value = false;
+}
+
 function prepareChannelEdit(channelType: string | null) {
 	credentialReplacementError.value = false;
 	captureConnectedCredential(channelType);
@@ -129,14 +140,14 @@ function prepareChannelEdit(channelType: string | null) {
 watch(
 	() => props.view,
 	(newView) => {
-		if (pendingCredentialReplacement.value) return;
+		if (isCredentialReplacementInProgress.value) return;
+		clearFailedCredentialReplacement();
 		currentView.value = newView;
 		prepareChannelEdit(newView.endsWith('_edit') ? channelTypeFromView(newView) : null);
 	},
 );
 
 const showFooterActions = computed(() => isEditMode.value && selectedChannelType.value !== null);
-const hasPendingCredentialReplacement = computed(() => pendingCredentialReplacement.value !== null);
 
 const currentChannelCredentialId = computed(() =>
 	getChannelCredentialId(selectedChannelType.value),
@@ -200,11 +211,12 @@ function goToEdit(channelType: string) {
 
 function goBackToList() {
 	if (
-		hasPendingCredentialReplacement.value ||
+		isCredentialReplacementInProgress.value ||
 		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false)
 	) {
 		return;
 	}
+	clearFailedCredentialReplacement();
 	captureConnectedCredential(null);
 	currentView.value = 'list';
 }
@@ -215,7 +227,7 @@ function handleListDisconnect(channelType: string) {
 
 function closeModal() {
 	if (
-		hasPendingCredentialReplacement.value ||
+		isCredentialReplacementInProgress.value ||
 		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false)
 	) {
 		return;
@@ -226,7 +238,7 @@ function closeModal() {
 function handleModalOpenUpdate(isOpen: boolean) {
 	if (
 		!isOpen &&
-		(hasPendingCredentialReplacement.value ||
+		(isCredentialReplacementInProgress.value ||
 			(selectedChannelType.value ? isLoading(selectedChannelType.value) : false))
 	) {
 		return;
@@ -328,6 +340,7 @@ watch(
 			void loadChannelState();
 			currentView.value = props.view;
 		} else {
+			clearFailedCredentialReplacement();
 			captureConnectedCredential(null);
 		}
 	},
@@ -342,7 +355,7 @@ watch(
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
 		:show-close-button="
-			!hasPendingCredentialReplacement &&
+			!isCredentialReplacementInProgress &&
 			!(selectedChannelType ? isLoading(selectedChannelType) : false)
 		"
 		@interact-outside="(e) => e.preventDefault()"
@@ -371,7 +384,7 @@ watch(
 						icon-size="medium"
 						icon="arrow-left"
 						:disabled="
-							hasPendingCredentialReplacement ||
+							isCredentialReplacementInProgress ||
 							(selectedChannelType ? isLoading(selectedChannelType) : false)
 						"
 						:class="$style.backButton"
@@ -414,7 +427,6 @@ watch(
 						v-if="selectedChannelType === 'slack'"
 						ref="channelSetupRef"
 						v-model="selectedCredentials.slack"
-						mode="setup"
 						:connected="isConnected('slack')"
 						:is-published="isPublished"
 						:setup-slack-app="setupSlackApp"
@@ -574,7 +586,7 @@ watch(
 							variant="ghost"
 							size="medium"
 							:disabled="
-								hasPendingCredentialReplacement ||
+								isCredentialReplacementInProgress ||
 								(selectedChannelType ? isLoading(selectedChannelType) : false)
 							"
 							@click="closeModal"

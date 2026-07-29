@@ -406,15 +406,12 @@ describe('AgentChannelModal', () => {
 		expect(disconnectMock).toHaveBeenCalledWith('linear', 'linear-credential');
 		expect(wrapper.get('[data-testid="change-credential"]').attributes('disabled')).toBeDefined();
 		expect(wrapper.get('[data-testid="linear-setup"]').attributes('data-loading')).toBe('true');
-		expect(wrapper.find('[data-testid="close-dialog"]').exists()).toBe(false);
 		expect(wrapper.get('[data-testid="agent-channel-save-channel-config"]').text()).toBe(
 			'generic.retry',
 		);
 		expect(wrapper.get('[data-testid="agent-channel-credential-replacement-error"]').text()).toBe(
 			'agents.channels.modal.credentialReplacementError',
 		);
-		await wrapper.get('[data-testid="escape-dialog"]').trigger('click');
-		expect(wrapper.emitted('update:open')).toBeUndefined();
 
 		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
 		await flushPromises();
@@ -424,6 +421,39 @@ describe('AgentChannelModal', () => {
 		expect(disconnectMock).toHaveBeenLastCalledWith('linear', 'linear-credential');
 		expect(fetchStatusMock).toHaveBeenCalledWith(['linear']);
 		expect(wrapper.emitted('update:open')).toEqual([[false]]);
+	});
+
+	it('allows the modal to close and reopen after detaching the original binding fails', async () => {
+		connectedCredentials.value.linear = 'linear-credential';
+		disconnectMock.mockRejectedValueOnce(new Error('Failed to detach original credential'));
+		const wrapper = mountModal({
+			view: 'linear_edit',
+			connectedChannels: ['linear'],
+		});
+		await flushPromises();
+
+		await wrapper.get('[data-testid="change-credential"]').trigger('click');
+		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.get('[data-testid="agent-channel-credential-replacement-error"]').text()).toBe(
+			'agents.channels.modal.credentialReplacementError',
+		);
+		await wrapper.get('[data-testid="close-dialog"]').trigger('click');
+
+		expect(wrapper.emitted('update:open')).toEqual([[false]]);
+
+		await wrapper.setProps({ open: false });
+		await wrapper.setProps({ open: true });
+		await flushPromises();
+
+		expect(
+			wrapper.find('[data-testid="agent-channel-credential-replacement-error"]').exists(),
+		).toBe(false);
+		expect(wrapper.get('[data-testid="close-dialog"]').exists()).toBe(true);
+		expect(wrapper.get('[data-testid="agent-channel-save-channel-config"]').text()).toBe(
+			'generic.save',
+		);
 	});
 
 	it('saves settings without disconnecting when the credential is unchanged', async () => {
