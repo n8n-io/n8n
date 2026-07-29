@@ -152,4 +152,138 @@ describe('useAgentChannelSetup', () => {
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
+
+	it('surfaces the structured OAuth error message when the Slack callback reports failure', async () => {
+		vi.useFakeTimers();
+
+		type MessageHandler = (event: MessageEvent) => void;
+		let messageHandler: MessageHandler | undefined;
+		class FakeBroadcastChannel {
+			addEventListener(_type: string, handler: MessageHandler) {
+				messageHandler = handler;
+			}
+			close() {}
+			postMessage() {}
+		}
+		vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel);
+
+		const fakePopup = { closed: false, close: vi.fn() };
+		vi.spyOn(window, 'open').mockReturnValue(fakePopup as unknown as Window);
+
+		const { setupSlackApp } = useAgentChannelSetup({
+			projectId: () => 'artifact-project',
+			agentId: () => 'agent-1',
+			currentIntegration: null,
+			connectedCredentials: {},
+			fetchStatus: vi.fn().mockResolvedValue(undefined),
+			isIntegrationConnected: () => false,
+		});
+
+		const setupPromise = setupSlackApp('token', vi.fn());
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(messageHandler).toBeDefined();
+		messageHandler?.({
+			data: {
+				type: 'error',
+				message: 'Agent configuration is incomplete. Fix these before connecting a channel: model',
+			},
+		} as MessageEvent);
+
+		await expect(setupPromise).rejects.toThrow(
+			'Agent configuration is incomplete. Fix these before connecting a channel: model',
+		);
+
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('surfaces the structured OAuth error via the cross-origin window.postMessage fallback', async () => {
+		vi.useFakeTimers();
+
+		// BroadcastChannel never fires (cross-origin embed): addEventListener is a no-op.
+		class FakeBroadcastChannel {
+			addEventListener() {}
+			close() {}
+			postMessage() {}
+		}
+		vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel);
+
+		const fakePopup = { closed: false, close: vi.fn() };
+		vi.spyOn(window, 'open').mockReturnValue(fakePopup as unknown as Window);
+
+		const { setupSlackApp } = useAgentChannelSetup({
+			projectId: () => 'artifact-project',
+			agentId: () => 'agent-1',
+			currentIntegration: null,
+			connectedCredentials: {},
+			fetchStatus: vi.fn().mockResolvedValue(undefined),
+			isIntegrationConnected: () => false,
+		});
+
+		const setupPromise = setupSlackApp('token', vi.fn());
+		await vi.advanceTimersByTimeAsync(0);
+
+		// The popup is served from the installUrl origin; only that origin is trusted.
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				origin: 'https://slack.test',
+				data: { type: 'error', message: 'Slack app install denied' },
+			}),
+		);
+
+		await expect(setupPromise).rejects.toThrow('Slack app install denied');
+
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('ignores window messages from an untrusted origin', async () => {
+		vi.useFakeTimers();
+
+		class FakeBroadcastChannel {
+			addEventListener() {}
+			close() {}
+			postMessage() {}
+		}
+		vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel);
+
+		const fakePopup = { closed: false, close: vi.fn() };
+		vi.spyOn(window, 'open').mockReturnValue(fakePopup as unknown as Window);
+
+		const { setupSlackApp } = useAgentChannelSetup({
+			projectId: () => 'artifact-project',
+			agentId: () => 'agent-1',
+			currentIntegration: null,
+			connectedCredentials: {},
+			fetchStatus: vi.fn().mockResolvedValue(undefined),
+			isIntegrationConnected: () => false,
+		});
+
+		const setupPromise = setupSlackApp('token', vi.fn());
+		// Attach the rejection handler before driving the timeout so the rejection
+		// isn't reported as unhandled when the timer fires.
+		const assertion = expect(setupPromise).rejects.toThrow(
+			'Slack app installation was not completed',
+		);
+		await vi.advanceTimersByTimeAsync(0);
+
+		// A third-party frame tries to synthesize a result; it must be ignored.
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				origin: 'https://evil.example',
+				data: { type: 'error', message: 'takeover' },
+			}),
+		);
+
+		// No trusted message arrives, so the setup falls through to the timeout.
+		await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+		await assertion;
+
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
 });

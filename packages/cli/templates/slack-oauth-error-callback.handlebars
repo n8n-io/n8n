@@ -1,6 +1,6 @@
 <html>
 	<head>
-		<title>n8n - OAuth Callback</title>
+		<title>n8n - Slack OAuth Callback</title>
 		<style>
 			body { font-family: 'Open Sans', sans-serif; padding: 10px;} details.error { margin-bottom:
 			20px; } pre.reason { background: #f7f7f7; border: 1px solid #ddd; border-radius: 3px; padding:
@@ -15,13 +15,22 @@
 				{{#if error.reason}}<pre class='reason'>{{error.reason}}</pre>{{/if}}
 			</details>
 		{{/if}}
+		{{!-- textContent is a safe channel for the opener; avoids JS string escaping issues --}}
+		<span id="n8n-oauth-error-message" hidden>{{#if error}}{{error.message}}{{/if}}</span>
 		Failed to connect. The window can be closed now.
 		<script>
 			(function messageParent() {
+				const errorMessage =
+					document.getElementById('n8n-oauth-error-message')?.textContent?.trim() ?? '';
+				const errorPayload = { type: 'error', message: errorMessage };
 				const broadcastChannel = new BroadcastChannel('oauth-callback');
+				// Structured payload first so the Slack opener can surface the
+				// actionable message; string 'error' kept for older listeners.
+				broadcastChannel.postMessage(errorPayload);
 				broadcastChannel.postMessage('error');
 				// Bridge to the opener for embed setups where the editor and the
 				// n8n backend live on different origins (BroadcastChannel is same-origin only).
+				try { window.opener?.postMessage(errorPayload, '*'); } catch (_) {}
 				try { window.opener?.postMessage('error', '*'); } catch (_) {}
 			})();
 		</script>

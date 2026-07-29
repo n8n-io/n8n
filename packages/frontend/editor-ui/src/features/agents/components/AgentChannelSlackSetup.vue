@@ -77,6 +77,7 @@ const showAppConfigurationToken = shallowRef(false);
 const setupLoading = shallowRef(false);
 const disconnectLoading = shallowRef(false);
 const setupError = shallowRef<'invalidToken' | 'generic' | null>(null);
+const setupErrorMessage = shallowRef('');
 const manualConfigurationOpen = shallowRef(false);
 const slackAppManifest = shallowRef('');
 const manifestLoading = shallowRef(false);
@@ -166,6 +167,7 @@ async function installSlackApp() {
 
 	setupLoading.value = true;
 	setupError.value = null;
+	setupErrorMessage.value = '';
 	try {
 		const completed = await props.setupSlackApp(token);
 		if (completed) {
@@ -173,6 +175,8 @@ async function installSlackApp() {
 		}
 	} catch (error) {
 		setupError.value = isInvalidSlackTokenError(error) ? 'invalidToken' : 'generic';
+		setupErrorMessage.value =
+			error instanceof Error && error.message.length > 0 ? error.message : '';
 	} finally {
 		setupLoading.value = false;
 	}
@@ -229,7 +233,7 @@ defineExpose({ credentialId, validationError: null });
 				size="medium"
 				:loading="disconnectLoading"
 				:disabled="disabled || disconnectLoading"
-				data-testid="slack-disconnect-app"
+				data-test-id="slack-disconnect-app"
 				@click="onDisconnectSlackApp"
 			>
 				{{ i18n.baseText('generic.disconnect') }}
@@ -245,7 +249,7 @@ defineExpose({ credentialId, validationError: null });
 							variant="subtle"
 							size="medium"
 							icon="slack"
-							data-testid="slack-app-configuration-token-link"
+							data-test-id="slack-app-configuration-token-link"
 						>
 							{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
 						</N8nButton>
@@ -260,7 +264,7 @@ defineExpose({ credentialId, validationError: null });
 							:placeholder="
 								i18n.baseText('agents.channels.slack.setup.copyAccessToken.placeholder')
 							"
-							data-testid="slack-app-configuration-token"
+							data-test-id="slack-app-configuration-token"
 							:disabled="disabled || setupLoading"
 							@keydown.enter.prevent="installSlackApp"
 						>
@@ -272,7 +276,7 @@ defineExpose({ credentialId, validationError: null });
 									:class="$style.tokenVisibilityButton"
 									:aria-label="appConfigurationTokenVisibilityLabel"
 									:disabled="disabled || setupLoading"
-									data-testid="slack-app-configuration-token-visibility"
+									data-test-id="slack-app-configuration-token-visibility"
 									@click.stop="showAppConfigurationToken = !showAppConfigurationToken"
 								/>
 							</template>
@@ -281,7 +285,7 @@ defineExpose({ credentialId, validationError: null });
 							<N8nText
 								:class="setupError === 'invalidToken' ? $style.setupError : $style.setupDescription"
 								size="small"
-								data-testid="slack-app-configuration-token-description"
+								data-test-id="slack-app-configuration-token-description"
 							>
 								{{
 									i18n.baseText(
@@ -299,7 +303,7 @@ defineExpose({ credentialId, validationError: null });
 							size="medium"
 							:loading="setupLoading"
 							:disabled="!canInstallApp"
-							data-testid="slack-create-app"
+							data-test-id="slack-create-app"
 							@click="installSlackApp"
 						>
 							{{ i18n.baseText('agents.channels.slack.setup.installApp.button') }}
@@ -308,7 +312,7 @@ defineExpose({ credentialId, validationError: null });
 							v-if="!isPublished"
 							:class="$style.publishNotice"
 							size="small"
-							data-testid="slack-app-publish-notice"
+							data-test-id="slack-app-publish-notice"
 						>
 							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
 						</N8nText>
@@ -316,9 +320,17 @@ defineExpose({ credentialId, validationError: null });
 							v-if="setupError === 'generic'"
 							:class="$style.setupError"
 							size="small"
-							data-testid="slack-app-setup-error"
+							data-test-id="slack-app-setup-error"
 						>
 							{{ i18n.baseText('agents.channels.slack.setup.installApp.error') }}
+						</N8nText>
+						<N8nText
+							v-if="setupError === 'generic' && setupErrorMessage"
+							:class="$style.setupErrorDetail"
+							size="small"
+							data-test-id="slack-app-setup-error-detail"
+						>
+							{{ setupErrorMessage }}
 						</N8nText>
 					</template>
 				</div>
@@ -332,7 +344,7 @@ defineExpose({ credentialId, validationError: null });
 			:title="i18n.baseText('agents.channels.slack.manualSetup.title')"
 			:show-actions-on-hover="false"
 			:disable-animation="true"
-			data-testid="slack-manual-configuration"
+			data-test-id="slack-manual-configuration"
 		>
 			<div :class="$style.manualConfiguration">
 				<N8nText :class="$style.manualDescription" size="small">
@@ -358,7 +370,7 @@ defineExpose({ credentialId, validationError: null });
 						v-if="manifestLoading"
 						:class="$style.manifestHint"
 						size="small"
-						data-testid="slack-manifest-loading"
+						data-test-id="slack-manifest-loading"
 					>
 						{{ i18n.baseText('agents.builder.addTrigger.slack.manifestLoading') }}
 					</N8nText>
@@ -366,7 +378,7 @@ defineExpose({ credentialId, validationError: null });
 						v-else-if="manifestError"
 						:class="$style.setupError"
 						size="small"
-						data-testid="slack-manifest-error"
+						data-test-id="slack-manifest-error"
 					>
 						{{ i18n.baseText('agents.builder.addTrigger.slack.manifestError') }}
 					</N8nText>
@@ -376,7 +388,7 @@ defineExpose({ credentialId, validationError: null });
 							size="small"
 							:class="$style.codeBlockCopy"
 							:disabled="!slackAppManifest"
-							data-testid="slack-copy-manifest"
+							data-test-id="slack-copy-manifest"
 							@click="copyManifest"
 						>
 							<template #prefix>
@@ -446,6 +458,11 @@ defineExpose({ credentialId, validationError: null });
 
 .setupError {
 	color: var(--color--danger);
+}
+
+.setupErrorDetail {
+	color: var(--color--danger);
+	margin-top: var(--spacing--3xs);
 }
 
 .tokenInputContainer,

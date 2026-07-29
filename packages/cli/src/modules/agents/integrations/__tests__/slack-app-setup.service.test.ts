@@ -70,9 +70,14 @@ describe('SlackAppSetupService', () => {
 	let userRepository: Mocked<UserRepository>;
 	let agentRepository: Mocked<AgentRepository>;
 	let agentIntegrationPersistenceService: Mocked<
-		Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>
+		Pick<
+			AgentIntegrationPersistenceService,
+			'saveCredentialIntegration' | 'restoreCredentialIntegrationState'
+		>
 	>;
-	let agentPublishService: Mocked<Pick<AgentPublishService, 'publishAgent'>>;
+	let agentPublishService: Mocked<
+		Pick<AgentPublishService, 'publishAgent' | 'assertDraftPublishable'>
+	>;
 	let chatIntegrationService: Mocked<ChatIntegrationService>;
 	let service: SlackAppSetupService;
 
@@ -87,7 +92,11 @@ describe('SlackAppSetupService', () => {
 		cacheService.set.mockImplementation(async (key: string, value: unknown) => {
 			cacheStore.set(key, value);
 		});
-		cacheService.get.mockImplementation(async (key: string) => cacheStore.get(key));
+		cacheService.take.mockImplementation(async (key: string) => {
+			const value = cacheStore.get(key);
+			cacheStore.delete(key);
+			return value;
+		});
 		cacheService.delete.mockImplementation(async (key: string) => {
 			cacheStore.delete(key);
 		});
@@ -106,8 +115,16 @@ describe('SlackAppSetupService', () => {
 		agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 		agentIntegrationPersistenceService =
-			mock<Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>>();
-		agentPublishService = mock<Pick<AgentPublishService, 'publishAgent'>>();
+			mock<
+				Pick<
+					AgentIntegrationPersistenceService,
+					'saveCredentialIntegration' | 'restoreCredentialIntegrationState'
+				>
+			>();
+		agentPublishService =
+			mock<Pick<AgentPublishService, 'publishAgent' | 'assertDraftPublishable'>>();
+		// Default to a publishable agent so existing happy-path tests pass.
+		agentPublishService.assertDraftPublishable.mockResolvedValue(undefined);
 		chatIntegrationService = mock<ChatIntegrationService>();
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://hooks.example/');
@@ -382,8 +399,59 @@ describe('SlackAppSetupService', () => {
 		expect(agentPublishService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.connect.mock.invocationCallOrder[0],
 		);
-		expect(cacheService.delete).toHaveBeenCalledWith(`agents:slack-app-setup:${state}`);
+		expect(cacheService.take).toHaveBeenCalledWith(`agents:slack-app-setup:${state}`);
 		expect(cipher.decryptV2).toHaveBeenCalledWith(encryptedSession);
+	});
+
+	it('restores the previous integration state when publishing the installed app fails', async () => {
+		const previousIntegrations = [{ type: 'slack' as const, credentialId: '' }];
+		const rollbackAgent = {
+			...agent,
+			versionId: 'draft-v1',
+			integrations: previousIntegrations,
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(rollbackAgent as never);
+		agentRepository.findIntegrationState.mockResolvedValue({
+			integrations: previousIntegrations,
+			versionId: 'draft-v1',
+		});
+		requestMock.mockResolvedValueOnce(slackAppCreatedResponse()).mockResolvedValueOnce(
+			slackResponse({
+				ok: true,
+				access_token: 'xoxb-installed-token',
+			}),
+		);
+		userRepository.findOne.mockResolvedValue(user);
+		credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-slack' } as never);
+		agentPublishService.publishAgent.mockRejectedValueOnce(new Error('Publish failed'));
+
+		const { installUrl } = await service.createApp({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			appConfigurationToken: 'xoxe-config',
+			user,
+		});
+
+		await expect(
+			service.completeInstall({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				code: 'slack-code',
+				state: new URL(installUrl).searchParams.get('state') ?? '',
+			}),
+		).rejects.toThrow('Publish failed');
+
+		expect(credentialsService.delete).toHaveBeenCalledWith(user, 'cred-slack');
+		expect(
+			agentIntegrationPersistenceService.restoreCredentialIntegrationState,
+		).toHaveBeenCalledWith(
+			'agent-1',
+			previousIntegrations,
+			'draft-v1',
+			previousIntegrations,
+			'draft-v1',
+		);
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 
 	it('saves the integration before publishing when completing install for an unpublished agent', async () => {
@@ -462,5 +530,82 @@ describe('SlackAppSetupService', () => {
 		).rejects.toThrow(BadRequestError);
 		expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+	});
+
+	it('createApp throws and does not call the Slack API when the agent config is invalid', async () => {
+		agentPublishService.assertDraftPublishable.mockRejectedValueOnce(
+			new BadRequestError(
+				'Agent configuration is incomplete. Fix these before connecting a channel: instructions, model',
+			),
+		);
+
+		await expect(
+			service.createApp({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				appConfigurationToken: 'xoxe-config',
+				user,
+			}),
+		).rejects.toThrow(BadRequestError);
+
+		expect(agentPublishService.assertDraftPublishable).toHaveBeenCalledWith(
+			agent,
+			'project-1',
+			user,
+			{ ignoreDraftIntegrations: true },
+		);
+		// No Slack-side side effect: the manifest create call never fired and
+		// no setup session was cached, so retry starts from a clean slate.
+		expect(requestMock).not.toHaveBeenCalled();
+		expect(cacheService.set).not.toHaveBeenCalled();
+		expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
+		expect(agentIntegrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+	});
+
+	it('completeInstall throws and does not create the credential or integration when the agent config is invalid', async () => {
+		// createApp passes its pre-flight (valid at that point)...
+		requestMock.mockResolvedValueOnce(slackAppCreatedResponse());
+		const { installUrl } = await service.createApp({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			appConfigurationToken: 'xoxe-config',
+			user,
+		});
+		const state = new URL(installUrl).searchParams.get('state') ?? '';
+		const cacheKey = `agents:slack-app-setup:${state}`;
+		expect(cacheStore.has(cacheKey)).toBe(true);
+		userRepository.findOne.mockResolvedValue(user);
+
+		// ...but the draft was edited to an invalid state during the OAuth round-trip.
+		agentPublishService.assertDraftPublishable.mockRejectedValueOnce(
+			new BadRequestError(
+				'Agent configuration is incomplete. Fix these before connecting a channel: model',
+			),
+		);
+
+		await expect(
+			service.completeInstall({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				code: 'slack-code',
+				state,
+			}),
+		).rejects.toThrow(BadRequestError);
+
+		// No orphaned credential or integration record left behind.
+		expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
+		expect(agentIntegrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+		expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+		// The state is atomically consumed, then restored after validation fails,
+		// so a retry can reuse the callback without allowing concurrent installs.
+		expect(cacheService.take).toHaveBeenCalledWith(cacheKey);
+		expect(cacheService.set).toHaveBeenLastCalledWith(
+			cacheKey,
+			expect.any(String),
+			expect.any(Number),
+		);
+		expect(cacheStore.has(cacheKey)).toBe(true);
+		expect(requestMock).toHaveBeenCalledTimes(1); // only apps.manifest.create from createApp
 	});
 });

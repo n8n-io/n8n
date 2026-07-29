@@ -147,6 +147,10 @@ export class SlackAppSetupService {
 		}
 
 		const agent = await this.getAgent(options.agentId, options.projectId);
+		// Shared channel-connect pre-flight
+		await this.agentPublishService.assertDraftPublishable(agent, options.projectId, options.user, {
+			ignoreDraftIntegrations: true,
+		});
 		const redirectUrl = this.callbackUrl(options.projectId, options.agentId);
 		const manifest = this.buildManifest(agent.name, options.projectId, options.agentId, {
 			redirectUrl,
@@ -203,7 +207,7 @@ export class SlackAppSetupService {
 	}
 
 	async completeInstall(options: CompleteSlackAppInstallOptions): Promise<void> {
-		const session = await this.consumeSession(options.state);
+		const { session, cachedSession } = await this.consumeSession(options.state);
 		if (session.projectId !== options.projectId || session.agentId !== options.agentId) {
 			throw new BadRequestError('Slack app setup state does not match this agent');
 		}
@@ -217,6 +221,19 @@ export class SlackAppSetupService {
 		}
 
 		const agent = await this.getAgent(session.agentId, session.projectId);
+		try {
+			await this.agentPublishService.assertDraftPublishable(agent, session.projectId, user, {
+				ignoreDraftIntegrations: true,
+			});
+		} catch (error) {
+			await this.cacheService.set(
+				this.cacheKey(options.state),
+				cachedSession,
+				SLACK_APP_SETUP_TTL_MS,
+			);
+			throw error;
+		}
+
 		const tokenResponse = await this.callSlackApi(
 			'oauth.v2.access',
 			{
@@ -256,20 +273,29 @@ export class SlackAppSetupService {
 			credentialId: credential.id,
 		} satisfies AgentIntegrationConfig;
 
+		const previousIntegrations = agent.integrations;
+		const previousVersionId = agent.versionId;
 		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
 			broadcast: false,
 		});
-		await this.agentPublishService.publishAgent(
-			session.agentId,
-			session.projectId,
-			user,
-			'slack_setup',
-			undefined,
-			{
+		const writtenIntegrations = agent.integrations;
+		const writtenVersionId = agent.versionId;
+		await this.agentPublishService
+			.publishAgent(session.agentId, session.projectId, user, 'slack_setup', undefined, {
 				syncIntegrations: false,
 				ignoreDraftIntegrations: true,
-			},
-		);
+			})
+			.catch(async (error: unknown) => {
+				await this.credentialsService.delete(user, credential.id);
+				await this.agentIntegrationPersistenceService.restoreCredentialIntegrationState(
+					agent.id,
+					writtenIntegrations,
+					writtenVersionId,
+					previousIntegrations,
+					previousVersionId,
+				);
+				throw error;
+			});
 		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			session.agentId,
@@ -348,10 +374,10 @@ export class SlackAppSetupService {
 		}
 	}
 
-	private async consumeSession(state: string): Promise<SlackAppSetupSession> {
-		const key = this.cacheKey(state);
-		const cached = await this.cacheService.get<unknown>(key);
-		await this.cacheService.delete(key);
+	private async consumeSession(
+		state: string,
+	): Promise<{ session: SlackAppSetupSession; cachedSession: string }> {
+		const cached = await this.cacheService.take<unknown>(this.cacheKey(state));
 		if (typeof cached !== 'string') {
 			throw new BadRequestError('Slack app setup state has expired or is invalid');
 		}
@@ -360,7 +386,7 @@ export class SlackAppSetupService {
 			const decrypted = await this.cipher.decryptV2(cached);
 			const session = jsonParse<unknown>(decrypted, { fallbackValue: null });
 			if (hasSessionShape(session)) {
-				return session;
+				return { session, cachedSession: cached };
 			}
 		} catch {}
 

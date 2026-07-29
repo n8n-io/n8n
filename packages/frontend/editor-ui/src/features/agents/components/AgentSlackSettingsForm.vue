@@ -96,7 +96,7 @@ watch(
 					target="_blank"
 					rel="noopener noreferrer"
 					:class="$style.docsLink"
-					data-testid="slack-app-configuration-token-link"
+					data-test-id="slack-app-configuration-token-link"
 				>
 					{{ i18n.baseText('agents.builder.addTrigger.slack.setup.tokenLink') }}
 				</a>
@@ -108,7 +108,7 @@ watch(
 					type="password"
 					size="medium"
 					:placeholder="i18n.baseText('agents.builder.addTrigger.slack.setup.tokenPlaceholder')"
-					data-testid="slack-app-configuration-token"
+					data-test-id="slack-app-configuration-token"
 					:disabled="disabled || setupLoading"
 					@keydown.enter.prevent="createSlackApp"
 				/>
@@ -117,7 +117,7 @@ watch(
 					size="small"
 					:loading="setupLoading"
 					:disabled="!appConfigurationToken.trim() || disabled || setupLoading || !setupSlackApp"
-					data-testid="slack-create-app"
+					data-test-id="slack-create-app"
 					@click="createSlackApp"
 				>
 					<template #prefix>
@@ -130,7 +130,7 @@ watch(
 				v-if="setupError"
 				:class="$style.setupError"
 				size="small"
-				data-testid="slack-app-setup-error"
+				data-test-id="slack-app-setup-error"
 			>
 				{{ i18n.baseText('agents.builder.addTrigger.slack.setup.error') }}
 			</N8nText>
@@ -143,7 +143,7 @@ watch(
 			:title="i18n.baseText('agents.builder.addTrigger.slack.manual.title')"
 			:show-actions-on-hover="false"
 			:disable-animation="true"
-			data-testid="slack-manual-configuration"
+			data-test-id="slack-manual-configuration"
 		>
 			<div :class="$style.manualConfiguration">
 				<N8nText :class="$style.manualDescription" size="small">
@@ -169,7 +169,7 @@ watch(
 						v-if="manifestLoading"
 						:class="$style.manifestHint"
 						size="small"
-						data-testid="slack-manifest-loading"
+						data-test-id="slack-manifest-loading"
 					>
 						{{ i18n.baseText('agents.builder.addTrigger.slack.manifestLoading') }}
 					</N8nText>
@@ -177,7 +177,7 @@ watch(
 						v-else-if="manifestError"
 						:class="$style.setupError"
 						size="small"
-						data-testid="slack-manifest-error"
+						data-test-id="slack-manifest-error"
 					>
 						{{ i18n.baseText('agents.builder.addTrigger.slack.manifestError') }}
 					</N8nText>
@@ -187,7 +187,7 @@ watch(
 							size="small"
 							:class="$style.codeBlockCopy"
 							:disabled="!slackAppManifest"
-							data-testid="slack-copy-manifest"
+							data-test-id="slack-copy-manifest"
 							@click="copyManifest"
 						>
 							<template #prefix>

@@ -14,6 +14,7 @@ import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
@@ -196,6 +197,72 @@ export class AgentPublishService {
 	}
 
 	/**
+	 * Fail-fast publishability check for channel-connect flows. Call before
+	 * any side effect (persisting an integration, creating a Slack app, etc.)
+	 * so a half-baked draft cannot leave orphaned credential/integration state
+	 * behind a failed auto-publish. Mirrors the draft validation in
+	 * {@link publishAgent}, including task bodies and optional draft-integration
+	 * filtering.
+	 */
+	async assertDraftPublishable(
+		agent: Agent,
+		projectId: string,
+		user: User,
+		options: { ignoreDraftIntegrations?: boolean } = {},
+	): Promise<void> {
+		const tasks = new Map(
+			(await this.agentTaskRepository.findByAgentId(agent.id)).map((task) => [task.id, task]),
+		);
+		const validation = await this.validateDraftForPublish(
+			agent,
+			projectId,
+			user,
+			tasks,
+			options.ignoreDraftIntegrations,
+		);
+
+		if (validation.status !== 'valid') {
+			const paths = validation.issues.map((issue) => issue.path).join(', ');
+			throw new BadRequestError(
+				`Agent configuration is incomplete. Fix these before connecting a channel: ${paths}`,
+			);
+		}
+	}
+
+	/**
+	 * Shared draft validation: credential provider, optional draft-integration
+	 * filtering, and entity validation. Used by both {@link assertDraftPublishable}
+	 * (pre-flight) and {@link assertPublishable} (authoritative publish guard,
+	 * non-history branch) so the two paths cannot drift.
+	 */
+	private async validateDraftForPublish(
+		agent: Agent,
+		projectId: string,
+		user: User,
+		tasks: ReadonlyMap<string, AgentTask>,
+		ignoreDraftIntegrations?: boolean,
+	): Promise<AgentConfigValidationResponse> {
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+		);
+		const baseIntegrations = agent.integrations ?? [];
+		const integrationsOverride = ignoreDraftIntegrations
+			? baseIntegrations.filter((integration) => !isDraftIntegration(integration))
+			: undefined;
+
+		return await this.agentValidationService.validateAgentEntityConfiguration(
+			agent,
+			projectId,
+			tasks,
+			credentialProvider,
+			'publish',
+			integrationsOverride,
+		);
+	}
+
+	/**
 	 * Authoritative pre-publish guard: re-validates the configuration that is
 	 * about to become live, independent of any frontend check. Validating the
 	 * current draft is not enough when a specific historical `versionId` is
@@ -230,21 +297,7 @@ export class AgentPublishService {
 					integrations,
 					credentialProvider,
 				)
-			: ignoreDraftIntegrations
-				? await this.agentValidationService.validateAgentEntityConfiguration(
-						agent,
-						projectId,
-						tasks,
-						credentialProvider,
-						'publish',
-						integrations,
-					)
-				: await this.agentValidationService.validateAgentEntityConfiguration(
-						agent,
-						projectId,
-						tasks,
-						credentialProvider,
-					);
+			: await this.validateDraftForPublish(agent, projectId, user, tasks, ignoreDraftIntegrations);
 
 		requireValidValidation(validation);
 		return validation;

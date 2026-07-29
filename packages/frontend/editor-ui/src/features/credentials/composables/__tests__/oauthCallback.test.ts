@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	getTrustedOAuthOrigins,
 	parseOAuthCallbackMessage,
+	getOAuthCallbackErrorMessage,
 	OAUTH_CALLBACK_SUCCESS,
 	OAUTH_CALLBACK_ERROR,
 } from '../oauthCallback';
@@ -53,6 +54,14 @@ describe('oauthCallback', () => {
 			expect(parseOAuthCallbackMessage(event, trusted)).toBe(OAUTH_CALLBACK_ERROR);
 		});
 
+		it('returns "error" for a structured error payload from a trusted origin', () => {
+			const event = {
+				origin: 'https://integration-app.brevo.com',
+				data: { type: 'error', message: 'Agent configuration is incomplete' },
+			} as MessageEvent;
+			expect(parseOAuthCallbackMessage(event, trusted)).toBe(OAUTH_CALLBACK_ERROR);
+		});
+
 		it('returns null for a message from an untrusted origin', () => {
 			const event = {
 				origin: 'https://evil.example.com',
@@ -67,6 +76,22 @@ describe('oauthCallback', () => {
 				data: { type: 'something-else' },
 			} as MessageEvent;
 			expect(parseOAuthCallbackMessage(event, trusted)).toBeNull();
+		});
+	});
+
+	describe('getOAuthCallbackErrorMessage', () => {
+		it('returns the message from a structured error payload', () => {
+			expect(
+				getOAuthCallbackErrorMessage({
+					type: 'error',
+					message:
+						'Agent configuration is incomplete. Fix these before connecting a channel: model',
+				}),
+			).toBe('Agent configuration is incomplete. Fix these before connecting a channel: model');
+		});
+
+		it('returns an empty string for the legacy string error payload', () => {
+			expect(getOAuthCallbackErrorMessage('error')).toBe('');
 		});
 	});
 });

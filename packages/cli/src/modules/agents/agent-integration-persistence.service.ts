@@ -101,6 +101,39 @@ export class AgentIntegrationPersistenceService {
 	}
 
 	/**
+	 * Conditionally restore the integration state captured before a failed
+	 * follow-up operation. Only reverts when the current row still matches the
+	 * state written by this attempt (`writtenIntegrations` + `writtenVersionId`),
+	 * so a concurrent channel/config edit that landed in the meantime is left
+	 * intact instead of being clobbered. Updates only `integrations` and
+	 * `versionId`.
+	 *
+	 * `integrations` is compared in memory because the JSON column has no
+	 * portable equality query across SQLite/Postgres/MySQL. The residual
+	 * read-then-update window is narrow and the consequence of a missed rollback
+	 * (leaving the failed attempt's integration in place) is recoverable, unlike
+	 * silently overwriting a concurrent edit.
+	 */
+	async restoreCredentialIntegrationState(
+		agentId: string,
+		writtenIntegrations: AgentIntegrationConfig[],
+		writtenVersionId: string | null,
+		revertIntegrations: AgentIntegrationConfig[],
+		revertVersionId: string | null,
+	): Promise<void> {
+		const current = await this.agentRepository.findIntegrationState(agentId);
+		if (!current) return;
+		if (current.versionId !== writtenVersionId) return;
+		if (JSON.stringify(current.integrations ?? []) !== JSON.stringify(writtenIntegrations)) return;
+
+		await this.agentRepository.update(agentId, {
+			integrations: revertIntegrations,
+			versionId: revertVersionId,
+		});
+		this.runtimeCacheService.clearRuntimes(agentId);
+	}
+
+	/**
 	 * Remove a credential integration from the agent.
 	 */
 	async removeCredentialIntegration(

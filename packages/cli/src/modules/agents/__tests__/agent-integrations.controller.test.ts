@@ -327,6 +327,15 @@ describe('AgentIntegrationsController integration credentials', () => {
 			integration,
 			'connect',
 		);
+		expect(agentPublishService.assertDraftPublishable).toHaveBeenCalledWith(
+			agent,
+			'project-1',
+			{ id: 'user-1' },
+			{ ignoreDraftIntegrations: true },
+		);
+		expect(agentPublishService.assertDraftPublishable.mock.invocationCallOrder[0]).toBeLessThan(
+			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
+		);
 		expect(
 			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
 		).toBeLessThan(agentPublishService.publishAgent.mock.invocationCallOrder[0]);
@@ -336,6 +345,80 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
 		);
+	});
+
+	it('rejects connect before saving when the agent draft is not publishable', async () => {
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{
+				id: 'cred-telegram',
+				name: 'Telegram Bot',
+				type: 'telegramApi',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+				scopes: [],
+				isManaged: false,
+				isGlobal: false,
+				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
+			},
+		]);
+
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			activeVersionId: null,
+			activeVersion: null,
+			integrations: [],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const agentPublishService = mock<AgentPublishService>();
+		agentPublishService.assertDraftPublishable.mockRejectedValue(
+			new BadRequestError(
+				'Agent configuration is incomplete. Fix these before connecting a channel: instructions, model',
+			),
+		);
+
+		const { controller } = makeController({
+			agentIntegrationPersistenceService,
+			agentPublishService,
+			credentialsService,
+			chatIntegrationService,
+			agentRepository,
+		});
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: {
+						type: 'telegram',
+						credentialId: 'cred-telegram',
+						settings: { accessMode: 'public' as const },
+					},
+				} as never,
+				undefined as never,
+				'agent-1',
+			),
+		).rejects.toThrow(BadRequestError);
+
+		expect(agentPublishService.assertDraftPublishable).toHaveBeenCalledWith(
+			agent,
+			'project-1',
+			{ id: 'user-1' },
+			{ ignoreDraftIntegrations: true },
+		);
+		expect(agentIntegrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+		expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 	});
 
 	it('persists the integration before publishing when connecting an unpublished agent', async () => {
@@ -450,6 +533,76 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
 		);
+	});
+
+	it('restores the previous integration state when publishing fails', async () => {
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{
+				id: 'cred-slack',
+				name: 'Slack Bot',
+				type: 'slackApi',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+				scopes: [],
+				isManaged: false,
+				isGlobal: false,
+				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
+			},
+		]);
+
+		const previousIntegrations = [{ type: 'slack' as const, credentialId: '' }];
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			versionId: 'draft-v1',
+			activeVersionId: null,
+			activeVersion: null,
+			integrations: previousIntegrations,
+		};
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+		agentRepository.findIntegrationState.mockResolvedValue({
+			integrations: previousIntegrations,
+			versionId: 'draft-v1',
+		});
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const agentPublishService = mock<AgentPublishService>();
+		agentPublishService.publishAgent.mockRejectedValue(new Error('Publish failed'));
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const { controller } = makeController({
+			agentIntegrationPersistenceService,
+			agentPublishService,
+			credentialsService,
+			chatIntegrationService,
+			agentRepository,
+		});
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: 'cred-slack' },
+				} as never,
+				undefined as never,
+				'agent-1',
+			),
+		).rejects.toThrow('Publish failed');
+
+		expect(
+			agentIntegrationPersistenceService.restoreCredentialIntegrationState,
+		).toHaveBeenCalledWith(
+			'agent-1',
+			previousIntegrations,
+			'draft-v1',
+			previousIntegrations,
+			'draft-v1',
+		);
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 
 	it('does not report an unpublished agent integration as connected when live connect fails', async () => {
@@ -807,7 +960,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 		);
 
 		expect(slackAppSetupService.completeInstall).not.toHaveBeenCalled();
-		expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+		expect(res.render).toHaveBeenCalledWith('slack-oauth-error-callback', {
 			error: {
 				message: 'access_denied',
 				reason: 'User denied install',
