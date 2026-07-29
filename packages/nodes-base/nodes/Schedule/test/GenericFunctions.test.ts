@@ -728,6 +728,17 @@ describe('intervalToRecurrence', () => {
 		});
 	});
 
+	it('should not activate recurrence for a non-positive minutes interval (pre-1.3 nodes skip validation)', () => {
+		const result = intervalToRecurrence(
+			{
+				field: 'minutes',
+				minutesInterval: 0,
+			},
+			1,
+		);
+		expect(result.activated).toBe(false);
+	});
+
 	it('should return recurrence rule for hours interval', () => {
 		const result = intervalToRecurrence(
 			{

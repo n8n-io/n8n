@@ -191,7 +191,7 @@ export function intervalToRecurrence(interval: ScheduleInterval, index: number) 
 
 	if (interval.field === 'minutes') {
 		const { minutesInterval } = interval;
-		if (60 % minutesInterval !== 0) {
+		if (minutesInterval > 0 && 60 % minutesInterval !== 0) {
 			recurrence = {
 				activated: true,
 				index,
