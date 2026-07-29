@@ -1,3 +1,39 @@
+# [2.34.0](https://github.com/n8n-io/n8n/compare/n8n@2.33.0...n8n@2.34.0) (2026-07-29)
+
+
+### Bug Fixes
+
+* **core:** Annotate pre-existing validation warnings in MCP update_workflow ([#34944](https://github.com/n8n-io/n8n/issues/34944)) ([cca4d8d](https://github.com/n8n-io/n8n/commit/cca4d8db1c020c172bb0dd4f75500ad2bb27fe37))
+* **core:** Apply AI request timeout even without a proxy ([#34992](https://github.com/n8n-io/n8n/issues/34992)) ([ab3ed79](https://github.com/n8n-io/n8n/commit/ab3ed79fa5d29d9f3197ddfaa754529619b6b8be))
+* **core:** Block deletion of the SSO role mapping default condition role ([#35086](https://github.com/n8n-io/n8n/issues/35086)) ([587b23d](https://github.com/n8n-io/n8n/commit/587b23d8866d2235575cb8f90cd07fe0ae9075c8))
+* **core:** Harden axios error handling against non-string error stack ([#35073](https://github.com/n8n-io/n8n/issues/35073)) ([b329d57](https://github.com/n8n-io/n8n/commit/b329d57767cb6ec046bb1ecf9293b450c831d720))
+* **core:** Keep waitTill when storing worker job results on main ([#34958](https://github.com/n8n-io/n8n/issues/34958)) ([7f50297](https://github.com/n8n-io/n8n/commit/7f502970517130d4bfde9d6f5c0901fa2a5a8134))
+* **core:** Prefer n8n credits covered nodes in Instance AI workflow builds ([#35019](https://github.com/n8n-io/n8n/issues/35019)) ([b2af755](https://github.com/n8n-io/n8n/commit/b2af755502a7c423700b3b59598767bde2a6c49d))
+* **core:** Preserve credential field expressions when caching preAuthentication tokens ([#35064](https://github.com/n8n-io/n8n/issues/35064)) ([03894ee](https://github.com/n8n-io/n8n/commit/03894ee86d5b834c20e09b1a55137534943c1a22))
+* **editor:** Add configurable origin allowlist for editor postMessage handling ([#34674](https://github.com/n8n-io/n8n/issues/34674)) ([f9b4bd5](https://github.com/n8n-io/n8n/commit/f9b4bd58ec1eb7dde11c4d60347a8e5133a6c35c))
+* **editor:** Fix icon overlap in end-user credential connection banner ([#35130](https://github.com/n8n-io/n8n/issues/35130)) ([2837a68](https://github.com/n8n-io/n8n/commit/2837a68101103fae202e972328b72923d2b717c2))
+* **editor:** Keep Enter selection working when node search ends with a space ([#35046](https://github.com/n8n-io/n8n/issues/35046)) ([6b9b890](https://github.com/n8n-io/n8n/commit/6b9b8907b74f189e33486c16a53c3f94756b7b96))
+* **editor:** Size settings save bar off its column so its content aligns with settings rows ([#34967](https://github.com/n8n-io/n8n/issues/34967)) ([982fa19](https://github.com/n8n-io/n8n/commit/982fa19d8cab88dfc0dcff02f3f6abf0a7c93a1e))
+* **editor:** Update AI Agent preview label ([#35102](https://github.com/n8n-io/n8n/issues/35102)) ([c9cf9bb](https://github.com/n8n-io/n8n/commit/c9cf9bb7f98d3a5d2a70756f67d786d8524c547c))
+* Execute gated tool after approving Human Review in manual chat ([#34881](https://github.com/n8n-io/n8n/issues/34881)) ([b29f38b](https://github.com/n8n-io/n8n/commit/b29f38b646662ec43a7660fb7d2303c33b5f4951))
+* **Google Vertex Chat Model Node:** Preserve Gemini thought signature on single tool calls ([#34797](https://github.com/n8n-io/n8n/issues/34797)) ([c6e5ecd](https://github.com/n8n-io/n8n/commit/c6e5ecd861b29fab8ee94088fc45abf3a09d05cb))
+
+
+### Features
+
+* **API:** Add public API endpoints for LDAP configuration ([#34684](https://github.com/n8n-io/n8n/issues/34684)) ([81e772c](https://github.com/n8n-io/n8n/commit/81e772c8e235d08b3d1f89f50dcd20edee1eed1a))
+* **API:** Add public API endpoints for OIDC SSO configuration ([#34313](https://github.com/n8n-io/n8n/issues/34313)) ([02e736e](https://github.com/n8n-io/n8n/commit/02e736ef4eabfbeec649ff4e370f68bed66785e5))
+* **core:** Add detail endpoint for workflow review requests ([#35088](https://github.com/n8n-io/n8n/issues/35088)) ([1f6cddd](https://github.com/n8n-io/n8n/commit/1f6cddd1abadc7a53bbe28b37c59a79a0913a09e))
+* **core:** Add n8n user auth (OAuth2) authentication mode for webhook node ([#35100](https://github.com/n8n-io/n8n/issues/35100)) ([1cc76be](https://github.com/n8n-io/n8n/commit/1cc76becce519aed7961d571dd6e74bf66bc3fe4))
+* **core:** Approve or request changes on a workflow review ([#35041](https://github.com/n8n-io/n8n/issues/35041)) ([e6fd497](https://github.com/n8n-io/n8n/commit/e6fd497bba4d79a522f3934b8214f5cca9a5eb1a))
+* **core:** Expose workflow hook context to lifecycle external hooks ([#34738](https://github.com/n8n-io/n8n/issues/34738)) ([5a59466](https://github.com/n8n-io/n8n/commit/5a59466e8f496c78050de988229df79c7a4cd64d))
+* **core:** Include workflow tags in exported packages ([#34892](https://github.com/n8n-io/n8n/issues/34892)) ([811724a](https://github.com/n8n-io/n8n/commit/811724a1c1faefbdfc68ee388e7faf5039f0fcf2))
+* **core:** Make SSO role mapping default condition configurable ([#35023](https://github.com/n8n-io/n8n/issues/35023)) ([298a941](https://github.com/n8n-io/n8n/commit/298a941af6d86121a328a5a8c29293f6e78a39a0))
+* **editor:** Add OIDC logout support ([#32756](https://github.com/n8n-io/n8n/issues/32756)) ([e26c6f3](https://github.com/n8n-io/n8n/commit/e26c6f39a081d067bfbb554abef12bdae59591bf))
+* **editor:** Migrate API keys settings page to new instance settings UI ([#34925](https://github.com/n8n-io/n8n/issues/34925)) ([eb4b20b](https://github.com/n8n-io/n8n/commit/eb4b20b80b7e47eff8a0423d39a2a1c67f0a0dd6))
+* Include custom span attributes in project package export/import ([#35011](https://github.com/n8n-io/n8n/issues/35011)) ([a14cda1](https://github.com/n8n-io/n8n/commit/a14cda14b8b174950f9fae97bd8c37fb49dca708))
+
+
 # [2.33.0](https://github.com/n8n-io/n8n/compare/n8n@2.32.0...n8n@2.33.0) (2026-07-28)
 
 
