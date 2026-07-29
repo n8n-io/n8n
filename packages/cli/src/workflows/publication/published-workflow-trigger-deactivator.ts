@@ -18,8 +18,11 @@ import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workf
 const STEPDOWN_TEARDOWN_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 /**
- * Tears down in-memory triggers on leader stepdown and shutdown. Teardown is
- * coordinated with in-flight outbox records via {@link WorkflowPublicationLifecycleLock}.
+ * Tears down in-memory triggers on leader stepdown and shutdown, and — as a
+ * safeguard — periodically sweeps the registry while not leader: a trigger
+ * registration on a non-leader should never exist, so anything found is torn
+ * down and reported. Teardown is coordinated with in-flight outbox records
+ * via {@link WorkflowPublicationLifecycleLock}.
  */
 @Service()
 export class PublishedWorkflowTriggerDeactivator {
