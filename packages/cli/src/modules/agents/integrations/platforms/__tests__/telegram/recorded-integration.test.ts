@@ -135,12 +135,18 @@ describe('Telegram recorded integration replay', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('replays the captured Telegram session webhook and outbound post', async () => {
+	it('replays the captured Telegram session without exposing reasoning', async () => {
 		const fixtures = recordedTelegramFixtures();
 
 		const ctx = await createTelegramReplayContext(fixtures, {
 			stream: [
+				{ type: 'reasoning-start', id: 'recorded-reasoning' },
+				{ type: 'reasoning-delta', id: 'recorded-reasoning', delta: 'The ' },
+				{ type: 'reasoning-delta', id: 'recorded-reasoning', delta: 'user is asking...' },
+				{ type: 'reasoning-end', id: 'recorded-reasoning' },
+				{ type: 'text-start', id: 'recorded-response' },
 				{ type: 'text-delta', id: 'recorded-response', delta: 'Test response' },
+				{ type: 'text-end', id: 'recorded-response' },
 				{ type: 'finish', finishReason: 'stop' },
 			],
 		});
@@ -162,7 +168,9 @@ describe('Telegram recorded integration replay', () => {
 					channelId: 'telegram:123456789',
 				},
 			});
-			expect(ctx.lastApiCall('sendMessage')?.body).toMatchObject({
+			const sentMessages = ctx.apiCalls.filter((call) => call.method === 'sendMessage');
+			expect(sentMessages).toHaveLength(1);
+			expect(sentMessages[0]?.body).toMatchObject({
 				chat_id: '123456789',
 				text: 'Test response',
 			});

@@ -657,6 +657,21 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(received).toBe('Hello world');
 		});
 
+		it('omits reasoning chunks from streamed external-channel responses', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{ type: 'reasoning-start', id: 'reasoning-1' },
+				{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The user is asking...' },
+				{ type: 'reasoning-end', id: 'reasoning-1' },
+				{ type: 'text-start', id: 'text-1' },
+				{ type: 'text-delta', id: 'text-1', delta: 'Final answer' },
+				{ type: 'text-end', id: 'text-1' },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe('Final answer');
+		});
+
 		it('posts an error message when the streaming post fails', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -1083,6 +1098,9 @@ describe('AgentChatBridge — consumeStream', () => {
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() =>
 					toStream([
+						{ type: 'reasoning-start', id: 'reasoning-1' },
+						{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The tool was approved.' },
+						{ type: 'reasoning-end', id: 'reasoning-1' },
 						{ type: 'text-delta', id: 't1', delta: 'Approved ' },
 						{ type: 'text-delta', id: 't1', delta: 'response' },
 						{ type: 'finish', finishReason: 'stop' },
