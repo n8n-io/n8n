@@ -5,7 +5,7 @@ import { useToast } from '@/app/composables/useToast';
 
 /**
  * This module is a pure re-export — the bootstrap registration it used to carry
- * moved to `@/app/plugins/toastNotifier` (N8N-104). Kept as its own test file so the
+ * moved to `@/app/init/toastNotifier` (N8N-104). Kept as its own test file so the
  * assertion below runs in a module registry where nothing else could have
  * registered a notifier: importing the shim, and only the shim, must leave
  * `useToast` unwired.

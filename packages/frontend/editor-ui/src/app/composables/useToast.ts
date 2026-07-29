@@ -5,7 +5,7 @@
  * importers are retired per-directory. (N8N-66)
  *
  * Nothing but the re-export belongs here: the bootstrap registration this file
- * used to carry now lives in `@/app/plugins/toastNotifier`, called from
+ * used to carry now lives in `@/app/init/toastNotifier`, called from
  * `initializeCore()`, so deleting this file is behaviour-neutral. `useToast.test.ts`
  * guards that.
  */

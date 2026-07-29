@@ -8,7 +8,7 @@ import { useSourceControlStore } from '../sourceControl.store';
 import SettingsSourceControl from './SettingsSourceControl.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/app/constants';
-import { registerToastNotifier } from '@/app/plugins/toastNotifier';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { nextTick } from 'vue';
 
 let pinia: ReturnType<typeof createPinia>;

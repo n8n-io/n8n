@@ -18,7 +18,7 @@ import { workflowHistoryDataFactory, workflowVersionDataFactory } from '../__tes
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import type { IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
-import { registerToastNotifier } from '@/app/plugins/toastNotifier';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 
 vi.mock('vue-router', () => {
 	const params = {};

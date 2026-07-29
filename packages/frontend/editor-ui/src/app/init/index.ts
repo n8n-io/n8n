@@ -1,9 +1,19 @@
+/**
+ * The app's init sequence, plus the registrations it performs.
+ *
+ * Admission rule for this directory, so it stays a place and does not become a
+ * drawer: a module belongs in `app/init/` iff it is an app-side registration the
+ * init sequence hands to a package contract. Today that is `setNotify`
+ * (`toastNotifier.ts`); the `modalOpeners` and `setPermissionsResolvers` closures
+ * below are the same shape and graduate to named siblings when N8N-92/98 touch
+ * them. Not helpers, and not Vue plugins — those belong in `app/plugins/`.
+ */
 import '@/app/polyfills';
 import SourceControlInitializationErrorMessage from '@/features/integrations/sourceControl.ee/components/SourceControlInitializationErrorMessage.vue';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { registerToastNotifier } from '@/app/plugins/toastNotifier';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 

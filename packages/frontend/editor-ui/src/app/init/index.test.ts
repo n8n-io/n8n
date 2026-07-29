@@ -21,7 +21,7 @@ import merge from 'lodash/merge';
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { telemetry } from '@/app/plugins/telemetry';
-import { registerToastNotifier } from '@/app/plugins/toastNotifier';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -30,7 +30,7 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
 }));
 
-vi.mock('@/app/plugins/toastNotifier', () => ({
+vi.mock('@/app/init/toastNotifier', () => ({
 	registerToastNotifier: vi.fn(),
 }));
 
