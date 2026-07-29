@@ -38,6 +38,28 @@ describe('Instance AI runtime skills', () => {
 		);
 	});
 
+	it('loads the bundled credential-recipe-research skill', () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const recipeResearch = source.registry.skills.find(
+			(skill) => skill.name === 'credential-recipe-research',
+		);
+
+		expect(recipeResearch).toMatchObject({
+			name: 'credential-recipe-research',
+			recommendedTools: ['research', 'workflows'],
+		});
+		expect(recipeResearch?.description).toContain('Load before composing');
+		expect(recipeResearch?.description).toContain('credentialHints');
+	});
+
+	it('routes recipe composition through the research skill', () => {
+		const postBuildFlow = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'post-build-flow', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(postBuildFlow).toMatch(/load the\s+`credential-recipe-research` skill/);
+	});
+
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
 		expect(existsSync(INSTANCE_AI_SKILLS_DIR)).toBe(true);
 

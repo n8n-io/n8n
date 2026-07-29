@@ -320,11 +320,17 @@ decision after testing.
      the provider's documented auth scheme (header format, docs URL, a cheap
      authenticated GET endpoint) while you have the docs open: the setup call
      needs them for the `credentialHints` recipe (see the post-build-flow
-     skill). Setup rejects new plain generic credentials on HTTP Request
-     nodes, so picking Bearer/Header/Query/Custom Auth here means rebuilding.
+     skill). Before that setup call, load the `credential-recipe-research`
+     skill and execute its lookup procedure — the recipe's docsUrl and
+     testUrl must come from pages fetched there, never from memory. Setup
+     rejects new plain generic credentials on HTTP Request nodes, so picking
+     Bearer/Header/Query/Custom Auth here means rebuilding — unless the user
+     explicitly asked for that plain type: an explicit user choice wins (setup
+     accepts it with `allowPlainGenericAuth: true`), don't argue with it.
   3. Plain generic types (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
      only for what a template cannot express: basic auth's base64-encoded
-     pair, digest's challenge-response, OAuth flows.
+     pair, digest's challenge-response, OAuth flows — or when the user
+     explicitly asks for a specific plain type.
 - `credentials(action="list", type=...)` may include a synthetic n8n credits
   entry `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }`
   when the type is covered by n8n credits (see n8n credits Preference). It is
