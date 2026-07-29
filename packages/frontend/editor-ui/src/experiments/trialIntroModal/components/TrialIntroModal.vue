@@ -170,7 +170,7 @@ async function onUpgradeClick() {
 						:class="$style.countdownPill"
 						data-test-id="trial-intro-countdown-pill"
 					>
-						<N8nIcon icon="clock" size="xsmall" :class="$style.pillIcon" />
+						<N8nIcon icon="clock" size="xsmall" />
 						{{
 							i18n.baseText('experiments.trialIntroModal.endsIn', {
 								interpolate: { time: countdownText },
@@ -218,7 +218,7 @@ async function onUpgradeClick() {
 						:class="$style.statCard"
 						data-test-id="trial-intro-stat-ai-credits"
 					>
-						<span :class="[$style.statIconTile, $style.statIconTileAi]">
+						<span :class="$style.statIconTile">
 							<N8nIcon icon="sparkles" size="medium" />
 						</span>
 						<N8nHeading tag="div" size="large" :bold="true">{{
@@ -233,7 +233,7 @@ async function onUpgradeClick() {
 						:class="$style.statCard"
 						data-test-id="trial-intro-stat-executions"
 					>
-						<span :class="[$style.statIconTile, $style.statIconTileExecutions]">
+						<span :class="$style.statIconTile">
 							<N8nIcon icon="play" size="medium" />
 						</span>
 						<N8nHeading tag="div" size="large" :bold="true">{{
@@ -248,7 +248,7 @@ async function onUpgradeClick() {
 						:class="$style.statCard"
 						data-test-id="trial-intro-stat-days"
 					>
-						<span :class="[$style.statIconTile, $style.statIconTileDays]">
+						<span :class="$style.statIconTile">
 							<N8nIcon icon="calendar" size="medium" />
 						</span>
 						<N8nHeading tag="div" size="large" :bold="true">{{
@@ -329,7 +329,7 @@ async function onUpgradeClick() {
 							{{ i18n.baseText('experiments.trialIntroModal.step2.annual') }}
 						</N8nText>
 						<N8nBadge
-							theme="success"
+							theme="primary"
 							:bold="true"
 							:show-border="false"
 							:class="$style.savingsBadge"
@@ -453,10 +453,10 @@ async function onUpgradeClick() {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--5xs) var(--spacing--2xs);
-	border: var(--border-width) var(--border-style) var(--border-color--warning);
+	border: var(--border-width) var(--border-style) var(--color--orange-alpha-300);
 	border-radius: var(--radius--full);
-	background: var(--background--warning);
-	color: var(--text-color--warning);
+	background: var(--color--orange-alpha-100);
+	color: var(--color--primary);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	font-variant-numeric: tabular-nums;
@@ -465,10 +465,6 @@ async function onUpgradeClick() {
 .headerLogo {
 	display: flex;
 	align-items: center;
-}
-
-.pillIcon {
-	color: var(--icon-color);
 }
 
 .trialLead {
@@ -514,21 +510,8 @@ async function onUpgradeClick() {
 	height: var(--spacing--xl);
 	margin: 0 auto;
 	border-radius: var(--radius--lg);
-}
-
-.statIconTileAi {
-	background: linear-gradient(135deg, var(--color--purple-400), var(--color--purple-600));
-	color: var(--color--neutral-white);
-}
-
-.statIconTileExecutions {
-	background: var(--color--purple-50);
-	color: var(--color--purple-500);
-}
-
-.statIconTileDays {
-	background: var(--color--red-50);
-	color: var(--color--red-500);
+	background: var(--background--subtle);
+	color: var(--icon-color);
 }
 
 .calloutTitle {
@@ -579,7 +562,6 @@ async function onUpgradeClick() {
 }
 
 .rowNewValue {
-	color: var(--color--success);
 	font-weight: var(--font-weight--bold);
 	font-variant-numeric: tabular-nums;
 }
@@ -653,8 +635,6 @@ async function onUpgradeClick() {
 .savingsBadge {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-radius: var(--radius--full);
-	background: var(--color--success);
-	color: var(--button--color--text--success);
 }
 
 .footer {
