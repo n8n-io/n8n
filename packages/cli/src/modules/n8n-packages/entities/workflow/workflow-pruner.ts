@@ -1,13 +1,15 @@
 import { Service } from '@n8n/di';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import type { WorkflowPlanItem } from './workflow-import.types';
+import { OverwriteDeletionPolicy } from '../../n8n-packages.types';
 import type {
-	ArchivedWorkflowSummary,
 	ImportContext,
-	WorkflowArchivalFailure,
+	RemovedWorkflowSummary,
+	WorkflowRemovalFailure,
 } from '../../n8n-packages.types';
 
 export interface PrunableWorkflow {
@@ -17,15 +19,16 @@ export interface PrunableWorkflow {
 }
 
 export interface WorkflowPrunePlan {
-	archivals: PrunableWorkflow[];
-	failures: WorkflowArchivalFailure[];
+	removals: PrunableWorkflow[];
+	failures: WorkflowRemovalFailure[];
 }
 
-const EMPTY_PLAN: WorkflowPrunePlan = { archivals: [], failures: [] };
+const EMPTY_PLAN: WorkflowPrunePlan = { removals: [], failures: [] };
 
 /**
  * Reconciles a project scope against the package under `folderConflictPolicy=overwrite`: any
- * workflow the package does not contain is archived. Confined to the containers the package
+ * workflow the package does not contain is removed, per `overwriteDeletionPolicy`. Confined to the
+ * containers the package
  * describes — the project root and the folders it defines — so a target-only folder shelters
  * its contents.
  */
@@ -67,11 +70,11 @@ export class WorkflowPruner {
 			['workflow:delete'],
 		);
 
-		const archivals: PrunableWorkflow[] = [];
-		const failures: WorkflowArchivalFailure[] = [];
+		const removals: PrunableWorkflow[] = [];
+		const failures: WorkflowRemovalFailure[] = [];
 		for (const candidate of candidates) {
 			if (archivable.has(candidate.id)) {
-				archivals.push(candidate);
+				removals.push(candidate);
 			} else {
 				failures.push({
 					workflowId: candidate.id,
@@ -81,24 +84,49 @@ export class WorkflowPruner {
 			}
 		}
 
-		return { archivals, failures };
+		return { removals, failures };
 	}
 
-	async apply(context: ImportContext, plan: WorkflowPrunePlan): Promise<ArchivedWorkflowSummary[]> {
-		const summaries: ArchivedWorkflowSummary[] = [];
+	async apply(
+		context: ImportContext,
+		plan: WorkflowPrunePlan,
+		policy: OverwriteDeletionPolicy,
+	): Promise<RemovedWorkflowSummary[]> {
+		const summaries: RemovedWorkflowSummary[] = [];
 
-		for (const workflow of plan.archivals) {
-			// `skipArchived` keeps a re-import idempotent rather than erroring on a second pass.
+		for (const workflow of plan.removals) {
+			// Archive first either way: it is the step that unpublishes, and `delete` refuses a
+			// published workflow outright. `skipArchived` keeps a re-run from erroring.
 			await this.workflowService.archive(context.user, workflow.id, { skipArchived: true });
+
 			summaries.push({
 				workflowId: workflow.id,
 				name: workflow.name,
 				projectId: context.projectId,
 				parentFolderId: workflow.parentFolderId,
+				deletion:
+					policy === OverwriteDeletionPolicy.HardDelete && (await this.tryDelete(context, workflow))
+						? 'deleted'
+						: 'archived',
 			});
 		}
 
 		return summaries;
+	}
+
+	/**
+	 * Deletes an archived workflow, reporting whether the row actually went. Unpublishing defers
+	 * trigger teardown, so a workflow that was published moments ago cannot be deleted yet; leaving
+	 * it archived beats failing an import whose content is already written.
+	 */
+	private async tryDelete(context: ImportContext, workflow: PrunableWorkflow): Promise<boolean> {
+		try {
+			await this.workflowService.delete(context.user, workflow.id);
+			return true;
+		} catch (error) {
+			if (error instanceof ConflictError) return false;
+			throw error;
+		}
 	}
 }
 

@@ -64,9 +64,16 @@ export const FolderConflictPolicy = {
 	/**
 	 * Like `merge` for the folders themselves, but makes the package authoritative for the
 	 * project scopes it defines: a workflow at the project root or in a package folder that the
-	 * package does not contain is archived. Project packages only.
+	 * package does not contain is removed, per `overwriteDeletionPolicy`. Project packages only.
 	 */
 	Overwrite: 'overwrite',
+} as const;
+
+export const OverwriteDeletionPolicy = {
+	/** Archives the workflow, keeping it (and its executions) recoverable. */
+	Archive: 'archive',
+	/** Archives the workflow to unpublish it, then deletes it along with its execution history. */
+	HardDelete: 'hard-delete',
 } as const;
 
 export const MissingNodeTypeMode = {
@@ -147,6 +154,9 @@ export type ProjectConflictPolicy =
 
 export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof FolderConflictPolicy];
 
+export type OverwriteDeletionPolicy =
+	(typeof OverwriteDeletionPolicy)[keyof typeof OverwriteDeletionPolicy];
+
 export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof MissingNodeTypeMode];
 
 export type MissingWorkflowDependencyPolicy =
@@ -213,6 +223,8 @@ export type ImportProjectProperties = {
 
 export type ImportFolderProperties = {
 	folderConflictPolicy: FolderConflictPolicy;
+	/** How `folderConflictPolicy=overwrite` removes a workflow the package does not contain. */
+	overwriteDeletionPolicy: OverwriteDeletionPolicy;
 };
 
 export type ImportDataTableProperties = {
@@ -338,15 +350,16 @@ export interface ImportedFolderSummary {
 }
 
 /**
- * A workflow the target had that the package does not, archived under
- * `folderConflictPolicy=overwrite`. Archived rather than deleted: n8n requires a workflow to be
- * archived before it can be deleted, so this is the recoverable half of that pair.
+ * A workflow the target had that the package does not, removed under
+ * `folderConflictPolicy=overwrite`. `deletion` reports what actually happened rather than what was
+ * asked for: a `hard-delete` whose row could not be dropped yet is left `archived`.
  */
-export interface ArchivedWorkflowSummary {
+export interface RemovedWorkflowSummary {
 	workflowId: string;
 	name: string;
 	projectId: string;
 	parentFolderId: string | null;
+	deletion: 'archived' | 'deleted';
 }
 
 export interface ImportedProjectSummary {
@@ -379,7 +392,7 @@ export type BlockingIssue =
 	  }
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
-	| ({ type: 'workflow-archival-forbidden' } & WorkflowArchivalFailure)
+	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
 	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
@@ -397,7 +410,7 @@ export type BlockingIssue =
  * Blocking rather than skipped: a partial reconciliation leaves the target matching neither
  * the package nor its previous state.
  */
-export interface WorkflowArchivalFailure {
+export interface WorkflowRemovalFailure {
 	workflowId: string;
 	name: string;
 	projectId: string;
@@ -486,7 +499,7 @@ export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
 	/** Workflows the package did not contain, archived under `folderConflictPolicy=overwrite`. */
-	archivedWorkflows: ArchivedWorkflowSummary[];
+	removedWorkflows: RemovedWorkflowSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;

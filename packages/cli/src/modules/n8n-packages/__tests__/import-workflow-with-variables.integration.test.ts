@@ -69,6 +69,7 @@ async function importPackage(params: ImportParams) {
 		workflowIdPolicy: 'new',
 		projectConflictPolicy: 'overwrite',
 		folderConflictPolicy: 'merge',
+		overwriteDeletionPolicy: 'archive',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',

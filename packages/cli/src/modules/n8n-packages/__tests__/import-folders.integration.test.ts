@@ -46,6 +46,7 @@ async function importFolders(params: FolderImportParams) {
 		missingNodeTypeMode: 'fail',
 		projectConflictPolicy: 'overwrite',
 		folderConflictPolicy: params.folderConflictPolicy ?? 'merge',
+		overwriteDeletionPolicy: 'archive',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',

@@ -18,6 +18,7 @@ describe('ImportPackageRequestDto', () => {
 				missingNodeTypeMode: 'fail',
 				projectConflictPolicy: 'overwrite',
 				folderConflictPolicy: 'merge',
+				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
@@ -46,6 +47,7 @@ describe('ImportPackageRequestDto', () => {
 				missingNodeTypeMode: 'fail',
 				projectConflictPolicy: 'overwrite',
 				folderConflictPolicy: 'merge',
+				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
@@ -76,6 +78,7 @@ describe('ImportPackageRequestDto', () => {
 				missingNodeTypeMode: 'fail',
 				projectConflictPolicy: 'overwrite',
 				folderConflictPolicy: 'merge',
+				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
@@ -105,6 +108,7 @@ describe('ImportPackageRequestDto', () => {
 				missingNodeTypeMode: 'fail',
 				projectConflictPolicy: 'overwrite',
 				folderConflictPolicy: 'merge',
+				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
@@ -321,6 +325,40 @@ describe('ImportPackageRequestDto', () => {
 		});
 	});
 
+	describe('overwriteDeletionPolicy', () => {
+		it('defaults to "archive" when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.overwriteDeletionPolicy).toBe('archive');
+			}
+		});
+
+		it.each(['archive', 'hard-delete'])('accepts "%s"', (policy) => {
+			const result = ImportPackageRequestDto.safeParse({
+				workflowConflictPolicy: 'fail',
+				overwriteDeletionPolicy: policy,
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.overwriteDeletionPolicy).toBe(policy);
+			}
+		});
+
+		it('rejects unsupported overwriteDeletionPolicy values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					workflowConflictPolicy: 'fail',
+					overwriteDeletionPolicy: 'delete',
+				}).success,
+			).toBe(false);
+		});
+
+		it('is accepted as a multipart form field', () => {
+			expect(IMPORT_PACKAGE_REQUEST_FORM_FIELDS).toContain('overwriteDeletionPolicy');
+		});
+	});
+
 	describe('projectConflictPolicy', () => {
 		it('defaults to "overwrite" when omitted', () => {
 			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
@@ -458,6 +496,7 @@ describe('ImportPackageRequestDto', () => {
 			{ field: 'missingNodeTypeMode', expected: 'fail' },
 			{ field: 'projectConflictPolicy', expected: 'overwrite' },
 			{ field: 'folderConflictPolicy', expected: 'merge' },
+			{ field: 'overwriteDeletionPolicy', expected: 'archive' },
 			{ field: 'dataTableMatchingMode', expected: 'by-id' },
 			{ field: 'dataTableMissingMode', expected: 'create' },
 			{ field: 'dataTableSchemaConflictPolicy', expected: 'keep-existing' },

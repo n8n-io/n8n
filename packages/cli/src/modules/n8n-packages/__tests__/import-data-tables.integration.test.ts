@@ -72,6 +72,7 @@ async function importPackage(params: ImportParams) {
 		missingNodeTypeMode: 'fail',
 		projectConflictPolicy: 'overwrite',
 		folderConflictPolicy: 'merge',
+		overwriteDeletionPolicy: 'archive',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',

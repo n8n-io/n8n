@@ -1,6 +1,7 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -51,7 +52,7 @@ describe('WorkflowPruner.plan', () => {
 		});
 
 		expect(plan.failures).toEqual([]);
-		expect(plan.archivals).toEqual([{ id: 'stale', name: 'Stale', parentFolderId: null }]);
+		expect(plan.removals).toEqual([{ id: 'stale', name: 'Stale', parentFolderId: null }]);
 	});
 
 	it('retains every workflow the package accounts for, however it was matched', async () => {
@@ -66,7 +67,7 @@ describe('WorkflowPruner.plan', () => {
 			packageFolderIds: [],
 		});
 
-		expect(plan.archivals).toEqual([]);
+		expect(plan.removals).toEqual([]);
 	});
 
 	it('retains a sub-workflow dependency the package references but does not carry', async () => {
@@ -79,7 +80,7 @@ describe('WorkflowPruner.plan', () => {
 		});
 
 		// Archiving it would leave the packaged parent unable to publish.
-		expect(plan.archivals).toEqual([]);
+		expect(plan.removals).toEqual([]);
 	});
 
 	it('archives inside a package-defined folder but leaves a target-only folder alone', async () => {
@@ -93,7 +94,7 @@ describe('WorkflowPruner.plan', () => {
 			packageFolderIds: ['F1'],
 		});
 
-		expect(plan.archivals.map(({ id }) => id)).toEqual(['in-package-folder']);
+		expect(plan.removals.map(({ id }) => id)).toEqual(['in-package-folder']);
 	});
 
 	it('reports a failure instead of archiving what the caller may not archive', async () => {
@@ -101,7 +102,7 @@ describe('WorkflowPruner.plan', () => {
 
 		const plan = await pruner.plan(context, { workflowItems: [], packageFolderIds: [] });
 
-		expect(plan.archivals).toEqual([]);
+		expect(plan.removals).toEqual([]);
 		expect(plan.failures).toEqual([{ workflowId: 'stale', name: 'Stale', projectId: 'proj-1' }]);
 	});
 
@@ -125,34 +126,68 @@ describe('WorkflowPruner.plan', () => {
 
 		const plan = await pruner.plan(context, { workflowItems: [], packageFolderIds: [] });
 
-		expect(plan).toEqual({ archivals: [], failures: [] });
+		expect(plan).toEqual({ removals: [], failures: [] });
 		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 	});
 });
 
 describe('WorkflowPruner.apply', () => {
-	it('archives each planned workflow, tolerating one already archived', async () => {
+	const plan = {
+		removals: [{ id: 'stale', name: 'Stale', parentFolderId: 'F1' }],
+		failures: [],
+	};
+	const summaryOf = (deletion: 'archived' | 'deleted') => [
+		{ workflowId: 'stale', name: 'Stale', projectId: 'proj-1', parentFolderId: 'F1', deletion },
+	];
+
+	it('archives without deleting under archive', async () => {
 		const { pruner, workflowService } = makePruner([]);
 
-		const summaries = await pruner.apply(context, {
-			archivals: [{ id: 'stale', name: 'Stale', parentFolderId: 'F1' }],
-			failures: [],
-		});
+		const summaries = await pruner.apply(context, plan, 'archive');
 
 		expect(workflowService.archive).toHaveBeenCalledExactlyOnceWith(user, 'stale', {
 			skipArchived: true,
 		});
-		expect(summaries).toEqual([
-			{ workflowId: 'stale', name: 'Stale', projectId: 'proj-1', parentFolderId: 'F1' },
-		]);
+		expect(workflowService.delete).not.toHaveBeenCalled();
+		expect(summaries).toEqual(summaryOf('archived'));
+	});
+
+	it('archives then deletes under hard-delete', async () => {
+		const { pruner, workflowService } = makePruner([]);
+
+		const summaries = await pruner.apply(context, plan, 'hard-delete');
+
+		// Archive first: it is the step that unpublishes, and `delete` refuses a published workflow.
+		expect(workflowService.archive).toHaveBeenCalledExactlyOnceWith(user, 'stale', {
+			skipArchived: true,
+		});
+		expect(workflowService.delete).toHaveBeenCalledExactlyOnceWith(user, 'stale');
+		expect(summaries).toEqual(summaryOf('deleted'));
+	});
+
+	it('reports archived when the row cannot be dropped yet under hard-delete', async () => {
+		const { pruner, workflowService } = makePruner([]);
+		workflowService.delete.mockRejectedValue(new ConflictError('still unpublishing'));
+
+		const summaries = await pruner.apply(context, plan, 'hard-delete');
+
+		expect(summaries).toEqual(summaryOf('archived'));
+	});
+
+	it('propagates an unexpected delete failure rather than reporting a removal', async () => {
+		const { pruner, workflowService } = makePruner([]);
+		workflowService.delete.mockRejectedValue(new Error('boom'));
+
+		await expect(pruner.apply(context, plan, 'hard-delete')).rejects.toThrow('boom');
 	});
 
 	it('writes nothing when the plan is empty', async () => {
 		const { pruner, workflowService } = makePruner([]);
 
-		const summaries = await pruner.apply(context, { archivals: [], failures: [] });
+		const summaries = await pruner.apply(context, { removals: [], failures: [] }, 'hard-delete');
 
 		expect(summaries).toEqual([]);
 		expect(workflowService.archive).not.toHaveBeenCalled();
+		expect(workflowService.delete).not.toHaveBeenCalled();
 	});
 });

@@ -34,7 +34,11 @@ import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
-import type { FolderConflictPolicy, ImportPackageRequest } from '../n8n-packages.types';
+import type {
+	FolderConflictPolicy,
+	ImportPackageRequest,
+	OverwriteDeletionPolicy,
+} from '../n8n-packages.types';
 import {
 	buildEntityPackageBuffer,
 	credentialRequirementsFromWorkflows,
@@ -66,6 +70,7 @@ async function importProjects(
 		missingNodeTypeMode: 'fail',
 		projectConflictPolicy: 'overwrite',
 		folderConflictPolicy: 'merge',
+		overwriteDeletionPolicy: 'archive',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
@@ -332,16 +337,28 @@ describe('project shell import', () => {
 			packagedWorkflowId = first.workflows[0].localId;
 		});
 
-		const reconcile = async (folderConflictPolicy: FolderConflictPolicy) =>
-			await importProjects(owner, await projectPackage(), undefined, { folderConflictPolicy });
+		const reconcile = async (
+			folderConflictPolicy: FolderConflictPolicy,
+			overwriteDeletionPolicy: OverwriteDeletionPolicy = 'archive',
+		) =>
+			await importProjects(owner, await projectPackage(), undefined, {
+				folderConflictPolicy,
+				overwriteDeletionPolicy,
+			});
 
 		it('archives a root workflow the package does not contain, retaining the packaged one', async () => {
 			const stale = await createWorkflow({ name: 'Stale' }, project);
 
 			const result = await reconcile('overwrite');
 
-			expect(result.archivedWorkflows).toEqual([
-				{ workflowId: stale.id, name: 'Stale', projectId: 'P1', parentFolderId: null },
+			expect(result.removedWorkflows).toEqual([
+				{
+					workflowId: stale.id,
+					name: 'Stale',
+					projectId: 'P1',
+					parentFolderId: null,
+					deletion: 'archived',
+				},
 			]);
 			expect((await findWorkflow(stale.id))?.isArchived).toBe(true);
 			// The package's own workflow is matched by sourceWorkflowId, so it is retained.
@@ -358,10 +375,34 @@ describe('project shell import', () => {
 
 			const result = await reconcile('overwrite');
 
-			expect(result.archivedWorkflows).toEqual([
-				{ workflowId: stale.id, name: 'Stale', projectId: 'P1', parentFolderId: 'FA' },
+			expect(result.removedWorkflows).toEqual([
+				{
+					workflowId: stale.id,
+					name: 'Stale',
+					projectId: 'P1',
+					parentFolderId: 'FA',
+					deletion: 'archived',
+				},
 			]);
 			expect((await findWorkflow(kept.id))?.isArchived).toBe(false);
+		});
+
+		it('drops the row entirely under hard-delete, keeping the packaged workflow', async () => {
+			const stale = await createWorkflow({ name: 'Stale' }, project);
+
+			const result = await reconcile('overwrite', 'hard-delete');
+
+			expect(result.removedWorkflows).toEqual([
+				{
+					workflowId: stale.id,
+					name: 'Stale',
+					projectId: 'P1',
+					parentFolderId: null,
+					deletion: 'deleted',
+				},
+			]);
+			expect(await findWorkflow(stale.id)).toBeNull();
+			expect(await findWorkflow(packagedWorkflowId)).not.toBeNull();
 		});
 
 		it('archives nothing under merge', async () => {
@@ -369,7 +410,7 @@ describe('project shell import', () => {
 
 			const result = await reconcile('merge');
 
-			expect(result.archivedWorkflows).toEqual([]);
+			expect(result.removedWorkflows).toEqual([]);
 			expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
 		});
 
@@ -378,7 +419,7 @@ describe('project shell import', () => {
 
 			await reconcile('overwrite');
 
-			expect((await reconcile('overwrite')).archivedWorkflows).toEqual([]);
+			expect((await reconcile('overwrite')).removedWorkflows).toEqual([]);
 		});
 
 		it('rejects the import when the API key lacks the workflow:delete scope', async () => {
@@ -398,7 +439,7 @@ describe('project shell import', () => {
 
 			const result = await reconcile('overwrite');
 
-			expect(result.archivedWorkflows).toEqual([]);
+			expect(result.removedWorkflows).toEqual([]);
 			expect((await findWorkflow(untouched.id))?.isArchived).toBe(false);
 		});
 	});

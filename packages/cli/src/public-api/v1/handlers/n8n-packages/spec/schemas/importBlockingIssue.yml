@@ -149,9 +149,9 @@ oneOf:
         description: 'For `id-in-other-project`: the project that already owns the id.'
   - type: object
     description: >
-      A workflow that `folderConflictPolicy=overwrite` would archive, because the package
+      A workflow that `folderConflictPolicy=overwrite` would remove, because the package
       does not contain it, but the caller lacks `workflow:delete` on. Reported instead of
-      archiving a subset, which would leave the project matching neither the package nor
+      removing a subset, which would leave the project matching neither the package nor
       its previous state.
     required:
       - type
@@ -162,7 +162,7 @@ oneOf:
       type:
         type: string
         enum:
-          - workflow-archival-forbidden
+          - workflow-removal-forbidden
       workflowId:
         type: string
       name:

@@ -48,7 +48,7 @@ import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { WorkflowPublishingBlockedReason } from '../entities/workflow/workflow-publishing-policy.types';
 import { createBindings } from '../n8n-packages.types';
 import type {
-	ArchivedWorkflowSummary,
+	RemovedWorkflowSummary,
 	BlockingIssue,
 	ImportBindingMap,
 	ImportContext,
@@ -82,7 +82,7 @@ export interface ImportOrchestrationInput {
  */
 export interface ImportContentResult {
 	workflowOutcomes: PersistedWorkflowOutcome[];
-	archivedWorkflows: ArchivedWorkflowSummary[];
+	removedWorkflows: RemovedWorkflowSummary[];
 	folderSummaries: ImportedFolderSummary[];
 	bindings: PackageImportBindings;
 	credentialResult: CredentialApplyResult;
@@ -177,7 +177,7 @@ export class ImportOrchestrator {
 						packageFolderIds: folders.map(({ sourceFolderId }) => sourceFolderId),
 						subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
 					})
-				: { archivals: [], failures: [] };
+				: { removals: [], failures: [] };
 
 		// Skipped workflows are never written, so their node types don't gate the import.
 		const missingNodeTypes = collectMissingNodeTypes(
@@ -277,15 +277,19 @@ export class ImportOrchestrator {
 			}),
 		);
 
-		// Archiving goes last: the package's own workflows are in place first, so a failure earlier
+		// Removal goes last: the package's own workflows are in place first, so a failure earlier
 		// in the apply leaves the target with more than the package asked for rather than less.
-		const archivedWorkflows = await this.workflowPruner.apply(context, plan.prunePlan);
+		const removedWorkflows = await this.workflowPruner.apply(
+			context,
+			plan.prunePlan,
+			input.options.overwriteDeletionPolicy,
+		);
 
 		return {
 			workflowOutcomes: outcomes.map((outcome) =>
 				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
 			),
-			archivedWorkflows,
+			removedWorkflows,
 			folderSummaries,
 			bindings,
 			credentialResult,
@@ -335,7 +339,7 @@ export class ImportOrchestrator {
 				(conflict): BlockingIssue => ({ type: 'folder-conflict', ...conflict }),
 			),
 			...prunePlan.failures.map(
-				(failure): BlockingIssue => ({ type: 'workflow-archival-forbidden', ...failure }),
+				(failure): BlockingIssue => ({ type: 'workflow-removal-forbidden', ...failure }),
 			),
 			...dataTablePlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'data-table-unresolved', ...failure }),

@@ -185,17 +185,33 @@ post:
                 `overwrite` reuses existing folders exactly as `merge` does, and
                 additionally makes the package authoritative for the project scopes it
                 defines: a workflow at a project's root, or in a folder the package
-                defines, that the package does not contain is **archived** — not
-                hard-deleted, since n8n requires a workflow to be archived before it
-                can be deleted. Archived workflows are listed under
-                `archivedWorkflows`, and an active one is unpublished first. A workflow
-                filed under a folder the package does not define is left alone, so a
-                target-only folder shelters its contents from reconciliation. Requires
-                the `workflow:delete` scope, and the import is rejected up front if the
-                caller lacks delete permission on any workflow that would be archived.
-                Project packages only — a workflow package describes only the workflows
-                it carries, not the whole target scope, so `overwrite` is rejected for
-                one.
+                defines, that the package does not contain is removed — see
+                `overwriteDeletionPolicy` for whether that means archived or deleted.
+                Removed workflows are listed under `removedWorkflows`, and a published
+                one is unpublished first. A workflow filed under a folder the package
+                does not define is left alone, so a target-only folder shelters its
+                contents from reconciliation. Requires the `workflow:delete` scope, and
+                the import is rejected up front if the caller lacks delete permission on
+                any workflow that would be removed. Project packages only — a workflow
+                package describes only the workflows it carries, not the whole target
+                scope, so `overwrite` is rejected for one.
+            overwriteDeletionPolicy:
+              type: string
+              enum:
+                - archive
+                - hard-delete
+              default: archive
+              description: >
+                How `folderConflictPolicy=overwrite` removes a workflow the package does
+                not contain. `archive` (default) archives it, so it stays recoverable
+                along with its execution history. `hard-delete` archives it — the step
+                that unpublishes it, which a delete will not do on its own — and then
+                deletes the workflow and its executions permanently. Each entry in
+                `removedWorkflows` reports what actually happened in its `deletion`
+                field: a `hard-delete` whose row cannot be dropped yet, because
+                unpublishing defers trigger teardown, is left `archived` rather than
+                failing an import whose content is already written. Ignored unless
+                `folderConflictPolicy` is `overwrite`.
             dataTableMatchingMode:
               type: string
               enum:
@@ -430,10 +446,10 @@ post:
                         - updated
                         - skipped
                       description: Import outcome for this package workflow.
-              archivedWorkflows:
+              removedWorkflows:
                 type: array
                 description: >
-                  Workflows the target had that the package does not, archived by
+                  Workflows the target had that the package does not, removed by
                   `folderConflictPolicy=overwrite`. Empty under every other policy.
                 items:
                   type: object
@@ -442,10 +458,11 @@ post:
                     - name
                     - projectId
                     - parentFolderId
+                    - deletion
                   properties:
                     workflowId:
                       type: string
-                      description: Id of the archived workflow on this instance.
+                      description: Id of the removed workflow on this instance.
                     name:
                       type: string
                     projectId:
@@ -455,6 +472,15 @@ post:
                       type: string
                       nullable: true
                       description: Folder that held the workflow, or null at the project root.
+                    deletion:
+                      type: string
+                      enum:
+                        - archived
+                        - deleted
+                      description: >
+                        What actually happened, not what `overwriteDeletionPolicy` asked
+                        for: a `hard-delete` whose row could not be dropped yet is
+                        reported as `archived`.
               folders:
                 type: array
                 description: Folder shells created or skipped in the target project.

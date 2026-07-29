@@ -62,6 +62,12 @@ export default class PackageImport extends BaseCommand {
 			options: ['merge', 'fail', 'overwrite'],
 			aliases: ['folder-conflict-policy'],
 		}),
+		overwriteDeletionPolicy: Flags.string({
+			description:
+				'How --folder-conflict-policy=overwrite removes a workflow the package does not contain (default on the instance: archive). archive keeps it recoverable; hard-delete also drops the workflow and its execution history',
+			options: ['archive', 'hard-delete'],
+			aliases: ['overwrite-deletion-policy'],
+		}),
 		credentialMatchingMode: Flags.string({
 			description: 'How credential references are matched on the target instance',
 			options: ['id-only', 'name-and-type', 'type-only'],
@@ -143,6 +149,7 @@ export default class PackageImport extends BaseCommand {
 						missingNodeTypeMode: flags.missingNodeTypeMode,
 						projectConflictPolicy: flags.projectConflictPolicy,
 						folderConflictPolicy: flags.folderConflictPolicy,
+						overwriteDeletionPolicy: flags.overwriteDeletionPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,
 						dataTableMatchingMode: flags.dataTableMatchingMode,

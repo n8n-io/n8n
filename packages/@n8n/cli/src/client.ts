@@ -21,6 +21,7 @@ export interface ImportPackageFields {
 	missingNodeTypeMode?: string;
 	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
+	overwriteDeletionPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;

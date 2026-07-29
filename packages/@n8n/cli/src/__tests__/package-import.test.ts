@@ -21,6 +21,7 @@ interface ImportFlags {
 	missingNodeTypeMode?: string;
 	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
+	overwriteDeletionPolicy?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
 	dataTableMatchingMode?: string;
@@ -71,6 +72,7 @@ describe('package import command', () => {
 			missingNodeTypeMode: 'import-anyway',
 			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
+			overwriteDeletionPolicy: 'hard-delete',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
 			dataTableMatchingMode: 'by-id',
@@ -99,6 +101,7 @@ describe('package import command', () => {
 			missingNodeTypeMode: 'import-anyway',
 			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
+			overwriteDeletionPolicy: 'hard-delete',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
 			dataTableMatchingMode: 'by-id',

@@ -42,6 +42,7 @@ import {
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
 	MissingNodeTypeMode,
+	OverwriteDeletionPolicy,
 	ProjectConflictPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
@@ -71,6 +72,7 @@ type ImportPackageParams = Omit<
 	| 'missingNodeTypeMode'
 	| 'projectConflictPolicy'
 	| 'folderConflictPolicy'
+	| 'overwriteDeletionPolicy'
 	| 'dataTableMatchingMode'
 	| 'dataTableMissingMode'
 	| 'dataTableSchemaConflictPolicy'
@@ -91,6 +93,8 @@ type ImportPackageParams = Omit<
 			| 'missingNodeTypeMode'
 			| 'projectConflictPolicy'
 			| 'folderConflictPolicy'
+			| 'overwriteDeletionPolicy'
+			| 'overwriteDeletionPolicy'
 			| 'dataTableMatchingMode'
 			| 'dataTableMissingMode'
 			| 'dataTableSchemaConflictPolicy'
@@ -111,6 +115,7 @@ async function importPackage(params: ImportPackageParams) {
 		missingNodeTypeMode: MissingNodeTypeMode.Fail,
 		projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 		folderConflictPolicy: FolderConflictPolicy.Merge,
+		overwriteDeletionPolicy: OverwriteDeletionPolicy.Archive,
 		dataTableMatchingMode: DataTableMatchingMode.ById,
 		dataTableMissingMode: DataTableMissingMode.Create,
 		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
