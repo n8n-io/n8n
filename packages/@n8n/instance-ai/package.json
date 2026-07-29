@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit && tsc -p evaluations/tsconfig.json",
@@ -14,7 +14,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "eval:instance-ai": "tsx evaluations/cli/index.ts",
-    "eval:agents": "tsx evaluations/cli/index.ts --tier agents",
+    "eval:agents": "tsx evaluations/cli/index.ts --source langtracer --suite agents --tier agents",
     "eval:build-mcp-manifest": "tsx evaluations/cli/build-mcp-manifest.ts",
     "eval:langtracer-push": "tsx evaluations/cli/langtracer-push.ts",
     "eval:pairwise": "tsx evaluations/cli/pairwise.ts",
@@ -64,7 +64,7 @@
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
-    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api": "catalog:",
     "@thednp/dommatrix": "^2.0.12",
     "ai": "catalog:",
     "csv-parse": "catalog:",

@@ -3,7 +3,8 @@ import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
-import { jsonStringify, sleep, UserError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { jsonStringify, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
 import { WsStatusCodes } from '@/constants';

@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { N8N_VERSION } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
@@ -275,6 +276,11 @@ export class N8nPackagesService {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
 		if (isProjectPackage(manifest)) {
+			if (request.variableParentPolicy !== undefined) {
+				throw new BadRequestError(
+					'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
+				);
+			}
 			return await this.projectPackageImporter.import(request, reader, manifest);
 		}
 		return await this.workflowPackageImporter.import(request, reader, manifest);

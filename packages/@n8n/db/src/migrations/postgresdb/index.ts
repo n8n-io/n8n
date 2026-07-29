@@ -231,6 +231,8 @@ import { AddStoredAtToAgentExecution1784815940110 } from '../common/178481594011
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
 import { AddAvailableInMcpToAgents1784897791636 } from '../common/1784897791636-AddAvailableInMcpToAgents';
+import { AddIsFirstPartyToOAuthClients1785162364001 } from '../common/1785162364001-AddIsFirstPartyToOAuthClients';
+import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
 import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/1785247194306-CrashStaleEnqueuedExecutions';
 import type { Migration } from '../migration-types';
 
@@ -468,5 +470,7 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
 	ChangeInstalledNodeVersionType1785162364000,
+	AddIsFirstPartyToOAuthClients1785162364001,
+	AddAgentFileStorageColumns1785186578138,
 	CrashStaleEnqueuedExecutions1785247194306,
 ];

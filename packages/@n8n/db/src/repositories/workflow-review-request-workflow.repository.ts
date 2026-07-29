@@ -11,6 +11,12 @@ export type WorkflowReviewRequestLinkedWorkflow = {
 	workflowVersionId: string | null;
 };
 
+export type WorkflowReviewRequestWorkflowDetailRow = {
+	workflowId: string;
+	workflowName: string;
+	workflowVersionId: string | null;
+};
+
 @Service()
 export class WorkflowReviewRequestWorkflowRepository extends Repository<WorkflowReviewRequestWorkflow> {
 	constructor(dataSource: DataSource) {
@@ -95,5 +101,31 @@ export class WorkflowReviewRequestWorkflowRepository extends Repository<Workflow
 				{ workflowName: row.workflowName, workflowVersionId: row.workflowVersionId ?? null },
 			]),
 		);
+	}
+
+	async findLinkedWorkflowDetailsByRequestId(
+		requestId: string,
+	): Promise<WorkflowReviewRequestWorkflowDetailRow[]> {
+		// Join via entity so DB_TABLE_PREFIX is applied (postgres ITs).
+		const rows = await this.createQueryBuilder('wrw')
+			// The inner join is safe: `workflowId` FKs onto `workflow_entity` with
+			// `ON DELETE CASCADE`, so a child row never outlives its workflow.
+			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = wrw.workflowId')
+			.select('wrw.workflowId', 'workflowId')
+			.addSelect('workflow.name', 'workflowName')
+			.addSelect('wrw.workflowVersionId', 'workflowVersionId')
+			.where('wrw.workflowReviewRequestId = :requestId', { requestId })
+			.orderBy('wrw.id', 'ASC')
+			.getRawMany<{
+				workflowId: string;
+				workflowName: string;
+				workflowVersionId: string | null;
+			}>();
+
+		return rows.map((row) => ({
+			workflowId: row.workflowId,
+			workflowName: row.workflowName,
+			workflowVersionId: row.workflowVersionId ?? null,
+		}));
 	}
 }

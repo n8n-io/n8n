@@ -47,6 +47,10 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 			validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
 		};
 	}),
+	// Real key logic (code|nodeName|parameterPath), inlined because the module
+	// is fully mocked; the pre-existing annotation tests depend on it.
+	getWarningKey: (warning: { code: string; nodeName?: string; parameterPath?: string }) =>
+		`${warning.code}|${warning.nodeName ?? ''}|${warning.parameterPath ?? ''}`,
 }));
 
 const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
@@ -1415,10 +1419,14 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			test('surfaces validation warnings in the response', async () => {
-				mockValidateJSON.mockReturnValue([
-					{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
-					{ code: 'JSON_WARN', message: 'parameter missing' },
-				]);
+				// Post-apply pass finds warnings; pre-update pass is clean, so nothing
+				// is annotated as pre-existing.
+				mockValidateJSON
+					.mockReturnValueOnce([
+						{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
+						{ code: 'JSON_WARN', message: 'parameter missing' },
+					])
+					.mockReturnValueOnce([]);
 
 				const result = await callHandler({
 					workflowId: 'wf-1',
@@ -1433,6 +1441,77 @@ describe('update-workflow MCP tool', () => {
 					{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
 					{ code: 'JSON_WARN', message: 'parameter missing' },
 				]);
+			});
+
+			test('annotates warnings that already existed before the update as pre-existing', async () => {
+				const carriedOver = {
+					code: 'JSON_WARN',
+					message: 'Missing discriminator "parameters.operation".',
+					nodeName: 'Google Drive',
+				};
+				mockValidateJSON
+					.mockReturnValueOnce([
+						carriedOver,
+						{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
+					])
+					.mockReturnValueOnce([carriedOver]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				const response = parseResult(result);
+				expect(response.validationWarnings).toEqual([
+					{
+						code: 'JSON_WARN',
+						message: '[pre-existing] Missing discriminator "parameters.operation".',
+						nodeName: 'Google Drive',
+						preExisting: true,
+					},
+					{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
+				]);
+
+				// The pre-update pass validated the workflow as loaded, before ops.
+				expect(mockValidateJSON).toHaveBeenCalledTimes(2);
+				const preJson = mockValidateJSON.mock.calls[1][0] as { name: string; nodes: INode[] };
+				expect(preJson.name).toBe('Existing');
+			});
+
+			test('matches pre-existing warnings by location, not message content', async () => {
+				mockValidateJSON
+					.mockReturnValueOnce([{ code: 'JSON_WARN', message: 'reworded message', nodeName: 'B' }])
+					.mockReturnValueOnce([{ code: 'JSON_WARN', message: 'original message', nodeName: 'B' }]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				const response = parseResult(result);
+				expect(response.validationWarnings).toEqual([
+					{
+						code: 'JSON_WARN',
+						message: '[pre-existing] reworded message',
+						nodeName: 'B',
+						preExisting: true,
+					},
+				]);
+			});
+
+			test('skips the pre-update validation pass when the post-apply pass is clean', async () => {
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				expect(mockValidateJSON).toHaveBeenCalledTimes(1);
 			});
 
 			test('does not block save when validation produces warnings', async () => {
