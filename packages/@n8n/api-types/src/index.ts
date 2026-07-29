@@ -15,6 +15,7 @@ export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
+export * from './workflow-publish-blocked-details';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
