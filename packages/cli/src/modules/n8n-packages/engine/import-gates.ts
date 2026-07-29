@@ -3,7 +3,7 @@ import type { LicenseState } from '@n8n/backend-common';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
-import { TagConflictPolicy, TagMissingMode } from '../n8n-packages.types';
+import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { VariableMissingMode } from '../n8n-packages.types';
 
 export function assertPackageImportApiKeyScopes(
@@ -40,22 +40,20 @@ export function assertVariableCreationAllowed(options: {
 	assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
 }
 
-export function assertTagWritesAllowed(options: {
-	apiKeyScopes: string[] | undefined;
-	missingMode: TagMissingMode;
-	conflictPolicy: TagConflictPolicy;
-	hasRequirements: boolean;
-	tagsDisabled: boolean;
-}): void {
-	const { apiKeyScopes, missingMode, conflictPolicy, hasRequirements, tagsDisabled } = options;
-	// A tags-disabled instance imports tag-bearing packages as a silent tag
-	// no-op, so no tag write ever happens and no tag scope is required.
-	if (tagsDisabled || !hasRequirements) return;
-
-	if (missingMode === TagMissingMode.Create) {
+/**
+ * Plan-derived, unlike the pre-plan variable/data-table gates: a tag must
+ * never block an import that would not write it (skipped consumers, disabled
+ * tags, dropped conflicts), so the assert looks at what the plans actually
+ * create or rename.
+ */
+export function assertTagWritesAllowed(
+	apiKeyScopes: string[] | undefined,
+	tagPlans: TagImportPlan[],
+): void {
+	if (tagPlans.some((plan) => plan.creations.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:create']);
 	}
-	if (conflictPolicy === TagConflictPolicy.Rename) {
+	if (tagPlans.some((plan) => plan.renames.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:update']);
 	}
 }

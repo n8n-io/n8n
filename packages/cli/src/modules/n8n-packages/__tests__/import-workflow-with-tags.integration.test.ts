@@ -172,8 +172,9 @@ describe('workflow package import — with tags', () => {
 			expect(await tagIdsOf(first.workflows[0].localId)).toEqual([tag.id]);
 		});
 
-		it('rejects a create-mode import of a tag-bearing package when the API key lacks tag:create', async () => {
-			const { packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
+		it('rejects an import that would create a tag when the API key lacks tag:create', async () => {
+			const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
+			await tagRepository.delete(tag.id);
 			const targetProject = await createTeamProject('Target', owner);
 
 			await expect(
@@ -184,6 +185,7 @@ describe('workflow package import — with tags', () => {
 					apiKeyScopes: ['workflow:import'],
 				}),
 			).rejects.toBeInstanceOf(ForbiddenError);
+			expect(await tagRepository.count()).toBe(0);
 		});
 	});
 
@@ -571,6 +573,25 @@ describe('workflow package import — with tags', () => {
 		expect(result.workflows[0].status).toBe('skipped');
 		expect(result.tags).toEqual({ matched: [], created: [], renamed: [], skipped: [] });
 		expect(await tagRepository.count()).toBe(tagsBefore);
+	});
+
+	it('does not require tag scopes when every tag consumer is skipped', async () => {
+		const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
+		const targetProject = await createTeamProject('Target', owner);
+		await importPackage({ user: owner, projectId: targetProject.id, packageBuffer });
+		// The tag is now absent, so a create would be planned — unless its only consumer is skipped.
+		await tagRepository.delete(tag.id);
+
+		const result = await importPackage({
+			user: owner,
+			projectId: targetProject.id,
+			packageBuffer,
+			workflowConflictPolicy: 'skip',
+			apiKeyScopes: ['workflow:import'],
+		});
+
+		expect(result.workflows[0].status).toBe('skipped');
+		expect(await tagRepository.count()).toBe(0);
 	});
 
 	it('silently ignores tags when workflow tags are disabled on the instance', async () => {
