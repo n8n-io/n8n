@@ -380,8 +380,12 @@ export class JobProcessor {
 							execution.data?.executionData?.runtimeData,
 						),
 				);
+
+				// A tool result is not a response, so it has no offload path: this limit
+				// is all that keeps it from travelling through the queue unbounded.
+				this.webhookResponseRelay.assertFitsInline(toolResult);
 			} catch (error) {
-				this.logger.error('Tool node execution failed for MCP Trigger', {
+				this.logger.error('Tool call failed for MCP Trigger', {
 					executionId,
 					toolName,
 					sourceNodeName,

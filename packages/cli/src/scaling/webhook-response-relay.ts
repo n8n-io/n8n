@@ -107,7 +107,6 @@ export class WebhookResponseRelay {
 	 * - and any other body passes through.
 	 *
 	 * @param response Worker response. Mutated and returned.
-	 * @param context Worker response. Mutated and returned.
 	 * @returns The same `response`.
 	 *
 	 * @throws WebhookResponseTooLargeError When:
