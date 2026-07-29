@@ -107,7 +107,6 @@ export interface VariableImportPlan {
 }
 
 export interface VariableApplyResult {
-	/** Created carrying the package's value; `stubbed` were created empty. */
 	created: string[];
 	stubbed: string[];
 	skippedExisting: string[];
