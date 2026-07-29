@@ -68,6 +68,27 @@ vi.mock('@ai-sdk/google', () => ({
 	}),
 }));
 
+vi.mock('@ai-sdk/google-vertex/anthropic', () => ({
+	createVertexAnthropic:
+		(opts?: {
+			project?: string;
+			location?: string;
+			googleAuthOptions?: { credentials?: Record<string, unknown> };
+			fetch?: typeof globalThis.fetch;
+			headers?: Record<string, string>;
+		}) =>
+		(model: string) => ({
+			provider: 'vertex',
+			modelId: model,
+			project: opts?.project,
+			location: opts?.location,
+			googleAuthOptions: opts?.googleAuthOptions,
+			fetch: opts?.fetch,
+			headers: opts?.headers,
+			specificationVersion: 'v3',
+		}),
+}));
+
 vi.mock('@ai-sdk/xai', () => ({
 	createXai: (opts?: ProviderOpts) => ({
 		chat: (model: string) => ({
@@ -370,6 +391,47 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('fw-test');
 			expect(model.baseURL).toBe('https://api.fireworks.ai/inference/v1');
 			expect(model.includeUsage).toBe(true);
+		});
+
+		it('should create model for vertex Anthropic with project/location/credentials', () => {
+			const credentials = {
+				type: 'service_account',
+				project_id: 'my-gcp',
+				client_email: 'bot@my-gcp.iam.gserviceaccount.com',
+				private_key: '-----BEGIN PRIVATE KEY-----\nTEST\n-----END PRIVATE KEY-----\n',
+			};
+			const sa = JSON.stringify(credentials);
+			const model = createModel({
+				id: 'vertex/claude-opus-4-8',
+				project: 'my-gcp',
+				location: 'us-east5',
+				googleCredentialsJson: sa,
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('vertex');
+			expect(model.modelId).toBe('claude-opus-4-8');
+			expect(model.project).toBe('my-gcp');
+			expect(model.location).toBe('us-east5');
+			expect(model.googleAuthOptions).toEqual({
+				credentials,
+			});
+		});
+
+		it('defaults vertex location to global when omitted', () => {
+			const model = createModel({
+				id: 'vertex/claude-opus-4-8',
+				project: 'my-gcp',
+			}) as unknown as Record<string, unknown>;
+			expect(model.location).toBe('global');
+		});
+
+		it('rejects invalid vertex googleCredentialsJson', () => {
+			expect(() =>
+				createModel({
+					id: 'vertex/claude-opus-4-8',
+					project: 'my-gcp',
+					googleCredentialsJson: 'not-json',
+				}),
+			).toThrow(/Invalid googleCredentialsJson/);
 		});
 
 		it('should create model for nvidia', () => {

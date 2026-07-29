@@ -98,6 +98,7 @@
     "@ai-sdk/deepseek": "catalog:",
     "@ai-sdk/gateway": "catalog:",
     "@ai-sdk/google": "catalog:",
+    "@ai-sdk/google-vertex": "catalog:",
     "@ai-sdk/groq": "catalog:",
     "@ai-sdk/mistral": "catalog:",
     "@ai-sdk/openai": "catalog:",

@@ -151,6 +151,36 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return createGoogle({ ...creds, fetch })(model);
 		},
 	},
+	vertex: {
+		// Claude on Vertex Agent Platform (Anthropic Messages via GCP auth).
+		// Package is ESM; Node 22+ can require() it. Do not swap for a plain
+		// createAnthropic + baseURL — Vertex puts the model in the URL path and
+		// requires anthropic_version: vertex-2023-10-16 in the body.
+		build: (creds, model, fetch) => {
+			const { createVertexAnthropic } =
+				require('@ai-sdk/google-vertex/anthropic') as typeof import('@ai-sdk/google-vertex/anthropic');
+			let googleAuthOptions: { credentials: Record<string, unknown> } | undefined;
+			if (creds.googleCredentialsJson) {
+				try {
+					const credentials: unknown = JSON.parse(creds.googleCredentialsJson);
+					if (typeof credentials !== 'object' || credentials === null) {
+						throw new Error('expected a JSON object');
+					}
+					googleAuthOptions = { credentials: credentials as Record<string, unknown> };
+				} catch (error) {
+					const reason = error instanceof Error ? error.message : String(error);
+					throw new Error(`Invalid googleCredentialsJson for provider "vertex": ${reason}`);
+				}
+			}
+			return createVertexAnthropic({
+				project: creds.project,
+				location: creds.location ?? 'global',
+				googleAuthOptions,
+				headers: creds.headers,
+				fetch,
+			})(model);
+		},
+	},
 	xai: {
 		build: (creds, model, fetch) => {
 			const { createXai } = require('@ai-sdk/xai') as typeof import('@ai-sdk/xai');

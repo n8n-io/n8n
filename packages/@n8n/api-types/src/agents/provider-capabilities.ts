@@ -74,6 +74,13 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		webSearch: false,
 		providerTools: [],
 	},
+	// Claude on Google Vertex — Anthropic Messages API (adaptive / budgetTokens).
+	vertex: {
+		thinking: 'budgetTokens',
+		promptCaching: 'ttl',
+		webSearch: false,
+		providerTools: [],
+	},
 	xai: {
 		thinking: 'reasoningEffort',
 		promptCaching: false,

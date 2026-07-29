@@ -13,6 +13,7 @@ catalog:
   '@ai-sdk/deepseek': ^3.0.13
   '@ai-sdk/gateway': ^4.0.28
   '@ai-sdk/google': ^4.0.24
+  '@ai-sdk/google-vertex': 5.0.30
   '@ai-sdk/groq': ^4.0.13
   '@ai-sdk/mistral': ^4.0.14
   '@ai-sdk/openai': ^4.0.20

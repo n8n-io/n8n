@@ -56,6 +56,15 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
+	it('vertex: adaptive thinking maps to anthropic providerOptions namespace', () => {
+		expect(getProviderQuirks('vertex').thinkingToProviderOptions?.({ mode: 'adaptive' })).toEqual({
+			anthropic: {
+				thinking: { type: 'adaptive', display: 'summarized' },
+				effort: 'medium',
+			},
+		});
+	});
+
 	it('anthropic: adaptive mode forwards explicit effort', () => {
 		expect(
 			getProviderQuirks('anthropic').thinkingToProviderOptions?.({

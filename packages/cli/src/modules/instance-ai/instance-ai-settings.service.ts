@@ -415,7 +415,12 @@ export class InstanceAiSettingsService {
 			modelEnvConfigured: Boolean(
 				c.modelApiKey.trim() ||
 					c.modelUrl.trim() ||
-					(modelProviderApiKeyEnv && process.env[modelProviderApiKeyEnv]?.trim()),
+					(modelProviderApiKeyEnv && process.env[modelProviderApiKeyEnv]?.trim()) ||
+					(c.model.startsWith('vertex/') &&
+						(c.vertexProject.trim() ||
+							c.vertexCredentials.trim() ||
+							process.env.GOOGLE_VERTEX_PROJECT?.trim() ||
+							process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim())),
 			),
 			// n8n-sandbox needs only the URL; the service accepts keyless clients.
 			sandboxEnvConfigured:
@@ -1357,10 +1362,23 @@ export class InstanceAiSettingsService {
 	}
 
 	private envVarModelConfigForModel(model: string): ModelConfig {
-		const { modelUrl, modelApiKey } = this.config;
+		const { modelUrl, modelApiKey, vertexProject, vertexLocation, vertexCredentials } = this.config;
 		const id: `${string}/${string}` = model.includes('/')
 			? (model as `${string}/${string}`)
 			: `custom/${model}`;
+
+		if (id.startsWith('vertex/')) {
+			const project = vertexProject.trim() || process.env.GOOGLE_VERTEX_PROJECT?.trim() || '';
+			const location =
+				vertexLocation.trim() || process.env.GOOGLE_VERTEX_LOCATION?.trim() || 'global';
+			const googleCredentialsJson = vertexCredentials.trim();
+			return {
+				id,
+				...(project ? { project } : {}),
+				location,
+				...(googleCredentialsJson ? { googleCredentialsJson } : {}),
+			};
+		}
 
 		if (modelUrl) {
 			return { id, url: modelUrl, ...(modelApiKey ? { apiKey: modelApiKey } : {}) };

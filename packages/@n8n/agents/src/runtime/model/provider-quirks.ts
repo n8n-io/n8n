@@ -58,6 +58,27 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			};
 		},
 	},
+	// Claude on Vertex: same Messages thinking shape; options stay under `anthropic`
+	// (see @ai-sdk/google-vertex/anthropic). Replay/tool defaults reuse anthropic's.
+	vertex: {
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as AnthropicThinkingConfig;
+			if (cfg.mode === 'adaptive') {
+				return {
+					anthropic: {
+						thinking: { type: 'adaptive', display: cfg.display ?? 'summarized' },
+						effort: cfg.effort ?? 'medium',
+					},
+				};
+			}
+			return {
+				anthropic: {
+					thinking: { type: 'enabled', budgetTokens: cfg.budgetTokens ?? 10000 },
+					...(cfg.effort !== undefined ? { effort: cfg.effort } : {}),
+				},
+			};
+		},
+	},
 	openai: {
 		// QUIRK(openai): the Responses API pairs each function_call item with a
 		// reasoning item; dropping the reasoning part from history makes the next

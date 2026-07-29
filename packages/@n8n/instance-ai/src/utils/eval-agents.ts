@@ -32,6 +32,9 @@ export interface EvalModelConfig {
 	providerModelId: string;
 	apiKey: string;
 	url?: string;
+	project?: string;
+	location?: string;
+	googleCredentialsJson?: string;
 }
 
 function getModelId(model?: string): string {
@@ -45,6 +48,8 @@ function getModelId(model?: string): string {
 
 function getApiKey(modelId: string): string {
 	const [provider] = modelId.split('/');
+	// Vertex uses GCP ADC / service-account JSON, not an API key.
+	if (provider === 'vertex') return '';
 	const providerKeyEnv = PROVIDER_API_KEY_ENV[provider];
 	const providerKey = providerKeyEnv ? process.env[providerKeyEnv] : undefined;
 	const key =
@@ -72,6 +77,25 @@ function getModelUrl(): string | undefined {
 	return url;
 }
 
+function getVertexProject(): string | undefined {
+	const project =
+		process.env.N8N_INSTANCE_AI_VERTEX_PROJECT?.trim() ?? process.env.GOOGLE_VERTEX_PROJECT?.trim();
+	return project ?? undefined;
+}
+
+function getVertexLocation(): string {
+	return (
+		process.env.N8N_INSTANCE_AI_VERTEX_LOCATION?.trim() ??
+		process.env.GOOGLE_VERTEX_LOCATION?.trim() ??
+		'global'
+	);
+}
+
+function getVertexCredentialsJson(): string | undefined {
+	const json = process.env.N8N_INSTANCE_AI_VERTEX_CREDENTIALS?.trim();
+	return json ?? undefined;
+}
+
 export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 	const modelId = getModelId(model);
 	const [provider, ...rest] = modelId.split('/');
@@ -79,6 +103,17 @@ export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 	let providerModelId = modelId;
 	if (joinedProviderModelId.length > 0) {
 		providerModelId = joinedProviderModelId;
+	}
+	if (provider === 'vertex') {
+		return {
+			modelId,
+			provider,
+			providerModelId,
+			apiKey: '',
+			project: getVertexProject(),
+			location: getVertexLocation(),
+			googleCredentialsJson: getVertexCredentialsJson(),
+		};
 	}
 	return {
 		modelId,
@@ -110,7 +145,16 @@ const CACHE_PROVIDER_OPTS = {
  */
 function resolveAgentModel(model?: string, fallbackModelConfig?: ModelConfig): ModelConfig {
 	try {
-		const { modelId, apiKey, url } = resolveEvalModelConfig(model);
+		const { modelId, apiKey, url, project, location, googleCredentialsJson } =
+			resolveEvalModelConfig(model);
+		if (modelId.startsWith('vertex/')) {
+			return {
+				id: modelId,
+				...(project ? { project } : {}),
+				...(location ? { location } : {}),
+				...(googleCredentialsJson ? { googleCredentialsJson } : {}),
+			};
+		}
 		return { id: modelId, apiKey, url };
 	} catch (error) {
 		if (fallbackModelConfig) return fallbackModelConfig;

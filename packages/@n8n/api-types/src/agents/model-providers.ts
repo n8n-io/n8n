@@ -2,6 +2,7 @@ export const AGENT_MODEL_PROVIDERS = [
 	'openai',
 	'anthropic',
 	'google',
+	'vertex',
 	'azure-openai',
 	'aws-bedrock',
 	'xai',

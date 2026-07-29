@@ -19,6 +19,18 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	fireworks: apiKeyCreds,
 	anthropic: apiKeyCreds,
 	google: apiKeyCreds,
+	/**
+	 * Claude on Google Vertex (Agent Platform). Auth via ADC / service-account JSON —
+	 * not an Anthropic API key. `project` / `location` fall back to
+	 * `GOOGLE_VERTEX_PROJECT` / `GOOGLE_VERTEX_LOCATION` when omitted.
+	 */
+	vertex: z.object({
+		project: z.string().optional(),
+		location: z.string().optional(),
+		/** Service-account JSON string; parsed into google-auth-library credentials. */
+		googleCredentialsJson: z.string().optional(),
+		headers: z.record(z.string(), z.string()).optional(),
+	}),
 	xai: apiKeyCreds,
 	groq: apiKeyCreds,
 	deepseek: apiKeyCreds,

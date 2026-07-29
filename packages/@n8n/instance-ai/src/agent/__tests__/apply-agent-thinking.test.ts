@@ -121,6 +121,15 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
+	it('enables adaptive thinking for Vertex Claude', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'vertex/claude-opus-4-8');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('vertex', {
+			mode: 'adaptive',
+			effort: 'medium',
+		});
+	});
+
 	it('skips providers without thinking support', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'google/gemini-2.5-pro');

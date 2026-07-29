@@ -59,12 +59,22 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY. With model-url (Azure Foundry Anthropic): EVALS_AZURE_FOUNDRY_KEY.'
+        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY; vertex/* → EVALS_VERTEX_SA_JSON (+ vertex-project/location). With model-url (Azure Foundry Anthropic): EVALS_AZURE_FOUNDRY_KEY.'
         required: false
         type: string
         default: ''
       model-url:
         description: 'Optional Anthropic-compatible base URL for lane backends (e.g. https://<resource>.services.ai.azure.com/anthropic). When set, lanes use EVALS_AZURE_FOUNDRY_KEY and N8N_INSTANCE_AI_MODEL_URL. Eval CLI verifier/mocks keep EVALS_ANTHROPIC_KEY.'
+        required: false
+        type: string
+        default: ''
+      vertex-project:
+        description: 'GCP project for vertex/* models. Empty = EVALS_VERTEX_PROJECT secret, or project_id from EVALS_VERTEX_SA_JSON.'
+        required: false
+        type: string
+        default: ''
+      vertex-location:
+        description: 'Vertex location for vertex/* models (e.g. global, us-east5). Empty = global.'
         required: false
         type: string
         default: ''
@@ -109,11 +119,19 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, anthropic/claude-opus-4-8 (+ model-url for Azure Foundry), openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, anthropic/claude-opus-4-8 (+ model-url for Azure Foundry), vertex/claude-opus-4-8, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct.'
         required: false
         default: ''
       model-url:
         description: 'Optional Anthropic-compatible base URL (e.g. https://<resource>.services.ai.azure.com/anthropic for Azure Foundry). When set, lanes use EVALS_AZURE_FOUNDRY_KEY. Leave empty for provider defaults.'
+        required: false
+        default: ''
+      vertex-project:
+        description: 'GCP project for vertex/* (e.g. vertex/claude-opus-4-8). Empty = EVALS_VERTEX_PROJECT secret or project_id in EVALS_VERTEX_SA_JSON.'
+        required: false
+        default: ''
+      vertex-location:
+        description: 'Vertex location for vertex/* models. Empty = global.'
         required: false
         default: ''
       lanes:
@@ -200,6 +218,8 @@ jobs:
           EVALS_BASETEN_KEY: ${{ secrets.EVALS_BASETEN_KEY }}
           EVALS_FIREWORKS_KEY: ${{ secrets.EVALS_FIREWORKS_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
+          EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
+          EVALS_VERTEX_PROJECT: ${{ secrets.EVALS_VERTEX_PROJECT }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
@@ -213,6 +233,8 @@ jobs:
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
           INSTANCE_AI_MODEL: ${{ inputs.model }}
           INSTANCE_AI_MODEL_URL: ${{ inputs.model-url }}
+          INSTANCE_AI_VERTEX_PROJECT: ${{ inputs.vertex-project }}
+          INSTANCE_AI_VERTEX_LOCATION: ${{ inputs.vertex-location }}
         run: |
           # Build provider-specific env args
           SANDBOX_ARGS=()
@@ -290,6 +312,29 @@ jobs:
               exit 1
             fi
             MODEL_API_KEY="$EVALS_FIREWORKS_KEY"
+          elif [[ "$INSTANCE_AI_MODEL" == vertex/* ]]; then
+            # Vertex Claude: GCP service-account JSON + project/location.
+            # Lane agent uses N8N_INSTANCE_AI_VERTEX_*; MODEL_API_KEY stays
+            # Anthropic for any leftover key-only paths. Verifier/mocks still
+            # use EVALS_ANTHROPIC_KEY in the eval CLI step.
+            if [ -z "$EVALS_VERTEX_SA_JSON" ]; then
+              echo "::error::model is vertex/* but EVALS_VERTEX_SA_JSON secret is empty"
+              exit 1
+            fi
+            VERTEX_PROJECT="${INSTANCE_AI_VERTEX_PROJECT:-$EVALS_VERTEX_PROJECT}"
+            if [ -z "$VERTEX_PROJECT" ]; then
+              VERTEX_PROJECT=$(printf '%s' "$EVALS_VERTEX_SA_JSON" | jq -r '.project_id // empty')
+            fi
+            if [ -z "$VERTEX_PROJECT" ]; then
+              echo "::error::vertex/* requires vertex-project input, EVALS_VERTEX_PROJECT, or project_id in EVALS_VERTEX_SA_JSON"
+              exit 1
+            fi
+            VERTEX_LOCATION="${INSTANCE_AI_VERTEX_LOCATION:-global}"
+            MODEL_ARGS+=(
+              -e N8N_INSTANCE_AI_VERTEX_PROJECT="$VERTEX_PROJECT"
+              -e N8N_INSTANCE_AI_VERTEX_LOCATION="$VERTEX_LOCATION"
+              -e N8N_INSTANCE_AI_VERTEX_CREDENTIALS="$EVALS_VERTEX_SA_JSON"
+            )
           fi
 
           if [ "$LANES" -lt 1 ] || [ "$LANES" -gt 11 ]; then
@@ -512,6 +557,7 @@ jobs:
           EVALS_BASETEN_KEY: ${{ secrets.EVALS_BASETEN_KEY }}
           EVALS_FIREWORKS_KEY: ${{ secrets.EVALS_FIREWORKS_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
+          EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
@@ -524,8 +570,9 @@ jobs:
           # a time, otherwise only the first line is registered.
           for v in "$EVALS_ANTHROPIC_KEY" "$EVALS_OPENAI_KEY" "$EVALS_OPENROUTER_KEY" \
                    "$EVALS_XAI_KEY" "$EVALS_BASETEN_KEY" "$EVALS_FIREWORKS_KEY" \
-                   "$EVALS_AZURE_FOUNDRY_KEY" "$DAYTONA_API_KEY" "$N8N_LICENSE_ACTIVATION_KEY" \
-                   "$N8N_LICENSE_CERT" "$N8N_ENCRYPTION_KEY" "$EVALS_LANGSMITH_API_KEY"; do
+                   "$EVALS_AZURE_FOUNDRY_KEY" "$EVALS_VERTEX_SA_JSON" "$DAYTONA_API_KEY" \
+                   "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" "$N8N_ENCRYPTION_KEY" \
+                   "$EVALS_LANGSMITH_API_KEY"; do
             [ -z "$v" ] && continue
             while IFS= read -r line; do
               [ -n "$line" ] && echo "::add-mask::$line"
