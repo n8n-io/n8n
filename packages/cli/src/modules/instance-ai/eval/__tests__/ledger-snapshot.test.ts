@@ -23,9 +23,27 @@ describe('snapshotLedgerBody', () => {
 		expect(served.toString()).toBe('MUTATED!');
 	});
 
-	it('passes nullish bodies through', () => {
+	it('passes nullish bodies and primitives through', () => {
 		expect(snapshotLedgerBody(undefined)).toBeUndefined();
 		expect(snapshotLedgerBody(null)).toBeNull();
+		expect(snapshotLedgerBody('plain text')).toBe('plain text');
+		expect(snapshotLedgerBody(42)).toBe(42);
+	});
+
+	it('keeps keys a JSON-semantics copy would drop', () => {
+		// `deepCopy` skips own __proto__/constructor/prototype keys, which are
+		// legal JSON — losing them corrupts the evidence just as silently.
+		const served = JSON.parse(
+			'{"constructor":"kept","prototype":"kept","__proto__":{"a":1},"normal":"kept"}',
+		) as Record<string, unknown>;
+
+		const snapshot = snapshotLedgerBody(served) as Record<string, unknown>;
+
+		expect(Object.keys(snapshot).sort()).toEqual(
+			['__proto__', 'constructor', 'normal', 'prototype'].sort(),
+		);
+		expect(snapshot.constructor).toBe('kept');
+		expect(snapshot.prototype).toBe('kept');
 	});
 
 	it('detaches circular bodies without throwing', () => {
