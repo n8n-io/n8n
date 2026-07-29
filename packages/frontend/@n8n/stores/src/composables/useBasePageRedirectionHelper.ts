@@ -3,9 +3,9 @@ import { N8N_PRICING_PAGE_URL } from '@n8n/frontend-constants/urls';
 
 import { useCloudPlanStore } from '../cloudPlan.store';
 import { useSettingsStore } from '../settings.store';
+import type { CloudUpdateLinkSourceType, UTMCampaign } from '../types/pageRedirection';
 import { useUsersStore } from '../users.store';
 import { useVersionsStore } from '../versions.store';
-import type { CloudUpdateLinkSourceType, UTMCampaign } from './pageRedirection.types';
 
 /**
  * Guard consulted before an upgrade redirect. Resolves `true` to proceed, `false`

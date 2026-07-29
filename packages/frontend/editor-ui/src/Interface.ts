@@ -886,13 +886,10 @@ export interface CloudPlanState {
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
 
-// The upgrade-CTA vocabulary moved to `@n8n/stores/composables/pageRedirection.types`
-// alongside the composable that consumes it; re-exported here so existing importers
-// stay unchanged.
-export type {
-	CloudUpdateLinkSourceType,
-	UTMCampaign,
-} from '@n8n/stores/composables/pageRedirection.types';
+// The upgrade-CTA vocabulary moved to `@n8n/stores/types/pageRedirection`, alongside
+// the composable that consumes it; re-exported here so existing importers stay
+// unchanged.
+export type { CloudUpdateLinkSourceType, UTMCampaign } from '@n8n/stores/types/pageRedirection';
 
 export type AddedNode = {
 	type: string;
