@@ -57,6 +57,7 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 		this.initTriggerMetrics();
 		this.initCleanupMetrics();
 		this.initReconciliationMetrics();
+		this.initGhostSweepMetrics();
 	}
 
 	private initOutboxGauges() {
@@ -225,5 +226,18 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 				duration.observe({ result }, durationMs * Time.milliseconds.toSeconds);
 			},
 		);
+	}
+
+	private initGhostSweepMetrics() {
+		const prefix = this.config.prefix;
+
+		const removed = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_ghost_trigger_workflows_total`,
+			help: 'Total number of workflows whose ghost triggers were torn down because they were registered on a non-leader instance.',
+		});
+
+		this.eventService.on('workflow-publication-ghost-trigger-sweep', ({ removedCount }) => {
+			removed.inc(removedCount);
+		});
 	}
 }
