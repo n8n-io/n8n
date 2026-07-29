@@ -5357,7 +5357,8 @@ describe('useCanvasOperations', () => {
 			expect(toast.showMessage).toHaveBeenCalledWith({
 				type: 'info',
 				title: 'Credentials auto-added',
-				message: 'We selected "credA" for the "Set" node. Please check it\'s the right one.',
+				message:
+					'We selected "credA" credentials for the "Set" node. Please check it\'s the right one.',
 			});
 		});
 
