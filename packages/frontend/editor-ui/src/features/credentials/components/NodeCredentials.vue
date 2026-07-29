@@ -26,7 +26,7 @@ import {
 
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';

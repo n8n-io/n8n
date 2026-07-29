@@ -9,7 +9,7 @@ import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 

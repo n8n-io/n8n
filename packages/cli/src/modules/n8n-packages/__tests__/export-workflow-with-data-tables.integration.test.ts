@@ -71,7 +71,7 @@ describe('workflow package export — with data tables', () => {
 				references: [{ dataTableId: dataTable.id }],
 			});
 
-			const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { manifest, entries } = await readExport(stream);
 
 			expect(manifest.requirements).toEqual({
@@ -116,7 +116,7 @@ describe('workflow package export — with data tables', () => {
 				references: [{ dataTableId: dataTable.id }],
 			});
 
-			const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { entries } = await readExport(stream);
 
 			const dataTableFile = entries.find(
@@ -147,7 +147,7 @@ describe('workflow package export — with data tables', () => {
 				references: [{ dataTableId: dataTable.id }],
 			});
 
-			const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { entries } = await readExport(stream);
 
 			const dataTableFile = entries.find((e) => e.name === 'data-tables/withrows/data-table.json');
@@ -174,7 +174,7 @@ describe('workflow package export — with data tables', () => {
 				references: [{ dataTableId: dataTable.id, mode: 'list' }],
 			});
 
-			const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { manifest, entries } = await readExport(stream);
 
 			expect(manifest.requirements?.dataTables).toEqual([
@@ -203,7 +203,7 @@ describe('workflow package export — with data tables', () => {
 				subWorkflowId: child.id,
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parent.id],
 				missingWorkflowDependencyPolicy: 'include-in-package',
@@ -237,7 +237,7 @@ describe('workflow package export — with data tables', () => {
 				references: [{ dataTableId: dataTable.id }],
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [wfA.id, wfB.id],
 			});
@@ -268,7 +268,7 @@ describe('workflow package export — with data tables', () => {
 				],
 			});
 
-			const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { manifest, entries } = await readExport(stream);
 
 			expect(manifest.requirements?.dataTables?.map((d) => d.id).sort()).toEqual(
@@ -300,7 +300,7 @@ describe('workflow package export — with data tables', () => {
 				references: [{ dataTableId: tableB.id }],
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [wfA.id, wfB.id],
 			});
@@ -326,7 +326,10 @@ describe('workflow package export — with data tables', () => {
 				references: [{ dataTableId: dataTable.id }],
 			});
 
-			const stream = await service.exportPackage({ user: owner, projectIds: [salesProject.id] });
+			const { stream } = await service.exportPackage({
+				user: owner,
+				projectIds: [salesProject.id],
+			});
 			const { manifest, entries } = await readExport(stream);
 
 			const projectTarget = manifest.projects![0].target;
@@ -355,7 +358,7 @@ describe('workflow package export — with data tables', () => {
 				parentFolder: folder,
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [],
 				folderIds: [folder.id],
@@ -392,7 +395,7 @@ describe('workflow package export — with data tables', () => {
 				references: [{ dataTableId: dataTable.id }],
 			});
 
-			const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { manifest } = await readExport(stream);
 
 			expect(manifest.requirements?.dataTables).toEqual([
@@ -418,7 +421,7 @@ describe('workflow package export — with data tables', () => {
 				references: [{ dataTableId: dataTable.id }],
 			});
 
-			const stream = await service.exportPackage({ user: viewer, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: viewer, workflowIds: [workflow.id] });
 			const { manifest } = await readExport(stream);
 
 			expect(manifest.requirements?.dataTables).toEqual([
@@ -443,7 +446,7 @@ describe('workflow package export — with data tables', () => {
 				references: [{ dataTableId: dataTable.id }],
 			});
 
-			const stream = await service.exportPackage({ user: member, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: member, workflowIds: [workflow.id] });
 			const { manifest } = await readExport(stream);
 
 			expect(manifest.requirements?.dataTables).toEqual([

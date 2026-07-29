@@ -22,7 +22,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';

@@ -13,7 +13,7 @@ import type {
 	ChatSessionId,
 } from '@n8n/api-types';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { flattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '../chat.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';

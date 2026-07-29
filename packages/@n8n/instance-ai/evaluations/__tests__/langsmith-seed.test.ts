@@ -106,7 +106,8 @@ describe('reconstructSeedFromThread', () => {
 		// Only turn 1 is seeded — the pinned turn and everything after it are excluded.
 		const userTexts = result.seed.messages
 			.filter((m) => m.role === 'user')
-			.map((m) => (m.content as Array<{ text: string }>)[0].text);
+			// Block fields are `unknown` by design (the store owns block shapes).
+			.map((m) => (m.content?.[0] as { text: string } | undefined)?.text ?? '');
 		expect(userTexts).toEqual(['Build Otter Digest, daily 9am']);
 	});
 

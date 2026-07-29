@@ -4,7 +4,7 @@ import { CREDENTIALS_APP_SELECTION_EXPERIMENT } from '@/app/constants/experiment
 import type { CredentialsResource } from '@/Interface';
 
 const mockTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: mockTrack,
 	})),

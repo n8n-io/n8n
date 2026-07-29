@@ -14,7 +14,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowSettingsCache } from '@/app/composables/useWorkflowsCache';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
@@ -51,7 +51,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: vi.fn(),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(),
 }));
 

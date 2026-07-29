@@ -1,7 +1,7 @@
 import '@/app/polyfills';
 import SourceControlInitializationErrorMessage from '@/features/integrations/sourceControl.ee/components/SourceControlInitializationErrorMessage.vue';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
@@ -24,8 +24,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { getPersonalizedNodeTypes } from '@/features/settings/users/users.utils';
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -135,12 +134,11 @@ export async function initializeAuthenticatedFeatures(
 	usersStore.registerModalOpeners(modalOpeners);
 	versionsStore.registerModalOpeners(modalOpeners);
 
-	// Provide the app-side capabilities `users.store` no longer imports directly
-	// after moving into `@n8n/stores` (RBAC check + survey-to-node-types mapping).
+	// Provide the app-side capability `users.store` no longer imports directly
+	// after moving into `@n8n/stores` (RBAC check).
 	usersStore.setPermissionsResolvers({
 		listUsers: () => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }),
 	});
-	usersStore.setNodeTypesResolver(getPersonalizedNodeTypes);
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);

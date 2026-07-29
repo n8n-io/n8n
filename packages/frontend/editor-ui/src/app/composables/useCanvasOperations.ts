@@ -30,7 +30,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { type PinDataSource, usePinnedData } from '@/app/composables/usePinnedData';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
