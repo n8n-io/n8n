@@ -93,11 +93,20 @@ export interface ChatMessageAttachment {
 	file?: File;
 }
 
+export interface ThinkingSegment {
+	id: string;
+	content: string;
+	startTime?: number;
+	endTime?: number;
+}
+
 export interface AgentsChatMessage {
 	id: string;
 	role: 'user' | 'assistant';
 	content: string;
 	renderParts?: ChatMessageRenderPart[];
+	thinkingSegments?: ThinkingSegment[];
+	/** Legacy aggregate kept for messages created before timed segments were added. */
 	thinking?: string;
 	toolCalls?: ToolCall[];
 	status?: ChatMessageStatus;

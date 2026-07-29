@@ -14,6 +14,32 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 }
 
 describe('execution-to-message-mapper', () => {
+	it('maps reasoning timeline events with timing into assistant message content', () => {
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'reasoning',
+						content: 'Check the inputs.',
+						timestamp: 100,
+						endTime: 150,
+					},
+					{ type: 'text', content: 'Done.', timestamp: 151, endTime: 160 },
+				],
+			}),
+		);
+
+		expect(result[1]?.content).toEqual([
+			{
+				type: 'reasoning',
+				text: 'Check the inputs.',
+				startTime: 100,
+				endTime: 150,
+			},
+			{ type: 'text', text: 'Done.' },
+		]);
+	});
+
 	it('maps execution timeline text and tool calls into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({

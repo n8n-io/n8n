@@ -200,9 +200,9 @@ export interface AgentPersistedMessageContentPart {
 	output?: unknown;
 	canceled?: boolean;
 	error?: string;
-	/** Epoch ms when the tool handler started executing. */
+	/** Epoch ms when this content part started. */
 	startTime?: number;
-	/** Epoch ms when the tool handler settled. */
+	/** Epoch ms when this content part settled. */
 	endTime?: number;
 	/** File parts carry attachment metadata only — bytes are fetched via the attachment download route. */
 	fileId?: string;

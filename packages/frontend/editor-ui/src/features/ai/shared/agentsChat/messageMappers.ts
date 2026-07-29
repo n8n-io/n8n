@@ -21,6 +21,7 @@ import type {
 	ChatMessageAttachment,
 	ChatMessageRenderPart,
 	InteractivePayload,
+	ThinkingSegment,
 	ToolCall,
 } from './types';
 
@@ -174,6 +175,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 
 		let text = '';
 		let thinking = '';
+		const thinkingSegments: ThinkingSegment[] = [];
 		const toolCalls: ToolCall[] = [];
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
@@ -181,7 +183,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		let status: ChatMessage['status'] =
 			msg.executionStatus === 'error' ? CHAT_MESSAGE_STATUS.ERROR : undefined;
 
-		for (const part of msg.content) {
+		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {
 				text += part.text;
 				renderParts.push({ type: 'text', text: part.text });
@@ -194,6 +196,12 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				});
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
+				thinkingSegments.push({
+					id: `${msg.id}:reasoning:${partIndex}`,
+					content: part.text,
+					...(part.startTime !== undefined && { startTime: part.startTime }),
+					...(part.endTime !== undefined && { endTime: part.endTime }),
+				});
 			} else if (part.type === 'tool-call' && part.toolName) {
 				let state: ToolCallState;
 				let output: unknown;
@@ -248,6 +256,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			content: text,
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
+			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(attachments.length > 0 && { attachments }),
 			...(status && { status }),

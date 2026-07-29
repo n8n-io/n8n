@@ -33,6 +33,7 @@ import type {
 	ObservationLogMemoryConfig,
 	PendingToolCall,
 	RunOptions,
+	ReasoningLevel,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
@@ -100,6 +101,7 @@ export interface AgentRuntimeConfig {
 	structuredOutput?: z.ZodType | JSONSchema7;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
+	reasoning?: ReasoningLevel;
 	promptCaching?: PromptCachingConfig;
 	eventBus?: AgentEventBus;
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
@@ -815,6 +817,7 @@ export class AgentRuntime {
 				abortSignal: abortScope.signal,
 				hasTools,
 				aiTools: cached.aiTools,
+				reasoning: staticLoopContext.reasoning,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
