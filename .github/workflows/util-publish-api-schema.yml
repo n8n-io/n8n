@@ -7,10 +7,9 @@ on:
       - master
     paths:
       - 'packages/cli/src/public-api/**/*.{css,yaml,yml}'
-      # package.json / lockfile catch a Redocly CLI bump, the only other thing
-      # that can change the bundled output
+      # cli package.json catches a Redocly (bundler) version bump, the only
+      # other thing that changes the bundled output
       - 'packages/cli/package.json'
-      - 'pnpm-lock.yaml'
 
   # Allow manual re-publish
   workflow_dispatch:
