@@ -3,6 +3,7 @@ import SourceControlInitializationErrorMessage from '@/features/integrations/sou
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { registerToastNotifier } from '@/app/toastNotifier';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
@@ -47,6 +48,12 @@ export async function initializeCore() {
 	if (state.initialized) {
 		return;
 	}
+
+	// First, so nothing that can toast runs unregistered — including the
+	// startup-error toast a few lines down. Lives here rather than in the
+	// deprecated `@/app/composables/useToast` shim so retiring that shim cannot
+	// silently degrade toasts to a no-op notifier (N8N-104).
+	registerToastNotifier();
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();

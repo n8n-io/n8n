@@ -1,23 +1,20 @@
-import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
 import { useToast } from '@/app/composables/useToast';
 
 /**
- * This module is bootstrap wiring, not just a re-export: importing it registers
- * the notifier that package-side `useToast` depends on, and that notifier is
- * where notification suppression lives — `@n8n/composables` sits below
- * the stores tier and cannot read the store itself.
+ * This module is a pure re-export — the bootstrap registration it used to carry
+ * moved to `@/app/toastNotifier` (N8N-104). Kept as its own test file so the
+ * assertion below runs in a module registry where nothing else could have
+ * registered a notifier: importing the shim, and only the shim, must leave
+ * `useToast` unwired.
  *
- * So this is the only place the suppression matrix can be verified end to end.
- * Deleting the registration, or the suppression check inside it, must fail here;
- * both are mutation-verified.
+ * That is what makes deleting this file behaviour-neutral when the shim is
+ * retired (N8N-89). Re-adding a registration here fails this test.
  */
-describe('useToast bootstrap wiring', () => {
+describe('useToast shim', () => {
 	beforeEach(() => {
-		// `stubActions: false` so `setNotificationsSuppressed` really mutates state,
-		// matching `usePostMessageHandler.test.ts`.
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		const appEl = document.createElement('div');
@@ -29,39 +26,9 @@ describe('useToast bootstrap wiring', () => {
 		document.getElementById('n8n-app')?.remove();
 	});
 
-	function suppress(options?: { allowErrors: boolean }) {
-		useNotificationsStore().setNotificationsSuppressed(true, {
-			allowErrors: options?.allowErrors ?? false,
-		});
-	}
-
-	it('shows notifications when suppression is off', () => {
-		useToast().showMessage({ message: 'Shown' });
-
-		expect(document.querySelector('.el-notification')).not.toBeNull();
-	});
-
-	it('drops a non-error notification when suppressed', () => {
-		suppress({ allowErrors: true });
-
-		useToast().showMessage({ message: 'Suppressed' });
+	it('registers nothing, so removing it changes no behaviour', () => {
+		useToast().showMessage({ message: 'Not rendered' });
 
 		expect(document.querySelector('.el-notification')).toBeNull();
-	});
-
-	it('drops an error notification when suppressed and errors are not allowed', () => {
-		suppress({ allowErrors: false });
-
-		useToast().showMessage({ message: 'Suppressed error', type: 'error' });
-
-		expect(document.querySelector('.el-notification')).toBeNull();
-	});
-
-	it('still shows an error notification when suppressed and errors are allowed', () => {
-		suppress({ allowErrors: true });
-
-		useToast().showMessage({ message: 'Allowed error', type: 'error' });
-
-		expect(document.querySelector('.el-notification')).not.toBeNull();
 	});
 });
