@@ -22,6 +22,7 @@ import {
 	httpMethodsProperty,
 	inboundTriggerAuthenticationBuilderHint,
 	optionsProperty,
+	requireExecuteAccessProperty,
 	responseBinaryPropertyNameProperty,
 	responseCodeOption,
 	responseCodeProperty,
@@ -146,6 +147,7 @@ export class Webhook extends Node {
 				...authenticationProperty(this.authPropertyName, true),
 				builderHint: inboundTriggerAuthenticationBuilderHint,
 			},
+			requireExecuteAccessProperty(this.authPropertyName),
 			responseModeProperty,
 			responseModePropertyStreaming,
 			{
