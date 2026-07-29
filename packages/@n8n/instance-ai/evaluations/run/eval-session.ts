@@ -175,6 +175,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						execArgs.buildTrace,
 						args.pinAiRoots,
 						execArgs.seedContext,
+						args.outputDir,
 					),
 			),
 			tracedExecuteAgent: wrap(
@@ -197,6 +198,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						execArgs.timeoutMs,
 						execArgs.testCaseName,
 						execArgs.buildTrace,
+						args.outputDir,
 					),
 			),
 		};

@@ -29,6 +29,7 @@ export type {
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
+	ReasoningLevel,
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,

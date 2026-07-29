@@ -4,6 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Thread, Author } from 'chat';
 import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
@@ -16,6 +17,7 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
+	type ApprovalDecisionMessageParams,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
@@ -57,11 +59,13 @@ export class TelegramIntegration extends AgentChatIntegration {
 		capabilities: [
 			'Receive Telegram messages as agent triggers.',
 			'Respond in Telegram conversations and send direct Telegram messages.',
+			'Edit existing messages in the current Telegram conversation.',
 			'Render Telegram-compatible cards with buttons.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Telegram or act as a Telegram bot.',
 			'The agent needs to reply to Telegram users in the same conversation context.',
+			'The agent needs to update a Telegram message in the current conversation.',
 			'The agent should send Telegram messages as the connected Telegram bot.',
 		],
 		useNodeToolWhen: [
@@ -77,11 +81,32 @@ export class TelegramIntegration extends AgentChatIntegration {
 		'fields',
 	];
 
-	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond', 'send_dm']);
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
+		'respond',
+		'send_dm',
+		'edit_message',
+	]);
+
+	readonly actionToolGuidance = [
+		'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
+		'After a Telegram callback, edit the source message promptly so stale buttons are removed.',
+	];
 
 	readonly needsShortCallbackData = true;
 
+	readonly deleteActionMessageBeforeResume = false;
+
 	readonly disableStreaming = true;
+
+	formatApprovalDecisionMessage({ approved, raw, user }: ApprovalDecisionMessageParams): string {
+		const originalText =
+			isRecord(raw) && isRecord(raw.message) && typeof raw.message.text === 'string'
+				? raw.message.text
+				: '';
+		const responder = user.fullName || user.userName || user.userId;
+		const outcome = approved ? `✅ Approved by ${responder}` : `🚫 Declined by ${responder}`;
+		return originalText ? `${originalText}\n\n${outcome}` : outcome;
+	}
 
 	readonly formatThreadId = {
 		fromSdk: (thread: Thread<unknown, unknown>) => {

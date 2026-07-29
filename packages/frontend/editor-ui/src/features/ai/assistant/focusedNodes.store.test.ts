@@ -13,7 +13,7 @@ import {
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { mockedStore } from '@/__tests__/utils';
-import * as telemetryModule from '@/app/composables/useTelemetry';
+import * as telemetryModule from '@n8n/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { INodeUi } from '@/Interface';
 

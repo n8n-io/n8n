@@ -34,8 +34,8 @@ import {
 	type MissingNodeTypeRequirement,
 } from '../entities/workflow/missing-node-type-mode';
 import type {
+	PersistedWorkflowOutcome,
 	PreparedWorkflow,
-	WorkflowImportOutcome,
 	WorkflowImportPlan,
 } from '../entities/workflow/workflow-import.types';
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
@@ -44,6 +44,7 @@ import type { WorkflowPublishingBlockedReason } from '../entities/workflow/workf
 import { createBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
+	ImportBindingMap,
 	ImportContext,
 	ImportedFolderSummary,
 	ImportFolderProperties,
@@ -52,6 +53,7 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import { toImportBlockedError } from './import-blocked.error';
+import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -63,10 +65,16 @@ export interface ImportOrchestrationInput {
 	options: ImportWorkflowProperties & ImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
+	/** Sub-workflow dependency graph from the manifest, used to order the import. */
+	subWorkflowRequirements?: PackageWorkflowRequirement[];
 }
 
-export interface ImportOrchestrationResult {
-	workflowOutcomes: WorkflowImportOutcome[];
+/**
+ * Everything one scope's {@link ImportOrchestrator.apply} wrote, before the package-wide publish
+ * sweep runs. Telemetry consumes this shape directly — it only reads statuses and ids.
+ */
+export interface ImportContentResult {
+	workflowOutcomes: PersistedWorkflowOutcome[];
 	folderSummaries: ImportedFolderSummary[];
 	bindings: PackageImportBindings;
 	credentialResult: CredentialApplyResult;
@@ -172,7 +180,15 @@ export class ImportOrchestrator {
 		};
 	}
 
-	async apply(plan: ImportPlan): Promise<ImportOrchestrationResult> {
+	/**
+	 * Writes this scope's content. Workflows land unpublished: publishing needs every workflow in
+	 * the package present first, so the caller runs {@link WorkflowPublisher.applyToPackage} once
+	 * all scopes have been applied.
+	 */
+	async apply(
+		plan: ImportPlan,
+		seedWorkflowBindings?: ImportBindingMap,
+	): Promise<ImportContentResult> {
 		const {
 			input,
 			folderContext,
@@ -182,7 +198,7 @@ export class ImportOrchestrator {
 			dataTablePlan,
 			variablePlan,
 		} = plan;
-		const { context, credentialRequest, options } = input;
+		const { context, credentialRequest } = input;
 
 		// Variables go first: stub creation is the only apply step that can still fail after the
 		// blocking-issue gate (a near-quota race), and it depends on nothing below — applying it
@@ -198,30 +214,36 @@ export class ImportOrchestrator {
 		);
 
 		await this.dataTableImporter.apply(context, dataTablePlan);
-		const publishBlocked = new Map<string, WorkflowPublishingBlockedReason>();
+
+		// Which workflows the publish phase must leave inactive. Known only now, because it depends
+		// on which credentials actually ended up stubbed.
+		const blockedFromPublish = new Map<string, WorkflowPublishingBlockedReason>();
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
 			new Set(credentialResult.stubbed),
 		)) {
-			publishBlocked.set(sourceWorkflowId, 'stub-credential');
+			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
 		}
 		// A workflow blocked for both reasons reports missing-node-type: it physically can't run.
 		for (const sourceWorkflowId of workflowsWithMissingNodeTypes(plan.missingNodeTypes)) {
-			publishBlocked.set(sourceWorkflowId, 'missing-node-type');
+			blockedFromPublish.set(sourceWorkflowId, 'missing-node-type');
 		}
 
 		const { outcomes, bindings } = await this.workflowImporter.apply(
-			{
-				...context,
-				publishingPolicy: options.workflowPublishingPolicy,
-				publishBlocked,
-			},
+			context,
 			workflowPlan,
-			createBindings({ credentials: credentialResult.bindings }),
+			createBindings({
+				credentials: credentialResult.bindings,
+				// Seeds cross-scope workflow ids so a project package can resolve
+				// sub-workflow references that point into another project.
+				...(seedWorkflowBindings ? { workflows: seedWorkflowBindings } : {}),
+			}),
 		);
 
 		return {
-			workflowOutcomes: outcomes,
+			workflowOutcomes: outcomes.map((outcome) =>
+				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
+			),
 			folderSummaries,
 			bindings,
 			credentialResult,
@@ -284,6 +306,14 @@ export class ImportOrchestrator {
 			),
 		];
 	}
+}
+
+function withBlockedFromPublish(
+	outcome: PersistedWorkflowOutcome,
+	blockedFromPublish: WorkflowPublishingBlockedReason | undefined,
+): PersistedWorkflowOutcome {
+	if (outcome.status === 'skipped' || !blockedFromPublish) return outcome;
+	return { ...outcome, blockedFromPublish };
 }
 
 function toCredentialBlockingIssue(failure: CredentialResolutionFailure): BlockingIssue {

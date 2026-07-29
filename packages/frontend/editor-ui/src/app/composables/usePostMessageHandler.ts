@@ -7,7 +7,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';

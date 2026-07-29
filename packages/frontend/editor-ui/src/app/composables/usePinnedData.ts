@@ -23,7 +23,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';

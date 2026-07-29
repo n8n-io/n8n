@@ -13,7 +13,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';

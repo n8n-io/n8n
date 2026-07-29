@@ -50,7 +50,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	}),
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
