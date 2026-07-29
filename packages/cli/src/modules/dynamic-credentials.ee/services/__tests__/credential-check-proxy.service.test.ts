@@ -1,6 +1,10 @@
 import type { Mocked } from 'vitest';
 import type { GlobalConfig } from '@n8n/config';
-import type { IExecutionContext, PlaintextExecutionContext } from 'n8n-workflow';
+import type {
+	ICredentialContext,
+	IExecutionContext,
+	PlaintextExecutionContext,
+} from 'n8n-workflow';
 
 import type { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { UrlService } from '@/services/url.service';
@@ -67,7 +71,7 @@ describe('CredentialCheckProxyService', () => {
 		} as unknown as Mocked<CredentialResolverWorkflowService>;
 
 		mockExecutionContextService = {
-			decryptExecutionContext: vi.fn().mockResolvedValue(plaintextContext),
+			decryptCredentialContext: vi.fn().mockResolvedValue(plaintextContext.credentials),
 		} as unknown as Mocked<ExecutionContextService>;
 
 		mockEnterpriseCredentialsService = {
@@ -178,12 +182,9 @@ describe('CredentialCheckProxyService', () => {
 		});
 
 		it('should throw when no credential context in execution context', async () => {
-			mockExecutionContextService.decryptExecutionContext.mockResolvedValue({
-				version: 1,
-				establishedAt: Date.now(),
-				source: 'webhook',
-				credentials: undefined,
-			} as PlaintextExecutionContext);
+			mockExecutionContextService.decryptCredentialContext.mockResolvedValue(
+				undefined as unknown as ICredentialContext,
+			);
 
 			await expect(service.checkCredentialStatus('workflow-1', executionContext)).rejects.toThrow(
 				'Execution context is present but contains no credential context. Ensure credential context establishment hooks are configured for this workflow.',
@@ -244,15 +245,10 @@ describe('CredentialCheckProxyService', () => {
 		});
 
 		it('should capture an empty identity in the intent when identity is missing', async () => {
-			mockExecutionContextService.decryptExecutionContext.mockResolvedValue({
+			mockExecutionContextService.decryptCredentialContext.mockResolvedValue({
 				version: 1,
-				establishedAt: Date.now(),
-				source: 'webhook',
-				credentials: {
-					version: 1,
-					metadata: {},
-				},
-			} as PlaintextExecutionContext);
+				metadata: {},
+			} as unknown as ICredentialContext);
 
 			mockCredentialResolverWorkflowService.getWorkflowStatus.mockResolvedValue([
 				{

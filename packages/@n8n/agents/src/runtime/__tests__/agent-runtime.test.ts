@@ -144,7 +144,7 @@ async function collectChunks(stream: ReadableStream<unknown>): Promise<StreamChu
 /** Minimal successful streamText response. */
 function makeStreamSuccess(text = 'Hello') {
 	return {
-		fullStream: makeChunkStream([{ type: 'text-delta', textDelta: text }]),
+		stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text }]),
 		finishReason: Promise.resolve('stop'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 		response: Promise.resolve({
@@ -188,7 +188,7 @@ function makeStreamWithProviderTool(opts: {
 				};
 	const text = opts.text ?? 'done';
 	return {
-		fullStream: makeChunkStream([
+		stream: makeChunkStream([
 			{
 				type: 'tool-call',
 				toolCallId: opts.toolCallId,
@@ -197,7 +197,7 @@ function makeStreamWithProviderTool(opts: {
 				providerExecuted: true,
 			},
 			terminal,
-			{ type: 'text-delta', textDelta: text },
+			{ type: 'text-delta', id: 'text-1', text },
 		]),
 		finishReason: Promise.resolve('stop'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
@@ -349,27 +349,48 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
 	});
 
-	it('forwards onStepStart and onStepFinish to generateText and streamText', async () => {
+	it('forwards onStepStart and onStepEnd to generateText and streamText', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		streamText.mockReturnValue(makeStreamSuccess());
 		const onStepStart = vi.fn();
-		const onStepFinish = vi.fn();
+		const onStepEnd = vi.fn();
 
 		const { runtime } = createRuntime();
-		await runtime.generate('hi', { onStepStart, onStepFinish });
-		const streamResult = await runtime.stream('hi', { onStepStart, onStepFinish });
+		await runtime.generate('hi', { onStepStart, onStepEnd });
+		const streamResult = await runtime.stream('hi', { onStepStart, onStepEnd });
 		await collectChunks(streamResult.stream);
 
 		for (const call of generateText.mock.calls) {
 			const args = call[0] as Record<string, unknown>;
-			expect(args.experimental_onStepStart).toBe(onStepStart);
-			expect(args.onStepFinish).toBe(onStepFinish);
+			expect(args.onStepStart).toBe(onStepStart);
+			expect(args.onStepEnd).toBe(onStepEnd);
 		}
 		for (const call of streamText.mock.calls) {
 			const args = call[0] as Record<string, unknown>;
-			expect(args.experimental_onStepStart).toBe(onStepStart);
-			expect(args.onStepFinish).toBe(onStepFinish);
+			expect(args.onStepStart).toBe(onStepStart);
+			expect(args.onStepEnd).toBe(onStepEnd);
 		}
+	});
+
+	it('allows system-role messages in generateText and streamText history', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		streamText.mockReturnValue(makeStreamSuccess());
+		const input: Message[] = [
+			{ role: 'system', content: [{ type: 'text', text: 'Historical instruction' }] },
+			{ role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+		];
+
+		const { runtime } = createRuntime();
+		await runtime.generate(input);
+		const streamResult = await runtime.stream(input);
+		await collectChunks(streamResult.stream);
+
+		expect(generateText.mock.calls[0]?.[0]).toEqual(
+			expect.objectContaining({ allowSystemInMessages: true }),
+		);
+		expect(streamText.mock.calls[0]?.[0]).toEqual(
+			expect.objectContaining({ allowSystemInMessages: true }),
+		);
 	});
 
 	it('counts provider-executed tool calls when surfaced by the model', async () => {
@@ -545,7 +566,7 @@ describe('AgentRuntime — execution counters', () => {
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -949,7 +970,7 @@ describe('AgentRuntime — eager input persistence', () => {
 		// Same shape as the generate case, on the streaming path (the one Instance AI uses):
 		// the abort is handled by the StreamSession, which must persist the turn-so-far.
 		streamText.mockReturnValueOnce({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'on it...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'on it...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -985,7 +1006,7 @@ describe('AgentRuntime — eager input persistence', () => {
 		// The model streams two text deltas, then the stop lands — before the turn
 		// completes, so its `newMessages` are never built (finishReason/response reject).
 		streamText.mockReturnValueOnce({
-			fullStream: (async function* () {
+			stream: (async function* () {
 				yield { type: 'text-delta', id: 't1', text: 'Here is my ' };
 				yield { type: 'text-delta', id: 't1', text: 'partial answer' };
 				await Promise.resolve();
@@ -1020,7 +1041,7 @@ describe('AgentRuntime — eager input persistence', () => {
 		// fires as the stream closes — before the loop folds the turn into the list. The
 		// completed text must still be recovered (the clear is deferred until the fold).
 		streamText.mockReturnValueOnce({
-			fullStream: (async function* () {
+			stream: (async function* () {
 				yield { type: 'text-delta', id: 't1', text: 'Complete answer' };
 				await Promise.resolve();
 				controller.abort();
@@ -1131,7 +1152,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		// provider's `message_start` raw event already carried the input/cache +
 		// initial output tokens. The run must bill those.
 		streamText.mockReturnValue({
-			fullStream: (async function* () {
+			stream: (async function* () {
 				yield {
 					type: 'raw',
 					rawValue: {
@@ -1187,7 +1208,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		streamText
 			// Turn 1 completes with a tool call; its usage is folded into the total.
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -1207,7 +1228,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			// Turn 2 aborts mid-stream after the provider reported its raw usage; the
 			// SDK promises reject so the only signal is the captured raw event.
 			.mockReturnValueOnce({
-				fullStream: (async function* () {
+				stream: (async function* () {
 					yield {
 						type: 'raw',
 						rawValue: {
@@ -1258,7 +1279,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		// Single turn: emits a raw usage event (captured) AND resolves its final
 		// usage. The raw capture must not be re-added on top of the folded total.
 		streamText.mockReturnValueOnce({
-			fullStream: makeChunkStream([
+			stream: makeChunkStream([
 				{
 					type: 'raw',
 					rawValue: {
@@ -1310,7 +1331,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 
 		streamText.mockReturnValue({
 			// Sync generator: `for await` consumes it fine and there's nothing to await.
-			fullStream: (function* () {
+			stream: (function* () {
 				yield {
 					type: 'raw',
 					rawValue: {
@@ -1339,19 +1360,19 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		expect(runtime.getState().status).toBe('cancelled');
 	});
 
-	it('requests includeRawChunks only when recoverUsageOnAbort is set', async () => {
+	it('requests raw chunks only when recoverUsageOnAbort is set', async () => {
 		streamText.mockReturnValue(makeStreamSuccess('ok'));
 
 		const off = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
 		await collectChunks((await off.runtime.stream('hello')).stream);
-		expect(streamText.mock.calls.at(-1)?.[0]).not.toHaveProperty('includeRawChunks');
+		expect(streamText.mock.calls.at(-1)?.[0]).not.toHaveProperty('include.rawChunks');
 
 		streamText.mockClear();
 		streamText.mockReturnValue(makeStreamSuccess('ok'));
 
 		const on = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
 		await collectChunks((await on.runtime.stream('hello', { recoverUsageOnAbort: true })).stream);
-		expect(streamText.mock.calls.at(-1)?.[0]).toMatchObject({ includeRawChunks: true });
+		expect(streamText.mock.calls.at(-1)?.[0]).toHaveProperty('include.rawChunks', true);
 	});
 });
 
@@ -1367,7 +1388,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 	it('resolves (never rejects) when the LLM stream throws', async () => {
 		const streamError = new Error('stream broke');
 		streamText.mockReturnValue({
-			fullStream: makeErrorStream(streamError),
+			stream: makeErrorStream(streamError),
 			finishReason: silentReject(streamError),
 			usage: Promise.resolve(undefined),
 			response: silentReject(streamError),
@@ -1381,7 +1402,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 	it('yields an error chunk when the LLM stream throws', async () => {
 		const streamError = new Error('stream broke');
 		streamText.mockReturnValue({
-			fullStream: makeErrorStream(streamError),
+			stream: makeErrorStream(streamError),
 			finishReason: silentReject(streamError),
 			usage: Promise.resolve(undefined),
 			response: silentReject(streamError),
@@ -1399,7 +1420,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 	it('closes the stream cleanly (with a finish chunk) after an error', async () => {
 		const streamError = new Error('stream broke');
 		streamText.mockReturnValue({
-			fullStream: makeErrorStream(streamError),
+			stream: makeErrorStream(streamError),
 			finishReason: silentReject(streamError),
 			usage: Promise.resolve(undefined),
 			response: silentReject(streamError),
@@ -1423,7 +1444,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 	it('sets state to "failed" after a stream error', async () => {
 		const streamError = new Error('stream broke');
 		streamText.mockReturnValue({
-			fullStream: makeErrorStream(streamError),
+			stream: makeErrorStream(streamError),
 			finishReason: silentReject(streamError),
 			usage: Promise.resolve(undefined),
 			response: silentReject(streamError),
@@ -1456,7 +1477,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 		const streamError = new Error('transient');
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeErrorStream(streamError),
+				stream: makeErrorStream(streamError),
 				finishReason: silentReject(streamError),
 				usage: Promise.resolve(undefined),
 				response: silentReject(streamError),
@@ -1483,7 +1504,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 	it('never throws when consuming the stream after an error', async () => {
 		const streamError = new Error('stream broke');
 		streamText.mockReturnValue({
-			fullStream: makeErrorStream(streamError),
+			stream: makeErrorStream(streamError),
 			finishReason: silentReject(streamError),
 			usage: Promise.resolve(undefined),
 			response: silentReject(streamError),
@@ -2700,7 +2721,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		const { runtime } = createRuntimeWithTools([suspendTool], 1);
 
 		streamText.mockReturnValue({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -2763,7 +2784,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
 
 		streamText.mockReturnValue({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -2812,7 +2833,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		const { runtime } = createRuntimeWithTools([suspendTool], 1);
 
 		streamText.mockReturnValue({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -2887,7 +2908,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -3225,7 +3246,7 @@ describe('AgentRuntime.stream() — structured output', () => {
 		const expected = { answer: '5', score: 1 };
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([
+				stream: makeChunkStream([
 					{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'add', args: { a: 2, b: 3 } },
 				]),
 				finishReason: Promise.resolve('tool-calls'),
@@ -4049,7 +4070,7 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 			.build();
 
 		streamText.mockReturnValue({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'checking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -4119,7 +4140,7 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'checking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -4295,7 +4316,7 @@ describe('external abort signal', () => {
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'checking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -4405,7 +4426,7 @@ describe('AgentRuntime — abort during a tool batch', () => {
 		toolCalls: Array<{ toolCallId: string; toolName: string; args: Record<string, unknown> }>,
 	) {
 		return {
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'calling tools...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'calling tools...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -4686,7 +4707,7 @@ describe('tool systemInstruction merging', () => {
 
 	function getSystemMessageText(): string {
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const systemMsg = callArgs.system;
+		const systemMsg = callArgs.instructions;
 		if (Array.isArray(systemMsg)) {
 			return systemMsg.map((entry) => String((entry as { content: string }).content)).join('');
 		}
@@ -4819,10 +4840,10 @@ describe('tool systemInstruction merging', () => {
 		await runtime.generate('load the deferred capability');
 
 		const calls = generateText.mock.calls as Array<
-			[{ system: Array<{ content: string }> | { content: string } }]
+			[{ instructions: Array<{ content: string }> | { content: string } }]
 		>;
-		const beforeLoadSystem = calls[0][0].system;
-		const afterLoadSystem = calls[1][0].system;
+		const beforeLoadSystem = calls[0][0].instructions;
+		const afterLoadSystem = calls[1][0].instructions;
 
 		const beforeFirst = Array.isArray(beforeLoadSystem)
 			? beforeLoadSystem[0].content
@@ -4866,7 +4887,7 @@ describe('instruction providerOptions', () => {
 		});
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const systemMsg = callArgs.system as Record<string, unknown>;
+		const systemMsg = callArgs.instructions as Record<string, unknown>;
 		expect(systemMsg.role).toBe('system');
 		expect(systemMsg.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -4896,7 +4917,7 @@ describe('promptCaching', () => {
 		await runtime.generate('hello');
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const systemMsg = callArgs.system as Record<string, unknown>;
+		const systemMsg = callArgs.instructions as Record<string, unknown>;
 		expect(systemMsg.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
@@ -5297,10 +5318,10 @@ describe('AgentRuntime — observation log jobs', () => {
 		});
 
 		const callArgs = (generateText.mock.calls[0] as [unknown])[0] as {
-			system: { content: string };
+			instructions: { content: string };
 			tools: Record<string, unknown>;
 		};
-		const systemPrompt = callArgs.system?.content ?? '';
+		const systemPrompt = callArgs.instructions?.content ?? '';
 		expect(systemPrompt).not.toContain('<episodic_memory>');
 		expect(systemPrompt).not.toContain('Postgres');
 		expect(systemPrompt).not.toContain('SQLite');
@@ -5420,17 +5441,17 @@ describe('AgentRuntime — observation log jobs', () => {
 
 		const generateTextMock = generateText as MockedFunction<
 			(input: {
-				system: { content: string } | Array<{ content: string }>;
+				instructions: { content: string } | Array<{ content: string }>;
 				messages: Array<{
 					role: string;
 					content: unknown;
 				}>;
 			}) => unknown
 		>;
-		const [{ system, messages }] = generateTextMock.mock.calls[0];
-		const systemText = Array.isArray(system)
-			? system.map((entry) => entry.content).join('')
-			: system.content;
+		const [{ instructions, messages }] = generateTextMock.mock.calls[0];
+		const systemText = Array.isArray(instructions)
+			? instructions.map((entry) => entry.content).join('')
+			: instructions.content;
 		expect(systemText).toContain('Resource one memory.');
 		expect(systemText).toContain('Resource two memory.');
 		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
@@ -5637,7 +5658,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		tracer: { startSpan: vi.fn() },
 	};
 
-	it('passes telemetry config into generateText as experimental_telemetry', async () => {
+	it('passes telemetry config into generateText as telemetry', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const runtime = new AgentRuntime({
@@ -5651,13 +5672,12 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await runtime.generate('hello');
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
-		expect(expTelemetry).toBeDefined();
-		expect(expTelemetry.isEnabled).toBe(true);
-		expect(expTelemetry.functionId).toBe('test-agent');
-		expect(expTelemetry.tracer).toBe(baseTelemetry.tracer);
-		expect(expTelemetry.recordInputs).toBe(true);
-		expect(expTelemetry.recordOutputs).toBe(false);
+		const telemetry = callArgs.telemetry as Record<string, unknown>;
+		expect(telemetry).toBeDefined();
+		expect(telemetry.isEnabled).toBe(true);
+		expect(telemetry.functionId).toBe('test-agent');
+		expect(telemetry.recordInputs).toBe(true);
+		expect(telemetry.recordOutputs).toBe(false);
 	});
 
 	it('uses updated telemetry config for later runs', async () => {
@@ -5680,9 +5700,8 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await runtime.generate('hello');
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
-		expect(expTelemetry.functionId).toBe('updated-agent');
-		expect(expTelemetry.metadata).toEqual({ env: 'updated' });
+		const telemetry = callArgs.telemetry as Record<string, unknown>;
+		expect(telemetry.functionId).toBe('updated-agent');
 	});
 
 	it('wraps generate calls in a telemetry root span when the tracer supports active spans', async () => {
@@ -5741,6 +5760,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		const telemetry: BuiltTelemetry = {
 			...baseTelemetry,
 			runtimeRootSpanEnabled: false,
+			integrations: [{ onStart: vi.fn() }],
 			tracer,
 		};
 
@@ -5757,11 +5777,11 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(tracer.startActiveSpan).not.toHaveBeenCalled();
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		expect(callArgs.experimental_telemetry).toEqual(
+		expect(callArgs.telemetry).toEqual(
 			expect.objectContaining({
 				isEnabled: true,
 				functionId: 'test-agent',
-				tracer,
+				integrations: telemetry.integrations,
 			}),
 		);
 	});
@@ -5827,7 +5847,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(attributes['gen_ai.prompt']).toEqual(expect.stringContaining('"input_schema"'));
 	});
 
-	it('passes telemetry config into streamText as experimental_telemetry', async () => {
+	it('passes telemetry config into streamText as telemetry', async () => {
 		streamText.mockReturnValue(makeStreamSuccess());
 
 		const runtime = new AgentRuntime({
@@ -5842,11 +5862,10 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await collectChunks(stream);
 
 		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
-		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
-		expect(expTelemetry).toBeDefined();
-		expect(expTelemetry.isEnabled).toBe(true);
-		expect(expTelemetry.functionId).toBe('test-agent');
-		expect(expTelemetry.tracer).toBe(baseTelemetry.tracer);
+		const telemetry = callArgs.telemetry as Record<string, unknown>;
+		expect(telemetry).toBeDefined();
+		expect(telemetry.isEnabled).toBe(true);
+		expect(telemetry.functionId).toBe('test-agent');
 	});
 
 	it('enables smoothStream by default on streamText', async () => {
@@ -5926,12 +5945,11 @@ describe('AgentRuntime — telemetry propagation', () => {
 		});
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
-		expect(expTelemetry).toBeDefined();
-		expect(expTelemetry.isEnabled).toBe(true);
+		const telemetry = callArgs.telemetry as Record<string, unknown>;
+		expect(telemetry).toBeDefined();
+		expect(telemetry.isEnabled).toBe(true);
 		// Inherited telemetry uses the child agent's name as functionId
-		expect(expTelemetry.functionId).toBe('child-agent');
-		expect(expTelemetry.tracer).toBe(baseTelemetry.tracer);
+		expect(telemetry.functionId).toBe('child-agent');
 	});
 
 	it('passes resolved telemetry to tool handlers via parentTelemetry', async () => {
@@ -6088,7 +6106,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(capturedTelemetry!.tracer).toBe(baseTelemetry.tracer);
 	});
 
-	it('does not include experimental_telemetry when telemetry is disabled', async () => {
+	it('does not include telemetry when telemetry is disabled', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const runtime = new AgentRuntime({
@@ -6102,7 +6120,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await runtime.generate('hello');
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		expect(callArgs.experimental_telemetry).toBeUndefined();
+		expect(callArgs.telemetry).toBeUndefined();
 	});
 });
 
@@ -6211,7 +6229,7 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -6397,7 +6415,7 @@ describe('AgentRuntime — toModelOutput error resilience', () => {
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -6473,7 +6491,7 @@ describe('AgentRuntime — toModelOutput error resilience', () => {
 
 		// First stream: agent calls the tool and suspends
 		streamText.mockReturnValueOnce({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -6544,7 +6562,7 @@ describe('AgentRuntime — empty model responses', () => {
 
 	function makeEmptyStream(finishReason: string, extraChunks: Array<Record<string, unknown>> = []) {
 		return {
-			fullStream: makeChunkStream(extraChunks),
+			stream: makeChunkStream(extraChunks),
 			finishReason: Promise.resolve(finishReason),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
 			response: Promise.resolve({ messages: [] }),
@@ -6605,7 +6623,7 @@ describe('AgentRuntime — empty model responses', () => {
 		await collectChunks(readableStream);
 
 		const args = streamText.mock.calls[0][0] as Record<string, unknown>;
-		expect(args.includeRawChunks).toBe(true);
+		expect(args).toHaveProperty('include.rawChunks', true);
 	});
 
 	it('stream: an empty response finishing with "stop" is not treated as an error', async () => {
@@ -6704,7 +6722,7 @@ describe('AgentRuntime — MCP connection failure warnings', () => {
 		await collectChunks(readableStream);
 
 		const callArgs = streamText.mock.calls.at(-1)![0] as Record<string, unknown>;
-		const system = callArgs.system;
+		const system = callArgs.instructions;
 		const systemText = Array.isArray(system)
 			? system.map((e) => String((e as { content: string }).content)).join('')
 			: String((system as { content: string }).content);
@@ -6723,7 +6741,7 @@ describe('AgentRuntime — MCP connection failure warnings', () => {
 		await collectChunks(readableStream);
 
 		const callArgs = streamText.mock.calls.at(-1)![0] as Record<string, unknown>;
-		const system = callArgs.system;
+		const system = callArgs.instructions;
 		const systemText = Array.isArray(system)
 			? system.map((e) => String((e as { content: string }).content)).join('')
 			: String((system as { content: string }).content);

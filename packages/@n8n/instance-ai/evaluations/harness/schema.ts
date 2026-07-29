@@ -1,6 +1,7 @@
 import { instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
+import { ConversationSeedSchema } from './conversation-seed';
 import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
 
 /** Default `datasets` grouping for a case that omits the field — the single
@@ -86,9 +87,9 @@ const evalTestCaseObjectSchema = z
 				}),
 			)
 			.optional(),
-		/** Synthetic seed file (relative path), resolved + validated at case load.
+		/** Prior messages + the workflows they reference, restored before the live turn.
 		 *  Synthetic fixtures only; real conversations use `seedThread`. */
-		seedFile: z.string().min(1).optional(),
+		conversationSeed: ConversationSeedSchema.optional(),
 		/** Prose turns seeded as plain-text history (no tool calls / workflows). */
 		priorConversation: z.array(ConversationTurnSchema).min(1).optional(),
 		/** Reproduce a real conversation from its LangSmith trace at run time (seed =
@@ -130,10 +131,13 @@ export const WORKFLOW_TEST_CASE_KEYS = Object.keys(evalTestCaseObjectSchema.shap
 
 // At most one seeding mode, and a source for the live turn.
 export const EvalTestCaseSchema = evalTestCaseObjectSchema
-	.refine((c) => [c.seedFile, c.priorConversation, c.seedThread].filter(Boolean).length <= 1, {
-		message:
-			'seedFile, priorConversation and seedThread are mutually exclusive — pick one seeding mode',
-	})
+	.refine(
+		(c) => [c.conversationSeed, c.priorConversation, c.seedThread].filter(Boolean).length <= 1,
+		{
+			message:
+				'conversationSeed, priorConversation and seedThread are mutually exclusive — pick one seeding mode',
+		},
+	)
 	.refine((c) => c.seedThread !== undefined || c.conversation !== undefined, {
 		message:
 			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',

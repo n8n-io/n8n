@@ -32,7 +32,8 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nAiActivityStepGroup: {
 		props: ['label', 'size', 'loading'],
-		template: '<div data-test-id="n8n-ai-activity-step-group"><slot /></div>',
+		template:
+			'<div data-test-id="n8n-ai-activity-step-group" :data-loading="String(loading)"><slot /></div>',
 	},
 	N8nButton: {
 		props: ['size', 'variant'],
@@ -106,6 +107,30 @@ function mountSteps(
 }
 
 describe('AgentChatToolSteps', () => {
+	it.each([
+		[TOOL_CALL_STATE.PENDING, 'true'],
+		[TOOL_CALL_STATE.RUNNING, 'true'],
+		[TOOL_CALL_STATE.SUSPENDED, 'false'],
+		[TOOL_CALL_STATE.DONE, 'false'],
+	])('sets grouped tool-call loading for a %s child to %s', (state, expectedLoading) => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-active',
+				state,
+			},
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-done',
+				state: TOOL_CALL_STATE.DONE,
+			},
+		]);
+
+		expect(
+			wrapper.find('[data-test-id="n8n-ai-activity-step-group"]').attributes('data-loading'),
+		).toBe(expectedLoading);
+	});
+
 	it('renders native web search tool calls as expandable', async () => {
 		const wrapper = mountSteps([
 			{

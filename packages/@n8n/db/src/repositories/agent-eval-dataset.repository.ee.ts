@@ -38,4 +38,8 @@ export class AgentEvalDatasetRepository extends Repository<AgentEvalDataset> {
 	async findByAgentId(agentId: string): Promise<AgentEvalDataset[]> {
 		return await this.find({ where: { agentId }, order: { createdAt: 'DESC' } });
 	}
+
+	async findById(id: string): Promise<AgentEvalDataset | null> {
+		return await this.findOneBy({ id });
+	}
 }

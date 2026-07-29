@@ -461,6 +461,50 @@ describe('ScalingService', () => {
 				statusCode: 500,
 			});
 		});
+
+		it('should keep waitTill when storing a v2 job-finished result', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				mock(),
+				instanceSettings,
+				mock(),
+			);
+
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const waitTill = new Date('2026-07-25T12:00:00.000Z');
+			// Bull delivers progress messages JSON-serialized, so dates arrive as ISO strings
+			const jobFinishedMessage = {
+				kind: 'job-finished',
+				version: 2,
+				executionId: 'exec-123',
+				workerId: 'worker-456',
+				success: true,
+				status: 'waiting',
+				startedAt: '2026-07-25T11:59:00.000Z',
+				stoppedAt: '2026-07-25T11:59:30.000Z',
+				waitTill: waitTill.toISOString(),
+			};
+
+			messageHandler('job-789', jobFinishedMessage);
+
+			const result = scalingService.popJobResult('exec-123');
+
+			expect(result?.status).toBe('waiting');
+			// A missing waitTill makes main treat a waiting execution as finished and
+			// delete it when the workflow does not save successful executions
+			expect(result?.waitTill).toEqual(waitTill);
+		});
 	});
 
 	describe('recoverFromQueue', () => {
