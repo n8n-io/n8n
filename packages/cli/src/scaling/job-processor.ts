@@ -1,7 +1,7 @@
 import type { Tool } from '@langchain/core/tools';
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig } from '@n8n/config';
+import { EndpointsConfig, ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -57,7 +57,7 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
-import { prepareWebhookResponseForRelay } from './webhook-response-relay';
+import { assertRelayableSize, prepareWebhookResponseForRelay } from './webhook-response-relay';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -76,6 +76,7 @@ export class JobProcessor {
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly eventService: EventService,
+		private readonly endpointsConfig: EndpointsConfig,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -196,6 +197,8 @@ export class JobProcessor {
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
+			assertRelayableSize(response, this.endpointsConfig.webhookResponseRelaySizeMax);
+
 			// Check if this is an MCP execution - broadcast response to all mains
 			if (job.data.isMcpExecution && job.data.mcpSessionId) {
 				const msg: McpResponseMessage = {

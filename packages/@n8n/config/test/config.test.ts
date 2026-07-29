@@ -281,6 +281,7 @@ describe('GlobalConfig', () => {
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
+			webhookResponseRelaySizeMax: 64,
 			rest: 'rest',
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',

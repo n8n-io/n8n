@@ -1,7 +1,9 @@
+import { UserError } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 
 import {
+	assertRelayableSize,
 	decodeRelayedWebhookResponse,
 	ENCODED_BUFFER_KEY,
 	prepareWebhookResponseForRelay,
@@ -9,6 +11,8 @@ import {
 
 const fullResponse = (body: unknown): IExecuteResponsePromiseData =>
 	({ body, headers: {}, statusCode: 200 }) as IExecuteResponsePromiseData;
+
+const ONE_MIB = 1024 * 1024;
 
 describe('prepareWebhookResponseForRelay', () => {
 	it('wraps a Buffer body in a base64 envelope', () => {
@@ -83,5 +87,94 @@ describe('decodeRelayedWebhookResponse', () => {
 		const payload = { toolResult: 'done' };
 
 		expect(decodeRelayedWebhookResponse(payload)).toBe(payload);
+	});
+});
+
+describe('assertRelayableSize', () => {
+	describe('within the limit', () => {
+		it.each([
+			['a Buffer body', Buffer.alloc(ONE_MIB)],
+			['a string body', 'x'.repeat(ONE_MIB)],
+			['a JSON body', { blob: 'x'.repeat(ONE_MIB) }],
+			['a nested JSON body', { outer: { inner: ['x'.repeat(ONE_MIB)] } }],
+			['a null body', null],
+			['a stream body', Readable.from('hello')],
+			['a binary-data reference', { binaryData: { id: 'database:abc' } }],
+		])('accepts %s', (_label, body) => {
+			expect(() => assertRelayableSize(fullResponse(body), 2)).not.toThrow();
+		});
+
+		it('accepts a payload that is not a full response', () => {
+			expect(() => assertRelayableSize({ toolResult: 'done' }, 2)).not.toThrow();
+		});
+
+		it('accepts a cyclic body it cannot serialize', () => {
+			const body: Record<string, unknown> = { name: 'cycle' };
+			body.self = body;
+
+			expect(() => assertRelayableSize(fullResponse(body), 2)).not.toThrow();
+		});
+
+		it('accepts a body and headers each within the limit, measuring them separately', () => {
+			const response: IExecuteResponsePromiseData = {
+				body: 'x'.repeat(ONE_MIB),
+				headers: { 'x-data': 'y'.repeat(ONE_MIB) },
+				statusCode: 200,
+			};
+
+			expect(() => assertRelayableSize(response, 2)).not.toThrow();
+		});
+	});
+
+	describe('over the limit', () => {
+		it.each([
+			['a Buffer body', Buffer.alloc(3 * ONE_MIB)],
+			['a string body', 'x'.repeat(3 * ONE_MIB)],
+			['a multi-byte string body', 'é'.repeat(2 * ONE_MIB)],
+			['a JSON body', { blob: 'x'.repeat(3 * ONE_MIB) }],
+			['a JSON body nested in an array', { items: [{ blob: 'x'.repeat(3 * ONE_MIB) }] }],
+		])('rejects %s', (_label, body) => {
+			expect(() => assertRelayableSize(fullResponse(body), 2)).toThrow(UserError);
+		});
+
+		it('rejects a Buffer body only its base64 expansion pushes over the limit', () => {
+			const body = Buffer.alloc(1.75 * ONE_MIB);
+
+			expect(() => assertRelayableSize(fullResponse(body), 2)).toThrow(UserError);
+		});
+
+		it('rejects a payload that is not a full response', () => {
+			expect(() => assertRelayableSize({ toolResult: 'x'.repeat(3 * ONE_MIB) }, 2)).toThrow(
+				UserError,
+			);
+		});
+
+		it('rejects oversized headers', () => {
+			const response: IExecuteResponsePromiseData = {
+				body: null,
+				headers: { 'x-data': 'x'.repeat(3 * ONE_MIB) },
+				statusCode: 200,
+			};
+
+			expect(() => assertRelayableSize(response, 2)).toThrow(UserError);
+		});
+
+		it('rejects an oversized value beside the body of a payload that is not a full response', () => {
+			const payload = { body: 'small', extra: 'x'.repeat(3 * ONE_MIB) };
+
+			expect(() => assertRelayableSize(payload, 2)).toThrow(UserError);
+		});
+
+		it('names the limit and how to raise it', () => {
+			let error: UserError | undefined;
+			try {
+				assertRelayableSize(fullResponse('x'.repeat(3 * ONE_MIB)), 2);
+			} catch (e) {
+				error = e as UserError;
+			}
+
+			expect(error?.message).toContain('over 2 MiB');
+			expect(error?.description).toContain('N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX');
+		});
 	});
 });
