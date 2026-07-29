@@ -8,6 +8,7 @@ import { TagService } from '@/services/tag.service';
 
 import { decideTagImportAction } from './tag-import-decision';
 import type { TagDecisionFailure } from './tag-import-decision';
+import { sortedUnique } from './tag.types';
 import type {
 	ReferencingWorkflow,
 	TagImportPlan,
@@ -179,10 +180,6 @@ export class TagImporter {
 
 function toTagRef(tag: { id: string; name: string }): TagRef {
 	return { id: tag.id, name: tag.name };
-}
-
-function sortedUnique(values: string[]): string[] {
-	return [...new Set(values)].sort();
 }
 
 /**

@@ -519,8 +519,10 @@ describe('workflow package import — with tags', () => {
 		it('is stable on re-import: reuses the reconciled tag, creates no duplicate, raises no conflict', async () => {
 			const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
 			await tagRepository.delete(tag.id);
-			await createTag({ name: 'prod' });
+			const holder = await createTag({ name: 'prod' });
 			const targetProject = await createTeamProject('Target', owner);
+			const preExisting = await createWorkflow({ name: 'Pre-existing' }, targetProject);
+			await assignTagToWorkflow(holder, preExisting);
 
 			const first = await importPackage({
 				user: owner,
@@ -545,6 +547,7 @@ describe('workflow package import — with tags', () => {
 				skipped: [],
 			});
 			expect(await tagRepository.count()).toBe(1);
+			expect(await tagIdsOf(preExisting.id)).toEqual([tag.id]);
 			expect(await tagIdsOf(second.workflows[0].localId)).toEqual([tag.id]);
 		});
 

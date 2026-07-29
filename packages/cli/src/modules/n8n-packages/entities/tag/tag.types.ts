@@ -1,6 +1,6 @@
 import type { TagConflictPolicy, TagMissingMode } from '../../n8n-packages.types';
-import type { PreparedWorkflow } from '../workflow/workflow-import.types';
 import type { PackageTagRequirement } from '../../spec/requirements.schema';
+import type { PreparedWorkflow } from '../workflow/workflow-import.types';
 
 export interface WorkflowTagUsage {
 	workflowId: string;
@@ -81,6 +81,10 @@ export function droppedTagIds(plan: TagImportPlan): ReadonlySet<string> {
 	return new Set(plan.dropped.map(({ id }) => id));
 }
 
+export function sortedUnique(values: string[]): string[] {
+	return [...new Set(values)].sort();
+}
+
 /**
  * Gates reconciles that contradict each other or another plan's use of the
  * same target tag: a reconcile re-keys its `oldId` row, so a plan that also
@@ -125,6 +129,6 @@ export function crossPlanReconcileOverlapFailures(
 			sourceId: id,
 			name,
 			existingTagId: oldId,
-			usedByWorkflows: [...new Set(sourceWorkflowIdsReferencing(id))].sort(),
+			usedByWorkflows: sortedUnique(sourceWorkflowIdsReferencing(id)),
 		}));
 }

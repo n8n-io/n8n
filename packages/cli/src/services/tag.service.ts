@@ -57,7 +57,7 @@ export class TagService {
 	async reconcileTagId(oldId: string, newId: string) {
 		await this.txRunner.run(
 			{},
-			async (ctx) => await this.tagRepository.reconcileTagId(ctx, oldId, newId),
+			async (ctx) => await this.tagRepository.reconcileTagId(oldId, newId, ctx),
 		);
 	}
 

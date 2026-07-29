@@ -35,9 +35,9 @@ const TAG_ID_MAX_LENGTH = 36;
 
 // \p{Cs}: a lone UTF-16 surrogate would collapse to U+FFFD in the database.
 // Format chars (\p{Cf}) stay allowed: entity validation accepts them and
-// ZWJ-joined emoji names are legitimate, so gating them would break re-import
-// of a package n8n itself exported.
-const FORBIDDEN_NAME_CHARS = /[\p{Cc}\p{Cs}]/u;
+// ZWJ-joined emoji names/ids are legitimate, so gating them would break
+// re-import of a package n8n itself exported.
+const FORBIDDEN_CHARS = /[\p{Cc}\p{Cs}]/u;
 
 /**
  * Decides the fate of one package tag reference. Matching is by id;
@@ -141,7 +141,7 @@ function decideForAbsentId(
 }
 
 function invalidName(name: string, sourceId: string): TagEffect | undefined {
-	if (FORBIDDEN_NAME_CHARS.test(name)) {
+	if (FORBIDDEN_CHARS.test(name)) {
 		return { action: 'fail', failure: { kind: 'invalid-name', sourceId, name } };
 	}
 	// Code points, not UTF-16 units: both @Length (validator.js) and varchar(24) count code points.
@@ -151,7 +151,7 @@ function invalidName(name: string, sourceId: string): TagEffect | undefined {
 }
 
 function invalidId(sourceId: string, name: string): TagEffect | undefined {
-	if (sourceId.length <= TAG_ID_MAX_LENGTH && !FORBIDDEN_NAME_CHARS.test(sourceId)) {
+	if (sourceId.length <= TAG_ID_MAX_LENGTH && !FORBIDDEN_CHARS.test(sourceId)) {
 		return undefined;
 	}
 	return { action: 'fail', failure: { kind: 'invalid-id', sourceId, name } };

@@ -78,7 +78,7 @@ export class TagRepository extends BaseRepository<TagEntity> {
 	 * deleted. `ctx` must carry an active transaction so a failure at any
 	 * statement rolls everything back.
 	 */
-	async reconcileTagId(ctx: OperationContext, oldId: string, newId: string) {
+	async reconcileTagId(oldId: string, newId: string, ctx: OperationContext) {
 		const tx = this.managerFor(ctx);
 		const oldTag = await tx.findOneByOrFail(TagEntity, { id: oldId });
 		await tx.update(TagEntity, { id: oldId }, { name: generateNanoId() });
