@@ -96,9 +96,36 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.versionId).toBe(workflow.versionId);
 			expect(payload.workflow.activeVersionId).toBe(workflow.activeVersionId);
 			expect(payload.workflow.activeVersion).not.toBeNull();
-			expect(payload.workflow.activeVersion?.nodes.every((n) => !('credentials' in n))).toBe(true);
+			expect(payload.workflow.activeVersion?.sameAsCurrent).toBe(false);
+			expect(payload.workflow.activeVersion?.nodes?.every((n) => !('credentials' in n))).toBe(true);
 			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
 			expect(payload.workflow.canExecute).toBe(true);
+		});
+
+		test('omits activeVersion graph when the published version matches the current draft', async () => {
+			// createWorkflow uses versionId 'some-version-id'; publishing that draft
+			// sets activeVersionId to the same value.
+			const workflow = createWorkflow({ activeVersionId: 'some-version-id' });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(payload.workflow.activeVersion).toEqual({ sameAsCurrent: true });
+			expect(payload.workflow.nodes.length).toBeGreaterThan(0);
 		});
 
 		test('presents node groups by member node names, dropping stale ids', async () => {

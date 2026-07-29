@@ -133,12 +133,22 @@ export const workflowDetailsOutputSchema = z.object({
 			nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the workflow'),
 			activeVersion: z
 				.object({
-					nodes: z.array(nodeSchema),
-					connections: z.record(z.unknown()),
-					nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the active version'),
+					sameAsCurrent: z
+						.boolean()
+						.describe(
+							'True when the published version is identical to the current draft. The graph fields are omitted then — use the top-level nodes, connections and nodeGroups.',
+						),
+					nodes: z.array(nodeSchema).optional(),
+					connections: z.record(z.unknown()).optional(),
+					nodeGroups: z
+						.array(nodeGroupSchema)
+						.optional()
+						.describe('Node groups in the active version'),
 				})
 				.nullable()
-				.describe('Active workflow graph, if available'),
+				.describe(
+					'Published (active) workflow graph. Null when the workflow has no published version.',
+				),
 			tags: z.array(tagSchema),
 			meta: workflowMetaSchema,
 			parentFolderId: z.string().nullable(),
