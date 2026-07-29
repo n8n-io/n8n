@@ -6,7 +6,7 @@ import { UserError } from 'n8n-workflow';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { TagService } from '@/services/tag.service';
 
-import { decideTag } from './tag-import-decision';
+import { decideTagImportAction } from './tag-import-decision';
 import type { TagDecisionFailure } from './tag-import-decision';
 import type { TagImportPlan, TagImportRequest, TagRef, TagResolutionFailure } from './tag.types';
 import type { ImportContext } from '../../n8n-packages.types';
@@ -69,7 +69,7 @@ export class TagImporter {
 		const decisionFailures: TagDecisionFailure[] = [];
 		for (const requirement of referenced) {
 			const holder = holdersByName.get(requirement.name.trim());
-			const effect = decideTag(
+			const effect = decideTagImportAction(
 				requirement,
 				targetsById.get(requirement.id),
 				holder && holder.id !== requirement.id ? holder : undefined,

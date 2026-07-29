@@ -39,14 +39,14 @@ const FORBIDDEN_NAME_CHARS = /[\p{Cc}\p{Cs}]/u;
 
 /**
  * Decides the fate of one package tag reference. Matching is by id;
- * `targetWithSameId` is the target instance's occupant of the requirement's id
- * and `nameHolder` is a *different* target tag currently holding the
+ * `targetTagWithSameId` is the target instance's occupant of the requirement's
+ * id and `nameHolder` is a *different* target tag currently holding the
  * requirement's (trimmed) name. Name and id shape are only validated when the
  * effect would write (create or rename) — a dropped tag never gates.
  */
-export function decideTag(
+export function decideTagImportAction(
 	requirement: TagRef,
-	targetWithSameId: TagRef | undefined,
+	targetTagWithSameId: TagRef | undefined,
 	nameHolder: TagRef | undefined,
 	missingMode: TagMissingMode,
 	conflictPolicy: TagConflictPolicy,
@@ -54,35 +54,58 @@ export function decideTag(
 	const sourceId = requirement.id;
 	const name = requirement.name.trim();
 
-	if (targetWithSameId) {
-		if (targetWithSameId.name === name) return { action: 'attach', target: targetWithSameId };
-
-		// Rename drift: the same-id target tag carries a different name.
-		if (conflictPolicy === TagConflictPolicy.Skip) {
-			return { action: 'drop', tag: { id: sourceId, name } };
-		}
-		if (conflictPolicy === TagConflictPolicy.Rename && !nameHolder) {
-			return (
-				invalidName(name, sourceId) ?? {
-					action: 'rename',
-					rename: { id: sourceId, from: targetWithSameId.name, to: name },
-				}
-			);
-		}
-		// `fail`, or `rename` degraded because another tag holds the wanted
-		// name — resolving that requires id reconciliation (LIGO-874).
-		return {
-			action: 'fail',
-			failure: {
-				kind: 'rename-drift',
-				sourceId,
-				name,
-				existingName: targetWithSameId.name,
-				...(nameHolder ? { existingTagId: nameHolder.id } : {}),
-			},
-		};
+	if (targetTagWithSameId) {
+		return decideForMatchedId(sourceId, name, targetTagWithSameId, nameHolder, conflictPolicy);
 	}
 
+	return decideForAbsentId(sourceId, name, nameHolder, missingMode, conflictPolicy);
+}
+
+/** The requirement's id is taken on the target: an exact name match attaches, a differing name is rename drift. */
+function decideForMatchedId(
+	sourceId: string,
+	name: string,
+	targetTag: TagRef,
+	nameHolder: TagRef | undefined,
+	conflictPolicy: TagConflictPolicy,
+): TagEffect {
+	if (targetTag.name === name) return { action: 'attach', target: targetTag };
+
+	if (conflictPolicy === TagConflictPolicy.Skip) {
+		return { action: 'drop', tag: { id: sourceId, name } };
+	}
+
+	if (conflictPolicy === TagConflictPolicy.Rename && !nameHolder) {
+		return (
+			invalidName(name, sourceId) ?? {
+				action: 'rename',
+				rename: { id: sourceId, from: targetTag.name, to: name },
+			}
+		);
+	}
+
+	// `fail`, or `rename` degraded because another tag holds the wanted
+	// name — resolving that requires id reconciliation (LIGO-874).
+	return {
+		action: 'fail',
+		failure: {
+			kind: 'rename-drift',
+			sourceId,
+			name,
+			existingName: targetTag.name,
+			...(nameHolder ? { existingTagId: nameHolder.id } : {}),
+		},
+	};
+}
+
+/** The requirement's id is absent on the target: the tag is missing, unless its name is already taken. */
+function decideForAbsentId(
+	sourceId: string,
+	name: string,
+	nameHolder: TagRef | undefined,
+	missingMode: TagMissingMode,
+	conflictPolicy: TagConflictPolicy,
+): TagEffect {
 	if (missingMode === TagMissingMode.DoNothing) {
 		return { action: 'drop', tag: { id: sourceId, name } };
 	}
