@@ -11,7 +11,7 @@ import { compareTagsByName } from '../tag/tag.types';
 /** Fields restored from package workflow.json; the target instance assigns the rest. */
 type WorkflowPackageContent = Pick<
 	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'isArchived' | 'settings'
+	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
 >;
 
 @Service()
@@ -33,6 +33,7 @@ export class WorkflowSerializer {
 			parentFolderId: workflow.parentFolder?.id ?? null,
 			isPublished: workflow.activeVersionId === workflow.versionId,
 			isArchived: workflow.isArchived,
+			...(workflow.nodeGroups?.length ? { nodeGroups: workflow.nodeGroups } : {}),
 			...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
 		});
 	}
@@ -53,6 +54,9 @@ export class WorkflowSerializer {
 			name: parsed.name,
 			nodes: parsed.nodes as INode[],
 			connections: parsed.connections as IConnections,
+			// Package content wins over what's on the target, so a package with no
+			// groups clears the groups of a workflow it overwrites.
+			nodeGroups: parsed.nodeGroups ?? [],
 			isArchived: parsed.isArchived,
 			...(parsed.settings !== undefined ? { settings: parsed.settings } : {}),
 		};
