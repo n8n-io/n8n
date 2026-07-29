@@ -131,6 +131,18 @@ function buildQueryConfig(route: ResolvedPublicApiRoute): {
 	};
 }
 
+/**
+ * Builds the zod object for the route's path parameters (one per `@Param('name')`), which
+ * zod-to-openapi turns into `in: path` parameters.
+ */
+function buildPathParams(route: ResolvedPublicApiRoute): z.AnyZodObject | undefined {
+	const shape: Record<string, z.ZodTypeAny> = {};
+	for (const arg of route.args) {
+		if (arg.type === 'param') shape[arg.key] = z.string();
+	}
+	return Object.keys(shape).length ? z.object(shape) : undefined;
+}
+
 /** A route's request body, straight from its `@Body` DTO - no field-splitting needed like query has. */
 function buildRequestBody(
 	route: ResolvedPublicApiRoute,
@@ -222,6 +234,7 @@ export function getDecoratorGeneratedOperations(
 	return publicApiRoutes.map((route) => {
 		const pathKey = toOpenApiPath(route.path);
 		const { parameters, requestQuery } = buildQueryConfig(route);
+		const requestParams = buildPathParams(route);
 		const requestBody = buildRequestBody(route);
 		const resource = resourceSegment(route.path);
 
@@ -236,9 +249,10 @@ export function getDecoratorGeneratedOperations(
 				? { 'x-required-scope': scopeRequirementToString(route.apiKeyScope) }
 				: {}),
 			...(parameters ? { parameters } : {}),
-			...((requestQuery ?? requestBody)
+			...((requestParams ?? requestQuery ?? requestBody)
 				? {
 						request: {
+							...(requestParams ? { params: requestParams } : {}),
 							...(requestQuery ? { query: requestQuery } : {}),
 							...(requestBody ? { body: requestBody } : {}),
 						},
