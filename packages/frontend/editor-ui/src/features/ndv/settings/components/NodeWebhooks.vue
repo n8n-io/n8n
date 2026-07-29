@@ -14,7 +14,7 @@ import type { INodeUi } from '@/Interface';
 import { computed, ref, watch } from 'vue';
 import { computedAsync } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
 import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';

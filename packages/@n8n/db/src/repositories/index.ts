@@ -84,6 +84,7 @@ export {
 export {
 	WorkflowReviewRequestWorkflowRepository,
 	type WorkflowReviewRequestLinkedWorkflow,
+	type WorkflowReviewRequestWorkflowDetailRow,
 } from './workflow-review-request-workflow.repository';
 export { WorkflowReviewRequestReviewerRepository } from './workflow-review-request-reviewer.repository';
 export { WorkflowReviewRequestAuthorRepository } from './workflow-review-request-author.repository';

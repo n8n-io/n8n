@@ -166,7 +166,7 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// reach this check; classified only to keep the map schema-complete.
 	buildExpectations: 'supported',
 	credentials: 'orchestrator-only',
-	seedFile: 'orchestrator-only',
+	conversationSeed: 'orchestrator-only',
 	priorConversation: 'orchestrator-only',
 	seedThread: 'orchestrator-only',
 	datasets: 'supported',

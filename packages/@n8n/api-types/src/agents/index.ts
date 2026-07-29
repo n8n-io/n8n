@@ -11,14 +11,12 @@ export * from './agent-task.schema';
 export * from './dto';
 export * from './model-providers';
 export * from './provider-capabilities';
+export * from './reasoning';
 export * from './rich-card.schema';
 export * from './sub-agent.schema';
 export * from './types';
 export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from '../agent-sse';
-export {
-	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
-	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
-} from '../agent-builder-tool-node-types';
+export { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '../agent-builder-tool-node-types';
 // ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
 // ./agent-interaction.schema (re-exported below via `export *`).
 export {

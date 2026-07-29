@@ -185,15 +185,17 @@ function groupLabel(): string {
 	});
 }
 
-function hasLoadingToolCall(): boolean {
-	return props.toolCalls.some((tc) => tc.state === 'running' || tc.state === 'suspended');
+function hasActiveToolCall(): boolean {
+	return props.toolCalls.some(
+		(tc) => tc.state === TOOL_CALL_STATE.PENDING || tc.state === TOOL_CALL_STATE.RUNNING,
+	);
 }
 </script>
 
 <template>
 	<div :class="$style.toolSteps">
 		<template v-if="toolCalls.length > 1">
-			<N8nAiActivityStepGroup :label="groupLabel()" size="small" :loading="hasLoadingToolCall()">
+			<N8nAiActivityStepGroup :label="groupLabel()" size="small" :loading="hasActiveToolCall()">
 				<template v-for="tc in toolCalls" :key="tc.toolCallId">
 					<N8nAiActivityStep
 						v-for="view in [toolStepView(tc)]"

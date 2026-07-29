@@ -394,6 +394,47 @@ describe('NodesListPanel', () => {
 			}
 		});
 
+		it('should select the active item with Enter after typing a trailing space', async () => {
+			vi.useFakeTimers();
+			try {
+				const renderComponent = createComponentRenderer(wrapperComponent, {
+					pinia: createPinia(),
+					props: {
+						nodeTypes: searchNodes,
+					},
+				});
+				const { emitted } = renderComponent();
+				await nextTick();
+
+				screen.getByText('On app event').click();
+				await nextTick();
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Zephyr' },
+				});
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
+				await nextTick();
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Zephyr ' },
+				});
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
+				await nextTick();
+
+				await fireEvent.keyDown(screen.getByTestId('node-creator-search-bar'), {
+					key: 'Enter',
+				});
+				// Keyboard navigation refreshes its selectable items via setTimeout
+				await vi.advanceTimersByTimeAsync(1);
+				await nextTick();
+
+				expect(emitted().nodeTypeSelected).toHaveLength(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('should apply a pending search before keyboard navigation acts on the list', async () => {
 			vi.useFakeTimers();
 			try {

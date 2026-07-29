@@ -9,7 +9,7 @@ import {
 	type IMenuElement,
 } from '@n8n/design-system';
 import { CHANGELOG_URL } from '@/app/constants';
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import VersionUpdateCTA from '@/app/components/VersionUpdateCTA.vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
 

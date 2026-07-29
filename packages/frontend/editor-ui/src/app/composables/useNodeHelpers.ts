@@ -45,7 +45,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/app/models/history';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';

@@ -134,6 +134,20 @@ describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () 
 });
 
 describe('agent-sse-stream — stream completion', () => {
+	it('forwards the reasoning lifecycle with block ids and deltas', async () => {
+		const events = await collectEvents([
+			{ type: 'reasoning-start', id: 'reasoning-1' },
+			{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'Check the inputs.' },
+			{ type: 'reasoning-end', id: 'reasoning-1' },
+		]);
+
+		expect(events).toEqual([
+			{ type: 'reasoning-start', id: 'reasoning-1' },
+			{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'Check the inputs.' },
+			{ type: 'reasoning-end', id: 'reasoning-1' },
+		]);
+	});
+
 	it('completes after the runtime stream closes even when a finish chunk is present', async () => {
 		const events = await collectEvents([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },

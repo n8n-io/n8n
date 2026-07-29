@@ -61,6 +61,7 @@ import { AddRecurringCronScheduleKind1784000000045 } from './1784000000045-AddRe
 import { AddAvailableInMcpToAgents1784897791636 } from './1784897791636-AddAvailableInMcpToAgents';
 import { AddMisfirePolicyToScheduler1785159600000 } from './1785159600000-AddMisfirePolicyToScheduler';
 import { ChangeInstalledNodeVersionType1785162364000 } from './1785162364000-ChangeInstalledNodeVersionType';
+import { AddIsFirstPartyToOAuthClients1785162364001 } from './1785162364001-AddIsFirstPartyToOAuthClients';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -224,6 +225,8 @@ import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/178400
 import { AddStoredAtToAgentExecution1784815940110 } from '../common/1784815940110-AddStoredAtToAgentExecution';
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
+import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
+import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/1785247194306-CrashStaleEnqueuedExecutions';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -451,6 +454,9 @@ const sqliteMigrations: Migration[] = [
 	AddAvailableInMcpToAgents1784897791636,
 	AddMisfirePolicyToScheduler1785159600000,
 	ChangeInstalledNodeVersionType1785162364000,
+	AddIsFirstPartyToOAuthClients1785162364001,
+	AddAgentFileStorageColumns1785186578138,
+	CrashStaleEnqueuedExecutions1785247194306,
 ];
 
 export { sqliteMigrations };

@@ -53,7 +53,6 @@ vi.mock('@/app/composables/useToast', () => ({
 		showToast: vi.fn(() => ({ close: vi.fn() })),
 		showError: vi.fn(),
 		clearAllStickyNotifications: vi.fn(),
-		showNotificationForViews: vi.fn(),
 	}),
 }));
 

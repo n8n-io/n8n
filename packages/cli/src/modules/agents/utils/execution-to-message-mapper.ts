@@ -4,7 +4,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
 
-type ExecutionTranscript = Pick<AgentExecution, 'id' | 'userMessage' | 'timeline'>;
+type ExecutionTranscript = Pick<AgentExecution, 'id' | 'userMessage' | 'timeline' | 'status'>;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
 type ToolCallContentPart = AgentPersistedMessageContentPart & {
@@ -126,6 +126,14 @@ function assistantContentFromExecution(
 			if (!part) continue;
 
 			content.push(part);
+		} else if (event.type === 'reasoning') {
+			if (!event.content.trim()) continue;
+			content.push({
+				type: 'reasoning',
+				text: event.content,
+				startTime: event.timestamp,
+				...(event.endTime !== undefined && { endTime: event.endTime }),
+			});
 		} else if (event.type === 'tool-call') {
 			content.push(timelineToolCallToPart(event));
 		}
@@ -155,6 +163,7 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 			role: 'assistant',
 			content: assistantContent,
 			executionId: execution.id,
+			...(execution.status ? { executionStatus: execution.status } : {}),
 		});
 	}
 

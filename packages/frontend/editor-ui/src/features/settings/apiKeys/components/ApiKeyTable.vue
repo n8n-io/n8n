@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey } from '@n8n/api-types';
@@ -10,14 +10,23 @@ import type { ActionDropdownItem } from '@n8n/design-system';
 import ApiKeyLabelCell from './ApiKeyLabelCell.vue';
 import ApiKeyOwnerCell from './ApiKeyOwnerCell.vue';
 import ApiKeyScopesCell from './ApiKeyScopesCell.vue';
+import { isApiKeyExpired } from '../apiKeys.utils';
 
-const props = defineProps<{
-	apiKeys: ApiKey[];
-	itemsLength: number;
-	loading?: boolean;
-	/** When set, Edit is only offered for keys owned by this user. */
-	currentUserId?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		apiKeys: ApiKey[];
+		itemsLength: number;
+		loading?: boolean;
+		/** When set, Edit is only offered for keys owned by this user. */
+		currentUserId?: string;
+		/** Hide the Owner column where ownership is implied (e.g. the "Mine" tab). */
+		showOwner?: boolean;
+	}>(),
+	{
+		currentUserId: undefined,
+		showOwner: true,
+	},
+);
 
 const emit = defineEmits<{
 	edit: [apiKey: ApiKey];
@@ -48,11 +57,6 @@ function isOwn(apiKey: ApiKey): boolean {
 	return apiKey.owner?.id === props.currentUserId;
 }
 
-// Rotation preserves the original expiry, so an already-expired key can't be rotated.
-function isExpired(apiKey: ApiKey): boolean {
-	return apiKey.expiresAt !== null && apiKey.expiresAt <= Math.floor(Date.now() / 1000);
-}
-
 function onRowClick(_event: MouseEvent, payload: { item: ApiKey }) {
 	emit('edit', payload.item);
 }
@@ -68,7 +72,8 @@ function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> 
 			icon: 'square-pen',
 			testId: 'api-key-edit-action',
 		});
-		if (!isExpired(apiKey)) {
+		// Rotation preserves the original expiry, so an already-expired key can't be rotated.
+		if (!isApiKeyExpired(apiKey)) {
 			actions.push({
 				id: 'rotate',
 				label: i18n.baseText('settings.api.actions.rotate'),
@@ -91,6 +96,7 @@ function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> 
 		icon: 'trash-2',
 		testId: 'api-key-revoke-action',
 		divided: true,
+		variant: 'destructive',
 	});
 	return actions;
 }
@@ -105,15 +111,19 @@ const rows = computed(() => props.apiKeys);
 
 // `resize: false` everywhere — these columns are fixed-shape and the resizer
 // handle otherwise highlights on every header hover.
-const headers = ref<Array<TableHeader<ApiKey>>>([
+const headers = computed<Array<TableHeader<ApiKey>>>(() => [
 	{ title: i18n.baseText('settings.api.columns.name'), key: 'label', width: 280, resize: false },
-	{
-		title: i18n.baseText('settings.api.columns.owner'),
-		key: 'owner',
-		width: 280,
-		disableSort: true,
-		resize: false,
-	},
+	...(props.showOwner
+		? [
+				{
+					title: i18n.baseText('settings.api.columns.owner'),
+					key: 'owner',
+					width: 240,
+					disableSort: true,
+					resize: false,
+				} satisfies TableHeader<ApiKey>,
+			]
+		: []),
 	{ title: i18n.baseText('settings.api.columns.scopes'), key: 'scopes', resize: false },
 	// expiresAt lives in the JWT, not a column — can't ORDER BY without a migration.
 	{
@@ -146,6 +156,7 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 			:items-length="itemsLength"
 			:loading="loading"
 			:page-sizes="[10, 25, 50]"
+			:row-props="{ class: $style.clickableRow }"
 			@update:options="emit('update:options', $event)"
 			@click:row="onRowClick"
 		>
@@ -174,6 +185,7 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 						:items="getRowActions(item)"
 						placement="bottom-end"
 						activator-size="small"
+						activator-icon="ellipsis-vertical"
 						data-test-id="api-key-actions-toggle"
 						@select="(action) => onAction(action, item)"
 					/>
@@ -187,5 +199,10 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 .rowActions {
 	display: flex;
 	justify-content: flex-end;
+}
+
+/* Rows open the edit/view modal on click; the cursor should say so. */
+.clickableRow {
+	cursor: pointer;
 }
 </style>

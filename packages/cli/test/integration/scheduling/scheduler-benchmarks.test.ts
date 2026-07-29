@@ -10,6 +10,7 @@ import {
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { sleep } from '@n8n/utils/sleep';
 
 /**
  * Durable-scheduler performance benchmarks (CAT-3623), written to answer the
@@ -119,8 +120,6 @@ const INSERT_CHUNK = 500;
 // Rows per seeding transaction (each internally chunked into INSERT statements).
 const SEED_TX_CHUNK = 5_000;
 const TEST_TIMEOUT_MS = 600_000;
-
-const sleep = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
 
 const commas = (n: number) => Math.round(n).toLocaleString('en-US');
 
