@@ -179,7 +179,7 @@ volumes:
 
 services:
   sandbox-certs:
-    image: n8nio/n8n-sandbox-service-api:latest
+    image: ghcr.io/n8n-io/n8n-sandbox-service-api:latest
     user: '0:0'
     entrypoint: ['sh', '-c']
     command:
@@ -193,7 +193,7 @@ services:
       - sandbox-tls:/tls
 
   sandbox-api:
-    image: n8nio/n8n-sandbox-service-api:latest
+    image: ghcr.io/n8n-io/n8n-sandbox-service-api:latest
     depends_on:
       sandbox-certs:
         condition: service_completed_successfully
@@ -218,7 +218,7 @@ services:
     # n8n reaches this container by service name, over the default Compose network.
 
   sandbox-runner-1:
-    image: n8nio/n8n-sandbox-service-runner-dind:latest
+    image: ghcr.io/n8n-io/n8n-sandbox-service-runner-dind:latest
     privileged: true
     depends_on:
       sandbox-api:
@@ -230,7 +230,7 @@ services:
       SANDBOX_RUNNER_CONTROL_GRPC_LISTEN_ADDR: ':9091'
       SANDBOX_RUNNER_CONTROL_GRPC_ADVERTISE_ADDR: sandbox-runner-1:9091
       SANDBOX_RUNNER_ID: runner-1
-      SANDBOX_RUNNER_DOCKER_SANDBOX_IMAGE: n8nio/n8n-sandbox-service-sandbox:latest
+      SANDBOX_RUNNER_DOCKER_SANDBOX_IMAGE: ghcr.io/n8n-io/n8n-sandbox-service-sandbox:latest
       SANDBOX_RUNNER_REGISTRATION_GRPC_CA_FILE: /tls/runner/ca.crt
       SANDBOX_RUNNER_REGISTRATION_GRPC_CERT_FILE: /tls/runner/grpc-client.crt
       SANDBOX_RUNNER_REGISTRATION_GRPC_KEY_FILE: /tls/runner/grpc-client.key
@@ -254,7 +254,7 @@ services:
       N8N_ENABLED_MODULES: instance-ai
       N8N_INSTANCE_AI_MODEL: anthropic/claude-opus-4-8
       N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true'
-      N8N_INSTANCE_AI_SANDBOX_IMAGE: n8nio/n8n-sandbox-service-sandbox:latest
+      N8N_INSTANCE_AI_SANDBOX_IMAGE: ghcr.io/n8n-io/n8n-sandbox-service-sandbox:latest
       N8N_INSTANCE_AI_SANDBOX_API_URL: http://sandbox-api:8080
     volumes:
       - n8n-data:/home/node/.n8n
