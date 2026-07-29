@@ -15,7 +15,6 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
-	IExecuteResponsePromiseData,
 	IExecutionContext,
 	INodeExecutionData,
 	IRun,
@@ -26,7 +25,6 @@ import type {
 	GenericValue,
 } from 'n8n-workflow';
 import {
-	BINARY_ENCODING,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -59,6 +57,7 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+import { prepareWebhookResponseForRelay } from './webhook-response-relay';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -217,7 +216,7 @@ export class JobProcessor {
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,
-				response: this.encodeWebhookResponse(response),
+				response: prepareWebhookResponseForRelay(response),
 				workerId: this.instanceSettings.hostId,
 			};
 
@@ -490,18 +489,6 @@ export class JobProcessor {
 
 	getRunningJobsSummary(): RunningJobSummary[] {
 		return Object.values(this.runningJobs).map(({ run, ...summary }) => summary);
-	}
-
-	private encodeWebhookResponse(
-		response: IExecuteResponsePromiseData,
-	): IExecuteResponsePromiseData {
-		if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
-			response.body = {
-				'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
-			};
-		}
-
-		return response;
 	}
 
 	/**
