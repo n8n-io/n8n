@@ -1,6 +1,10 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import { microsoftApiRequest } from '../transport';
+import { parseAddress } from '../helpers/utils';
+
+// loadOptions context throughout this file: the transport's trailing `0` is its
+// fallback read (getNodeParameter's 2nd arg here is a fallback, not an item index).
 
 export async function getWorksheetColumnRow(
 	this: ILoadOptionsFunctions,
@@ -23,21 +27,25 @@ export async function getWorksheetColumnRow(
 			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 			undefined,
 			{ select: 'values' },
+			undefined,
+			undefined,
+			0,
 		);
 
 		columns = worksheetData.values[0] as string[];
 	} else {
-		const [rangeFrom, rangeTo] = range.split(':');
-		const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-		const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+		const { cellFrom, cellTo } = parseAddress(range);
 
-		range = `${rangeFrom}:${cellDataTo[1]}${cellDataFrom[2]}`;
-
+		range = `${cellFrom.value}:${cellTo.column}${cellFrom.row}`;
 		const worksheetData = await microsoftApiRequest.call(
 			this,
 			'PATCH',
 			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 			{ select: 'values' },
+			undefined,
+			undefined,
+			undefined,
+			0,
 		);
 
 		columns = worksheetData.values[0] as string[];
@@ -81,6 +89,10 @@ export async function getTableColumns(
 		'GET',
 		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
 		{},
+		undefined,
+		undefined,
+		undefined,
+		0,
 	);
 
 	return (response.value as IDataObject[]).map((column) => ({

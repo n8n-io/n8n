@@ -19,6 +19,17 @@
                                     "items": {
                                         "type": "object",
                                         "properties": {
+                                            "style": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "bold": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "italic": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
                                             "text": {
                                                 "type": "string"
                                             },
@@ -62,5 +73,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 8
 }

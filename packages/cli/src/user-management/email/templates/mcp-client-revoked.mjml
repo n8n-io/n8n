@@ -1,0 +1,19 @@
+<mjml>
+	<mj-include path="./_common.mjml" />
+	<mj-body>
+		<mj-section padding="0 20px">
+			<mj-column>
+				<mj-include path="./_logo.mjml" />
+				<mj-text font-size="22px" font-weight="400">Your MCP client access was revoked</mj-text>
+				<mj-text>
+					Your connected MCP client <b>"{{clientName}}"</b> on <b>{{domain}}</b> was revoked by <b>{{revokedBy}}</b> on {{revokedAt}}.
+				</mj-text>
+				<mj-text>
+					The client has lost access to this instance and any sessions using it have stopped working. If you still need access, you can reconnect the client.
+				</mj-text>
+				<mj-button href="{{mcpSettingsUrl}}">Manage MCP access</mj-button>
+				<mj-include path="./_footer.mjml" />
+			</mj-column>
+		</mj-section>
+	</mj-body>
+</mjml>

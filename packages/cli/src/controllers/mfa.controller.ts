@@ -1,9 +1,18 @@
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest, UserRepository } from '@n8n/db';
-import { Get, GlobalScope, Post, RestController } from '@n8n/decorators';
+import {
+	createUserKeyedRateLimiter,
+	Get,
+	GlobalScope,
+	Post,
+	RestController,
+} from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
 import { MFA } from '@/requests';
@@ -15,11 +24,19 @@ export class MFAController {
 		private externalHooks: ExternalHooks,
 		private authService: AuthService,
 		private userRepository: UserRepository,
+		private eventService: EventService,
+		private instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
 	@Post('/enforce-mfa')
 	@GlobalScope('user:enforceMfa')
 	async enforceMFA(req: MFA.Enforce) {
+		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
+			throw new ForbiddenError(
+				'MFA enforcement is managed via environment variables and cannot be modified through the API',
+			);
+		}
+
 		if (req.body.enforce && !(req.authInfo?.usedMfa ?? false)) {
 			// The current user tries to enforce MFA, but does not have
 			// MFA set up for them self. We are forbidding this, to
@@ -29,6 +46,19 @@ export class MFAController {
 			);
 		}
 		await this.mfaService.enforceMFA(req.body.enforce);
+
+		this.eventService.emit('instance-policies-updated', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			settingName: '2fa_enforcement',
+			value: req.body.enforce,
+		});
+
 		return;
 	}
 
@@ -82,7 +112,10 @@ export class MFAController {
 		};
 	}
 
-	@Post('/enable', { rateLimit: true, allowSkipMFA: true })
+	@Post('/enable', {
+		allowSkipMFA: true,
+		keyedRateLimit: createUserKeyedRateLimiter({}),
+	})
 	async activateMFA(req: MFA.Activate, res: Response) {
 		const { mfaCode = null } = req.body;
 		const { id, mfaEnabled } = req.user;
@@ -107,10 +140,23 @@ export class MFAController {
 
 		const updatedUser = await this.mfaService.enableMfa(id);
 
+		this.eventService.emit('user-mfa-enabled', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+		});
+
 		this.authService.issueCookie(res, updatedUser, verified, req.browserId);
 	}
 
-	@Post('/disable', { rateLimit: true })
+	@Post('/disable', {
+		ipRateLimit: true,
+		keyedRateLimit: createUserKeyedRateLimiter({}),
+	})
 	async disableMFA(req: MFA.Disable, res: Response) {
 		const { id: userId } = req.user;
 
@@ -132,12 +178,29 @@ export class MFAController {
 			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode);
 		}
 
-		const updatedUser = await this.userRepository.findOneByOrFail({ id: userId });
+		this.eventService.emit('user-mfa-disabled', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			disableMethod: mfaCodeDefined ? 'mfaCode' : 'recoveryCode',
+		});
+
+		const updatedUser = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
 
 		this.authService.issueCookie(res, updatedUser, false, req.browserId);
 	}
 
-	@Post('/verify', { rateLimit: true, allowSkipMFA: true })
+	@Post('/verify', {
+		allowSkipMFA: true,
+		keyedRateLimit: createUserKeyedRateLimiter({}),
+	})
 	async verifyMFA(req: MFA.Verify) {
 		const { id } = req.user;
 		const { mfaCode } = req.body;

@@ -15,19 +15,19 @@ import {
 import { createNodeSearchTool } from '../node-search.tool';
 
 // Mock LangGraph dependencies
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-		content: JSON.stringify(params),
-	})),
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
+	Command: vi.fn(function (params: Record<string, unknown>) {
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
 describe('NodeSearchTool', () => {
 	let nodeTypesList: INodeTypeDescription[];
-	let nodeSearchTool: ReturnType<typeof createNodeSearchTool>;
+	let nodeSearchTool: ReturnType<typeof createNodeSearchTool>['tool'];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Create a comprehensive test node set
 		nodeTypesList = [
@@ -75,11 +75,11 @@ describe('NodeSearchTool', () => {
 			// Expression-based node
 			nodeTypes.vectorStoreNode,
 		];
-		nodeSearchTool = createNodeSearchTool(nodeTypesList);
+		nodeSearchTool = createNodeSearchTool(nodeTypesList).tool;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('invoke', () => {
@@ -222,7 +222,7 @@ describe('NodeSearchTool', () => {
 					{
 						queries: [
 							{
-								// @ts-expect-error Testing invalid input
+								// @ts-expect-error testing invalid query type
 								queryType: 'invalid',
 								query: 'test',
 							},
@@ -342,7 +342,7 @@ describe('NodeSearchTool', () => {
 				}),
 			);
 			const testNodeTypes = [...nodeTypesList, ...manyHttpNodes];
-			const testTool = createNodeSearchTool(testNodeTypes);
+			const testTool = createNodeSearchTool(testNodeTypes).tool;
 
 			const mockConfig = createToolConfig('search_nodes', 'test-call-13');
 

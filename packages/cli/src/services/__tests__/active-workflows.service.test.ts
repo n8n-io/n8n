@@ -1,6 +1,6 @@
-import { WorkflowEntity } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, WorkflowEntity } from '@n8n/db';
 import type { User, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -22,7 +22,7 @@ describe('ActiveWorkflowsService', () => {
 	);
 	const activeIds = ['1', '2', '3', '4'];
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	describe('getAllActiveIdsInStorage', () => {
 		it('should filter out any workflow ids that have activation errors', async () => {
@@ -41,7 +41,7 @@ describe('ActiveWorkflowsService', () => {
 		});
 
 		it('should return all workflow ids when user has full access', async () => {
-			user.role = 'global:admin';
+			user.role = GLOBAL_ADMIN_ROLE;
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['2', '3', '4']);
@@ -49,7 +49,7 @@ describe('ActiveWorkflowsService', () => {
 		});
 
 		it('should filter out workflow ids that the user does not have access to', async () => {
-			user.role = 'global:member';
+			user.role = GLOBAL_MEMBER_ROLE;
 			sharedWorkflowRepository.getSharedWorkflowIds.mockResolvedValue(['3']);
 			const ids = await service.getAllActiveIdsFor(user);
 

@@ -3,15 +3,10 @@
 <script setup lang="ts">
 import { computed, type Component } from 'vue';
 
-import BlockMessage from './BlockMessage.vue';
-import CodeDiffMessage from './CodeDiffMessage.vue';
-import ErrorMessage from './ErrorMessage.vue';
-import EventMessage from './EventMessage.vue';
-import TextMessage from './TextMessage.vue';
-import ToolMessage from './ToolMessage.vue';
+import { getSupportedMessageComponent } from './helpers';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 
-interface Props {
+export interface Props {
 	message: ChatUI.AssistantMessage;
 	isFirstOfRole: boolean;
 	user?: {
@@ -20,6 +15,8 @@ interface Props {
 	};
 	streaming?: boolean;
 	isLastMessage?: boolean;
+	color?: string;
+	workflowId?: string;
 }
 
 const props = defineProps<Props>();
@@ -31,39 +28,38 @@ const emit = defineEmits<{
 }>();
 
 const messageComponent = computed<Component | null>(() => {
-	switch (props.message.type) {
-		case 'text':
-			return TextMessage;
-		case 'block':
-			return BlockMessage;
-		case 'code-diff':
-			return CodeDiffMessage;
-		case 'error':
-			return ErrorMessage;
-		case 'event':
-			return EventMessage;
-		case 'tool':
-			return ToolMessage;
-		case 'agent-suggestion':
-		case 'workflow-updated':
-			return null;
-		default:
-			return null;
-	}
+	return getSupportedMessageComponent(props.message.type);
 });
 </script>
 
 <template>
-	<component
-		:is="messageComponent"
-		v-if="messageComponent"
-		:message="message"
-		:is-first-of-role="isFirstOfRole"
-		:user="user"
-		:streaming="streaming"
-		:is-last-message="isLastMessage"
-		@code-replace="emit('codeReplace')"
-		@code-undo="emit('codeUndo')"
-		@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
-	/>
+	<div>
+		<component
+			:is="messageComponent"
+			v-if="messageComponent"
+			:message="message"
+			:is-first-of-role="isFirstOfRole"
+			:user="user"
+			:streaming="streaming"
+			:is-last-message="isLastMessage"
+			:color="color"
+			:workflow-id="workflowId"
+			@code-replace="emit('codeReplace')"
+			@code-undo="emit('codeUndo')"
+			@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
+		>
+			<template v-if="$slots['focused-nodes-chips']" #focused-nodes-chips="slotProps">
+				<slot name="focused-nodes-chips" v-bind="slotProps" />
+			</template>
+		</component>
+		<slot
+			v-else-if="message.type === 'custom'"
+			name="custom-message"
+			:message="message"
+			:is-first-of-role="isFirstOfRole"
+			:user="user"
+			:streaming="streaming"
+			:is-last-message="isLastMessage"
+		/>
+	</div>
 </template>

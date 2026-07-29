@@ -1,9 +1,10 @@
 import type { InsightsDateRange } from '@n8n/api-types';
 import { mockInstance, createWorkflow, createTeamProject, testDb } from '@n8n/backend-test-utils';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { DateTime } from 'luxon';
 
-import { Telemetry } from '@/telemetry';
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
+import { Telemetry } from '@/telemetry';
 
 import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -20,9 +21,9 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	const owner = await createUser({ role: 'global:owner' });
-	const admin = await createUser({ role: 'global:admin' });
-	const member = await createUser({ role: 'global:member' });
+	const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+	const admin = await createUser({ role: GLOBAL_ADMIN_ROLE });
+	const member = await createUser({ role: GLOBAL_MEMBER_ROLE });
 	agents.owner = testServer.authAgentFor(owner);
 	agents.admin = testServer.authAgentFor(admin);
 	agents.member = testServer.authAgentFor(member);

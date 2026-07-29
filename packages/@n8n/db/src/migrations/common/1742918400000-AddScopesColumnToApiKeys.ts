@@ -1,6 +1,7 @@
 import type { GlobalRole } from '@n8n/permissions';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 
+import { GLOBAL_ROLES } from '../../constants';
 import { ApiKey } from '../../entities';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
@@ -13,7 +14,7 @@ export class AddScopesColumnToApiKeys1742918400000 implements ReversibleMigratio
 		queryRunner,
 		schemaBuilder: { addColumns, column },
 	}: MigrationContext) {
-		await addColumns('user_api_keys', [column('scopes').json]);
+		await addColumns('user_api_keys', [column('scopes').json], { recreatesOnSqlite: true });
 
 		const userApiKeysTable = escape.tableName('user_api_keys');
 		const userTable = escape.tableName('user');
@@ -26,12 +27,15 @@ export class AddScopesColumnToApiKeys1742918400000 implements ReversibleMigratio
 		);
 
 		for (const { id, role } of apiKeysWithRoles) {
-			const scopes = getApiKeyScopesForRole(role);
+			const dbRole = GLOBAL_ROLES[role];
+			const scopes = getApiKeyScopesForRole({
+				role: dbRole,
+			});
 			await queryRunner.manager.update(ApiKey, { id }, { scopes });
 		}
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns('user_api_keys', ['scopes']);
+		await dropColumns('user_api_keys', ['scopes'], { recreatesOnSqlite: true });
 	}
 }

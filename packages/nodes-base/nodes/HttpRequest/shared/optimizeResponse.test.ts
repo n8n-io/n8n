@@ -1,15 +1,16 @@
 import { type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
 
 import { configureResponseOptimizer } from './optimizeResponse';
+import type { Mocked } from 'vitest';
 
 describe('configureResponseOptimizer', () => {
 	const mockCtx = {
-		getNodeParameter: jest.fn(),
-		getNode: jest.fn(),
-	} as unknown as jest.Mocked<IExecuteFunctions>;
+		getNodeParameter: vi.fn(),
+		getNode: vi.fn(),
+	} as unknown as Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return the original response when optimizeResponse is false', () => {

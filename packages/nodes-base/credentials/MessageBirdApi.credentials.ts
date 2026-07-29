@@ -5,7 +5,7 @@ export class MessageBirdApi implements ICredentialType {
 
 	displayName = 'MessageBird API';
 
-	documentationUrl = 'messageBird';
+	documentationUrl = 'messagebird';
 
 	properties: INodeProperties[] = [
 		{

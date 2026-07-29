@@ -5,10 +5,10 @@ import markdownEmoji from 'markdown-it-emoji';
 import markdownLink from 'markdown-it-link-attributes';
 import markdownTaskLists from 'markdown-it-task-lists';
 import { computed, ref } from 'vue';
-import xss, { friendlyAttrValue, whiteList } from 'xss';
+import xss, { whiteList } from 'xss';
 
 import { markdownYoutubeEmbed, YOUTUBE_EMBED_SRC_REGEX, type YoutubeEmbedConfig } from './youtube';
-import { toggleCheckbox } from '../../utils/markdown';
+import { toggleCheckbox, serializeAttr } from '../../utils/markdown';
 import N8nLoading from '../N8nLoading';
 
 interface IImage {
@@ -58,7 +58,7 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 		tasklists: {
 			enabled: true,
 			label: true,
-			labelAfter: true,
+			labelAfter: false,
 		},
 		youtube: {},
 	}),
@@ -76,16 +76,7 @@ const md = new Markdown(options.markdown)
 const xssWhiteList = {
 	...whiteList,
 	label: ['class', 'for'],
-	iframe: [
-		'width',
-		'height',
-		'src',
-		'title',
-		'frameborder',
-		'allow',
-		'referrerpolicy',
-		'allowfullscreen',
-	],
+	iframe: ['width', 'height', 'src', 'title', 'frameborder', 'allow', 'referrerpolicy'],
 };
 
 const htmlContent = computed(() => {
@@ -108,7 +99,52 @@ const htmlContent = computed(() => {
 	const fileIdRegex = new RegExp('fileId:([0-9]+)');
 	let contentToRender = props.content;
 	if (props.withMultiBreaks) {
-		contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
+		// Turn blank lines between plain text into &nbsp; soft breaks so they render
+		// as one paragraph (avoids UA <p> margins stacking on top of theme spacing).
+		// Keep them as real paragraph breaks when adjacent to block-level markdown
+		// (list, heading, blockquote, code fence, hr) so structures parse correctly,
+		// and leave blank lines inside fenced code blocks untouched so they stay literal.
+		// Parse a code-fence line into its fence char and run length (>= 3). A fence
+		// can be made of 3+ backticks or tildes; the closing fence must use the same
+		// char and be at least as long, and carry no info string after it.
+		const parseFence = (line: string) => {
+			const match = /^\s*(`{3,}|~{3,})(.*)$/.exec(line);
+			return match ? { char: match[1][0], length: match[1].length, rest: match[2] } : null;
+		};
+		const isBlockStart = (line: string) =>
+			/^\s*([-*+]|\d+\.)\s/.test(line) ||
+			/^#{1,6}\s/.test(line) ||
+			/^>/.test(line) ||
+			parseFence(line) !== null ||
+			/^---+\s*$/.test(line);
+		const lines = contentToRender.split('\n');
+		let openFence: { char: string; length: number } | null = null;
+		contentToRender = lines
+			.map((line, i) => {
+				const fence = parseFence(line);
+				if (openFence) {
+					// A closing fence matches the opening char, is at least as long, and
+					// has no trailing content; shorter/different fences stay code content.
+					if (
+						fence &&
+						fence.char === openFence.char &&
+						fence.length >= openFence.length &&
+						fence.rest.trim() === ''
+					) {
+						openFence = null;
+					}
+					return line;
+				}
+				if (fence) {
+					openFence = { char: fence.char, length: fence.length };
+					return line;
+				}
+				if (line !== '') return line;
+				const prev = lines[i - 1] ?? '';
+				const next = lines[i + 1] ?? '';
+				return isBlockStart(prev) || isBlockStart(next) ? '' : '&nbsp;';
+			})
+			.join('\n');
 	}
 	const html = md.render(contentToRender);
 
@@ -117,8 +153,11 @@ const htmlContent = computed(() => {
 			if (tag === 'img' && name === 'src') {
 				if (value.match(fileIdRegex)) {
 					const id = value.split('fileId:')[1];
-					const attributeValue = friendlyAttrValue(imageUrls[id]);
-					return attributeValue ? `src=${attributeValue}` : '';
+					const imageUrl = imageUrls[id];
+					if (!imageUrl) {
+						return '';
+					}
+					return serializeAttr(tag, name, imageUrl);
 				}
 				// Only allow http requests to supported image files from the `static` directory
 				const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
@@ -132,7 +171,7 @@ const htmlContent = computed(() => {
 				if (name === 'src') {
 					// Only allow YouTube as src for iframes embeds
 					if (YOUTUBE_EMBED_SRC_REGEX.test(value)) {
-						return `src=${friendlyAttrValue(value)}`;
+						return serializeAttr(tag, name, value);
 					} else {
 						return '';
 					}
@@ -246,36 +285,36 @@ const onCheckboxChange = (index: number) => {
 
 <style lang="scss" module>
 .markdown {
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	* {
-		font-size: var(--font-size-m);
-		line-height: var(--font-line-height-xloose);
+		font-size: var(--font-size--md);
+		line-height: var(--line-height--xl);
 	}
 
 	h1,
 	h2,
 	h3,
 	h4 {
-		margin-bottom: var(--spacing-s);
-		font-size: var(--font-size-m);
-		font-weight: var(--font-weight-bold);
+		margin-bottom: var(--spacing--sm);
+		font-size: var(--font-size--md);
+		font-weight: var(--font-weight--bold);
 	}
 
 	h3,
 	h4 {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 
 	p,
 	span {
-		margin-bottom: var(--spacing-s);
+		margin-bottom: var(--spacing--sm);
 	}
 
 	ul,
 	ol {
-		margin-bottom: var(--spacing-s);
-		padding-left: var(--spacing-m);
+		margin-bottom: var(--spacing--sm);
+		padding-left: var(--spacing--md);
 
 		li {
 			margin-top: 0.25em;
@@ -283,35 +322,35 @@ const onCheckboxChange = (index: number) => {
 	}
 
 	pre > code {
-		background-color: var(--color-background-base);
-		color: var(--color-text-dark);
+		background-color: var(--color--background);
+		color: var(--color--text--shade-1);
 	}
 
 	li > code,
 	p > code {
-		padding: 0 var(--spacing-4xs);
-		color: var(--color-text-dark);
-		background-color: var(--color-background-base);
+		padding: 0 var(--spacing--4xs);
+		color: var(--color--text--shade-1);
+		background-color: var(--color--background);
 	}
 
 	.label {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 
 	img {
 		max-width: 100%;
-		border-radius: var(--border-radius-large);
+		border-radius: var(--radius--lg);
 	}
 
 	blockquote {
 		padding-left: 10px;
 		font-style: italic;
-		border-left: var(--border-color-base) 2px solid;
+		border-left: var(--border-color) 2px solid;
 	}
 }
 
 input[type='checkbox'] {
-	accent-color: var(--color-primary);
+	accent-color: var(--color--primary);
 }
 
 input[type='checkbox'] + label {
@@ -319,8 +358,13 @@ input[type='checkbox'] + label {
 }
 
 .sticky {
-	color: var(--color-sticky-font);
+	color: var(--sticky--color--text);
 	overflow-wrap: break-word;
+
+	// First rendered block sits flush with the top; container padding supplies the gap.
+	> :first-child {
+		margin-top: 0;
+	}
 
 	h1,
 	h2,
@@ -328,16 +372,16 @@ input[type='checkbox'] + label {
 	h4,
 	h5,
 	h6 {
-		color: var(--color-sticky-font);
+		color: var(--sticky--color--text);
 	}
 
 	h1,
 	h2,
 	h3,
 	h4 {
-		margin-bottom: var(--spacing-2xs);
-		font-weight: var(--font-weight-bold);
-		line-height: var(--font-line-height-loose);
+		margin-bottom: var(--spacing--2xs);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--lg);
 	}
 
 	h1 {
@@ -352,43 +396,43 @@ input[type='checkbox'] + label {
 	h4,
 	h5,
 	h6 {
-		font-size: var(--font-size-m);
+		font-size: var(--font-size--md);
 	}
 
 	p {
-		margin-bottom: var(--spacing-2xs);
-		font-size: var(--font-size-s);
-		font-weight: var(--font-weight-regular);
-		line-height: var(--font-line-height-loose);
+		margin-bottom: var(--spacing--2xs);
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--regular);
+		line-height: var(--line-height--lg);
 	}
 
 	ul,
 	ol {
-		margin-bottom: var(--spacing-2xs);
-		padding-left: var(--spacing-m);
+		margin-bottom: var(--spacing--2xs);
+		padding-left: var(--spacing--md);
 
 		li {
 			margin-top: 0.25em;
-			font-size: var(--font-size-s);
-			font-weight: var(--font-weight-regular);
-			line-height: var(--font-line-height-regular);
+			font-size: var(--font-size--sm);
+			font-weight: var(--font-weight--regular);
+			line-height: var(--line-height--md);
 		}
 
 		&:has(input[type='checkbox']) {
 			list-style-type: none;
-			padding-left: var(--spacing-5xs);
+			padding-left: var(--spacing--5xs);
 		}
 	}
 
 	pre > code {
-		background-color: var(--color-sticky-code-background);
-		color: var(--color-sticky-code-font);
+		background-color: var(--sticky--code--color--background);
+		color: var(--sticky--code--color--text);
 	}
 
 	pre > code,
 	li > code,
 	p > code {
-		color: var(--color-sticky-code-font);
+		color: var(--sticky--code--color--text);
 	}
 
 	a {
@@ -399,8 +443,8 @@ input[type='checkbox'] + label {
 
 	img {
 		object-fit: contain;
-		margin-top: var(--spacing-xs);
-		margin-bottom: var(--spacing-2xs);
+		margin-top: var(--spacing--xs);
+		margin-bottom: var(--spacing--2xs);
 
 		&[src*='#full-width'] {
 			width: 100%;
@@ -411,13 +455,13 @@ input[type='checkbox'] + label {
 .sticky,
 .markdown {
 	pre {
-		margin-bottom: var(--spacing-s);
+		margin-bottom: var(--spacing--sm);
 		display: grid;
 	}
 
 	pre > code {
 		display: block;
-		padding: var(--spacing-s);
+		padding: var(--spacing--sm);
 		overflow-x: auto;
 	}
 
@@ -431,6 +475,6 @@ input[type='checkbox'] + label {
 }
 
 .spacer {
-	margin: var(--spacing-2xl);
+	margin: var(--spacing--2xl);
 }
 </style>

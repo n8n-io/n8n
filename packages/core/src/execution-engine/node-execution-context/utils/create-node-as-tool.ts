@@ -1,5 +1,11 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import type { IDataObject, INode, INodeType, FromAIArgument } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INode,
+	INodeType,
+	FromAIArgument,
+	ISupplyDataFunctions,
+} from 'n8n-workflow';
 import {
 	generateZodSchema,
 	NodeOperationError,
@@ -13,6 +19,13 @@ export type CreateNodeAsToolOptions = {
 	node: INode;
 	nodeType: INodeType;
 	handleToolInvocation: (toolArgs: IDataObject) => Promise<unknown>;
+	/**
+	 * Optional supply-data context used to resolve n8n expressions in the
+	 * user-provided `toolDescription` parameter against the upstream input data.
+	 * When omitted, the raw description value is used (no expression evaluation).
+	 */
+	context?: ISupplyDataFunctions;
+	itemIndex?: number;
 };
 
 /**
@@ -27,7 +40,7 @@ export type CreateNodeAsToolOptions = {
  * @throws {NodeOperationError} When parameter keys are invalid or when duplicate keys have inconsistent definitions
  * @returns {z.ZodObject} A Zod schema object representing the structure and validation rules for the node parameters
  */
-function getSchema(node: INode) {
+export function getSchema(node: INode) {
 	const collectedArguments: FromAIArgument[] = [];
 	try {
 		traverseNodeParameters(node.parameters, collectedArguments);
@@ -94,10 +107,14 @@ function getSchema(node: INode) {
  * @returns A DynamicStructuredTool instance.
  */
 function createTool(options: CreateNodeAsToolOptions) {
-	const { node, nodeType, handleToolInvocation } = options;
+	const { node, nodeType, handleToolInvocation, context, itemIndex } = options;
 
 	const schema = getSchema(node);
-	const description = NodeHelpers.getToolDescriptionForNode(node, nodeType);
+	const resolveToolDescription =
+		context && typeof itemIndex === 'number'
+			? () => context.getNodeParameter('toolDescription', itemIndex, '') as string
+			: undefined;
+	const description = NodeHelpers.getToolDescriptionForNode(node, nodeType, resolveToolDescription);
 	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;
 
@@ -106,6 +123,11 @@ function createTool(options: CreateNodeAsToolOptions) {
 		description,
 		schema,
 		func: async (toolArgs: z.infer<typeof schema>) => await handleToolInvocation(toolArgs),
+		// Include sourceNodeName in metadata for engine request routing
+		// This is required for HITL tools to know which node to execute after approval
+		metadata: {
+			sourceNodeName: node.name,
+		},
 	});
 }
 

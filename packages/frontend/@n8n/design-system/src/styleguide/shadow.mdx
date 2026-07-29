@@ -1,0 +1,96 @@
+import { Meta, Source } from '@storybook/addon-docs/blocks';
+
+<Meta title="Styleguide/Shadow" />
+
+# Shadows
+
+Create depth and elevation for UI elements
+
+Shadows can be applied using the `shadow-*` primitive. Variants range from `xs` to `xl` and can be used to create depth and elevation for UI elements.
+
+Below is a table showcasing the different shadow variants available in the design system.
+
+| Step    | Value                    | Description                                                    |
+| ------- | ------------------------ | -------------------------------------------------------------- |
+| outline | `var(--shadow--outline)` | Used for focus outlines and similar effects.                   |
+| 2xs     | `var(--shadow--2xs)`     | Used for very subtle shadows, such as small elements.          |
+| xs      | `var(--shadow--xs)`      | Used for slightly subtle shadows, such as on buttons or cards. |
+| sm      | `var(--shadow--sm)`      | Used for standard shadows, such as on popovers or selects.     |
+| md      | `var(--shadow--md)`      | Used for more prominent shadows, such as floating elements.    |
+| lg      | `var(--shadow--lg)`      | Used for larger shadows.                                       |
+| xl      | `var(--shadow--xl)`      | Used for elevated elements, such as dialogs.                   |
+
+## Example
+
+Shadows can be applied using the `shadow-*` primitive. It's recommended to create a local variable and apply the `_primitives.scss` token for flexibility.
+
+<div class="sb-unstyled shadow-demo">
+	<div class="shadow-demo__item">
+		<div class="shadow-demo__label">.box1</div>
+		<div class="shadow-demo__card" style={{ boxShadow: 'var(--shadow--xs)' }} />
+	</div>
+	<div class="shadow-demo__item">
+		<div class="shadow-demo__label">.box2</div>
+		<div class="shadow-demo__card" style={{ boxShadow: 'var(--shadow--md)' }} />
+	</div>
+	<div class="shadow-demo__item">
+		<div class="shadow-demo__label">.box3</div>
+		<div class="shadow-demo__card" style={{ boxShadow: 'var(--shadow--xl)' }} />
+	</div>
+</div>
+
+```css
+.box {
+	width: 160px;
+	height: 160px;
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
+	box-shadow: var(--n8n--shadow--box);
+}
+
+.box1 {
+	--n8n--shadow--box: var(--shadow--xs);
+}
+
+.box2 {
+	--n8n--shadow--box: var(--shadow--md);
+}
+
+.box3 {
+	--n8n--shadow--box: var(--shadow--xl);
+}
+```
+
+<style>
+	{`
+.shadow-demo {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--spacing--lg);
+	padding: var(--spacing--xl);
+	padding-bottom:calc(2rem + var(--spacing--xl));
+	border-radius:var(--radius--lg) var(--radius--lg) 0 0;
+	border: 1px solid var(--border-color);
+	border-bottom:0;
+	background: light-dark(var(--color--neutral-100), var(--color--neutral-900));
+	margin-bottom:-2rem;
+}
+.shadow-demo__item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--md);
+}
+.shadow-demo__label {
+	color: var(--text-color);
+	font-weight: var(--font-weight--semibold);
+}
+.shadow-demo__card {
+	width: 160px;
+	height: 160px;
+	border: 1px solid var(--border-color);
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
+}
+`}
+</style>

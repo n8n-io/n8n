@@ -1,6 +1,9 @@
 const TEXT_SIZE = ['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'] as const;
 export type TextSize = (typeof TEXT_SIZE)[number];
 
+const TEXT_STEP = ['4xs', '3xs', '2xs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl'] as const;
+export type TextStep = (typeof TEXT_STEP)[number];
+
 const TEXT_COLOR = [
 	'primary',
 	'secondary',

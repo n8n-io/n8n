@@ -1,27 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "companyUrl": {
-            "type": "string"
-        },
-        "connectionDegree": {
-            "type": "string"
-        },
-        "firstName": {
-            "type": "string"
-        },
-        "fullName": {
-            "type": "string"
-        },
-        "industry": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "location": {
-            "type": "string"
-        },
         "profileUrl": {
             "type": "string"
         },
@@ -29,5 +8,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 5
 }

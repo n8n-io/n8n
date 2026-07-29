@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { EXPERIMENT_TEMPLATE_RECO_V2_KEY, TEMPLATES_URLS } from '@/constants';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
+import Modal from '@/app/components/Modal.vue';
+import { EXPERIMENT_TEMPLATE_RECO_V2_KEY } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { computed, ref, watchEffect } from 'vue';
 import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store';
 import TemplateCard from './TemplateCard.vue';
 import YoutubeCard from './YoutubeCard.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nLink, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	modalName: string;
@@ -25,6 +29,7 @@ const {
 	trackSeeMoreClick,
 } = usePersonalizedTemplatesV2Store();
 const nodeTypesStore = useNodeTypesStore();
+const templatesStore = useTemplatesStore();
 const locale = useI18n();
 
 const closeModal = () => {
@@ -62,14 +67,17 @@ const youtubeVideos = computed(() => {
 
 const starterLink = computed(() => {
 	const name = nodeTypes.value.get(selectedNode.value)?.displayName ?? '';
-	const encodedName = encodeURIComponent(name);
-	return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?integrations=${encodedName}&q=Simple`;
+	const params = new URLSearchParams(templatesStore.websiteTemplateRepositoryParameters);
+	params.set('integrations', name);
+	params.set('q', 'Simple');
+	return templatesStore.constructTemplateRepositoryURL(params);
 });
 
 const popularLink = computed(() => {
 	const name = nodeTypes.value.get(selectedNode.value)?.displayName ?? '';
-	const encodedName = encodeURIComponent(name);
-	return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?integrations=${encodedName}`;
+	const params = new URLSearchParams(templatesStore.websiteTemplateRepositoryParameters);
+	params.set('integrations', name);
+	return templatesStore.constructTemplateRepositoryURL(params);
 });
 
 function onSelectedNodeChange(val: string) {
@@ -210,18 +218,18 @@ watchEffect(async () => {
 
 <style lang="scss" module>
 .header {
-	border-bottom: 1px solid var(--border-color-base);
-	padding-bottom: var(--spacing-s);
+	border-bottom: 1px solid var(--border-color);
+	padding-bottom: var(--spacing--sm);
 }
 
 .tab {
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 }
 
 .suggestions {
 	display: flex;
 	flex-direction: row;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	overflow-x: auto;
 	min-height: 182px;
 }
@@ -236,7 +244,7 @@ watchEffect(async () => {
 .videos {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	overflow-x: auto;
 }
 
@@ -244,8 +252,8 @@ watchEffect(async () => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing-xs);
-	padding: var(--spacing-l);
-	color: var(--color-text-light);
+	gap: var(--spacing--xs);
+	padding: var(--spacing--lg);
+	color: var(--color--text--tint-1);
 }
 </style>

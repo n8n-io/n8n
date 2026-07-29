@@ -1,16 +1,16 @@
 import { testDb, mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { NodeTypes } from '@/node-types';
 import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/constants';
 import { PackagesRepository } from '@/security-audit/security-audit.repository';
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { toReportTitle } from '@/security-audit/utils';
-import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
 
@@ -35,7 +35,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
 	await testDb.terminate();
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 });
 
 test('should report risky official nodes', async () => {
@@ -49,6 +49,7 @@ test('should report risky official nodes', async () => {
 			name: 'My Test Workflow',
 			active: false,
 			connections: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,

@@ -1,19 +1,26 @@
 import { inTest } from '@n8n/backend-common';
+import { DeploymentKeyRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { BinaryDataConfig } from 'n8n-core';
 import { z } from 'zod';
 
-import config from '@/config';
+import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
-import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
+import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
+import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
+import { JwtService } from '@/services/jwt.service';
 
 import { BaseCommand } from './base-command';
 
@@ -42,6 +49,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsTaskRunner = true;
 
+	override seedsInstanceIdentity = true;
+
 	/**
 	 * Stop n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
@@ -52,6 +61,10 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		try {
 			await this.externalHooks?.run('n8n.stop');
+
+			// Wait for in-process executions not tracked as Bull jobs,
+			// which are instead drained by `ScalingService.stopWorker`
+			await Container.get(ActiveExecutions).shutdown();
 		} catch (error) {
 			await this.exitWithCrash('Error shutting down worker', error);
 		}
@@ -60,11 +73,11 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	constructor() {
-		if (config.getEnv('executions.mode') !== 'queue') {
-			config.set('executions.mode', 'queue');
-		}
-
 		super();
+
+		if (this.globalConfig.executions.mode !== 'queue') {
+			this.globalConfig.executions.mode = 'queue';
+		}
 
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -86,8 +99,16 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.setConcurrency();
 		await super.init();
 
+		Container.get(DeprecationService).warn();
+
+		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
+
 		await this.initLicense();
 		this.logger.debug('License init complete');
+		await this.initCommunityPackages();
+		await Container.get(CredentialsOverwrites).init();
+		this.logger.debug('Credentials overwrites init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
@@ -109,7 +130,14 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}),
 		);
 
-		await this.moduleRegistry.initModules();
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+
+		// Re-register pubsub event handlers after modules have been initialized
+		// As modules can add new event handlers we need to make sure they are registered
+		Container.get(PubSubRegistry).init();
+
+		await this.executionContextHookRegistry.init();
+		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
 	async initEventBus() {
@@ -129,8 +157,11 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(Publisher);
 
 		Container.get(PubSubRegistry).init();
-		await Container.get(Subscriber).subscribe('n8n.commands');
+
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe(subscriber.getCommandChannel());
 		Container.get(WorkerStatusService);
+		Container.get(ExecutionStopService);
 	}
 
 	async setConcurrency() {
@@ -148,30 +179,37 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async initScalingService() {
-		const { ScalingService } = await import('@/scaling/scaling.service');
+		const { ScalingService } = await import('@/scaling/scaling.service.js');
 		this.scalingService = Container.get(ScalingService);
 
 		await this.scalingService.setupQueue();
-
-		this.scalingService.setupWorker(this.concurrency);
 	}
 
 	async run() {
-		this.logger.info('\nn8n worker is now ready');
-		this.logger.info(` * Version: ${N8N_VERSION}`);
-		this.logger.info(` * Concurrency: ${this.concurrency}`);
-		this.logger.info('');
-
 		const endpointsConfig: WorkerServerEndpointsConfig = {
 			health: this.globalConfig.queue.health.active,
 			overwrites: this.globalConfig.credentials.overwrite.endpoint !== '',
 			metrics: this.globalConfig.endpoints.metrics.enable,
 		};
 
+		let workerServer: WorkerServer | undefined;
 		if (Object.values(endpointsConfig).some((e) => e)) {
-			const { WorkerServer } = await import('@/scaling/worker-server');
-			await Container.get(WorkerServer).init(endpointsConfig);
+			const { WorkerServer } = await import('@/scaling/worker-server.js');
+			workerServer = Container.get(WorkerServer);
+			await workerServer.init(endpointsConfig);
 		}
+
+		// Register the job processor only after `init()` has fully completed,
+		// so that jobs cannot be pulled before all modules and their
+		// execution contexts are available.
+		this.scalingService.setupWorker(this.concurrency);
+
+		workerServer?.markAsReady();
+
+		this.logger.info('\nn8n worker is now ready');
+		this.logger.info(` * Version: ${N8N_VERSION}`);
+		this.logger.info(` * Concurrency: ${this.concurrency}`);
+		this.logger.info('');
 
 		if (!inTest && process.stdout.isTTY) {
 			process.stdin.setRawMode(true);
@@ -182,6 +220,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 				if (key.charCodeAt(0) === 3) process.kill(process.pid, 'SIGINT'); // ctrl+c
 			});
 		}
+
+		Container.get(LoadNodesAndCredentials).releaseTypes();
 
 		// Make sure that the process does not close
 		if (!inTest) await new Promise(() => {});

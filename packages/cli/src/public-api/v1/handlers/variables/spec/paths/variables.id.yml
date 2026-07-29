@@ -1,5 +1,6 @@
 delete:
   x-eov-operation-id: deleteVariable
+  x-required-scope: variable:delete
   x-eov-operation-handler: v1/handlers/variables/variables.handler
   tags:
     - Variables
@@ -17,17 +18,20 @@ delete:
 
 put:
   x-eov-operation-id: updateVariable
+  x-required-scope: variable:update
   x-eov-operation-handler: v1/handlers/variables/variables.handler
   tags:
     - Variables
   summary: Update a variable
   description: Update a variable from your instance.
+  parameters:
+    - $ref: '../schemas/parameters/variableId.yml'
   requestBody:
     description: Payload for variable to update.
     content:
       application/json:
         schema:
-          $ref: '../schemas/variable.yml'
+          $ref: '../schemas/variable.create.yml'
     required: true
   responses:
     '204':

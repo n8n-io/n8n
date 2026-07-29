@@ -1,0 +1,9 @@
+{
+	"id": "item-flow-upstream-reference-after-replacement",
+	"prompt": "Build a Gmail and Google Calendar workflow that extracts the calendar event ID from a Gmail invite, archives the Gmail message, then fetches the Calendar event. After the archive step the Gmail node output no longer contains the extracted event ID, so keep the extracted ID available by referencing the upstream extraction step explicitly. Do not use the current $json after the Gmail archive output to read eventId.",
+	"annotations": {
+		"itemFlow": {
+			"requiresUpstreamReferenceAfterReplacement": true
+		}
+	}
+}

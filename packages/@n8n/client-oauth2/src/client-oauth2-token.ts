@@ -1,4 +1,4 @@
-import * as a from 'node:assert';
+import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from '@n8n/utils/client-assertion';
 
 import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } from './client-oauth2';
 import { DEFAULT_HEADERS } from './constants';
@@ -9,6 +9,7 @@ export interface ClientOAuth2TokenData extends Record<string, string | undefined
 	access_token: string;
 	refresh_token: string;
 	expires_in?: string;
+	n8n_expires_at?: string;
 	scope?: string | undefined;
 }
 
@@ -69,25 +70,46 @@ export class ClientOAuth2Token {
 	/**
 	 * Refresh a user access token with the refresh token.
 	 * As in RFC 6749 Section 6: https://www.rfc-editor.org/rfc/rfc6749.html#section-6
+	 * Supports PKCE flows (RFC 7636) for public clients without client secret
 	 */
 	async refresh(opts?: ClientOAuth2Options): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options, ...opts };
 
-		expects(options, 'clientSecret');
-		a.ok(this.refreshToken, 'refreshToken is required');
+		if (!this.refreshToken) {
+			throw new Error(
+				'OAuth access token expired and no refresh token is available. Please reconnect the credentials.',
+			);
+		}
 
 		const { clientId, clientSecret } = options;
 		const headers = { ...DEFAULT_HEADERS };
 		const body: Record<string, string> = {
 			refresh_token: this.refreshToken,
 			grant_type: 'refresh_token',
+			...(options.resource ? { resource: options.resource } : {}),
 		};
 
-		if (options.authentication === 'body') {
+		if (options.clientCredentialType === 'certificate') {
+			expects(options, 'clientCertificate');
 			body.client_id = clientId;
-			body.client_secret = clientSecret;
+			body.client_assertion_type = CLIENT_ASSERTION_TYPE;
+			body.client_assertion = buildClientAssertion({
+				clientId,
+				accessTokenUri: options.accessTokenUri,
+				...options.clientCertificate,
+			});
+		} else if (clientSecret) {
+			// Confidential client (traditional OAuth2 or PKCE with client secret)
+			if (options.authentication === 'body') {
+				body.client_id = clientId;
+				body.client_secret = clientSecret;
+			} else {
+				headers.Authorization = auth(clientId, clientSecret);
+			}
 		} else {
-			headers.Authorization = auth(clientId, clientSecret);
+			// Public client (PKCE without client secret per RFC 7636)
+			// Always include client_id in body for public clients
+			body.client_id = clientId;
 		}
 
 		const requestOptions = getRequestOptions(

@@ -1,0 +1,52 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+import PrimitivesColorTable from './components/PrimitivesColorTable.vue';
+
+<Meta title="Styleguide/Colour" />
+
+# Colour
+
+We have a vast, beautiful color palette out of the box. Prefer using these rather than custom colours (e.g #ff0000). These are similar to Tailwind CSS.
+
+Each colour has 13 steps ranging from lightest (50) to darkest (950).
+
+<div class="sb-unstyled">
+	<PrimitivesColorTable />
+</div>
+
+## Tokens
+
+Instead of using the raw primitive colours, it's often better to use a token. These are aliases for common use cases (e.g text color) to make it easier to keep UI consistent and flexible.
+
+### Text
+
+| Token                   | Description                                     |
+| ----------------------- | ----------------------------------------------- |
+| `--text-color`          | Default body text and primary labels.           |
+| `--text-color--subtle`  | Secondary text such as helper copy or metadata. |
+| `--text-color--subtler` | Tertiary or low-emphasis text.                  |
+| `--text-color--inverse` | Text shown on dark or inverse surfaces.         |
+
+### Background
+
+| Token                   | Description                                            |
+| ----------------------- | ------------------------------------------------------ |
+| `--background--surface` | Base surface for cards, panels, and page sections.     |
+| `--background--hover`   | Hover state for neutral interactive surfaces.          |
+| `--background--active`  | Pressed/active state for neutral interactive surfaces. |
+| `--background--success` | Success banners, badges, or confirmation surfaces.     |
+| `--background--warning` | Warning callouts and cautionary surfaces.              |
+| `--background--danger`  | Danger/error surfaces behind destructive messaging.    |
+| `--background--info`    | Informational surfaces and neutral notices.            |
+
+### Border
+
+| Token                     | Description                                       |
+| ------------------------- | ------------------------------------------------- |
+| `--border-color`          | Default border for inputs, cards, and separators. |
+| `--border-color--subtle`  | Low-contrast dividers and lightweight outlines.   |
+| `--border-color--strong`  | More prominent outlines for elevated contrast.    |
+| `--border-color--success` | Borders for success states and confirmations.     |
+| `--border-color--warning` | Borders for warning states and cautions.          |
+| `--border-color--danger`  | Borders for error states and destructive actions. |
+| `--border-color--info`    | Borders for informational states.                 |

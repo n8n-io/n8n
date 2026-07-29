@@ -13,4 +13,6 @@ export interface TabOptions<Value extends string | number> {
 	align?: 'left' | 'right';
 	to?: RouteLocationRaw;
 	notification?: boolean;
+	tag?: string;
+	preview?: boolean;
 }

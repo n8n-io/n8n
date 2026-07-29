@@ -14,6 +14,13 @@ export class SerpApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				'This node is deprecated and will not be updated in the future. Please use the official verified community node instead.',
+			name: 'oldVersionNotice',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',

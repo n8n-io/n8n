@@ -19,11 +19,13 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:unchecked": "tsc --noCheck",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch"
@@ -34,9 +36,12 @@
     "@n8n/vitest-config": "workspace:*",
     "@stylistic/eslint-plugin": "^5.0.0",
     "@types/eslint": "^9.6.1",
+    "@types/node": "catalog:",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
     "@typescript-eslint/rule-tester": "^8.35.0",
     "@typescript-eslint/utils": "^8.35.0",
+    "@typescript/native": "catalog:typescript-tooling",
     "eslint-config-prettier": "^10.1.5",
     "eslint-import-resolver-typescript": "^4.4.3",
     "eslint-plugin-import": "^2.32.0",
@@ -46,12 +51,13 @@
     "eslint-plugin-unused-imports": "^4.1.4",
     "eslint-plugin-vue": "^10.2.0",
     "globals": "^16.2.0",
-    "tsup": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript-tooling",
     "typescript-eslint": "^8.35.0",
+    "vite": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "eslint": ">= 9"
-  }
+    "eslint": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

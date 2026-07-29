@@ -16,6 +16,7 @@ export class AzureStorage implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interact with Azure Storage API',
+		schemaPath: 'Microsoft/Storage',
 		defaults: {
 			name: 'Azure Storage',
 		},

@@ -12,7 +12,6 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import RudderStack, { type constructorOptions } from '@rudderstack/rudder-sdk-node';
@@ -42,7 +41,7 @@ export class HooksService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 	) {
-		this.innerAuthMiddleware = authService.createAuthMiddleware(false);
+		this.innerAuthMiddleware = authService.createAuthMiddleware({ allowSkipMFA: false });
 	}
 
 	/**

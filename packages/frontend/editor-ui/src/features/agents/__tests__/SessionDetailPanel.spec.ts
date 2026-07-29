@@ -1,0 +1,297 @@
+/* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
+import { describe, it, expect, vi } from 'vitest';
+import { mount } from '@vue/test-utils';
+import { createRouter, createMemoryHistory, type Router } from 'vue-router';
+import SessionDetailPanel from '../components/SessionDetailPanel.vue';
+import type { TimelineItem } from '../session-timeline.types';
+
+vi.mock('../components/WorkflowExecutionLogViewer.vue', () => ({
+	default: { template: '<div data-test-id="wf-log-viewer"></div>' },
+}));
+vi.mock('../components/ToolIoView.vue', () => ({
+	default: { template: '<div data-test-id="tool-io-view"></div>' },
+}));
+vi.mock('vue-markdown-render', () => ({
+	default: { template: '<div data-test-id="markdown"><slot /></div>' },
+}));
+
+function makeRouter(): Router {
+	return createRouter({
+		history: createMemoryHistory(),
+		routes: [
+			{
+				path: '/workflow/:workflowId/executions/:executionId',
+				name: 'ExecutionPreview',
+				component: { template: '<div/>' },
+			},
+		],
+	});
+}
+
+function mountIt(item: TimelineItem | null) {
+	return mount(SessionDetailPanel, {
+		props: { item },
+		global: { plugins: [makeRouter()] },
+	});
+}
+
+describe('SessionDetailPanel — integration action cards', () => {
+	const cardInput = {
+		action: 'respond',
+		input: {
+			message: {
+				card: {
+					title: 'Renewal Risk',
+					components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+				},
+			},
+		},
+	};
+
+	it('renders the interaction card for any <platform>_action tool call', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'slack_action',
+			toolInput: cardInput,
+			toolOutput: { type: 'button', value: 'approve' },
+		});
+		expect(w.text()).toContain('Renewal Risk');
+		expect(w.text()).toContain('Approve');
+	});
+
+	it('renders the interaction card for chat_action with JSON-string input', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'chat_action',
+			toolInput: JSON.stringify(cardInput),
+			toolOutput: { ok: true },
+		});
+		expect(w.text()).toContain('Renewal Risk');
+	});
+
+	it('falls back to JSON for tool calls without a card', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'slack_action',
+			toolInput: { action: 'add_reaction', input: { emoji: 'tada' } },
+			toolOutput: { ok: true },
+		});
+		expect(w.text()).not.toContain('Renewal Risk');
+		// Raw JSON view is shown instead of a card.
+		expect(w.text()).toContain('"add_reaction"');
+	});
+});
+
+describe('SessionDetailPanel — workflow branches', () => {
+	it('renders the WorkflowExecutionLogViewer when workflowExecutionId is set', () => {
+		const w = mountIt({
+			kind: 'workflow',
+			executionId: 'e1',
+			timestamp: 0,
+			workflowId: 'wf-1',
+			workflowName: 'WF',
+			workflowExecutionId: 'exec-1',
+		});
+		expect(w.find('[data-test-id="wf-log-viewer"]').exists()).toBe(true);
+	});
+
+	it('opens the full execution in a new tab when the header button is clicked', async () => {
+		const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const w = mountIt({
+			kind: 'workflow',
+			executionId: 'e1',
+			timestamp: 0,
+			workflowId: 'wf-1',
+			workflowName: 'WF',
+			workflowExecutionId: 'exec-1',
+		});
+		const button = w.find('[data-test-id="open-full-execution"]');
+		expect(button.exists()).toBe(true);
+		await button.trigger('click');
+		expect(openSpy).toHaveBeenCalledWith(
+			expect.stringContaining('/workflow/wf-1/executions/exec-1'),
+			'_blank',
+			'noopener',
+		);
+		openSpy.mockRestore();
+	});
+
+	it('does not show the open-full-execution button for non-workflow rows', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'http',
+			toolInput: {},
+			toolOutput: {},
+		});
+		expect(w.find('[data-test-id="open-full-execution"]').exists()).toBe(false);
+	});
+
+	it('renders the form-link card when triggerType is "form" and toolOutput has formUrl', () => {
+		const w = mountIt({
+			kind: 'workflow',
+			executionId: 'e1',
+			timestamp: 0,
+			workflowId: 'wf-1',
+			workflowName: 'Form WF',
+			workflowTriggerType: 'form',
+			toolOutput: { status: 'form_link_sent', formUrl: 'https://x/form', message: 'Please fill' },
+		});
+		expect(w.find('[data-test-id="wf-form-card"]').exists()).toBe(true);
+		const link = w.find('[data-test-id="wf-form-card"] a[target="_blank"]');
+		expect(link.attributes('href')).toBe('https://x/form');
+	});
+
+	it('renders error fallback when neither executionId nor form data present', () => {
+		const w = mountIt({
+			kind: 'workflow',
+			executionId: 'e1',
+			timestamp: 0,
+			workflowId: 'wf-1',
+			workflowName: 'WF',
+			toolSuccess: false,
+			toolOutput: { error: 'boom' },
+		});
+		expect(w.find('[data-test-id="wf-error-fallback"]').exists()).toBe(true);
+	});
+});
+
+describe('SessionDetailPanel — other kinds', () => {
+	it('renders Input/Output JSON sections for generic tool calls', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'http',
+			toolInput: { method: 'GET' },
+			toolOutput: { ok: true },
+		});
+		expect(w.text()).toContain('Input');
+		expect(w.text()).toContain('Output');
+		// Tool kind should NOT use ToolIoView (it's reserved for node-backed calls).
+		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(false);
+	});
+
+	it('renders the ToolIoView for node tool calls', () => {
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'http-tool',
+			nodeType: 'n8n-nodes-base.httpRequest',
+			nodeTypeVersion: 4.2,
+			nodeDisplayName: 'HTTP Request',
+			toolInput: { url: 'https://x' },
+			toolOutput: { status: 200 },
+		});
+		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(true);
+	});
+
+	it('shows the error callout with the output message when a node tool call fails', () => {
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'telegram-tool',
+			nodeType: 'n8n-nodes-base.telegramTool',
+			nodeTypeVersion: 1.2,
+			nodeDisplayName: 'Telegram',
+			toolInput: { chatId: '1' },
+			toolOutput: { error: 'Node does not have any credentials set' },
+			toolSuccess: false,
+		});
+		const callout = w.find('[data-test-id="node-error-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain(
+			'Tool experienced an error: Node does not have any credentials set',
+		);
+	});
+
+	it('falls back to the prefix-only message when the failed node output has no error string', () => {
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'telegram-tool',
+			nodeType: 'n8n-nodes-base.telegramTool',
+			nodeTypeVersion: 1.2,
+			nodeDisplayName: 'Telegram',
+			toolInput: { chatId: '1' },
+			toolOutput: {},
+			toolSuccess: false,
+		});
+		const callout = w.find('[data-test-id="node-error-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('Tool experienced an error');
+		expect(callout.text()).not.toContain(':');
+	});
+
+	it('does not show the error callout when the node tool call succeeded', () => {
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'http-tool',
+			nodeType: 'n8n-nodes-base.httpRequest',
+			nodeTypeVersion: 4.2,
+			nodeDisplayName: 'HTTP Request',
+			toolInput: { url: 'https://x' },
+			toolOutput: { status: 200 },
+			toolSuccess: true,
+		});
+		expect(w.find('[data-test-id="node-error-callout"]').exists()).toBe(false);
+	});
+
+	it('renders markdown for user messages', () => {
+		const w = mountIt({ kind: 'user', executionId: 'e1', timestamp: 0, content: 'hi' });
+		expect(w.find('[data-test-id="markdown"]').exists()).toBe(true);
+	});
+
+	it('renders plain-text agent messages as markdown', () => {
+		const w = mountIt({ kind: 'agent', executionId: 'e1', timestamp: 0, content: 'Hello there' });
+		expect(w.find('[data-test-id="markdown"]').exists()).toBe(true);
+		expect(w.find('pre').exists()).toBe(false);
+	});
+
+	it('pretty-prints an agent message whose content is structured JSON output', () => {
+		const w = mountIt({
+			kind: 'agent',
+			executionId: 'e1',
+			timestamp: 0,
+			content: '{"city":"Tokyo","country":"Japan","population_millions":14.04}',
+		});
+		// JSON output is rendered in a <pre>, not via markdown.
+		expect(w.find('[data-test-id="markdown"]').exists()).toBe(false);
+		const pre = w.find('pre');
+		expect(pre.exists()).toBe(true);
+		expect(pre.text()).toContain('city');
+		expect(pre.text()).toContain('Tokyo');
+		expect(pre.text()).toContain('population_millions');
+		// Pretty-printed across multiple lines rather than a single raw string.
+		expect(pre.text().split('\n').length).toBeGreaterThan(1);
+	});
+
+	it('keeps markdown for an agent message that is valid JSON but not an object', () => {
+		const w = mountIt({ kind: 'agent', executionId: 'e1', timestamp: 0, content: '42' });
+		expect(w.find('[data-test-id="markdown"]').exists()).toBe(true);
+		expect(w.find('pre').exists()).toBe(false);
+	});
+
+	it('emits close when the close button is clicked', async () => {
+		const w = mountIt({ kind: 'user', executionId: 'e1', timestamp: 0, content: 'hi' });
+		await w.find('[data-test-id="detail-close"]').trigger('click');
+		expect(w.emitted('close')).toBeTruthy();
+	});
+
+	it('renders the empty state when item is null', () => {
+		const w = mountIt(null);
+		expect(w.text().toLowerCase()).toContain('select');
+	});
+});

@@ -1,0 +1,69 @@
+@use '../../design-system/src/css/base.scss';
+@use '../../design-system/src/css/reset.scss';
+@use '../../design-system/src/css/index.scss';
+
+.multi-container > * {
+	margin-bottom: 10px;
+}
+
+#storybook-root > div:not([class]) > *,
+#storybook-root > * {
+	margin: var(--spacing--5xs);
+}
+
+body {
+	padding: 0 !important;
+}
+
+.story {
+	padding: 2rem;
+	display: flex;
+	gap: 1rem;
+}
+
+.theme-side-by-side {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+}
+
+.theme-side-by-side__panel {
+	position: relative;
+	padding: var(--spacing--md);
+	background: var(--background--surface);
+	color: var(--text-color);
+	border-radius: var(--radius--lg);
+	overflow: auto;
+
+	&[data-theme='light'] {
+		border: var(--border);
+	}
+}
+
+.sbdocs .sbdocs-content table:not(.sbdocs-preview table, .docs-story table) {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size--2xs);
+	margin-block: var(--spacing--2xl);
+}
+
+.sbdocs .sbdocs-content th:not(.sbdocs-preview th, .docs-story th),
+.sbdocs .sbdocs-content td:not(.sbdocs-preview td, .docs-story td) {
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	text-align: left;
+	border-bottom: 1px solid var(--color--neutral-300);
+}
+
+.sbdocs .sbdocs-content th:not(.sbdocs-preview th, .docs-story th) {
+	font-weight: var(--font-weight--bold);
+}
+
+/*
+ * The prose-table styling above is meant for Markdown/args tables in docs. Rendered component
+ * previews live inside `.sb-story` and bring their own table styling (e.g. N8nDataTableServer),
+ * so the docs prose block margin must not leak in — otherwise it pushes the header row down and
+ * leaves an empty gap at the top of the table card.
+ */
+.sbdocs .sbdocs-content .sb-story table {
+	margin-block: 0;
+}

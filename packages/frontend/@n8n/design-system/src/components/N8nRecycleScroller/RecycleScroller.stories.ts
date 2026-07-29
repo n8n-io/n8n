@@ -1,12 +1,20 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 import type { ComponentInstance } from 'vue';
 
 import N8nRecycleScroller from './RecycleScroller.vue';
 
 export default {
-	title: 'Atoms/RecycleScroller',
+	title: 'Core/RecycleScroller',
 	component: N8nRecycleScroller,
 	argTypes: {},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A virtualized list container for efficiently rendering large datasets.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args) => ({

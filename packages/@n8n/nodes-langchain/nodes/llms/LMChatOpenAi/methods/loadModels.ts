@@ -1,7 +1,10 @@
+import { getProxyAgent } from '@n8n/ai-utilities';
+import { listOpenAiModels } from '@n8n/ai-utilities/model-discovery';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import OpenAI from 'openai';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
+import { mergeCustomHeaders } from '../../../../utils/helpers';
 
 export async function searchModels(
 	this: ILoadOptionsFunctions,
@@ -12,43 +15,25 @@ export async function searchModels(
 		(this.getNodeParameter('options.baseURL', '') as string) ||
 		(credentials.url as string) ||
 		'https://api.openai.com/v1';
+	const { openAiDefaultHeaders } = Container.get(AiConfig);
+	const headers = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
-	const openai = new OpenAI({
-		baseURL,
+	// Shared with the agents model catalog: endpoint, auth, chat-model filtering
+	// (including include-all on custom hosts) live in @n8n/ai-utilities/model-discovery.
+	const models = await listOpenAiModels({
 		apiKey: credentials.apiKey as string,
-		fetchOptions: {
-			dispatcher: getProxyAgent(baseURL),
-		},
+		baseURL,
+		headers,
+		fetch: async (url, init) =>
+			await fetch(url, {
+				...init,
+				dispatcher: getProxyAgent(baseURL),
+			} as RequestInit),
 	});
-	const { data: models = [] } = await openai.models.list();
-
-	const filteredModels = models.filter((model: { id: string }) => {
-		const url = baseURL && new URL(baseURL);
-		const isCustomAPI = url && url.hostname !== 'api.openai.com';
-		// Filter out TTS, embedding, image generation, and other models
-		const isInvalidModel =
-			!isCustomAPI &&
-			(model.id.startsWith('babbage') ||
-				model.id.startsWith('davinci') ||
-				model.id.startsWith('computer-use') ||
-				model.id.startsWith('dall-e') ||
-				model.id.startsWith('text-embedding') ||
-				model.id.startsWith('tts') ||
-				model.id.startsWith('whisper') ||
-				model.id.startsWith('omni-moderation') ||
-				(model.id.startsWith('gpt-') && model.id.includes('instruct')));
-
-		if (!filter) return !isInvalidModel;
-
-		return !isInvalidModel && model.id.toLowerCase().includes(filter.toLowerCase());
-	});
-
-	filteredModels.sort((a, b) => a.id.localeCompare(b.id));
 
 	return {
-		results: filteredModels.map((model: { id: string }) => ({
-			name: model.id,
-			value: model.id,
-		})),
+		results: models
+			.filter((model) => !filter || model.id.toLowerCase().includes(filter.toLowerCase()))
+			.map((model) => ({ name: model.id, value: model.id })),
 	};
 }

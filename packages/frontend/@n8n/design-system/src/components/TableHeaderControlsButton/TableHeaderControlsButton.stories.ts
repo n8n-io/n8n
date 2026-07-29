@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
 import TableHeaderControlsButton from './TableHeaderControlsButton.vue';
@@ -14,7 +14,7 @@ interface StoryArgs {
 }
 
 export default {
-	title: 'Modules/TableHeaderControlsButton',
+	title: 'Tables/TableHeaderControlsButton',
 	component: TableHeaderControlsButton,
 };
 

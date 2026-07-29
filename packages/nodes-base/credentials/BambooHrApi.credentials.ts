@@ -5,7 +5,7 @@ export class BambooHrApi implements ICredentialType {
 
 	displayName = 'BambooHR API';
 
-	documentationUrl = 'bambooHr';
+	documentationUrl = 'bamboohr';
 
 	properties: INodeProperties[] = [
 		{

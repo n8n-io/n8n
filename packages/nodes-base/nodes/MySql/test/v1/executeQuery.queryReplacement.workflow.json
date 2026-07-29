@@ -1,0 +1,114 @@
+{
+	"name": "mysql v1 query parameters",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "userId",
+							"stringValue": "1 OR 1=1"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [680, 460]
+		},
+		{
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "select * from users where id = $1",
+				"options": {
+					"queryReplacement": "={{ $json.userId }}"
+				}
+			},
+			"id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+			"name": "Run query",
+			"type": "n8n-nodes-base.mySql",
+			"typeVersion": 1,
+			"position": [900, 460],
+			"credentials": {
+				"mySql": {
+					"id": "93",
+					"name": "MySQL account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80",
+			"name": "No Operation, do nothing1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1120, 460]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Run query",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Run query": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "b1c2d3e4-f5a6-4071-8293-a4b5c6d7e8f9",
+	"id": "QueryParamsTestWf01",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

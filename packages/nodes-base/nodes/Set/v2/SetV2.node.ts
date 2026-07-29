@@ -20,7 +20,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'set',
 	iconColor: 'blue',
 	group: ['input'],
-	version: [3, 3.1, 3.2, 3.3, 3.4],
+	version: [3, 3.1, 3.2, 3.3, 3.4, 3.5],
 	description: 'Modify, add, or remove item fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
@@ -56,6 +56,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'boolean',
 			default: false,
 			isNodeSetting: true,
+			description: 'Whether this item should be duplicated a set number of times',
 		},
 		{
 			displayName: 'Duplicate Item Count',

@@ -1,3 +1,6 @@
+import { Time } from '@n8n/constants';
+import z from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
 
 @Config
@@ -38,7 +41,66 @@ class QueueRecoveryConfig {
 }
 
 @Config
+class RecoveryConfig {
+	/**
+	 * Number of last executions to check when determining if a workflow should be deactivated
+	 * when all of the last N executions have crashed.
+	 */
+	@Env('N8N_WORKFLOW_AUTODEACTIVATION_MAX_LAST_EXECUTIONS')
+	maxLastExecutions: number = 3;
+
+	/**
+	 * Whether to automatically deactivate workflows that have all their last executions crashed.
+	 */
+	@Env('N8N_WORKFLOW_AUTODEACTIVATION_ENABLED')
+	workflowDeactivationEnabled: boolean = false;
+}
+
+const nonNegativeIntSchema = z.coerce.number().int().nonnegative();
+
+@Config
+class QueueRetentionConfig {
+	/**
+	 * How many completed Bull jobs to keep in Redis.
+	 *
+	 * - `0` removes completed jobs immediately (default).
+	 * - `n` keeps the last `n` completed jobs and trims older ones.
+	 */
+	@Env('N8N_EXECUTIONS_QUEUE_KEEP_LAST_COMPLETED', nonNegativeIntSchema)
+	keepLastCompleted: number = 0;
+
+	/**
+	 * How many failed Bull jobs to keep in Redis.
+	 *
+	 * - `0` removes failed jobs immediately (default).
+	 * - `n` keeps the last `n` completed jobs and trims older ones.
+	 */
+	@Env('N8N_EXECUTIONS_QUEUE_KEEP_LAST_FAILED', nonNegativeIntSchema)
+	keepLastFailed: number = 0;
+}
+
+const executionModeSchema = z.enum(['regular', 'queue']);
+
+export type ExecutionMode = z.infer<typeof executionModeSchema>;
+
+@Config
 export class ExecutionsConfig {
+	/** Whether to run executions in regular mode (in-process) or scaling mode (in workers). */
+	@Env('EXECUTIONS_MODE', executionModeSchema)
+	mode: ExecutionMode = 'regular';
+
+	/**
+	 * How long (seconds) a workflow execution may run for before timeout.
+	 * On timeout, the execution will be forcefully stopped. `-1` for unlimited.
+	 * Currently unlimited by default - this default will change in a future version.
+	 */
+	@Env('EXECUTIONS_TIMEOUT')
+	timeout: number = -1;
+
+	/** Upper bound in seconds for execution timeout. Default: 1 hour. */
+	@Env('EXECUTIONS_TIMEOUT_MAX')
+	maxTimeout: number = 1 * Time.hours.toSeconds;
+
 	/** Whether to delete past executions on a rolling basis. */
 	@Env('EXECUTIONS_DATA_PRUNE')
 	pruneData: boolean = true;
@@ -70,4 +132,35 @@ export class ExecutionsConfig {
 
 	@Nested
 	queueRecovery: QueueRecoveryConfig;
+
+	@Nested
+	queueRetention: QueueRetentionConfig;
+
+	@Nested
+	recovery: RecoveryConfig;
+
+	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_ERROR')
+	saveDataOnError: 'all' | 'none' = 'all';
+
+	/** Whether to save execution data for successful production executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_SUCCESS')
+	saveDataOnSuccess: 'all' | 'none' = 'all';
+
+	/** Whether to save execution data as each node executes. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_PROGRESS')
+	saveExecutionProgress: boolean = false;
+
+	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
+	saveDataManualExecutions: boolean = true;
+
+	/**
+	 * Max byte size of execution run data to load for display.
+	 * Executions whose data exceeds this are returned without their run data.
+	 * Does not affect operational reads (retry, resume, crash recovery).
+	 * `0` disables.
+	 */
+	@Env('EXECUTIONS_DATA_MAX_DISPLAY_SIZE')
+	maxDisplaySize: number = 100 * 1024 * 1024; // 100 MB
 }

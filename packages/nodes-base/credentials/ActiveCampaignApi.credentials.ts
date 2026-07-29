@@ -10,7 +10,7 @@ export class ActiveCampaignApi implements ICredentialType {
 
 	displayName = 'ActiveCampaign API';
 
-	documentationUrl = 'activeCampaign';
+	documentationUrl = 'activecampaign';
 
 	properties: INodeProperties[] = [
 		{

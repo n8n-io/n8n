@@ -1,2 +1,2 @@
-export * from './define';
-export * from './types';
+export * from './define.js';
+export type * from './types.ts';

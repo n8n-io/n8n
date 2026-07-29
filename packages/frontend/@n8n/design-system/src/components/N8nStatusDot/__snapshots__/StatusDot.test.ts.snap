@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`components/N8nStatusDot > should render pulse class when pulse is enabled 1`] = `"<span class="success pulse" aria-hidden="true"></span>"`;
+
+exports[`components/N8nStatusDot > should render success variant without pulse by default 1`] = `"<span class="success" aria-hidden="true"></span>"`;

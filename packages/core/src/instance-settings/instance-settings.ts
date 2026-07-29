@@ -3,8 +3,9 @@ import { InstanceSettingsConfig } from '@n8n/config';
 import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { toResult } from '@n8n/utils/result';
 import { createHash, randomBytes } from 'crypto';
-import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
+import { UserError, jsonParse, ALPHABET } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -20,6 +21,9 @@ interface ReadOnlySettings {
 
 interface WritableSettings {
 	tunnelSubdomain?: string;
+
+	/** Whether `~/.n8n/binaryData` has been migrated to `~/.n8n/storage` */
+	fsStorageMigrated?: boolean;
 }
 
 type Settings = ReadOnlySettings & WritableSettings;
@@ -38,6 +42,9 @@ export class InstanceSettings {
 	/** The path to the folder containing installed nodes (like community nodes) */
 	readonly nodesDownloadDir = path.join(this.n8nFolder, 'nodes');
 
+	/** The path to the folder containing generated node definitions (types + schemas) for the workflow SDK */
+	readonly nodeDefinitionsDir = path.join(this.n8nFolder, 'node-definitions');
+
 	private readonly settingsFile = path.join(this.n8nFolder, 'config');
 
 	readonly enforceSettingsFilePermissions = this.loadEnforceSettingsFilePermissionsFlag();
@@ -46,13 +53,21 @@ export class InstanceSettings {
 
 	/**
 	 * Fixed ID of this n8n instance, for telemetry.
-	 * Derived from encryption key. Do not confuse with `hostId`.
+	 * Derived from encryption key on first boot, then read from DB.
+	 * Do not confuse with `hostId`.
 	 *
 	 * @example '258fce876abf5ea60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9'
 	 */
-	readonly instanceId: string;
+	instanceId: string;
 
-	readonly hmacSignatureSecret: string;
+	/**
+	 * Encryption-key-derived value of `instanceId`, before any env or DB
+	 * override is applied by `initialize()`. Used as the license device
+	 * fingerprint when the override is too short for the license server.
+	 */
+	readonly derivedInstanceId: string;
+
+	hmacSignatureSecret: string;
 
 	readonly instanceType: InstanceType;
 
@@ -65,8 +80,87 @@ export class InstanceSettings {
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
-		this.instanceId = this.generateInstanceId();
+		this.derivedInstanceId = this.generateInstanceId();
+		this.instanceId = this.derivedInstanceId;
 		this.hmacSignatureSecret = this.getOrGenerateHmacSignatureSecret();
+	}
+
+	/**
+	 * Two-phase init: reads or creates deployment-key rows for instance.id and signing.hmac.
+	 * Must be called after DB migrations complete, before license init.
+	 *
+	 * Precedence for each key: env var → DB active row → derive-from-key (and persist).
+	 *
+	 * When `canSeed` is false, missing rows are not created: only server
+	 * processes hold the deployment's encryption key, so a one-off CLI command
+	 * must not pin the identity for the whole deployment.
+	 *
+	 * The repo parameter is typed inline rather than imported from @n8n/db to
+	 * avoid a circular package dependency: @n8n/db depends on n8n-core at runtime.
+	 */
+	async initialize(
+		repo: {
+			findActiveByType(type: string): Promise<{ value: string } | null>;
+			insertOrIgnore(entity: {
+				type: string;
+				value: string;
+				status: string;
+				algorithm: null;
+			}): Promise<void>;
+		},
+		{ canSeed = true }: { canSeed?: boolean } = {},
+	): Promise<void> {
+		await this.initSecret(
+			repo,
+			'instance.id',
+			process.env.N8N_INSTANCE_ID,
+			canSeed,
+			() => this.instanceId,
+			(v) => {
+				this.instanceId = v;
+			},
+		);
+		await this.initSecret(
+			repo,
+			'signing.hmac',
+			process.env.N8N_HMAC_SIGNATURE_SECRET,
+			canSeed,
+			() => this.hmacSignatureSecret,
+			(v) => {
+				this.hmacSignatureSecret = v;
+			},
+		);
+	}
+
+	private async initSecret(
+		repo: {
+			findActiveByType(type: string): Promise<{ value: string } | null>;
+			insertOrIgnore(entity: {
+				type: string;
+				value: string;
+				status: string;
+				algorithm: null;
+			}): Promise<void>;
+		},
+		type: string,
+		envValue: string | undefined,
+		canSeed: boolean,
+		get: () => string,
+		set: (v: string) => void,
+	): Promise<void> {
+		if (envValue) {
+			set(envValue);
+			return;
+		}
+		const existing = await repo.findActiveByType(type);
+		if (existing) {
+			set(existing.value);
+			return;
+		}
+		if (!canSeed) return;
+		await repo.insertOrIgnore({ type, value: get(), status: 'active', algorithm: null });
+		const winner = await repo.findActiveByType(type);
+		if (winner) set(winner.value);
 	}
 
 	/**
@@ -139,6 +233,14 @@ export class InstanceSettings {
 		return this.settings.tunnelSubdomain;
 	}
 
+	get fsStorageMigrated() {
+		return this.settings.fsStorageMigrated === true;
+	}
+
+	markFsStorageMigrated() {
+		this.update({ fsStorageMigrated: true });
+	}
+
 	/**
 	 * Whether this instance is running inside a Docker/Podman/Kubernetes container.
 	 */
@@ -175,7 +277,7 @@ export class InstanceSettings {
 	 * settings file with an auto-generated encryption key.
 	 */
 	private loadOrCreate(): Settings {
-		const encryptionKeyFromEnv = process.env.N8N_ENCRYPTION_KEY;
+		const encryptionKeyFromEnv = this.config.encryptionKey || undefined;
 		if (existsSync(this.settingsFile)) {
 			const content = readFileSync(this.settingsFile, 'utf8');
 			this.ensureSettingsFilePermissions();
@@ -186,15 +288,15 @@ export class InstanceSettings {
 
 			if (!inTest) this.logger.debug(`User settings loaded from: ${this.settingsFile}`);
 
-			const { encryptionKey, tunnelSubdomain } = settings;
+			const { encryptionKey, tunnelSubdomain, fsStorageMigrated } = settings;
 
 			if (encryptionKeyFromEnv && encryptionKey !== encryptionKeyFromEnv) {
-				throw new ApplicationError(
+				throw new UserError(
 					`Mismatching encryption keys. The encryption key in the settings file ${this.settingsFile} does not match the N8N_ENCRYPTION_KEY env var. Please make sure both keys match. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key`,
 				);
 			}
 
-			return { encryptionKey, tunnelSubdomain };
+			return { encryptionKey, tunnelSubdomain, fsStorageMigrated };
 		}
 
 		if (!encryptionKeyFromEnv) {
@@ -273,19 +375,15 @@ export class InstanceSettings {
 	 * Ensures that the settings file has the r/w permissions only for the owner.
 	 */
 	private ensureSettingsFilePermissions() {
-		// If the flag is explicitly set to false, skip the check
-		if (this.enforceSettingsFilePermissions.isSet && !this.enforceSettingsFilePermissions.enforce) {
-			return;
-		}
-		if (this.isWindows()) {
-			// Ignore windows as it does not support chmod. We have already logged a warning
-			return;
-		}
+		if (!this.enforceSettingsFilePermissions.enforce) return;
+
+		if (this.isWindows()) return; // ignore windows as it does not support chmod
 
 		const permissionsResult = toResult(() => {
 			const stats = statSync(this.settingsFile);
 			return stats?.mode & 0o777;
 		});
+
 		// If we can't determine the permissions, log a warning and skip the check
 		if (!permissionsResult.ok) {
 			this.logger.warn(
@@ -295,32 +393,22 @@ export class InstanceSettings {
 		}
 
 		const arePermissionsCorrect = permissionsResult.result === 0o600;
-		if (arePermissionsCorrect) {
-			return;
-		}
 
-		// If the permissions are incorrect and the flag is not set, log a warning
-		if (!this.enforceSettingsFilePermissions.isSet) {
-			this.logger.warn(
-				`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true (recommended), or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
-			);
-			// The default is false so we skip the enforcement for now
-			return;
-		}
+		if (arePermissionsCorrect) return;
 
-		if (this.enforceSettingsFilePermissions.enforce) {
+		this.logger.error(
+			`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. Changing permissions to 0600..`,
+		);
+
+		const chmodResult = toResult(() => chmodSync(this.settingsFile, 0o600));
+
+		if (!chmodResult.ok) {
+			// Some filesystems don't support permissions. In this case we log the
+			// error and ignore it. We might want to prevent the app startup in the
+			// future in this case.
 			this.logger.warn(
-				`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. Changing permissions to 0600..`,
+				`Could not enforce settings file permissions: ${chmodResult.error.message}. To skip this check, set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
 			);
-			const chmodResult = toResult(() => chmodSync(this.settingsFile, 0o600));
-			if (!chmodResult.ok) {
-				// Some filesystems don't support permissions. In this case we log the
-				// error and ignore it. We might want to prevent the app startup in the
-				// future in this case.
-				this.logger.warn(
-					`Could not enforce settings file permissions: ${chmodResult.error.message}. To skip this check, set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
-				);
-			}
 		}
 	}
 

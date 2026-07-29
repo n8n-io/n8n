@@ -1,0 +1,89 @@
+{
+	"name": "Pipedrive v2 file update test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "file",
+				"operation": "update",
+				"fileId": 2,
+				"updateFields": {
+					"name": "renamed-file.txt"
+				}
+			},
+			"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 2,
+					"user_id": 25455458,
+					"log_id": null,
+					"add_time": "2026-04-01 22:03:28",
+					"update_time": "2026-04-01 22:03:33",
+					"file_name": "3c553e3e-cb74-4a07-81d4-784a31fcc812.txt",
+					"file_size": 18,
+					"active_flag": true,
+					"inline_flag": false,
+					"remote_location": "s3",
+					"remote_id": "company/14712380/user/25455458/files/3c553e3e-cb74-4a07-81d4-784a31fcc812.txt",
+					"s3_bucket": null,
+					"url": "https://app.pipedrive.com/api/v1/files/2/download",
+					"name": "renamed-file.txt",
+					"description": null,
+					"deal_id": 8,
+					"lead_id": null,
+					"person_id": 10,
+					"org_id": 7,
+					"product_id": null,
+					"activity_id": null,
+					"deal_name": "Test Deal",
+					"lead_name": null,
+					"person_name": "John Updated",
+					"org_name": "Updated Org LLC",
+					"product_name": null,
+					"mail_message_id": null,
+					"mail_template_id": null,
+					"cid": null,
+					"file_type": "txt"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}

@@ -1,0 +1,823 @@
+import { OidcConfigDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
+import { GlobalConfig } from '@n8n/config';
+import {
+	AuthIdentity,
+	AuthIdentityRepository,
+	isValidEmail,
+	GLOBAL_MEMBER_ROLE,
+	SettingsRepository,
+	type User,
+	UserRepository,
+} from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
+import { randomUUID } from 'crypto';
+import { Cipher, InstanceSettings } from 'n8n-core';
+import { jsonParse, UserError } from 'n8n-workflow';
+import type * as openidClientTypes from 'openid-client';
+import { inspect } from 'util';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
+import {
+	assertAuthenticationMethodCanBeEnabled,
+	getCurrentAuthenticationMethod,
+	isOidcCurrentAuthenticationMethod,
+	reloadAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
+
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
+
+const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
+	clientId: '',
+	clientSecret: '',
+	discoveryEndpoint: '',
+	loginEnabled: false,
+	prompt: 'select_account',
+	authenticationContextClassReference: [],
+	additionalScopes: '',
+};
+
+type OidcRuntimeConfig = Pick<
+	OidcConfigDto,
+	| 'clientId'
+	| 'clientSecret'
+	| 'loginEnabled'
+	| 'prompt'
+	| 'authenticationContextClassReference'
+	| 'additionalScopes'
+> & {
+	discoveryEndpoint: URL;
+};
+
+const DEFAULT_OIDC_RUNTIME_CONFIG: OidcRuntimeConfig = {
+	...DEFAULT_OIDC_CONFIG,
+	discoveryEndpoint: new URL('http://n8n.io/not-set'),
+};
+
+/**
+ * Serialises arbitrary error causes for logging. `util.inspect` is circular-ref
+ * safe, so values like `fetch` `Response` objects carried on `oauth4webapi`
+ * errors get fully rendered instead of swallowed by `JSON.stringify`.
+ * `breakLength: 120` keeps individual log lines within typical shipper limits.
+ */
+function safeStringify(value: unknown): string {
+	try {
+		return inspect(value, { depth: 3, breakLength: 120 });
+	} catch {
+		try {
+			return Object.prototype.toString.call(value);
+		} catch {
+			return '[unserializable]';
+		}
+	}
+}
+
+@Service()
+export class OidcService {
+	private oidcConfig: OidcRuntimeConfig = DEFAULT_OIDC_RUNTIME_CONFIG;
+
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	private openidClient: typeof import('openid-client');
+
+	constructor(
+		private readonly settingsRepository: SettingsRepository,
+		private readonly authIdentityRepository: AuthIdentityRepository,
+		private readonly urlService: UrlService,
+		private readonly globalConfig: GlobalConfig,
+		private readonly userRepository: UserRepository,
+		private readonly cipher: Cipher,
+		private readonly logger: Logger,
+		private readonly jwtService: JwtService,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly provisioningService: ProvisioningService,
+		private readonly outboundHttp: OutboundHttp,
+	) {}
+
+	async init() {
+		this.oidcConfig = await this.loadConfig(true);
+		this.logger.debug(`OIDC login is ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`);
+		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
+		if (this.oidcConfig.loginEnabled) {
+			await this.loadOpenIdClient();
+		}
+	}
+
+	private async loadOpenIdClient() {
+		if (!this.openidClient) {
+			this.openidClient = await import('openid-client');
+		}
+	}
+
+	getCallbackUrl(): string {
+		return `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}/sso/oidc/callback`;
+	}
+
+	getRedactedConfig(): OidcConfigDto {
+		return {
+			...this.oidcConfig,
+			discoveryEndpoint: this.oidcConfig.discoveryEndpoint.toString(),
+			clientSecret: OIDC_CLIENT_SECRET_REDACTED_VALUE,
+		};
+	}
+
+	generateState(testMode = false) {
+		const state = `n8n_state:${randomUUID()}`;
+		const payload: Record<string, unknown> = { state };
+		if (testMode) {
+			payload.testMode = true;
+		}
+		return {
+			signed: this.jwtService.sign(payload, { expiresIn: '15m' }),
+			plaintext: state,
+		};
+	}
+
+	verifyState(signedState: string): { state: string; testMode?: boolean } {
+		let state: string;
+		let testMode: boolean | undefined;
+		try {
+			const decodedState = this.jwtService.verify(signedState);
+			state = decodedState?.state;
+			testMode = decodedState?.testMode;
+		} catch (error) {
+			this.logger.error('Failed to verify state', { error });
+			throw new BadRequestError('Invalid state');
+		}
+
+		if (typeof state !== 'string') {
+			this.logger.error('Provided state has an invalid format');
+			throw new BadRequestError('Invalid state');
+		}
+
+		const splitState = state.split(':');
+
+		if (splitState.length !== 2 || splitState[0] !== 'n8n_state') {
+			this.logger.error('Provided state is missing the well-known prefix');
+			throw new BadRequestError('Invalid state');
+		}
+
+		if (
+			!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+				splitState[1],
+			)
+		) {
+			this.logger.error('Provided state is not formatted correctly');
+			throw new BadRequestError('Invalid state');
+		}
+		return { state, testMode };
+	}
+
+	generateNonce() {
+		const nonce = `n8n_nonce:${randomUUID()}`;
+		return {
+			signed: this.jwtService.sign({ nonce }, { expiresIn: '15m' }),
+			plaintext: nonce,
+		};
+	}
+
+	verifyNonce(signedNonce: string) {
+		let nonce: string;
+		try {
+			const decodedNonce = this.jwtService.verify(signedNonce);
+			nonce = decodedNonce?.nonce;
+		} catch (error) {
+			this.logger.error('Failed to verify nonce', { error });
+			throw new BadRequestError('Invalid nonce');
+		}
+
+		if (typeof nonce !== 'string') {
+			this.logger.error('Provided nonce has an invalid format');
+			throw new BadRequestError('Invalid nonce');
+		}
+
+		const splitNonce = nonce.split(':');
+
+		if (splitNonce.length !== 2 || splitNonce[0] !== 'n8n_nonce') {
+			this.logger.error('Provided nonce is missing the well-known prefix');
+			throw new BadRequestError('Invalid nonce');
+		}
+
+		if (
+			!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+				splitNonce[1],
+			)
+		) {
+			this.logger.error('Provided nonce is not formatted correctly');
+			throw new BadRequestError('Invalid nonce');
+		}
+		return nonce;
+	}
+
+	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+		await this.loadOpenIdClient();
+		const configuration = await this.getOidcConfiguration();
+
+		const state = this.generateState();
+		const nonce = this.generateNonce();
+
+		const prompt = this.oidcConfig.prompt;
+		const authenticationContextClassReference = this.oidcConfig.authenticationContextClassReference;
+
+		const provisioningConfig = await this.provisioningService.getConfig();
+		const provisioningEnabled =
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles;
+
+		// Include the custom n8n scope if provisioning is enabled
+		const baseScope = provisioningEnabled
+			? `openid email profile ${provisioningConfig.scopesName}`
+			: 'openid email profile';
+
+		const additionalScopes = this.oidcConfig.additionalScopes.trim();
+		const scope = additionalScopes ? `${baseScope} ${additionalScopes}` : baseScope;
+
+		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
+			redirect_uri: this.getCallbackUrl(),
+			response_type: 'code',
+			scope,
+			prompt,
+			state: state.plaintext,
+			nonce: nonce.plaintext,
+			...(authenticationContextClassReference.length > 0 && {
+				acr_values: authenticationContextClassReference.join(' '),
+			}),
+		});
+
+		return { url: authorizationURL, state: state.signed, nonce: nonce.signed };
+	}
+
+	/**
+	 * Completes the authorization code flow and resolves the n8n user. Also
+	 * returns the raw ID token so the controller can persist it for OIDC
+	 * RP-Initiated Logout (`id_token_hint`).
+	 */
+	async loginUser(
+		callbackUrl: URL,
+		storedState: string,
+		storedNonce: string,
+	): Promise<{ user: User; idToken?: string }> {
+		await this.loadOpenIdClient();
+		const configuration = await this.getOidcConfiguration();
+
+		const { state: expectedState } = this.verifyState(storedState);
+		const expectedNonce = this.verifyNonce(storedNonce);
+
+		let tokens;
+		try {
+			tokens = await this.openidClient.authorizationCodeGrant(configuration, callbackUrl, {
+				expectedState,
+				expectedNonce,
+			});
+		} catch (error) {
+			this.logTokenExchangeError(error);
+			throw new BadRequestError('Invalid authorization code');
+		}
+
+		let claims;
+		try {
+			claims = tokens.claims();
+		} catch (error) {
+			this.logger.error('Failed to extract claims from tokens', { error });
+			throw new BadRequestError('Invalid token');
+		}
+
+		if (!claims) {
+			throw new ForbiddenError('No claims found in the OIDC token');
+		}
+
+		let userInfo;
+		try {
+			userInfo = await this.openidClient.fetchUserInfo(
+				configuration,
+				tokens.access_token,
+				claims.sub,
+			);
+		} catch (error) {
+			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
+			throw new BadRequestError('Invalid token');
+		}
+
+		if (!userInfo.email) {
+			throw new BadRequestError('An email is required');
+		}
+
+		if (!isValidEmail(userInfo.email)) {
+			throw new BadRequestError('Invalid email format');
+		}
+
+		await this.assertProvisioningLoginAllowed(
+			claims as Record<string, unknown>,
+			userInfo as Record<string, unknown>,
+		);
+
+		const openidUser = await this.authIdentityRepository.findOne({
+			where: { providerId: claims.sub, providerType: 'oidc' },
+			relations: {
+				user: {
+					role: true,
+				},
+			},
+		});
+
+		if (openidUser) {
+			await this.applySsoProvisioning(
+				openidUser.user,
+				claims as Record<string, unknown>,
+				userInfo as Record<string, unknown>,
+			);
+
+			return { user: openidUser.user, idToken: tokens.id_token };
+		}
+
+		const foundUser = await this.userRepository.findOne({
+			where: { email: userInfo.email },
+			relations: ['authIdentities', 'role'],
+		});
+
+		if (foundUser) {
+			this.logger.debug(
+				`OIDC login: User with email ${userInfo.email} already exists, linking OIDC identity.`,
+			);
+			// If the user already exists, we just add the OIDC identity to the user
+			const id = this.authIdentityRepository.create({
+				providerId: claims.sub,
+				providerType: 'oidc',
+				userId: foundUser.id,
+			});
+
+			await this.authIdentityRepository.save(id);
+			await this.applySsoProvisioning(
+				foundUser,
+				claims as Record<string, unknown>,
+				userInfo as Record<string, unknown>,
+			);
+
+			return { user: foundUser, idToken: tokens.id_token };
+		}
+
+		const user = await this.userRepository.manager.transaction(async (trx) => {
+			const { user: newUser } = await this.userRepository.createUserWithProject(
+				{
+					firstName: userInfo.given_name,
+					lastName: userInfo.family_name,
+					email: userInfo.email,
+					authIdentities: [],
+					role: GLOBAL_MEMBER_ROLE,
+					password: 'no password set',
+				},
+				trx,
+			);
+
+			await trx.save(
+				trx.create(AuthIdentity, {
+					providerId: claims.sub,
+					providerType: 'oidc',
+					userId: newUser.id,
+				}),
+			);
+
+			return newUser;
+		});
+
+		await this.applySsoProvisioning(
+			user,
+			claims as Record<string, unknown>,
+			userInfo as Record<string, unknown>,
+		);
+
+		return { user, idToken: tokens.id_token };
+	}
+
+	/**
+	 * Encrypts the OIDC ID token with the instance encryption key so it can
+	 * be stored in an httpOnly cookie without exposing its claims.
+	 */
+	async encryptIdToken(idToken: string): Promise<string> {
+		return await this.cipher.encryptV2(idToken);
+	}
+
+	/**
+	 * Decrypts a previously stored OIDC ID token. Returns `undefined` when
+	 * the value cannot be decrypted (e.g. tampered cookie or rotated
+	 * encryption key), in which case sign-out degrades to a local logout.
+	 */
+	async decryptIdToken(encryptedIdToken: string): Promise<string | undefined> {
+		try {
+			const idToken = await this.cipher.decryptV2(encryptedIdToken);
+			return idToken === '' ? undefined : idToken;
+		} catch (error) {
+			this.logger.warn('Failed to decrypt the stored OIDC ID token', {
+				cause: safeStringify(error),
+			});
+			return undefined;
+		}
+	}
+
+	/**
+	 * Builds the OIDC RP-Initiated Logout URL from the provider's discovered
+	 * metadata, including the `id_token_hint` required by the specification.
+	 * Returns `undefined` when the provider does not advertise an
+	 * `end_session_endpoint`, in which case sign-out is local to n8n only.
+	 */
+	async generateEndSessionUrl(idToken: string): Promise<URL | undefined> {
+		await this.loadOpenIdClient();
+		const configuration = await this.getOidcConfiguration();
+
+		if (!configuration.serverMetadata().end_session_endpoint) {
+			this.logger.debug(
+				'The OIDC provider does not advertise an end_session_endpoint, skipping RP-initiated logout',
+			);
+			return undefined;
+		}
+
+		return this.openidClient.buildEndSessionUrl(configuration, {
+			id_token_hint: idToken,
+			post_logout_redirect_uri: `${this.urlService.getInstanceBaseUrl()}/signin`,
+		});
+	}
+
+	async generateTestLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+		await this.loadOpenIdClient();
+		const config = await this.loadConfig(true);
+
+		const configuration = await this.createProxyAwareConfiguration(
+			config.discoveryEndpoint,
+			config.clientId,
+			config.clientSecret,
+		);
+
+		const state = this.generateState(true);
+		const nonce = this.generateNonce();
+
+		const provisioningConfig = await this.provisioningService.getConfig();
+		const provisioningEnabled =
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles;
+
+		const baseScope = provisioningEnabled
+			? `openid email profile ${provisioningConfig.scopesName}`
+			: 'openid email profile';
+
+		const additionalScopes = config.additionalScopes.trim();
+		const scope = additionalScopes ? `${baseScope} ${additionalScopes}` : baseScope;
+
+		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
+			redirect_uri: this.getCallbackUrl(),
+			response_type: 'code',
+			scope,
+			prompt: config.prompt,
+			state: state.plaintext,
+			nonce: nonce.plaintext,
+			...(config.authenticationContextClassReference.length > 0 && {
+				acr_values: config.authenticationContextClassReference.join(' '),
+			}),
+		});
+
+		return { url: authorizationURL, state: state.signed, nonce: nonce.signed };
+	}
+
+	async processTestCallback(
+		callbackUrl: URL,
+		storedState: string,
+		storedNonce: string,
+	): Promise<{ claims: Record<string, unknown>; userInfo: Record<string, unknown> }> {
+		await this.loadOpenIdClient();
+		const config = await this.loadConfig(true);
+
+		const configuration = await this.createProxyAwareConfiguration(
+			config.discoveryEndpoint,
+			config.clientId,
+			config.clientSecret,
+		);
+
+		const { state: expectedState } = this.verifyState(storedState);
+		const expectedNonce = this.verifyNonce(storedNonce);
+
+		let tokens;
+		try {
+			tokens = await this.openidClient.authorizationCodeGrant(configuration, callbackUrl, {
+				expectedState,
+				expectedNonce,
+			});
+		} catch (error) {
+			this.logTokenExchangeError(error);
+			throw new BadRequestError('Invalid authorization code');
+		}
+
+		let claims;
+		try {
+			claims = tokens.claims();
+		} catch (error) {
+			this.logger.error('Failed to extract claims from tokens', { error });
+			throw new BadRequestError('Invalid token');
+		}
+
+		if (!claims) {
+			throw new ForbiddenError('No claims found in the OIDC token');
+		}
+
+		let userInfo;
+		try {
+			userInfo = await this.openidClient.fetchUserInfo(
+				configuration,
+				tokens.access_token,
+				claims.sub,
+			);
+		} catch (error) {
+			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
+			throw new BadRequestError('Invalid token');
+		}
+
+		return {
+			claims: { ...claims },
+			userInfo: { ...userInfo },
+		};
+	}
+
+	/**
+	 * Logs a token-exchange failure with structured oauth2 fields.
+	 * Uses a type guard rather than `as`-cast so TypeScript narrows the shape
+	 * safely; reads fields defensively for any non-object thrown value.
+	 * `cause` is omitted because oauth4webapi's ResponseBodyError stores the
+	 * parsed {error, error_description} JSON as its `.cause`, which would
+	 * duplicate the top-level `oauthError`/`oauthErrorDescription` fields.
+	 */
+	private logTokenExchangeError(error: unknown): void {
+		const isOAuthError = (e: unknown): e is Record<string, unknown> =>
+			typeof e === 'object' && e !== null;
+		const e = isOAuthError(error) ? error : {};
+		this.logger.error('Failed to exchange authorization code for tokens', {
+			oauthError: typeof e.error === 'string' ? e.error : undefined,
+			oauthErrorDescription:
+				typeof e.error_description === 'string' ? e.error_description : undefined,
+			code: typeof e.code === 'string' ? e.code : undefined,
+			message: error instanceof Error ? error.message : safeStringify(error),
+		});
+	}
+
+	private async applySsoProvisioning(
+		user: User,
+		claims: Record<string, unknown>,
+		userInfo: Record<string, unknown>,
+	) {
+		if (await this.provisioningService.isExpressionMappingEnabled()) {
+			const context = buildOidcClaimsContext(claims, userInfo);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			return;
+		}
+
+		const provisioningConfig = await this.provisioningService.getConfig();
+		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
+		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
+		// Called even when the claim is missing so the configured default condition applies
+		await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
+		if (projectRoleMapping) {
+			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
+		}
+	}
+
+	/**
+	 * Denies the login (before any account is created or session issued) when
+	 * role mapping resolves to Block access.
+	 */
+	private async assertProvisioningLoginAllowed(
+		claims: Record<string, unknown>,
+		userInfo: Record<string, unknown>,
+	) {
+		const provisioningConfig = await this.provisioningService.getConfig();
+		await this.provisioningService.assertSsoLoginAllowed(
+			buildOidcClaimsContext(claims, userInfo),
+			claims[provisioningConfig.scopesInstanceRoleClaimName],
+		);
+	}
+
+	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
+		if (this.instanceSettings.isMultiMain) {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			await Container.get(Publisher).publishCommand({ command: 'reload-oidc-config' });
+		}
+	}
+
+	private isReloading = false;
+
+	@OnPubSubEvent('reload-oidc-config')
+	async reload(): Promise<void> {
+		if (this.isReloading) {
+			this.logger.warn('OIDC configuration reload already in progress');
+			return;
+		}
+		this.isReloading = true;
+		try {
+			this.logger.debug('OIDC configuration changed, starting to load it from the database');
+			const configFromDB = await this.loadConfigurationFromDatabase(true);
+			if (configFromDB) {
+				this.oidcConfig = configFromDB;
+				this.cachedOidcConfiguration = undefined;
+			} else {
+				this.logger.warn('OIDC configuration not found in database, ignoring reload message');
+			}
+			await reloadAuthenticationMethod();
+
+			const isOidcLoginEnabled = isOidcCurrentAuthenticationMethod();
+
+			this.logger.debug(`OIDC login is now ${isOidcLoginEnabled ? 'enabled' : 'disabled'}.`);
+
+			Container.get(GlobalConfig).sso.oidc.loginEnabled = isOidcLoginEnabled;
+		} catch (error) {
+			this.logger.error('OIDC configuration changed, failed to reload OIDC configuration', {
+				error,
+			});
+		} finally {
+			this.isReloading = false;
+		}
+	}
+
+	async loadConfigurationFromDatabase(
+		decryptSecret = false,
+	): Promise<OidcRuntimeConfig | undefined> {
+		const configFromDB = await this.settingsRepository.findByKey(OIDC_PREFERENCES_DB_KEY);
+
+		if (configFromDB) {
+			try {
+				const configValue = jsonParse<OidcConfigDto>(configFromDB.value);
+
+				if (configValue.discoveryEndpoint === '') return undefined;
+
+				const oidcConfig = OidcConfigDto.parse(configValue);
+
+				const discoveryUrl = new URL(oidcConfig.discoveryEndpoint);
+
+				if (oidcConfig.clientSecret && decryptSecret) {
+					oidcConfig.clientSecret = await this.cipher.decryptV2(oidcConfig.clientSecret);
+				}
+				return {
+					...oidcConfig,
+					discoveryEndpoint: discoveryUrl,
+				};
+			} catch (error) {
+				this.logger.warn(
+					'Failed to load OIDC configuration from database, falling back to default configuration.',
+
+					{ error },
+				);
+			}
+		}
+		return undefined;
+	}
+
+	async loadConfig(decryptSecret = false): Promise<OidcRuntimeConfig> {
+		const currentConfig = await this.loadConfigurationFromDatabase(decryptSecret);
+
+		if (currentConfig) {
+			return currentConfig;
+		}
+
+		return DEFAULT_OIDC_RUNTIME_CONFIG;
+	}
+
+	async updateConfig(newConfig: OidcConfigDto) {
+		if (newConfig.loginEnabled) {
+			assertAuthenticationMethodCanBeEnabled('oidc');
+		}
+
+		let discoveryEndpoint: URL;
+		try {
+			// Validating that discoveryEndpoint is a valid URL
+			discoveryEndpoint = new URL(newConfig.discoveryEndpoint);
+		} catch (error) {
+			this.logger.error(`The provided endpoint is not a valid URL: ${newConfig.discoveryEndpoint}`);
+			throw new UserError('Provided discovery endpoint is not a valid URL');
+		}
+		if (newConfig.clientSecret === OIDC_CLIENT_SECRET_REDACTED_VALUE) {
+			newConfig.clientSecret = this.oidcConfig.clientSecret;
+		}
+		try {
+			const discoveredMetadata = await this.createProxyAwareConfiguration(
+				discoveryEndpoint,
+				newConfig.clientId,
+				newConfig.clientSecret,
+			);
+			// TODO: validate Metadata against features
+			this.logger.debug(`Discovered OIDC metadata: ${JSON.stringify(discoveredMetadata)}`);
+		} catch (error) {
+			this.logger.error('Failed to discover OIDC metadata', { error });
+			throw new UserError('Failed to discover OIDC metadata, based on the provided configuration');
+		}
+		await this.settingsRepository.save({
+			key: OIDC_PREFERENCES_DB_KEY,
+			value: JSON.stringify({
+				...newConfig,
+				clientSecret: await this.cipher.encryptV2(newConfig.clientSecret),
+			}),
+			loadOnStartup: true,
+		});
+
+		// TODO: Discuss this in product
+		// if (this.oidcConfig.loginEnabled && !newConfig.loginEnabled) {
+		// 	 await this.deleteAllOidcIdentities();
+		// }
+
+		this.oidcConfig = {
+			...newConfig,
+			discoveryEndpoint,
+		};
+		this.cachedOidcConfiguration = undefined; // reset cached configuration
+		this.logger.debug(
+			`OIDC login is now ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`,
+		);
+
+		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
+
+		await this.broadcastReloadOIDCConfigurationCommand();
+	}
+
+	private async setOidcLoginEnabled(enabled: boolean): Promise<void> {
+		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
+
+		if (enabled) {
+			assertAuthenticationMethodCanBeEnabled('oidc');
+		}
+
+		const targetAuthenticationMethod =
+			!enabled && currentAuthenticationMethod === 'oidc' ? 'email' : currentAuthenticationMethod;
+
+		Container.get(GlobalConfig).sso.oidc.loginEnabled = enabled;
+		await setCurrentAuthenticationMethod(enabled ? 'oidc' : targetAuthenticationMethod);
+	}
+
+	private cachedOidcConfiguration:
+		| ({
+				configuration: Promise<openidClientTypes.Configuration>;
+				validTill: Date;
+		  } & OidcRuntimeConfig)
+		| undefined;
+
+	/**
+	 * Creates a configuration for openid-client whose HTTP calls route through the outbound HTTP factory.
+	 */
+	private async createProxyAwareConfiguration(
+		discoveryUrl: URL,
+		clientId: string,
+		clientSecret: string,
+	): Promise<openidClientTypes.Configuration> {
+		await this.loadOpenIdClient();
+
+		const customFetch = this.outboundHttp
+			.transport({
+				// SSRF is explicitly disabled: the discovery endpoint (and the issuer's
+				// token/userinfo endpoints reached with the same `customFetch`) is
+				// admin-configured and may legitimately point at an internal IdP, so enabling
+				// SSRF protection here would block valid internal setups
+				ssrf: 'disabled',
+				// `proxy` defaults = `'env'`
+			})
+			.asCustomFetch() as unknown as openidClientTypes.CustomFetch;
+
+		const configuration = await this.openidClient.discovery(
+			discoveryUrl,
+			clientId,
+			clientSecret,
+			undefined,
+			{
+				[this.openidClient.customFetch]: customFetch,
+			},
+		);
+
+		// Reuse the same fetch for token-exchange / userinfo on the returned configuration.
+		configuration[this.openidClient.customFetch] = customFetch;
+
+		return configuration;
+	}
+
+	private async getOidcConfiguration(): Promise<openidClientTypes.Configuration> {
+		const now = Date.now();
+		if (
+			this.cachedOidcConfiguration === undefined ||
+			now >= this.cachedOidcConfiguration.validTill.getTime() ||
+			this.oidcConfig.discoveryEndpoint.toString() !==
+				this.cachedOidcConfiguration.discoveryEndpoint.toString() ||
+			this.oidcConfig.clientId !== this.cachedOidcConfiguration.clientId ||
+			this.oidcConfig.clientSecret !== this.cachedOidcConfiguration.clientSecret
+		) {
+			this.cachedOidcConfiguration = {
+				...this.oidcConfig,
+				configuration: this.createProxyAwareConfiguration(
+					this.oidcConfig.discoveryEndpoint,
+					this.oidcConfig.clientId,
+					this.oidcConfig.clientSecret,
+				),
+				validTill: new Date(Date.now() + 60 * 60 * 1000), // Cache for 1 hour
+			};
+		}
+
+		return await this.cachedOidcConfiguration.configuration;
+	}
+}
