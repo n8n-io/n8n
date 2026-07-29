@@ -71,6 +71,11 @@ export function emitPackageImportedEvent(
 		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
 		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
 	});
+	// Creations count rows, not reconciled names: a name created in two projects is two
+	// variables, and every sibling count reports entities the same way. Counting names here
+	// would make "created once, found occupied elsewhere" indistinguishable from "created twice".
+	const countCreatedRows = (pick: (result: ImportOrchestrationResult) => string[]) =>
+		scopes.reduce((total, { imported }) => total + pick(imported).length, 0);
 
 	const folderId = scopes.length === 1 ? scopes[0].context.folderId : null;
 
@@ -119,8 +124,8 @@ export function emitPackageImportedEvent(
 			variables: {
 				matched: variableSummary.matched.length,
 				missing: variableSummary.missing.length,
-				created: variableSummary.created.length,
-				stubbed: variableSummary.stubbed.length,
+				created: countCreatedRows(({ variableResult }) => variableResult.created),
+				stubbed: countCreatedRows(({ variableResult }) => variableResult.stubbed),
 				requirements: variableRequirements,
 			},
 		},

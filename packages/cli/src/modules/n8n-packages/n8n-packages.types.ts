@@ -222,7 +222,11 @@ export type ImportPackageEventCounts = {
 		created: number;
 		requirements: number;
 	};
-	/** Distinct names, reconciled across every scope, mirroring the API response's variable summary. */
+	/**
+	 * `matched` and `missing` are distinct names reconciled across every scope, mirroring the
+	 * API response's variable summary. `created` and `stubbed` count rows, like every sibling
+	 * count, so one name created in two projects counts twice.
+	 */
 	variables: {
 		matched: number;
 		missing: number;

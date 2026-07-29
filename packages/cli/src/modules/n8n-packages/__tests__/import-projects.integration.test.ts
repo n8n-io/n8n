@@ -807,14 +807,14 @@ describe('project shell import', () => {
 				);
 				expect(layout).toHaveLength(2);
 
-				// Telemetry counts distinct names like the summary does, so the two rows behind the
-				// one stubbed name count once.
+				// Telemetry counts rows, so the one stubbed name reported by the summary counts
+				// twice here — once per project that received a variable.
 				const importedEvents = emitSpy.mock.calls.filter(
 					([name]) => name === 'n8n-package-imported',
 				);
 				expect(importedEvents).toHaveLength(1);
 				const payload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
-				expect(payload.counts.variables).toMatchObject({ created: 0, stubbed: 1 });
+				expect(payload.counts.variables).toMatchObject({ created: 0, stubbed: 2 });
 			});
 
 			it('creates one row per project when both bundle the same name', async () => {

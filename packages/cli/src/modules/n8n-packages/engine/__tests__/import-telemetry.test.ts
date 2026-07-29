@@ -214,7 +214,7 @@ describe('emitPackageImportedEvent', () => {
 		});
 	});
 
-	it('reconciles the names of every scope together before counting them', () => {
+	it('reconciles matched and missing names across scopes, and counts creations as rows', () => {
 		const eventService = mock<EventService>();
 
 		emitPackageImportedEvent(eventService, {
@@ -238,6 +238,8 @@ describe('emitPackageImportedEvent', () => {
 			],
 		});
 
+		// stubbed is 1 because one row was written, not because the name deduped — the same
+		// name created in two projects would count twice.
 		expect(lastImportedPayload(eventService).counts.variables).toEqual({
 			matched: 0,
 			missing: 0,
