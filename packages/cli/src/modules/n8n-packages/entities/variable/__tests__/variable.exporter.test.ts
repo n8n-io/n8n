@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
+import { PackageExportBlockedError } from '../../package-export.errors';
 import { VariableExporter } from '../variable.exporter';
 import { VariableSerializer } from '../variable.serializer';
 import type { WorkflowVariableRequirement } from '../variable.types';
@@ -601,6 +602,39 @@ describe('VariableExporter', () => {
 			expect(result.entries).toEqual([
 				{ id: 'var-shared', name: 'API_URL', target: 'variables/apiurl' },
 			]);
+		});
+	});
+
+	describe('contract-violating row', () => {
+		it.each([
+			{
+				field: 'a value past the limit',
+				row: { value: 'x'.repeat(1001) },
+				rule: /1000 characters/,
+			},
+			{ field: 'a type outside the enum', row: { type: 'json' }, rule: /Expected 'string'/ },
+		])('blocks the export and names the variable for $field', async ({ row, rule }) => {
+			const deps = makeExporter();
+			wireVariables(deps, {
+				all: [makeVariable(row)],
+				workflowProjects: [['wf-1', 'proj-personal']],
+			});
+			const writer = new CapturingWriter();
+
+			const error = await deps.exporter
+				.export({
+					user,
+					requirements: [req('wf-1', 'API_URL')],
+					writer,
+					includeVariableValues: true,
+				})
+				.catch((caught: unknown) => caught);
+
+			expect(error).toBeInstanceOf(PackageExportBlockedError);
+			const blocked = error as PackageExportBlockedError;
+			expect(blocked.message).toContain('Variable "API_URL"');
+			expect(blocked.description).toMatch(rule);
+			expect(writer.files).toEqual([]);
 		});
 	});
 });

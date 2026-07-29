@@ -2,6 +2,7 @@ import type { Variables } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { pickVariableForProject } from 'n8n-workflow';
+import { ZodError } from 'zod';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
@@ -14,6 +15,7 @@ import type {
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
+import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
 
 interface ResolvedName {
@@ -105,9 +107,7 @@ export class VariableExporter {
 				request.writer.writeFile(
 					`${target}/variable.json`,
 					JSON.stringify(
-						this.variableSerializer.serialize(variable, {
-							includeValue: request.includeVariableValues,
-						}),
+						this.serializeOrBlock(variable, request.includeVariableValues),
 						null,
 						'\t',
 					),
@@ -127,6 +127,28 @@ export class VariableExporter {
 		}
 
 		return { entries, requirements };
+	}
+
+	/**
+	 * A row that breaks the variable contract cannot be bundled: import parses the
+	 * same schema and would reject the package. Name the row and the broken rule
+	 * instead of letting a raw parse failure surface as an unexplained 500.
+	 */
+	private serializeOrBlock(variable: Variables, includeValue: boolean): SerializedVariable {
+		try {
+			return this.variableSerializer.serialize(variable, { includeValue });
+		} catch (error) {
+			if (!(error instanceof ZodError)) throw error;
+
+			throw new PackageExportBlockedError(
+				`Variable "${variable.key}" does not match the expected format. Export aborted.`,
+				{
+					description: `${error.issues
+						.map((issue) => issue.message)
+						.join('; ')}. Fix the variable and retry the export.`,
+				},
+			);
+		}
 	}
 
 	/**
