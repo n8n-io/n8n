@@ -111,6 +111,22 @@ export class WorkflowDataProxy {
 		Settings.defaultZone = this.timezone;
 	}
 
+	/** The root nodes the active node feeds via non-main connections (its agent or trigger). */
+	private get nonMainRootNodes() {
+		this.nonMainRootNodesCache ??= this.workflow.getChildNodes(this.activeNodeName, 'ALL_NON_MAIN');
+		return this.nonMainRootNodesCache;
+	}
+
+	private nonMainRootNodesCache?: string[];
+
+	/**
+	 * A tool referencing its trigger or agent has no main connection or item lineage
+	 * to resolve through, so such references resolve straight from the root's run data.
+	 */
+	private isRootOfActiveNode(nodeName: string) {
+		return this.nonMainRootNodes.includes(nodeName);
+	}
+
 	/**
 	 * Returns execution data, conditionally extracting only 'json' from the item based on workflow 'binaryMode' setting.
 	 * When binary mode is 'combined', this method returns only the 'json' from the item unless 'fullItem' is true.
@@ -524,12 +540,16 @@ export class WorkflowDataProxy {
 				);
 
 				if (nodeConnection === undefined) {
-					throw new ExpressionError(`connect "${that.contextNodeName}" to "${nodeName}"`, {
-						runIndex: that.runIndex,
-						itemIndex: that.itemIndex,
-					});
+					if (!that.isRootOfActiveNode(nodeName)) {
+						throw new ExpressionError(`connect "${that.contextNodeName}" to "${nodeName}"`, {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+						});
+					}
+					outputIndex = 0;
+				} else {
+					outputIndex = nodeConnection.sourceIndex;
 				}
-				outputIndex = nodeConnection.sourceIndex;
 			}
 
 			if (outputIndex === undefined) {
@@ -918,6 +938,32 @@ export class WorkflowDataProxy {
 			});
 		};
 
+		/**
+		 * A referenced node must be an ancestor of the active node's context/root
+		 * node, or — for sub-nodes — a root node they feed.
+		 */
+		const ensurePairedItemNodeIsReachable = (nodeName: string) => {
+			const activeNode = that.workflow.getNode(that.activeNodeName);
+
+			let contextNode = that.contextNodeName;
+			if (activeNode) {
+				const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
+				contextNode = parentMainInputNode?.name ?? contextNode;
+			}
+			const roots = that.nonMainRootNodes;
+			if (roots.length === 0) {
+				const parents = that.workflow.getParentNodes(contextNode);
+				if (!parents.includes(nodeName)) {
+					throw createNoConnectionError(nodeName);
+				}
+				return;
+			}
+			const parents = roots.flatMap((root) => that.workflow.getParentNodes(root, 'ALL'));
+			if (!parents.includes(nodeName) && !roots.includes(nodeName)) {
+				throw createNoConnectionError(nodeName);
+			}
+		};
+
 		function createBranchNotFoundError(node: string, item: number, cause?: string) {
 			return createExpressionError('Branch not found', {
 				messageTemplate: 'Paired item references non-existent branch',
@@ -1241,30 +1287,7 @@ export class WorkflowDataProxy {
 							) {
 								// Before resolving the pairedItem make sure that the requested node comes in the
 								// graph before the current one
-								const activeNode = that.workflow.getNode(that.activeNodeName);
-
-								let contextNode = that.contextNodeName;
-								if (activeNode) {
-									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
-									contextNode = parentMainInputNode?.name ?? contextNode;
-								}
-								// Check if the node has any children and check parents for them instead of the activeNodeName
-								const children = that.workflow.getChildNodes(that.activeNodeName, 'ALL_NON_MAIN');
-								if (children.length === 0) {
-									// Node has no children, check parent of context node
-									const parents = that.workflow.getParentNodes(contextNode);
-									if (!parents.includes(nodeName)) {
-										throw createNoConnectionError(nodeName);
-									}
-								} else {
-									// Node has children, check parent of children
-									const parents = children.flatMap((child) =>
-										that.workflow.getParentNodes(child, 'ALL'),
-									);
-									if (!parents.includes(nodeName)) {
-										throw createNoConnectionError(nodeName);
-									}
-								}
+								ensurePairedItemNodeIsReachable(nodeName);
 
 								ensureNodeExecutionData();
 
@@ -1278,7 +1301,7 @@ export class WorkflowDataProxy {
 										itemIndex = that.itemIndex;
 									}
 
-									if (!that.connectionInputData.length) {
+									if (!that.connectionInputData.length || that.isRootOfActiveNode(nodeName)) {
 										const pinnedData = getPinDataIfManualExecution(
 											that.workflow,
 											nodeName,

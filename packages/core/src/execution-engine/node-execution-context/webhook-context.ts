@@ -216,6 +216,37 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return await this.additionalData.checkTriggerCredentialStatus();
 	}
 
+	/**
+	 * Run data with this node's in-progress run, so a sub-node built while the webhook
+	 * is still running can reference the node by name (`$('My Webhook')`) and see the
+	 * incoming request. A copy: nothing records runs into it yet, and the engine records
+	 * this node's real run once the execution starts.
+	 */
+	private withInProgressRun(runExecutionData: IRunExecutionData): IRunExecutionData {
+		const { runData } = runExecutionData.resultData;
+		if (runData[this.node.name]?.length) return runExecutionData;
+
+		return {
+			...runExecutionData,
+			resultData: {
+				...runExecutionData.resultData,
+				runData: {
+					...runData,
+					[this.node.name]: [
+						{
+							startTime: Date.now(),
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'running',
+							data: { main: [this.connectionInputData] },
+						},
+					],
+				},
+			},
+		};
+	}
+
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -227,7 +258,9 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			{ json: this.additionalData.httpRequest?.body || {} },
 		];
-		const runExecutionData = this.runExecutionData ?? createEmptyRunExecutionData();
+		const runExecutionData = this.withInProgressRun(
+			this.runExecutionData ?? createEmptyRunExecutionData(),
+		);
 		const executeData: IExecuteData = {
 			data: {
 				main: [connectionInputData],

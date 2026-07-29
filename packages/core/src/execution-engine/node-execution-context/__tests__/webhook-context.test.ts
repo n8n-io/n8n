@@ -14,7 +14,13 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { getInputConnectionData } from '../utils/get-input-connection-data';
 import { WebhookContext } from '../webhook-context';
+
+vi.mock('../utils/get-input-connection-data', () => ({
+	getInputConnectionData: vi.fn(),
+}));
+const getInputConnectionDataMock = vi.mocked(getInputConnectionData);
 
 describe('WebhookContext', () => {
 	const testCredentialType = 'testCredential';
@@ -122,6 +128,29 @@ describe('WebhookContext', () => {
 			);
 
 			expect(context.connectionInputData).toEqual([]);
+		});
+	});
+
+	describe('getInputConnectionData', () => {
+		it('should give sub-nodes this node as an in-progress run, without touching the real run data', async () => {
+			node.name = 'My Webhook';
+			const runData = {};
+			const context = new WebhookContext(workflow, node, additionalData, mode, webhookData, [], {
+				resultData: { runData },
+				executionData: { nodeExecutionStack: [{ node, data: { main: [] }, source: null }] },
+			} as unknown as IRunExecutionData);
+
+			await context.getInputConnectionData('ai_tool', 0);
+
+			const [, passedRunExecutionData] = getInputConnectionDataMock.mock.calls[0];
+			expect(passedRunExecutionData.resultData.runData['My Webhook']).toEqual([
+				expect.objectContaining({
+					executionStatus: 'running',
+					data: { main: [context.connectionInputData] },
+				}),
+			]);
+			// The engine records the node's real run once the execution starts
+			expect(runData).toEqual({});
 		});
 	});
 

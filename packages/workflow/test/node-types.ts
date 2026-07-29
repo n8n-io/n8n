@@ -1198,6 +1198,26 @@ const wikipediaTool: LoadedClass<INodeType> = {
 	},
 };
 
+const mcpTriggerNode: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'MCP Server Trigger',
+			name: '@n8n/n8n-nodes-langchain.mcpTrigger',
+			icon: 'fa:network-wired',
+			group: ['trigger'],
+			version: 2,
+			description: 'Expose n8n tools as an MCP Server endpoint',
+			defaults: {
+				name: 'MCP Server Trigger',
+			},
+			inputs: [{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' }],
+			outputs: [],
+			properties: [],
+		},
+	},
+};
+
 const calculatorTool: LoadedClass<INodeType> = {
 	sourcePath: '',
 	type: {
@@ -1389,6 +1409,7 @@ export class NodeTypes implements INodeTypes {
 		'@n8n/n8n-nodes-langchain.agent': aiAgentNode,
 		'n8n-nodes-base.googleCalendarTool': googleCalendarTool,
 		'@n8n/n8n-nodes-langchain.toolCalculator': calculatorTool,
+		'@n8n/n8n-nodes-langchain.mcpTrigger': mcpTriggerNode,
 		'@n8n/n8n-nodes-langchain.toolWikipedia': wikipediaTool,
 	};
 

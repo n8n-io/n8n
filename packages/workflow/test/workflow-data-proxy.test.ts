@@ -1481,6 +1481,174 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
+	describe('tool sub-node referencing its root node', () => {
+		const workflow: IWorkflowBase = {
+			id: '1',
+			name: 'mcp-tool-workflow',
+			nodes: [
+				{
+					id: '1',
+					name: 'MCP Server Trigger',
+					type: '@n8n/n8n-nodes-langchain.mcpTrigger',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequestTool',
+					typeVersion: 4.2,
+					position: [200, 200],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Unconnected',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [400, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				'HTTP Request': {
+					ai_tool: [[{ node: 'MCP Server Trigger', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				},
+			},
+			active: false,
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		};
+
+		const makeRun = (withTriggerRunData: boolean): IRun => {
+			const data = createEmptyRunExecutionData();
+			if (withTriggerRunData) {
+				data.resultData.runData['MCP Server Trigger'] = [
+					{
+						startTime: 1,
+						executionTime: 0,
+						executionIndex: 0,
+						source: [],
+						executionStatus: 'running',
+						data: {
+							main: [[{ json: { headers: { 'x-user-id': 'user-42' } } }]],
+						},
+					},
+				];
+			}
+			return {
+				data,
+				mode: 'webhook' as const,
+				startedAt: new Date(),
+				status: 'running' as const,
+				storedAt: 'db' as const,
+			};
+		};
+
+		test('item should resolve the root node run data', () => {
+			const proxy = getProxyFromFixture(workflow, makeRun(true), 'HTTP Request', 'webhook');
+			expect(proxy.$('MCP Server Trigger').item.json.headers['x-user-id']).toEqual('user-42');
+		});
+
+		test('item should resolve the root node run data when input data without item lineage is present', () => {
+			// Tool invocations receive synthesized input (the tool arguments), which
+			// carries no pairedItem lineage back to any upstream item
+			const run = makeRun(true);
+			run.data.resultData.runData['HTTP Request'] = [
+				{
+					startTime: 1,
+					executionTime: 0,
+					executionIndex: 1,
+					source: [{ previousNode: 'MCP Server Trigger', previousNodeRun: 0 }],
+					executionStatus: 'running',
+					data: { main: [[{ json: { toolArg: 'value' } }]] },
+				},
+			];
+			const proxy = getProxyFromFixture(workflow, run, 'HTTP Request', 'webhook');
+			expect(proxy.$('MCP Server Trigger').item.json.headers['x-user-id']).toEqual('user-42');
+		});
+
+		test('first should resolve the root node run data', () => {
+			const proxy = getProxyFromFixture(workflow, makeRun(true), 'HTTP Request', 'webhook');
+			expect(proxy.$('MCP Server Trigger').first().json.headers['x-user-id']).toEqual('user-42');
+		});
+
+		test('item should throw when the root node has no run data', () => {
+			const proxy = getProxyFromFixture(workflow, makeRun(false), 'HTTP Request', 'webhook');
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('MCP Server Trigger').item;
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+			expect(error).toBeDefined();
+			expect(error!.context.type).toEqual('no_execution_data');
+		});
+
+		const agentWorkflow: IWorkflowBase = {
+			...workflow,
+			nodes: [
+				{
+					id: '1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				workflow.nodes[1],
+			],
+			connections: {
+				'HTTP Request': {
+					ai_tool: [[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				},
+			},
+		};
+
+		test('item should resolve an agent root node that has run data', () => {
+			const run = makeRun(false);
+			run.data.resultData.runData['AI Agent'] = [
+				{
+					startTime: 1,
+					executionTime: 0,
+					executionIndex: 0,
+					source: [],
+					executionStatus: 'success',
+					data: { main: [[{ json: { output: 'done' } }]] },
+				},
+			];
+			const proxy = getProxyFromFixture(agentWorkflow, run, 'HTTP Request', 'webhook');
+			expect(proxy.$('AI Agent').item.json.output).toEqual('done');
+		});
+
+		test('item should throw when an agent root node has no run data', () => {
+			const proxy = getProxyFromFixture(agentWorkflow, makeRun(false), 'HTTP Request', 'webhook');
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('AI Agent').item;
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+			expect(error).toBeDefined();
+			expect(error!.context.type).toEqual('no_execution_data');
+		});
+
+		test('item should still throw for nodes without a connection path', () => {
+			const proxy = getProxyFromFixture(workflow, makeRun(true), 'HTTP Request', 'webhook');
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('Unconnected').item;
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+			expect(error).toBeDefined();
+			expect(error!.context.type).toEqual('paired_item_no_connection');
+		});
+	});
+
 	describe('multiple inputs', () => {
 		const fixture = loadFixture('multiple_inputs');
 
