@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import { reactiveOmit, reactivePick } from '@vueuse/core';
-import {
-	computed,
-	nextTick,
-	onMounted,
-	ref,
-	useAttrs,
-	useCssModule,
-	useTemplateRef,
-	watch,
-} from 'vue';
+import { computed, nextTick, ref, useAttrs, useCssModule, useTemplateRef, watch } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
@@ -100,9 +91,15 @@ watch(jumperValue, async (value) => {
 	syncJumperInputWidth();
 });
 
-onMounted(() => {
-	syncJumperInputWidth();
-});
+watch(
+	() => props.showJumper,
+	async (show) => {
+		if (!show) return;
+		await nextTick();
+		syncJumperInputWidth();
+	},
+	{ immediate: true },
+);
 
 function resolvedPageCount() {
 	if (props.pageCount !== undefined) return props.pageCount;
