@@ -7,6 +7,7 @@ import { TriggersAndPollers } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import {
@@ -34,6 +35,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly pollCursorService: PollCursorService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -42,7 +44,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
 		const { workflowId, nodeId } = this.parsePayload(task);
-		// bypassCache: the poll cursor in staticData must be read live, not from the publish-time cache.
+		// bypassCache: run against the latest published workflow, not a stale cache entry.
 		const workflowData = await this.triggerExecutionContextFactory.loadPublishedWorkflowData(
 			workflowId,
 			{ bypassCache: true },
@@ -76,7 +78,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					return report.notDispatched();
 				}
 
-				// __emit saves the cursor and starts the run without waiting on it.
+				// __emit persists the cursor and starts the run without waiting on it.
 				pollFunctions.__emit(pollResponse);
 				this.logger.debug('Poll returned new data; handed off to a new execution', {
 					taskId: task.id,
@@ -85,6 +87,13 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					nodeId,
 				});
 				return report.dispatched();
+			}
+
+			// A poll that found nothing still moved its cursor, so commit that on its own;
+			// otherwise the next poll re-reads the same window.
+			const stagedCursor = pollFunctions.__takeStagedCursor();
+			if (this.pollCursorService.enabled && stagedCursor !== undefined) {
+				await this.pollCursorService.commitEmptyPoll(workflow, node, stagedCursor);
 			}
 
 			this.logger.debug('Poll returned no new data; nothing to hand off', {
@@ -96,8 +105,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			return report.notDispatched();
 		} catch (error) {
 			// Routed to the error workflow instead of rethrown, which would retry and
-			// dead-letter without ever running it. __emitError skips saveStaticData, so
-			// the cursor holds and the next tick retries the same window.
+			// dead-letter without ever running it. __emitError never persists the staged
+			// cursor, so the next tick retries the same window.
 			pollFunctions.__emitError(ensureError(error));
 			this.logger.debug('Poll failed at runtime; routed to the error workflow', {
 				taskId: task.id,

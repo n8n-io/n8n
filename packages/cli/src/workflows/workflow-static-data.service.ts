@@ -44,6 +44,28 @@ export class WorkflowStaticDataService {
 		}
 	}
 
+	/**
+	 * Replace one node's entry in a workflow's static data, leaving every other node's
+	 * entry as it is on the row.
+	 *
+	 * Reads the stored value rather than writing a whole column held in memory, so a node
+	 * that has not been touched here keeps whatever another process wrote to it. The read
+	 * and the write are still two statements: a whole-column write landing between them
+	 * wins, so this narrows the window rather than closing it.
+	 */
+	async mergeNodeStaticData(
+		workflowId: string,
+		nodeName: string,
+		nodeStaticData: IDataObject,
+	): Promise<void> {
+		const staticData = await this.getStaticDataById(workflowId);
+
+		await this.saveStaticDataById(workflowId, {
+			...staticData,
+			[`node:${nodeName}`]: nodeStaticData,
+		});
+	}
+
 	/** Saves the given static data on workflow */
 	async saveStaticDataById(workflowId: string, newStaticData: IDataObject): Promise<void> {
 		const qb = this.workflowRepository.createQueryBuilder('workflow');

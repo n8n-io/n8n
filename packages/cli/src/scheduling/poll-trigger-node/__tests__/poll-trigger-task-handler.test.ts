@@ -9,6 +9,7 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
+import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import { isPollTriggerTaskPayload, POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
@@ -19,16 +20,21 @@ describe('PollTriggerTaskHandler', () => {
 	const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const pollCursorService = mock<PollCursorService>({ enabled: false });
 
 	const scopedLogger = mock<Logger>();
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
-	const handler = new PollTriggerTaskHandler(
-		rootLogger,
-		triggerExecutionContextFactory,
-		triggersAndPollers,
-		workflowRepository,
-	);
+	const createHandler = (cursorService: PollCursorService) =>
+		new PollTriggerTaskHandler(
+			rootLogger,
+			triggerExecutionContextFactory,
+			triggersAndPollers,
+			workflowRepository,
+			cursorService,
+		);
+
+	const handler = createHandler(pollCursorService);
 
 	const onDispatch = vi.fn();
 	const report = createDispatchReporter(onDispatch);
@@ -180,6 +186,29 @@ describe('PollTriggerTaskHandler', () => {
 			expect(onDispatch).not.toHaveBeenCalled();
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
+
+		test('commits a cursor that moved without producing items', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+			pollFunctions.__takeStagedCursor.mockReturnValue({ lastTimeChecked: 2000 });
+			const durableCursorService = mock<PollCursorService>({ enabled: true });
+
+			await createHandler(durableCursorService).execute(buildTask(), report);
+
+			expect(durableCursorService.commitEmptyPoll).toHaveBeenCalledWith(workflow, triggerNode, {
+				lastTimeChecked: 2000,
+			});
+			expect(onDispatch).not.toHaveBeenCalled();
+		});
+
+		test('has nothing to commit when an empty poll staged no cursor', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+			pollFunctions.__takeStagedCursor.mockReturnValue(undefined);
+			const durableCursorService = mock<PollCursorService>({ enabled: true });
+
+			await createHandler(durableCursorService).execute(buildTask(), report);
+
+			expect(durableCursorService.commitEmptyPoll).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('isolate lifecycle', () => {
@@ -213,8 +242,8 @@ describe('PollTriggerTaskHandler', () => {
 			// still-down source instead of running the error workflow.
 			await expect(handler.execute(buildTask(), report)).resolves.toBeDefined();
 
-			// The cursor is not advanced (no __emit, so no saveStaticData); the error is
-			// handed off to the error workflow via __emitError.
+			// The cursor is not advanced (`__emit` is never called); the error is
+			// handed off to the error workflow via `__emitError`.
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
 			expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
 			// Handled, not retried: the occurrence is reported as dispatched.

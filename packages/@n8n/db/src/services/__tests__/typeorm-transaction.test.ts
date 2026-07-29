@@ -3,7 +3,7 @@ import type { DataSource, EntityManager, ObjectLiteral } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { BaseRepository } from '../../repositories/base-repository';
+import { BaseRepository, entityManagerFor } from '../../repositories/base-repository';
 import type { OperationContext, Transaction } from '../transaction';
 import { TypeOrmTransaction, TypeOrmTransactionRunner } from '../typeorm-transaction';
 
@@ -113,7 +113,7 @@ describe('TypeOrmTransactionRunner', () => {
 	});
 });
 
-describe('BaseRepository.managerFor', () => {
+describe('manager resolution', () => {
 	class TestRepository extends BaseRepository<ObjectLiteral> {
 		resolve(ctx: OperationContext): EntityManager {
 			return this.managerFor(ctx);
@@ -123,20 +123,24 @@ describe('BaseRepository.managerFor', () => {
 	const defaultManager = mock<EntityManager>();
 	const repository = new TestRepository(class Dummy {}, defaultManager);
 
-	it('returns the default manager when the context has no transaction', () => {
-		expect(repository.resolve({})).toBe(defaultManager);
-	});
+	describe.each([
+		['BaseRepository.managerFor', (ctx: OperationContext) => repository.resolve(ctx)],
+		['entityManagerFor', (ctx: OperationContext) => entityManagerFor(ctx, defaultManager)],
+	])('%s', (_name, resolve) => {
+		it('returns the default manager when the context has no transaction', () => {
+			expect(resolve({})).toBe(defaultManager);
+		});
 
-	it("returns the transaction's manager when the context carries one", () => {
-		const txManager = mock<EntityManager>();
-		const ctx: OperationContext = { trx: new TypeOrmTransaction(txManager) };
+		it("returns the transaction's manager when the context carries one", () => {
+			const txManager = mock<EntityManager>();
 
-		expect(repository.resolve(ctx)).toBe(txManager);
-	});
+			expect(resolve({ trx: new TypeOrmTransaction(txManager) })).toBe(txManager);
+		});
 
-	it('throws when the transaction was not created by the TypeORM runner', () => {
-		const foreign: OperationContext = { trx: {} as unknown as Transaction };
+		it('throws when the transaction was not created by the TypeORM runner', () => {
+			const foreign: OperationContext = { trx: {} as unknown as Transaction };
 
-		expect(() => repository.resolve(foreign)).toThrow(UnexpectedError);
+			expect(() => resolve(foreign)).toThrow(UnexpectedError);
+		});
 	});
 });

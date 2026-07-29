@@ -1,9 +1,10 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
 
 /**
- * TypeORM operators and driver types that `@n8n/db` re-exports from `@n8n/typeorm`.
- * Importing one of these from `@n8n/db` in business logic relabels the dependency
- * without decoupling it, so it's flagged just like a direct `@n8n/typeorm` import.
+ * TypeORM operators and driver types that `@n8n/db` re-exports from `@n8n/typeorm`,
+ * plus anything that hands back a driver handle. Importing one of these from `@n8n/db`
+ * in business logic relabels the dependency without decoupling it, so it's flagged just
+ * like a direct `@n8n/typeorm` import.
  * Keep in sync with the `@n8n/typeorm` re-export block in `@n8n/db/src/index.ts`.
  */
 const GUARDED_DB_REEXPORTS = new Set([
@@ -15,6 +16,9 @@ const GUARDED_DB_REEXPORTS = new Set([
 	'FindManyOptions',
 	'FindOptionsWhere',
 	'EntityManager',
+	// Resolves an opaque transaction to an `EntityManager`, so it grants what importing
+	// `EntityManager` grants.
+	'entityManagerFor',
 ]);
 
 export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs({

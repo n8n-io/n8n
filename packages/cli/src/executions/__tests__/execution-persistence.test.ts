@@ -7,6 +7,8 @@ import {
 	type CreateExecutionPayload,
 	type EntityManager,
 	type ExecutionRepository,
+	type Transaction,
+	type TransactionRunner,
 } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
@@ -24,6 +26,10 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 describe('ExecutionPersistence', () => {
 	const executionRepository = mock<ExecutionRepository>();
+	const transactionRunner = mock<TransactionRunner>();
+	// Set once for the whole file: `vi.clearAllMocks` clears recorded calls but keeps
+	// implementations, so every test runs its callback against the context it passed in.
+	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	const binaryDataService = mock<BinaryDataService>();
 	const jsonStore = mock<ExecutionDataJsonStore>();
 	const dbStore = mock<DbStore>();
@@ -71,6 +77,20 @@ describe('ExecutionPersistence', () => {
 		return mockTx;
 	};
 
+	/**
+	 * Points the repository at a transaction manager. `create` resolves its manager from
+	 * the operation context, so stubbing `manager.transaction` no longer reaches it; the
+	 * property is read-only, hence the redefine.
+	 */
+	const useManager = (tx: EntityManager) =>
+		Object.defineProperty(executionRepository, 'manager', { value: tx, configurable: true });
+
+	const useFailingManager = (error: Error) => {
+		const tx = createMockTransaction();
+		tx.insert.mockRejectedValue(error);
+		useManager(tx);
+	};
+
 	const createMockTx = (tx: EntityManager) =>
 		vi.fn().mockImplementation(async <T>(cb: (em: EntityManager) => Promise<T>) => await cb(tx));
 
@@ -88,6 +108,7 @@ describe('ExecutionPersistence', () => {
 			mock<DatabaseConfig>({ type: dbType }),
 			errorReporter,
 			eventService,
+			transactionRunner,
 		);
 
 	describe('create', () => {
@@ -105,11 +126,13 @@ describe('ExecutionPersistence', () => {
 
 			it('should create execution with `storedAt: db` and write data via dbStore in the transaction', async () => {
 				const mockTx = createMockTransaction();
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 
 				const executionId = await executionPersistence.create(createPayload);
 
 				expect(executionId).toBe('exec-1');
+				// No caller context, so the insert runs in a transaction of its own.
+				expect(transactionRunner.run).toHaveBeenCalledWith({}, expect.any(Function));
 				expect(mockTx.insert).toHaveBeenCalledWith(
 					ExecutionEntity,
 					expect.objectContaining({
@@ -135,7 +158,7 @@ describe('ExecutionPersistence', () => {
 
 			it('persists the byte size the store reports and emits it on the write event', async () => {
 				const mockTx = createMockTransaction();
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 				dbStore.write.mockResolvedValue(4321);
 
 				await executionPersistence.create(createPayload);
@@ -154,7 +177,7 @@ describe('ExecutionPersistence', () => {
 
 			it('persists binaryDataSizeBytes: offloaded blobs deduped by id, inline binary excluded', async () => {
 				const mockTx = createMockTransaction();
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 				dbStore.write.mockResolvedValue(4321);
 
 				await executionPersistence.create({
@@ -175,7 +198,7 @@ describe('ExecutionPersistence', () => {
 
 			it('records the workflow version id on the entity from the workflow snapshot', async () => {
 				const mockTx = createMockTransaction();
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 
 				await executionPersistence.create(createPayload);
 
@@ -187,7 +210,7 @@ describe('ExecutionPersistence', () => {
 
 			it('records a null workflow version id when the workflow has no version', async () => {
 				const mockTx = createMockTransaction();
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 
 				await executionPersistence.create({
 					...createPayload,
@@ -211,7 +234,7 @@ describe('ExecutionPersistence', () => {
 					generatedMaps: [],
 					raw: {},
 				});
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 
 				const executionId = await executionPersistence.create(createPayload);
 
@@ -252,9 +275,44 @@ describe('ExecutionPersistence', () => {
 				const fsWriteError = new Error('Filesystem write failed');
 				jsonStore.write.mockRejectedValue(fsWriteError);
 
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 
 				await expect(executionPersistence.create(createPayload)).rejects.toThrow(fsWriteError);
+			});
+		});
+
+		describe('caller-owned transaction', () => {
+			const executionPersistence = createPersistenceService('db');
+
+			it('forwards the caller context to the runner unmodified, leaving an active transaction for the runner to join', async () => {
+				const mockTx = createMockTransaction();
+				useManager(mockTx);
+				const callerContext = { trx: mock<Transaction>() };
+				// The stub returns a context without a transaction, so the insert falls through
+				// to the repository's own manager; joining the caller's transaction is not
+				// exercised here.
+				transactionRunner.run.mockImplementationOnce(async (_ctx, fn) => await fn({}));
+
+				await executionPersistence.create(createPayload, callerContext);
+
+				expect(transactionRunner.run).toHaveBeenCalledWith(callerContext, expect.any(Function));
+				expect(mockTx.insert).toHaveBeenCalledTimes(1);
+			});
+
+			it('refuses a deduplicated execution, whose tombstone reclaim needs a commit it does not own', async () => {
+				const mockTx = createMockTransaction();
+				useManager(mockTx);
+
+				await expect(
+					executionPersistence.create(
+						{ ...createPayload, deduplicationKey: 'wf-1:node-1:1700000000000' },
+						{ trx: mock<Transaction>() },
+					),
+				).rejects.toThrow(UnexpectedError);
+
+				// Rejected before anything is opened, not rolled back afterwards.
+				expect(transactionRunner.run).not.toHaveBeenCalled();
+				expect(mockTx.insert).not.toHaveBeenCalled();
 			});
 		});
 
@@ -270,7 +328,7 @@ describe('ExecutionPersistence', () => {
 
 			it('converts unique-violation into DuplicateExecutionError when payload has a deduplicationKey', async () => {
 				const uniqueViolation = makeUniqueViolationError();
-				executionRepository.manager.transaction = vi.fn().mockRejectedValue(uniqueViolation);
+				useFailingManager(uniqueViolation);
 
 				const payloadWithKey: CreateExecutionPayload = {
 					...createPayload,
@@ -288,7 +346,7 @@ describe('ExecutionPersistence', () => {
 
 			it('rethrows original unique-violation when payload has no deduplicationKey', async () => {
 				const uniqueViolation = makeUniqueViolationError();
-				executionRepository.manager.transaction = vi.fn().mockRejectedValue(uniqueViolation);
+				useFailingManager(uniqueViolation);
 
 				await expect(executionPersistence.create(createPayload)).rejects.toBe(uniqueViolation);
 			});
@@ -299,7 +357,7 @@ describe('ExecutionPersistence', () => {
 					[],
 					Object.assign(new Error('not null'), { code: '23502' }),
 				);
-				executionRepository.manager.transaction = vi.fn().mockRejectedValue(otherError);
+				useFailingManager(otherError);
 
 				const payloadWithKey: CreateExecutionPayload = {
 					...createPayload,
@@ -313,7 +371,7 @@ describe('ExecutionPersistence', () => {
 				const otherUniqueViolation = makeUniqueViolationError(
 					'duplicate key value violates unique constraint on someOtherColumn',
 				);
-				executionRepository.manager.transaction = vi.fn().mockRejectedValue(otherUniqueViolation);
+				useFailingManager(otherUniqueViolation);
 
 				const payloadWithKey: CreateExecutionPayload = {
 					...createPayload,
@@ -345,7 +403,7 @@ describe('ExecutionPersistence', () => {
 						[],
 						Object.assign(new Error(message), { code }),
 					);
-					executionRepository.manager.transaction = vi.fn().mockRejectedValue(sqliteError);
+					useFailingManager(sqliteError);
 
 					const payloadWithKey: CreateExecutionPayload = {
 						...createPayload,
@@ -360,7 +418,7 @@ describe('ExecutionPersistence', () => {
 
 			it('returns executionId on happy path when deduplicationKey is provided', async () => {
 				const mockTx = createMockTransaction();
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 
 				const payloadWithKey: CreateExecutionPayload = {
 					...createPayload,
@@ -403,7 +461,7 @@ describe('ExecutionPersistence', () => {
 				const mockTx = createMockTransaction();
 				// A prior attempt left an orphaned `new` tombstone under this key, stored on fs.
 				mockTx.findOne.mockResolvedValue(mockTombstone('fs'));
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 
 				const executionId = await fsPersistence.create(payloadWithKey);
 
@@ -423,7 +481,7 @@ describe('ExecutionPersistence', () => {
 				const dbPersistence = createPersistenceService('db');
 				const mockTx = createMockTransaction();
 				mockTx.findOne.mockResolvedValue(mockTombstone('db'));
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 
 				await dbPersistence.create(payloadWithKey);
 
@@ -442,7 +500,7 @@ describe('ExecutionPersistence', () => {
 				// so the `status: 'new'`-scoped delete affects no row.
 				mockTx.findOne.mockResolvedValue(mockTombstone('fs'));
 				mockTx.delete.mockResolvedValue({ affected: 0, raw: {} });
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 
 				await fsPersistence.create(payloadWithKey);
 
@@ -454,7 +512,7 @@ describe('ExecutionPersistence', () => {
 				const fsPersistence = createPersistenceService('fs');
 				const mockTx = createMockTransaction();
 				mockTx.findOne.mockResolvedValue(mockTombstone('fs'));
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 				const cleanupError = new Error('blob store down');
 				jsonStore.delete.mockRejectedValueOnce(cleanupError);
 
@@ -468,7 +526,7 @@ describe('ExecutionPersistence', () => {
 			it('skips the tombstone lookup and cleanup entirely without a deduplicationKey', async () => {
 				const fsPersistence = createPersistenceService('fs');
 				const mockTx = createMockTransaction();
-				executionRepository.manager.transaction = createMockTx(mockTx);
+				useManager(mockTx);
 
 				await fsPersistence.create(createPayload); // no deduplicationKey
 
@@ -1104,6 +1162,7 @@ describe('ExecutionPersistence', () => {
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
+				const startedAt = new Date();
 
 				await executionPersistence.updateExistingExecution(executionId, {
 					id: executionId,
@@ -1111,15 +1170,17 @@ describe('ExecutionPersistence', () => {
 					workflowId: 'other-wf',
 					workflowVersionId: 'v-new',
 					createdAt: new Date(),
-					startedAt: new Date(),
+					startedAt,
 					customData: { foo: 'bar' },
 					status: 'success',
 				});
 
+				// `startedAt` passes through: an execution enqueued at `new` is inserted
+				// without one, so whoever claims it stamps it on update.
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ status: 'success' },
+					{ status: 'success', startedAt },
 				);
 			});
 		});
@@ -2308,7 +2369,7 @@ describe('ExecutionPersistence', () => {
 		it(`writes to the ${loc} location on create with \`storedAt: ${loc}\``, async () => {
 			const executionPersistence = createPersistenceService(loc);
 			const mockTx = createMockTransaction();
-			executionRepository.manager.transaction = createMockTx(mockTx);
+			useManager(mockTx);
 
 			const executionId = await executionPersistence.create(createPayload);
 

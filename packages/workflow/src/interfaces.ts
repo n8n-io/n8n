@@ -1395,6 +1395,24 @@ export interface IPollFunctions
 		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
+	/**
+	 * How far this node has consumed its source, or `undefined` if it has never polled.
+	 *
+	 * The two differ: a node that has run and found nothing has a cursor, and many poll
+	 * nodes decide first-run behaviour on the absence of one.
+	 */
+	getCursor<T extends IDataObject = IDataObject>(): T | undefined;
+	/**
+	 * Stage the cursor to advance to. It is written only once `poll()` has returned, in
+	 * the same transaction as the execution the poll produced, so a poll that throws
+	 * advances nothing.
+	 */
+	setCursor<T extends IDataObject = IDataObject>(cursor: T): void;
+	/**
+	 * The cursor staged during this poll, for the caller that persists it. `undefined`
+	 * when the node staged none.
+	 */
+	__takeStagedCursor(): IDataObject | undefined;
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,

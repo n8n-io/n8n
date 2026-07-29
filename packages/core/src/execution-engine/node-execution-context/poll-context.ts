@@ -1,6 +1,7 @@
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	INode,
 	IPollFunctions,
 	IWorkflowExecuteAdditionalData,
@@ -27,6 +28,8 @@ const throwOnEmitError = () => {
 export class PollContext extends NodeExecutionContext implements IPollFunctions {
 	readonly helpers: IPollFunctions['helpers'];
 
+	private stagedCursor?: IDataObject;
+
 	constructor(
 		workflow: Workflow,
 		node: INode,
@@ -35,6 +38,7 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		private readonly activation: WorkflowActivateMode,
 		readonly __emit: IPollFunctions['__emit'] = throwOnEmit,
 		readonly __emitError: IPollFunctions['__emitError'] = throwOnEmitError,
+		private readonly cursor?: IDataObject,
 	) {
 		super(workflow, node, additionalData, mode);
 
@@ -49,6 +53,27 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 
 	getActivationMode() {
 		return this.activation;
+	}
+
+	getCursor<T extends IDataObject = IDataObject>(): T | undefined {
+		return (this.stagedCursor ?? this.cursor) as T | undefined;
+	}
+
+	setCursor<T extends IDataObject = IDataObject>(cursor: T): void {
+		this.stagedCursor = cursor;
+	}
+
+	/**
+	 * The cursor staged during this poll, or `undefined` if the node staged none.
+	 *
+	 * Clears it, so a later poll on a context that outlives this one cannot re-commit a
+	 * value it did not stage. A throw leaves the context unread, so a staged cursor never
+	 * reaches the database.
+	 */
+	__takeStagedCursor(): IDataObject | undefined {
+		const staged = this.stagedCursor;
+		this.stagedCursor = undefined;
+		return staged;
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {

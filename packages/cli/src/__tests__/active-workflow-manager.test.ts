@@ -435,6 +435,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // scheduleTriggerJobRegistrar
 				ownershipService,
 				mock(), // nodeTypes
+				mock({ enabled: false }), // pollCursorService
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(

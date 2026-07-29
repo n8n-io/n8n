@@ -30,3 +30,20 @@ export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repos
 		return trx.getEntityManager();
 	}
 }
+
+/**
+ * The manager a query should run against, for persistence code written before
+ * {@link BaseRepository} existed and not extending it. New code should extend
+ * `BaseRepository` and use the protected {@link BaseRepository.managerFor} instead.
+ * Business logic threads an `OperationContext` and never calls this.
+ */
+export function entityManagerFor(ctx: OperationContext, fallback: EntityManager): EntityManager {
+	const { trx } = ctx;
+	if (!trx) return fallback;
+
+	if (!(trx instanceof TypeOrmTransaction)) {
+		throw new UnexpectedError('Transaction was not created by the TypeORM runner');
+	}
+
+	return trx.getEntityManager();
+}

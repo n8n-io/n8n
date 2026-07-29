@@ -11,9 +11,17 @@ import type {
 	IExecutionBase,
 	IExecutionFlattedDb,
 	IExecutionResponse,
+	OperationContext,
 	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
+import {
+	entityManagerFor,
+	ExecutionEntity,
+	ExecutionRepository,
+	In,
+	Not,
+	TransactionRunner,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
@@ -45,14 +53,7 @@ type FoundExecution = IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 
 type UpdatableEntityColumns = Omit<
 	Partial<IExecutionResponse>,
-	| 'id'
-	| 'data'
-	| 'workflowId'
-	| 'workflowData'
-	| 'workflowVersionId'
-	| 'createdAt'
-	| 'startedAt'
-	| 'customData'
+	'id' | 'data' | 'workflowId' | 'workflowData' | 'workflowVersionId' | 'createdAt' | 'customData'
 >;
 
 /**
@@ -83,14 +84,27 @@ export class ExecutionPersistence {
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	/**
 	 * Create an execution entity and persist its data to the configured storage.
 	 * - In `db` mode, we write both entity and data to the DB in a transaction.
 	 * - In blob modes (`fs`, `s3`, `az`), we write the entity to the DB and its data to the blob store.
+	 *
+	 * A caller that passes a `ctx` already carrying a transaction has the insert join it
+	 * rather than open its own, so the execution row commits with whatever else that
+	 * transaction writes. Tombstone reclaim is refused in that case: it deletes a row and
+	 * then clears a blob after the commit, and the caller owns the commit.
 	 */
-	async create(payload: CreateExecutionPayload) {
+	async create(payload: CreateExecutionPayload, ctx: OperationContext = {}) {
+		if (ctx.trx && payload.deduplicationKey) {
+			throw new UnexpectedError(
+				'Cannot create a deduplicated execution inside a caller-owned transaction',
+				{ extra: { deduplicationKey: payload.deduplicationKey } },
+			);
+		}
+
 		const { data: rawData, workflowData, ...rest } = payload;
 		const { connections, nodes, name, settings, id, nodeGroups } = workflowData;
 		const workflowSnapshot: WorkflowSnapshot = {
@@ -107,7 +121,8 @@ export class ExecutionPersistence {
 
 		let reclaimedTombstone: DeletionTarget | null = null;
 		try {
-			const executionId = await this.executionRepository.manager.transaction(async (tx) => {
+			const executionId = await this.transactionRunner.run(ctx, async (innerCtx) => {
+				const tx = entityManagerFor(innerCtx, this.executionRepository.manager);
 				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
@@ -818,8 +833,9 @@ export class ExecutionPersistence {
 	 * - **Identity / routing**: `id`, `workflowId` — never updated here.
 	 * - **Stored elsewhere**: `data`, `workflowData` — persisted per the execution's
 	 *   storage location (DB rows or a blob store), not as columns on the entity row.
-	 * - **Immutable after creation**: `workflowVersionId`, `createdAt`,
-	 *   `startedAt` — set once at insert time and never overwritten.
+	 * - **Immutable after creation**: `workflowVersionId`, `createdAt` — set once at insert time
+	 *   and never overwritten. `startedAt` is *not* immutable: an execution enqueued as `new` is
+	 *   inserted without one, so whoever claims it stamps it here.
 	 * - **Not persisted on the entity**: `customData` — handled separately.
 	 * - **Computed locally**: `jsonSizeBytes` and `binaryDataSizeBytes` — derived from
 	 *   the persisted bundle / run data, never trusted from the caller.
@@ -834,7 +850,6 @@ export class ExecutionPersistence {
 			workflowData: _workflowData,
 			workflowVersionId: _workflowVersionId,
 			createdAt: _createdAt,
-			startedAt: _startedAt,
 			customData: _customData,
 			jsonSizeBytes: _jsonSizeBytes,
 			binaryDataSizeBytes: _binaryDataSizeBytes,

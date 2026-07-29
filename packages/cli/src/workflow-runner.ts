@@ -45,6 +45,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
+import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -182,59 +183,67 @@ export class WorkflowRunner {
 	/** Run the workflow
 	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
 	 */
-	async run(
+	/**
+	 * Populate runtime data and mask sensitive trigger items on `data.executionData`,
+	 * returning the error if that failed rather than throwing.
+	 *
+	 * Must run before anything writes `data.executionData`, so a persisted execution never
+	 * holds raw trigger-item data. Callers that persist the row themselves (the polled
+	 * path commits it inside a transaction) call this first; `run` then calls it again and
+	 * the runtimeData early-exit guard makes the second call a no-op.
+	 */
+	async establishContextBeforePersist(
 		data: IWorkflowExecutionDataProcess,
-		loadStaticData?: boolean,
-		realtime?: boolean,
-		restartExecutionId?: string,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): Promise<string> {
-		// Establish the execution context before persisting to the DB.
-		// activeExecutions.add() -> executionPersistence.create() writes
-		// data.executionData to the DB; any header masking or runtimeData
-		// population must happen before that write so the persisted record
-		// does not contain raw trigger-item data (e.g. Authorization headers).
-		// The runtimeData early-exit guard in establishExecutionContext keeps
-		// the subsequent worker-side call at workflow-execute.ts idempotent.
+	): Promise<(ExecutionError & { node?: INode }) | undefined> {
 		// Guard on the inner executionData: in queue mode with manual offload
 		// the outer IRunExecutionData is created with `executionData: null`
 		// so the trigger-item stack is undefined here; nothing to mask yet,
 		// the worker will establish context once it populates the stack.
-		let establishContextError: (ExecutionError & { node?: INode }) | undefined;
-		if (data.executionData?.executionData) {
-			// Deliberately lightweight: no pinData, no staticData loading,
-			// no additionalData. establishExecutionContext only needs the
-			// workflow's settings (for redactionPolicy) and node lookups.
-			// runMainProcess() builds its own fully-configured Workflow for
-			// actual execution.
-			const contextWorkflow = new Workflow({
-				id: data.workflowData.id,
-				name: data.workflowData.name,
-				nodes: data.workflowData.nodes,
-				connections: data.workflowData.connections,
-				active: data.workflowData.activeVersionId !== null,
-				nodeTypes: this.nodeTypes,
-				staticData: data.workflowData.staticData,
-				settings: data.workflowData.settings ?? {},
-			});
-			try {
-				await establishExecutionContext(
-					contextWorkflow,
-					data.executionData,
-					{ encryptedRunnerIdentity: data.encryptedRunnerIdentity },
-					data.executionMode,
-				);
-			} catch (error) {
-				// Masking may have failed partway through, so the trigger-item
-				// stack can still contain raw header data. Drop it before
-				// activeExecutions.add() persists the execution row.
-				data.executionData.executionData.nodeExecutionStack = [];
-				establishContextError = error as ExecutionError & { node?: INode };
-			}
+		if (!data.executionData?.executionData) return undefined;
+
+		// Deliberately lightweight: no pinData, no staticData loading,
+		// no additionalData. establishExecutionContext only needs the
+		// workflow's settings (for redactionPolicy) and node lookups.
+		// runMainProcess() builds its own fully-configured Workflow for
+		// actual execution.
+		const contextWorkflow = new Workflow({
+			id: data.workflowData.id,
+			name: data.workflowData.name,
+			nodes: data.workflowData.nodes,
+			connections: data.workflowData.connections,
+			active: data.workflowData.activeVersionId !== null,
+			nodeTypes: this.nodeTypes,
+			staticData: data.workflowData.staticData,
+			settings: data.workflowData.settings ?? {},
+		});
+		try {
+			await establishExecutionContext(
+				contextWorkflow,
+				data.executionData,
+				{ encryptedRunnerIdentity: data.encryptedRunnerIdentity },
+				data.executionMode,
+			);
+		} catch (error) {
+			// Masking may have failed partway through, so the trigger-item
+			// stack can still contain raw header data. Drop it before
+			// activeExecutions.add() persists the execution row.
+			data.executionData.executionData.nodeExecutionStack = [];
+			return error as ExecutionError & { node?: INode };
 		}
 
+		return undefined;
+	}
+
+	async run(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		realtime?: boolean,
+		existingExecution?: ResumableExecution,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<string> {
+		const establishContextError = await this.establishContextBeforePersist(data);
 		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, restartExecutionId);
+		const executionId = await this.activeExecutions.add(data, existingExecution);
 
 		if (establishContextError) {
 			await this.failExecution(data, executionId, establishContextError, responsePromise);
@@ -281,10 +290,10 @@ export class WorkflowRunner {
 				data,
 				loadStaticData,
 				realtime,
-				restartExecutionId,
+				existingExecution?.executionId,
 			);
 		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
+			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
 		}
 
 		// only run these when not in queue mode or when the execution is manual,

@@ -533,7 +533,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			});
 
 			// do not block - each execution either runs concurrently or is queued
-			void workflowRunner.run(data, undefined, false, execution.id);
+			void workflowRunner.run(data, undefined, false, {
+				executionId: execution.id,
+				expectedStatus: 'new',
+			});
 		}
 	}
 }

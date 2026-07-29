@@ -261,6 +261,21 @@ export class SchedulerConfig {
 	enabledForPollTriggers: boolean = false;
 
 	/**
+	 * Which store holds a poll node's cursor. Off: the workflow's static data, as
+	 * today. On: the `poller_state` table, where the cursor advance commits in the
+	 * same transaction as the execution the poll produced, so a crash between the two
+	 * can no longer drop or duplicate data.
+	 *
+	 * While on, each committed cursor is also written back to static data, so turning
+	 * the setting off resumes from a current cursor rather than a stale one.
+	 *
+	 * Off by default; requires {@link enabled} and {@link enabledForPollTriggers} to
+	 * also be on, since only scheduler-dispatched polls take this path.
+	 */
+	@Env('N8N_SCHEDULER_DURABLE_POLL_CURSORS_ENABLED')
+	durablePollCursors: boolean = false;
+
+	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
 	 * Off by default; intended to be removed once the durable scheduler is GA.
 	 *

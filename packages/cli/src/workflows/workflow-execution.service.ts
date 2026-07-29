@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
@@ -12,6 +12,7 @@ import {
 	anyReachableRootHasRunData,
 } from 'n8n-core';
 import type {
+	IDataObject,
 	IExecuteData,
 	IExecuteResponsePromiseData,
 	INode,
@@ -40,6 +41,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
@@ -62,6 +64,8 @@ export class WorkflowExecutionService {
 		private readonly executionContextService: ExecutionContextService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly pollCursorService: PollCursorService,
+		private readonly executionRepository: ExecutionRepository,
 	) {}
 
 	async runWorkflow(
@@ -73,6 +77,73 @@ export class WorkflowExecutionService {
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		deduplicationKey?: string,
 	) {
+		const runData = await this.buildTriggerRunData(
+			workflowData,
+			node,
+			data,
+			additionalData,
+			mode,
+			deduplicationKey,
+		);
+
+		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+	}
+
+	/**
+	 * Run a workflow for a poll that returned data, committing the execution row and the
+	 * node's cursor together before starting the run.
+	 *
+	 * The row is inserted by the commit and started here by id, rather than inserted by the
+	 * runner, so that no execution exists for a cursor advance that was rolled back.
+	 */
+	async runPolledWorkflow(
+		workflowData: IWorkflowBase,
+		node: INode,
+		data: INodeExecutionData[][],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		workflow: Workflow,
+		stagedCursor: IDataObject | undefined,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	) {
+		const runData = await this.buildTriggerRunData(workflowData, node, data, additionalData, mode);
+
+		// Masks the trigger items before the commit below writes them. `run` establishes
+		// the context again and the second call is a no-op, but by then the row exists.
+		await this.workflowRunner.establishContextBeforePersist(runData);
+
+		const executionId = await this.pollCursorService.commitPoll(
+			workflow,
+			node,
+			runData,
+			stagedCursor,
+		);
+
+		try {
+			return await this.workflowRunner.run(
+				runData,
+				true,
+				undefined,
+				{ executionId, expectedStatus: 'new' },
+				responsePromise,
+			);
+		} catch (error) {
+			// The row and the cursor are already committed, so an execution that cannot be
+			// started is marked crashed rather than left at `new`, where only a restart in
+			// regular mode would ever find it.
+			await this.executionRepository.markAsCrashed(executionId);
+			throw error;
+		}
+	}
+
+	private async buildTriggerRunData(
+		workflowData: IWorkflowBase,
+		node: INode,
+		data: INodeExecutionData[][],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		deduplicationKey?: string,
+	): Promise<IWorkflowExecutionDataProcess> {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node,
@@ -94,8 +165,7 @@ export class WorkflowExecutionService {
 			workflowData.id,
 		);
 
-		// Start the workflow
-		const runData: IWorkflowExecutionDataProcess = {
+		return {
 			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
@@ -104,8 +174,6 @@ export class WorkflowExecutionService {
 			projectId,
 			projectName,
 		};
-
-		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {

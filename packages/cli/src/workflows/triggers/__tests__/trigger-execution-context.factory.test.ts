@@ -39,6 +39,7 @@ import type {
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { createNodeTypes } from './trigger-test-utils';
+import type { PollCursorService } from '../poll-cursor.service';
 import {
 	TriggerExecutionContextFactory,
 	type TriggerFailureHandler,
@@ -60,6 +61,7 @@ describe('TriggerExecutionContextFactory', () => {
 	const nodeTypes = createNodeTypes();
 
 	let factory: TriggerExecutionContextFactory;
+	let createFactory: (pollCursorService: PollCursorService) => TriggerExecutionContextFactory;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -74,20 +76,24 @@ describe('TriggerExecutionContextFactory', () => {
 		const scopedLogger = mock<Logger>();
 		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
-		factory = new TriggerExecutionContextFactory(
-			rootLogger,
-			mock<ErrorReporter>(),
-			activeExecutions,
-			eventService,
-			executionService,
-			workflowStaticDataService,
-			workflowExecutionService,
-			storageConfig,
-			workflowPublishedDataService,
-			scheduleTriggerJobRegistrar,
-			ownershipService,
-			nodeTypes,
-		);
+		createFactory = (pollCursorService: PollCursorService) =>
+			new TriggerExecutionContextFactory(
+				rootLogger,
+				mock<ErrorReporter>(),
+				activeExecutions,
+				eventService,
+				executionService,
+				workflowStaticDataService,
+				workflowExecutionService,
+				storageConfig,
+				workflowPublishedDataService,
+				scheduleTriggerJobRegistrar,
+				ownershipService,
+				nodeTypes,
+				pollCursorService,
+			);
+
+		factory = createFactory(mock<PollCursorService>({ enabled: false }));
 	});
 
 	describe('getExecuteTriggerFunctions', () => {
@@ -427,6 +433,95 @@ describe('TriggerExecutionContextFactory', () => {
 				);
 			});
 
+			test('commits a staged cursor with the execution instead of saving static data', async () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Poll Node' });
+				const pollData: INodeExecutionData[][] = [[{ json: {} }]];
+
+				const durableFactory = createFactory(mock<PollCursorService>({ enabled: true }));
+				const getPollFunctions = durableFactory.getExecutePollFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+				);
+				const context = getPollFunctions(workflow, node, additionalData, mode, activation);
+
+				context.setCursor({ lastItemId: 'a' });
+				context.__emit(pollData);
+				await sleep(0);
+
+				expect(workflowStaticDataService.saveStaticData).not.toHaveBeenCalled();
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledWith(
+					workflowData,
+					node,
+					pollData,
+					additionalData,
+					mode,
+					workflow,
+					{ lastItemId: 'a' },
+					undefined,
+				);
+			});
+
+			test('keeps a node that staged no cursor on static data even while the durable-cursor setting is on', async () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Poll Node' });
+
+				const durableFactory = createFactory(mock<PollCursorService>({ enabled: true }));
+				const getPollFunctions = durableFactory.getExecutePollFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+				);
+				const context = getPollFunctions(workflow, node, additionalData, mode, activation);
+
+				context.__emit([[{ json: {} }]]);
+				await sleep(0);
+
+				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+				expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('stages a cursor for one poll only', async () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Poll Node' });
+
+				const durableFactory = createFactory(mock<PollCursorService>({ enabled: true }));
+				const getPollFunctions = durableFactory.getExecutePollFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+				);
+				const context = getPollFunctions(workflow, node, additionalData, mode, activation);
+
+				context.setCursor({ lastItemId: 'a' });
+				context.__emit([[{ json: {} }]]);
+				context.__emit([[{ json: {} }]]);
+				await sleep(0);
+
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(1);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+			});
+
 			test('resolves donePromise via getPostExecutePromise', async () => {
 				const runResult = mock<IRun>();
 				activeExecutions.getPostExecutePromise.mockResolvedValue(runResult);
@@ -537,13 +632,14 @@ describe('TriggerExecutionContextFactory', () => {
 			});
 
 			// Built with the activation path's execution/activation modes ('trigger'/'update').
-			// Exactly five args: no per-occurrence deduplication key is threaded as a sixth.
+			// The trailing cursor is undefined while the durable-cursor setting is off.
 			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
 				workflowData,
 				additionalData,
 				'trigger',
 				'update',
 				expect.any(Function),
+				undefined,
 			);
 
 			expect(getPollFunctions).toHaveBeenCalledWith(
@@ -552,6 +648,31 @@ describe('TriggerExecutionContextFactory', () => {
 				additionalData,
 				'trigger',
 				'update',
+			);
+		});
+
+		test('hands the stored cursor to the poll context while the durable-cursor setting is on', async () => {
+			const workflowData = buildWorkflowData();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+			const pollCursorService = mock<PollCursorService>({ enabled: true });
+			pollCursorService.readCursor.mockResolvedValue({ lastItemId: 'a' });
+			const durableFactory = createFactory(pollCursorService);
+			const getExecutePollFunctionsSpy = vi
+				.spyOn(durableFactory, 'getExecutePollFunctions')
+				.mockReturnValue(vi.fn() as unknown as IGetExecutePollFunctions);
+
+			const result = await durableFactory.createPollExecutionContext(workflowData, pollNode);
+
+			expect(pollCursorService.readCursor).toHaveBeenCalledWith(result.workflow, pollNode);
+			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
+				workflowData,
+				additionalData,
+				'trigger',
+				'update',
+				expect.any(Function),
+				{ lastItemId: 'a' },
 			);
 		});
 

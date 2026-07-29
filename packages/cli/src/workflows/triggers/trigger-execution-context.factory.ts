@@ -12,6 +12,7 @@ import {
 } from 'n8n-core';
 import type {
 	ExecutionError,
+	IDataObject,
 	IExecuteResponsePromiseData,
 	INode,
 	INodeExecutionData,
@@ -38,6 +39,8 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+import { PollCursorService } from './poll-cursor.service';
 
 export type TriggerFailureHandler = (opts: {
 	error: Error;
@@ -72,6 +75,7 @@ export class TriggerExecutionContextFactory {
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly ownershipService: OwnershipService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly pollCursorService: PollCursorService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -224,29 +228,57 @@ export class TriggerExecutionContextFactory {
 		// service (flag on). Once the feature flag is removed, we'll call the
 		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
+		cursor?: IDataObject,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
+			// `__emit` reads the staged cursor off the context, and the context needs `__emit`
+			// to construct. The holder breaks that cycle; it is filled before the context is
+			// handed out, and `__emit` only runs once `poll()` has returned.
+			const held: { context?: PollContext } = {};
+
 			const __emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
-				void this.workflowStaticDataService.saveStaticData(workflow);
+
+				const stagedCursor = held.context?.__takeStagedCursor();
+
+				// A node that staged a cursor has its state committed with the execution
+				// below. One that did not still keeps it in static data, whether because
+				// it has not been moved onto the cursor API or because it holds state the
+				// cursor does not cover, so the two stores coexist per node rather than
+				// per instance.
+				const commitsCursor = this.pollCursorService.enabled && stagedCursor !== undefined;
+
+				if (!commitsCursor) {
+					void this.workflowStaticDataService.saveStaticData(workflow);
+				}
 
 				// TODO(CAT-3202): resolves workflow data via callback so we
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
-				const executePromise = resolveWorkflowData().then(
-					async (freshWorkflowData) =>
-						await this.workflowExecutionService.runWorkflow(
-							freshWorkflowData,
-							node,
-							data,
-							additionalData,
-							mode,
-							responsePromise,
-						),
+				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) =>
+					commitsCursor
+						? await this.workflowExecutionService.runPolledWorkflow(
+								freshWorkflowData,
+								node,
+								data,
+								additionalData,
+								mode,
+								workflow,
+								stagedCursor,
+								responsePromise,
+							)
+						: await this.workflowExecutionService.runWorkflow(
+								freshWorkflowData,
+								node,
+								data,
+								additionalData,
+								mode,
+								responsePromise,
+							),
 				);
 
 				if (donePromise) {
@@ -269,14 +301,25 @@ export class TriggerExecutionContextFactory {
 					});
 			};
 
-			return new PollContext(workflow, node, additionalData, mode, activation, __emit, __emitError);
+			held.context = new PollContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+				__emit,
+				__emitError,
+				cursor,
+			);
+			return held.context;
 		};
 	}
 
 	/**
 	 * Assemble the poll execution context: the Workflow, additionalData, and
-	 * resolve-at-emit closure needed to run `poll()`. The closure reads fresh
-	 * (non-cached) so the poll cursor in staticData is never stale.
+	 * resolve-at-emit closure needed to run `poll()`. The closure re-reads the
+	 * published workflow instead of using the cached copy, so it runs against
+	 * the definition as of just before the poll fired.
 	 */
 	async createPollExecutionContext(
 		workflowData: IWorkflowBase,
@@ -301,12 +344,17 @@ export class TriggerExecutionContextFactory {
 		const resolveWorkflowData = async () =>
 			await this.loadPublishedWorkflowData(workflowData.id, { bypassCache: true });
 
+		const cursor = this.pollCursorService.enabled
+			? await this.pollCursorService.readCursor(workflow, node)
+			: undefined;
+
 		const getPollFunctions = this.getExecutePollFunctions(
 			workflowData,
 			additionalData,
 			'trigger',
 			'update',
 			resolveWorkflowData,
+			cursor,
 		);
 		// getPollFunctions already closed over these; its signature still requires them.
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');
@@ -342,8 +390,8 @@ export class TriggerExecutionContextFactory {
 	 * published data. `pinData` and `meta` are deliberately left out: they are
 	 * irrelevant to a production trigger execution.
 	 *
-	 * Pass `bypassCache` on the poll path: `saveStaticData` writes the poll cursor
-	 * into `staticData` without refreshing the cache, so a cached read would be stale.
+	 * Pass `bypassCache` on the poll path: a poll may have just changed the node's
+	 * stored cursor, and a cached read would still show the value from before it ran.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
