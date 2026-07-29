@@ -90,8 +90,6 @@ export class WorkflowSerializer {
 			name: parsed.name,
 			nodes: parsed.nodes as INode[],
 			connections: parsed.connections as IConnections,
-			// Package content wins over what's on the target, so a package with no
-			// groups clears the groups of a workflow it overwrites.
 			nodeGroups: parsed.nodeGroups ?? [],
 			isArchived: parsed.isArchived,
 			...(parsed.settings !== undefined ? { settings: parsed.settings } : {}),

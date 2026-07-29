@@ -41,9 +41,6 @@ const connectionLeafSchema = z.object({
 
 const connectionsSchema = z.record(z.record(z.array(z.array(connectionLeafSchema).nullable())));
 
-// Mirrors `IWorkflowGroup`. The description length cap is deliberately not
-// enforced here — import truncates an over-long one rather than rejecting the
-// whole package.
 const nodeGroupSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
@@ -56,8 +53,6 @@ export const serializedWorkflowSchema = z.object({
 	name: z.string().min(1),
 	nodes: z.array(nodeSchema),
 	connections: connectionsSchema,
-	// Absent in packages written before node groups existed, and omitted for
-	// workflows without groups.
 	nodeGroups: z.array(nodeGroupSchema).optional(),
 	settings: z.record(z.unknown()).optional(),
 	versionId: z.string(),

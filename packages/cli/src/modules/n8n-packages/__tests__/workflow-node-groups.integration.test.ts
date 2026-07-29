@@ -176,8 +176,6 @@ describe('workflow package import — node groups', () => {
 		expect(imported.nodeGroups).toEqual([]);
 	});
 
-	// The save path rejects a group holding a trigger node, so dropping it here is
-	// what keeps such a package importable at all.
 	it('drops groups that break a canvas grouping rule, keeping the import', async () => {
 		const owner = await createOwner();
 
