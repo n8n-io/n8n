@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { reactiveOmit, reactivePick } from '@vueuse/core';
-import { computed, ref, useAttrs, useCssModule, watch } from 'vue';
+import {
+	computed,
+	nextTick,
+	onMounted,
+	ref,
+	useAttrs,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
@@ -54,9 +63,33 @@ const currentPage = computed(() => {
 	return uncontrolledPage.value;
 });
 const jumperValue = ref(String(currentPage.value));
+const jumperInputRef = useTemplateRef<HTMLInputElement>('jumperInput');
 
 watch(currentPage, (page) => {
 	jumperValue.value = String(page);
+});
+
+function syncJumperInputWidth() {
+	const input = jumperInputRef.value;
+	if (!input) return;
+
+	input.style.width = '0px';
+	input.style.width = `${Math.max(input.scrollWidth, 1) + 1}px`;
+}
+
+watch(jumperValue, async (value) => {
+	const digitsOnly = value.replace(/\D/g, '');
+	if (digitsOnly !== value) {
+		jumperValue.value = digitsOnly;
+		return;
+	}
+
+	await nextTick();
+	syncJumperInputWidth();
+});
+
+onMounted(() => {
+	syncJumperInputWidth();
 });
 
 function resolvedPageCount() {
@@ -279,19 +312,15 @@ function handlePagerKeydown(event: KeyboardEvent) {
 			@update:model-value="handleItemsPerPageUpdate"
 		/>
 
-		<div
-			v-if="showJumper"
-			:class="$style.jumper"
-			:style="{ '--jumper-digits': Math.max(String(jumperValue).length, 1) }"
-			data-test-id="pagination-jumper"
-		>
+		<div v-if="showJumper" :class="$style.jumper" data-test-id="pagination-jumper">
 			<span :class="$style.jumperPrefix">{{ t('pagination.goTo') }}</span>
 			<input
+				ref="jumperInput"
 				v-model="jumperValue"
-				type="number"
-				:min="1"
-				:max="resolvedPageCount()"
-				step="1"
+				type="text"
+				inputmode="numeric"
+				pattern="[0-9]*"
+				autocomplete="off"
 				:class="$style.jumperInput"
 				:disabled="disabled"
 				:aria-label="t('pagination.goToPage')"
@@ -421,28 +450,13 @@ function handlePagerKeydown(event: KeyboardEvent) {
 	padding-inline: var(--jumper-inset, var(--spacing--xs));
 	border: none;
 	background: transparent;
-	field-sizing: content;
 	outline: none;
-	appearance: textfield;
-	-moz-appearance: textfield;
+	overflow: hidden;
+	font-variant-numeric: tabular-nums;
 
 	&:disabled {
 		cursor: not-allowed;
 		color: var(--color--text--tint-1);
-	}
-
-	&::-webkit-outer-spin-button,
-	&::-webkit-inner-spin-button {
-		display: none;
-		appearance: none;
-		margin: 0;
-		pointer-events: none;
-		height: 0;
-		width: 0;
-	}
-
-	@supports (field-sizing: content) {
-		width: auto;
 	}
 }
 

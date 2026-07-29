@@ -16,7 +16,7 @@ describe('v2/components/Pagination', () => {
 			expect(wrapper.getByTestId('pagination-total')).toHaveTextContent('Total 100');
 			expect(wrapper.getByTestId('pagination-sizes')).toBeInTheDocument();
 			expect(wrapper.getByTestId('pagination-jumper')).toBeInTheDocument();
-			expect(wrapper.getByTestId('pagination-jumper-input')).toHaveValue(1);
+			expect(wrapper.getByTestId('pagination-jumper-input')).toHaveValue('1');
 		});
 
 		it('should hide total, sizes, and jumper when disabled via props', () => {
@@ -159,7 +159,7 @@ describe('v2/components/Pagination', () => {
 			});
 			expect(wrapper.getByText('1')).toHaveAttribute('data-selected');
 			expect(wrapper.getByText('2')).not.toHaveAttribute('data-selected');
-			expect(wrapper.getByTestId('pagination-jumper-input')).toHaveValue(1);
+			expect(wrapper.getByTestId('pagination-jumper-input')).toHaveValue('1');
 
 			await wrapper.rerender({
 				page: 2,
@@ -168,7 +168,7 @@ describe('v2/components/Pagination', () => {
 			});
 
 			expect(wrapper.getByText('2')).toHaveAttribute('data-selected');
-			expect(wrapper.getByTestId('pagination-jumper-input')).toHaveValue(2);
+			expect(wrapper.getByTestId('pagination-jumper-input')).toHaveValue('2');
 		});
 
 		it('should handle prev button click', async () => {
@@ -325,7 +325,7 @@ describe('v2/components/Pagination', () => {
 			await waitFor(() => {
 				expect(wrapper.emitted('update:page')?.[0]).toEqual([10]);
 			});
-			expect(input).toHaveValue(10);
+			expect(input).toHaveValue('10');
 		});
 
 		it('should clamp jumper input below the first page', async () => {
@@ -346,7 +346,7 @@ describe('v2/components/Pagination', () => {
 			await waitFor(() => {
 				expect(wrapper.emitted('update:page')?.[0]).toEqual([1]);
 			});
-			expect(input).toHaveValue(1);
+			expect(input).toHaveValue('1');
 		});
 
 		it('should reset invalid jumper input to the current page without emitting', async () => {
@@ -364,7 +364,7 @@ describe('v2/components/Pagination', () => {
 			await userEvent.tab();
 
 			await waitFor(() => {
-				expect(input).toHaveValue(3);
+				expect(input).toHaveValue('3');
 			});
 			expect(wrapper.emitted('update:page')).toBeFalsy();
 		});

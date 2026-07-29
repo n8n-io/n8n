@@ -383,7 +383,7 @@ export const ControlledUncontrolled: Story = {
 					Uncontrolled
 				</h3>
 				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-					Initial page via <code>default-page</code>. Reka manages page state after mount.
+					Initial page via <code>default-page</code>. The component owns page state after mount.
 				</p>
 				<Pagination
 					key="uncontrolled"
