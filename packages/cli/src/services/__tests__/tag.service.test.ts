@@ -1,5 +1,5 @@
 import type { Mock } from 'vitest';
-import type { TagEntity, TagRepository } from '@n8n/db';
+import type { TagEntity, TagRepository, TransactionRunner } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -18,7 +18,7 @@ const makeTag = (overrides: Partial<TagEntity> = {}): TagEntity =>
 describe('TagService', () => {
 	const tagRepository = mock<TagRepository>();
 	const externalHooks = mock<ExternalHooks>();
-	const tagService = new TagService(externalHooks, tagRepository);
+	const tagService = new TagService(externalHooks, tagRepository, mock<TransactionRunner>());
 
 	beforeEach(() => {
 		vi.resetAllMocks();

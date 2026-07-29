@@ -1,14 +1,16 @@
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import intersection from 'lodash/intersection';
 
 import { FolderTagMapping, TagEntity, WorkflowTagMapping } from '../entities';
+import { BaseRepository } from './base-repository';
 import type { IWorkflowDb } from '../entities/types-db';
+import type { OperationContext } from '../services/transaction';
 
 @Service()
-export class TagRepository extends Repository<TagEntity> {
+export class TagRepository extends BaseRepository<TagEntity> {
 	constructor(dataSource: DataSource) {
 		super(TagEntity, dataSource.manager);
 	}
@@ -73,17 +75,17 @@ export class TagRepository extends Repository<TagEntity> {
 	 * exist: instead the new row is inserted first (the old row moves to a
 	 * random temporary name to free the unique name index), the mappings are
 	 * re-pointed with set-based updates, and the then-childless old row is
-	 * deleted. Atomic — a failure at any statement rolls everything back.
+	 * deleted. `ctx` must carry an active transaction so a failure at any
+	 * statement rolls everything back.
 	 */
-	async reconcileTagId(oldId: string, newId: string) {
-		await this.manager.transaction(async (tx) => {
-			const oldTag = await tx.findOneByOrFail(TagEntity, { id: oldId });
-			await tx.update(TagEntity, { id: oldId }, { name: generateNanoId() });
-			await tx.insert(TagEntity, { id: newId, name: oldTag.name, createdAt: oldTag.createdAt });
-			await tx.update(WorkflowTagMapping, { tagId: oldId }, { tagId: newId });
-			await tx.update(FolderTagMapping, { tagId: oldId }, { tagId: newId });
-			await tx.delete(TagEntity, { id: oldId });
-		});
+	async reconcileTagId(ctx: OperationContext, oldId: string, newId: string) {
+		const tx = this.managerFor(ctx);
+		const oldTag = await tx.findOneByOrFail(TagEntity, { id: oldId });
+		await tx.update(TagEntity, { id: oldId }, { name: generateNanoId() });
+		await tx.insert(TagEntity, { id: newId, name: oldTag.name, createdAt: oldTag.createdAt });
+		await tx.update(WorkflowTagMapping, { tagId: oldId }, { tagId: newId });
+		await tx.update(FolderTagMapping, { tagId: oldId }, { tagId: newId });
+		await tx.delete(TagEntity, { id: oldId });
 	}
 
 	/**

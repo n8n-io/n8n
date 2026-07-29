@@ -1,5 +1,5 @@
 import type { TagEntity, ITagWithCountDb } from '@n8n/db';
-import { TagRepository } from '@n8n/db';
+import { TagRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 
@@ -25,6 +25,7 @@ export class TagService {
 	constructor(
 		private externalHooks: ExternalHooks,
 		private tagRepository: TagRepository,
+		private txRunner: TransactionRunner,
 	) {}
 
 	toEntity(attrs: { name: string; id?: string }) {
@@ -54,7 +55,10 @@ export class TagService {
 	 * exists.
 	 */
 	async reconcileTagId(oldId: string, newId: string) {
-		await this.tagRepository.reconcileTagId(oldId, newId);
+		await this.txRunner.run(
+			{},
+			async (ctx) => await this.tagRepository.reconcileTagId(ctx, oldId, newId),
+		);
 	}
 
 	async delete(id: string) {
