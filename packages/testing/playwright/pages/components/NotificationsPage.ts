@@ -54,63 +54,50 @@ export class NotificationsPage {
 
 	/**
 	 * Clicks the close button on the FIRST notification matching the text.
-	 * Fast execution with short timeouts for snappy notifications.
+	 * Throws if the notification is still on screen afterwards - a toast left
+	 * open covers the top-right of the app and intercepts later clicks.
 	 * @param text The text of the notification to close.
 	 * @param options Optional configuration
 	 */
 	async closeNotificationByText(
 		text: string | RegExp,
 		options: { timeout?: number } = {},
-	): Promise<boolean> {
+	): Promise<void> {
 		const { timeout = 2000 } = options;
+		const notification = this.getNotificationByTitle(text).first();
 
 		try {
-			const notification = this.getNotificationByTitle(text).first();
-			await notification.waitFor({ state: 'visible', timeout });
-
-			const closeBtn = notification.locator('.el-notification__closeBtn');
-			await closeBtn.click({ timeout: 500 });
-
-			// Quick check that it's gone - don't wait long
-			await notification.waitFor({ state: 'hidden', timeout: 1000 });
-			return true;
-		} catch (error) {
-			return false;
+			await notification.locator('.el-notification__closeBtn').click({ timeout });
+		} catch {
+			// It may have auto-dismissed; the hidden check below is the real contract.
 		}
+
+		await notification.waitFor({ state: 'hidden', timeout });
 	}
 
 	/**
-	 * Wait for a notification to appear with specific text.
-	 * Reasonable timeout for waiting, but still faster than before.
+	 * Wait for a notification to appear with specific text. Throws if it never shows -
+	 * callers use this as a synchronisation point, so a silent miss lets the test run
+	 * on against unfinished state and fail later with a misleading error.
 	 * @param text The text to search for in notification title.
 	 * @param options Optional configuration
 	 */
 	async waitForNotification(
 		text: string | RegExp,
 		options: { timeout?: number } = {},
-	): Promise<boolean> {
+	): Promise<void> {
 		const { timeout = 5000 } = options;
-
-		try {
-			const notification = this.getNotificationByTitle(text).first();
-			await notification.waitFor({ state: 'visible', timeout });
-			return true;
-		} catch {
-			return false;
-		}
+		await this.getNotificationByTitle(text).first().waitFor({ state: 'visible', timeout });
 	}
 
 	// Wait for notification and then close it
 	async waitForNotificationAndClose(
 		text: string | RegExp,
 		options: { timeout?: number } = {},
-	): Promise<boolean> {
+	): Promise<void> {
 		const { timeout = 3000 } = options;
-		const isVisible = await this.waitForNotification(text, { timeout });
-		if (!isVisible) {
-			return false;
-		}
-		return await this.closeNotificationByText(text, { timeout });
+		await this.waitForNotification(text, { timeout });
+		await this.closeNotificationByText(text, { timeout });
 	}
 
 	/**
