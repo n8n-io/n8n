@@ -1,7 +1,11 @@
 import { workflow, trigger, node } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
-const buildWorkflow = (path: string, pollTimesItem: Record<string, unknown>) => {
+const buildWorkflow = (
+	path: string,
+	pollTimesItem: Record<string, unknown>,
+	trackCursor = false,
+) => {
 	const pollTrigger = trigger({
 		type: 'n8n-nodes-base.e2eTestPollingTrigger',
 		version: 1,
@@ -10,6 +14,7 @@ const buildWorkflow = (path: string, pollTimesItem: Record<string, unknown>) => 
 			parameters: {
 				url: `http://e2e-poll-test.local${path}`,
 				pollTimes: { item: [pollTimesItem] },
+				trackCursor,
 			},
 		},
 	});
@@ -36,3 +41,8 @@ export const makePollTriggerWorkflow = (path: string) =>
 // mode provisioning branch.
 export const makeCronPollTriggerWorkflow = (path: string, cronExpression = '0 * * * * *') =>
 	buildWorkflow(path, { mode: 'custom', cronExpression });
+
+// Emits only the items after the last one it returned, keeping that position in a
+// cursor rather than in workflow static data.
+export const makeCursorPollTriggerWorkflow = (path: string) =>
+	buildWorkflow(path, { mode: 'everyMinute' }, true);

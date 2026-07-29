@@ -238,6 +238,22 @@ export class ApiHelpers {
 		return data.count;
 	}
 
+	async getPollerCursor(
+		workflowId: string,
+		nodeId: string,
+	): Promise<Record<string, unknown> | null> {
+		const response = await this.request.get('/rest/e2e/poller-state', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to read poller state: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as {
+			data: { cursor: Record<string, unknown> | null };
+		};
+		return data.cursor;
+	}
+
 	async fireScheduledJobsNow(workflowId: string, nodeId: string): Promise<void> {
 		const response = await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
 			data: { workflowId, nodeId },

@@ -9,6 +9,7 @@ import {
 	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
+	PollerStateRepository,
 	ScheduledJobRepository,
 	SettingsRepository,
 	UserRepository,
@@ -196,6 +197,7 @@ export class E2EController {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
 		private readonly scheduledJobRepository: ScheduledJobRepository,
+		private readonly pollerStateRepository: PollerStateRepository,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -259,6 +261,18 @@ export class E2EController {
 		const { workflowId, nodeId } = req.query;
 		const count = await this.scheduledJobRepository.countByWorkflowNode(workflowId, nodeId);
 		return { count };
+	}
+
+	/**
+	 * A poll node's stored cursor, or `null` when it has no row. Lets a test assert
+	 * on what a poll actually committed rather than inferring it from the items the
+	 * next poll happened to emit.
+	 */
+	@Get('/poller-state', { skipAuth: true })
+	async getPollerState(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
+		const { workflowId, nodeId } = req.query;
+		const cursor = await this.pollerStateRepository.findCursor(workflowId, nodeId);
+		return { cursor };
 	}
 
 	/** Lets a test observe a real scheduled dispatch without waiting out the job's cron interval. */
