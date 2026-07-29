@@ -243,7 +243,7 @@ services:
     # Never expose this container's ports publicly — it runs privileged Docker-in-Docker.
 
   n8n:
-    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
+    image: ghcr.io/n8n-io/n8n:${N8N_VERSION}
     depends_on:
       sandbox-api:
         condition: service_healthy
