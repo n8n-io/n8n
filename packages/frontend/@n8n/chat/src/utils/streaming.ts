@@ -18,14 +18,27 @@ export class StreamingMessageManager {
 	private nodeRuns = new Map<string, NodeRunData>();
 	private runOrder: string[] = [];
 	private activeRuns = new Set<string>();
+	/**
+	 * Current turn within each node run. An agent resumed after a tool call keeps its
+	 * original runIndex, so text it emitted before the tool call and the answer it
+	 * produces afterwards would otherwise accumulate into a single message.
+	 */
+	private runSegments = new Map<string, number>();
 
 	constructor() {}
 
-	private getRunKey(nodeId: string, runIndex?: number): string {
+	private getBaseKey(nodeId: string, runIndex?: number): string {
 		if (runIndex !== undefined) {
 			return `${nodeId}-${runIndex}`;
 		}
 		return nodeId;
+	}
+
+	private getRunKey(nodeId: string, runIndex?: number): string {
+		const baseKey = this.getBaseKey(nodeId, runIndex);
+		const segment = this.runSegments.get(baseKey);
+		// Runs that never announced a start keep the unsegmented key
+		return segment === undefined ? baseKey : `${baseKey}#${segment}`;
 	}
 
 	initializeRun(nodeId: string, runIndex?: number): ChatMessageText {
@@ -44,8 +57,11 @@ export class StreamingMessageManager {
 	}
 
 	registerRunStart(nodeId: string, runIndex?: number): void {
-		const runKey = this.getRunKey(nodeId, runIndex);
-		this.activeRuns.add(runKey);
+		const baseKey = this.getBaseKey(nodeId, runIndex);
+		const currentSegment = this.runSegments.get(baseKey);
+		// Each announced start opens a new turn, so its text gets its own message
+		this.runSegments.set(baseKey, currentSegment === undefined ? 0 : currentSegment + 1);
+		this.activeRuns.add(this.getRunKey(nodeId, runIndex));
 	}
 
 	addRunToActive(nodeId: string, runIndex?: number): ChatMessageText {
@@ -107,6 +123,7 @@ export class StreamingMessageManager {
 		this.nodeRuns.clear();
 		this.runOrder = [];
 		this.activeRuns.clear();
+		this.runSegments.clear();
 	}
 }
 
