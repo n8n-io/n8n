@@ -450,7 +450,7 @@ describe('AgentChannelModal', () => {
 		expect(
 			wrapper.find('[data-testid="agent-channel-credential-replacement-error"]').exists(),
 		).toBe(false);
-		expect(wrapper.get('[data-testid="close-dialog"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="close-dialog"]').exists()).toBe(true);
 		expect(wrapper.get('[data-testid="agent-channel-save-channel-config"]').text()).toBe(
 			'generic.save',
 		);
