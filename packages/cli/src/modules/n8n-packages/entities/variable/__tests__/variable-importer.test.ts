@@ -165,27 +165,6 @@ describe('VariableImporter', () => {
 		});
 
 		describe('create-stub', () => {
-			it('skips the project permission check when the project is pending creation', async () => {
-				const { importer, variablesService } = makeImporter();
-				variablesService.getAllCached.mockResolvedValue([]);
-
-				const plan = await importer.plan(
-					context,
-					{
-						requirements: [req('API_KEY', ['wf-1'])],
-						missingMode: 'create-stub',
-					},
-					{ projectPendingCreation: true },
-				);
-
-				expect(plan).toEqual({
-					matched: [],
-					missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
-					creations: [{ name: 'API_KEY', projectId: 'proj-target', usedByWorkflows: ['wf-1'] }],
-				});
-				expect(userHasScopes).not.toHaveBeenCalled();
-			});
-
 			it('leaves the quota alone: planning never reports a limit failure', async () => {
 				const { importer, variablesService } = makeImporter();
 				variablesService.getAllCached.mockResolvedValue([]);
@@ -259,6 +238,17 @@ describe('VariableImporter', () => {
 
 				await expect(planCreation(requirement, 'create-stub')).resolves.not.toHaveProperty('value');
 			});
+		});
+	});
+
+	describe('assertCanCreate', () => {
+		it('skips the project permission check when the project is pending creation', async () => {
+			const { importer } = makeImporter();
+			const creations = [{ name: 'API_KEY', projectId: 'proj-target', usedByWorkflows: ['wf-1'] }];
+
+			await expect(importer.assertCanCreate(context, creations, true)).resolves.toBeUndefined();
+
+			expect(userHasScopes).not.toHaveBeenCalled();
 		});
 	});
 

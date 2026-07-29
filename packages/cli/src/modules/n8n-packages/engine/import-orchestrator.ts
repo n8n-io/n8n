@@ -107,9 +107,11 @@ export class ImportOrchestrator {
 	) {}
 
 	/**
-	 * Applies the gates that depend on the aggregate set of planned creations, across every scope
-	 * of the import. The licence goes first: an unlicensed instance also reports a zero variable
-	 * quota, which would otherwise surface as a limit issue instead of the real cause.
+	 * Applies every gate on variable creation, across all scopes of the import, in
+	 * instance-to-project order so the broadest cause wins: the licence and API key scope
+	 * cover the whole instance, then each scope's own create permission, then the quota.
+	 * An unlicensed instance also reports a zero quota, which would otherwise surface as a
+	 * limit issue instead of the real cause.
 	 */
 	async assertNotBlocked(
 		plans: ImportPlan[],
@@ -122,6 +124,15 @@ export class ImportOrchestrator {
 			apiKeyScopes: options.apiKeyScopes,
 			hasCreations: creations.length > 0,
 		});
+
+		for (const { input, variablePlan } of plans) {
+			if (variablePlan.creations.length === 0) continue;
+			await this.variableImporter.assertCanCreate(
+				input.context,
+				variablePlan.creations,
+				input.projectPendingCreation ?? false,
+			);
+		}
 
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
 
@@ -151,9 +162,7 @@ export class ImportOrchestrator {
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
-		const variablePlan = await this.variableImporter.plan(context, variableRequest, {
-			projectPendingCreation: input.projectPendingCreation,
-		});
+		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);

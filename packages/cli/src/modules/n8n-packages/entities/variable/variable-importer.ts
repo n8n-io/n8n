@@ -34,15 +34,10 @@ export class VariableImporter {
 
 	/**
 	 * Resolves the package's variable requirements against the target project
-	 * (then global), mirroring runtime `$vars` precedence. Under a creating mode it
-	 * additionally derives the variables to create and preflights permission before
-	 * any writes, throwing a `ForbiddenError` when the user may not create them.
+	 * (then global), mirroring runtime `$vars` precedence, and under a creating mode
+	 * derives the variables to create.
 	 */
-	async plan(
-		context: ImportContext,
-		request: VariableImportRequest,
-		options: { projectPendingCreation?: boolean } = {},
-	): Promise<VariableImportPlan> {
+	async plan(context: ImportContext, request: VariableImportRequest): Promise<VariableImportPlan> {
 		const requirements = request.requirements ?? [];
 		if (requirements.length === 0) return { matched: [], missing: [], creations: [] };
 
@@ -84,10 +79,6 @@ export class VariableImporter {
 					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 				});
 			}
-		}
-
-		if (creations.length > 0) {
-			await this.assertCanCreate(context, creations, options.projectPendingCreation ?? false);
 		}
 
 		return { matched, missing, creations };
@@ -171,7 +162,7 @@ export class VariableImporter {
 		);
 	}
 
-	private async assertCanCreate(
+	async assertCanCreate(
 		context: ImportContext,
 		creations: VariableCreation[],
 		projectPendingCreation: boolean,
