@@ -198,9 +198,7 @@ export class InstanceAiSandboxService {
 			sandboxAutoDeleteMinutes,
 			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
-		const provider = this.options.aiService.isProxyEnabled()
-			? 'daytona'
-			: normalizeSandboxProvider(sandboxProvider);
+		const provider = normalizeSandboxProvider(sandboxProvider);
 		if (!sandboxEnabled) {
 			return {
 				enabled: false,

@@ -818,6 +818,8 @@ For a **synthetic, sanitized** seed you want pinned in git (never a real user's 
 
 Schema in `harness/conversation-seed.ts` — `messages` plus optional `workflows` and `dataTables`. Two constraints worth knowing: a workflow `id` must be ≥8 characters (`remapSeedWorkflowIds` refuses to rewrite shorter ids safely), and a seeded `build-workflow` tool call's `output.workflowId` must match the seeded workflow's `id`, or the remap separates them and the agent can't find the workflow it's meant to act on.
 
+**Each message must carry the envelope** — `id`, `role` (`user` or `assistant`), `type` (`llm`, `custom`, …), `createdAt` (a parseable timestamp; ordering before the live turn depends on it), and `content` as an array of blocks each with a `type`. Only the envelope is validated: **unknown block types are accepted**, because block shapes belong to the agent's message store rather than to the harness, and unknown keys are preserved rather than stripped. A `type: 'custom'` message is the one exception — it's stored but never rendered, so it may omit `role` and carry any `content` shape. The envelope is checked because a malformed message would otherwise be stored verbatim *and* skipped by `transcriptPrefixFromSeed`, leaving the case graded against a transcript that doesn't match what the agent saw.
+
 The seed lives **in the case body** rather than in a sibling file, so it travels with the case whatever the source — a JSON on disk, a suite pulled with `--source langtracer`, or a case body handed to a dispatcher. (There used to be a `seedFile` path pointing at a sibling JSON. Only the disk loader could resolve it, so a case delivered any other way lost its seed; the key is gone and a case still carrying it fails at load.)
 
 #### How restore works (all paths)
@@ -871,7 +873,7 @@ evaluations/
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
 ├── data/agents/          # authoring dir for intent-resolution cases (the corpus lives in LangTracer suite `agents`)
-├── data/workflows/       # seeded carve-out case JSONs + seeds/ (the corpus lives in LangTracer)
+├── data/workflows/       # seeded carve-out case JSONs (the corpus lives in LangTracer)
 ├── data/subagent/        # workflow-build compatibility fixture JSON files
 ├── data/pairwise/        # Local pairwise fixture (small smoke set)
 ├── harness/              # Runners: buildWorkflow + executeScenario (e2e), in-memory event bus (discovery)
