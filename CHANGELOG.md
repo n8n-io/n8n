@@ -1,3 +1,11 @@
+## [2.32.6](https://github.com/n8n-io/n8n/compare/n8n@2.32.5...n8n@2.32.6) (2026-07-29)
+
+
+### Bug Fixes
+
+* **core:** Accept 5-field cron expressions in schedule trigger ([#35013](https://github.com/n8n-io/n8n/issues/35013)) ([0de32f0](https://github.com/n8n-io/n8n/commit/0de32f0cbc4c8af269ecebc30352871d947127bb))
+
+
 ## [2.32.5](https://github.com/n8n-io/n8n/compare/n8n@2.32.4...n8n@2.32.5) (2026-07-24)
 
 
