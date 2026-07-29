@@ -17,10 +17,16 @@ export class OrchestrationWorker {
 				case 'execution:enqueued':
 					await this.startHandler.handle(message);
 					break;
-				default:
+				case 'step:completed':
+					// TODO(CAT-2871): advance the execution and plan the next steps.
+					break;
+				default: {
+					// Exhaustive today; the throw guards an off-contract message at runtime.
+					const unhandled: never = message;
 					throw new UnimplementedError(
-						`orchestration worker received an unimplemented message type: ${String(message.type)}`,
+						`orchestration worker received an unimplemented message type: ${JSON.stringify(unhandled)}`,
 					);
+				}
 			}
 		});
 	}

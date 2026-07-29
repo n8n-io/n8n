@@ -19,3 +19,18 @@ export function getSuccessorNodeIds(graph: WorkflowGraph, nodeId: string): strin
 	}
 	return successors;
 }
+
+/**
+ * Ids of the nodes directly upstream of `nodeId`, de-duplicated, in edge order.
+ *
+ * TODO(CAT-3854): validate edge endpoints against `nodes`.
+ */
+export function getPredecessorNodeIds(graph: WorkflowGraph, nodeId: string): string[] {
+	const predecessors: string[] = [];
+	for (const edge of graph.edges) {
+		if (edge.to === nodeId && !predecessors.includes(edge.from)) {
+			predecessors.push(edge.from);
+		}
+	}
+	return predecessors;
+}

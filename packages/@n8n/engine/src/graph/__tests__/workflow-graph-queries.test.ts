@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { WorkflowGraph } from '../workflow-graph';
-import { findTriggerNode, getSuccessorNodeIds } from '../workflow-graph-queries';
+import {
+	findTriggerNode,
+	getPredecessorNodeIds,
+	getSuccessorNodeIds,
+} from '../workflow-graph-queries';
 
 const graph: WorkflowGraph = {
 	nodes: [
@@ -41,5 +45,37 @@ describe('getSuccessorNodeIds', () => {
 
 	it('returns an empty array for an unknown node', () => {
 		expect(getSuccessorNodeIds(graph, 'nope')).toEqual([]);
+	});
+});
+
+describe('getPredecessorNodeIds', () => {
+	it('returns predecessors in edge order, de-duplicated', () => {
+		expect(getPredecessorNodeIds(graph, 'b')).toEqual(['trigger', 'a']);
+	});
+
+	it('de-duplicates a predecessor reaching the same target from two output slots', () => {
+		expect(getPredecessorNodeIds(graph, 'a')).toEqual(['trigger']);
+	});
+
+	it('returns an empty array for the trigger node', () => {
+		expect(getPredecessorNodeIds(graph, 'trigger')).toEqual([]);
+	});
+
+	it('returns an empty array for an unknown node', () => {
+		expect(getPredecessorNodeIds(graph, 'nope')).toEqual([]);
+	});
+
+	it('includes back-edges, matching getSuccessorNodeIds', () => {
+		const looping: WorkflowGraph = {
+			nodes: [
+				{ id: 'a', name: 'A', type: 'v1-node' },
+				{ id: 'b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'b', to: 'a', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+			],
+		};
+		expect(getPredecessorNodeIds(looping, 'a')).toEqual(['b']);
 	});
 });

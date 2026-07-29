@@ -10,7 +10,12 @@ import {
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from './database';
-import { ExecutionStartHandler, OrchestrationWorker } from './execution';
+import {
+	ExecutionStartHandler,
+	OrchestrationWorker,
+	StepReadyHandler,
+	StepWorker,
+} from './execution';
 import { InMemoryWorkQueue } from './queue';
 import type { OrchestrationMessage, StepMessage } from './queue';
 import { createEngineServer } from './server';
@@ -30,19 +35,26 @@ async function main(): Promise<void> {
 	}
 
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-	// Published to but not yet consumed — the step worker is CAT-2870. Queued
-	// messages dispatch as soon as it registers.
 	const stepQueue = new InMemoryWorkQueue<StepMessage>();
 
-	let worker: OrchestrationWorker | undefined;
+	let orchestrationWorker: OrchestrationWorker | undefined;
+	let stepWorker: StepWorker | undefined;
 	if (dataSource) {
 		const executionStore = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
 		const stepStore = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		worker = new OrchestrationWorker(
+		orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
 		);
-		worker.start();
+		// No executors here: the v1 one lives in `@n8n/node-engine-compatibility`,
+		// which depends on this package, so only an integrated host can supply it.
+		// `v1-node` steps therefore fail as unimplemented in standalone mode.
+		stepWorker = new StepWorker(
+			stepQueue,
+			new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {}),
+		);
+		orchestrationWorker.start();
+		stepWorker.start();
 	}
 
 	const { app } = createEngineServer(
@@ -63,7 +75,11 @@ async function main(): Promise<void> {
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});
-		if (worker) await worker.stop();
+		// TODO(CAT-3882): drain in-flight work instead. Stopping the workers waits
+		// only for whatever each is mid-handling; anything queued behind it is
+		// dropped, since the in-memory queues die with the process.
+		if (orchestrationWorker) await orchestrationWorker.stop();
+		if (stepWorker) await stepWorker.stop();
 		if (dataSource?.isInitialized) await dataSource.destroy();
 		process.exit(0);
 	};
