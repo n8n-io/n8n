@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -57,6 +58,7 @@ export class ProjectPackageImporter {
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly eventService: EventService,
 		private readonly licenseState: LicenseState,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async import(
@@ -279,6 +281,7 @@ export class ProjectPackageImporter {
 			missingMode: request.tagMissingMode,
 			conflictPolicy: request.tagConflictPolicy,
 			hasRequirements: (manifest.requirements?.tags?.length ?? 0) > 0,
+			tagsDisabled: this.globalConfig.tags.disabled,
 		});
 	}
 }

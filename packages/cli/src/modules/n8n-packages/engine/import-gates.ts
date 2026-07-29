@@ -45,9 +45,12 @@ export function assertTagWritesAllowed(options: {
 	missingMode: TagMissingMode;
 	conflictPolicy: TagConflictPolicy;
 	hasRequirements: boolean;
+	tagsDisabled: boolean;
 }): void {
-	const { apiKeyScopes, missingMode, conflictPolicy, hasRequirements } = options;
-	if (!hasRequirements) return;
+	const { apiKeyScopes, missingMode, conflictPolicy, hasRequirements, tagsDisabled } = options;
+	// A tags-disabled instance imports tag-bearing packages as a silent tag
+	// no-op, so no tag write ever happens and no tag scope is required.
+	if (tagsDisabled || !hasRequirements) return;
 
 	if (missingMode === TagMissingMode.Create) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:create']);

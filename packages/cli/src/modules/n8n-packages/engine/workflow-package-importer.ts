@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -50,6 +51,7 @@ export class WorkflowPackageImporter {
 		private readonly folderService: FolderService,
 		private readonly eventService: EventService,
 		private readonly licenseState: LicenseState,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async import(
@@ -115,6 +117,7 @@ export class WorkflowPackageImporter {
 			missingMode: request.tagMissingMode,
 			conflictPolicy: request.tagConflictPolicy,
 			hasRequirements: (tagRequirements?.length ?? 0) > 0,
+			tagsDisabled: this.globalConfig.tags.disabled,
 		});
 		const tagRequest: TagImportRequest = {
 			requirements: tagRequirements,

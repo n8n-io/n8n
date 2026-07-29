@@ -599,6 +599,27 @@ describe('workflow package import — with tags', () => {
 		}
 	});
 
+	it('does not require tag scopes when workflow tags are disabled', async () => {
+		const { packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
+		const targetProject = await createTeamProject('Target', owner);
+
+		const globalConfig = Container.get(GlobalConfig);
+		globalConfig.tags.disabled = true;
+		try {
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				apiKeyScopes: ['workflow:import'],
+			});
+
+			expect(result.workflows[0].status).toBe('created');
+			expect(result.tags).toEqual({ matched: [], created: [], renamed: [], skipped: [] });
+		} finally {
+			globalConfig.tags.disabled = false;
+		}
+	});
+
 	it('rejects a package whose workflow references a tag missing from the requirements', async () => {
 		const workflow = serializedWorkflow({
 			id: 'wf-0',
