@@ -124,12 +124,12 @@ export class DirectedGraph {
 			const newConnections: GraphConnection[] = [];
 
 			for (const incomingConnection of incomingConnections) {
-				if (options.skipConnectionFn && options.skipConnectionFn(incomingConnection)) {
+				if (options.skipConnectionFn?.(incomingConnection)) {
 					continue;
 				}
 
 				for (const outgoingConnection of outgoingConnections) {
-					if (options.skipConnectionFn && options.skipConnectionFn(outgoingConnection)) {
+					if (options.skipConnectionFn?.(outgoingConnection)) {
 						continue;
 					}
 
@@ -181,8 +181,11 @@ export class DirectedGraph {
 		const fromExists = this.nodes.get(from.name) === from;
 		const toExists = this.nodes.get(to.name) === to;
 
-		a.ok(fromExists);
-		a.ok(toExists);
+		a.ok(
+			fromExists,
+			`Cannot add connection: source node "${from.name}" is not part of this graph.`,
+		);
+		a.ok(toExists, `Cannot add connection: target node "${to.name}" is not part of this graph.`);
 
 		const connection: GraphConnection = {
 			...connectionInput,
@@ -212,7 +215,7 @@ export class DirectedGraph {
 
 	getDirectChildConnections(node: INode) {
 		const nodeExists = this.nodes.get(node.name) === node;
-		a.ok(nodeExists);
+		a.ok(nodeExists, `Node "${node.name}" is not part of this graph.`);
 
 		const directChildren: GraphConnection[] = [];
 
@@ -255,7 +258,7 @@ export class DirectedGraph {
 
 	getDirectParentConnections(node: INode) {
 		const nodeExists = this.nodes.get(node.name) === node;
-		a.ok(nodeExists);
+		a.ok(nodeExists, `Node "${node.name}" is not part of this graph.`);
 
 		const directParents: GraphConnection[] = [];
 
@@ -475,6 +478,44 @@ export class DirectedGraph {
 						// TODO: What's with the input type?
 						const { node: toNodeName, type: _inputType, index: inputIndex } = conn;
 						const to = workflow.getNode(toNodeName);
+						a.ok(to);
+
+						graph.addConnection({
+							from,
+							to,
+							// TODO: parse outputType instead of casting it
+							type: outputType as NodeConnectionType,
+							outputIndex,
+							inputIndex,
+						});
+					}
+				}
+			}
+		}
+
+		return graph;
+	}
+
+	static fromNodesAndConnections(nodes: INode[], connections: IConnections): DirectedGraph {
+		const graph = new DirectedGraph();
+
+		graph.addNodes(...nodes);
+
+		// Create a map for quick node lookup
+		const nodeMap = new Map<string, INode>();
+		for (const node of nodes) {
+			nodeMap.set(node.name, node);
+		}
+
+		for (const [fromNodeName, iConnection] of Object.entries(connections)) {
+			const from = nodeMap.get(fromNodeName);
+			a.ok(from);
+
+			for (const [outputType, outputs] of Object.entries(iConnection)) {
+				for (const [outputIndex, conns] of outputs.entries()) {
+					for (const conn of conns ?? []) {
+						const { node: toNodeName, type: _inputType, index: inputIndex } = conn;
+						const to = nodeMap.get(toNodeName);
 						a.ok(to);
 
 						graph.addConnection({

@@ -1,0 +1,64 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-448, 192],
+			"id": "9f62b838-ecbe-4012-8026-9e3d48669c49",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [-224, 192],
+			"id": "7d381110-e62e-4911-8527-e6265fe4be11",
+			"name": "DebugHelper",
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [0, 192],
+			"id": "0a6ef4ec-3876-4d99-998e-9ba26ca474b5",
+			"name": "No Operation, do nothing"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "DebugHelper",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"DebugHelper": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"error": "Node has thrown an error"
+			}
+		]
+	},
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	}
+}

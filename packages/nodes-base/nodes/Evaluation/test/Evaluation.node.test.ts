@@ -1,27 +1,38 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
+	type IDataTableProjectService,
 	NodeOperationError,
 	type AssignmentCollectionValue,
 	type IExecuteFunctions,
 	type INodeTypes,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
 import { Evaluation } from '../Evaluation/Evaluation.node.ee';
+import type { Mock } from 'vitest';
 
 describe('Test Evaluation', () => {
 	const sheetName = 'Sheet5';
 	const spreadsheetId = '1oqFpPgEPTGDw7BPkp1SfPXq3Cb3Hyr1SROtf-Ec4zvA';
 
-	const mockExecuteFunctions = mock<IExecuteFunctions>({});
+	const mockDataTable = mock<IDataTableProjectService>({
+		getColumns: vi.fn(),
+		addColumn: vi.fn(),
+		updateRows: vi.fn(),
+	});
+
+	const mockExecuteFunctions = mock<IExecuteFunctions>({
+		helpers: { getDataTableProxy: vi.fn().mockResolvedValue(mockDataTable) },
+	});
 
 	beforeEach(() => {
-		(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-		(mockExecuteFunctions.getNode as jest.Mock).mockReturnValue({ typeVersion: 4.6 });
-		(mockExecuteFunctions.getParentNodes as jest.Mock).mockReturnValue([
+		(mockExecuteFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(mockExecuteFunctions.getNode as Mock).mockReturnValue({ typeVersion: 4.6 });
+		(mockExecuteFunctions.getParentNodes as Mock).mockReturnValue([
 			{ type: 'n8n-nodes-base.evaluationTrigger', name: 'Evaluation' },
 		]);
-		(mockExecuteFunctions.evaluateExpression as jest.Mock).mockReturnValue({
+		(mockExecuteFunctions.evaluateExpression as Mock).mockReturnValue({
 			row_number: 23,
 			foo: 1,
 			bar: 2,
@@ -29,146 +40,304 @@ describe('Test Evaluation', () => {
 		});
 	});
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('Test Evaluation Node for Set Output', () => {
-		jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
-			return { sheetId: 1, title: sheetName };
-		});
+		describe('Data tables', () => {
+			test('should have data table methods defined', async () => {
+				const evaluationNode = new Evaluation();
+				expect(evaluationNode.methods.listSearch.dataTableSearch).toBeDefined();
+				expect(evaluationNode.methods.loadOptions.getConditionsForColumn).toBeDefined();
+				expect(evaluationNode.methods.loadOptions.getDataTableColumns).toBeDefined();
+			});
 
-		jest.spyOn(GoogleSheet.prototype, 'updateRows').mockImplementation(async () => {
-			return { sheetId: 1, title: sheetName };
-		});
-
-		jest.spyOn(GoogleSheet.prototype, 'batchUpdate').mockImplementation(async () => {
-			return { sheetId: 1, title: sheetName };
-		});
-
-		test('should throw error if output values is empty', async () => {
-			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
-					const mockParams: { [key: string]: unknown } = {
-						'outputs.values': [],
-						documentId: {
-							mode: 'id',
-							value: spreadsheetId,
-						},
-						sheetName,
-						sheetMode: 'id',
-						operation: 'setOutputs',
-					};
-					return mockParams[key] ?? fallbackValue;
-				},
-			);
-
-			await expect(new Evaluation().execute.call(mockExecuteFunctions)).rejects.toThrow(
-				'No outputs to set',
-			);
-
-			expect(GoogleSheet.prototype.updateRows).not.toBeCalled();
-
-			expect(GoogleSheet.prototype.batchUpdate).not.toBeCalled();
-		});
-
-		test('should update rows and return input data for existing headers', async () => {
-			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
-					const mockParams: { [key: string]: unknown } = {
-						'outputs.values': [{ outputName: 'foo', outputValue: 'clam' }],
-						documentId: {
-							mode: 'id',
-							value: spreadsheetId,
-						},
-						sheetName,
-						sheetMode: 'id',
-						operation: 'setOutputs',
-					};
-					return mockParams[key] ?? fallbackValue;
-				},
-			);
-
-			await new Evaluation().execute.call(mockExecuteFunctions);
-
-			expect(GoogleSheet.prototype.updateRows).toHaveBeenCalledWith(
-				sheetName,
-				[['foo', 'bar']],
-				'RAW',
-				1,
-			);
-
-			expect(GoogleSheet.prototype.batchUpdate).toHaveBeenCalledWith(
-				[
-					{
-						range: 'Sheet5!A23',
-						values: [['clam']],
+			test('should throw error if output values is empty', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							source: 'dataTable',
+							'outputs.values': [],
+							dataTableId: 'mockDataTableId',
+							operation: 'setOutputs',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
-				],
-				'RAW',
-			);
-		});
+				);
 
-		test('should return empty when there is no parent evaluation trigger', async () => {
-			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
-					const mockParams: { [key: string]: unknown } = {
-						'outputs.values': [{ outputName: 'bob', outputValue: 'clam' }],
-						documentId: {
-							mode: 'id',
-							value: spreadsheetId,
-						},
-						sheetName,
-						sheetMode: 'id',
-						operation: 'setOutputs',
-					};
-					return mockParams[key] ?? fallbackValue;
-				},
-			);
-			mockExecuteFunctions.getParentNodes.mockReturnValue([]);
+				await expect(new Evaluation().execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'No outputs to set',
+				);
 
-			const result = await new Evaluation().execute.call(mockExecuteFunctions);
+				expect(mockDataTable.getColumns).not.toHaveBeenCalled();
+				expect(mockDataTable.addColumn).not.toHaveBeenCalled();
+				expect(mockDataTable.updateRows).not.toHaveBeenCalled();
+			});
 
-			expect(result).toEqual([[{ json: {} }]]);
-
-			expect(GoogleSheet.prototype.updateRows).not.toBeCalled();
-
-			expect(GoogleSheet.prototype.batchUpdate).not.toBeCalled();
-		});
-
-		test('should update rows and return input data for new headers', async () => {
-			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
-					const mockParams: { [key: string]: unknown } = {
-						'outputs.values': [{ outputName: 'bob', outputValue: 'clam' }],
-						documentId: {
-							mode: 'id',
-							value: spreadsheetId,
-						},
-						sheetName,
-						sheetMode: 'id',
-						operation: 'setOutputs',
-					};
-					return mockParams[key] ?? fallbackValue;
-				},
-			);
-
-			await new Evaluation().execute.call(mockExecuteFunctions);
-
-			expect(GoogleSheet.prototype.updateRows).toHaveBeenCalledWith(
-				sheetName,
-				[['foo', 'bar', 'bob']],
-				'RAW',
-				1,
-			);
-
-			expect(GoogleSheet.prototype.batchUpdate).toHaveBeenCalledWith(
-				[
-					{
-						range: 'Sheet5!C23',
-						values: [['clam']],
+			test('should return empty when there is no parent evaluation trigger', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							source: 'dataTable',
+							'outputs.values': [{ outputName: 'bob', outputValue: 'clam' }],
+							dataTableId: 'mockDataTableId',
+							operation: 'setOutputs',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
-				],
-				'RAW',
-			);
+				);
+				mockExecuteFunctions.getParentNodes.mockReturnValue([]);
+
+				const result = await new Evaluation().execute.call(mockExecuteFunctions);
+
+				expect(result).toEqual([[{ json: {} }]]);
+
+				expect(mockDataTable.getColumns).not.toHaveBeenCalled();
+				expect(mockDataTable.addColumn).not.toHaveBeenCalled();
+				expect(mockDataTable.updateRows).not.toHaveBeenCalled();
+			});
+
+			test('should update rows and return input data with existing columns', async () => {
+				(mockExecuteFunctions.evaluateExpression as Mock).mockReturnValue({
+					row_id: 23,
+					row_number: 23,
+					foo: 1,
+					bar: 2,
+					_rowsLeft: 2,
+				});
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							source: 'dataTable',
+							'outputs.values': [{ outputName: 'foo', outputValue: 'clam' }],
+							dataTableId: 'mockDataTableId',
+							operation: 'setOutputs',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
+					},
+				);
+
+				mockDataTable.getColumns.mockResolvedValue([
+					{
+						id: '1',
+						index: 0,
+						name: 'foo',
+						type: 'string',
+						dataTableId: 'mockDataTableId',
+					},
+				]);
+
+				await new Evaluation().execute.call(mockExecuteFunctions);
+
+				expect(mockDataTable.getColumns).toHaveBeenCalled();
+				expect(mockDataTable.addColumn).not.toHaveBeenCalled();
+				expect(mockDataTable.updateRows).toHaveBeenCalledWith({
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'id', condition: 'eq', value: 23 }],
+					},
+					data: { foo: 'clam' },
+				});
+			});
+
+			test('should update rows and return input data with new columns', async () => {
+				(mockExecuteFunctions.evaluateExpression as Mock).mockReturnValue({
+					row_id: 23,
+					row_number: 23,
+					foo: 1,
+					bar: 2,
+					_rowsLeft: 2,
+				});
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							source: 'dataTable',
+							'outputs.values': [
+								{ outputName: 'foo', outputValue: 'clam' },
+								{ outputName: 'bar', outputValue: 'baz' },
+							],
+							dataTableId: 'mockDataTableId',
+							operation: 'setOutputs',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
+					},
+				);
+
+				mockDataTable.getColumns.mockResolvedValue([
+					{
+						id: '1',
+						index: 0,
+						name: 'foo',
+						type: 'string',
+						dataTableId: 'mockDataTableId',
+					},
+				]);
+
+				await new Evaluation().execute.call(mockExecuteFunctions);
+
+				expect(mockDataTable.getColumns).toHaveBeenCalled();
+				expect(mockDataTable.addColumn).toHaveBeenCalledWith({
+					name: 'bar',
+					type: 'string',
+				});
+				expect(mockDataTable.updateRows).toHaveBeenCalledWith({
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'id', condition: 'eq', value: 23 }],
+					},
+					data: { foo: 'clam', bar: 'baz' },
+				});
+			});
+		});
+
+		describe('Google Sheets', () => {
+			beforeEach(() => {
+				vi.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
+					return { sheetId: 1, title: sheetName };
+				});
+
+				vi.spyOn(GoogleSheet.prototype, 'updateRows').mockImplementation(async () => {
+					return { sheetId: 1, title: sheetName };
+				});
+
+				vi.spyOn(GoogleSheet.prototype, 'batchUpdate').mockImplementation(async () => {
+					return { sheetId: 1, title: sheetName };
+				});
+			});
+
+			test('credential test for googleApi should be in methods', async () => {
+				const evaluationNode = new Evaluation();
+				expect(evaluationNode.methods.credentialTest.googleApiCredentialTest).toBeDefined();
+			});
+
+			test('should throw error if output values is empty', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							'outputs.values': [],
+							documentId: {
+								mode: 'id',
+								value: spreadsheetId,
+							},
+							sheetName,
+							sheetMode: 'id',
+							operation: 'setOutputs',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
+					},
+				);
+
+				await expect(new Evaluation().execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'No outputs to set',
+				);
+
+				expect(GoogleSheet.prototype.updateRows).not.toBeCalled();
+
+				expect(GoogleSheet.prototype.batchUpdate).not.toBeCalled();
+			});
+
+			test('should update rows and return input data for existing headers', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							source: 'googleSheets',
+							'outputs.values': [{ outputName: 'foo', outputValue: 'clam' }],
+							documentId: {
+								mode: 'id',
+								value: spreadsheetId,
+							},
+							sheetName,
+							sheetMode: 'id',
+							operation: 'setOutputs',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
+					},
+				);
+
+				await new Evaluation().execute.call(mockExecuteFunctions);
+
+				expect(GoogleSheet.prototype.updateRows).toHaveBeenCalledWith(
+					sheetName,
+					[['foo', 'bar']],
+					'RAW',
+					1,
+				);
+
+				expect(GoogleSheet.prototype.batchUpdate).toHaveBeenCalledWith(
+					[
+						{
+							range: 'Sheet5!A23',
+							values: [['clam']],
+						},
+					],
+					'RAW',
+				);
+			});
+
+			test('should return empty when there is no parent evaluation trigger', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							source: 'googleSheets',
+							'outputs.values': [{ outputName: 'bob', outputValue: 'clam' }],
+							documentId: {
+								mode: 'id',
+								value: spreadsheetId,
+							},
+							sheetName,
+							sheetMode: 'id',
+							operation: 'setOutputs',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
+					},
+				);
+				mockExecuteFunctions.getParentNodes.mockReturnValue([]);
+
+				const result = await new Evaluation().execute.call(mockExecuteFunctions);
+
+				expect(result).toEqual([[{ json: {} }]]);
+
+				expect(GoogleSheet.prototype.updateRows).not.toBeCalled();
+
+				expect(GoogleSheet.prototype.batchUpdate).not.toBeCalled();
+			});
+
+			test('should update rows and return input data for new headers', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							source: 'googleSheets',
+							'outputs.values': [{ outputName: 'bob', outputValue: 'clam' }],
+							documentId: {
+								mode: 'id',
+								value: spreadsheetId,
+							},
+							sheetName,
+							sheetMode: 'id',
+							operation: 'setOutputs',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
+					},
+				);
+
+				await new Evaluation().execute.call(mockExecuteFunctions);
+
+				expect(GoogleSheet.prototype.updateRows).toHaveBeenCalledWith(
+					sheetName,
+					[['foo', 'bar', 'bob']],
+					'RAW',
+					1,
+				);
+
+				expect(GoogleSheet.prototype.batchUpdate).toHaveBeenCalledWith(
+					[
+						{
+							range: 'Sheet5!C23',
+							values: [['clam']],
+						},
+					],
+					'RAW',
+				);
+			});
 		});
 	});
 
@@ -180,19 +349,22 @@ describe('Test Evaluation', () => {
 
 		function getMockExecuteFunction(metrics: AssignmentCollectionValue['assignments']) {
 			return {
-				getInputData: jest.fn().mockReturnValue([{}]),
+				getInputData: vi.fn().mockReturnValue([{}]),
 
-				getNodeParameter: jest.fn((param: string, _: number) => {
+				getNodeParameter: vi.fn((param: string, _: number) => {
 					if (param === 'metrics') {
 						return { assignments: metrics };
 					}
 					if (param === 'operation') {
 						return 'setMetrics';
 					}
+					if (param === 'metric') {
+						return 'customMetrics';
+					}
 					return param;
 				}),
 
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					typeVersion: 1,
 				}),
 			} as unknown as IExecuteFunctions;
@@ -214,7 +386,7 @@ describe('Test Evaluation', () => {
 				},
 			]);
 			nodeTypes.getByName.mockReturnValue(evaluationMetricsNode);
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		describe('execute', () => {
@@ -287,28 +459,28 @@ describe('Test Evaluation', () => {
 
 	describe('Test Evaluation Node for Check If Evaluating', () => {
 		beforeEach(() => {
-			(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-			(mockExecuteFunctions.getNode as jest.Mock).mockReturnValue({ typeVersion: 4.6 });
+			(mockExecuteFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(mockExecuteFunctions.getNode as Mock).mockReturnValue({ typeVersion: 4.6 });
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 					const mockParams: { [key: string]: unknown } = {
 						operation: 'checkIfEvaluating',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 		});
 
-		afterEach(() => jest.clearAllMocks());
+		afterEach(() => vi.clearAllMocks());
 
 		test('should return output in normal branch if normal execution', async () => {
-			(mockExecuteFunctions.getParentNodes as jest.Mock).mockReturnValue([]);
+			(mockExecuteFunctions.getParentNodes as Mock).mockReturnValue([]);
 			const result = await new Evaluation().execute.call(mockExecuteFunctions);
 			expect(result).toEqual([[], [{ json: {} }]]);
 		});
 
 		test('should return output in evaluation branch if evaluation execution', async () => {
-			(mockExecuteFunctions.getParentNodes as jest.Mock).mockReturnValue([
+			(mockExecuteFunctions.getParentNodes as Mock).mockReturnValue([
 				{ type: 'n8n-nodes-base.evaluationTrigger', name: 'Evaluation' },
 			]);
 

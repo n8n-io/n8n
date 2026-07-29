@@ -1,36 +1,38 @@
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule } from '@n8n/decorators';
+import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import './insights.controller';
-import { InstanceSettings } from 'n8n-core';
 
-import { InsightsByPeriod } from './database/entities/insights-by-period';
-import { InsightsMetadata } from './database/entities/insights-metadata';
-import { InsightsRaw } from './database/entities/insights-raw';
-
-@BackendModule({ name: 'insights' })
+/**
+ * Only main- and webhook-type instances collect insights because
+ * only they are informed of finished workflow executions.
+ */
+@BackendModule({ name: 'insights', instanceTypes: ['main', 'webhook'] })
 export class InsightsModule implements ModuleInterface {
 	async init() {
-		const { instanceType } = Container.get(InstanceSettings);
+		await import('./insights.controller.js');
 
-		/**
-		 * Only main- and webhook-type instances collect insights because
-		 * only they are informed of finished workflow executions.
-		 */
-		if (instanceType === 'worker') return;
-
-		await import('./insights.controller');
-
-		const { InsightsService } = await import('./insights.service');
-		Container.get(InsightsService).startTimers();
+		const { InsightsService } = await import('./insights.service.js');
+		await Container.get(InsightsService).init();
 	}
 
-	entities() {
+	async entities() {
+		const { InsightsByPeriod } = await import('./database/entities/insights-by-period.js');
+		const { InsightsMetadata } = await import('./database/entities/insights-metadata.js');
+		const { InsightsRaw } = await import('./database/entities/insights-raw.js');
+
 		return [InsightsByPeriod, InsightsMetadata, InsightsRaw];
 	}
 
 	async settings() {
-		const { InsightsService } = await import('./insights.service');
-		return Container.get(InsightsService).settings();
+		const { InsightsSettings } = await import('./insights.settings.js');
+
+		return await Container.get(InsightsSettings).settings();
+	}
+
+	@OnShutdown()
+	async shutdown() {
+		const { InsightsService } = await import('./insights.service.js');
+
+		await Container.get(InsightsService).shutdown();
 	}
 }

@@ -10,7 +10,7 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import { NodeApiError, UserError } from 'n8n-workflow';
 
 import type { Filter, Address, Search, FilterGroup, ProductAttribute } from './types';
 
@@ -193,7 +193,9 @@ export function getAddressesUi(): INodeProperties {
 	};
 }
 
-export function adjustAddresses(addresses: [{ street: string; [key: string]: string }]): Address[] {
+export function adjustAddresses(
+	addresses: Array<{ street: string; [key: string]: string }>,
+): Address[] {
 	const _addresses: Address[] = [];
 	for (let i = 0; i < addresses.length; i++) {
 		if (addresses[i]?.region === '') {
@@ -480,7 +482,7 @@ export function getFilterQuery(data: {
 	sort: [{ direction: string; field: string }];
 }): Search {
 	if (!data.hasOwnProperty('conditions') || data.conditions?.length === 0) {
-		throw new ApplicationError('At least one filter has to be set', { level: 'warning' });
+		throw new UserError('At least one filter has to be set', { level: 'warning' });
 	}
 
 	if (data.matchType === 'anyFilter') {

@@ -1,5 +1,5 @@
 import { NodeError } from './abstract/node.error';
-import { ApplicationError } from './application.error';
+import { OperationalError } from './base/operational.error';
 import type { NodeOperationErrorOptions } from './node-api.error';
 import type { INode, JsonObject } from '../interfaces';
 
@@ -19,7 +19,10 @@ export class NodeOperationError extends NodeError {
 		}
 
 		if (typeof error === 'string') {
-			error = new ApplicationError(error, { level: options.level ?? 'warning' });
+			// `OperationalError` keeps the former `'warning'` default level.
+			// `'fatal'` isn't an operational level; map it to `'error'` (both are reported).
+			const level = options.level === 'fatal' ? 'error' : (options.level ?? 'warning');
+			error = new OperationalError(error, { level });
 		}
 
 		super(node, error);
@@ -32,7 +35,11 @@ export class NodeOperationError extends NodeError {
 		this.level = options.level ?? 'warning';
 		if (options.functionality) this.functionality = options.functionality;
 		if (options.type) this.type = options.type;
-		this.description = options.description;
+
+		if (options.description) this.description = options.description;
+		else if ('description' in error && typeof error.description === 'string')
+			this.description = error.description;
+
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
 		this.context.metadata = options.metadata;

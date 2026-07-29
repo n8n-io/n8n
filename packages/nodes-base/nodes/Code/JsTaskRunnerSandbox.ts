@@ -1,47 +1,82 @@
 import {
-	ApplicationError,
-	type CodeExecutionMode,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { isWrappableError, WrappedExecutionError } from './errors/WrappedExecutionError';
 import { validateNoDisallowedMethodsInRunForEach } from './JsCodeValidator';
+import type { TextKeys } from './result-validation';
+import { validateRunCodeAllItems, validateRunCodeEachItem } from './result-validation';
+import { throwExecutionError } from './throw-execution-error';
+
+const JS_TEXT_KEYS: TextKeys = {
+	object: { singular: 'object', plural: 'objects' },
+};
 
 /**
  * JS Code execution sandbox that executes the JS code using task runner.
  */
 export class JsTaskRunnerSandbox {
 	constructor(
-		private readonly jsCode: string,
-		private readonly nodeMode: CodeExecutionMode,
 		private readonly workflowMode: WorkflowExecuteMode,
-		private readonly executeFunctions: IExecuteFunctions,
+		private readonly executeFunctions: Pick<
+			IExecuteFunctions,
+			'startJob' | 'continueOnFail' | 'helpers'
+		>,
 		private readonly chunkSize = 1000,
+		private readonly additionalProperties: Record<string, unknown> = {},
 	) {}
 
-	async runCodeAllItems(): Promise<INodeExecutionData[]> {
+	async runCodeAllItems(code: string): Promise<INodeExecutionData[]> {
 		const itemIndex = 0;
 
 		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
 			'javascript',
 			{
-				code: this.jsCode,
-				nodeMode: this.nodeMode,
+				code,
+				nodeMode: 'runOnceForAllItems',
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
+				additionalProperties: this.additionalProperties,
 			},
 			itemIndex,
 		);
 
-		return executionResult.ok
-			? executionResult.result
-			: this.throwExecutionError(executionResult.error);
+		if (!executionResult.ok) {
+			throwExecutionError('error' in executionResult ? executionResult.error : {});
+		}
+
+		return validateRunCodeAllItems(
+			executionResult.result,
+			JS_TEXT_KEYS,
+			this.executeFunctions.helpers.normalizeItems.bind(this.executeFunctions.helpers),
+		);
 	}
 
-	async runCodeForEachItem(numInputItems: number): Promise<INodeExecutionData[]> {
-		validateNoDisallowedMethodsInRunForEach(this.jsCode, 0);
+	async runCodeForTool(code: string): Promise<unknown> {
+		const itemIndex = 0;
+
+		const executionResult = await this.executeFunctions.startJob(
+			'javascript',
+			{
+				code,
+				nodeMode: 'runOnceForAllItems',
+				workflowMode: this.workflowMode,
+				continueOnFail: this.executeFunctions.continueOnFail(),
+				additionalProperties: this.additionalProperties,
+			},
+			itemIndex,
+		);
+
+		if (!executionResult.ok) {
+			throwExecutionError('error' in executionResult ? executionResult.error : {});
+		}
+
+		return executionResult.result;
+	}
+
+	async runCodeForEachItem(code: string, numInputItems: number): Promise<INodeExecutionData[]> {
+		validateNoDisallowedMethodsInRunForEach(code, 0);
 
 		const itemIndex = 0;
 		const chunks = this.chunkInputItems(numInputItems);
@@ -51,20 +86,32 @@ export class JsTaskRunnerSandbox {
 			const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
 				'javascript',
 				{
-					code: this.jsCode,
-					nodeMode: this.nodeMode,
+					code,
+					nodeMode: 'runOnceForEachItem',
 					workflowMode: this.workflowMode,
 					continueOnFail: this.executeFunctions.continueOnFail(),
 					chunk: {
 						startIndex: chunk.startIdx,
 						count: chunk.count,
 					},
+					additionalProperties: this.additionalProperties,
 				},
 				itemIndex,
 			);
 
 			if (!executionResult.ok) {
-				return this.throwExecutionError(executionResult.error);
+				return throwExecutionError('error' in executionResult ? executionResult.error : {});
+			}
+
+			for (let i = 0; i < executionResult.result.length; i++) {
+				const actualItemIndex = chunk.startIdx + i;
+				const validatedItem = validateRunCodeEachItem(
+					executionResult.result[i],
+					actualItemIndex,
+					JS_TEXT_KEYS,
+					this.executeFunctions.helpers.normalizeItems.bind(this.executeFunctions.helpers),
+				);
+				executionResult.result[i] = validatedItem;
 			}
 
 			executionResults = executionResults.concat(executionResult.result);
@@ -73,16 +120,25 @@ export class JsTaskRunnerSandbox {
 		return executionResults;
 	}
 
-	private throwExecutionError(error: unknown): never {
-		if (error instanceof Error) {
-			throw error;
-		} else if (isWrappableError(error)) {
-			// The error coming from task runner is not an instance of error,
-			// so we need to wrap it in an error instance.
-			throw new WrappedExecutionError(error);
+	async runCode<T = unknown>(code: string): Promise<T> {
+		const executionResult = await this.executeFunctions.startJob(
+			'javascript',
+			{
+				code,
+				nodeMode: 'runCode',
+				workflowMode: this.workflowMode,
+				continueOnFail: this.executeFunctions.continueOnFail(),
+				additionalProperties: this.additionalProperties,
+			},
+			0,
+		);
+
+		if (!executionResult.ok) {
+			throwExecutionError('error' in executionResult ? executionResult.error : {});
 		}
 
-		throw new ApplicationError(`Unknown error: ${JSON.stringify(error)}`);
+		// We just assume the caller types the result correctly to match the code
+		return executionResult.result as T;
 	}
 
 	/** Chunks the input items into chunks of 1000 items each */

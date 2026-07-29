@@ -12,6 +12,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type {
 	FreshworksConfigResponse,
 	FreshworksCrmApiCredentials,
+	LoadedResource,
 	SalesAccounts,
 	ViewsResponse,
 } from './types';

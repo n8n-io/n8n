@@ -1,11 +1,11 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { TokenTextSplitterParams } from '@langchain/textsplitters';
 import { TextSplitter } from '@langchain/textsplitters';
+import {
+	hasLongSequentialRepeat,
+	getEncoding,
+	estimateTextSplitsByTokens,
+} from '@n8n/ai-utilities';
 import type * as tiktoken from 'js-tiktoken';
-
-import { hasLongSequentialRepeat } from '@utils/helpers';
-import { getEncoding } from '@utils/tokenizer/tiktoken';
-import { estimateTextSplitsByTokens } from '@utils/tokenizer/token-estimator';
 
 /**
  * Implementation of splitter which looks at tokens.
@@ -53,9 +53,7 @@ export class TokenTextSplitter extends TextSplitter implements TokenTextSplitter
 
 			// Use tiktoken for normal text
 			try {
-				if (!this.tokenizer) {
-					this.tokenizer = await getEncoding(this.encodingName);
-				}
+				this.tokenizer ??= await getEncoding(this.encodingName);
 
 				const splits: string[] = [];
 				const input_ids = this.tokenizer.encode(text, this.allowedSpecial, this.disallowedSpecial);

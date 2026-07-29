@@ -1,5 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 
@@ -11,13 +11,13 @@ describe('Execute Wait Node', () => {
 	const nextDay = DateTime.now().startOf('day').plus({ days: 1 });
 
 	beforeAll(() => {
-		timer = setInterval(() => jest.advanceTimersByTime(1000), 10);
-		jest.useFakeTimers();
+		timer = setInterval(() => vi.advanceTimersByTime(1000), 10);
+		vi.useFakeTimers().setSystemTime(new Date('2025-01-01'));
 	});
 
 	afterAll(() => {
 		clearInterval(timer);
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	test.each([
@@ -45,17 +45,17 @@ describe('Execute Wait Node', () => {
 	])(
 		'Test Wait Node with specificTime $value and isValid $isValid',
 		async ({ value, isValid, expectedWaitTill }) => {
-			const putExecutionToWaitSpy = jest.fn();
+			const putExecutionToWaitSpy = vi.fn();
 			const waitNode = new Wait();
 			const executeFunctionsMock = mock<IExecuteFunctions>({
-				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'resume') return 'specificTime';
 					if (paramName === 'dateTime') return value;
 				}),
-				getTimezone: jest.fn().mockReturnValue('UTC'),
+				getTimezone: vi.fn().mockReturnValue('UTC'),
 				putExecutionToWait: putExecutionToWaitSpy,
-				getInputData: jest.fn(),
-				getNode: jest.fn(),
+				getInputData: vi.fn(),
+				getNode: vi.fn(),
 			});
 
 			if (isValid) {
@@ -66,6 +66,123 @@ describe('Execute Wait Node', () => {
 			}
 		},
 	);
+
+	test('should resolve with input data if canceled', async () => {
+		const putExecutionToWaitSpy = vi.fn();
+		const waitNode = new Wait();
+
+		let cancelSignal: (() => void) | null = null;
+
+		const inputData = [{ json: { test: 'data' } }];
+
+		const executeFunctionsMock = mock<IExecuteFunctions>({
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'resume') return 'timeInterval';
+				if (paramName === 'unit') return 'seconds';
+				if (paramName === 'amount') return 60;
+			}),
+			getTimezone: vi.fn().mockReturnValue('UTC'),
+			putExecutionToWait: putExecutionToWaitSpy,
+			getInputData: vi.fn(() => inputData),
+			getNode: vi.fn(),
+			onExecutionCancellation: (handler) => {
+				cancelSignal = handler;
+			},
+		});
+
+		const waitPromise = waitNode.execute(executeFunctionsMock);
+
+		for (let index = 0; index < 20; index++) {
+			await new Promise((r) => setTimeout(r, 10));
+			if (cancelSignal !== null) break;
+		}
+
+		expect(cancelSignal).not.toBeNull();
+		cancelSignal!();
+
+		await expect(waitPromise).resolves.toEqual([inputData]);
+	});
+
+	describe('Validation', () => {
+		describe('Time interval', () => {
+			it.each([
+				{
+					unit: 'seconds',
+					amount: 300,
+					expectedWaitTill: () => DateTime.now().plus({ seconds: 300 }).toJSDate(),
+				},
+				{
+					unit: 'minutes',
+					amount: 2,
+					expectedWaitTill: () => DateTime.now().plus({ minutes: 2 }).toJSDate(),
+				},
+				{
+					unit: 'hours',
+					amount: 1,
+					expectedWaitTill: () => DateTime.now().plus({ hours: 1 }).toJSDate(),
+				},
+				{
+					unit: 'days',
+					amount: 10,
+					expectedWaitTill: () => DateTime.now().plus({ days: 10 }).toJSDate(),
+				},
+				{
+					unit: 'seconds',
+					amount: 0,
+					mode: 'timeout',
+					expectedWaitTill: () => DateTime.now().toJSDate(),
+				},
+				{
+					unit: 'seconds',
+					amount: -10,
+					error: 'Invalid wait amount. Please enter a number that is 0 or greater.',
+				},
+				{
+					unit: 'years',
+					amount: 10,
+					error: "Invalid wait unit. Valid units are 'seconds', 'minutes', 'hours', or 'days'.",
+				},
+				{
+					unit: 'minutes',
+					amount: 'test',
+					error: 'Invalid wait amount. Please enter a number that is 0 or greater.',
+				},
+			])(
+				'Validate wait unit: $unit, amount: $amount',
+				async ({ unit, amount, expectedWaitTill, error, mode }) => {
+					const putExecutionToWaitSpy = vi.fn();
+					const waitNode = new Wait();
+					const inputData = [{ json: { inputData: true } }];
+					const executeFunctionsMock = mock<IExecuteFunctions>({
+						getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+							if (paramName === 'resume') return 'timeInterval';
+							if (paramName === 'amount') return amount;
+							if (paramName === 'unit') return unit;
+						}),
+						getTimezone: vi.fn().mockReturnValue('UTC'),
+						putExecutionToWait: putExecutionToWaitSpy,
+						getInputData: vi.fn(() => inputData),
+						getNode: vi.fn(),
+					});
+
+					if (!error) {
+						if (mode === 'timeout') {
+							// for short wait times (<65s) a simple timeout is used
+							const resultPromise = waitNode.execute(executeFunctionsMock);
+							vi.runAllTimers();
+							await expect(resultPromise).resolves.toEqual([inputData]);
+						} else {
+							// for longer wait times (>=65s) the execution is put to wait
+							await expect(waitNode.execute(executeFunctionsMock)).resolves.not.toThrow();
+							expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expectedWaitTill?.());
+						}
+					} else {
+						await expect(waitNode.execute(executeFunctionsMock)).rejects.toThrowError(error);
+					}
+				},
+			);
+		});
+	});
 
 	new NodeTestHarness().setupTests();
 });

@@ -1,7 +1,8 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -12,9 +13,7 @@ import {
 	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
+/* istanbul ignore next */
 function getInputs(parameters: IDataObject) {
 	const inputs: INodeInputConfiguration[] = [];
 
@@ -41,6 +40,7 @@ export class DocumentGithubLoader implements INodeType {
 		version: [1, 1.1],
 		defaultVersion: 1.1,
 		description: 'Use GitHub data as input to this chain',
+		hidden: true,
 		defaults: {
 			name: 'GitHub Document Loader',
 		},
@@ -63,12 +63,20 @@ export class DocumentGithubLoader implements INodeType {
 				required: true,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 		inputNames: ['Text Splitter'],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
+		builderHint: {
+			inputs: {
+				ai_textSplitter: {
+					required: true,
+					displayOptions: { show: { textSplittingMode: ['custom'] } },
+				},
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{

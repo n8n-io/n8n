@@ -10,14 +10,14 @@ describe('forwardToLogger', () => {
 
 	beforeEach(() => {
 		logger = {
-			info: jest.fn(),
-			error: jest.fn(),
+			info: vi.fn(),
+			error: vi.fn(),
 		} as unknown as Logger;
 
 		stdout = new Readable({ read() {} });
 		stderr = new Readable({ read() {} });
 
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	const pushToStdout = async (data: string) => {

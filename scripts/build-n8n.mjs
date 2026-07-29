@@ -14,6 +14,10 @@ import path from 'path';
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
 
+// Check if test controller should be excluded (CI + flag not set)
+const excludeTestController =
+	process.env.CI === 'true' && process.env.INCLUDE_TEST_CONTROLLER !== 'true';
+
 // Disable verbose output and force color only if not in CI
 $.verbose = !isCI;
 process.env.FORCE_COLOR = isCI ? '0' : '1';
@@ -22,16 +26,20 @@ const scriptDir = path.dirname(new URL(import.meta.url).pathname);
 const isInScriptsDir = path.basename(scriptDir) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 
-// --- Configuration ---
+// #region ===== Configuration =====
 const config = {
-	compiledAppDir: process.env.BUILD_OUTPUT_DIR || path.join(rootDir, 'compiled'),
+	compiledAppDir: path.join(rootDir, 'compiled'),
+	compiledTaskRunnerDir: path.join(rootDir, 'dist', 'task-runner-javascript'),
+	cliDir: path.join(rootDir, 'packages', 'cli'),
 	rootDir: rootDir,
 };
 
 // Define backend patches to keep during deployment
 const PATCHES_TO_KEEP = ['pdfjs-dist', 'pkce-challenge', 'bull'];
 
-// --- Helper Functions ---
+// #endregion ===== Configuration =====
+
+// #region ===== Helper Functions =====
 const timers = new Map();
 
 function startTimer(name) {
@@ -63,7 +71,9 @@ function printDivider() {
 	echo(chalk.gray('-----------------------------------------------'));
 }
 
-// --- Main Build Process ---
+// #endregion ===== Helper Functions =====
+
+// #region ===== Main Build Process =====
 printHeader('n8n Build & Production Preparation');
 echo(`INFO: Output Directory: ${config.compiledAppDir}`);
 printDivider();
@@ -73,6 +83,12 @@ startTimer('total_build');
 // 0. Clean Previous Build Output
 echo(chalk.yellow(`INFO: Cleaning previous output directory: ${config.compiledAppDir}...`));
 await fs.remove(config.compiledAppDir);
+echo(
+	chalk.yellow(
+		`INFO: Cleaning previous task runner output directory: ${config.compiledTaskRunnerDir}...`,
+	),
+);
+await fs.remove(config.compiledTaskRunnerDir);
 printDivider();
 
 // 1. Local Application Pre-build
@@ -80,9 +96,21 @@ echo(chalk.yellow('INFO: Starting local application pre-build...'));
 startTimer('package_build');
 
 echo(chalk.yellow('INFO: Running pnpm install and build...'));
-await $`cd ${config.rootDir} && pnpm install --frozen-lockfile`;
-await $`cd ${config.rootDir} && pnpm build`;
-echo(chalk.green('✅ pnpm install and build completed'));
+try {
+	const installProcess = $`cd ${config.rootDir} && pnpm install --frozen-lockfile`;
+	installProcess.pipe(process.stdout);
+	await installProcess;
+
+	const buildProcess = $`cd ${config.rootDir} && pnpm build --summarize`;
+	buildProcess.pipe(process.stdout);
+	await buildProcess;
+
+	echo(chalk.green('✅ pnpm install and build completed'));
+} catch (error) {
+	console.error(chalk.red('\n🛑 BUILD PROCESS FAILED!'));
+	console.error(chalk.red('An error occurred during the build process:'));
+	process.exit(1);
+}
 
 const packageBuildTime = getElapsedTime('package_build');
 echo(chalk.green(`✅ Package build completed in ${formatDuration(packageBuildTime)}`));
@@ -153,9 +181,86 @@ startTimer('package_deploy');
 
 await fs.ensureDir(config.compiledAppDir);
 
+if (excludeTestController) {
+	const cliPackagePath = path.join(config.rootDir, 'packages/cli/package.json');
+	const content = await fs.readFile(cliPackagePath, 'utf8');
+	const packageJson = JSON.parse(content);
+	packageJson.files.push('!dist/**/e2e.*');
+	await fs.writeFile(cliPackagePath, JSON.stringify(packageJson, null, 2));
+	echo(chalk.gray('  - Excluded test controller from packages/cli/package.json'));
+}
+
+// The release SBOM is built by cdxgen inventorying the top-level node_modules of this
+// deployed closure. Since #32569 dropped shamefully-hoist, only direct deps surface at
+// top level, so cdxgen would miss the transitive tree (the manifest would be incomplete).
+// Re-enable hoisting for the licenses build only — shipped images keep the non-hoisted
+// layout, since regular builds leave N8N_GENERATE_LICENSES unset.
+const generateLicenses = process.env.N8N_GENERATE_LICENSES === 'true';
+if (generateLicenses) {
+	process.env.npm_config_shamefully_hoist = 'true';
+}
+
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
 
+// Strip test/example/benchmark dirs shipped inside production deps that lack a
+// `files` field in their package.json. These are valid runtime deps but their
+// authors published full source trees; syft inventories the subdirs as phantom
+// packages with no license, which fails enterprise SBOM license gates.
+echo(chalk.yellow('INFO: Stripping test/example/benchmark dirs from production closure...'));
+const phantomDirs = [
+	'resolve/*/test',
+	'import-in-the-middle/*/test',
+	'github-from-package/*/example',
+	'tedious/*/benchmarks',
+];
+for (const pattern of phantomDirs) {
+	await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/${pattern}" -exec rm -rf {} + 2>/dev/null || true`;
+}
+echo(chalk.green('✅ Phantom dirs stripped'));
+
+await fs.ensureDir(config.compiledTaskRunnerDir);
+
+echo(
+	chalk.yellow(
+		`INFO: Creating JavaScript task runner deployment in '${config.compiledTaskRunnerDir}'...`,
+	),
+);
+
+await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
+
 const packageDeployTime = getElapsedTime('package_deploy');
+
+// Generate SBOM + render THIRD_PARTY_LICENSES.md from the deployed runtime closure.
+// Single source of truth: the SBOM. Both the runtime endpoint (packages/cli/) and the
+// release asset (compiled/) get the same SBOM-derived attribution file.
+// Tooling (cdxgen + renderer) is installed in .github/scripts/, alongside other CI
+// scripts, so we don't carry a second isolated install.
+//
+// Default: skip. cdxgen + license rendering adds ~minutes to every build:deploy and
+// is only needed for the release SBOM job. The release-publish workflow opts in by
+// setting N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
+if (generateLicenses) {
+	echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
+	try {
+		const toolingDir = path.join(config.rootDir, '.github', 'scripts');
+		await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --ignore-workspace`;
+		const generateProcess = $`cd ${toolingDir} && pnpm generate-licenses`;
+		generateProcess.pipe(process.stdout);
+		await generateProcess;
+		echo(chalk.green('✅ SBOM generated and THIRD_PARTY_LICENSES.md rendered'));
+	} catch (error) {
+		echo(chalk.red(`ERROR: SBOM/license generation failed: ${error.message}`));
+		// In CI, fail loudly. A stale or missing THIRD_PARTY_LICENSES.md must never ship —
+		// the release workflow uploads it unconditionally and would otherwise publish
+		// an incomplete attribution file.
+		if (process.env.CI === 'true') {
+			throw error;
+		}
+		echo(chalk.yellow('⚠️  Warning: continuing local build (CI=true would have failed)'));
+	}
+} else {
+	echo(chalk.gray('INFO: Skipping SBOM/license generation (set N8N_GENERATE_LICENSES=true to enable)'));
+}
 
 // Restore package.json files
 // This is only needed locally, not in CI
@@ -173,8 +278,11 @@ if (process.env.CI !== 'true') {
 
 // Calculate output size
 const compiledAppOutputSize = (await $`du -sh ${config.compiledAppDir} | cut -f1`).stdout.trim();
+const compiledTaskRunnerOutputSize = (
+	await $`du -sh ${config.compiledTaskRunnerDir} | cut -f1`
+).stdout.trim();
 
-// Generate build manifest
+// Generate build manifests
 const buildManifest = {
 	buildTime: new Date().toISOString(),
 	artifactSize: compiledAppOutputSize,
@@ -185,9 +293,33 @@ const buildManifest = {
 	},
 };
 
+// Copy third-party licenses if they exist
+const licensesSourcePath = path.join(config.cliDir, 'THIRD_PARTY_LICENSES.md');
+if (await fs.pathExists(licensesSourcePath)) {
+	await fs.copy(licensesSourcePath, path.join(config.compiledAppDir, 'THIRD_PARTY_LICENSES.md'));
+}
+
 await fs.writeJson(path.join(config.compiledAppDir, 'build-manifest.json'), buildManifest, {
 	spaces: 2,
 });
+
+const taskRunnerbuildManifest = {
+	buildTime: new Date().toISOString(),
+	artifactSize: compiledTaskRunnerOutputSize,
+	buildDuration: {
+		packageBuild: packageBuildTime,
+		packageDeploy: packageDeployTime,
+		total: getElapsedTime('total_build'),
+	},
+};
+
+await fs.writeJson(
+	path.join(config.compiledTaskRunnerDir, 'build-manifest.json'),
+	taskRunnerbuildManifest,
+	{
+		spaces: 2,
+	},
+);
 
 echo(chalk.green(`✅ Package deployment completed in ${formatDuration(packageDeployTime)}`));
 echo(`INFO: Size of ${config.compiledAppDir}: ${compiledAppOutputSize}`);
@@ -196,14 +328,21 @@ printDivider();
 // Calculate total time
 const totalBuildTime = getElapsedTime('total_build');
 
-// --- Final Output ---
+// #endregion ===== Main Build Process =====
+
+// #region ===== Final Output =====
 echo('');
 echo(chalk.green.bold('================ BUILD SUMMARY ================'));
 echo(chalk.green(`✅ n8n built successfully!`));
 echo('');
 echo(chalk.blue('📦 Build Output:'));
+echo(chalk.green('   n8n:'));
 echo(`   Directory:      ${path.resolve(config.compiledAppDir)}`);
 echo(`   Size:           ${compiledAppOutputSize}`);
+echo('');
+echo(chalk.green('   task-runner-javascript:'));
+echo(`   Directory:      ${path.resolve(config.compiledTaskRunnerDir)}`);
+echo(`   Size:           ${compiledTaskRunnerOutputSize}`);
 echo('');
 echo(chalk.blue('⏱️  Build Times:'));
 echo(`   Package Build:  ${formatDuration(packageBuildTime)}`);
@@ -211,9 +350,12 @@ echo(`   Package Deploy: ${formatDuration(packageDeployTime)}`);
 echo(chalk.gray('   -----------------------------'));
 echo(chalk.bold(`   Total Time:     ${formatDuration(totalBuildTime)}`));
 echo('');
-echo(chalk.blue('📋 Build Manifest:'));
+echo(chalk.blue('📋 Build Manifests:'));
 echo(`   ${path.resolve(config.compiledAppDir)}/build-manifest.json`);
+echo(`   ${path.resolve(config.compiledTaskRunnerDir)}/build-manifest.json`);
 echo(chalk.green.bold('=============================================='));
+
+// #endregion ===== Final Output =====
 
 // Exit with success
 process.exit(0);

@@ -16,6 +16,8 @@ import {
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 	sortOptions,
+	getPollStartDate,
+	filterAndManageProcessedItems,
 } from './GenericFunctions';
 
 export class SalesforceTrigger implements INodeType {
@@ -24,7 +26,7 @@ export class SalesforceTrigger implements INodeType {
 		name: 'salesforceTrigger',
 		icon: 'file:salesforce.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description:
 			'Fetches data from Salesforce and starts the workflow on specified polling intervals.',
 		subtitle: '={{($parameter["triggerOn"])}}',
@@ -116,7 +118,7 @@ export class SalesforceTrigger implements INodeType {
 					{
 						name: 'Opportunity Updated',
 						value: 'opportunityUpdated',
-						description: 'When an existing opportunity is created',
+						description: 'When an existing opportunity is modified',
 					},
 					{
 						name: 'Task Created',
@@ -185,22 +187,28 @@ export class SalesforceTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const workflowData = this.getWorkflowStaticData('node');
+		const workflowData: { processedIds?: string[]; lastTimeChecked?: string } =
+			this.getWorkflowStaticData('node');
 		let responseData;
 		const qs: IDataObject = {};
 		const triggerOn = this.getNodeParameter('triggerOn') as string;
 		let triggerResource = triggerOn.slice(0, 1).toUpperCase() + triggerOn.slice(1, -7);
 		const changeType = triggerOn.slice(-7);
+		const nodeVersion = this.getNode().typeVersion;
 
 		if (triggerResource === 'CustomObject') {
 			triggerResource = this.getNodeParameter('customObject') as string;
 		}
 
-		const now = DateTime.now().toISO();
-		const startDate = (workflowData.lastTimeChecked as string) || now;
-		const endDate = now;
+		const endDate = DateTime.now().toISO();
+
+		if (!workflowData.processedIds) {
+			workflowData.processedIds = [];
+		}
+		const processedIds = workflowData.processedIds;
+
 		try {
-			const pollStartDate = startDate;
+			const pollStartDate = getPollStartDate(workflowData.lastTimeChecked);
 			const pollEndDate = endDate;
 
 			const options = {
@@ -242,9 +250,9 @@ export class SalesforceTrigger implements INodeType {
 
 			try {
 				if (this.getMode() === 'manual') {
-					qs.q = getQuery(options, triggerResource, false, 1);
+					qs.q = getQuery(options, triggerResource, false, 1, nodeVersion);
 				} else {
-					qs.q = getQuery(options, triggerResource, true);
+					qs.q = getQuery(options, triggerResource, true, 0, nodeVersion);
 				}
 				responseData = await salesforceApiRequestAllItems.call(
 					this,
@@ -262,6 +270,21 @@ export class SalesforceTrigger implements INodeType {
 				workflowData.lastTimeChecked = endDate;
 				return null;
 			}
+
+			const { newItems, updatedProcessedIds } = filterAndManageProcessedItems(
+				responseData,
+				processedIds,
+				changeType === 'Created' ? 'Created' : 'Updated',
+			);
+
+			workflowData.processedIds = updatedProcessedIds;
+			workflowData.lastTimeChecked = endDate;
+
+			if (newItems.length > 0) {
+				return [this.helpers.returnJsonArray(newItems as IDataObject[])];
+			}
+
+			return null;
 		} catch (error) {
 			if (this.getMode() === 'manual' || !workflowData.lastTimeChecked) {
 				throw error;
@@ -278,12 +301,5 @@ export class SalesforceTrigger implements INodeType {
 			);
 			throw error;
 		}
-		workflowData.lastTimeChecked = endDate;
-
-		if (Array.isArray(responseData) && responseData.length) {
-			return [this.helpers.returnJsonArray(responseData as IDataObject[])];
-		}
-
-		return null;
 	}
 }

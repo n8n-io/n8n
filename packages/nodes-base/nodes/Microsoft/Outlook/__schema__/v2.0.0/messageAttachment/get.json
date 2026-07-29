@@ -10,6 +10,9 @@
         "@odata.type": {
             "type": "string"
         },
+        "contentType": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
@@ -24,7 +27,27 @@
         },
         "size": {
             "type": "integer"
+        },
+        "value": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "@odata.mediaContentType": {
+                        "type": "string"
+                    },
+                    "@odata.type": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
         }
     },
-    "version": 2
+    "version": 8
 }

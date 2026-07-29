@@ -1,0 +1,57 @@
+{
+	"name": "AWS ELB Delete Load Balancer Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "loadBalancer",
+				"operation": "delete",
+				"loadBalancerId": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-lb/1234567890123456"
+			},
+			"type": "n8n-nodes-base.awsElb",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "node-id",
+			"name": "Delete Load Balancer",
+			"credentials": {
+				"aws": {
+					"id": "credential-id",
+					"name": "Test AWS Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Delete Load Balancer": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Delete Load Balancer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

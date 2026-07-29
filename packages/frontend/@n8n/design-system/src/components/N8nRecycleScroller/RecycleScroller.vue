@@ -2,7 +2,7 @@
 import type { ComponentPublicInstance } from 'vue';
 import { computed, onMounted, onBeforeMount, ref, nextTick, watch } from 'vue';
 
-import type { ItemWithKey } from '@n8n/design-system/types';
+import type { ItemWithKey } from '../../types';
 
 interface RecycleScrollerProps {
 	itemSize: number;
@@ -182,6 +182,22 @@ function onScroll() {
 
 	scrollTop.value = wrapperRef.value.scrollTop;
 }
+
+function scrollToKey(key: Item[Key]) {
+	if (!wrapperRef.value) {
+		return;
+	}
+
+	const position = itemPositionCache.value[key];
+	if (position === undefined) {
+		return;
+	}
+
+	wrapperRef.value.scrollTop = position;
+	scrollTop.value = position;
+}
+
+defineExpose({ scrollToKey });
 </script>
 
 <template>

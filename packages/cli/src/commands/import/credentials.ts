@@ -1,50 +1,91 @@
-import { CredentialsEntity, Project, User, SharedCredentials, ProjectRepository } from '@n8n/db';
+import {
+	CredentialsEntity,
+	DbLock,
+	DbLockService,
+	Project,
+	User,
+	SharedCredentials,
+	ProjectRepository,
+	GLOBAL_OWNER_ROLE,
+	type OperationContext,
+} from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import fs from 'fs';
+import omit from 'lodash/omit';
+import pick from 'lodash/pick';
 import { Cipher } from 'n8n-core';
-import type { ICredentialsEncrypted } from 'n8n-workflow';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse, UserError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BaseCommand } from '../base-command';
 
-export class ImportCredentialsCommand extends BaseCommand {
-	static description = 'Import credentials';
+type ReadCredentialsOptions = {
+	inputPath: string;
+	separate: boolean;
+	include?: string[];
+	exclude?: string[];
+};
 
-	static examples = [
-		'$ n8n import:credentials --input=file.json',
-		'$ n8n import:credentials --separate --input=backups/latest/',
-		'$ n8n import:credentials --input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
-		'$ n8n import:credentials --input=file.json --projectId=Ox8O54VQrmBrb4qL',
-		'$ n8n import:credentials --separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
-	];
+const flagsSchema = z.object({
+	input: z
+		.string()
+		.alias('i')
+		.describe('Input file name or directory if --separate is used')
+		.optional(),
+	separate: z
+		.boolean()
+		.default(false)
+		.describe('Imports *.json files from directory provided by --input'),
+	include: z
+		.string()
+		.describe('Comma-separated credential properties to include during import')
+		.optional(),
+	exclude: z
+		.string()
+		.describe('Comma-separated credential properties to exclude during import')
+		.optional(),
+	userId: z
+		.string()
+		.describe('The ID of the user to assign the imported credentials to')
+		.optional(),
+	projectId: z
+		.string()
+		.describe('The ID of the project to assign the imported credential to')
+		.optional(),
+});
 
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		input: Flags.string({
-			char: 'i',
-			description: 'Input file name or directory if --separate is used',
-		}),
-		separate: Flags.boolean({
-			description: 'Imports *.json files from directory provided by --input',
-		}),
-		userId: Flags.string({
-			description: 'The ID of the user to assign the imported credentials to',
-		}),
-		projectId: Flags.string({
-			description: 'The ID of the project to assign the imported credential to',
-		}),
-	};
+type ImportableCredentialProperty = Exclude<
+	Extract<keyof CredentialsEntity, string>,
+	'shared' | 'toJSON' | 'generateId' | 'setUpdateDate'
+>;
 
-	private transactionManager: EntityManager;
+const isCredentialData = (data: unknown): data is ICredentialDataDecryptedObject =>
+	typeof data === 'object' && data !== null && !Array.isArray(data);
 
+@Command({
+	name: 'import:credentials',
+	description: 'Import credentials',
+	examples: [
+		'--input=file.json',
+		'--separate --input=backups/latest/',
+		'--input=file.json --include=id,name,type,data',
+		'--input=file.json --exclude=createdAt,updatedAt',
+		'--input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--input=file.json --projectId=Ox8O54VQrmBrb4qL',
+		'--separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+	],
+	flagsSchema,
+})
+export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run(): Promise<void> {
-		const { flags } = await this.parse(ImportCredentialsCommand);
+		const { flags } = this;
 
 		if (!flags.input) {
 			this.logger.info('An input file or directory with --input must be provided');
@@ -66,24 +107,43 @@ export class ImportCredentialsCommand extends BaseCommand {
 			);
 		}
 
-		const credentials = await this.readCredentials(flags.input, flags.separate);
+		if (flags.include && flags.exclude) {
+			throw new UserError(
+				'You cannot use `--include` and `--exclude` together. Use one or the other.',
+			);
+		}
 
-		const { manager: dbManager } = Container.get(ProjectRepository);
-		await dbManager.transaction(async (transactionManager) => {
-			this.transactionManager = transactionManager;
+		const include = this.parseCredentialProperties(flags.include, '--include');
+		const exclude = this.parseCredentialProperties(flags.exclude, '--exclude');
 
-			const project = await this.getProject(flags.userId, flags.projectId);
-
-			const result = await this.checkRelations(credentials, flags.projectId, flags.userId);
-
-			if (!result.success) {
-				throw new UserError(result.message);
-			}
-
-			for (const credential of credentials) {
-				await this.storeCredential(credential, project);
-			}
+		const credentials = await this.readCredentials({
+			inputPath: flags.input,
+			separate: flags.separate,
+			include,
+			exclude,
 		});
+
+		await Container.get(DbLockService).withLock(
+			DbLock.INSTANCE_AI_SETTINGS,
+			async (transactionManager, ctx) => {
+				const project = await this.getProject(transactionManager, flags.userId, flags.projectId);
+
+				const result = await this.checkRelations(
+					transactionManager,
+					credentials,
+					flags.projectId,
+					flags.userId,
+				);
+
+				if (!result.success) {
+					throw new UserError(result.message);
+				}
+
+				for (const credential of credentials) {
+					await this.storeCredential(transactionManager, credential, project, ctx);
+				}
+			},
+		);
 
 		this.reportSuccess(credentials.length);
 	}
@@ -101,20 +161,75 @@ export class ImportCredentialsCommand extends BaseCommand {
 		);
 	}
 
-	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
-		// @ts-ignore CAT-957
-		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
+	private async storeCredential(
+		transactionManager: EntityManager,
+		credential: Partial<CredentialsEntity>,
+		project: Project,
+		ctx: OperationContext,
+	) {
+		// UsageScope is instance-local state; imports never change it for existing credentials.
+		let existing: Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'> | null = null;
+		if (credential.id) {
+			existing = await transactionManager.findOne(CredentialsEntity, {
+				where: { id: credential.id },
+				select: ['id', 'usageScope', 'type'],
+			});
+			if (existing) {
+				credential.usageScope = existing.usageScope;
+				if (
+					existing.usageScope === 'instance' &&
+					credential.type !== undefined &&
+					credential.type !== existing.type
+				) {
+					throw new UserError(
+						'Provider connection type cannot be changed. Create a new connection instead.',
+					);
+				}
+			}
+		}
+		credential.usageScope ??= 'project';
 
-		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
-			credentialsId: credential.id,
+		if (credential.usageScope === 'instance') {
+			if (
+				credential.isGlobal ||
+				credential.isResolvable ||
+				credential.isManaged ||
+				credential.resolvableAllowFallback ||
+				credential.resolverId
+			) {
+				throw new UserError(
+					'Provider connections cannot be global, managed, or dynamically resolved',
+				);
+			}
+			Object.assign(credential, {
+				isGlobal: false,
+				isResolvable: false,
+				isManaged: false,
+				resolvableAllowFallback: false,
+				resolverId: null,
+			});
+			await this.validateInstanceCredentialData(transactionManager, credential, existing, ctx);
+		}
+
+		const result = await transactionManager.upsert(CredentialsEntity, credential, ['id']);
+		const credentialsId = credential.id ?? (result.identifiers[0].id as string);
+
+		if (credential.usageScope === 'instance') {
+			// Instance credentials are instance-owned and must not retain project sharing rows.
+			await transactionManager.delete(SharedCredentials, { credentialsId });
+			return;
+		}
+
+		const sharingExists = await transactionManager.existsBy(SharedCredentials, {
+			credentialsId,
 			role: 'credential:owner',
 		});
 
 		if (!sharingExists) {
-			await this.transactionManager.upsert(
+			await transactionManager.upsert(
 				SharedCredentials,
 				{
-					credentialsId: result.identifiers[0].id as string,
+					credentialsId,
 					role: 'credential:owner',
 					projectId: project.id,
 				},
@@ -123,8 +238,49 @@ export class ImportCredentialsCommand extends BaseCommand {
 		}
 	}
 
+	private async validateInstanceCredentialData(
+		transactionManager: EntityManager,
+		credential: Partial<CredentialsEntity>,
+		existing: Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'> | null,
+		ctx: OperationContext,
+	) {
+		let data: unknown = credential.data;
+		if (data === undefined && credential.id) {
+			data = (
+				await transactionManager.findOne(CredentialsEntity, {
+					where: { id: credential.id },
+					select: { data: true },
+				})
+			)?.data;
+		}
+		if (data === undefined) return;
+		if (data === null || data === '') {
+			throw new UserError('Provider connection data cannot be empty');
+		}
+
+		const decrypted =
+			typeof data === 'string'
+				? jsonParse<unknown>(await Container.get(Cipher).decryptV2(data))
+				: data;
+		if (!isCredentialData(decrypted)) {
+			throw new UserError('Provider connection data must be a JSON object');
+		}
+		const credentialsService = Container.get(CredentialsService);
+		if (existing?.usageScope === 'instance') {
+			await credentialsService.validateInstanceCredentialUpdate(
+				existing,
+				decrypted,
+				undefined,
+				ctx,
+			);
+		} else {
+			credentialsService.validateInstanceCredentialData(decrypted);
+		}
+	}
+
 	private async checkRelations(
-		credentials: ICredentialsEncrypted[],
+		transactionManager: EntityManager,
+		credentials: Array<Pick<Partial<CredentialsEntity>, 'id'>>,
 		projectId?: string,
 		userId?: string,
 	) {
@@ -141,11 +297,14 @@ export class ImportCredentialsCommand extends BaseCommand {
 				continue;
 			}
 
-			if (!(await this.credentialExists(credential.id))) {
+			if (!(await this.credentialExists(transactionManager, credential.id))) {
 				continue;
 			}
 
-			const { user, project: ownerProject } = await this.getCredentialOwner(credential.id);
+			const { user, project: ownerProject } = await this.getCredentialOwner(
+				transactionManager,
+				credential.id,
+			);
 
 			if (!ownerProject) {
 				continue;
@@ -175,27 +334,31 @@ export class ImportCredentialsCommand extends BaseCommand {
 		};
 	}
 
-	private async readCredentials(path: string, separate: boolean): Promise<ICredentialsEncrypted[]> {
+	private async readCredentials(
+		options: ReadCredentialsOptions,
+	): Promise<Array<Partial<CredentialsEntity>>> {
+		const { separate, include, exclude } = options;
 		const cipher = Container.get(Cipher);
+		let { inputPath } = options;
 
 		if (process.platform === 'win32') {
-			path = path.replace(/\\/g, '/');
+			inputPath = inputPath.replace(/\\/g, '/');
 		}
 
-		let credentials: ICredentialsEncrypted[];
+		let credentials: Array<Partial<CredentialsEntity>>;
 
 		if (separate) {
 			const files = await glob('*.json', {
-				cwd: path,
+				cwd: inputPath,
 				absolute: true,
 			});
 
 			credentials = files.map((file) =>
-				jsonParse<ICredentialsEncrypted>(fs.readFileSync(file, { encoding: 'utf8' })),
+				jsonParse<Partial<CredentialsEntity>>(fs.readFileSync(file, { encoding: 'utf8' })),
 			);
 		} else {
-			const credentialsUnchecked = jsonParse<ICredentialsEncrypted[]>(
-				fs.readFileSync(path, { encoding: 'utf8' }),
+			const credentialsUnchecked = jsonParse<Array<Partial<CredentialsEntity>>>(
+				fs.readFileSync(inputPath, { encoding: 'utf8' }),
 			);
 
 			if (!Array.isArray(credentialsUnchecked)) {
@@ -207,26 +370,112 @@ export class ImportCredentialsCommand extends BaseCommand {
 			credentials = credentialsUnchecked;
 		}
 
-		return credentials.map((credential) => {
-			if (typeof credential.data === 'object') {
-				// plain data / decrypted input. Should be encrypted first.
-				credential.data = cipher.encrypt(credential.data);
-			}
+		const knownProperties = new Set(credentials.flatMap((credential) => Object.keys(credential)));
+		this.warnOnUnknownProperties(include, knownProperties, '--include');
+		this.warnOnUnknownProperties(exclude, knownProperties, '--exclude');
 
-			return credential;
-		});
+		return await Promise.all(
+			credentials.map(async (credential) => {
+				const filteredCredential = this.filterCredentialProperties(credential, include, exclude);
+				if (isCredentialData(filteredCredential.data)) {
+					// plain data / decrypted input. Should be encrypted first.
+					filteredCredential.data = await cipher.encryptV2(filteredCredential.data);
+				}
+
+				return filteredCredential;
+			}),
+		);
 	}
 
-	private async getCredentialOwner(credentialsId: string) {
-		const sharedCredential = await this.transactionManager.findOne(SharedCredentials, {
+	private parseCredentialProperties(
+		value: string | undefined,
+		flagName: '--include' | '--exclude',
+	) {
+		if (!value) return undefined;
+
+		const propertyCandidates = value.split(',');
+		const trimmedProperties = propertyCandidates.map((property) => property.trim());
+		const nonEmptyProperties = trimmedProperties.filter(Boolean);
+		const uniqueProperties = Array.from(new Set(nonEmptyProperties));
+
+		if (uniqueProperties.length === 0) {
+			throw new UserError(`${flagName} must contain at least one property name.`);
+		}
+
+		return uniqueProperties;
+	}
+
+	private warnOnUnknownProperties(
+		properties: string[] | undefined,
+		knownProperties: Set<string>,
+		flagName: '--include' | '--exclude',
+	) {
+		if (!properties?.length) return;
+
+		const unknownProperties = properties.filter((property) => !knownProperties.has(property));
+		if (unknownProperties.length === 0) return;
+
+		this.logger.warn(
+			`Ignoring unknown properties from ${flagName}: ${unknownProperties.join(', ')}`,
+		);
+	}
+
+	private filterCredentialProperties(
+		credential: Partial<CredentialsEntity>,
+		include?: string[],
+		exclude?: string[],
+	): Partial<CredentialsEntity> {
+		if (include?.length) {
+			const includeProperties = include.filter((property) =>
+				this.isCredentialPropertyImportable(property),
+			);
+			if (includeProperties.length === 0) {
+				throw new UserError('No importable properties found. Please check the --include flag.');
+			}
+			return pick(credential, includeProperties);
+		}
+
+		if (exclude?.length) {
+			const excludeProperties = exclude.filter((property) =>
+				this.isCredentialPropertyImportable(property),
+			);
+			return omit(credential, excludeProperties);
+		}
+
+		return credential;
+	}
+
+	private isCredentialPropertyImportable(
+		property: string,
+	): property is ImportableCredentialProperty {
+		const importableProperties = {
+			createdAt: true,
+			updatedAt: true,
+			id: true,
+			name: true,
+			data: true,
+			type: true,
+			isManaged: true,
+			isGlobal: true,
+			isResolvable: true,
+			resolvableAllowFallback: true,
+			resolverId: true,
+			usageScope: true,
+		} satisfies Record<ImportableCredentialProperty, true>;
+
+		return property in importableProperties;
+	}
+
+	private async getCredentialOwner(transactionManager: EntityManager, credentialsId: string) {
+		const sharedCredential = await transactionManager.findOne(SharedCredentials, {
 			where: { credentialsId, role: 'credential:owner' },
 			relations: { project: true },
 		});
 
 		if (sharedCredential && sharedCredential.project.type === 'personal') {
-			const user = await this.transactionManager.findOneByOrFail(User, {
+			const user = await transactionManager.findOneByOrFail(User, {
 				projectRelations: {
-					role: 'project:personalOwner',
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					projectId: sharedCredential.projectId,
 				},
 			});
@@ -237,17 +486,21 @@ export class ImportCredentialsCommand extends BaseCommand {
 		return {};
 	}
 
-	private async credentialExists(credentialId: string) {
-		return await this.transactionManager.existsBy(CredentialsEntity, { id: credentialId });
+	private async credentialExists(transactionManager: EntityManager, credentialId: string) {
+		return await transactionManager.existsBy(CredentialsEntity, { id: credentialId });
 	}
 
-	private async getProject(userId?: string, projectId?: string) {
+	private async getProject(transactionManager: EntityManager, userId?: string, projectId?: string) {
 		if (projectId) {
-			return await this.transactionManager.findOneByOrFail(Project, { id: projectId });
+			return await transactionManager.findOneByOrFail(Project, { id: projectId });
 		}
 
 		if (!userId) {
-			const owner = await this.transactionManager.findOneBy(User, { role: 'global:owner' });
+			const owner = await transactionManager.findOneBy(User, {
+				role: {
+					slug: GLOBAL_OWNER_ROLE.slug,
+				},
+			});
 			if (!owner) {
 				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 			}
@@ -256,7 +509,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 
 		return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			userId,
-			this.transactionManager,
+			transactionManager,
 		);
 	}
 }

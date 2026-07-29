@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import get from 'lodash/get';
 import type {
 	AINodeConnectionType,
@@ -17,8 +18,9 @@ import type {
 	WorkflowExecuteMode,
 	NodeConnectionType,
 	ISourceData,
+	NodeExecutionHint,
 } from 'n8n-workflow';
-import { createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -29,6 +31,7 @@ import {
 } from './utils/binary-helper-functions';
 import { constructExecutionMetaData } from './utils/construct-execution-metadata';
 import { copyInputItems } from './utils/copy-input-items';
+import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 // eslint-disable-next-line import-x/no-cycle
@@ -44,6 +47,19 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	readonly getNodeParameter: ISupplyDataFunctions['getNodeParameter'];
 
 	readonly parentNode?: INode;
+
+	readonly hints: NodeExecutionHint[] = [];
+
+	/**
+	 * The `additionalData` credential flags at 'input' time, per run index. The flags are
+	 * execution-shared and only reset per top-level engine node, so a sibling sub-node's
+	 * earlier resolution would otherwise be stamped onto this run's task too — stamping
+	 * only flags raised between 'input' and 'output' attributes usage to the right task.
+	 */
+	private readonly dynamicCredentialsFlagsAtInput = new Map<
+		number,
+		{ used: boolean; attempted: boolean }
+	>();
 
 	constructor(
 		workflow: Workflow,
@@ -88,11 +104,18 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getDataTableHelperFunctions(additionalData, workflow, node),
 			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
-				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				assertBinaryData(inputData, node, itemIndex, propertyName, 0, workflow.settings.binaryMode),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
-				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+				await getBinaryDataBuffer(
+					inputData,
+					itemIndex,
+					propertyName,
+					0,
+					workflow.settings.binaryMode,
+				),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 
 			returnJsonArray,
@@ -170,6 +193,11 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	getNextRunIndex(): number {
 		const nodeName = this.node.name;
 		return this.runExecutionData.resultData.runData[nodeName]?.length ?? 0;
+	}
+
+	/** Returns true if the node is being executed as an AI Agent tool */
+	isToolExecution(): boolean {
+		return this.connectionType === NodeConnectionTypes.AiTool;
 	}
 
 	/** @deprecated create a context object with inputData for every runIndex */
@@ -255,6 +283,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			: [];
 
 		if (type === 'input') {
+			this.dynamicCredentialsFlagsAtInput.set(currentNodeRunIndex, {
+				used: additionalData.currentNodeUsedDynamicCredentials === true,
+				attempted: additionalData.currentNodeAttemptedDynamicCredentials === true,
+			});
 			taskData = {
 				startTime: Date.now(),
 				executionTime: 0,
@@ -278,8 +310,14 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		taskData = taskData!;
 
 		if (data instanceof Error) {
-			taskData.executionStatus = 'error';
-			taskData.error = data;
+			// if running node was already marked as "canceled" because execution was aborted
+			// leave as "canceled" instead of showing "This operation was aborted" error
+			if (
+				!(type === 'output' && this.abortSignal?.aborted && taskData.executionStatus === 'canceled')
+			) {
+				taskData.executionStatus = 'error';
+				taskData.error = data;
+			}
 		} else {
 			if (type === 'output') {
 				taskData.executionStatus = 'success';
@@ -287,6 +325,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			taskData.data = {
 				[connectionType]: data,
 			} as ITaskDataConnections;
+		}
+
+		if (type === 'output') {
+			this.stampDynamicCredentialsUsage(taskData, currentNodeRunIndex);
 		}
 
 		if (type === 'input') {
@@ -307,6 +349,11 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		} else {
 			// Outputs
 			taskData.executionTime = Date.now() - taskData.startTime;
+
+			// Add hints to task data if any were collected
+			if (this.hints.length > 0) {
+				taskData.hints = this.hints;
+			}
 
 			await additionalData.hooks?.runHook('nodeExecuteAfter', [
 				nodeName,
@@ -335,5 +382,58 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				runIndex: currentNodeRunIndex,
 			});
 		}
+	}
+
+	/**
+	 * Sub-node executions can run during a trigger's webhook phase (e.g. MCP Trigger tool
+	 * calls), where no engine loop stamps the per-node credential flags onto task data —
+	 * stamp them here so the persisted execution still gets redacted. Engine-phase nodes
+	 * are stamped by `WorkflowExecute` from the same `additionalData` flags. Only flags
+	 * raised since this run's 'input' write are stamped, so a sibling sub-node's earlier
+	 * resolution is not attributed to this task.
+	 */
+	private stampDynamicCredentialsUsage(taskData: ITaskData, currentNodeRunIndex: number) {
+		const { additionalData, runExecutionData } = this;
+		const atInput = this.dynamicCredentialsFlagsAtInput.get(currentNodeRunIndex) ?? {
+			used: false,
+			attempted: false,
+		};
+		this.dynamicCredentialsFlagsAtInput.delete(currentNodeRunIndex);
+
+		const used = additionalData.currentNodeUsedDynamicCredentials === true && !atInput.used;
+		if (used) {
+			taskData.usedDynamicCredentials = true;
+		}
+		if (additionalData.currentNodeAttemptedDynamicCredentials === true && !atInput.attempted) {
+			taskData.attemptedDynamicCredentials = true;
+		}
+		if (
+			used &&
+			additionalData.dynamicCredentialsResolvedUserId &&
+			runExecutionData.executionData?.runtimeData
+		) {
+			// Record the resolved user like the engine loop does, so the redaction layer can
+			// grant that user access to their own data (identity is execution-scoped).
+			runExecutionData.executionData.runtimeData.executedByUserId =
+				additionalData.dynamicCredentialsResolvedUserId;
+		}
+	}
+
+	logNodeOutput(...args: unknown[]): void {
+		if (this.mode === 'manual') {
+			const parsedLogArgs = args.map((arg) =>
+				typeof arg === 'string' ? jsonParse(arg, { fallbackValue: arg }) : arg,
+			);
+			this.sendMessageToUI(...parsedLogArgs);
+			return;
+		}
+
+		if (process.env.CODE_ENABLE_STDOUT === 'true') {
+			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
+		}
+	}
+
+	addExecutionHints(...hints: NodeExecutionHint[]) {
+		this.hints.push(...hints);
 	}
 }

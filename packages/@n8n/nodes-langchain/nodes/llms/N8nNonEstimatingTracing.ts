@@ -7,11 +7,10 @@ import type {
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
+import { logAiEvent } from '@n8n/ai-utilities';
 import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
-
-import { logAiEvent } from '@utils/helpers';
 
 type RunDetail = {
 	index: number;
@@ -136,11 +135,7 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 		};
 	}
 
-	async handleLLMError(
-		error: IDataObject | Error,
-		runId: string,
-		parentRunId?: string | undefined,
-	) {
+	async handleLLMError(error: IDataObject | Error, runId: string, parentRunId?: string) {
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
 		// Filter out non-x- headers to avoid leaking sensitive information in logs

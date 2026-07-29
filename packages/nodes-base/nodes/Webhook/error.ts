@@ -1,6 +1,6 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-export class WebhookAuthorizationError extends ApplicationError {
+export class WebhookAuthorizationError extends UserError {
 	constructor(
 		readonly responseCode: number,
 		message?: string,

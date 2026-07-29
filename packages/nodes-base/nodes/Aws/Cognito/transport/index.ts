@@ -7,7 +7,7 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 
-import type { AwsCredentialsType } from '../../../../credentials/Aws.credentials';
+import { getAwsCredentials } from '../../GenericFunctions';
 
 export async function awsApiRequest(
 	this: ILoadOptionsFunctions | IPollFunctions | IExecuteSingleFunctions,
@@ -15,8 +15,7 @@ export async function awsApiRequest(
 	action: string,
 	body: string,
 ): Promise<any> {
-	const credentialsType = 'aws';
-	const credentials = await this.getCredentials<AwsCredentialsType>(credentialsType);
+	const { credentials, credentialsType } = await getAwsCredentials(this);
 
 	const requestOptions: IHttpRequestOptions = {
 		url: '',

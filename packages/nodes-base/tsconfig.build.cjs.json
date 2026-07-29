@@ -1,0 +1,24 @@
+{
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/modern/tsconfig.cjs.go.json"],
+	"compilerOptions": {
+		"outDir": "dist"
+	},
+	"include": [
+		"credentials/**/*.ts",
+		"credentials/translations/**/*.json",
+		"nodes/**/*.ts",
+		"nodes/**/*.json",
+		"types/**/*.ts",
+		"utils/**/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"nodes/**/*.test.ts",
+		"nodes/**/test/**",
+		"credentials/**/*.test.ts",
+		"credentials/**/test/**",
+		"utils/**/*.test.ts",
+		"test/**",
+		"../core/nodes-testing"
+	]
+}

@@ -17,11 +17,10 @@ export async function nextCloudApiRequest(
 	endpoint: string,
 	body: object | string | Buffer,
 	headers?: IDataObject,
-	encoding?: null | undefined,
+	encoding?: null,
 	query?: IDataObject,
+	useWebDavEndpoint: boolean = true,
 ) {
-	const resource = this.getNodeParameter('resource', 0);
-	const operation = this.getNodeParameter('operation', 0);
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	let credentials;
@@ -45,15 +44,11 @@ export async function nextCloudApiRequest(
 		options.encoding = null;
 	}
 
-	options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
-
-	if (resource === 'user' && operation === 'create') {
-		options.uri = options.uri.replace('/remote.php/webdav', '');
-	}
-
-	if (resource === 'file' && operation === 'share') {
-		options.uri = options.uri.replace('/remote.php/webdav', '');
-	}
+	// Preserve the existing WebDAV path behavior: endpoints may start with '/', producing '//'.
+	// For non-WebDAV requests, strip the WebDAV suffix while preserving any subpath prefix.
+	options.uri = useWebDavEndpoint
+		? `${credentials.webDavUrl}/${encodeURI(endpoint)}`
+		: `${credentials.webDavUrl.replace(/\/remote\.php\/webdav\/?$/, '')}/${encodeURI(endpoint)}`;
 
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';

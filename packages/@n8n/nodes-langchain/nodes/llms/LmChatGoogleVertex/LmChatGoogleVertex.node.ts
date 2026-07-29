@@ -1,8 +1,12 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { SafetySetting } from '@google/generative-ai';
 import { ProjectsClient } from '@google-cloud/resource-manager';
-import { ChatVertexAI } from '@langchain/google-vertexai';
-import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
+import type { GoogleAISafetySetting } from '@langchain/google-common';
+import { ChatVertexAI, type ChatVertexAIInput } from '@langchain/google-vertexai';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -11,20 +15,31 @@ import {
 	type SupplyData,
 	type ILoadOptionsFunctions,
 	type JsonObject,
+	type NodeError,
 	NodeOperationError,
+	validateNodeParameters,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { extractGoogleErrorMessage, makeErrorFromStatus } from './error-handling';
+import { getAdditionalOptions } from '../gemini-common/additional-options';
+import {
+	getVertexEndpoint,
+	resolveVertexLocation,
+	vertexLocationField,
+} from '../gemini-common/vertex-location';
 
-import { makeErrorFromStatus } from './error-handling';
-import { additionalOptions } from '../gemini-common/additional-options';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+function errorDescriptionMapper(error: NodeError) {
+	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
+		return 'Google Vertex requires at least one <a href="https://docs.n8n.io/advanced-ai/examples/using-the-fromai-function/" target="_blank">dynamic parameter</a> when using tools';
+	}
+
+	return error.description ?? 'Unknown error';
+}
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Vertex Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatGoogleVertex',
 		icon: 'file:google.svg',
 		group: ['transform'],
@@ -47,9 +62,9 @@ export class LmChatGoogleVertex implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
@@ -89,9 +104,14 @@ export class LmChatGoogleVertex implements INodeType {
 				type: 'string',
 				description:
 					'The model which will generate the completion. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models">Learn more</a>.',
-				default: 'gemini-1.5-flash',
+				default: 'gemini-2.5-flash',
+				builderHint: {
+					propertyHint:
+						'Default to the latest flagship Gemini on Vertex (gemini-3.1-pro). Use gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+				},
 			},
-			additionalOptions,
+			vertexLocationField,
+			getAdditionalOptions({ supportsThinkingBudget: true }),
 		],
 	};
 
@@ -101,7 +121,7 @@ export class LmChatGoogleVertex implements INodeType {
 				const results: Array<{ name: string; value: string }> = [];
 
 				const credentials = await this.getCredentials('googleApi');
-				const privateKey = formatPrivateKey(credentials.privateKey as string);
+				const privateKey = formatPemBlock(credentials.privateKey as string);
 				const email = (credentials.email as string).trim();
 
 				const client = new ProjectsClient({
@@ -129,9 +149,14 @@ export class LmChatGoogleVertex implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googleApi');
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
+		const privateKey = formatPemBlock(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();
-		const region = credentials.region as string;
+
+		// A node-level location overrides the credential region; multi-region
+		// locations (eu/us) need a dedicated host the SDK doesn't build itself.
+		const locationOverride = this.getNodeParameter('location', itemIndex, '') as string;
+		const location = resolveVertexLocation(locationOverride, credentials.region as string);
+		const endpoint = getVertexEndpoint(location);
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 
@@ -144,21 +169,29 @@ export class LmChatGoogleVertex implements INodeType {
 			temperature: 0.4,
 			topK: 40,
 			topP: 0.9,
-		}) as {
-			maxOutputTokens: number;
-			temperature: number;
-			topK: number;
-			topP: number;
-		};
+		});
+
+		// Validate options parameter
+		validateNodeParameters(
+			options,
+			{
+				maxOutputTokens: { type: 'number', required: false },
+				temperature: { type: 'number', required: false },
+				topK: { type: 'number', required: false },
+				topP: { type: 'number', required: false },
+				thinkingBudget: { type: 'number', required: false },
+			},
+			this.getNode(),
+		);
 
 		const safetySettings = this.getNodeParameter(
 			'options.safetySettings.values',
 			itemIndex,
 			null,
-		) as SafetySetting[];
+		) as GoogleAISafetySetting[];
 
 		try {
-			const model = new ChatVertexAI({
+			const modelConfig: ChatVertexAIInput = {
 				authOptions: {
 					projectId,
 					credentials: {
@@ -166,18 +199,20 @@ export class LmChatGoogleVertex implements INodeType {
 						private_key: privateKey,
 					},
 				},
-				location: region,
+				location,
+				...(endpoint ? { endpoint } : {}),
 				model: modelName,
 				topK: options.topK,
 				topP: options.topP,
 				temperature: options.temperature,
 				maxOutputTokens: options.maxOutputTokens,
 				safetySettings,
-				callbacks: [new N8nLlmTracing(this)],
+				callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 				// Handle ChatVertexAI invocation errors to provide better error messages
 				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: any) => {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					const customError = makeErrorFromStatus(Number(error?.response?.status), {
+					const status = Number(error?.response?.status);
+					const customError = makeErrorFromStatus(status, {
 						modelName,
 					});
 
@@ -185,9 +220,28 @@ export class LmChatGoogleVertex implements INodeType {
 						throw new NodeOperationError(this.getNode(), error as JsonObject, customError);
 					}
 
+					if (status === 400) {
+						// Surface Google's error detail; a bare rethrow would hide it behind a
+						// generic "Bad request" wrapper
+						throw new NodeOperationError(this.getNode(), error as JsonObject, {
+							message: 'Bad request - please check your parameters',
+							description:
+								extractGoogleErrorMessage(error as { message?: string }) ??
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+								(typeof error?.message === 'string' ? (error.message as string) : undefined),
+						});
+					}
+
 					throw error;
 				}),
-			});
+			};
+
+			// Add thinkingBudget if specified
+			if (options.thinkingBudget !== undefined) {
+				modelConfig.thinkingBudget = options.thinkingBudget;
+			}
+
+			const model = new ChatVertexAI(modelConfig);
 
 			return {
 				response: model,

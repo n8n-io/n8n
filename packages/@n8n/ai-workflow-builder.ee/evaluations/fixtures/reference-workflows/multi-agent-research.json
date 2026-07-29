@@ -1,0 +1,451 @@
+{
+	"nodes": [
+		{
+			"id": "85598347-8ea1-4c9f-9cd7-f7fdbb1720ca",
+			"name": "When clicking 'Test workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [250, 450],
+			"parameters": {}
+		},
+		{
+			"id": "6b00ece3-ab9f-409c-bc12-5ee6404cf8dd",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "researchTopic",
+							"value": "<__PLACEHOLDER_VALUE__Research topic (e.g., \"AI in healthcare\")__>",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "recipientEmail",
+							"value": "<__PLACEHOLDER_VALUE__Email address to send report to__>",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "01801461-bbef-486b-a7b4-f47ad5b46225",
+			"name": "Orchestrator Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [250, 300],
+			"parameters": {
+				"promptType": "define",
+				"text": "={{ $json.researchTopic }}",
+				"hasOutputParser": true,
+				"options": {
+					"systemMessage": "You are an orchestrator that coordinates specialized AI agents to research topics and generate professional reports.\n\nYour task is to:\n1. Call the Research Agent Tool to gather recent, credible information about the topic\n2. Call the Fact-Check Agent Tool to verify the findings (require 2+ independent sources)\n3. Call the Report Writer Agent Tool to create a clear, well-written report under 1,000 words\n4. Call the HTML Editor Agent Tool to format the report as clean, professional HTML\n5. Return ONLY the final HTML content from the HTML Editor\n\nCoordinate these agents in sequence and pass the output of each agent to the next."
+				}
+			}
+		},
+		{
+			"id": "b8bde672-deb6-4659-9bc9-320b26b1cc14",
+			"name": "Research Agent Tool",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"typeVersion": 2.2,
+			"position": [250, 450],
+			"parameters": {
+				"toolDescription": "Gathers recent, credible information about a research topic. Returns structured research findings with sources.",
+				"text": "={{ $fromAI(\"topic\") }}",
+				"hasOutputParser": true,
+				"options": {
+					"systemMessage": "You are a research specialist focused on gathering recent, credible information.\n\nYour task:\n1. Research the provided topic thoroughly\n2. Focus on recent information (last 2-3 years when possible)\n3. Prioritize credible sources (academic journals, reputable news outlets, official reports)\n4. Gather key facts, statistics, trends, and expert opinions\n5. Include source information for each finding\n\nReturn your findings in a structured format with clear citations."
+				}
+			}
+		},
+		{
+			"id": "69a9f3fe-616b-4faa-a2e1-bfd15ec69847",
+			"name": "Fact-Check Agent Tool",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"typeVersion": 2.2,
+			"position": [250, 450],
+			"parameters": {
+				"toolDescription": "Verifies facts from research findings. Only marks facts as verified if they appear in at least 2 independent sources.",
+				"text": "={{ $fromAI(\"research_findings\") }}",
+				"hasOutputParser": true,
+				"options": {
+					"systemMessage": "You are a fact-checking specialist with strict verification standards.\n\nYour task:\n1. Review the research findings provided\n2. Verify each fact against multiple sources\n3. Mark a fact as \"VERIFIED\" ONLY if it appears in at least 2 independent, credible sources\n4. Mark facts with insufficient verification as \"UNVERIFIED\" or \"NEEDS MORE SOURCES\"\n5. Document which sources support each verified fact\n\nBe rigorous - when in doubt, require additional verification. Return verified facts with their supporting sources."
+				}
+			}
+		},
+		{
+			"id": "102e56c9-d46f-43d2-bf58-2927a8a988bb",
+			"name": "Report Writer Agent Tool",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"typeVersion": 2.2,
+			"position": [250, 450],
+			"parameters": {
+				"toolDescription": "Writes a clear, well-structured report under 1,000 words based on verified facts.",
+				"text": "={{ $fromAI('verified_facts') }}",
+				"hasOutputParser": true,
+				"options": {
+					"systemMessage": "You are a professional report writer who creates clear, engaging content.\n\nYour task:\n1. Write a comprehensive report based on the verified facts provided\n2. Keep the report under 1,000 words\n3. Structure the report with:\n   - An engaging introduction\n   - Well-organized body sections with clear headings\n   - A concise conclusion\n4. Write in a professional but accessible tone\n5. Include key statistics and findings\n6. Cite sources appropriately\n\nFocus on clarity, accuracy, and readability. Return the complete report text."
+				}
+			}
+		},
+		{
+			"id": "71e8953c-8802-40cc-b333-7c611d7eaa2a",
+			"name": "HTML Editor Agent Tool",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"typeVersion": 2.2,
+			"position": [250, 450],
+			"parameters": {
+				"toolDescription": "Formats a report as clean, professional HTML suitable for email.",
+				"text": "={{ $fromAI(\"report_text\") }}",
+				"hasOutputParser": true,
+				"options": {
+					"systemMessage": "You are an HTML formatting specialist who creates clean, professional email-ready HTML.\n\nYour task:\n1. Convert the report text into well-formatted HTML\n2. Use professional styling:\n   - Clean typography with appropriate font sizes\n   - Proper heading hierarchy (h1, h2, h3)\n   - Readable paragraph spacing\n   - Professional color scheme\n3. Make it email-friendly:\n   - Inline CSS styles\n   - No external dependencies\n   - Mobile-responsive design\n4. Include proper structure with sections\n\nReturn ONLY the complete HTML code, ready to be inserted into an email body."
+				}
+			}
+		},
+		{
+			"id": "44f36a8e-7292-42e4-8f02-fc553a60ac2a",
+			"name": "OpenAI Chat Model - Orchestrator",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				}
+			}
+		},
+		{
+			"id": "e805c8f1-069f-411a-ae24-90b01151d831",
+			"name": "OpenAI Chat Model - Research",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				}
+			}
+		},
+		{
+			"id": "6b1ad860-6e8b-45b4-85b4-13d5c4e69099",
+			"name": "OpenAI Chat Model - Fact-Check",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				}
+			}
+		},
+		{
+			"id": "bf9ff5b2-1c38-46f8-80b5-cb728f9e5c06",
+			"name": "OpenAI Chat Model - Report Writer",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				}
+			}
+		},
+		{
+			"id": "b5349cae-cf71-4886-9c16-c058cad98c2f",
+			"name": "OpenAI Chat Model - HTML Editor",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				}
+			}
+		},
+		{
+			"id": "2e4d5207-e4fe-4f99-a300-90e2a715ca32",
+			"name": "Structured Output Parser - Research",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"findings\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"fact\": {\"type\": \"string\"},\n          \"source\": {\"type\": \"string\"},\n          \"date\": {\"type\": \"string\"}\n        }\n      }\n    }\n  }\n}",
+				"autoFix": false
+			}
+		},
+		{
+			"id": "789a4e80-da00-49d4-acff-7267b820b895",
+			"name": "Structured Output Parser - Fact-Check",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"verified_facts\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"fact\": {\"type\": \"string\"},\n          \"status\": {\"type\": \"string\"},\n          \"sources\": {\n            \"type\": \"array\",\n            \"items\": {\"type\": \"string\"}\n          }\n        }\n      }\n    }\n  }\n}",
+				"autoFix": false
+			}
+		},
+		{
+			"id": "eee5ebe0-9575-4667-8202-5b86ea406380",
+			"name": "Structured Output Parser - Report",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"report\": {\"type\": \"string\"},\n    \"word_count\": {\"type\": \"number\"}\n  }\n}",
+				"autoFix": false
+			}
+		},
+		{
+			"id": "f1c3fefb-ba98-41fa-8176-80d42ee6e7fe",
+			"name": "Structured Output Parser - HTML",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"html\": {\"type\": \"string\"}\n  }\n}",
+				"autoFix": false
+			}
+		},
+		{
+			"id": "fcbb5c9d-0f53-476a-840f-dca0c28ec60b",
+			"name": "Structured Output Parser - Orchestrator",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"html_content\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t}\n}",
+				"autoFix": false
+			}
+		},
+		{
+			"id": "95b27211-11a1-4f8b-8d0d-fcbbbd3c37a8",
+			"name": "Send HTML Email",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $('Workflow Configuration').first().json.recipientEmail }}",
+				"subject": "=Research Report: {{ $('Workflow Configuration').first().json.researchTopic }}",
+				"emailType": "html",
+				"message": "={{ $json.html_content }}"
+			},
+			"webhookId": "dd6175b9-f8f2-4e9b-a520-7e7f50e1512b"
+		}
+	],
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Orchestrator Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model - Orchestrator": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Orchestrator Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Research Agent Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "Orchestrator Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fact-Check Agent Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "Orchestrator Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Report Writer Agent Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "Orchestrator Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTML Editor Agent Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "Orchestrator Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser - Orchestrator": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Orchestrator Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model - Research": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Research Agent Tool",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser - Research": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Research Agent Tool",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model - Fact-Check": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Fact-Check Agent Tool",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser - Fact-Check": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Fact-Check Agent Tool",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model - Report Writer": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Report Writer Agent Tool",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser - Report": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Report Writer Agent Tool",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model - HTML Editor": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "HTML Editor Agent Tool",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser - HTML": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "HTML Editor Agent Tool",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Orchestrator Agent": {
+			"main": [
+				[
+					{
+						"node": "Send HTML Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"name": "Multi-Agent Research, Fact-Check, and HTML Email Report Generator"
+}

@@ -1,7 +1,7 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { VertexAIEmbeddings } from '@langchain/google-vertexai';
-import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ILoadOptionsFunctions,
@@ -11,8 +11,11 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import {
+	getVertexEndpoint,
+	resolveVertexLocation,
+	vertexLocationField,
+} from '../../llms/gemini-common/vertex-location';
 
 export class EmbeddingsGoogleVertex implements INodeType {
 	methods = {
@@ -21,7 +24,7 @@ export class EmbeddingsGoogleVertex implements INodeType {
 				const results: Array<{ name: string; value: string }> = [];
 
 				const credentials = await this.getCredentials('googleApi');
-				const privateKey = formatPrivateKey(credentials.privateKey as string);
+				const privateKey = formatPemBlock(credentials.privateKey as string);
 				const email = (credentials.email as string).trim();
 
 				const client = new ProjectsClient({
@@ -80,9 +83,9 @@ export class EmbeddingsGoogleVertex implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 
@@ -126,14 +129,20 @@ export class EmbeddingsGoogleVertex implements INodeType {
 					'The model which will generate the embeddings. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api">Learn more</a>.',
 				default: 'text-embedding-005',
 			},
+			vertexLocationField,
 		],
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googleApi');
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
+		const privateKey = formatPemBlock(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();
-		const region = credentials.region as string;
+
+		// A node-level location overrides the credential region; multi-region
+		// locations (eu/us) need a dedicated host the SDK doesn't build itself.
+		const locationOverride = this.getNodeParameter('location', itemIndex, '') as string;
+		const location = resolveVertexLocation(locationOverride, credentials.region as string);
+		const endpoint = getVertexEndpoint(location);
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 
@@ -149,7 +158,8 @@ export class EmbeddingsGoogleVertex implements INodeType {
 					private_key: privateKey,
 				},
 			},
-			location: region,
+			location,
+			...(endpoint ? { endpoint } : {}),
 			model: modelName,
 		});
 

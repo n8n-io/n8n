@@ -1,26 +1,35 @@
-import { mock } from 'jest-mock-extended';
 import type { INodeType, ISupplyDataFunctions, INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { createNodeAsTool } from '../create-node-as-tool';
 
-jest.mock('@langchain/core/tools', () => ({
-	DynamicStructuredTool: jest.fn().mockImplementation((config) => ({
-		name: config.name,
-		description: config.description,
-		schema: config.schema,
-		func: config.func,
-	})),
+vi.mock('@langchain/core/tools', () => ({
+	DynamicStructuredTool: vi.fn().mockImplementation(function (
+		this: {
+			name: string;
+			description: string;
+			schema: unknown;
+			func: unknown;
+		},
+		config: { name: string; description: string; schema: unknown; func: unknown },
+	) {
+		this.name = config.name;
+		this.description = config.description;
+		this.schema = config.schema;
+		this.func = config.func;
+	}),
 }));
 
 describe('createNodeAsTool', () => {
 	const context = mock<ISupplyDataFunctions>({
-		getNodeParameter: jest.fn(),
-		addInputData: jest.fn(),
-		addOutputData: jest.fn(),
-		getNode: jest.fn(),
+		getNodeParameter: vi.fn(),
+		addInputData: vi.fn(),
+		addOutputData: vi.fn(),
+		getNode: vi.fn(),
 	});
-	const handleToolInvocation = jest.fn();
+	const handleToolInvocation = vi.fn();
 	const nodeType = mock<INodeType>({
 		description: {
 			name: 'TestNode',
@@ -35,10 +44,10 @@ describe('createNodeAsTool', () => {
 	const options = { node, nodeType, handleToolInvocation };
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		(context.addInputData as jest.Mock).mockReturnValue({ index: 0 });
-		(context.getNode as jest.Mock).mockReturnValue(node);
-		(nodeType.execute as jest.Mock).mockResolvedValue([[{ json: { result: 'test' } }]]);
+		vi.clearAllMocks();
+		(context.addInputData as Mock).mockReturnValue({ index: 0 });
+		(context.getNode as Mock).mockReturnValue(node);
+		(nodeType.execute as Mock).mockResolvedValue([[{ json: { result: 'test' } }]]);
 
 		node.parameters = {
 			param1: "={{$fromAI('param1', 'Test parameter', 'string') }}",
@@ -79,6 +88,44 @@ describe('createNodeAsTool', () => {
 
 			expect(tool.description).toBe('Another custom tool description');
 		});
+
+		it('should evaluate expressions in toolDescription using the supplied context', () => {
+			node.parameters.descriptionType = 'manual';
+			node.parameters.toolDescription = '={{ $json.sessionId }}{{ $json.user }}';
+			(context.getNodeParameter as Mock).mockImplementation((name: string, _itemIndex: number) => {
+				if (name === 'toolDescription') return '123ABC';
+				return undefined;
+			});
+
+			const tool = createNodeAsTool({ ...options, context, itemIndex: 0 }).response;
+
+			expect(context.getNodeParameter).toHaveBeenCalledWith('toolDescription', 0, '');
+			expect(tool.description).toBe('123ABC');
+		});
+
+		it('should leave the raw expression as-is when no context is provided', () => {
+			node.parameters.descriptionType = 'manual';
+			node.parameters.toolDescription = '={{ $json.sessionId }}';
+
+			const tool = createNodeAsTool(options).response;
+
+			expect(tool.description).toBe('={{ $json.sessionId }}');
+		});
+
+		it('should not call context.getNodeParameter for a static toolDescription', () => {
+			node.parameters.descriptionType = 'manual';
+			node.parameters.toolDescription = 'Plain static description';
+			(context.getNodeParameter as Mock).mockClear();
+
+			const tool = createNodeAsTool({ ...options, context, itemIndex: 0 }).response;
+
+			expect(context.getNodeParameter).not.toHaveBeenCalledWith(
+				'toolDescription',
+				expect.anything(),
+				expect.anything(),
+			);
+			expect(tool.description).toBe('Plain static description');
+		});
 	});
 
 	describe('Schema Creation and Parameter Handling', () => {
@@ -113,6 +160,73 @@ describe('createNodeAsTool', () => {
 			expect(tool.schema.shape.paramWithDefault.description).toBe('Parameter with default');
 			expect(tool.schema.shape.numberWithDefault.description).toBe('Number with default');
 			expect(tool.schema.shape.booleanWithDefault.description).toBe('Boolean with default');
+		});
+
+		it('should allow omitting parameters with default values', () => {
+			node.parameters = {
+				requiredParam: "={{ $fromAI('requiredParam', 'Required parameter', 'string') }}",
+				optionalParam:
+					"={{ $fromAI('optionalParam', 'Optional parameter', 'string', 'default value') }}",
+				optionalNumber: "={{ $fromAI('optionalNumber', 'Optional number', 'number', 42) }}",
+			};
+
+			const tool = createNodeAsTool(options).response;
+
+			// Test that the schema accepts an object with only the required field
+			// This should NOT throw an error if fields with defaults are truly optional
+			const parseResult = tool.schema.safeParse({ requiredParam: 'test' });
+
+			expect(parseResult.success).toBe(true);
+			if (parseResult.success) {
+				expect(parseResult.data.requiredParam).toBe('test');
+				expect(parseResult.data.optionalParam).toBe('default value');
+				expect(parseResult.data.optionalNumber).toBe(42);
+			}
+
+			// Test that all fields can still be provided
+			const fullParseResult = tool.schema.safeParse({
+				requiredParam: 'test',
+				optionalParam: 'custom value',
+				optionalNumber: 100,
+			});
+
+			expect(fullParseResult.success).toBe(true);
+			if (fullParseResult.success) {
+				expect(fullParseResult.data.requiredParam).toBe('test');
+				expect(fullParseResult.data.optionalParam).toBe('custom value');
+				expect(fullParseResult.data.optionalNumber).toBe(100);
+			}
+		});
+
+		it('should allow omitting parameters with default values = empty string', () => {
+			node.parameters = {
+				requiredParam: "={{ $fromAI('requiredParam', 'Required parameter', 'string') }}",
+				optionalParam: "={{ $fromAI('optionalParam', 'Optional parameter', 'string', '') }}",
+			};
+
+			const tool = createNodeAsTool(options).response;
+
+			// Test that the schema accepts an object with only the required field
+			// This should NOT throw an error if fields with defaults are truly optional
+			const parseResult = tool.schema.safeParse({ requiredParam: 'test' });
+
+			expect(parseResult.success).toBe(true);
+			if (parseResult.success) {
+				expect(parseResult.data.requiredParam).toBe('test');
+				expect(parseResult.data.optionalParam).toBe('');
+			}
+
+			// Test that all fields can still be provided
+			const fullParseResult = tool.schema.safeParse({
+				requiredParam: 'test',
+				optionalParam: 'custom value',
+			});
+
+			expect(fullParseResult.success).toBe(true);
+			if (fullParseResult.success) {
+				expect(fullParseResult.data.requiredParam).toBe('test');
+				expect(fullParseResult.data.optionalParam).toBe('custom value');
+			}
 		});
 
 		it('should handle nested parameters correctly', () => {
@@ -150,7 +264,7 @@ describe('createNodeAsTool', () => {
 
 	describe('Error Handling and Edge Cases', () => {
 		it('should handle error during node execution', async () => {
-			nodeType.execute = jest.fn().mockRejectedValue(new Error('Execution failed'));
+			nodeType.execute = vi.fn().mockRejectedValue(new Error('Execution failed'));
 			const tool = createNodeAsTool(options).response;
 			handleToolInvocation.mockReturnValue('Error during node execution: some random issue.');
 

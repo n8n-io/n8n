@@ -82,7 +82,7 @@ describe('project.schema', () => {
 			},
 			{
 				name: 'invalid role',
-				value: { userId: 'user-123', role: 'invalid-role' },
+				value: { userId: 'user-123', role: 'project:personalOwner' },
 				expected: false,
 			},
 			{

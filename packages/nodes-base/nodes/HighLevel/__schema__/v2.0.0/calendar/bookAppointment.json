@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "properties": {
+        "address": {
+            "type": "string"
+        },
+        "appoinmentStatus": {
+            "type": "string"
+        },
+        "assignedUserId": {
+            "type": "string"
+        },
+        "calendarId": {
+            "type": "string"
+        },
+        "contactId": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isRecurring": {
+            "type": "boolean"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "traceId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

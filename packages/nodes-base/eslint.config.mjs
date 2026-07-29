@@ -1,16 +1,24 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 import nodesBasePlugin from 'eslint-plugin-n8n-nodes-base';
+import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
 export default defineConfig(
 	nodeConfig,
 	globalIgnores(['scenarios/**', 'scripts/**']),
 	{
+		plugins: {
+			'@n8n/community-nodes': n8nCommunityNodesPlugin,
+		},
+
 		rules: {
+			'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],
+			'@n8n/community-nodes/node-class-description-icon-missing': 'warn',
+			'@n8n/community-nodes/cred-class-field-icon-missing': 'warn',
+
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',
 			'id-denylist': 'warn',
-			'prefer-spread': 'warn',
 			'no-empty': 'warn',
 			'no-useless-escape': 'warn',
 			'no-prototype-builtins': 'warn',
@@ -22,12 +30,17 @@ export default defineConfig(
 			'no-dupe-else-if': 'warn',
 			'no-extra-boolean-cast': 'warn',
 			'no-fallthrough': 'warn',
+
 			'import-x/extensions': 'warn',
 			'import-x/no-default-export': 'warn',
 			'import-x/export': 'warn',
 			'import-x/order': 'warn',
 			'import-x/no-default-export': 'warn',
 			'import-x/no-extraneous-dependencies': 'warn',
+
+			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
+			'@n8n/community-nodes/no-builder-hint-leakage': 'error',
+
 			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 			'@typescript-eslint/naming-convention': ['warn'],
 			'@typescript-eslint/no-explicit-any': 'warn', //812 warnings, better to fix in separate PR
@@ -82,7 +95,7 @@ export default defineConfig(
 			'n8n-nodes-base/node-class-description-credentials-name-unsuffixed': 'error',
 			'n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node': 'error',
 			'n8n-nodes-base/node-class-description-empty-string': 'error',
-			'n8n-nodes-base/node-class-description-icon-not-svg': 'error',
+			'n8n-nodes-base/node-class-description-icon-not-svg': 'off',
 			'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'off',
 			'n8n-nodes-base/node-class-description-inputs-wrong-trigger-node': 'error',
 			'n8n-nodes-base/node-class-description-missing-subtitle': 'error',

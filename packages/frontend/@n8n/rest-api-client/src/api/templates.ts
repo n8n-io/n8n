@@ -1,9 +1,10 @@
 import type { RawAxiosRequestHeaders } from 'axios';
-import type { INode, INodeCredentialsDetails } from 'n8n-workflow';
+import type { IDataObject, INode, INodeCredentialsDetails } from 'n8n-workflow';
 
 import type { VersionNode } from './versions';
 import type { WorkflowData } from './workflows';
-import { get } from '../utils';
+import type { IRestApiContext } from '../types';
+import { get, makeRestApiRequest } from '../utils';
 
 export interface IWorkflowTemplateNode
 	extends Pick<
@@ -70,7 +71,11 @@ export interface ITemplatesWorkflow {
 	totalViews: number;
 	user: {
 		username: string;
+		name: string;
+		avatar: string;
+		verified: boolean;
 	};
+	readyToDemo?: boolean | null;
 }
 
 export interface ITemplatesWorkflowInfo {
@@ -113,6 +118,10 @@ export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
 export interface ITemplatesQuery {
 	categories: string[];
 	search: string;
+	apps?: string[];
+	nodes?: string[];
+	sort?: string;
+	combineWith?: string;
 }
 
 export interface ITemplatesCategory {
@@ -150,24 +159,33 @@ export async function getCollections(
 
 export async function getWorkflows(
 	apiEndpoint: string,
-	query: { page: number; limit: number; categories: string[]; search: string },
+	query: {
+		page: number;
+		limit: number;
+		categories: string[];
+		search: string;
+		sort?: string;
+		apps?: string[];
+		nodes?: string[];
+		combineWith?: string;
+	},
 	headers?: RawAxiosRequestHeaders,
 ): Promise<{
 	totalWorkflows: number;
 	workflows: ITemplatesWorkflow[];
 	filters: TemplateSearchFacet[];
 }> {
-	return await get(
-		apiEndpoint,
-		'/templates/search',
-		{
-			page: query.page,
-			rows: query.limit,
-			category: stringifyArray(query.categories),
-			search: query.search,
-		},
-		headers,
-	);
+	const { apps, sort, combineWith, categories, nodes, ...restQuery } = query;
+	const finalQuery = {
+		...restQuery,
+		category: stringifyArray(categories),
+		...(apps && { apps: stringifyArray(apps) }),
+		...(nodes && { nodes: stringifyArray(nodes) }),
+		...(sort && { sort }),
+		...(combineWith && { combineWith }),
+	};
+
+	return await get(apiEndpoint, '/templates/search', finalQuery, headers);
 }
 
 export async function getCollectionById(
@@ -192,4 +210,40 @@ export async function getWorkflowTemplate(
 	headers?: RawAxiosRequestHeaders,
 ): Promise<IWorkflowTemplate> {
 	return await get(apiEndpoint, `/workflows/templates/${templateId}`, undefined, headers);
+}
+
+export interface IInstanceAiExamplesQuery {
+	category?: string;
+	subcategory?: string;
+	page?: number;
+	limit?: number;
+}
+
+export interface IInstanceAiExampleWorkflow {
+	id: number;
+	name: string;
+	category: string;
+	subcategory?: string;
+	relevanceScore?: number;
+	prompt?: string;
+	nodes: Array<{
+		name: string;
+		displayName?: string;
+		icon?: string;
+		iconData?: { type: string; fileBuffer: string };
+	}>;
+}
+
+export interface IInstanceAiExamplesResponse {
+	categories: string[];
+	subcategories: Record<string, string[]>;
+	totalWorkflows: number;
+	workflows: IInstanceAiExampleWorkflow[];
+}
+
+export async function getInstanceAiExamples(
+	context: IRestApiContext,
+	query: IInstanceAiExamplesQuery,
+): Promise<IInstanceAiExamplesResponse> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai-examples', query as IDataObject);
 }

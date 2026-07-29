@@ -1,18 +1,18 @@
 import type { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
 import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
-import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
+import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
 
 describe('TaskRunnerProcessRestartLoopDetector', () => {
 	const mockLogger = mock<Logger>();
 	const mockAuthService = mock<TaskBrokerAuthService>();
 	const runnerConfig = new TaskRunnersConfig();
-	const taskRunnerProcess = new TaskRunnerProcess(
+	const taskRunnerProcess = new JsTaskRunnerProcess(
 		mockLogger,
 		runnerConfig,
 		mockAuthService,
@@ -36,7 +36,7 @@ describe('TaskRunnerProcessRestartLoopDetector', () => {
 	});
 
 	it('should not detect a restart loop if process exits less than 5 times within 5s', () => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		const restartLoopDetector = new TaskRunnerProcessRestartLoopDetector(taskRunnerProcess);
 		let emittedError: TaskRunnerRestartLoopError | undefined = undefined;
 		restartLoopDetector.on('restart-loop-detected', (error) => {
@@ -48,7 +48,7 @@ describe('TaskRunnerProcessRestartLoopDetector', () => {
 		taskRunnerProcess.emit('exit');
 		taskRunnerProcess.emit('exit');
 
-		jest.advanceTimersByTime(5010);
+		vi.advanceTimersByTime(5010);
 
 		taskRunnerProcess.emit('exit');
 

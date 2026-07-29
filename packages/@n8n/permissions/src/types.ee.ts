@@ -1,15 +1,25 @@
 import type { z } from 'zod';
 
 import type { RESOURCES, API_KEY_RESOURCES } from './constants.ee';
+import { PROJECT_OWNER_ROLE_SLUG } from './constants.ee';
 import type {
 	assignableGlobalRoleSchema,
 	credentialSharingRoleSchema,
 	globalRoleSchema,
-	projectRoleSchema,
+	Role,
+	systemProjectRoleSchema,
 	roleNamespaceSchema,
 	teamRoleSchema,
 	workflowSharingRoleSchema,
+	secretsProviderConnectionSharingRoleSchema,
+	assignableProjectRoleSchema,
 } from './schemas.ee';
+import { ALL_API_KEY_SCOPES } from './scope-information';
+
+export type ScopeInformation = {
+	displayName: string;
+	description?: string | null;
+};
 
 /** Represents a resource that can have permissions applied to it */
 export type Resource = keyof typeof RESOURCES;
@@ -20,9 +30,6 @@ type ResourceScope<
 	Operation extends (typeof RESOURCES)[R][number] = (typeof RESOURCES)[R][number],
 > = `${R}:${Operation}`;
 
-/** A wildcard scope applies to all operations on a resource or all resources */
-type WildcardScope = `${Resource}:*` | '*';
-
 // This is purely an intermediary type.
 // If we tried to do use `ResourceScope<Resource>` directly we'd end
 // up with all resources having all scopes (e.g. `ldap:uninstall`).
@@ -31,7 +38,7 @@ type AllScopesObject = {
 };
 
 /** A permission scope in the system, either a specific resource:operation or a wildcard */
-export type Scope = AllScopesObject[Resource] | WildcardScope;
+export type Scope = AllScopesObject[Resource];
 
 export type ScopeLevels = {
 	global: Scope[];
@@ -50,24 +57,48 @@ export type GlobalRole = z.infer<typeof globalRoleSchema>;
 export type AssignableGlobalRole = z.infer<typeof assignableGlobalRoleSchema>;
 export type CredentialSharingRole = z.infer<typeof credentialSharingRoleSchema>;
 export type WorkflowSharingRole = z.infer<typeof workflowSharingRoleSchema>;
+export type SecretsProviderConnectionSharingRole = z.infer<
+	typeof secretsProviderConnectionSharingRoleSchema
+>;
 export type TeamProjectRole = z.infer<typeof teamRoleSchema>;
-export type ProjectRole = z.infer<typeof projectRoleSchema>;
+export type ProjectRole = z.infer<typeof systemProjectRoleSchema>;
+export type AssignableProjectRole = z.infer<typeof assignableProjectRoleSchema>;
+
+/**
+ * Type guard for assignable project role slugs.
+ *
+ * Custom project roles are supported. We consider any slug that:
+ * - starts with the `project:` prefix, and
+ * - is not the personal owner role
+ * to be an assignable project role.
+ */
+export function isAssignableProjectRoleSlug(slug: string): slug is AssignableProjectRole {
+	return slug.startsWith('project:') && slug !== PROJECT_OWNER_ROLE_SLUG;
+}
 
 /** Union of all possible role types in the system */
-export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;
-
-type RoleObject<T extends AllRoleTypes> = {
-	role: T;
-	name: string;
-	scopes: Scope[];
-	licensed: boolean;
-};
+export type AllRoleTypes =
+	| GlobalRole
+	| ProjectRole
+	| WorkflowSharingRole
+	| CredentialSharingRole
+	| SecretsProviderConnectionSharingRole;
 
 export type AllRolesMap = {
-	global: Array<RoleObject<GlobalRole>>;
-	project: Array<RoleObject<ProjectRole>>;
-	credential: Array<RoleObject<CredentialSharingRole>>;
-	workflow: Array<RoleObject<WorkflowSharingRole>>;
+	global: Role[];
+	project: Role[];
+	credential: Role[];
+	workflow: Role[];
+	secretsProviderConnection: Role[];
+};
+
+export type DbScope = {
+	slug: Scope;
+};
+
+export type DbRole = {
+	slug: string;
+	scopes: DbScope[];
 };
 
 /**
@@ -75,7 +106,7 @@ export type AllRolesMap = {
  * @property role - The global role this principal has
  */
 export type AuthPrincipal = {
-	role: GlobalRole;
+	role: DbRole;
 };
 
 // #region Public API
@@ -94,5 +125,10 @@ type AllApiKeyScopesObject = {
 };
 
 export type ApiKeyScope = AllApiKeyScopesObject[PublicApiKeyResources];
+
+export function isApiKeyScope(scope: Scope | ApiKeyScope): scope is ApiKeyScope {
+	// We are casting with as for runtime type checking
+	return ALL_API_KEY_SCOPES.has(scope as ApiKeyScope);
+}
 
 // #endregion

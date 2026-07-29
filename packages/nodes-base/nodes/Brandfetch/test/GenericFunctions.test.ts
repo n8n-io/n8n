@@ -24,12 +24,12 @@ describe('Brandfetch', () => {
 	describe('brandfetchApiRequest', () => {
 		const mockThis = {
 			helpers: {
-				requestWithAuthentication: jest.fn().mockResolvedValue({ statusCode: 200 }),
+				requestWithAuthentication: vi.fn().mockResolvedValue({ statusCode: 200 }),
 			},
 			getNode() {
 				return node;
 			},
-			getNodeParameter: jest.fn(),
+			getNodeParameter: vi.fn(),
 		} as unknown as IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
 
 		it('should make an authenticated API request to Brandfetch', async () => {

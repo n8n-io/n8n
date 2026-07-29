@@ -1,6 +1,13 @@
 import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
-import { type InsightsDateRange } from './schemas/insights.schema';
+import type {
+	ChatHubLLMProvider,
+	ChatHubSemanticSearchSettings,
+	ChatProviderSettingsDto,
+} from './chat-hub';
+import type { QuickConnectOption } from './quick-connect';
+import type { InsightsDateRange } from './schemas/insights.schema';
+import type { WorkflowReviewsPolicy } from './workflow-reviews-policy';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -13,6 +20,8 @@ export interface IVersionNotificationSettings {
 export interface ITelemetryClientConfig {
 	url: string;
 	key: string;
+	proxy: string;
+	sourceConfig: string;
 }
 
 export interface ITelemetrySettings {
@@ -20,19 +29,61 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc';
+export const AuthenticationMethod = {
+	Email: 'email',
+	Ldap: 'ldap',
+	Saml: 'saml',
+	Oidc: 'oidc',
+	TokenExchange: 'token-exchange',
+} as const;
+
+export type AuthenticationMethod = (typeof AuthenticationMethod)[keyof typeof AuthenticationMethod];
 
 export interface IUserManagementSettings {
 	quota: number;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
+	passwordMinLength: number;
+}
+
+export interface IEnterpriseSettings {
+	sharing: boolean;
+	ldap: boolean;
+	saml: boolean;
+	oidc: boolean;
+	mfaEnforcement: boolean;
+	logStreaming: boolean;
+	advancedExecutionFilters: boolean;
+	variables: boolean;
+	sourceControl: boolean;
+	auditLogs: boolean;
+	externalSecrets: boolean;
+	showNonProdBanner: boolean;
+	debugInEditor: boolean;
+	binaryDataS3: boolean;
+	workerView: boolean;
+	advancedPermissions: boolean;
+	workflowDiffs: boolean;
+	namedVersions: boolean;
+	provisioning: boolean;
+	projects: {
+		team: {
+			limit: number;
+		};
+	};
+	customRoles: boolean;
+	personalSpacePolicy: boolean;
+	dataRedaction: boolean;
+	otelCustomSpanAttributes: boolean;
+	workflowReviews: boolean;
 }
 
 export interface FrontendSettings {
+	settingsMode?: 'public' | 'authenticated';
 	inE2ETests: boolean;
 	isDocker: boolean;
-	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
+	databaseType: 'sqlite' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
@@ -41,6 +92,7 @@ export interface FrontendSettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
+	endpointHealth: string;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -52,22 +104,33 @@ export interface FrontendSettings {
 		oauth1: string;
 		oauth2: string;
 	};
+	jwksUri: string;
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
+	urlBaseWebhookTest: string;
 	versionCli: string;
 	nodeJsVersion: string;
+	nodeEnv: string | undefined;
 	concurrency: number;
+	evaluationConcurrencyLimit: number;
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: 'default' | 'filesystem' | 's3';
-	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'azure' | 'database';
+	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
 	n8nMetadata?: {
 		userId?: string;
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
+	dynamicBanners: {
+		endpoint: string;
+		enabled: boolean;
+		filters: {
+			publishedWorkflowCount: number;
+		};
+	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
@@ -77,11 +140,16 @@ export interface FrontendSettings {
 		autocapture: boolean;
 		disableSessionRecording: boolean;
 		debug: boolean;
+		proxy: string;
+	};
+	dataTables: {
+		maxSize: number;
 	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
+		managedByEnv: boolean;
 		saml: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -96,6 +164,9 @@ export interface FrontendSettings {
 			loginEnabled: boolean;
 		};
 	};
+	logStreaming: {
+		managedByEnv: boolean;
+	};
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
@@ -105,6 +176,8 @@ export interface FrontendSettings {
 		};
 	};
 	workflowTagsDisabled: boolean;
+	workflowsAutosaveDisabled: boolean;
+	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -119,11 +192,17 @@ export interface FrontendSettings {
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	unverifiedCommunityNodesEnabled: boolean;
+	communityNodesManagedByEnv: boolean;
 	aiAssistant: {
 		enabled: boolean;
+		setup: boolean;
 	};
 	askAi: {
 		enabled: boolean;
+	};
+	aiBuilder: {
+		enabled: boolean;
+		setup: boolean;
 	};
 	deployment: {
 		type: string;
@@ -132,30 +211,7 @@ export interface FrontendSettings {
 		builtIn?: string[];
 		external?: string[];
 	};
-	enterprise: {
-		sharing: boolean;
-		ldap: boolean;
-		saml: boolean;
-		oidc: boolean;
-		logStreaming: boolean;
-		advancedExecutionFilters: boolean;
-		variables: boolean;
-		sourceControl: boolean;
-		auditLogs: boolean;
-		externalSecrets: boolean;
-		showNonProdBanner: boolean;
-		debugInEditor: boolean;
-		binaryDataS3: boolean;
-		workflowHistory: boolean;
-		workerView: boolean;
-		advancedPermissions: boolean;
-		apiKeyScopes: boolean;
-		projects: {
-			team: {
-				limit: number;
-			};
-		};
-	};
+	enterprise: IEnterpriseSettings;
 	hideUsagePage: boolean;
 	license: {
 		planName?: string;
@@ -167,9 +223,14 @@ export interface FrontendSettings {
 	};
 	mfa: {
 		enabled: boolean;
+		enforced: boolean;
 	};
+	workflowReviews?: WorkflowReviewsPolicy;
 	folders: {
 		enabled: boolean;
+	};
+	collaboration: {
+		crdt: 'off' | 'local' | 'server';
 	};
 	banners: {
 		dismissed: string[];
@@ -181,6 +242,14 @@ export interface FrontendSettings {
 	aiCredits: {
 		enabled: boolean;
 		credits: number;
+		setup: boolean;
+	};
+	aiGateway?: {
+		enabled: boolean;
+		budget: number;
+	};
+	ai: {
+		allowSendingParameterValues: boolean;
 	};
 	pruning?: {
 		isEnabled: boolean;
@@ -189,17 +258,45 @@ export interface FrontendSettings {
 	};
 	security: {
 		blockFileAccessToN8nFiles: boolean;
+		/**
+		 * Origins allowed to exchange `postMessage` commands with the editor iframe.
+		 * Empty means no restriction (any origin is accepted).
+		 */
+		postMessageAllowedOrigins: string[];
+	};
+	chatTrigger?: {
+		disablePublicChat: boolean;
 	};
 	easyAIWorkflowOnboarded: boolean;
-	partialExecution: {
-		version: 1 | 2;
-	};
 	evaluation: {
 		quota: number;
+		/**
+		 * Operator override (`N8N_EVAL_COLLECTIONS_ENABLED`) that force-enables the
+		 * eval-collections surface. Surfaced here so the frontend gate works even
+		 * when the in-browser PostHog client is disabled (telemetry off), where the
+		 * `084_eval_collections` flag would otherwise never resolve.
+		 */
+		collectionsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_CONFIG_EVALS_ENABLED`) that force-enables the
+		 * config-based evals surface. Surfaced here so the in-editor gate works
+		 * even when the browser PostHog client is disabled (telemetry off), where
+		 * the `088_config_evaluations` flag would otherwise never resolve.
+		 */
+		configEvalsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_AGENT_EVALS_ENABLED`) that force-enables the
+		 * agent-evals surface. Surfaced here so the frontend gate works even when
+		 * the in-browser PostHog client is disabled (telemetry off), where the
+		 * `101_agent_evals` flag would otherwise never resolve.
+		 */
+		agentEvalsEnabled: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
+	canvasOnly: boolean;
+	envFeatureFlags: N8nEnvFeatFlags;
 }
 
 export type FrontendModuleSettings = {
@@ -214,5 +311,98 @@ export type FrontendModuleSettings = {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
+		earliestDataDate: string | null;
+	};
+
+	/**
+	 * Client settings for MCP module.
+	 */
+	mcp?: {
+		/** Whether MCP access is enabled in the instance. */
+		mcpAccessEnabled: boolean;
+		/** Whether MCP settings are managed via environment variables. */
+		mcpManagedByEnv: boolean;
+		/** Public URL of the instance MCP server endpoint. */
+		serverUrl?: string;
+	};
+
+	/**
+	 * Client settings for Chat module.
+	 */
+	'chat-hub'?: {
+		enabled: boolean;
+		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+		semanticSearch: ChatHubSemanticSearchSettings;
+		agentUploadMaxSizeMb: number;
+	};
+
+	/**
+	 * Client settings for instance AI module.
+	 */
+	'instance-ai'?: {
+		enabled: boolean;
+		localGatewayDisabled: boolean;
+		browserUseEnabled: boolean;
+		proxyEnabled: boolean;
+		cloudManaged: boolean;
+		sandboxEnabled: boolean;
+		workflowBuilderAvailable: boolean;
+		sandboxUnavailableReason: string | null;
+		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
+		runDebugEnabled: boolean;
+	};
+
+	/**
+	 * Quick connect settings
+	 */
+	'quick-connect'?: {
+		options: QuickConnectOption[];
+	};
+
+	/**
+	 * Client settings for external secrets module.
+	 */
+	'external-secrets'?: {
+		/** Whether multiple connections per vault type are enabled. */
+		multipleConnections: boolean;
+		/** Whether project-scoped external secrets are enabled. */
+		forProjects: boolean;
+		/** Whether role-based access control for external secrets is enabled. */
+		roleBasedAccess: boolean;
+		/** Whether system roles (admin, editor) have external secrets scopes. */
+		systemRolesEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for the OpenTelemetry module.
+	 */
+	otel?: {
+		/** Whether OpenTelemetry tracing is enabled on this instance. */
+		enabled: boolean;
+	};
+
+	/**
+	 * Client settings for the agents module.
+	 */
+	agents?: {
+		/**
+		 * Enabled agent sub-feature modules. Each token unlocks a specific
+		 * capability inside the agents module (see the backend's
+		 * `AGENTS_MODULE_NAMES` for the known set). Controlled via
+		 * `N8N_AGENTS_MODULES`
+		 */
+		modules: string[];
+		/**
+		 * Whether the agent knowledge base is enabled. True when the backend's
+		 * Daytona sandbox env vars (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` +
+		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`) are set, OR the AI Assistant
+		 * proxy is available.
+		 */
+		knowledgeBaseEnabled: boolean;
+		/** Whether the AI Assistant proxy is available to the agents module. */
+		proxyEnabled: boolean;
 	};
 };
+
+export type N8nEnvFeatFlagValue = boolean | string | number | undefined;
+export type N8nEnvFeatFlags = Record<`N8N_ENV_FEAT_${Uppercase<string>}`, N8nEnvFeatFlagValue>;

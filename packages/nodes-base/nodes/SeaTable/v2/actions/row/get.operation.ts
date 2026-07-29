@@ -9,6 +9,8 @@ import {
 import {
 	seaTableApiRequest,
 	enrichColumns,
+	escapeSqlIdentifier,
+	escapeSqlString,
 	simplify_new,
 	getBaseCollaborators,
 } from '../../GenericFunctions';
@@ -69,7 +71,7 @@ export async function execute(
 		'POST',
 		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql/',
 		{
-			sql: `SELECT * FROM \`${tableName}\` WHERE _id = '${rowId}'`,
+			sql: `SELECT * FROM \`${escapeSqlIdentifier(tableName)}\` WHERE _id = '${escapeSqlString(rowId)}'`,
 			convert_keys: options.convert ?? true,
 		},
 	)) as IRowResponse;

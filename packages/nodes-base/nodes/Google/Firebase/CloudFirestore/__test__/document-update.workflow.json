@@ -1,0 +1,65 @@
+{
+	"name": "CloudFirestore Document Update Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"authentication": "googleFirebaseCloudFirestoreOAuth2Api",
+				"resource": "document",
+				"operation": "upsert",
+				"projectId": "test-project",
+				"database": "(default)",
+				"collection": "users",
+				"updateKey": "documentId",
+				"columns": "name,email,age,active"
+			},
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1.1,
+			"position": [200, 0],
+			"id": "cloudFirestore-update",
+			"name": "Update Document",
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "cloudFirestore-oauth-id",
+					"name": "CloudFirestore OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Update Document": [
+			{
+				"json": {
+					"status": {
+						"code": 0
+					},
+					"updateTime": "2023-01-01T11:00:00.000Z"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Update Document",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

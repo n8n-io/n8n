@@ -15,7 +15,7 @@ export async function pushbulletApiRequest(
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string | undefined,
+	uri?: string,
 	option = {},
 ): Promise<any> {
 	const options: IRequestOptions = {

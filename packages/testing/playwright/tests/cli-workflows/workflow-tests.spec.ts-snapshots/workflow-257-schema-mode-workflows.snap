@@ -1,0 +1,688 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "startData": {
+          "type": "object",
+          "properties": {}
+        },
+        "resultData": {
+          "type": "object",
+          "properties": {
+            "runData": {
+              "type": "object",
+              "properties": {
+                "When clicking \"Test workflow\"": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Simple Memory": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            },
+                            "previousNodeRun": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "previousNode",
+                            "previousNodeRun"
+                          ]
+                        }
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "ai_memory": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "inputOverride": {
+                        "type": "object",
+                        "properties": {
+                          "ai_memory": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {
+                          "subRun": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "node": {
+                                  "type": "string"
+                                },
+                                "runIndex": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "node",
+                                "runIndex"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "required": [
+                      "startTime",
+                      "executionTime",
+                      "executionIndex",
+                      "executionStatus",
+                      "source",
+                      "data",
+                      "inputOverride",
+                      "metadata"
+                    ]
+                  }
+                },
+                "Anthropic Chat Model": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            },
+                            "previousNodeRun": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "previousNode",
+                            "previousNodeRun"
+                          ]
+                        }
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "ai_languageModel": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "inputOverride": {
+                        "type": "object",
+                        "properties": {
+                          "ai_languageModel": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {
+                          "subRun": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "node": {
+                                  "type": "string"
+                                },
+                                "runIndex": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "node",
+                                "runIndex"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "required": [
+                      "startTime",
+                      "executionTime",
+                      "executionIndex",
+                      "executionStatus",
+                      "source",
+                      "data",
+                      "inputOverride",
+                      "metadata"
+                    ]
+                  }
+                },
+                "Auto-fixing Output Parser": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            },
+                            "previousNodeRun": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "previousNode",
+                            "previousNodeRun"
+                          ]
+                        }
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "ai_outputParser": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "inputOverride": {
+                        "type": "object",
+                        "properties": {
+                          "ai_outputParser": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {
+                          "subRun": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "node": {
+                                  "type": "string"
+                                },
+                                "runIndex": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "node",
+                                "runIndex"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "required": [
+                      "startTime",
+                      "executionTime",
+                      "executionIndex",
+                      "executionStatus",
+                      "source",
+                      "data",
+                      "inputOverride",
+                      "metadata"
+                    ]
+                  }
+                },
+                "Structured Output Parser": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            },
+                            "previousNodeRun": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "previousNode",
+                            "previousNodeRun"
+                          ]
+                        }
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "ai_outputParser": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "inputOverride": {
+                        "type": "object",
+                        "properties": {
+                          "ai_outputParser": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {
+                          "subRun": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "node": {
+                                  "type": "string"
+                                },
+                                "runIndex": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "node",
+                                "runIndex"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "required": [
+                      "startTime",
+                      "executionTime",
+                      "executionIndex",
+                      "executionStatus",
+                      "source",
+                      "data",
+                      "inputOverride",
+                      "metadata"
+                    ]
+                  }
+                },
+                "AI Agent": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "AI Agent1": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "lastNodeExecuted": {
+              "type": "string"
+            }
+          }
+        },
+        "executionData": {
+          "type": "object",
+          "properties": {
+            "contextData": {
+              "type": "object",
+              "properties": {}
+            },
+            "nodeExecutionStack": {
+              "type": "array",
+              "items": {}
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {
+                "Simple Memory": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "subRun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "node": {
+                              "type": "string"
+                            },
+                            "runIndex": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "node",
+                            "runIndex"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "subRun"
+                    ]
+                  }
+                },
+                "Anthropic Chat Model": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "subRun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "node": {
+                              "type": "string"
+                            },
+                            "runIndex": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "node",
+                            "runIndex"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "subRun"
+                    ]
+                  }
+                },
+                "Structured Output Parser": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "subRun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "node": {
+                              "type": "string"
+                            },
+                            "runIndex": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "node",
+                            "runIndex"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "subRun"
+                    ]
+                  }
+                },
+                "Auto-fixing Output Parser": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "subRun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "node": {
+                              "type": "string"
+                            },
+                            "runIndex": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "node",
+                            "runIndex"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "subRun"
+                    ]
+                  }
+                }
+              }
+            },
+            "waitingExecution": {
+              "type": "object",
+              "properties": {}
+            },
+            "waitingExecutionSource": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        }
+      }
+    },
+    "mode": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "stoppedAt": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "finished": {
+      "type": "boolean"
+    }
+  }
+}

@@ -1,22 +1,10 @@
 <script setup lang="ts">
 import BaseMessage from './BaseMessage.vue';
-import type { ChatUI } from '../../../types/assistant';
+import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import CodeDiff from '../../CodeDiff/CodeDiff.vue';
 
 interface Props {
-	message: {
-		role: 'assistant';
-		type: 'code-diff';
-		description?: string;
-		codeDiff?: string;
-		replacing?: boolean;
-		replaced?: boolean;
-		error?: boolean;
-		suggestionId: string;
-		id: string;
-		read: boolean;
-		quickReplies?: ChatUI.QuickReply[];
-	};
+	message: ChatUI.CodeDiffMessage & { id: string; read: boolean };
 	isFirstOfRole: boolean;
 	user?: {
 		firstName: string;
@@ -31,11 +19,17 @@ defineProps<Props>();
 const emit = defineEmits<{
 	codeReplace: [];
 	codeUndo: [];
+	feedback: [RatingFeedback];
 }>();
 </script>
 
 <template>
-	<BaseMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
+	<BaseMessage
+		:message="message"
+		:is-first-of-role="isFirstOfRole"
+		:user="user"
+		@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
+	>
 		<CodeDiff
 			:title="message.description"
 			:content="message.codeDiff"

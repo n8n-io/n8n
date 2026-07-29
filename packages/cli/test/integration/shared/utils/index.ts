@@ -1,26 +1,31 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { SettingsRepository, WorkflowEntity } from '@n8n/db';
+import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import {
 	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
 	UnrecognizedNodeTypeError,
 	type DirectoryLoader,
+	type ErrorReporter,
 } from 'n8n-core';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
+import { HttpBasicAuth } from 'n8n-nodes-base/credentials/HttpBasicAuth.credentials';
+import { HttpHeaderAuth } from 'n8n-nodes-base/credentials/HttpHeaderAuth.credentials';
+import { OpenAiApi } from 'n8n-nodes-base/credentials/OpenAiApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
+import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
-import { Start } from 'n8n-nodes-base/nodes/Start/Start.node';
-import type { INodeTypeData, INode } from 'n8n-workflow';
+import { Webhook as WebhookNode } from 'n8n-nodes-base/nodes/Webhook/Webhook.node';
+import type { INodeType, INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
-import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -39,11 +44,12 @@ export async function initActiveWorkflowManager() {
 	mockInstance(BinaryDataConfig);
 	mockInstance(InstanceSettings, {
 		isMultiMain: false,
+		n8nFolder: '/tmp/n8n-test',
 	});
 
 	mockInstance(Push);
 	mockInstance(ExecutionService);
-	const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
+	const { ActiveWorkflowManager } = await import('@/active-workflow-manager.js');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 	await activeWorkflowManager.init();
 	return activeWorkflowManager;
@@ -62,16 +68,26 @@ export async function initCredentialsTypes(): Promise<void> {
 			type: new Ftp(),
 			sourcePath: '',
 		},
+		openAiApi: {
+			type: new OpenAiApi(),
+			sourcePath: '',
+		},
+		httpHeaderAuth: {
+			type: new HttpHeaderAuth(),
+			sourcePath: '',
+		},
+		httpBasicAuth: {
+			type: new HttpBasicAuth(),
+			sourcePath: '',
+		},
 	};
 }
 
-/**
- * Initialize node types.
- */
-export async function initNodeTypes(customNodes?: INodeTypeData) {
-	const defaultNodes: INodeTypeData = {
-		'n8n-nodes-base.start': {
-			type: new Start(),
+function buildDefaultNodes(): INodeTypeData {
+	ScheduleTrigger.prototype.trigger = async () => ({});
+	return {
+		'n8n-nodes-base.manualTrigger': {
+			type: new ManualTrigger(),
 			sourcePath: '',
 		},
 		'n8n-nodes-base.cron': {
@@ -90,16 +106,49 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 			type: new FormTrigger(),
 			sourcePath: '',
 		},
+		'n8n-nodes-base.webhook': {
+			type: mock<INodeType>({ description: new WebhookNode().description } as never) as INodeType,
+			sourcePath: '',
+		},
+		// Minimal mocks for node types the package-import fixtures reference at
+		// typeVersion 1; import validation only needs name + version resolution.
+		'n8n-nodes-base.httpRequest': {
+			type: mock<INodeType>({
+				description: { name: 'n8n-nodes-base.httpRequest', version: 1 },
+			} as never) as INodeType,
+			sourcePath: '',
+		},
+		'n8n-nodes-base.dataTable': {
+			type: mock<INodeType>({
+				description: { name: 'n8n-nodes-base.dataTable', version: 1 },
+			} as never) as INodeType,
+			sourcePath: '',
+		},
 	};
+}
 
-	ScheduleTrigger.prototype.trigger = async () => ({});
-	const nodes = customNodes ?? defaultNodes;
+/**
+ * Initialize node types.
+ */
+export async function initNodeTypes(customNodes?: INodeTypeData) {
+	// Build the default mock node set only when the caller didn't supply its own. Building it
+	// eagerly is harmful even when unused: `mock<INodeType>({ description: new WebhookNode().description })`
+	// (vitest-mock-extended) deep-wraps the webhook description's property objects *in place*, and
+	// nodes that reuse those shared property definitions by reference (e.g. Wait) then inherit the
+	// mock-polluted `displayOptions`, which breaks parameter validation at execution time.
+	const nodes = customNodes ?? buildDefaultNodes();
 	const loader = mock<DirectoryLoader>();
 	loader.getNode.mockImplementation((nodeType) => {
 		const node = nodes[`n8n-nodes-base.${nodeType}`];
 		if (!node) throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeType);
 		return node;
 	});
+
+	// LoadNodesAndCredentials.getCredential() iterates all loaders and
+	// tries to check for `credentialType in loader.known.credentials`.
+	// The `in` operator throws if `known.credentials` is undefined. Set it to empty maps so
+	// the loop is safe to iterate (credentials are registered via loaded.credentials, not the loader).
+	Object.assign(loader, { known: { nodes: {}, credentials: {} } });
 
 	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 	loadNodesAndCredentials.loaders = { 'n8n-nodes-base': loader };
@@ -115,7 +164,9 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
 		availableModes: [mode],
 		localStoragePath: '',
 	});
-	const binaryDataService = new BinaryDataService(config);
+	const logger = mock<Logger>();
+	const errorReporter = mock<ErrorReporter>();
+	const binaryDataService = new BinaryDataService(config, errorReporter, logger);
 	await binaryDataService.init();
 	Container.set(BinaryDataService, binaryDataService);
 }
@@ -135,31 +186,10 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 
 	const match = authCookie.match(new RegExp(`(^| )${authCookieName}=(?<token>[^;]+)`));
 
-	if (!match || !match.groups) return undefined;
+	if (!match?.groups) return undefined;
 
 	return match.groups.token;
 }
-
-// ----------------------------------
-//            settings
-// ----------------------------------
-
-export async function isInstanceOwnerSetUp() {
-	const { value } = await Container.get(SettingsRepository).findOneByOrFail({
-		key: 'userManagement.isInstanceOwnerSetUp',
-	});
-
-	return Boolean(value);
-}
-
-export const setInstanceOwnerSetUp = async (value: boolean) => {
-	config.set('userManagement.isInstanceOwnerSetUp', value);
-
-	await Container.get(SettingsRepository).update(
-		{ key: 'userManagement.isInstanceOwnerSetUp' },
-		{ value: JSON.stringify(value) },
-	);
-};
 
 // ----------------------------------
 //           community nodes
@@ -194,6 +224,7 @@ export function makeWorkflow(options?: {
 
 	workflow.name = 'My Workflow';
 	workflow.active = false;
+	workflow.activeVersionId = null;
 	workflow.connections = {};
 	workflow.nodes = [node];
 

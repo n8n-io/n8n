@@ -11,15 +11,16 @@ const baseNodeParameters = {
 	resource: 'session',
 	operation: 'create',
 	profileName: 'test-profile',
+	record: false,
 	timeoutMinutes: 10,
 	saveProfileOnTermination: false,
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return {
 				...mockCreatedSession,
 			};
@@ -28,12 +29,8 @@ jest.mock('../../../transport', () => {
 });
 
 describe('Test Airtop, session create operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 	/**
 	 * Minimal parameters
@@ -52,6 +49,7 @@ describe('Test Airtop, session create operation', () => {
 				profileName: 'test-profile',
 				solveCaptcha: false,
 				timeoutMinutes: 10,
+				record: false,
 				proxy: false,
 			},
 		});
@@ -60,6 +58,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -82,6 +81,7 @@ describe('Test Airtop, session create operation', () => {
 				profileName: 'test-profile',
 				solveCaptcha: false,
 				timeoutMinutes: 10,
+				record: false,
 				proxy: false,
 			},
 		});
@@ -95,6 +95,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -117,6 +118,7 @@ describe('Test Airtop, session create operation', () => {
 				profileName: 'test-profile',
 				solveCaptcha: false,
 				timeoutMinutes: 10,
+				record: false,
 				proxy: true,
 			},
 		});
@@ -125,6 +127,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -145,6 +148,7 @@ describe('Test Airtop, session create operation', () => {
 				profileName: 'test-profile',
 				solveCaptcha: false,
 				timeoutMinutes: 10,
+				record: false,
 				proxy: { country: 'US', sticky: true },
 			},
 		});
@@ -153,6 +157,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -173,6 +178,7 @@ describe('Test Airtop, session create operation', () => {
 				profileName: 'test-profile',
 				solveCaptcha: false,
 				timeoutMinutes: 10,
+				record: false,
 				proxy: 'http://proxy.example.com:8080',
 			},
 		});
@@ -181,6 +187,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -216,6 +223,7 @@ describe('Test Airtop, session create operation', () => {
 				profileName: 'test-profile',
 				solveCaptcha: true,
 				timeoutMinutes: 10,
+				record: false,
 				proxy: false,
 			},
 		});
@@ -224,6 +232,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -247,6 +256,7 @@ describe('Test Airtop, session create operation', () => {
 				profileName: 'test-profile',
 				solveCaptcha: false,
 				timeoutMinutes: 10,
+				record: false,
 				proxy: false,
 				extensionIds: ['extId1', 'extId2'],
 			},
@@ -256,6 +266,39 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
+				},
+			},
+		]);
+	});
+	/**
+	 * Session recording
+	 */
+	it('should create a session with recording enabled', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			record: true,
+			proxy: 'none',
+		};
+
+		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+			configuration: {
+				profileName: 'test-profile',
+				solveCaptcha: false,
+				timeoutMinutes: 10,
+				record: true,
+				proxy: false,
+			},
+		});
+
+		expect(result).toEqual([
+			{
+				json: {
+					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);

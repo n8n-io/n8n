@@ -1,5 +1,6 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { BedrockEmbeddings } from '@langchain/aws';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -8,20 +9,15 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
+import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings AWS Bedrock',
 		name: 'embeddingsAwsBedrock',
 		icon: 'file:bedrock.svg',
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		group: ['transform'],
 		version: 1,
 		description: 'Use Embeddings AWS Bedrock',
@@ -42,9 +38,9 @@ export class EmbeddingsAwsBedrock implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		requestDefaults: {
@@ -52,11 +48,13 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
+			awsNodeAuthOptions,
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
+				allowArbitraryValues: true, // Hide issues when model name is specified in the expression and does not match any of the options
 				description:
 					'The model which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html">Learn more</a>.',
 				typeOptions: {
@@ -105,18 +103,18 @@ export class EmbeddingsAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('aws');
+		const { region, credentials, bedrockRuntimeEndpoint } = await resolveAwsCredentials(
+			this,
+			itemIndex,
+		);
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
+		const client = createBedrockRuntimeClient({ region, credentials, bedrockRuntimeEndpoint });
 		const embeddings = new BedrockEmbeddings({
-			region: credentials.region as string,
+			client,
 			model: modelName,
 			maxRetries: 3,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey as string,
-				accessKeyId: credentials.accessKeyId as string,
-				sessionToken: credentials.sessionToken as string,
-			},
+			region,
 		});
 
 		return {

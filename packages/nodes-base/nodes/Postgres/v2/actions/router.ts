@@ -3,9 +3,14 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as database from './database/Database.resource';
 import type { PostgresType } from './node.type';
+import { addExecutionHints } from '../../../../utils/utilities';
 import { configurePostgres } from '../../transport';
-import type { PostgresNodeCredentials, PostgresNodeOptions } from '../helpers/interfaces';
-import { addExecutionHints, configureQueryRunner } from '../helpers/utils';
+import type {
+	PostgresNodeCredentials,
+	PostgresNodeOptions,
+	QueriesRunner,
+} from '../helpers/interfaces';
+import { configureQueryRunner } from '../helpers/utils';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
@@ -22,7 +27,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	const { db, pgp } = await configurePostgres.call(this, credentials, options);
 
-	const runQueries = configureQueryRunner.call(
+	const runQueries: QueriesRunner = configureQueryRunner.call(
 		this,
 		this.getNode(),
 		this.continueOnFail(),
@@ -53,7 +58,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			);
 	}
 
-	addExecutionHints(this, items, operation, node.executeOnce);
+	addExecutionHints(this, node, items, operation, node.executeOnce);
 
 	return [returnData];
 }

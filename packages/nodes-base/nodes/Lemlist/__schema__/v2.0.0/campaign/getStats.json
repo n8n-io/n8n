@@ -1,0 +1,39 @@
+{
+    "type": "object",
+    "properties": {
+        "clickedCount": {
+            "type": "integer"
+        },
+        "deliveredCount": {
+            "type": "integer"
+        },
+        "interestedCount": {
+            "type": "integer"
+        },
+        "leadCompleted": {
+            "type": "integer"
+        },
+        "leadInProgress": {
+            "type": "integer"
+        },
+        "leadReadyToSend": {
+            "type": "integer"
+        },
+        "leadToLaunch": {
+            "type": "integer"
+        },
+        "leadTotal": {
+            "type": "integer"
+        },
+        "openedCount": {
+            "type": "integer"
+        },
+        "repliedCount": {
+            "type": "integer"
+        },
+        "sentCount": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

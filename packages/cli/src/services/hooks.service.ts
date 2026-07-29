@@ -12,7 +12,6 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import RudderStack, { type constructorOptions } from '@rudderstack/rudder-sdk-node';
@@ -28,6 +27,12 @@ import { UserService } from '@/services/user.service';
  */
 @Service()
 export class HooksService {
+	private innerAuthMiddleware: (
+		req: AuthenticatedRequest,
+		res: Response,
+		next: NextFunction,
+	) => Promise<void>;
+
 	constructor(
 		private readonly userService: UserService,
 		private readonly authService: AuthService,
@@ -35,7 +40,9 @@ export class HooksService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
-	) {}
+	) {
+		this.innerAuthMiddleware = authService.createAuthMiddleware({ allowSkipMFA: false });
+	}
 
 	/**
 	 * Invite users to instance during signup
@@ -49,7 +56,10 @@ export class HooksService {
 	 * the user after instance is provisioned
 	 */
 	issueCookie(res: Response, user: User) {
-		return this.authService.issueCookie(res, user);
+		// TODO: The information on user has mfa enabled here, is missing!!
+		// This could be a security problem!!
+		// This is in just for the hackmation!!
+		return this.authService.issueCookie(res, user, user.mfaEnabled);
 	}
 
 	/**
@@ -105,7 +115,7 @@ export class HooksService {
 	 * 1. To authenticate the /proxy routes in the hooks
 	 */
 	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		return await this.authService.authMiddleware(req, res, next);
+		return await this.innerAuthMiddleware(req, res, next);
 	}
 
 	getRudderStackClient(key: string, options: constructorOptions): RudderStack {

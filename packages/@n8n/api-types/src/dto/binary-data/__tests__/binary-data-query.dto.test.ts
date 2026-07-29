@@ -4,6 +4,13 @@ describe('BinaryDataQueryDto', () => {
 	describe('Valid requests', () => {
 		test.each([
 			{
+				name: 'database mode with view action',
+				request: {
+					id: 'database:some-id',
+					action: 'view',
+				},
+			},
+			{
 				name: 'filesystem mode with view action',
 				request: {
 					id: 'filesystem:some-id',
@@ -24,6 +31,15 @@ describe('BinaryDataQueryDto', () => {
 					action: 'view',
 					fileName: 'test.pdf',
 					mimeType: 'application/pdf',
+				},
+			},
+			{
+				name: 'azure mode with download action and optional fields',
+				request: {
+					id: 'azure:some-id',
+					action: 'download',
+					fileName: 'test.jpg',
+					mimeType: 'image/jpeg',
 				},
 			},
 		])('should validate $name', ({ request }) => {

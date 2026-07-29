@@ -163,3 +163,11 @@ export function getSessionModeFields(resource: string, operations: string[]): IN
 		},
 	];
 }
+
+export const includeHiddenElementsField: INodeProperties = {
+	displayName: 'Include Hidden Elements',
+	name: 'includeHiddenElements',
+	type: 'boolean',
+	default: true,
+	description: 'Whether to include hidden elements in the interaction',
+};

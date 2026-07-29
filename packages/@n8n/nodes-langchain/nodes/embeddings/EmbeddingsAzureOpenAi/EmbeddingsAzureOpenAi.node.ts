@@ -1,5 +1,5 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { AzureOpenAIEmbeddings } from '@langchain/openai';
+import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -7,9 +7,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,9 +39,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
@@ -90,7 +87,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 					{
 						displayName: 'Dimensions',
 						name: 'dimensions',
-						default: undefined,
+						default: 1536,
 						description:
 							'The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.',
 						type: 'options',
@@ -154,6 +151,14 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			azureOpenAIBasePath: credentials.endpoint
 				? `${credentials.endpoint}/openai/deployments`
 				: undefined,
+			configuration: {
+				fetchOptions: {
+					dispatcher: getProxyAgent(
+						credentials.endpoint ?? `https://${credentials.resourceName}.openai.azure.com`,
+						{},
+					),
+				},
+			},
 			...options,
 		});
 

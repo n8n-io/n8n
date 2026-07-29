@@ -1,9 +1,10 @@
 process.argv[2] = 'worker';
 
+import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { TaskRunnersConfig } from '@n8n/config';
+import { ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryDataService, DataDeduplicationService } from 'n8n-core';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';
@@ -12,19 +13,19 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
-import { CommunityPackagesService } from '@/services/community-packages.service';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
-import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
+import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-config.set('executions.mode', 'queue');
+Container.get(ExecutionsConfig).mode = 'queue';
 config.set('binaryDataManager.availableModes', 'filesystem');
-Container.get(TaskRunnersConfig).enabled = true;
 mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const communityPackagesService = mockInstance(CommunityPackagesService);
@@ -34,7 +35,8 @@ const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const scalingService = mockInstance(ScalingService);
 const taskBrokerServer = mockInstance(TaskBrokerServer);
-const taskRunnerProcess = mockInstance(TaskRunnerProcess);
+const taskRunnerProcess = mockInstance(JsTaskRunnerProcess);
+mockInstance(PyTaskRunnerProcess);
 mockInstance(Publisher);
 mockInstance(Subscriber);
 mockInstance(Telemetry);
@@ -42,8 +44,26 @@ mockInstance(Push);
 
 const command = setupTestCommand(Worker);
 
+beforeEach(() => {
+	// Each test boots the full worker command (init + run). `DataDeduplicationService`
+	// is a process-wide singleton whose static `init()` asserts it has not been
+	// initialized before, so the second boot in this file would throw
+	// "Instance already initialized. Multiple initializations are not allowed."
+	// Stub it to a no-op so every test can boot independently. This lives in
+	// `beforeEach` (not at module scope) because the vi config restores mocks
+	// between tests, which would otherwise revert the stub before the next boot.
+	vi.spyOn(DataDeduplicationService, 'init').mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+	// `ModuleRegistry.context` is a shared singleton; clear it unconditionally so
+	// entries set by a test (e.g. the stubbed 'data-table' below) never leak to
+	// the next test, even when an assertion fails before inline cleanup would run.
+	Container.get(ModuleRegistry).context.clear();
+});
+
 test('worker initializes all its components', async () => {
-	config.set('executions.mode', 'regular'); // should be overridden
+	Container.get(ExecutionsConfig).mode = 'regular'; // should be overridden
 
 	await command.run();
 
@@ -59,5 +79,28 @@ test('worker initializes all its components', async () => {
 	expect(taskBrokerServer.start).toHaveBeenCalledTimes(1);
 	expect(taskRunnerProcess.start).toHaveBeenCalledTimes(1);
 
-	expect(config.getEnv('executions.mode')).toBe('queue');
+	expect(Container.get(ExecutionsConfig).mode).toBe('queue');
+});
+
+test('does not start processing queued jobs before module execution contexts are ready', async () => {
+	// A job becomes runnable on a worker the instant it registers its Bull
+	// processor (`setupWorker`). `getBase()` builds that job's `additionalData`
+	// by copying `ModuleRegistry.context`, so a job dequeued before a module has
+	// registered its context gets none of its helpers, e.g. the Data Table node
+	// then fails with "module is disabled". The processor must therefore not be
+	// registered until modules have initialized.
+	const moduleRegistry = Container.get(ModuleRegistry);
+	vi.spyOn(moduleRegistry, 'initModules').mockImplementation(async () => {
+		moduleRegistry.context.set('data-table', { dataTableProxyProvider: {} } as never);
+	});
+
+	// Capture the module context at the exact moment the processor is registered.
+	let moduleContextAtRegistration: string[] = [];
+	scalingService.setupWorker.mockImplementation(() => {
+		moduleContextAtRegistration = [...moduleRegistry.context.keys()];
+	});
+
+	await command.run();
+
+	expect(moduleContextAtRegistration).toContain('data-table');
 });

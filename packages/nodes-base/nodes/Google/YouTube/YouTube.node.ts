@@ -32,6 +32,7 @@ export class YouTube implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume YouTube API',
+		schemaPath: 'Google/YouTube',
 		defaults: {
 			name: 'YouTube',
 		},

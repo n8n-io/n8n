@@ -1,7 +1,5 @@
 import { randomName } from '@n8n/backend-test-utils';
-import type { Folder } from '@n8n/db';
-import type { Project } from '@n8n/db';
-import type { TagEntity } from '@n8n/db';
+import type { Folder, Project, TagEntity } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -23,7 +21,7 @@ export const createFolder = async (
 			parentFolder: options.parentFolder ?? null,
 			tags: options.tags ?? [],
 			updatedAt: options.updatedAt ?? new Date(),
-			createdAt: options.updatedAt ?? new Date(),
+			createdAt: options.createdAt ?? options.updatedAt ?? new Date(),
 		}),
 	);
 

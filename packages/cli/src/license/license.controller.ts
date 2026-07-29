@@ -41,6 +41,7 @@ export class LicenseController {
 	}
 
 	@Post('/enterprise/community-registered')
+	@GlobalScope('license:manage')
 	async registerCommunityEdition(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -58,8 +59,12 @@ export class LicenseController {
 	@Post('/activate')
 	@GlobalScope('license:manage')
 	async activateLicense(req: LicenseRequest.Activate) {
-		const { activationKey } = req.body;
-		await this.licenseService.activateLicense(activationKey);
+		const { activationKey, eulaUri } = req.body;
+		if (eulaUri) {
+			await this.licenseService.activateLicense(activationKey, eulaUri, req.user.email);
+		} else {
+			await this.licenseService.activateLicense(activationKey);
+		}
 		return await this.getTokenAndData();
 	}
 

@@ -1,9 +1,11 @@
-import { createWorkflow } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { DataDeduplicationService } from 'n8n-core';
-import type { ICheckProcessedContextData } from 'n8n-workflow';
-import type { IDeduplicationOutput, INode, DeduplicationItemTypes } from 'n8n-workflow';
+import type {
+	ICheckProcessedContextData,
+	IDeduplicationOutput,
+	INode,
+	DeduplicationItemTypes,
+} from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
 import { getDataDeduplicationService } from '@/deduplication';
@@ -13,7 +15,7 @@ import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 let workflow: Workflow;
 
-jest.mock('../../../src/telemetry');
+vi.mock('../../../src/telemetry');
 
 const MOCK_NODE_TYPES_DATA = mockNodeTypesData(['set']);
 mockInstance(LoadNodesAndCredentials, {

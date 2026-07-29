@@ -1,0 +1,97 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Styleguide/CSS Tokens" />
+
+# CSS Tokens
+
+Our CSS variables are layered so we can keep the design system consistent and themeable.
+
+## Token layers
+
+There are two main token layers
+
+1. Primitives (`@n8n/design-system/src/css/_primitives.scss`)
+2. Semantic Tokens (`@n8n/design-system/src/css/_tokens.scss`)
+
+### Primitives
+
+Raw design decisions: color scales, spacing, typography, radius, heights, durations, easing, and shadows.
+
+```scss
+--color--orange-500: oklch(...);
+--spacing--sm: 1rem;
+--font-size--md: 1rem;
+--shadow--md: 0 10px 15px -3px var(--shadow-color), 0 4px 6px -4px var(--shadow-color);
+```
+
+### Semantic theme tokens
+
+Contextual tokens used by components (`--text-color`, `--background--surface`, `--border-color--success`, etc.).
+These map to primitives (directly or through compatibility aliases), and have light/dark definitions via `@mixin theme` and `@mixin theme-dark`.
+
+## How to choose tokens
+
+- Use semantic tokens first in component styles (for example `--text-color`, `--background--surface`, `--icon-color`).
+- Use primitives when you need a low-level scale value (for example spacing, radius, or a specific color step).
+- Add new semantic tokens in `src/css/_tokens.scss` when the value is reused by multiple components or represents a shared UI meaning.
+- Add new primitive tokens in `src/css/_primitives.scss` only for new base scales.
+
+## Naming rules
+
+Naming is validated by `@n8n/css-var-naming` in `packages/@n8n/stylelint-config/src/rules/css-var-naming.ts` for files in `@n8n/design-system/src/css`.
+
+### Required format
+
+- Use groups separated by double dashes: `--group--group`.
+- Use lowercase alphanumerics; single dashes are allowed only within a group.
+- Keep values after properties (for example `--color--primary`, not `--primary--color`).
+
+```scss
+/* valid */
+--background--surface
+--button--color--background--primary--hover
+--font-weight--regular
+
+/* invalid */
+--background-surface
+--Primary--color
+--primary--color
+```
+
+### Property vocabulary
+
+Variable names must include a recognized property group such as `color`, `background`, `text-color`, `border-color`, `spacing`, `radius`, `shadow`, `font-size`, `font-weight`, `duration`, or `easing`.
+
+### Allowed exceptions
+
+- `--n8n--*` prefix bypasses validation for local/internal helper variables.
+- Namespaces `--reka--*`, `--ag--*`, and `--chat--*` are ignored for third-party interoperability.
+- Single-group variables are only allowed for specific standalone properties (for example `--border`, `--radius`, `--shadow`, `--font-family`).
+
+## Migration pattern (single-dash to double-dash)
+
+When replacing older tokens, preserve compatibility by chaining fallbacks:
+
+```scss
+--color--secondary: var(--color-secondary, var(--color--purple-600));
+```
+
+This gives us:
+
+- New naming for design system code.
+- Existing overrides for embed/custom CSS users.
+- Safe, incremental migration without breaking consumers.
+
+## Practical guidance for contributors
+
+- Prefer updating existing semantic tokens before introducing new one-off variables.
+- If you must add a temporary exception, scope it tightly with `/* stylelint-disable @n8n/css-var-naming */` and re-enable immediately.
+- Avoid hardcoded color hex values in component styles when an existing token can express the same intent.
+
+---
+
+<small>
+	Compatibility note: `src/css/_tokens.legacy.scss` contains non-semantic compatibility aliases used
+	during migration to the double-dash naming format. Keep new work on primitives + semantic tokens
+	in `src/css/_primitives.scss` and `src/css/_tokens.scss`.
+</small>

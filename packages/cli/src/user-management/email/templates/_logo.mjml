@@ -1,5 +1,1 @@
-<mj-section>
-	<mj-column>
-		<mj-image src="cid:n8n-logo" height="40px" width="70px" />
-	</mj-column>
-</mj-section>
+<mj-image src="cid:n8n-logo" href="https://n8n.io/" align="left" width="125px" alt="n8n" padding-top="20px" padding-bottom="40px" />

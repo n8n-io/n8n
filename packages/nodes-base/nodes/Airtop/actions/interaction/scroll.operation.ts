@@ -59,7 +59,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Scroll To Page Edges',
+		displayName: 'Scroll To Edge',
 		name: 'scrollToEdge',
 		type: 'fixedCollection',
 		default: {},
@@ -172,7 +172,6 @@ export const description: INodeProperties[] = [
 			show: {
 				resource: ['interaction'],
 				operation: ['scroll'],
-				scrollingMode: ['automatic'],
 			},
 		},
 	},
@@ -206,7 +205,8 @@ export async function execute(
 		...(!isAutomatic ? { scrollBy } : {}),
 		// when scrollingMode is 'Automatic'
 		...(isAutomatic ? { scrollToElement } : {}),
-		...(isAutomatic ? { scrollWithin } : {}),
+		// when scrollWithin is defined
+		...(scrollWithin ? { scrollWithin } : {}),
 	};
 
 	const fullRequest = constructInteractionRequest.call(this, index, request);

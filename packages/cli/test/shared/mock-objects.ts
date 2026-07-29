@@ -4,9 +4,7 @@ import {
 	randomName,
 	uniqueId,
 } from '@n8n/backend-test-utils';
-import { CredentialsEntity } from '@n8n/db';
-import { Project } from '@n8n/db';
-import { User } from '@n8n/db';
+import { CredentialsEntity, Project, User } from '@n8n/db';
 import { randomInt } from 'n8n-workflow';
 
 export const mockCredential = (): CredentialsEntity =>

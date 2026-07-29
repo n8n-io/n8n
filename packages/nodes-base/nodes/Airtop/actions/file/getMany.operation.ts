@@ -68,7 +68,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const returnAll = this.getNodeParameter('returnAll', index, false) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', index, false);
 	const limit = this.getNodeParameter('limit', index, 10);
 	const sessionIds = this.getNodeParameter('sessionIds', index, '') as string;
 	const outputSingleItem = this.getNodeParameter('outputSingleItem', index, true) as boolean;

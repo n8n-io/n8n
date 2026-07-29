@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-shadow */
 
 import type { IDataObject, IObservableObject } from './interfaces';
 
@@ -20,6 +19,7 @@ export function create(
 
 	for (const key in target) {
 		if (typeof target[key] === 'object' && target[key] !== null) {
+			if ('__dataChanged' in (target[key] as object)) continue;
 			target[key] = create(
 				target[key] as IDataObject,
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

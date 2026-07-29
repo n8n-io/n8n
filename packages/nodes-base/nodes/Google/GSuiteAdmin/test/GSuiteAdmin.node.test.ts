@@ -5,16 +5,17 @@ import nock from 'nock';
 import { returnData } from '../../../E2eTest/mock';
 import { googleApiRequest, googleApiRequestAllItems } from '../GenericFunctions';
 import { GSuiteAdmin } from '../GSuiteAdmin.node';
+import type { Mock } from 'vitest';
 
-jest.mock('../GenericFunctions', () => ({
-	getGoogleAuth: jest.fn().mockImplementation(() => ({
+vi.mock('../GenericFunctions', () => ({
+	getGoogleAuth: vi.fn().mockImplementation(() => ({
 		oauth2Client: {
-			setCredentials: jest.fn(),
-			getAccessToken: jest.fn().mockResolvedValue('mock-access-token'),
+			setCredentials: vi.fn(),
+			getAccessToken: vi.fn().mockResolvedValue('mock-access-token'),
 		},
 	})),
-	googleApiRequest: jest.fn(),
-	googleApiRequestAllItems: jest.fn(),
+	googleApiRequest: vi.fn(),
+	googleApiRequestAllItems: vi.fn(),
 }));
 
 const node = new GSuiteAdmin();
@@ -25,12 +26,12 @@ const mockThis = {
 		parameters: {},
 	}),
 	helpers: {
-		httpRequestWithAuthentication: jest.fn(),
+		httpRequestWithAuthentication: vi.fn(),
 		returnJsonArray: (data: any) => data,
 		constructExecutionMetaData: (data: any) => data,
 	},
 	continueOnFail: () => false,
-	getNodeParameter: jest.fn((name: string) => {
+	getNodeParameter: vi.fn((name: string) => {
 		if (name === 'limit') return 50;
 		return undefined;
 	}),
@@ -38,14 +39,14 @@ const mockThis = {
 
 describe('GSuiteAdmin Node - loadOptions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		nock.cleanAll();
 		nock.disableNetConnect();
 	});
 
 	describe('getDomains', () => {
 		it('should return a list of domains', async () => {
-			(googleApiRequestAllItems as jest.Mock).mockResolvedValue([
+			(googleApiRequestAllItems as Mock).mockResolvedValue([
 				{ domainName: 'example.com' },
 				{ domainName: 'test.com' },
 			]);
@@ -60,7 +61,7 @@ describe('GSuiteAdmin Node - loadOptions', () => {
 
 	describe('getSchemas', () => {
 		it('should return a list of schemas', async () => {
-			(googleApiRequestAllItems as jest.Mock).mockResolvedValue([
+			(googleApiRequestAllItems as Mock).mockResolvedValue([
 				{ displayName: 'Employee Info', schemaName: 'EmployeeSchema' },
 				{ displayName: '', schemaName: 'CustomSchema' },
 			]);
@@ -92,7 +93,7 @@ describe('GSuiteAdmin Node - loadOptions', () => {
 
 	describe('getOrgUnits', () => {
 		it('should return a list of organizational units', async () => {
-			(googleApiRequest as jest.Mock).mockResolvedValue({
+			(googleApiRequest as Mock).mockResolvedValue({
 				organizationUnits: [
 					{ name: 'Engineering', orgUnitPath: '/engineering' },
 					{ name: 'HR', orgUnitPath: '/hr' },
@@ -135,7 +136,7 @@ describe('GSuiteAdmin Node - logic coverage', () => {
 			}
 			qs.query = query;
 		}
-		if (filter.userId) qs.userId = filter.userId;
+		if (filter.userId) qs.userKey = filter.userId;
 		if (filter.showDeleted) qs.showDeleted = 'true';
 		if (sort.sortRules) {
 			const { orderBy, sortOrder } = sort.sortRules;
@@ -147,7 +148,7 @@ describe('GSuiteAdmin Node - logic coverage', () => {
 			customer: 'my_customer',
 			domain: 'example.com',
 			query: 'name:admin',
-			userId: 'user@example.com',
+			userKey: 'user@example.com',
 			showDeleted: 'true',
 			orderBy: 'email',
 			sortOrder: 'ASCENDING',
@@ -320,14 +321,267 @@ describe('GSuiteAdmin Node - logic coverage', () => {
 	});
 });
 
-describe('GSuiteAdmin Node - user:update logic', () => {
-	it('should build suspended, roles, and customSchemas', async () => {
-		const mockCall = jest.fn().mockResolvedValue([{ success: true }]);
-		(googleApiRequest as jest.Mock).mockImplementation(mockCall);
+describe('GSuiteAdmin Node - user:create logic', () => {
+	it('should include changePasswordAtNextLogin when set to true in create operation', async () => {
+		const mockCall = vi
+			.fn()
+			.mockResolvedValue({ id: 'user-123', primaryEmail: 'test@example.com' });
+		(googleApiRequest as Mock).mockImplementation(mockCall);
 
 		const mockContext = {
 			getNode: () => ({ name: 'GSuiteAdmin' }),
-			getNodeParameter: jest.fn((paramName: string) => {
+			getNodeParameter: vi.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'create';
+					case 'domain':
+						return 'example.com';
+					case 'firstName':
+						return 'John';
+					case 'lastName':
+						return 'Doe';
+					case 'password':
+						return 'SecurePassword123!';
+					case 'username':
+						return 'johndoe';
+					case 'additionalFields':
+						return {
+							changePasswordAtNextLogin: true,
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'POST',
+			'/directory/v1/users',
+			expect.objectContaining({
+				changePasswordAtNextLogin: true,
+				password: 'SecurePassword123!',
+				primaryEmail: 'johndoe@example.com',
+				name: {
+					givenName: 'John',
+					familyName: 'Doe',
+				},
+			}),
+			{},
+		);
+	});
+
+	it('should include changePasswordAtNextLogin when set to false in create operation', async () => {
+		const mockCall = vi
+			.fn()
+			.mockResolvedValue({ id: 'user-124', primaryEmail: 'test2@example.com' });
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'create';
+					case 'domain':
+						return 'example.com';
+					case 'firstName':
+						return 'Jane';
+					case 'lastName':
+						return 'Smith';
+					case 'password':
+						return 'AnotherPassword456!';
+					case 'username':
+						return 'janesmith';
+					case 'additionalFields':
+						return {
+							changePasswordAtNextLogin: false,
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'POST',
+			'/directory/v1/users',
+			expect.objectContaining({
+				changePasswordAtNextLogin: false,
+				password: 'AnotherPassword456!',
+			}),
+			{},
+		);
+	});
+
+	it('should not include changePasswordAtNextLogin when undefined in create operation', async () => {
+		const mockCall = vi
+			.fn()
+			.mockResolvedValue({ id: 'user-125', primaryEmail: 'test3@example.com' });
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'create';
+					case 'domain':
+						return 'example.com';
+					case 'firstName':
+						return 'Bob';
+					case 'lastName':
+						return 'Johnson';
+					case 'password':
+						return 'Password789!';
+					case 'username':
+						return 'bjohnson';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'POST',
+			'/directory/v1/users',
+			{
+				name: { familyName: 'Johnson', givenName: 'Bob' },
+				password: 'Password789!',
+				primaryEmail: 'bjohnson@example.com',
+			},
+			{},
+		);
+	});
+
+	it('should not include unsafe properties for custom fields', async () => {
+		const mockCall = vi
+			.fn()
+			.mockResolvedValue({ id: 'user-125', primaryEmail: 'test3@example.com' });
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'create';
+					case 'domain':
+						return 'example.com';
+					case 'firstName':
+						return 'Bob';
+					case 'lastName':
+						return 'Johnson';
+					case 'password':
+						return 'Password789!';
+					case 'username':
+						return 'bjohnson';
+					case 'additionalFields':
+						return {
+							customFields: {
+								fieldValues: [
+									{
+										schemaName: '__proto__',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'prototype',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'constructor',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'validSchema',
+										fieldName: 'validField',
+										value: 'validValue',
+									},
+									{
+										schemaName: 'someSchema',
+										fieldName: '__proto__',
+										value: 'someValue',
+									},
+								],
+							},
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'POST',
+			'/directory/v1/users',
+			{
+				name: { familyName: 'Johnson', givenName: 'Bob' },
+				password: 'Password789!',
+				primaryEmail: 'bjohnson@example.com',
+				customSchemas: {
+					validSchema: {
+						validField: 'validValue',
+					},
+					someSchema: {},
+				},
+			},
+			{},
+		);
+	});
+});
+
+describe('GSuiteAdmin Node - user:update logic', () => {
+	it('should build suspended, roles, and customSchemas', async () => {
+		const mockCall = vi.fn().mockResolvedValue([{ success: true }]);
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string) => {
 				switch (paramName) {
 					case 'resource':
 						return 'user';
@@ -388,13 +642,143 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 		});
 	});
 
+	it('should include suspended set to false in update operation', async () => {
+		const mockCall = vi.fn().mockResolvedValue({ id: 'user-id-123', suspended: false });
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'update';
+					case 'userId':
+						return 'user-id-123';
+					case 'updateFields':
+						return {
+							suspendUi: false,
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: unknown) => [data],
+				constructExecutionMetaData: (data: unknown) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'PUT',
+			'/directory/v1/users/user-id-123',
+			{
+				suspended: false,
+			},
+			{},
+		);
+	});
+
+	it('should include password and changePasswordAtNextLogin in update operation', async () => {
+		const mockCall = vi.fn().mockResolvedValue({ id: 'user-id-456', success: true });
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'update';
+					case 'userId':
+						return 'user-id-456';
+					case 'updateFields':
+						return {
+							password: 'NewSecurePassword123!',
+							changePasswordAtNextLogin: true,
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'PUT',
+			'/directory/v1/users/user-id-456',
+			expect.objectContaining({
+				password: 'NewSecurePassword123!',
+				changePasswordAtNextLogin: true,
+			}),
+			{},
+		);
+	});
+
+	it('should include changePasswordAtNextLogin set to false in update operation', async () => {
+		const mockCall = vi.fn().mockResolvedValue({ id: 'user-id-999', success: true });
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'update';
+					case 'userId':
+						return 'user-id-999';
+					case 'updateFields':
+						return {
+							changePasswordAtNextLogin: false,
+							password: 'TestPassword!',
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'PUT',
+			'/directory/v1/users/user-id-999',
+			expect.objectContaining({
+				password: 'TestPassword!',
+				changePasswordAtNextLogin: false,
+			}),
+			{},
+		);
+	});
+
 	it('should throw error for invalid custom fields', async () => {
-		const mockCall = jest.fn();
-		(googleApiRequest as jest.Mock).mockImplementation(mockCall);
+		const mockCall = vi.fn();
+		(googleApiRequest as Mock).mockImplementation(mockCall);
 
 		const mockContextInvalidFields = {
 			getNode: () => ({ name: 'GSuiteAdmin' }),
-			getNodeParameter: jest.fn((paramName: string) => {
+			getNodeParameter: vi.fn((paramName: string) => {
 				switch (paramName) {
 					case 'resource':
 						return 'user';
@@ -442,6 +826,81 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 			}
 		}).toThrow("The parameter 'Username' is empty");
 	});
+
+	it('should not include unsafe properties for custom fields', async () => {
+		const mockCall = vi.fn().mockResolvedValue([{ success: true }]);
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'update';
+					case 'userId':
+						return 'user-id-123';
+					case 'updateFields':
+						return {
+							customFields: {
+								fieldValues: [
+									{
+										schemaName: '__proto__',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'prototype',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'constructor',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'validSchema',
+										fieldName: 'validField',
+										value: 'validValue',
+									},
+									{
+										schemaName: 'someSchema',
+										fieldName: '__proto__',
+										value: 'someValue',
+									},
+								],
+							},
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => data,
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'PUT',
+			'/directory/v1/users/user-id-123',
+			{
+				customSchemas: {
+					validSchema: {
+						validField: 'validValue',
+					},
+					someSchema: {},
+				},
+			},
+			{},
+		);
+	});
 });
 
 describe('GSuiteAdmin Node - Error Handling', () => {
@@ -450,8 +909,8 @@ describe('GSuiteAdmin Node - Error Handling', () => {
 			getNode: () => ({ name: 'GSuiteAdmin' }),
 			continueOnFail: () => false,
 			helpers: {
-				constructExecutionMetaData: jest.fn(),
-				returnJsonArray: jest.fn(),
+				constructExecutionMetaData: vi.fn(),
+				returnJsonArray: vi.fn(),
 			},
 		} as unknown as IExecuteFunctions;
 
@@ -467,8 +926,8 @@ describe('GSuiteAdmin Node - Error Handling', () => {
 			getNode: () => ({ name: 'GSuiteAdmin' }),
 			continueOnFail: () => true,
 			helpers: {
-				constructExecutionMetaData: jest.fn().mockReturnValue([{ message: 'mock error data' }]),
-				returnJsonArray: jest.fn().mockReturnValue([]),
+				constructExecutionMetaData: vi.fn().mockReturnValue([{ message: 'mock error data' }]),
+				returnJsonArray: vi.fn().mockReturnValue([]),
 			},
 		} as unknown as IExecuteFunctions;
 
@@ -511,8 +970,8 @@ describe('GSuiteAdmin Node - Error Handling', () => {
 			getNode: () => ({ name: 'GSuiteAdmin' }),
 			continueOnFail: () => false,
 			helpers: {
-				constructExecutionMetaData: jest.fn(),
-				returnJsonArray: jest.fn(),
+				constructExecutionMetaData: vi.fn(),
+				returnJsonArray: vi.fn(),
 			},
 		} as unknown as IExecuteFunctions;
 

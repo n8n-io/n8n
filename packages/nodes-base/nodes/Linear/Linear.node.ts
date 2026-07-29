@@ -33,7 +33,7 @@ export class Linear implements INodeType {
 		name: 'linear',
 		icon: 'file:linear.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Linear API',
 		defaults: {

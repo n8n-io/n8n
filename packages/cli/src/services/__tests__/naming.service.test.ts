@@ -1,8 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { CredentialsEntity } from '@n8n/db';
-import type { WorkflowEntity } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import type { CredentialsEntity, WorkflowEntity } from '@n8n/db';
+import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 
 import { NamingService } from '@/services/naming.service';
 
@@ -13,7 +11,7 @@ describe('NamingService', () => {
 	const namingService = new NamingService(workflowRepository, credentialsRepository);
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('getUniqueWorkflowName()', () => {

@@ -1,0 +1,146 @@
+import { computed, reactive } from 'vue';
+import { defineStore } from 'pinia';
+import { EnterpriseEditionFeature } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import * as vcApi from './sourceControl.api';
+import type { SourceControlPreferences, SshKeyTypes } from './sourceControl.types';
+import type { TupleToUnion } from '@/app/utils/typeHelpers';
+import type { SourceControlledFile } from '@n8n/api-types';
+import type { AutoPublishMode } from 'n8n-workflow';
+
+const DEFAULT_BRANCH_COLOR = '#5296D6';
+
+export const useSourceControlStore = defineStore('sourceControl', () => {
+	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
+
+	const isEnterpriseSourceControlEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.SourceControl],
+	);
+
+	const sshKeyTypes: SshKeyTypes = ['ed25519', 'rsa'];
+	const sshKeyTypesWithLabel = reactive(
+		sshKeyTypes.map((value) => ({ value, label: value.toUpperCase() })),
+	);
+
+	const preferences = reactive<SourceControlPreferences>({
+		branchName: '',
+		branches: [],
+		repositoryUrl: '',
+		branchReadOnly: false,
+		branchColor: DEFAULT_BRANCH_COLOR,
+		connected: false,
+		publicKey: '',
+		keyGeneratorType: 'ed25519',
+		connectionType: 'ssh',
+	});
+
+	const state = reactive<{
+		commitMessage: string;
+	}>({
+		commitMessage: 'commit message',
+	});
+
+	const pushWorkfolder = async (data: {
+		commitMessage: string;
+		fileNames: SourceControlledFile[];
+		force: boolean;
+	}) => {
+		state.commitMessage = data.commitMessage;
+		return await vcApi.pushWorkfolder(rootStore.restApiContext, {
+			force: data.force,
+			commitMessage: data.commitMessage,
+			fileNames: data.fileNames,
+		});
+	};
+
+	const pullWorkfolder = async (force: boolean, autoPublish: AutoPublishMode) => {
+		return await vcApi.pullWorkfolder(rootStore.restApiContext, { force, autoPublish });
+	};
+
+	const setPreferences = (data: Partial<SourceControlPreferences>) => {
+		Object.assign(preferences, data);
+	};
+
+	const makePreferencesAction =
+		(action: typeof vcApi.savePreferences) =>
+		async (preferencesUpdate: Partial<SourceControlPreferences>) => {
+			const data = await action(rootStore.restApiContext, preferencesUpdate);
+			setPreferences(data);
+		};
+
+	const getBranches = async () => {
+		const data = await vcApi.getBranches(rootStore.restApiContext);
+		setPreferences(data);
+	};
+
+	const getPreferences = async () => {
+		const data = await vcApi.getPreferences(rootStore.restApiContext);
+		setPreferences(data);
+	};
+
+	const savePreferences = makePreferencesAction(vcApi.savePreferences);
+
+	const updatePreferences = makePreferencesAction(vcApi.updatePreferences);
+
+	const disconnect = async (keepKeyPair: boolean) => {
+		await vcApi.disconnect(rootStore.restApiContext, keepKeyPair);
+
+		// Connection related preferences are intentionally ommited here.
+		// This allows users to disconnect and reconnect when troubleshooting issues.
+		setPreferences({
+			connected: false,
+			branches: [],
+			branchName: '',
+			currentBranch: '',
+			branchReadOnly: false,
+			branchColor: DEFAULT_BRANCH_COLOR,
+		});
+	};
+
+	const generateKeyPair = async (keyGeneratorType?: TupleToUnion<SshKeyTypes>) => {
+		await vcApi.generateKeyPair(rootStore.restApiContext, keyGeneratorType);
+		const data = await vcApi.getPreferences(rootStore.restApiContext); // To be removed once the API is updated
+
+		const publicKey = 'publicKey' in data ? data.publicKey : undefined;
+		preferences.publicKey = publicKey;
+
+		return { publicKey };
+	};
+
+	const getStatus = async () => {
+		return await vcApi.getStatus(rootStore.restApiContext);
+	};
+
+	const getAggregatedStatus = async (options?: {
+		direction: 'push' | 'pull';
+		preferLocalVersion: boolean;
+		verbose: boolean;
+	}) => {
+		return await vcApi.getAggregatedStatus(rootStore.restApiContext, options);
+	};
+
+	const getRemoteWorkflow = async (workflowId: string) => {
+		return await vcApi.getRemoteWorkflow(rootStore.restApiContext, workflowId);
+	};
+
+	return {
+		isEnterpriseSourceControlEnabled,
+		state,
+		preferences,
+		pushWorkfolder,
+		pullWorkfolder,
+		getPreferences,
+		setPreferences,
+		generateKeyPair,
+		getBranches,
+		savePreferences,
+		updatePreferences,
+		disconnect,
+		getStatus,
+		getAggregatedStatus,
+		getRemoteWorkflow,
+		sshKeyTypesWithLabel,
+	};
+});

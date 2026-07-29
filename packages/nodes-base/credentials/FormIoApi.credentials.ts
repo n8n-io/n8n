@@ -1,11 +1,19 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticate,
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
+	ICredentialType,
+	IHttpRequestHelper,
+	IHttpRequestOptions,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class FormIoApi implements ICredentialType {
 	name = 'formIoApi';
 
 	displayName = 'Form.io API';
 
-	documentationUrl = 'formIoTrigger';
+	documentationUrl = 'formiotrigger';
 
 	properties: INodeProperties[] = [
 		{
@@ -52,5 +60,55 @@ export class FormIoApi implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'Token',
+			name: 'token',
+			type: 'hidden',
+			typeOptions: {
+				expirable: true,
+				password: true,
+			},
+			default: '',
+		},
 	];
+
+	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
+		const base = credentials.domain || 'https://formio.form.io';
+		const options = {
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			method: 'POST',
+			body: {
+				data: {
+					email: credentials.email,
+					password: credentials.password,
+				},
+			},
+			url: `${base}/user/login`,
+			json: true,
+			returnFullResponse: true,
+		} satisfies IHttpRequestOptions;
+
+		const responseObject = await this.helpers.httpRequest(options);
+		const token = responseObject.headers['x-jwt-token'];
+
+		return { token };
+	}
+
+	authenticate: IAuthenticate = {
+		type: 'generic',
+		properties: {
+			headers: {
+				'x-jwt-token': '={{ $credentials.token }}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.domain || "https://formio.form.io"}}',
+			url: 'current',
+		},
+	};
 }

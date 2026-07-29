@@ -1,7 +1,11 @@
+import type { InstanceType } from '@n8n/constants';
 import { ModuleMetadata } from '@n8n/decorators';
-import type { EntityClass, ModuleSettings } from '@n8n/decorators';
+import type { EntityClass, ModuleContext, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { existsSync } from 'fs';
+import type { NodeLoader } from 'n8n-workflow';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 import { MissingModuleError } from './errors/missing-module.error';
 import { ModuleConfusionError } from './errors/module-confusion.error';
@@ -10,11 +14,24 @@ import type { ModuleName } from './modules.config';
 import { LicenseState } from '../license-state';
 import { Logger } from '../logging/logger';
 
+export const getModuleEntryUrl = (modulesDir: string, moduleName: string, isEnterprise = false) =>
+	pathToFileURL(
+		path.join(
+			modulesDir,
+			isEnterprise ? `${moduleName}.ee` : moduleName,
+			`${moduleName}.module.js`,
+		),
+	).href;
+
 @Service()
 export class ModuleRegistry {
 	readonly entities: EntityClass[] = [];
 
+	readonly nodeLoaders: NodeLoader[] = [];
+
 	readonly settings: Map<string, ModuleSettings> = new Map();
+
+	readonly context: Map<string, ModuleContext> = new Map();
 
 	constructor(
 		private readonly moduleMetadata: ModuleMetadata,
@@ -23,7 +40,39 @@ export class ModuleRegistry {
 		private readonly modulesConfig: ModulesConfig,
 	) {}
 
-	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets'];
+	private readonly defaultModules: ModuleName[] = [
+		'insights',
+		'external-secrets',
+		'community-packages',
+		'data-table',
+		// oauth-server precedes mcp: the mcp module registers its protected
+		// resource with the oauth-server module's registry on init.
+		'oauth-server',
+		'mcp',
+		'provisioning',
+		'breaking-changes',
+		'source-control',
+		'dynamic-credentials',
+		'chat-hub',
+		'sso-oidc',
+		'sso-saml',
+		'log-streaming',
+		'ldap',
+		'quick-connect',
+		'workflow-builder',
+		'favorites',
+		'redaction',
+		'instance-registry',
+		'otel',
+		'token-exchange',
+		'instance-version-history',
+		'encryption-key-manager',
+		'oauth-jwe',
+		'n8n-packages',
+		'runtime-credentials',
+		'mcp-registry',
+		'workflow-reviews',
+	];
 
 	private readonly activeModules: string[] = [];
 
@@ -54,31 +103,46 @@ export class ModuleRegistry {
 			// docker + tests
 			const n8nPackagePath = require.resolve('n8n/package.json');
 			const n8nRoot = path.dirname(n8nPackagePath);
-			const dir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
+			const srcDirExists = existsSync(path.join(n8nRoot, 'src'));
+			const dir = process.env.NODE_ENV === 'test' && srcDirExists ? 'src' : 'dist';
 			modulesDir = path.join(n8nRoot, dir, 'modules');
 		} catch {
 			// local dev
-			modulesDir = path.resolve(__dirname, '../../../../cli/dist/modules');
+			// n8n binary is inside the bin folder, so we need to go up two levels
+			modulesDir = path.resolve(process.argv[1], '../../dist/modules');
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
 			try {
-				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
-			} catch {
+				await import(getModuleEntryUrl(modulesDir, moduleName));
+			} catch (primaryError) {
 				try {
-					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`);
+					await import(getModuleEntryUrl(modulesDir, moduleName, true));
 				} catch (error) {
-					throw new MissingModuleError(moduleName, error instanceof Error ? error.message : '');
+					const loggedError =
+						primaryError instanceof Error &&
+						'code' in primaryError &&
+						primaryError.code !== 'MODULE_NOT_FOUND'
+							? primaryError
+							: error;
+					throw new MissingModuleError(
+						moduleName,
+						loggedError instanceof Error ? loggedError.message : '',
+					);
 				}
 			}
 		}
 
 		for (const ModuleClass of this.moduleMetadata.getClasses()) {
-			const entities = Container.get(ModuleClass).entities?.();
+			const entities = await Container.get(ModuleClass).entities?.();
 
-			if (!entities || entities.length === 0) continue;
+			if (entities?.length) this.entities.push(...entities);
 
-			this.entities.push(...entities);
+			const loaders = await Container.get(ModuleClass).nodeLoaders?.();
+
+			if (loaders?.length) this.nodeLoaders.push(...loaders);
+
+			await Container.get(ModuleClass).commands?.();
 		}
 	}
 
@@ -90,12 +154,19 @@ export class ModuleRegistry {
 	 *
 	 * `ModuleRegistry.loadModules` must have been called before.
 	 */
-	async initModules() {
+	async initModules(instanceType: InstanceType) {
 		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
-			const { licenseFlag, class: ModuleClass } = moduleEntry;
+			const { licenseFlag, instanceTypes, class: ModuleClass } = moduleEntry;
 
-			if (licenseFlag && !this.licenseState.isLicensed(licenseFlag)) {
+			if (licenseFlag !== undefined && !this.licenseState.isLicensed(licenseFlag)) {
 				this.logger.debug(`Skipped init for unlicensed module "${moduleName}"`);
+				continue;
+			}
+
+			if (instanceTypes !== undefined && !instanceTypes.includes(instanceType)) {
+				this.logger.debug(
+					`Skipped init for module "${moduleName}" (instance type "${instanceType}" not in: ${instanceTypes.join(', ')})`,
+				);
 				continue;
 			}
 
@@ -103,14 +174,57 @@ export class ModuleRegistry {
 
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 
-			if (!moduleSettings) continue;
+			if (moduleSettings) this.settings.set(moduleName, moduleSettings);
 
-			this.settings.set(moduleName, moduleSettings);
+			const moduleContext = await Container.get(ModuleClass).context?.();
+
+			if (moduleContext) this.context.set(moduleName, moduleContext);
 
 			this.logger.debug(`Initialized module "${moduleName}"`);
 
 			this.activeModules.push(moduleName);
 		}
+	}
+
+	/**
+	 * Refreshes the settings for a specific module by calling its `settings` method.
+	 * This will make sure that any changes to the module's settings are reflected in the registry
+	 * and in turn available to other parts of the application (like front-end settings service).
+	 * If the module does not provide settings, it removes any existing settings for that module.
+	 */
+	async refreshModuleSettings(moduleName: ModuleName) {
+		const moduleEntry = this.moduleMetadata.get(moduleName);
+
+		if (!moduleEntry) {
+			this.logger.debug('Skipping settings refresh for unregistered module', { moduleName });
+			return null;
+		}
+
+		const moduleSettings = await Container.get(moduleEntry.class).settings?.();
+
+		if (moduleSettings) {
+			this.settings.set(moduleName, moduleSettings);
+		} else {
+			this.settings.delete(moduleName);
+		}
+
+		return moduleSettings ?? null;
+	}
+
+	async shutdownModule(moduleName: ModuleName) {
+		const moduleEntry = this.moduleMetadata.get(moduleName);
+
+		if (!moduleEntry) {
+			this.logger.debug('Skipping shutdown for unregistered module', { moduleName });
+			return;
+		}
+
+		await Container.get(moduleEntry.class).shutdown?.();
+
+		const index = this.activeModules.indexOf(moduleName);
+		if (index > -1) this.activeModules.splice(index, 1);
+
+		this.logger.debug(`Shut down module "${moduleName}"`);
 	}
 
 	isActive(moduleName: ModuleName) {

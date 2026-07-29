@@ -1,22 +1,22 @@
-import { Container } from '@n8n/di';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { EventEmitter } from 'node:events';
 
 import { NonMethodError } from '../../errors';
-import { MultiMainMetadata } from '../multi-main-metadata';
-import { LEADER_TAKEOVER_EVENT_NAME, LEADER_STEPDOWN_EVENT_NAME } from '../multi-main-metadata';
+import {
+	MultiMainMetadata,
+	LEADER_TAKEOVER_EVENT_NAME,
+	LEADER_STEPDOWN_EVENT_NAME,
+} from '../multi-main-metadata';
 import { OnLeaderStepdown, OnLeaderTakeover } from '../on-multi-main-event';
 
 class MockMultiMainSetup extends EventEmitter {
 	registerEventHandlers() {
-		const handlers = Container.get(MultiMainMetadata).getHandlers();
-
-		for (const { eventHandlerClass, methodName, eventName } of handlers) {
-			const instance = Container.get(eventHandlerClass);
+		Container.get(MultiMainMetadata).subscribe(({ eventHandlerClass, methodName, eventName }) => {
 			this.on(eventName, async () => {
+				const instance = Container.get(eventHandlerClass);
 				return await instance[methodName].call(instance);
 			});
-		}
+		});
 	}
 }
 
@@ -33,7 +33,7 @@ beforeEach(() => {
 });
 
 it('should register methods decorated with @OnLeaderTakeover', () => {
-	jest.spyOn(metadata, 'register');
+	vi.spyOn(metadata, 'register');
 
 	@Service()
 	class TestService {
@@ -49,7 +49,7 @@ it('should register methods decorated with @OnLeaderTakeover', () => {
 });
 
 it('should register methods decorated with @OnLeaderStepdown', () => {
-	jest.spyOn(metadata, 'register');
+	vi.spyOn(metadata, 'register');
 
 	@Service()
 	class TestService {
@@ -97,8 +97,8 @@ it('should call decorated methods when events are emitted', async () => {
 	}
 
 	const testService = Container.get(TestService);
-	jest.spyOn(testService, 'handleLeaderTakeover');
-	jest.spyOn(testService, 'handleLeaderStepdown');
+	vi.spyOn(testService, 'handleLeaderTakeover');
+	vi.spyOn(testService, 'handleLeaderStepdown');
 
 	multiMainSetup.registerEventHandlers();
 
@@ -169,6 +169,28 @@ it('should register handlers from multiple service classes', async () => {
 
 	expect(firstService.handlerCalled).toBe(true);
 	expect(secondService.handlerCalled).toBe(true);
+});
+
+it('should wire handlers registered after registerEventHandlers() runs', async () => {
+	// Subscribe before the decorated class is declared — mirrors a service whose
+	// module is loaded after MultiMainSetup has already started routing events.
+	multiMainSetup.registerEventHandlers();
+
+	@Service()
+	class LateService {
+		handlerCalled = false;
+
+		@OnLeaderTakeover()
+		async handleTakeover() {
+			this.handlerCalled = true;
+		}
+	}
+
+	const lateService = Container.get(LateService);
+
+	multiMainSetup.emit(LEADER_TAKEOVER_EVENT_NAME);
+
+	expect(lateService.handlerCalled).toBe(true);
 });
 
 it('should handle async methods correctly', async () => {

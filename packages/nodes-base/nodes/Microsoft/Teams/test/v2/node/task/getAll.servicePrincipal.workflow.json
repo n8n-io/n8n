@@ -1,0 +1,103 @@
+{
+  "name": "Teams task getAll (Service Principal)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6666-9999-77777",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [880, 380]
+    },
+    {
+      "parameters": {
+        "authentication": "microsoftEntraServicePrincipalApi",
+        "resource": "task",
+        "operation": "getAll",
+        "planId": {
+          "__rl": true,
+          "value": "coJdCqzqNUKULQtTRWDa6pgACTln",
+          "mode": "id"
+        },
+        "returnAll": true
+      },
+      "id": "6666-5555-77777",
+      "name": "Microsoft Teams",
+      "type": "n8n-nodes-base.microsoftTeams",
+      "typeVersion": 2,
+      "position": [1100, 380],
+      "credentials": {
+        "microsoftEntraServicePrincipalApi": {
+          "id": "spCredId",
+          "name": "Microsoft Entra Service Principal account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1400, 380]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "@odata.etag": "W/\"JzEtVGFzayAgQEBAQEBAQEBAQEBAQEBAZCc=\"",
+          "planId": "coJdCqzqNUKULQtTRWDa6pgACTln",
+          "bucketId": null,
+          "title": "tada",
+          "percentComplete": 10,
+          "id": "1KgwUqOmbU2C9mZWiqxiv5gAPp8Q"
+        }
+      },
+      {
+        "json": {
+          "@odata.etag": "W/\"JzEtVGFzayAgQEBAQEBAQEBAQEBAQEBAWCc=\"",
+          "planId": "coJdCqzqNUKULQtTRWDa6pgACTln",
+          "bucketId": "2avE1BwPmEKp7Lxh0E-EmZgALF72",
+          "title": "1",
+          "percentComplete": 0,
+          "id": "J3MLUgtmJ06YJgenyujiYpgANMF1"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Microsoft Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft Teams": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "34bcdc66-9dad-4c93-8456-4019f94c2f89",
+  "id": "i3NYGF0LXV4qDFVB",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

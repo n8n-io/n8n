@@ -8,7 +8,7 @@ import type {
 export class CohereApi implements ICredentialType {
 	name = 'cohereApi';
 
-	displayName = 'CohereApi';
+	displayName = 'Cohere API';
 
 	documentationUrl = 'cohere';
 
@@ -20,6 +20,12 @@ export class CohereApi implements ICredentialType {
 			typeOptions: { password: true },
 			required: true,
 			default: '',
+		},
+		{
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'hidden',
+			default: 'https://api.cohere.ai',
 		},
 	];
 
@@ -34,7 +40,7 @@ export class CohereApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.cohere.ai',
+			baseURL: '={{ $credentials.url }}',
 			url: '/v1/models?page_size=1',
 		},
 	};

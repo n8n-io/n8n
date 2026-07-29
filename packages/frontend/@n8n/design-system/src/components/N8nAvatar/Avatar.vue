@@ -2,12 +2,13 @@
 import { computed } from 'vue';
 import Avatar from 'vue-boring-avatars';
 
+import { AVATAR_SIZES, type AvatarSize } from './avatarSizes';
 import { getInitials } from '../../utils/labelUtil';
 
 interface AvatarProps {
 	firstName?: string | null;
 	lastName?: string | null;
-	size?: 'xsmall' | 'small' | 'medium' | 'large';
+	size?: AvatarSize;
 	colors?: string[];
 }
 
@@ -17,11 +18,11 @@ const props = withDefaults(defineProps<AvatarProps>(), {
 	lastName: '',
 	size: 'medium',
 	colors: () => [
-		'--color-primary',
-		'--color-secondary',
-		'--color-avatar-accent-1',
-		'--color-avatar-accent-2',
-		'--color-primary-tint-1',
+		'--color--primary',
+		'--color--secondary',
+		'--avatar--color--accent-1',
+		'--avatar--color--accent-2',
+		'--color--primary--tint-1',
 	],
 });
 
@@ -33,13 +34,7 @@ const getColors = (colors: string[]): string[] => {
 	return colors.map((color: string) => style.getPropertyValue(color));
 };
 
-const sizes: { [size: string]: number } = {
-	xsmall: 20,
-	small: 28,
-	large: 48,
-	medium: 40,
-};
-const getSize = (size: string): number => sizes[size];
+const getSize = (size: AvatarSize): number => AVATAR_SIZES[size];
 </script>
 
 <template>
@@ -73,26 +68,27 @@ const getSize = (size: string): number => sizes[size];
 .empty {
 	display: block;
 	border-radius: 50%;
-	background-color: var(--color-foreground-dark);
+	background-color: var(--color--foreground--shade-1);
 	opacity: 0.3;
 }
 
 .initials {
 	position: absolute;
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-avatar-font);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--avatar--color--text);
 	text-shadow: 0 1px 6px rgba(25, 11, 9, 0.3);
 	text-transform: uppercase;
 }
 
+.text-xxsmall,
 .text-xsmall {
 	font-size: 6px;
 }
 
 .xsmall {
-	height: var(--spacing-m);
-	width: var(--spacing-m);
+	height: var(--spacing--md);
+	width: var(--spacing--md);
 }
 
 .small {

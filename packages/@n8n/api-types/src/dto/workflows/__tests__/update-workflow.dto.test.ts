@@ -1,0 +1,440 @@
+import { UpdateWorkflowDto } from '../update-workflow.dto';
+
+describe('UpdateWorkflowDto', () => {
+	describe('Valid requests', () => {
+		test.each([
+			{
+				name: 'empty update',
+				request: {},
+			},
+			{
+				name: 'update name only',
+				request: { name: 'Updated Name' },
+			},
+			{
+				name: 'update nodes and connections',
+				request: {
+					nodes: [{ id: 'node1', name: 'Node', type: 'test', position: [0, 0], parameters: {} }],
+					connections: { node1: { main: [[]] } },
+				},
+			},
+			{
+				name: 'update tags as strings',
+				request: { tags: ['tag1', 'tag2'] },
+			},
+			{
+				name: 'update tags as objects',
+				request: {
+					tags: [
+						{ id: 'tag1', name: 'Tag 1' },
+						{ id: 'tag2', name: 'Tag 2' },
+					],
+				},
+			},
+			{
+				name: 'update redactionPolicy to none',
+				request: {
+					settings: { redactionPolicy: 'none' },
+				},
+			},
+			{
+				name: 'update redactionPolicy to all',
+				request: {
+					settings: { redactionPolicy: 'all' },
+				},
+			},
+			{
+				name: 'update redactionPolicy to non-manual',
+				request: {
+					settings: { redactionPolicy: 'non-manual' },
+				},
+			},
+			{
+				name: 'update nodeGroups',
+				request: {
+					nodeGroups: [{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'] }],
+				},
+			},
+			{
+				name: 'set nodeGroups to empty array',
+				request: { nodeGroups: [] },
+			},
+			{
+				// `parentFolder` is not an accepted input; it must be tolerated (stripped), not rejected
+				name: 'with parentFolder object (ignored)',
+				request: { parentFolder: { id: 'folder123', name: 'Some Folder' } },
+			},
+			{
+				name: 'update multiple fields',
+				request: {
+					name: 'Updated Workflow',
+					description: 'Updated description',
+					settings: { saveExecutionProgress: false },
+					meta: { version: '2.0' },
+				},
+			},
+		])('should validate $name', ({ request }) => {
+			const result = UpdateWorkflowDto.safeParse(request);
+			expect(result.success).toBe(true);
+		});
+
+		test('should strip parentFolder from the parsed payload', () => {
+			const result = UpdateWorkflowDto.safeParse({
+				parentFolder: { id: 'folder123', name: 'Some Folder' },
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data).not.toHaveProperty('parentFolder');
+		});
+
+		test('should transform tags from objects to string array', () => {
+			const result = UpdateWorkflowDto.safeParse({
+				tags: [
+					{ id: 'tag1', name: 'Tag 1' },
+					{ id: 'tag2', name: 'Tag 2' },
+				],
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data?.tags).toEqual(['tag1', 'tag2']);
+		});
+
+		test('should preserve workflow custom span attribute settings', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'workflow_name', value: 'Workflow Name' },
+				],
+			};
+
+			const result = UpdateWorkflowDto.safeParse({ settings });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
+		});
+
+		test('should preserve workflow custom span attribute settings with keys that are unique after trim', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: '  env  ', value: 'production' },
+					{ key: 'team', value: 'backend' },
+				],
+			};
+
+			const result = UpdateWorkflowDto.safeParse({ settings });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
+		});
+	});
+
+	describe('Invalid requests', () => {
+		test.each([
+			{
+				name: 'empty name',
+				request: { name: '' },
+				expectedErrorPath: ['name'],
+			},
+			{
+				name: 'name too long',
+				request: { name: 'a'.repeat(129) },
+				expectedErrorPath: ['name'],
+			},
+			{
+				name: 'invalid nodes type',
+				request: { nodes: 'not-an-array' },
+				expectedErrorPath: ['nodes'],
+			},
+			{
+				name: 'invalid connections type',
+				request: { connections: 'not-an-object' },
+				expectedErrorPath: ['connections'],
+			},
+			{
+				name: 'connections as array',
+				request: { connections: [] },
+				expectedErrorPath: ['connections'],
+			},
+			{
+				name: 'settings as array',
+				request: { settings: [] },
+				expectedErrorPath: ['settings'],
+			},
+			{
+				name: 'workflow custom span attributes as fixed collection object',
+				request: {
+					settings: {
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'workflow custom span attribute with extra field',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: 'env', value: 'production', extra: 'field' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0],
+			},
+			{
+				name: 'duplicate workflow custom span attribute keys',
+				request: {
+					settings: {
+						customTelemetryTags: [
+							{ key: 'env', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'duplicate workflow custom span attribute keys after trim',
+				request: {
+					settings: {
+						customTelemetryTags: [
+							{ key: '  env  ', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'empty workflow custom span attribute key',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: '', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
+			},
+			{
+				name: 'whitespace-only workflow custom span attribute key',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: '   ', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
+			},
+			{
+				name: 'staticData as array',
+				request: { staticData: [] },
+				expectedErrorPath: ['staticData'],
+			},
+			{
+				name: 'pinData as array',
+				request: { pinData: [] },
+				expectedErrorPath: ['pinData'],
+			},
+			{
+				name: 'nodeGroups as string',
+				request: { nodeGroups: 'not-an-array' },
+				expectedErrorPath: ['nodeGroups'],
+			},
+			{
+				name: 'nodeGroups with missing id',
+				request: { nodeGroups: [{ name: 'Group', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'id'],
+			},
+			{
+				name: 'nodeGroups with missing name',
+				request: { nodeGroups: [{ id: 'g1', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'name'],
+			},
+			{
+				name: 'nodeGroups with missing nodeIds',
+				request: { nodeGroups: [{ id: 'g1', name: 'Group' }] },
+				expectedErrorPath: ['nodeGroups', 0, 'nodeIds'],
+			},
+			{
+				name: 'nodeGroups with empty id',
+				request: { nodeGroups: [{ id: '', name: 'Group', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'id'],
+			},
+			{
+				name: 'nodeGroups with empty name',
+				request: { nodeGroups: [{ id: 'g1', name: '', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'name'],
+			},
+			{
+				name: 'nodeGroups with empty nodeId string',
+				request: { nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [''] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'nodeIds', 0],
+			},
+		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
+			const result = UpdateWorkflowDto.safeParse(request);
+			expect(result.success).toBe(false);
+			if (expectedErrorPath) {
+				expect(result.error?.issues[0].path).toEqual(expectedErrorPath);
+			}
+		});
+	});
+
+	describe('Security: Mass assignment protection', () => {
+		describe('Internal counters and metadata', () => {
+			test('should not accept triggerCount field (billing bypass)', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					triggerCount: 999,
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('triggerCount');
+			});
+
+			test('should not accept versionCounter field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					versionCounter: 100,
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('versionCounter');
+			});
+
+			test('should not accept versionId field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					versionId: 'custom-version-id',
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('versionId');
+			});
+
+			test('should not accept isArchived field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					isArchived: true,
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('isArchived');
+			});
+		});
+
+		describe('Activation fields', () => {
+			test('should not accept active field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					active: true,
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('active');
+			});
+
+			test('should not accept activeVersionId field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					activeVersionId: 'version123',
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('activeVersionId');
+			});
+
+			test('should not accept activeVersion field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					activeVersion: { versionId: 'v1', workflowId: 'w1' },
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('activeVersion');
+			});
+		});
+
+		describe('Sharing and permissions', () => {
+			test('should not accept shared field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					shared: [{ role: 'owner' }],
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('shared');
+			});
+
+			test('should not accept projectId field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					projectId: 'malicious-project-id',
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('projectId');
+			});
+
+			test('should not accept id field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					id: 'malicious-id',
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('id');
+			});
+		});
+
+		describe('Timestamps', () => {
+			test('should not accept createdAt field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					createdAt: new Date().toISOString(),
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('createdAt');
+			});
+
+			test('should not accept updatedAt field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					updatedAt: new Date().toISOString(),
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('updatedAt');
+			});
+		});
+
+		describe('Multiple malicious fields at once', () => {
+			test('should strip all internal fields when multiple are provided', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					active: true,
+					activeVersionId: 'v1',
+					triggerCount: 999,
+					versionCounter: 100,
+					isArchived: true,
+					shared: [{ role: 'owner' }],
+					projectId: 'malicious-project',
+					id: 'malicious-id',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('active');
+				expect(result.data).not.toHaveProperty('activeVersionId');
+				expect(result.data).not.toHaveProperty('triggerCount');
+				expect(result.data).not.toHaveProperty('versionCounter');
+				expect(result.data).not.toHaveProperty('isArchived');
+				expect(result.data).not.toHaveProperty('shared');
+				expect(result.data).not.toHaveProperty('projectId');
+				expect(result.data).not.toHaveProperty('id');
+				expect(result.data).not.toHaveProperty('createdAt');
+				expect(result.data).not.toHaveProperty('updatedAt');
+				// Valid fields should remain
+				expect(result.data?.name).toBe('Updated');
+			});
+		});
+	});
+});

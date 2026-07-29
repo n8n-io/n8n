@@ -4,25 +4,20 @@
         "@odata.context": {
             "type": "string"
         },
+        "businessPhones": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "department": {
+            "type": "string"
+        },
         "displayName": {
             "type": "string"
         },
         "id": {
             "type": "string"
-        },
-        "mobilePhone": {
-            "type": "null"
-        },
-        "officeLocation": {
-            "type": "null"
-        },
-        "passwordProfile": {
-            "type": "object",
-            "properties": {
-                "forceChangePasswordNextSignIn": {
-                    "type": "boolean"
-                }
-            }
         },
         "preferredLanguage": {
             "type": "null"
@@ -31,5 +26,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

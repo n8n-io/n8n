@@ -24,6 +24,17 @@
         "reviewId": {
             "type": "string"
         },
+        "reviewReply": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "updateTime": {
+                    "type": "string"
+                }
+            }
+        },
         "starRating": {
             "type": "string"
         },
@@ -31,5 +42,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

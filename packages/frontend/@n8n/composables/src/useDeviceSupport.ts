@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 export function useDeviceSupport() {
 	/**
@@ -23,6 +23,7 @@ export function useDeviceSupport() {
 	const isMobileDevice = ref(isIOs.value || isAndroidOs.value);
 
 	const controlKeyCode = ref(isMacOs.value ? 'Meta' : 'Control');
+	const controlKeyText = computed(() => (isMacOs.value ? '⌘' : 'Ctrl'));
 
 	function isCtrlKeyPressed(e: MouseEvent | KeyboardEvent): boolean {
 		if (isMacOs.value) {
@@ -39,6 +40,7 @@ export function useDeviceSupport() {
 		isMacOs: isMacOs.value,
 		isMobileDevice: isMobileDevice.value,
 		controlKeyCode: controlKeyCode.value,
+		controlKeyText,
 		isCtrlKeyPressed,
 	};
 }

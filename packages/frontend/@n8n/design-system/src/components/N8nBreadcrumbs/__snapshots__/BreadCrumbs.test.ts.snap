@@ -6,11 +6,11 @@ exports[`Breadcrumbs > does not highlight last item for "highlightLastItem = fal
     <!--v-if-->
     <!--v-if-->
     <!--v-if-->
-    <li class="item" title="Folder 1" data-resourceid="1" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder1" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
+    <li class="item" title="Folder 1" data-resourceid="1" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder1" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
     <li class="separator">/</li>
-    <li class="item" title="Folder 2" data-resourceid="2" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder2" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
+    <li class="item" title="Folder 2" data-resourceid="2" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder2" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
     <li class="separator">/</li>
-    <li class="item" title="Folder 3" data-resourceid="3" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
+    <li class="item" title="Folder 3" data-resourceid="3" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder3" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
     <li class="separator">/</li>
     <li class="item" title="Current" data-resourceid="4" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
@@ -24,11 +24,11 @@ exports[`Breadcrumbs > renders custom separator correctly 1`] = `
     <!--v-if-->
     <!--v-if-->
     <!--v-if-->
-    <li class="item" title="Folder 1" data-resourceid="1" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder1" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
+    <li class="item" title="Folder 1" data-resourceid="1" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder1" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
     <li class="separator">➮</li>
-    <li class="item" title="Folder 2" data-resourceid="2" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder2" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
+    <li class="item" title="Folder 2" data-resourceid="2" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder2" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
     <li class="separator">➮</li>
-    <li class="item" title="Folder 3" data-resourceid="3" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
+    <li class="item" title="Folder 3" data-resourceid="3" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder3" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
     <li class="separator">➮</li>
     <li class="item current" title="Current" data-resourceid="4" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
@@ -42,11 +42,11 @@ exports[`Breadcrumbs > renders default version correctly 1`] = `
     <!--v-if-->
     <!--v-if-->
     <!--v-if-->
-    <li class="item" title="Folder 1" data-resourceid="1" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder1" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
+    <li class="item" title="Folder 1" data-resourceid="1" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder1" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
     <li class="separator">/</li>
-    <li class="item" title="Folder 2" data-resourceid="2" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder2" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
+    <li class="item" title="Folder 2" data-resourceid="2" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder2" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
     <li class="separator">/</li>
-    <li class="item" title="Folder 3" data-resourceid="3" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
+    <li class="item" title="Folder 3" data-resourceid="3" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder3" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
     <li class="separator">/</li>
     <li class="item current" title="Current" data-resourceid="4" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
@@ -61,11 +61,11 @@ exports[`Breadcrumbs > renders slots correctly 1`] = `
     <li class="separator">/</li>
     <!--v-if-->
     <!--v-if-->
-    <li class="item" title="Folder 1" data-resourceid="1" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder1" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
+    <li class="item" title="Folder 1" data-resourceid="1" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder1" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
     <li class="separator">/</li>
-    <li class="item" title="Folder 2" data-resourceid="2" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder2" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
+    <li class="item" title="Folder 2" data-resourceid="2" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder2" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
     <li class="separator">/</li>
-    <li class="item" title="Folder 3" data-resourceid="3" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
+    <li class="item" title="Folder 3" data-resourceid="3" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder3" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
     <li class="separator">/</li>
     <li class="item current" title="Current" data-resourceid="4" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
@@ -80,11 +80,11 @@ exports[`Breadcrumbs > renders small version correctly 1`] = `
     <!--v-if-->
     <!--v-if-->
     <!--v-if-->
-    <li class="item" title="Folder 1" data-resourceid="1" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder1" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
+    <li class="item" title="Folder 1" data-resourceid="1" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder1" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
     <li class="separator">/</li>
-    <li class="item" title="Folder 2" data-resourceid="2" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder2" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
+    <li class="item" title="Folder 2" data-resourceid="2" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder2" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
     <li class="separator">/</li>
-    <li class="item" title="Folder 3" data-resourceid="3" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
+    <li class="item" title="Folder 3" data-resourceid="3" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><a href="/folder3" class="n8n-link" role="link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
     <li class="separator">/</li>
     <li class="item current" title="Current" data-resourceid="4" data-test-id="breadcrumbs-item" data-target="folder-breadcrumb-item"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->

@@ -1,8 +1,10 @@
-import { createTeamProject, linkUserToProject } from '@n8n/backend-test-utils';
-import { randomCredentialPayload } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import type { CredentialsEntity } from '@n8n/db';
-import type { User } from '@n8n/db';
+import {
+	createTeamProject,
+	linkUserToProject,
+	randomCredentialPayload,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -38,7 +40,7 @@ describe('credentials service', () => {
 				['credential:read'],
 			);
 
-			const decryptedData = Container.get(CredentialsService).decrypt(storedCredential!);
+			const decryptedData = await Container.get(CredentialsService).decrypt(storedCredential!);
 
 			const mergedCredentials = {
 				id: credential.id,
@@ -71,7 +73,8 @@ describe('credentials service', () => {
 
 			if (!storedProjectCredential) throw new Error('Could not find credential');
 
-			const decryptedData = Container.get(CredentialsService).decrypt(storedProjectCredential);
+			const decryptedData =
+				await Container.get(CredentialsService).decrypt(storedProjectCredential);
 
 			const mergedCredentials = {
 				id: projectCredential.id,
@@ -104,7 +107,8 @@ describe('credentials service', () => {
 
 			if (!storedProjectCredential) throw new Error('Could not find credential');
 
-			const decryptedData = Container.get(CredentialsService).decrypt(storedProjectCredential);
+			const decryptedData =
+				await Container.get(CredentialsService).decrypt(storedProjectCredential);
 
 			const originalData = { accessToken: '' };
 			const mergedCredentials = {

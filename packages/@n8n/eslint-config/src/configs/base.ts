@@ -11,18 +11,14 @@ import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 
-// Slowest rules are disabled locally to improve performance in development
-// They are enabled in CI to ensure code quality
-const runAllRules = process.env.CI === 'true' || process.env.INCLUDE_SLOW_RULES === 'true';
-
 export const baseConfig = tseslint.config(
 	globalIgnores([
 		'node_modules/**',
 		'dist/**',
 		'eslint.config.mjs',
 		'tsup.config.ts',
-		'jest.config.js',
-		'cypress.config.js',
+		'vite.config.ts',
+		'vitest.config.ts',
 	]),
 	eslint.configs.recommended,
 	tseslint.configs.recommended,
@@ -46,6 +42,15 @@ export const baseConfig = tseslint.config(
 		},
 		settings: {
 			'import-x/resolver-next': [createTypeScriptImportResolver()],
+			// Neutralize the string-based parser mapping added by import-x's TS preset.
+			// A string parser path makes import-x re-`require('@typescript-eslint/parser')`
+			// when parsing imported modules, which resolves a parser copy peered to the
+			// leaf package's tsgo `typescript` (no programmatic API in TS7) and crashes
+			// reading `ts.Extension.Cjs`. ESLint deep-merges settings, so we can't drop
+			// the key — instead empty its extension list so import-x matches nothing here
+			// and falls back to the already-loaded parser object from languageOptions
+			// (backed by TS6).
+			'import-x/parsers': { '@typescript-eslint/parser': [] },
 		},
 		rules: {
 			// ******************************************************************
@@ -107,7 +112,7 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
 
 			/** https://typescript-eslint.io/rules/await-thenable/ */
-			'@typescript-eslint/await-thenable': runAllRules ? 'error' : 'off',
+			'@typescript-eslint/await-thenable': 'error',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
@@ -161,7 +166,9 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-imports.md
 			 */
-			'@typescript-eslint/consistent-type-imports': 'error',
+			'@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
+
+			'@typescript-eslint/consistent-type-exports': 'error',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
@@ -227,16 +234,12 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-misused-promises.md
 			 */
-			'@typescript-eslint/no-misused-promises': runAllRules
-				? ['error', { checksVoidReturn: false }]
-				: 'off',
+			'@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.30.0/packages/eslint-plugin/docs/rules/no-floating-promises.md
 			 */
-			'@typescript-eslint/no-floating-promises': runAllRules
-				? ['error', { ignoreVoid: true }]
-				: 'off',
+			'@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.33.0/packages/eslint-plugin/docs/rules/no-namespace.md
@@ -256,7 +259,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unnecessary-qualifier.md
 			 */
-			'@typescript-eslint/no-unnecessary-qualifier': runAllRules ? 'error' : 'off',
+			'@typescript-eslint/no-unnecessary-qualifier': 'error',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unused-expressions.md
@@ -276,7 +279,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/promise-function-async.md
 			 */
-			'@typescript-eslint/promise-function-async': runAllRules ? 'error' : 'off',
+			'@typescript-eslint/promise-function-async': 'error',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/triple-slash-reference.md
@@ -300,7 +303,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
 			 */
-			'import-x/no-cycle': runAllRules ? ['error', { ignoreExternal: false, maxDepth: 3 }] : 'off',
+			'import-x/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
 
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
@@ -339,6 +342,27 @@ export const baseConfig = tseslint.config(
 			'import-x/no-named-as-default-member': 'off',
 			'import-x/no-unresolved': 'off',
 
+			'import-x/no-extraneous-dependencies': [
+				'error',
+				{
+					devDependencies: [
+						'**/test/**',
+						'**/__tests__/**',
+						'**/*.test.ts',
+						'**/*.test.utils.ts',
+						'**/*.spec.ts',
+						'**/integration-tests/**',
+						'**/test-utils/**',
+						'**/*.config.ts',
+						'**/*.config.js',
+						'**/scripts/*.ts',
+						'**/scripts/*.js',
+						'**/*.stories.ts',
+					],
+					optionalDependencies: false,
+				},
+			],
+
 			// ******************************************************************
 			//                    overrides to base ruleset
 			// ******************************************************************
@@ -375,7 +399,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://eslint.org/docs/rules/prefer-spread
 			 */
-			'prefer-spread': 'error',
+			'prefer-spread': 'off',
 
 			// These are tuned off since we use `noUnusedLocals` and `noUnusedParameters` now
 			'no-unused-vars': 'off',
@@ -417,7 +441,9 @@ export const baseConfig = tseslint.config(
 		files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts', '**/*.cy.ts'],
 		rules: {
 			'n8n-local-rules/no-plain-errors': 'off',
+			'@typescript-eslint/unbound-method': 'off',
 			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+			'n8n-local-rules/no-error-instance-in-to-throw': 'error',
 		},
 	},
 );
