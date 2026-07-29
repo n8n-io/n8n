@@ -5,6 +5,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
+import { prunesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
 import type { TagImportRequest } from '../entities/tag/tag.types';
@@ -13,6 +14,8 @@ import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-im
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import type {
+	ArchivedWorkflowSummary,
+	BlockingIssue,
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
@@ -27,6 +30,7 @@ import {
 	assertTagWritesAllowed,
 	assertVariableCreationAllowed,
 } from './import-gates';
+import { toImportBlockedError } from './import-blocked.error';
 import { deriveVariableScope } from './package-layout';
 import {
 	ImportOrchestrator,
@@ -67,11 +71,27 @@ export class ProjectPackageImporter {
 		this.assertAdequatePermissions(request, manifest);
 
 		const projects = await this.packageParser.getProjects(reader);
-		const projectPlan = await this.projectImporter.plan(request.user, projects);
+		const projectPlan = await this.projectImporter.plan(
+			request.user,
+			projects,
+			request.projectConflictPolicy,
+		);
+		// A refused project decides the whole import, so report it before reading any project's
+		// contents — planning work that is certain to be discarded only delays the same failure.
+		if (projectPlan.conflicts.length > 0) {
+			throw toImportBlockedError(
+				projectPlan.conflicts.map(
+					(conflict): BlockingIssue => ({ type: 'project-conflict', ...conflict }),
+				),
+			);
+		}
+
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
 		// so publish is always allowed and the project need not exist while its contents are planned.
 		const pendingCreateIds = new Set(
-			projectPlan.filter((item) => item.action === 'create').map((item) => item.sourceProjectId),
+			projectPlan.items
+				.filter((item) => item.action === 'create')
+				.map((item) => item.sourceProjectId),
 		);
 
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
@@ -95,7 +115,7 @@ export class ProjectPackageImporter {
 		);
 		await this.importOrchestrator.assertNotBlocked(planned.map(({ plan }) => plan));
 
-		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan);
+		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
 
 		// Resolve every project's workflow ids up front so a sub-workflow reference
 		// that points into another project resolves when its parent is applied.
@@ -129,6 +149,7 @@ export class ProjectPackageImporter {
 		});
 
 		const workflows: ImportedWorkflowSummary[] = [];
+		const archivedWorkflows: ArchivedWorkflowSummary[] = [];
 		const folders: ImportedFolderSummary[] = [];
 		const scopedBindings: PackageImportBindings[] = [];
 		const matched: string[] = [];
@@ -144,6 +165,7 @@ export class ProjectPackageImporter {
 			workflows.push(
 				...toImportedWorkflowSummaries(content.workflowOutcomes, project.id, published),
 			);
+			archivedWorkflows.push(...content.archivedWorkflows);
 			folders.push(...content.folderSummaries);
 			scopedBindings.push(content.bindings);
 			matched.push(...content.credentialResult.matched);
@@ -168,6 +190,7 @@ export class ProjectPackageImporter {
 		return buildImportResult({
 			package: toPackageSummary(manifest),
 			workflows,
+			archivedWorkflows,
 			folders,
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
@@ -269,6 +292,12 @@ export class ProjectPackageImporter {
 
 		if ((manifest.workflows?.length ?? 0) > 0) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
+		}
+
+		// `overwrite` archives workflows the package omits, so require the scope up front rather than
+		// discovering mid-import that the caller may not remove what reconciliation demands.
+		if (prunesUnpackagedWorkflows(request.folderConflictPolicy)) {
+			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete']);
 		}
 
 		assertVariableCreationAllowed({

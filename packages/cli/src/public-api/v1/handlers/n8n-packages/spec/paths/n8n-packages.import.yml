@@ -11,8 +11,8 @@ post:
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId` and `folderId` (omit or send empty for defaults). Every optional
-    mode/policy field (credential, workflow, folder, data table, variable, and tag)
-    takes its default when omitted. The required
+    mode/policy field (credential, workflow, project, folder, data table, variable,
+    and tag) takes its default when omitted. The required
     `workflowConflictPolicy` field controls what happens when a package workflow
     matches an existing workflow by source id in the target project. Maximum upload
     size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
@@ -143,11 +143,34 @@ post:
                 `publish-all` publishes every imported workflow.
                 `unpublish-all` leaves new workflows inactive and unpublishes
                 updated workflows that were published.
+            projectConflictPolicy:
+              type: string
+              enum:
+                - merge
+                - fail
+                - overwrite
+              default: overwrite
+              description: >
+                Controls what happens when a project defined by the package
+                (matched by id) already exists on this instance. `overwrite`
+                (default) replaces the existing project's name, description, icon
+                and custom span attributes with the package's — a detail the package
+                omits is left as it is, not cleared. `merge` leaves those
+                details untouched. `fail` rejects the import before anything is
+                written, reporting one `project-conflict` issue per existing project.
+                Under `overwrite` and `merge` alike the package's contents are then
+                merged into the existing project — nothing on the target is deleted,
+                and `workflowConflictPolicy` / `folderConflictPolicy` still govern the
+                contents. A package project id that belongs to a personal project, or
+                to a team project the caller cannot update, always rejects the import.
+                Ignored when importing loose workflows/folders, which target an
+                existing project.
             folderConflictPolicy:
               type: string
               enum:
                 - merge
                 - fail
+                - overwrite
               default: merge
               description: >
                 Controls what happens when a package folder (matched by id in the
@@ -157,6 +180,22 @@ post:
                 under a different parent, or belongs to another project, always blocks
                 the import. Requires the `folder:create` scope and a license that
                 supports folders when the package contains folders.
+
+
+                `overwrite` reuses existing folders exactly as `merge` does, and
+                additionally makes the package authoritative for the project scopes it
+                defines: a workflow at a project's root, or in a folder the package
+                defines, that the package does not contain is **archived** — not
+                hard-deleted, since n8n requires a workflow to be archived before it
+                can be deleted. Archived workflows are listed under
+                `archivedWorkflows`, and an active one is unpublished first. A workflow
+                filed under a folder the package does not define is left alone, so a
+                target-only folder shelters its contents from reconciliation. Requires
+                the `workflow:delete` scope, and the import is rejected up front if the
+                caller lacks delete permission on any workflow that would be archived.
+                Project packages only — a workflow package describes only the workflows
+                it carries, not the whole target scope, so `overwrite` is rejected for
+                one.
             dataTableMatchingMode:
               type: string
               enum:
@@ -391,6 +430,31 @@ post:
                         - updated
                         - skipped
                       description: Import outcome for this package workflow.
+              archivedWorkflows:
+                type: array
+                description: >
+                  Workflows the target had that the package does not, archived by
+                  `folderConflictPolicy=overwrite`. Empty under every other policy.
+                items:
+                  type: object
+                  required:
+                    - workflowId
+                    - name
+                    - projectId
+                    - parentFolderId
+                  properties:
+                    workflowId:
+                      type: string
+                      description: Id of the archived workflow on this instance.
+                    name:
+                      type: string
+                    projectId:
+                      type: string
+                      description: Project the workflow was reconciled against.
+                    parentFolderId:
+                      type: string
+                      nullable: true
+                      description: Folder that held the workflow, or null at the project root.
               folders:
                 type: array
                 description: Folder shells created or skipped in the target project.
@@ -424,8 +488,9 @@ post:
               projects:
                 type: array
                 description: >
-                  Project shells created or matched-and-updated. Present for project
-                  packages; empty when importing loose workflows/folders.
+                  Project shells created, or matched and then updated or left as-is
+                  (see `projectConflictPolicy`). Present for project packages; empty
+                  when importing loose workflows/folders.
                 items:
                   type: object
                   required:
@@ -442,12 +507,19 @@ post:
                       description: Project id on the target instance (equal to `sourceProjectId`; project ids are reused).
                     name:
                       type: string
+                      description: >
+                        The project's name on the target: the package's under
+                        `overwrite`, the pre-existing one under `merge`.
                     status:
                       type: string
                       enum:
                         - created
                         - updated
-                      description: Import outcome for this package project.
+                        - skipped
+                      description: >
+                        Import outcome for this package project. `skipped` means the
+                        project already existed and `projectConflictPolicy=merge` left
+                        its details untouched — its contents were still imported.
               credentials:
                 type: object
                 description: >

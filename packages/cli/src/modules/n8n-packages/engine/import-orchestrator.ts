@@ -20,6 +20,7 @@ import type {
 	FolderImportPlan,
 	PreparedFolder,
 } from '../entities/folder/folder-import.types';
+import { prunesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import { FolderImporter } from '../entities/folder/folder-importer';
 import { TagImporter } from '../entities/tag/tag-importer';
 import { droppedTagIds } from '../entities/tag/tag.types';
@@ -42,10 +43,12 @@ import type {
 	WorkflowImportPlan,
 } from '../entities/workflow/workflow-import.types';
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
+import { WorkflowPruner, type WorkflowPrunePlan } from '../entities/workflow/workflow-pruner';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { WorkflowPublishingBlockedReason } from '../entities/workflow/workflow-publishing-policy.types';
 import { createBindings } from '../n8n-packages.types';
 import type {
+	ArchivedWorkflowSummary,
 	BlockingIssue,
 	ImportBindingMap,
 	ImportContext,
@@ -79,6 +82,7 @@ export interface ImportOrchestrationInput {
  */
 export interface ImportContentResult {
 	workflowOutcomes: PersistedWorkflowOutcome[];
+	archivedWorkflows: ArchivedWorkflowSummary[];
 	folderSummaries: ImportedFolderSummary[];
 	bindings: PackageImportBindings;
 	credentialResult: CredentialApplyResult;
@@ -97,6 +101,7 @@ export interface ImportPlan {
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
 	tagPlan: TagImportPlan;
+	prunePlan: WorkflowPrunePlan;
 	missingNodeTypes: MissingNodeTypeRequirement[];
 	blockingIssues: BlockingIssue[];
 }
@@ -114,6 +119,7 @@ export class ImportOrchestrator {
 		private readonly tagImporter: TagImporter,
 		private readonly folderImporter: FolderImporter,
 		private readonly workflowImporter: WorkflowImporter,
+		private readonly workflowPruner: WorkflowPruner,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly nodeTypes: NodeTypes,
 	) {}
@@ -163,6 +169,16 @@ export class ImportOrchestrator {
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
+		// Planned against a project that does not exist yet, there is nothing to reconcile.
+		const prunePlan =
+			prunesUnpackagedWorkflows(options.folderConflictPolicy) && !input.projectPendingCreation
+				? await this.workflowPruner.plan(context, {
+						workflowItems: workflowPlan.items,
+						packageFolderIds: folders.map(({ sourceFolderId }) => sourceFolderId),
+						subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
+					})
+				: { archivals: [], failures: [] };
+
 		// Skipped workflows are never written, so their node types don't gate the import.
 		const missingNodeTypes = collectMissingNodeTypes(
 			workflowPlan.items.filter((item) => item.action !== 'skip'),
@@ -178,6 +194,7 @@ export class ImportOrchestrator {
 			variableRequest,
 			variablePlan,
 			tagPlan,
+			prunePlan,
 			missingNodeTypes,
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
@@ -191,6 +208,7 @@ export class ImportOrchestrator {
 			dataTablePlan,
 			variablePlan,
 			tagPlan,
+			prunePlan,
 			missingNodeTypes,
 			blockingIssues,
 		};
@@ -259,10 +277,15 @@ export class ImportOrchestrator {
 			}),
 		);
 
+		// Archiving goes last: the package's own workflows are in place first, so a failure earlier
+		// in the apply leaves the target with more than the package asked for rather than less.
+		const archivedWorkflows = await this.workflowPruner.apply(context, plan.prunePlan);
+
 		return {
 			workflowOutcomes: outcomes.map((outcome) =>
 				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
 			),
+			archivedWorkflows,
 			folderSummaries,
 			bindings,
 			credentialResult,
@@ -282,6 +305,7 @@ export class ImportOrchestrator {
 		variableRequest,
 		variablePlan,
 		tagPlan,
+		prunePlan,
 		missingNodeTypes,
 		missingNodeTypeMode,
 	}: {
@@ -293,6 +317,7 @@ export class ImportOrchestrator {
 		variableRequest: VariableImportRequest;
 		variablePlan: VariableImportPlan;
 		tagPlan: TagImportPlan;
+		prunePlan: WorkflowPrunePlan;
 		missingNodeTypes: MissingNodeTypeRequirement[];
 		missingNodeTypeMode: MissingNodeTypeMode;
 	}): BlockingIssue[] {
@@ -308,6 +333,9 @@ export class ImportOrchestrator {
 			),
 			...folderPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'folder-conflict', ...conflict }),
+			),
+			...prunePlan.failures.map(
+				(failure): BlockingIssue => ({ type: 'workflow-archival-forbidden', ...failure }),
 			),
 			...dataTablePlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'data-table-unresolved', ...failure }),

@@ -67,6 +67,7 @@ async function importPackage(params: ImportParams) {
 		workflowConflictPolicy: 'fail',
 		workflowPublishingPolicy: 'preserve-published-state',
 		workflowIdPolicy: 'new',
+		projectConflictPolicy: 'overwrite',
 		folderConflictPolicy: 'merge',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',

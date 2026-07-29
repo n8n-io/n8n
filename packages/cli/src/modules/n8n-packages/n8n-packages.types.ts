@@ -43,11 +43,30 @@ export const WorkflowIdPolicy = {
 	Source: 'source',
 } as const;
 
+export const ProjectConflictPolicy = {
+	/** Reuses a matched project (by id) as-is — its name, description, icon and tags stay untouched — and merges the package's contents into it. */
+	Merge: 'merge',
+	/** Fails the import if any package project already exists on this instance. */
+	Fail: 'fail',
+	/**
+	 * Replaces a matched project's own details with the package's, then merges the package's contents
+	 * into it. Only the details the package carries are written — a detail the package omits (an
+	 * unset description or icon, or a field a package predating it never had) is left as it is.
+	 */
+	Overwrite: 'overwrite',
+} as const;
+
 export const FolderConflictPolicy = {
 	/** Reuses an already-imported folder (matched by id) as-is and merges the package's children into it; otherwise creates it. */
 	Merge: 'merge',
 	/** Fails the import if any package folder already exists in the target project. */
 	Fail: 'fail',
+	/**
+	 * Like `merge` for the folders themselves, but makes the package authoritative for the
+	 * project scopes it defines: a workflow at the project root or in a package folder that the
+	 * package does not contain is archived. Project packages only.
+	 */
+	Overwrite: 'overwrite',
 } as const;
 
 export const MissingNodeTypeMode = {
@@ -123,6 +142,9 @@ export type WorkflowConflictPolicy =
 
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
+export type ProjectConflictPolicy =
+	(typeof ProjectConflictPolicy)[keyof typeof ProjectConflictPolicy];
+
 export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof FolderConflictPolicy];
 
 export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof MissingNodeTypeMode];
@@ -166,6 +188,7 @@ export type ImportPackageRequest = {
 	apiKeyScopes?: string[];
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
+	ImportProjectProperties &
 	ImportFolderProperties &
 	ImportDataTableProperties &
 	ImportVariableProperties &
@@ -181,6 +204,11 @@ export type ImportWorkflowProperties = {
 	workflowPublishingPolicy: WorkflowPublishingPolicy;
 	workflowIdPolicy: WorkflowIdPolicy;
 	missingNodeTypeMode: MissingNodeTypeMode;
+};
+
+/** Only project packages define projects; a workflow package imports into an existing project. */
+export type ImportProjectProperties = {
+	projectConflictPolicy: ProjectConflictPolicy;
 };
 
 export type ImportFolderProperties = {
@@ -309,11 +337,24 @@ export interface ImportedFolderSummary {
 	status: 'created' | 'skipped';
 }
 
+/**
+ * A workflow the target had that the package does not, archived under
+ * `folderConflictPolicy=overwrite`. Archived rather than deleted: n8n requires a workflow to be
+ * archived before it can be deleted, so this is the recoverable half of that pair.
+ */
+export interface ArchivedWorkflowSummary {
+	workflowId: string;
+	name: string;
+	projectId: string;
+	parentFolderId: string | null;
+}
+
 export interface ImportedProjectSummary {
 	sourceProjectId: string;
 	localId: string;
+	/** The project's name on the target — the package's under `overwrite`, the existing one under `merge`. */
 	name: string;
-	status: 'created' | 'updated';
+	status: 'created' | 'updated' | 'skipped';
 }
 
 /**
@@ -336,7 +377,9 @@ export type BlockingIssue =
 			actualType?: string;
 			usedByWorkflows: string[];
 	  }
+	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
+	| ({ type: 'workflow-archival-forbidden' } & WorkflowArchivalFailure)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
 	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
@@ -348,6 +391,23 @@ export type BlockingIssue =
 			typeVersion: number;
 			usedByWorkflows: string[];
 	  };
+
+/**
+ * A workflow `folderConflictPolicy=overwrite` would archive that the caller may not archive.
+ * Blocking rather than skipped: a partial reconciliation leaves the target matching neither
+ * the package nor its previous state.
+ */
+export interface WorkflowArchivalFailure {
+	workflowId: string;
+	name: string;
+	projectId: string;
+}
+
+export interface ProjectConflict {
+	kind: 'fail-policy';
+	sourceProjectId: string;
+	name: string;
+}
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';
@@ -425,6 +485,8 @@ export interface ImportTagSummary {
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
+	/** Workflows the package did not contain, archived under `folderConflictPolicy=overwrite`. */
+	archivedWorkflows: ArchivedWorkflowSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;

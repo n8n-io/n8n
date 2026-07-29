@@ -72,6 +72,7 @@ const scope = (input: {
 	const toTagRefs = (ids: string[] = []) => ids.map((id) => ({ id, name: `name-of-${id}` }));
 	const imported: ImportContentResult = {
 		workflowOutcomes: input.outcomes,
+		archivedWorkflows: [],
 		folderSummaries: [],
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,

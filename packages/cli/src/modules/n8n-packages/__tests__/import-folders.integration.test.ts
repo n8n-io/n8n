@@ -44,6 +44,7 @@ async function importFolders(params: FolderImportParams) {
 		workflowPublishingPolicy: 'preserve-published-state',
 		workflowIdPolicy: 'new',
 		missingNodeTypeMode: 'fail',
+		projectConflictPolicy: 'overwrite',
 		folderConflictPolicy: params.folderConflictPolicy ?? 'merge',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
@@ -266,6 +267,17 @@ describe('folder shell import', () => {
 				}),
 			).rejects.toBeInstanceOf(ConflictError);
 			expect((await findFolder('F1'))?.name).toBe('old');
+		});
+
+		it('rejects overwrite, which needs a package that describes the whole project scope', async () => {
+			await expect(
+				importFolders({
+					user: owner,
+					projectId: project.id,
+					packageBuffer: await packageWith('new'),
+					folderConflictPolicy: 'overwrite',
+				}),
+			).rejects.toThrow(/folderConflictPolicy=overwrite is only supported for project packages/);
 		});
 	});
 

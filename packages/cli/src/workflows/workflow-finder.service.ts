@@ -214,6 +214,35 @@ export class WorkflowFinderService {
 	}
 
 	/**
+	 * Workflows a project owns, each paired with the folder holding it (`null` at the
+	 * project root). Archived workflows are excluded unless asked for, since callers
+	 * reconciling a project's contents treat them as already removed.
+	 */
+	async findOwnedWorkflowPlacementsInProject(
+		projectId: string,
+		options: { includeArchived?: boolean } = {},
+	): Promise<Array<{ id: string; name: string; parentFolderId: string | null }>> {
+		const rows = await this.sharedWorkflowRepository.find({
+			where: {
+				project: { id: projectId },
+				role: 'workflow:owner',
+				...(options.includeArchived ? {} : { workflow: { isArchived: false } }),
+			},
+			relations: { workflow: { parentFolder: true } },
+			select: {
+				workflowId: true,
+				workflow: { id: true, name: true, isArchived: true, parentFolder: { id: true } },
+			},
+		});
+
+		return rows.map(({ workflow }) => ({
+			id: workflow.id,
+			name: workflow.name,
+			parentFolderId: workflow.parentFolder?.id ?? null,
+		}));
+	}
+
+	/**
 	 * List root workflows of a project only.
 	 */
 	async findRootWorkflowIdsInProject(projectId: string): Promise<string[]> {

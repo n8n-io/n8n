@@ -31,6 +31,7 @@ import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
+	FolderConflictPolicy,
 	MissingWorkflowDependencyPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
@@ -303,6 +304,13 @@ export class N8nPackagesService {
 				);
 			}
 			return await this.projectPackageImporter.import(request, reader, manifest);
+		}
+		// A workflow package describes only the workflows it carries, not the whole target scope, so
+		// it cannot tell an unpackaged workflow apart from one that was never meant to be in scope.
+		if (request.folderConflictPolicy === FolderConflictPolicy.Overwrite) {
+			throw new BadRequestError(
+				'folderConflictPolicy=overwrite is only supported for project packages, which describe the whole project scope. Use merge or fail.',
+			);
 		}
 		return await this.workflowPackageImporter.import(request, reader, manifest);
 	}

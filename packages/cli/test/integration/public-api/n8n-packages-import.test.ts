@@ -223,6 +223,7 @@ describe('POST /n8n-packages/import', () => {
 					status: 'created',
 				},
 			],
+			archivedWorkflows: [],
 			folders: [],
 			projects: [],
 			bindings: {

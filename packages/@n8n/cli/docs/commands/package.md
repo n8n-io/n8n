@@ -63,7 +63,8 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--workflow-publishing-policy` | Whether imported workflows end up published. `preserve-published-state` (instance default) never publishes drafts — an updated workflow is republished only when it was already published and the package workflow is published too; `match-source` follows the package workflow's published flag; `publish-all` publishes every imported workflow; `unpublish-all` leaves new workflows unpublished and unpublishes updated ones. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
 | `--missing-node-type-mode` | What to do when a workflow uses a node type — or a version of a node type — this instance does not have. `fail` (instance default) rejects the import before anything is written, listing every missing node type and the workflows that use it; `import-anyway` imports the package, but the affected workflows are never published by the import, regardless of the publishing policy. |
-| `--folder-conflict-policy` | What to do when a package folder already exists in the target project: `merge` (default, reuse the existing folder and merge the package's children into it) or `fail`. Requires a folders-enabled license when the package contains folders. |
+| `--project-conflict-policy` | What to do when a project in the package already exists on the instance, matched by ID (project packages only): `overwrite` (instance default) replaces the existing project's name, description, icon and custom span attributes with the package's — a detail the package omits is left as it is, not cleared; `merge` leaves those details untouched; `fail` rejects the whole import before anything is written. Under `overwrite` and `merge` alike the package's contents are then merged into the existing project and nothing on the target is deleted — the workflow and folder conflict policies still govern the contents. |
+| `--folder-conflict-policy` | What to do when a package folder already exists in the target project: `merge` (default, reuse the existing folder and merge the package's children into it), `fail`, or `overwrite`. `overwrite` reuses existing folders exactly as `merge` does and additionally makes the package authoritative for the project scopes it defines — a workflow at a project's root, or in a folder the package defines, that the package does not contain is **archived** (not hard-deleted; an active one is unpublished first, and archived workflows are listed under `archivedWorkflows`). Workflows filed under folders the package does not define are left alone. Project packages only, and needs the `workflow:delete` scope. Requires a folders-enabled license when the package contains folders. |
 | `--credential-matching-mode` | How credential references are matched on the target instance: `id-only` (default, match by id), `name-and-type` (match by exact name and type), or `type-only` (match by type). For `name-and-type` and `type-only`, candidates are ranked by scope — owned by the target project, then shared into it, then global — and ties within a scope use the most recently updated credential. |
 | `--credential-missing-mode` | What to do when a referenced credential cannot be resolved. `create-stub` (instance default) creates empty placeholder credentials in the target project; `must-preexist` requires every referenced credential to already exist. |
 | `--data-table-matching-mode` | How data tables referenced by the package's workflows are matched on the target instance: `by-id` (default and only mode) matches the target-project table with the same id — imported tables keep their source id — and never falls back to name matching. |
@@ -78,6 +79,7 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 Requires the API key to hold:
 
 - `workflow:import` — always
+- `workflow:delete` — when `--folder-conflict-policy` is `overwrite`
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`
 - `variable:create` — when the package references variables and `--variable-missing-mode` is `create-stub`
 - `tag:create` — when the import would create a tag (under `--tag-missing-mode create`, the instance default; tags that match, are dropped, or belong only to skipped workflows need no scope)
@@ -87,6 +89,9 @@ When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:
 
 - a workflow conflict under `--workflow-conflict-policy=fail`
+- a project that already exists under `--project-conflict-policy=fail`
+- a workflow that `--folder-conflict-policy=overwrite` would archive but you lack
+  `workflow:delete` on
 - an unresolved credential under `--credential-missing-mode=must-preexist`
 - a schema-incompatible data table
 - a workflow using a node type this instance does not have under

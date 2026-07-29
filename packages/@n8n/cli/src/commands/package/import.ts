@@ -50,9 +50,16 @@ export default class PackageImport extends BaseCommand {
 			options: ['fail', 'import-anyway'],
 			aliases: ['missing-node-type-mode'],
 		}),
+		projectConflictPolicy: Flags.string({
+			description:
+				"What to do when a project in the package already exists on the instance (default on the instance: overwrite). merge keeps the existing project's details, overwrite replaces them with the package's — a detail the package omits is left as it is, not cleared; both then merge the package's contents into the project. fail rejects the whole import before anything is written. Project packages only",
+			options: ['merge', 'fail', 'overwrite'],
+			aliases: ['project-conflict-policy'],
+		}),
 		folderConflictPolicy: Flags.string({
-			description: 'What to do when a package folder already exists in the target project',
-			options: ['merge', 'fail'],
+			description:
+				'What to do when a package folder already exists in the target project. merge (default) reuses it and merges the package children in; fail rejects the import; overwrite reuses it and additionally archives workflows the package does not contain, at the project root and in package-defined folders (project packages only, needs the workflow:delete scope)',
+			options: ['merge', 'fail', 'overwrite'],
 			aliases: ['folder-conflict-policy'],
 		}),
 		credentialMatchingMode: Flags.string({
@@ -134,6 +141,7 @@ export default class PackageImport extends BaseCommand {
 						workflowPublishingPolicy: flags.workflowPublishingPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
 						missingNodeTypeMode: flags.missingNodeTypeMode,
+						projectConflictPolicy: flags.projectConflictPolicy,
 						folderConflictPolicy: flags.folderConflictPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,
