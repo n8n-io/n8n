@@ -17,6 +17,14 @@ export class InstanceAiConfig {
 	modelApiKey: string = '';
 
 	/**
+	 * JSON object of extra HTTP headers for custom OpenAI-compatible model endpoints
+	 * (e.g. `{ "Modal-Key": "wk-...", "Modal-Secret": "ws-..." }`). Used with
+	 * `N8N_INSTANCE_AI_MODEL_URL`.
+	 */
+	@Env('N8N_INSTANCE_AI_MODEL_HEADERS')
+	modelHeadersJson: string = '';
+
+	/**
 	 * Google Cloud project for Claude on Vertex (`vertex/*` models).
 	 * Falls back to `GOOGLE_VERTEX_PROJECT` / ADC when empty.
 	 */
@@ -24,11 +32,11 @@ export class InstanceAiConfig {
 	vertexProject: string = '';
 
 	/**
-	 * Vertex location for Claude (`global`, `us-east5`, …). Default `global`.
-	 * Falls back to `GOOGLE_VERTEX_LOCATION` when empty at the SDK layer.
+	 * Vertex location for Claude (`global`, `us-east5`, …). Empty until set via env;
+	 * resolved to `GOOGLE_VERTEX_LOCATION` or `global` when building vertex models.
 	 */
 	@Env('N8N_INSTANCE_AI_VERTEX_LOCATION')
-	vertexLocation: string = 'global';
+	vertexLocation: string = '';
 
 	/**
 	 * Service-account JSON for Vertex auth. When empty, google-auth-library uses

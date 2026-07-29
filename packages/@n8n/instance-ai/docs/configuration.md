@@ -14,8 +14,9 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 | `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. Must be set for the module to enable. Opus 5: `anthropic/claude-opus-5`. Vertex Claude: `vertex/claude-opus-4-8`. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
+| `N8N_INSTANCE_AI_MODEL_HEADERS` | string | `''` | JSON object of extra HTTP headers for custom OpenAI-compatible endpoints (used with `N8N_INSTANCE_AI_MODEL_URL`). Values must be strings, e.g. `{"Modal-Key":"wk-...","Modal-Secret":"ws-..."}`. |
 | `N8N_INSTANCE_AI_VERTEX_PROJECT` | string | `''` | GCP project for `vertex/*` models. Falls back to `GOOGLE_VERTEX_PROJECT`. |
-| `N8N_INSTANCE_AI_VERTEX_LOCATION` | string | `global` | Vertex location for `vertex/*` (e.g. `global`, `us-east5`). Falls back to `GOOGLE_VERTEX_LOCATION`. |
+| `N8N_INSTANCE_AI_VERTEX_LOCATION` | string | `''` | Vertex location for `vertex/*` (e.g. `global`, `us-east5`). Falls back to `GOOGLE_VERTEX_LOCATION`, then `global`. |
 | `N8N_INSTANCE_AI_VERTEX_CREDENTIALS` | string | `''` | Service-account JSON for Vertex auth. Empty = Application Default Credentials (`GOOGLE_APPLICATION_CREDENTIALS`). |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
@@ -35,6 +36,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | boolean | `false` | Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel and eval LLM debug reports. |
 | `N8N_INSTANCE_AI_EVAL_TIMING` | boolean | `false` | When `true`, logs a per-execution `[EvalMock][timing]` phase breakdown (hints / bypass-pin / http-mock / ai-turn) for the eval mock-execution path, to attribute mocked-execution latency. A no-op otherwise. |
+| `EVAL_MODAL_LLM_HEADERS` | string | `''` | Eval-only JSON object of extra HTTP headers for Modal (or other custom) LLM endpoints. Overrides `N8N_INSTANCE_AI_MODEL_HEADERS` for eval helper calls (`createEvalAgent`, mock generation, verification). Used with `N8N_INSTANCE_AI_MODEL_URL`. |
 
 ### Memory
 
@@ -237,6 +239,11 @@ N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 # With custom OpenAI-compatible endpoint (e.g. LM Studio, Ollama)
 N8N_INSTANCE_AI_MODEL=your-tool-capable-model
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
+
+# Modal-hosted OpenAI-compatible endpoint (header auth instead of API key)
+N8N_INSTANCE_AI_MODEL=custom/moonshotai/Kimi-K3
+N8N_INSTANCE_AI_MODEL_URL=https://your-app.us-west.modal.direct/v1
+N8N_INSTANCE_AI_MODEL_HEADERS={"Modal-Key":"wk-...","Modal-Secret":"ws-..."}
 
 # Output filtering — secrets + email only, with a custom placeholder
 N8N_INSTANCE_AI_OUTPUT_REDACTION_PII=email

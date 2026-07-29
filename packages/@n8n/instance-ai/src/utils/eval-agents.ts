@@ -3,6 +3,7 @@
 import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
 
 import { applyAgentThinking } from '../agent/apply-agent-thinking';
+import { parseModelHeadersJson } from './parse-model-headers';
 
 export { Tool };
 
@@ -32,6 +33,7 @@ export interface EvalModelConfig {
 	providerModelId: string;
 	apiKey: string;
 	url?: string;
+	headers?: Record<string, string>;
 	project?: string;
 	location?: string;
 	googleCredentialsJson?: string;
@@ -58,6 +60,7 @@ function getApiKey(modelId: string): string {
 		providerKey;
 
 	if (!key) {
+		if (hasHeaderOnlyCustomAuth()) return '';
 		throw new Error(
 			`Missing API key for eval model "${modelId}". Set N8N_INSTANCE_AI_MODEL_API_KEY${
 				provider === 'anthropic'
@@ -77,23 +80,37 @@ function getModelUrl(): string | undefined {
 	return url;
 }
 
+function getModelHeaders(): Record<string, string> | undefined {
+	return (
+		parseModelHeadersJson(process.env.EVAL_MODAL_LLM_HEADERS) ??
+		parseModelHeadersJson(process.env.N8N_INSTANCE_AI_MODEL_HEADERS)
+	);
+}
+
+function hasHeaderOnlyCustomAuth(): boolean {
+	return Boolean(getModelUrl() && getModelHeaders());
+}
+
+function trimmedEnvVar(name: string): string | undefined {
+	const value = process.env[name]?.trim();
+	if (!value) return undefined;
+	return value;
+}
+
 function getVertexProject(): string | undefined {
-	const project =
-		process.env.N8N_INSTANCE_AI_VERTEX_PROJECT?.trim() ?? process.env.GOOGLE_VERTEX_PROJECT?.trim();
-	return project ?? undefined;
+	return trimmedEnvVar('N8N_INSTANCE_AI_VERTEX_PROJECT') ?? trimmedEnvVar('GOOGLE_VERTEX_PROJECT');
 }
 
 function getVertexLocation(): string {
 	return (
-		process.env.N8N_INSTANCE_AI_VERTEX_LOCATION?.trim() ??
-		process.env.GOOGLE_VERTEX_LOCATION?.trim() ??
+		trimmedEnvVar('N8N_INSTANCE_AI_VERTEX_LOCATION') ??
+		trimmedEnvVar('GOOGLE_VERTEX_LOCATION') ??
 		'global'
 	);
 }
 
 function getVertexCredentialsJson(): string | undefined {
-	const json = process.env.N8N_INSTANCE_AI_VERTEX_CREDENTIALS?.trim();
-	return json ?? undefined;
+	return trimmedEnvVar('N8N_INSTANCE_AI_VERTEX_CREDENTIALS');
 }
 
 export function resolveEvalModelConfig(model?: string): EvalModelConfig {
@@ -121,6 +138,7 @@ export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 		providerModelId,
 		apiKey: getApiKey(modelId),
 		url: getModelUrl(),
+		headers: getModelHeaders(),
 	};
 }
 
@@ -145,7 +163,7 @@ const CACHE_PROVIDER_OPTS = {
  */
 function resolveAgentModel(model?: string, fallbackModelConfig?: ModelConfig): ModelConfig {
 	try {
-		const { modelId, apiKey, url, project, location, googleCredentialsJson } =
+		const { modelId, apiKey, url, headers, project, location, googleCredentialsJson } =
 			resolveEvalModelConfig(model);
 		if (modelId.startsWith('vertex/')) {
 			return {
@@ -155,7 +173,12 @@ function resolveAgentModel(model?: string, fallbackModelConfig?: ModelConfig): M
 				...(googleCredentialsJson ? { googleCredentialsJson } : {}),
 			};
 		}
-		return { id: modelId, apiKey, url };
+		return {
+			id: modelId,
+			apiKey,
+			url,
+			...(headers ? { headers } : {}),
+		};
 	} catch (error) {
 		if (fallbackModelConfig) return fallbackModelConfig;
 		throw error;
