@@ -1,4 +1,4 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TRIAL_INTRO_MODAL_EXPERIMENT } from '@/app/constants/experiments';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
