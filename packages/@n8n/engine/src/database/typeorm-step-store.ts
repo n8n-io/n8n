@@ -15,14 +15,15 @@ import {
 export class TypeOrmStepStore implements StepStore {
 	constructor(private readonly repo: Repository<WorkflowStepExecution>) {}
 
-	async createStep(record: NewStepRecord): Promise<{ id: string }> {
-		const step = this.repo.create(record);
-		await this.repo.save(step);
-		return { id: step.id };
+	async createSteps(records: NewStepRecord[]): Promise<Array<{ id: string }>> {
+		const steps = records.map((record) => this.repo.create(record));
+		// NOTE: prefer insert to save for performance reasons.
+		await this.repo.insert(steps);
+		return steps.map(({ id }) => ({ id }));
 	}
 
 	async loadStep(id: string): Promise<StepRecord> {
-		// `findOne({ where })`, not `findOneBy`: the latter's overload exceeds
+		// NOTE: `findOne({ where })`, not `findOneBy`: the latter's overload exceeds
 		// TypeScript's instantiation depth on the recursive `outputs` column type.
 		const row = await this.repo.findOne({ where: { id } });
 		if (!row) throw new StepNotFoundError(id);

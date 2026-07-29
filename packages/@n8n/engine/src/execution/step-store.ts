@@ -34,8 +34,12 @@ export class StepNotFoundError extends Error {
 
 /** Persistence interface for step records. */
 export interface StepStore {
-	/** Persist a new step record; returns its generated id. */
-	createStep(record: NewStepRecord): Promise<{ id: string }>;
+	/**
+	 * Persist new step records; returns their generated ids, in input order.
+	 * Batched rather than one-per-call so planning a fan-out costs a single
+	 * round trip and cannot half-persist.
+	 */
+	createSteps(records: NewStepRecord[]): Promise<Array<{ id: string }>>;
 
 	/** Load a single step by id. Throws `StepNotFoundError` if absent. */
 	loadStep(id: string): Promise<StepRecord>;

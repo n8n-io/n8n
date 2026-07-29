@@ -19,10 +19,10 @@ function makeStepQueue(): WorkQueue<StepMessage> {
 	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 }
 
-/** Only `createStep` is exercised here; the rest belong to the step worker. */
-function makeStepStore(createStep = vi.fn()): StepStore {
+/** Only `createSteps` is exercised here; the rest belong to the step worker. */
+function makeStepStore(createSteps = vi.fn()): StepStore {
 	return {
-		createStep,
+		createSteps,
 		loadStep: vi.fn(),
 		transitionStepStatus: vi.fn(),
 		completeStep: vi.fn(),
@@ -58,34 +58,23 @@ describe('ExecutionStartHandler', () => {
 		const executionStore = makeExecutionStore({
 			loadExecution: vi.fn().mockResolvedValue(record(graph)),
 		});
-		const createStep = vi
+		const createSteps = vi
 			.fn()
-			.mockResolvedValueOnce({ id: 'step-trigger' })
-			.mockResolvedValueOnce({ id: 'step-a' })
-			.mockResolvedValueOnce({ id: 'step-b' });
-		const stepStore = makeStepStore(createStep);
+			.mockResolvedValue([{ id: 'step-trigger' }, { id: 'step-a' }, { id: 'step-b' }]);
+		const stepStore = makeStepStore(createSteps);
 		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'queued', 'running');
-		// trigger recorded completed, then each successor recorded queued
-		expect(createStep).toHaveBeenNthCalledWith(1, {
-			executionId: 'exec-1',
-			nodeId: 'trigger',
-			status: 'completed',
-		});
-		expect(createStep).toHaveBeenNthCalledWith(2, {
-			executionId: 'exec-1',
-			nodeId: 'a',
-			status: 'queued',
-		});
-		expect(createStep).toHaveBeenNthCalledWith(3, {
-			executionId: 'exec-1',
-			nodeId: 'b',
-			status: 'queued',
-		});
+		// one batch: the trigger completed, then each successor queued
+		expect(createSteps).toHaveBeenCalledTimes(1);
+		expect(createSteps).toHaveBeenCalledWith([
+			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed' },
+			{ executionId: 'exec-1', nodeId: 'a', status: 'queued' },
+			{ executionId: 'exec-1', nodeId: 'b', status: 'queued' },
+		]);
 		// step:ready references the queued step-record ids
 		expect(stepQueue.publish).toHaveBeenNthCalledWith(1, {
 			type: 'step:ready',
@@ -110,7 +99,7 @@ describe('ExecutionStartHandler', () => {
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(executionStore.loadExecution).not.toHaveBeenCalled();
-		expect(stepStore.createStep).not.toHaveBeenCalled();
+		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 	});
 
@@ -126,7 +115,7 @@ describe('ExecutionStartHandler', () => {
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'running', 'failed');
-		expect(stepStore.createStep).not.toHaveBeenCalled();
+		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 	});
 
@@ -138,8 +127,8 @@ describe('ExecutionStartHandler', () => {
 		const executionStore = makeExecutionStore({
 			loadExecution: vi.fn().mockResolvedValue(record(graph)),
 		});
-		const createStep = vi.fn().mockResolvedValue({ id: 'step-trigger' });
-		const stepStore = makeStepStore(createStep);
+		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger' }]);
+		const stepStore = makeStepStore(createSteps);
 		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
 
@@ -148,12 +137,10 @@ describe('ExecutionStartHandler', () => {
 		// claimed (queued -> running) but not failed
 		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'queued', 'running');
 		expect(executionStore.transitionStatus).not.toHaveBeenCalledWith('exec-1', 'running', 'failed');
-		expect(createStep).toHaveBeenCalledTimes(1);
-		expect(createStep).toHaveBeenCalledWith({
-			executionId: 'exec-1',
-			nodeId: 'trigger',
-			status: 'completed',
-		});
+		expect(createSteps).toHaveBeenCalledTimes(1);
+		expect(createSteps).toHaveBeenCalledWith([
+			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed' },
+		]);
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 	});
 });
