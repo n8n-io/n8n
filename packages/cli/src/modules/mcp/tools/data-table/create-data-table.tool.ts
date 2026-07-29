@@ -14,16 +14,13 @@ const columnSchema = z.object({
 });
 
 const createInputSchema = {
-	projectId: z.string().describe('The project ID where the data table will be created'),
+	projectId: z.string(),
 	name: z
 		.string()
 		.min(1)
 		.max(128)
 		.describe('The name of the data table (must be unique within the project)'),
-	columns: z
-		.array(columnSchema)
-		.min(1)
-		.describe('The columns to create in the data table. At least one column is required.'),
+	columns: z.array(columnSchema).min(1),
 } satisfies z.ZodRawShape;
 
 const createOutputSchema = {
@@ -39,8 +36,6 @@ export const createCreateDataTableTool = (
 ): ToolDefinition<typeof createInputSchema> => ({
 	name: 'create_data_table',
 	config: {
-		description:
-			'Create a new data table with the specified columns. Use search_projects to find a project ID first.',
 		inputSchema: createInputSchema,
 		outputSchema: createOutputSchema,
 		annotations: {

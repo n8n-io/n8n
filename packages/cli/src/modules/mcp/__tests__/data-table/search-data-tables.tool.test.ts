@@ -49,7 +49,7 @@ describe('search_data_tables MCP tool', () => {
 
 		expect(tool.name).toBe('search_data_tables');
 		expect(tool.config).toBeDefined();
-		expect(typeof tool.config.description).toBe('string');
+		expect(tool.config.description).toBeUndefined();
 		expect(tool.config.inputSchema).toBeDefined();
 		expect(tool.config.outputSchema).toBeDefined();
 		expect(typeof tool.handler).toBe('function');

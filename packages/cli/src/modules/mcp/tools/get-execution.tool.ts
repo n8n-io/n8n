@@ -15,8 +15,8 @@ import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = z.object({
-	workflowId: z.string().describe('The ID of the workflow the execution belongs to'),
-	executionId: z.string().describe('The ID of the execution to retrieve'),
+	workflowId: z.string(),
+	executionId: z.string(),
 	includeData: z
 		.boolean()
 		.optional()
@@ -70,8 +70,6 @@ export const createGetExecutionTool = (
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'get_execution',
 	config: {
-		description:
-			'Get execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {

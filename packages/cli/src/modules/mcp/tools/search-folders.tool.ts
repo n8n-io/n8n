@@ -11,7 +11,7 @@ import { createLimitSchema } from './schemas';
 const MAX_RESULTS = 100;
 
 const inputSchema = {
-	projectId: z.string().describe('The ID of the project to search folders in'),
+	projectId: z.string(),
 	query: z.string().optional().describe('Filter folders by name (case-insensitive partial match)'),
 	limit: createLimitSchema(MAX_RESULTS),
 } satisfies z.ZodRawShape;
@@ -40,8 +40,6 @@ export const createSearchFoldersTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'search_folders',
 	config: {
-		description:
-			'Search for folders within a project. Use this to find a folder ID before creating a workflow in a specific folder. Requires a projectId — use search_projects first if needed.',
 		inputSchema,
 		outputSchema,
 		annotations: {

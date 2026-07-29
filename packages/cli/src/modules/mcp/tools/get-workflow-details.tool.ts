@@ -19,7 +19,7 @@ import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = {
-	workflowId: z.string().describe('The ID of the workflow to retrieve'),
+	workflowId: z.string(),
 } satisfies z.ZodRawShape;
 
 export type WorkflowDetailsOutputSchema = typeof workflowDetailsOutputSchema;
@@ -44,7 +44,7 @@ export const createWorkflowDetailsTool = (
 	return {
 		name: 'get_workflow_details',
 		config: {
-			description: 'Get detailed information about a specific workflow including trigger details',
+			description: "Get a workflow's full definition, including how to trigger it.",
 			inputSchema,
 			outputSchema,
 			annotations: {

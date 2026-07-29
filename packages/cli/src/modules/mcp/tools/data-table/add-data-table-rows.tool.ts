@@ -11,15 +11,13 @@ import { dataTableProjectIdSchema } from '../schemas';
 const ADD_ROWS_MAX = 1000;
 
 const addRowsInputSchema = {
-	dataTableId: z.string().describe('The ID of the data table to insert rows into'),
+	dataTableId: z.string(),
 	projectId: dataTableProjectIdSchema,
 	rows: z
 		.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])))
 		.min(1)
 		.max(ADD_ROWS_MAX)
-		.describe(
-			`Array of row objects to insert. Each object maps column names to values. Maximum ${ADD_ROWS_MAX} rows per call.`,
-		),
+		.describe('Row objects mapping column names to values.'),
 } satisfies z.ZodRawShape;
 
 const addRowsOutputSchema = {
@@ -34,8 +32,6 @@ export const createAddDataTableRowsTool = (
 ): ToolDefinition<typeof addRowsInputSchema> => ({
 	name: 'add_data_table_rows',
 	config: {
-		description:
-			'Insert rows into an existing data table. Each row is an object mapping column names to values. Use search_data_tables to find the data table ID first.',
 		inputSchema: addRowsInputSchema,
 		outputSchema: addRowsOutputSchema,
 		annotations: {

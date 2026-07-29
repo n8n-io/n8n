@@ -16,7 +16,7 @@ import { getMcpWorkflow } from '../workflow-validation.utils';
 import { buildRestoreVersionMetadata } from './version-metadata';
 
 const inputSchema = z.object({
-	workflowId: z.string().describe('The ID of the workflow to restore'),
+	workflowId: z.string(),
 	versionId: z.string().describe('The version ID to restore, as returned by get_workflow_history'),
 });
 
@@ -57,7 +57,7 @@ export const createRestoreWorkflowVersionTool = (
 	name: 'restore_workflow_version',
 	config: {
 		description:
-			'Restore a workflow to a previous version from its history. Re-applies that version as the current draft and records a new history entry. Use get_workflow_history to find the versionId.',
+			"Restore a previous version as the workflow's current draft; records a new history entry.",
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {

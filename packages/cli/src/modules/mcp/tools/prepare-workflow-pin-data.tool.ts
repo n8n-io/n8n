@@ -20,7 +20,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
-	workflowId: z.string().describe('The ID of the workflow to generate test pin data for'),
+	workflowId: z.string(),
 });
 
 const outputSchema = {
