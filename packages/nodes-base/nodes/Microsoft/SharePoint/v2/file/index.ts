@@ -65,9 +65,6 @@ export async function getFiles(
 		endpoint,
 		qs: {
 			$select: 'id,name,file',
-			// `file` isn't a documented filterable property, so the reply is
-			// re-checked by `keep`; when honored this just trims the payload
-			$filter: 'file ne null',
 		},
 		keep: (item) => Boolean(item.file),
 		filter,
