@@ -1,9 +1,11 @@
+import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
@@ -32,7 +34,11 @@ import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
  */
 @Service()
 export class N8nPackageParser {
-	constructor(private readonly workflowSerializer: WorkflowSerializer) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly nodeTypes: NodeTypes,
+		private readonly workflowSerializer: WorkflowSerializer,
+	) {}
 
 	async getManifest(reader: PackageReader): Promise<PackageManifest> {
 		try {
@@ -123,6 +129,7 @@ export class N8nPackageParser {
 		}
 
 		WorkflowHelpers.validateWorkflowStructure(entity);
+		this.normalizeNodeGroups(entity, path);
 
 		return {
 			entity,
@@ -131,6 +138,30 @@ export class N8nPackageParser {
 			parentFolderId,
 			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
 		};
+	}
+
+	/**
+	 * Node groups are cosmetic, so a package whose groups don't hold together
+	 * imports without them rather than failing outright.
+	 *
+	 * This runs the same rules the save path applies (hence the node-type
+	 * resolver, which the trigger-node rule needs) — a group this drops would
+	 * otherwise fail the whole package in `WorkflowCreationService`.
+	 */
+	private normalizeNodeGroups(entity: WorkflowEntity, path: string): void {
+		try {
+			WorkflowHelpers.validateWorkflowNodeGroups(
+				entity,
+				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+			);
+		} catch {
+			this.logger.warn(`Package workflow file at ${path} has invalid nodeGroups, dropping them.`);
+			entity.nodeGroups = [];
+		}
+
+		for (const warning of WorkflowHelpers.sanitizeNodeGroupDescriptions(entity)) {
+			this.logger.warn(`Package workflow file at ${path}: ${warning}`);
+		}
 	}
 
 	private async readFolder(reader: PackageReader, entry: ManifestEntry): Promise<PreparedFolder> {
