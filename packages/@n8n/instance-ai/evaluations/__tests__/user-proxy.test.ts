@@ -527,10 +527,13 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// TRUST-349 — setup-wizard credential slots (nodeCredentialsJson)
+	// TRUST-349 — workflows(action='setup') wizard: credential slots via
+	// apply_setup_wizard's nodeCredentialsJson. This is the tool the builder
+	// actually reaches for during a normal build ("the setup card" a real user
+	// sees); NOT the standalone credentials(action='setup') tool below.
 	// -------------------------------------------------------------------------
 
-	it('fills both parameters and a credential slot on a mixed wizard card when engaged', async () => {
+	it("workflows(action='setup'): fills both parameters and a credential slot on a mixed wizard card when engaged", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -578,7 +581,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('routes a credential-only wizard card to the agent when engaged, instead of auto-declining', async () => {
+	it("workflows(action='setup'): routes a credential-only wizard card to the agent when engaged, instead of auto-declining", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -611,7 +614,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('still auto-declines a credential-only wizard card with no governing stage direction', async () => {
+	it("workflows(action='setup'): still auto-declines a credential-only wizard card with no governing stage direction", async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'Post to Slack every morning.' }],
@@ -636,7 +639,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('maps different credential types for two different nodes on the same wizard card', async () => {
+	it("workflows(action='setup'): maps different credential types for two different nodes on the same wizard card", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -680,7 +683,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('drops a nodeCredentialsJson entry naming a node not on the setup card', async () => {
+	it("workflows(action='setup'): drops a nodeCredentialsJson entry naming a node not on the setup card", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -722,7 +725,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it('drops a nodeCredentialsJson entry naming a credential id not in that node/type existingCredentials', async () => {
+	it("workflows(action='setup'): drops a nodeCredentialsJson entry naming a credential id not in that node/type existingCredentials", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -764,7 +767,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it('handles credential events deterministically without invoking the agent', async () => {
+	it("credentials(action='setup'): handles credential events deterministically without invoking the agent", async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
@@ -780,10 +783,15 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// TRUST-349 — credential-setup engagement (choose_credential_setup_option)
+	// TRUST-349 — credentials(action='setup') standalone tool: choose_credential_setup_option.
+	// This is the "auto | manual | skip" card — NOT the workflows(action='setup')
+	// wizard above. Live testing (see PR description) found the builder doesn't
+	// actually reach for this tool during a normal build; kept per explicit
+	// decision to retain it in case some other flow (OAuth-specific, or a
+	// standalone "connect my X account" request) triggers it.
 	// -------------------------------------------------------------------------
 
-	it('still defers credentials deterministically when the script has an unrelated stage direction', async () => {
+	it("credentials(action='setup'): still defers deterministically when the script has an unrelated stage direction", async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
 			conversation: [
@@ -801,7 +809,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(0);
 	});
 
-	it('routes credential setup to the agent when a stage direction asks the user to engage', async () => {
+	it("credentials(action='setup'): routes to the agent when a stage direction asks the user to engage", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
 		const proxy = new UserProxyLlm({
@@ -828,7 +836,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('resolves manual selection by explicit credentialType among multiple requests', async () => {
+	it("credentials(action='setup'): resolves manual selection by explicit credentialType among multiple requests", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'choose_credential_setup_option',
@@ -859,7 +867,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('resolves manual selection to a specific credential by existingCredentialId when several match the same type', async () => {
+	it("credentials(action='setup'): resolves manual selection to a specific credential by existingCredentialId when several match the same type", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'choose_credential_setup_option',
@@ -892,7 +900,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('declines manual selection when existingCredentialId does not match any listed credential', async () => {
+	it("credentials(action='setup'): declines manual selection when existingCredentialId does not match any listed credential", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'choose_credential_setup_option',
@@ -935,7 +943,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it('declines manual selection when several candidates exist and no existingCredentialId disambiguates', async () => {
+	it("credentials(action='setup'): declines manual selection when several candidates exist and no existingCredentialId disambiguates", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
 		const logger = {
@@ -974,7 +982,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it('declines manual selection when the requested type has no existing credential', async () => {
+	it("credentials(action='setup'): declines manual selection when the requested type has no existing credential", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
 		const logger = {
@@ -1005,7 +1013,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it('requests automatic setup when the agent picks auto', async () => {
+	it("credentials(action='setup'): requests automatic setup when the agent picks auto", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'choose_credential_setup_option',
@@ -1032,7 +1040,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('declines auto setup when no credentialType can be resolved from context or the decision', async () => {
+	it("credentials(action='setup'): declines auto setup when no credentialType can be resolved from context or the decision", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'auto' });
 		const logger = {
@@ -1069,7 +1077,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it('declines when the agent picks skip', async () => {
+	it("credentials(action='setup'): declines when the agent picks skip", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
 		const proxy = new UserProxyLlm({
@@ -1092,7 +1100,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('does not let a credential-engagement stage direction affect unrelated domain-access events', async () => {
+	it("credentials(action='setup') gate: a credential-engagement stage direction does not leak into unrelated domain-access events", async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
 			conversation: [
@@ -1115,22 +1123,25 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		['[reject the plan unless it sorts descending]', false],
 		['[withhold the channel until asked]', false],
 		['[keep requesting changes until the list is exhausted]', false],
-	])('stage direction %j routes credential card to agent = %s', async (note, shouldEngage) => {
-		const agent = new FakeAgent();
-		if (shouldEngage) {
-			agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
-		}
-		const proxy = new UserProxyLlm({
-			conversation: [
-				{ role: 'user', text: 'Post to Slack every morning.' },
-				{ role: 'user', text: note },
-			],
-			agent,
-		});
+	])(
+		"credentials(action='setup'): stage direction %j routes credential card to agent = %s",
+		async (note, shouldEngage) => {
+			const agent = new FakeAgent();
+			if (shouldEngage) {
+				agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
+			}
+			const proxy = new UserProxyLlm({
+				conversation: [
+					{ role: 'user', text: 'Post to Slack every morning.' },
+					{ role: 'user', text: note },
+				],
+				agent,
+			});
 
-		await proxy.respondToConfirmation(credentialEvent(`req-note-${note}`));
-		expect(agent.callCount).toBe(shouldEngage ? 1 : 0);
-	});
+			await proxy.respondToConfirmation(credentialEvent(`req-note-${note}`));
+			expect(agent.callCount).toBe(shouldEngage ? 1 : 0);
+		},
+	);
 
 	it('handles domain-access events deterministically with allow_all', async () => {
 		const agent = new FakeAgent();
@@ -1164,7 +1175,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(0);
 	});
 
-	it('routes setup-wizard events to the agent even when they include credentialRequests', async () => {
+	it("workflows(action='setup'): routes to the agent even when the payload also includes credentialRequests (setupRequests takes priority)", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
