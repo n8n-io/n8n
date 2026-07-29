@@ -236,20 +236,6 @@ describe('create-workflow-from-code MCP tool', () => {
 		});
 	});
 
-	describe('tool description mentions skippedGroups only when canvasGroupsEnabled', () => {
-		test('flag off: does not mention skippedGroups', () => {
-			expect(createTool().config.description).not.toContain('skippedGroups');
-		});
-
-		test('flag on: mentions skippedGroups as the non-fatal group exception', () => {
-			const description = createTool({ canvasGroupsEnabled: true }).config.description;
-			expect(description).toContain(
-				'An invalid node group does not fail the creation: it is skipped and reported in skippedGroups',
-			);
-			expect(description).toContain("Fix and add it afterwards via update_workflow's addNodeGroup");
-		});
-	});
-
 	describe('validation', () => {
 		test('returns error when folderId is provided without projectId', async () => {
 			const result = await callHandler({ code: 'const wf = ...', folderId: 'folder-1' });

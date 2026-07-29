@@ -3,11 +3,7 @@ import { validateWorkflowGroups } from 'n8n-workflow';
 import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import {
-	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
-	CODE_BUILDER_VALIDATE_TOOL,
-	MCP_UPDATE_WORKFLOW_TOOL,
-} from './constants';
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
 import {
 	autoPopulateNodeCredentials,
@@ -182,15 +178,6 @@ const outputSchema = {
 		.describe('Error message explaining why the creation failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
-const buildToolDescription = (canvasGroupsEnabled: boolean) => {
-	const base =
-		'Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ' +
-		`${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`;
-	return canvasGroupsEnabled
-		? `${base} An invalid node group does not fail the creation: it is skipped and reported in skippedGroups instead, while the rest of the workflow is still created. Fix and add it afterwards via ${MCP_UPDATE_WORKFLOW_TOOL.toolName}'s addNodeGroup or setNodeGroups operations.`
-		: base;
-};
-
 /**
  * MCP tool that creates a workflow in n8n from validated SDK code.
  * Parses the code, validates it, and saves the resulting workflow.
@@ -210,7 +197,7 @@ export const createCreateWorkflowFromCodeTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: buildToolDescription(options.canvasGroupsEnabled === true),
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {

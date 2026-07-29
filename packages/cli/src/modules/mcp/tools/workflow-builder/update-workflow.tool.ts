@@ -391,7 +391,7 @@ const outputSchema = {
 		)
 		.optional()
 		.describe(
-			'Submitted group operations that did not take effect: either invalid, or their group broke the group rules. They were skipped instead of failing the whole update, and the rest of the batch was still saved. Fix and retry these.',
+			'Submitted group operations that did not take effect: either invalid, or their group broke the group rules.',
 		),
 	removedGroups: z
 		.array(
