@@ -348,6 +348,15 @@ const isSimpleTemplatedAuthView = computed(
 	() => templatedAuthMarkers.value.length > 0 && !showAdvancedTemplatedAuth.value,
 );
 
+// The templated auth probe only proves the service accepted the request —
+// some services answer 2xx regardless of the key — so the green banner
+// states that instead of claiming the connection was verified.
+const testSuccessMessage = computed(() =>
+	props.credentialType?.name === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+		? i18n.baseText('credentialEdit.credentialConfig.authProbeAccepted')
+		: i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully'),
+);
+
 function onDocumentationUrlClick(): void {
 	telemetry.track('User clicked credential modal docs link', {
 		docs_link: documentationUrl.value,
@@ -619,7 +628,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				<Banner
 					v-show="testedSuccessfully && !showValidationWarning"
 					theme="success"
-					:message="i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
+					:message="testSuccessMessage"
 					:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
 					:button-loading-label="i18n.baseText('credentialEdit.credentialConfig.retrying')"
 					:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"

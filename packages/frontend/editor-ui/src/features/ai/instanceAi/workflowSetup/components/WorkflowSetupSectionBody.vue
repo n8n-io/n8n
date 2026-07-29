@@ -61,6 +61,13 @@ const hasTemplatedHint = computed(
 	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE && !!props.section.setupHint,
 );
 
+// Templated Custom Auth is one type shared by every service, so NodeCredentials'
+// most-recent-from-store auto-select could silently pick another service's key —
+// selection must come from the user or a freshly created credential.
+const isTemplatedType = computed(
+	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+);
+
 // The type-derived selector label would read "Credential for Templated Custom
 // Auth" — name the service from the recipe instead ("fal.ai API Key credentials").
 const credentialsFieldLabel = computed(() => {
@@ -220,6 +227,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			standalone
 			hide-issues
 			hide-ask-assistant
+			:skip-auto-select="isTemplatedType"
 			:credential-setup-hint="section.setupHint"
 			:credentials-field-label="credentialsFieldLabel"
 			@credential-selected="onCredentialSelected"

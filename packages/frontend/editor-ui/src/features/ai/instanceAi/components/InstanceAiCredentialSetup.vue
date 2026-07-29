@@ -618,6 +618,9 @@ async function handleSetupAutomatically() {
 							standalone
 							hide-issues
 							hide-ask-assistant
+							:skip-auto-select="
+								currentRequest.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+							"
 							:credential-setup-hint="currentRequest.setupHint"
 							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"

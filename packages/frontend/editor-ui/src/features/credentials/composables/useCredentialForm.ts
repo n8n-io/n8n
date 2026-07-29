@@ -481,6 +481,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			...(setupHint.acceptedStatusCodes?.length
 				? { acceptedStatusCodes: JSON.stringify(setupHint.acceptedStatusCodes) }
 				: {}),
+			...(setupHint.serviceHost ? { serviceHost: setupHint.serviceHost } : {}),
 		};
 	}
 

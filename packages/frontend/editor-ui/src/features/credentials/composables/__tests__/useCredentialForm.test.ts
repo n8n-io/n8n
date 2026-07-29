@@ -101,6 +101,7 @@ const falSetupHint = {
 	suggestedName: 'fal.ai API Key',
 	testUrl: 'https://fal.run/v1/models',
 	docsUrl: 'https://fal.ai/dashboard/keys',
+	serviceHost: 'fal.run',
 };
 
 describe('useCredentialForm', () => {
@@ -203,6 +204,7 @@ describe('useCredentialForm', () => {
 				placeholderDefs: JSON.stringify(falSetupHint.placeholders, null, 2),
 				testUrl: falSetupHint.testUrl,
 				docsUrl: falSetupHint.docsUrl,
+				serviceHost: falSetupHint.serviceHost,
 			});
 			// A filled template + persisted test URL makes the credential probeable.
 			expect(form.isCredentialTestable.value).toBe(true);

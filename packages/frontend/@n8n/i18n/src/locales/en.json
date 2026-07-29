@@ -1010,6 +1010,7 @@
 	"credentialEdit.credentialConfig.accountNotConnected.endUser": "Connect your {service} account",
 	"credentialEdit.credentialConfig.connect": "Connect",
 	"credentialEdit.credentialConfig.connectOAuth2Credential": "Connect OAuth2 Credential",
+	"credentialEdit.credentialConfig.authProbeAccepted": "The service accepted the credential",
 	"credentialEdit.credentialConfig.clickToCopy": "Click To Copy",
 	"credentialEdit.credentialConfig.connectionTestedSuccessfully": "Connection tested successfully",
 	"credentialEdit.credentialConfig.couldntConnectWithTheseSettings": "Couldn’t connect with these settings",
