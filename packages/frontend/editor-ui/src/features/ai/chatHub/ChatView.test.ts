@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { registerToastNotifier } from '@/app/toastNotifier';
+import { registerToastNotifier } from '@/app/plugins/toastNotifier';
 import { emptyChatModelsResponse } from '@n8n/api-types';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';

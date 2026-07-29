@@ -12,7 +12,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { registerToastNotifier } from '@/app/toastNotifier';
+import { registerToastNotifier } from '@/app/plugins/toastNotifier';
 import DynamicBanner from './banners/DynamicBanner.vue';
 import type { Component } from 'vue';
 import { markRaw } from 'vue';

@@ -3,7 +3,7 @@ import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
-import { registerToastNotifier } from '@/app/toastNotifier';
+import { registerToastNotifier } from '@/app/plugins/toastNotifier';
 
 /**
  * This is bootstrap wiring, not a re-export: the notifier registered here is
