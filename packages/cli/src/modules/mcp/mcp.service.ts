@@ -53,15 +53,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { getAllowedToolNames } from './mcp-scopes';
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
-import {
-	createAddDataTableColumnTool,
-	createAddDataTableRowsTool,
-	createCreateDataTableTool,
-	createDeleteDataTableColumnTool,
-	createRenameDataTableColumnTool,
-	createRenameDataTableTool,
-	createSearchDataTablesTool,
-} from './tools/data-table';
+import { createManageDataTableTool, createSearchDataTablesTool } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -420,31 +412,8 @@ export class McpService {
 		const searchDataTablesTool = createSearchDataTablesTool(user, dataTableOps, this.telemetry);
 		registerIfAllowed(searchDataTablesTool);
 
-		const createDataTableTool = createCreateDataTableTool(user, dataTableOps, this.telemetry);
-		registerIfAllowed(createDataTableTool);
-
-		const renameDataTableTool = createRenameDataTableTool(user, dataTableOps, this.telemetry);
-		registerIfAllowed(renameDataTableTool);
-
-		const addDataTableColumnTool = createAddDataTableColumnTool(user, dataTableOps, this.telemetry);
-		registerIfAllowed(addDataTableColumnTool);
-
-		const deleteDataTableColumnTool = createDeleteDataTableColumnTool(
-			user,
-			dataTableOps,
-			this.telemetry,
-		);
-		registerIfAllowed(deleteDataTableColumnTool);
-
-		const renameDataTableColumnTool = createRenameDataTableColumnTool(
-			user,
-			dataTableOps,
-			this.telemetry,
-		);
-		registerIfAllowed(renameDataTableColumnTool);
-
-		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
-		registerIfAllowed(addDataTableRowsTool);
+		const manageDataTableTool = createManageDataTableTool(user, dataTableOps, this.telemetry);
+		registerIfAllowed(manageDataTableTool);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {

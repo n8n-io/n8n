@@ -81,7 +81,7 @@ function buildNotFoundError(ref: DataTableReference): string {
 	const lookupBy = ref.mode === 'name' ? 'name' : 'id';
 	return (
 		`data table with ${lookupBy} '${ref.value}' not found or not accessible in this project. ` +
-		'Use `create_data_table` to create it first, or `search_data_tables` to find an existing one.'
+		'Use `manage_data_table` with operation "create" to create it first, or `search_data_tables` to find an existing one.'
 	);
 }
 
