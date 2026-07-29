@@ -6,7 +6,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import MainSidebar from '@/app/components/MainSidebar.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
