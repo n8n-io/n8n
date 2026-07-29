@@ -76,8 +76,8 @@ export class WorkflowPackageImporter {
 			manifest.requirements?.dataTables,
 			workflows,
 		);
-		// Requirement-based, unlike the variable gate: this rejects even when every table
-		// already resolves and nothing would be created. Aligning it needs its own ticket.
+		// Still requirement-based, unlike the variable gate above: this rejects even when every table
+		// already resolves and nothing would be created.
 		if (dataTableRequirements?.length && request.dataTableMissingMode === 'create') {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['dataTable:create']);
 		}

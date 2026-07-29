@@ -74,8 +74,7 @@ export function reconcileVariableSummary(input: {
 	const stubbed = new Set(input.stubbed);
 	const skipped = new Set(input.skipped);
 
-	// A skipped creation means the name already existed. If this import created or stubbed it, we
-	// created it, so it stays in that list; otherwise it genuinely pre-existed and counts as `matched`.
+	// A skipped name that no scope of this import created genuinely pre-existed, so it counts as matched.
 	for (const name of skipped) {
 		if (!created.has(name) && !stubbed.has(name)) matched.add(name);
 	}

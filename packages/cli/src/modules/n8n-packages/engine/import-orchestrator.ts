@@ -107,11 +107,9 @@ export class ImportOrchestrator {
 	) {}
 
 	/**
-	 * Applies every gate on variable creation, across all scopes of the import, in
-	 * instance-to-project order so the broadest cause wins: the licence and API key scope
-	 * cover the whole instance, then each scope's own create permission, then the quota.
-	 * An unlicensed instance also reports a zero quota, which would otherwise surface as a
-	 * limit issue instead of the real cause.
+	 * Gates variable creation in instance-to-project order so the broadest cause wins: licence and API
+	 * key scope, then each scope's create permission, then the quota. An unlicensed instance also reports
+	 * a zero quota, which would otherwise surface as a limit issue instead of the real cause.
 	 */
 	async assertNotBlocked(
 		plans: ImportPlan[],

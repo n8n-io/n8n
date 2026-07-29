@@ -1,10 +1,7 @@
 import type { VariableImportPlan, VariableResolutionFailure } from './variable.types';
 import { VariableMissingMode } from '../../n8n-packages.types';
 
-/**
- * What a mode does about an unresolved requirement; one that creates the variable
- * cannot block, and only a creating mode can carry the package's value into it.
- */
+/** What a mode does about an unresolved requirement: creating it cannot block, and only creating can use its value. */
 type MissingVariableEffect =
 	| { creates: false; usesPackageValue: false; blocks: boolean }
 	| { creates: true; usesPackageValue: boolean; blocks: false };

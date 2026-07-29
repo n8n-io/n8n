@@ -15,9 +15,8 @@ export function assertPackageImportApiKeyScopes(
 }
 
 /**
- * Gated on what the import will actually create, not on what the package requires: a package
- * whose variables all resolve on this instance creates nothing, so it needs neither the licence
- * nor the scope. Mirrors the variables UI, which only blocks creation.
+ * Gated on what the import will create, not on what the package requires: a package whose variables
+ * all resolve creates nothing, so it needs neither the licence nor the scope. Mirrors the variables UI.
  */
 export function assertVariableCreationAllowed(options: {
 	licenseState: LicenseState;

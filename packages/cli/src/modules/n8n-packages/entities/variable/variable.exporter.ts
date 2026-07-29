@@ -130,9 +130,8 @@ export class VariableExporter {
 	}
 
 	/**
-	 * A row that breaks the variable contract cannot be bundled: import parses the
-	 * same schema and would reject the package. Name the row and the broken rule
-	 * instead of letting a raw parse failure surface as an unexplained 500.
+	 * Import parses the same schema, so a contract-breaking row cannot be bundled. Name the row and the
+	 * broken rule instead of letting a raw parse failure surface as an unexplained 500.
 	 */
 	private serializeOrBlock(variable: Variables, includeValue: boolean): SerializedVariable {
 		try {

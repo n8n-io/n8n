@@ -24,9 +24,8 @@ export interface VariableExportResult {
 }
 
 export type PlacedVariableRequirement = PackageVariableRequirement & {
-	/** When true a created variable lands at global scope; otherwise in the context's project. */
 	globalPlacement: boolean;
-	/** Value of the variable file the package bundles for this scope; beats the requirement's own value. */
+	/** Value of the variable file the package bundles for this scope, if any. */
 	packageValue?: string;
 };
 
@@ -40,7 +39,6 @@ export interface VariableResolutionFailure {
 	usedByWorkflows: string[];
 }
 
-/** A variable the import would create, with its resolved destination and optional package value. */
 export interface VariableCreation {
 	name: string;
 	projectId?: string;
@@ -48,7 +46,6 @@ export interface VariableCreation {
 	usedByWorkflows: string[];
 }
 
-/** Reports that creating the planned variables would exceed the instance variable quota. */
 export interface VariableLimitFailure {
 	limit: number;
 	remaining: number;
@@ -106,14 +103,12 @@ export function computeVariableLimitFailure(
 export interface VariableImportPlan {
 	matched: string[];
 	missing: VariableResolutionFailure[];
-	/** Variables to create under a creation-capable missing mode. */
 	creations: VariableCreation[];
 }
 
 export interface VariableApplyResult {
-	/** Names created with a package value (one entry per name, even across projects). */
+	/** Created carrying the package's value; `stubbed` were created empty. */
 	created: string[];
-	/** Names created without a package value. */
 	stubbed: string[];
 	skippedExisting: string[];
 }

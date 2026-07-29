@@ -32,11 +32,7 @@ import type { ImportContext } from '../../n8n-packages.types';
 export class VariableImporter {
 	constructor(private readonly variablesService: VariablesService) {}
 
-	/**
-	 * Resolves the package's variable requirements against the target project
-	 * (then global), mirroring runtime `$vars` precedence, and under a creating mode
-	 * derives the variables to create.
-	 */
+	/** Resolves requirements against the target project then global, mirroring runtime `$vars` precedence. */
 	async plan(context: ImportContext, request: VariableImportRequest): Promise<VariableImportPlan> {
 		const requirements = request.requirements ?? [];
 		if (requirements.length === 0) return { matched: [], missing: [], creations: [] };
@@ -67,8 +63,7 @@ export class VariableImporter {
 			}
 			missing.push(createFailure(requirement));
 			if (createsMissing) {
-				// The bundled variable file is the authority on the value; the manifest
-				// requirement carries it only as a fallback for hand-made packages.
+				// The requirement's own value is only a fallback for hand-made packages.
 				const value = usesPackageValue
 					? (requirement.packageValue ?? requirement.value)
 					: undefined;
@@ -102,12 +97,9 @@ export class VariableImporter {
 	}
 
 	/**
-	 * Creates the planned variables with package values or empty stubs. Re-checks the exact destination
-	 * against a fresh cache before each create so a variable already created by an
-	 * earlier scope of the same import (or an external writer) is skipped rather
-	 * than duplicated. `VariablesService.create` re-enforces permission, license,
-	 * quota, and uniqueness and refreshes the cache, which is what makes the
-	 * cross-scope dedupe work.
+	 * Re-checks the destination against a fresh cache before each create, so a variable an earlier
+	 * scope of this import already created is skipped rather than duplicated. `VariablesService.create`
+	 * refreshes that cache, which is what makes the cross-scope dedupe work.
 	 */
 	async apply(context: ImportContext, plan: VariableImportPlan): Promise<VariableApplyResult> {
 		const created: string[] = [];
@@ -127,8 +119,7 @@ export class VariableImporter {
 					value: creation.value ?? '',
 					...(creation.projectId ? { projectId: creation.projectId } : {}),
 				});
-				// Classified by the value the row ends up with, not by whether the package
-				// carried one: a bundled empty value still leaves the user something to fill in.
+				// A bundled-but-empty value still leaves the user something to fill in, so it is a stub.
 				if (creation.value) {
 					created.push(creation.name);
 				} else {

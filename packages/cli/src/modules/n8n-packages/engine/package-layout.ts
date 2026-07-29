@@ -24,10 +24,7 @@ export function workflowsInScope(
 	);
 }
 
-/**
- * The entry bundling `name` for one scope: the scope's own variables/ entry beats a
- * top-level one. Two entries at the winning tier are ambiguous and reject the import.
- */
+/** The entry bundling `name` for one scope: its own variables/ entry beats a top-level one, a tie is ambiguous. */
 function variableBundleEntry(
 	entries: ManifestEntry[] | undefined,
 	basePrefix: string,
@@ -48,15 +45,10 @@ function variableBundleEntry(
 interface VariableBundleLookup {
 	requirements: PackageVariableRequirement[] | undefined;
 	manifestVariables: ManifestEntry[] | undefined;
-	/** Absent under a mode that ignores package values, which never reads the bundled files. */
 	bundledVariables?: Map<string, SerializedVariable>;
 }
 
-/**
- * Pairs each requirement with the value the package bundles for it and the scope a
- * creation would land in, so the variable importer never reads the manifest itself.
- * Callers differ only in how they decide the scope, which `isGlobal` supplies.
- */
+/** Resolves each requirement's bundled value and destination, so the variable importer never reads the manifest. */
 function placeWith(
 	{ requirements, manifestVariables, bundledVariables }: VariableBundleLookup,
 	basePrefix: string,
@@ -74,10 +66,7 @@ function placeWith(
 	});
 }
 
-/**
- * Workflow and folder packages place every missing variable at the requested policy's
- * scope; a bundled entry only supplies the value, never the placement.
- */
+/** Workflow and folder packages: the policy decides the scope, and a bundled entry only supplies the value. */
 export function placeByPolicy(
 	params: VariableBundleLookup & { policy: VariableParentPolicy },
 ): PlacedVariableRequirement[] | undefined {
@@ -86,9 +75,8 @@ export function placeByPolicy(
 }
 
 /**
- * Project packages follow the package layout: a name bundled under the scope is created
- * in that project, one bundled at the top level globally. An unbundled name — including
- * one bundled only under a different project — defaults to the consuming project.
+ * Project packages follow the layout: bundled under the scope creates in that project, bundled at the
+ * top level creates globally. An unbundled name — or one bundled only elsewhere — falls back to the scope.
  */
 export function placeByLayout(
 	params: VariableBundleLookup & { scopePrefix: string },

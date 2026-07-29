@@ -231,7 +231,6 @@ export interface PackageDataTableEntry {
 }
 
 export interface PackageVariableEntry {
-	/** Required by the manifest entry; variable resolution itself uses the name. */
 	id: string;
 	target: string;
 	variable: SerializedVariable;

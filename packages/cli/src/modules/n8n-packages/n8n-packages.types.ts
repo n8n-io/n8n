@@ -223,16 +223,13 @@ export type ImportPackageEventCounts = {
 		requirements: number;
 	};
 	/**
-	 * `matched` and `missing` are distinct names reconciled across every scope, mirroring the
-	 * API response's variable summary. `created` and `stubbed` count rows, like every sibling
-	 * count, so one name created in two projects counts twice.
+	 * `matched` and `missing` are distinct names reconciled across scopes, as the API response reports them.
+	 * `created` (carrying the package value) and `stubbed` (empty) count rows, like every sibling count.
 	 */
 	variables: {
 		matched: number;
 		missing: number;
-		/** Created carrying the package's value. */
 		created: number;
-		/** Created with an empty value. */
 		stubbed: number;
 		requirements: number;
 	};

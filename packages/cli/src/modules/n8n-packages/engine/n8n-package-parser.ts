@@ -89,7 +89,7 @@ export class N8nPackageParser {
 		return projects;
 	}
 
-	/** Reads and validates the package's bundled variables, keyed by manifest target. */
+	/** Bundled variable files, keyed by manifest target. */
 	async getVariables(reader: PackageReader): Promise<Map<string, SerializedVariable>> {
 		const manifest = await this.getManifest(reader);
 		const variables = new Map<string, SerializedVariable>();

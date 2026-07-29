@@ -71,9 +71,8 @@ export function emitPackageImportedEvent(
 		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
 		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
 	});
-	// Creations count rows, not reconciled names: a name created in two projects is two
-	// variables, and every sibling count reports entities the same way. Counting names here
-	// would make "created once, found occupied elsewhere" indistinguishable from "created twice".
+	// Rows, not reconciled names: a name created in two projects is two variables, and every sibling
+	// count reports entities the same way.
 	const countCreatedRows = (pick: (result: ImportOrchestrationResult) => string[]) =>
 		scopes.reduce((total, { imported }) => total + pick(imported).length, 0);
 
