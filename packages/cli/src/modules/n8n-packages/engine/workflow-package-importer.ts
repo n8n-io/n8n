@@ -91,7 +91,7 @@ export class WorkflowPackageImporter {
 
 		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
 		const bundledVariables =
-			variableRequirements?.length &&
+			(variableRequirements?.length ?? 0) > 0 &&
 			variableMissingModeUsesPackageValue(request.variableMissingMode)
 				? await this.packageParser.getVariables(reader)
 				: undefined;
