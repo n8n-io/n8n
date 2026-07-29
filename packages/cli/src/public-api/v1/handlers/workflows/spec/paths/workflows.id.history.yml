@@ -1,4 +1,2 @@
-parameters:
-  - $ref: '../schemas/parameters/workflowId.yml'
 get:
   $ref: './getWorkflowHistory.generated.yml'

@@ -6,6 +6,7 @@ import {
 	Body,
 	ControllerRegistryMetadata,
 	Get,
+	Param,
 	Post,
 	Query,
 } from '@n8n/decorators';
@@ -186,5 +187,21 @@ describe('getDecoratorGeneratedOperations', () => {
 		});
 		// A prior version of this merge overwrote one with the other - assert both survive.
 		expect(operation.config.request?.query).toBeDefined();
+	});
+
+	it('routes each @Param through request.params, named to match the route path segment', () => {
+		class WidgetsPublicController {
+			@Get('/:id')
+			@ApiTags(['Widgets'])
+			method(@Param('id') _id: string) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.pathKey).toBe('/widgets/{id}');
+		// zod-to-openapi turns request.params into `in: path` parameters; the key must match `{id}`.
+		const params = operation.config.request?.params as z.AnyZodObject | undefined;
+		expect(params?.shape).toHaveProperty('id');
 	});
 });
