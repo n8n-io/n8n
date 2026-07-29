@@ -1,0 +1,26 @@
+docs/generated/postgres-schema/public.agent_files.md
+  s_174cc3ab032093::t_a7fd5fad99f6e3 13-14
+packages/@n8n/db/src/migrations/common/1785186578138-ReplaceAgentFileBinaryDataIdWithStoredAt.ts
+  s_174cc3ab032093::t_47b36266f552b0 18,22-27,32,35-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2f2dfd57bdb506a8cf43a5f2ddbc7270d5024324",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_174cc3ab032093": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "80b07ab6-e0a1-41ec-9d47-24ca8c170934",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

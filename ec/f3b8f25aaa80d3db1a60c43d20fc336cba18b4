@@ -1,0 +1,120 @@
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_77a32fd9603843::t_b6522e6095415d 56-59,69-72
+  s_77a32fd9603843::t_2e45a54018fdbe 53-55,60,65-68,73-74
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/model-discovery.test.ts
+  s_77a32fd9603843::t_d76dcf70066ea9 133-134,136-158
+  s_77a32fd9603843::t_cbcc3eed44b2ce 135
+  s_77a32fd9603843::t_98dd76ed66180b 30,33-50,58-65,75-77,82-87
+  s_77a32fd9603843::t_7a71f8c2781df6 51-57
+  s_77a32fd9603843::t_bf5756f17eee31 1-6
+  s_77a32fd9603843::t_3182ce0d14b7a8 78-81,106-112,128-131
+  s_77a32fd9603843::t_767aa9900bd11f 100-105,113-127,132
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_77a32fd9603843::t_92d081c97293b0 41
+  s_77a32fd9603843::t_92bb1e89a932b9 19
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_77a32fd9603843::t_42b30a989cda76 13,327
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_77a32fd9603843::t_b6522e6095415d 69-72,84-87
+  s_77a32fd9603843::t_5ac0775158c36d 66-68,73
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_77a32fd9603843::t_9976831d9c4a46 225
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_77a32fd9603843::t_287b2ba55c1768 547-550,553-557,560,565-567,572,575,584
+  s_77a32fd9603843::t_e9d90747eed94e 14,91-107,523,551
+  s_77a32fd9603843::t_f745736806e0c3 12,568-571
+  s_77a32fd9603843::t_8f7d990db19afa 10,13,15,27,33,433,468-469,527,529-546,552,558-559,561-563
+  s_77a32fd9603843::t_5f2e8f2d31d988 11
+  s_77a32fd9603843::t_bfca4f3d4ee944 9
+packages/frontend/editor-ui/src/features/agents/__tests__/provider-capabilities.test.ts
+  s_77a32fd9603843::t_f984bfa35cc49d 16-17
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_77a32fd9603843::t_59c1aff2d61e7f 4,12-17,47,83-87
+packages/frontend/editor-ui/src/features/agents/provider-capabilities.ts
+  s_77a32fd9603843::t_29ecf0cda1bf43 3,7
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_77a32fd9603843::t_dd2da63361e2ce 13-31
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_77a32fd9603843::t_5ceee84753946c 77,94,96-98,111-116,133
+packages/frontend/editor-ui/src/features/agents/__tests__/useModelCatalog.test.ts
+  s_77a32fd9603843::t_ef97827f09c45d 2
+  s_77a32fd9603843::t_b6522e6095415d 118,140-146
+  s_77a32fd9603843::t_6191a1c1e93446 21,27,116-117,119-121,137-139,147
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/test/LmChatAnthropic.test.ts
+  s_77a32fd9603843::t_53d31a4b6cbffc 85-87,855-857
+  s_77a32fd9603843::t_1e6d2cbf8573f2 852,859,865-950,1100,1102-1105
+  s_77a32fd9603843::t_ba8fc9edfbc29b 25-33,84,88,796-800,844-851,975-977,980,1001,1030-1052
+  s_77a32fd9603843::t_f745736806e0c3 951-969,973
+  s_77a32fd9603843::t_31b41cc2b4f2d4 361-365,401-405,436-440
+  s_77a32fd9603843::t_4932ad8e753577 853-854,860-863,974,1101,1106
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_77a32fd9603843::t_ef9df28843bc6f 23
+  s_77a32fd9603843::t_a5ee31de4876f0 1-5,22
+packages/frontend/editor-ui/src/features/agents/composables/useModelCatalog.ts
+  s_77a32fd9603843::t_a5ee31de4876f0 51
+  s_77a32fd9603843::t_ef9df28843bc6f 52
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_77a32fd9603843::t_92d081c97293b0 271
+packages/@n8n/ai-utilities/src/model-discovery/types.ts
+  s_77a32fd9603843::t_ebc86ed6795037 1-4,13
+  s_77a32fd9603843::t_63948d1187039c 11-12,14-18
+packages/@n8n/ai-utilities/src/model-discovery/providers/anthropic.ts
+  s_77a32fd9603843::t_690d408f5159c0 92-99,117
+  s_77a32fd9603843::t_ebc86ed6795037 2-8,21-27,38,40-49,51-53,56-60,100-116
+  s_77a32fd9603843::t_29b21dcee4c457 10-15,67-68,78-91
+  s_77a32fd9603843::t_63948d1187039c 16-20,28-37,39,50,54-55,61-62,71,76
+  s_77a32fd9603843::t_09433258c1daff 9
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_77a32fd9603843::t_ebc86ed6795037 56,58,71-78
+  s_77a32fd9603843::t_690d408f5159c0 54-55,57,59-60
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_77a32fd9603843::t_264ea705831479 2,14-22,113-118,362-379,381-391,393-406,413-448
+  s_77a32fd9603843::t_b6522e6095415d 380,449-487
+  s_77a32fd9603843::t_cdad431ca54903 57-61
+  s_77a32fd9603843::t_1449242f506d29 62-65
+  s_77a32fd9603843::t_d871fb3f48e845 392,407-412
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_77a32fd9603843::t_9976831d9c4a46 26-27,37,70-75,84,90-97,99-103,105-106,239-253,260,427-431,433-438,468,682,700-703,723-729
+  s_77a32fd9603843::t_0e99b2b82151ae 61-68,236,269,318
+  s_77a32fd9603843::t_3d540e4cf4dc67 8-9,30,33,98,104,107-109,235,237,254-259,261-268,270-285,432,439,444,462,687,696,734,742
+  s_77a32fd9603843::t_70bb704f4253df 238
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_77a32fd9603843::t_a5ee31de4876f0 4,90-91
+  s_77a32fd9603843::t_29802dba149a5f 52,61
+  s_77a32fd9603843::t_4cbcc52631ab8f 92
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_77a32fd9603843::t_9e9a6c916e2842 110,112
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_77a32fd9603843::t_5ceee84753946c 29-34,36-38,46
+  s_77a32fd9603843::t_a5ee31de4876f0 19-22,35
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_77a32fd9603843::t_4eab3200fa8477 587-622,657-688
+  s_77a32fd9603843::t_5d6b9ef58d5f48 623-656,804
+  s_77a32fd9603843::t_7a71f8c2781df6 750
+  s_77a32fd9603843::t_3182ce0d14b7a8 689-749,751-791,793,795,805,809,812,814
+  s_77a32fd9603843::t_7de982bea813ee 792,794,796-803,806-808,810-811,813,815
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_77a32fd9603843::t_9e9a6c916e2842 76,78
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_77a32fd9603843::t_4d40376dfd0661 252
+  s_77a32fd9603843::t_8b09041ad12a67 230,235,254-263,266,282-287,293-297,311-313
+  s_77a32fd9603843::t_d92faa216ba533 229,231-234,236,264,267-275,280-281,288-292,300-308,310
+  s_77a32fd9603843::t_1a5b753ab0e8d1 265,276-279,298-299,309
+  s_77a32fd9603843::t_42b30a989cda76 33,253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ecf3b8f25aaa80d3db1a60c43d20fc336cba18b4",
+  "prompts": {},
+  "sessions": {
+    "s_77a32fd9603843": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3e4-3e06-77d3-b1b7-6e9670e39416",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

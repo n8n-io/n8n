@@ -1,0 +1,52 @@
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_5cc7c7f4b64512::t_fa38fea4c21fc9 24,33-34
+  s_5cc7c7f4b64512::t_d2f580b194a2f8 100-118
+  s_37d6c8f5026132::t_5825e4db07d001 35-36
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_5cc7c7f4b64512::t_4a5f8594a6ba0c 6-10
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.test.ts
+  s_5cc7c7f4b64512::t_974e01387b2bee 11
+  s_5cc7c7f4b64512::t_ab304a14b850d7 27-31
+packages/frontend/editor-ui/src/app/composables/useToast.test.ts
+  s_5cc7c7f4b64512::t_9b0b0a23cc143b 7-11,13-14,16,29-30
+packages/frontend/editor-ui/src/features/shared/banners/components/BannersStack.test.ts
+  s_5cc7c7f4b64512::t_d7c9a65e1ccdd5 54-58
+  s_5cc7c7f4b64512::t_6aa1b6decf8d94 15
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_5cc7c7f4b64512::t_e429b463edea5e 21
+  s_5cc7c7f4b64512::t_9bbffc3c381698 112-116
+packages/frontend/editor-ui/src/app/toastNotifier.ts
+  s_5cc7c7f4b64512::t_d4ca3f28e54d75 1-29
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.test.ts
+  s_5cc7c7f4b64512::t_66ce057085a63a 2
+  s_5cc7c7f4b64512::t_724f380c35d271 195-200
+packages/frontend/editor-ui/src/app/init.ts
+  s_5cc7c7f4b64512::t_e44632e32d0622 6
+  s_5cc7c7f4b64512::t_a40512fd803714 52-57
+packages/frontend/editor-ui/src/app/toastNotifier.test.ts
+  s_5cc7c7f4b64512::t_0db1372a60f2af 1-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c23b6c245e4bed6c55e2297a00bc75725a1960ac",
+  "prompts": {},
+  "sessions": {
+    "s_37d6c8f5026132": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "910e96d2-d66b-4d8c-8ddc-fd62a3cb5b37",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_5cc7c7f4b64512": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "615e3317-a85f-4350-b176-a6b2259b0e9c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
