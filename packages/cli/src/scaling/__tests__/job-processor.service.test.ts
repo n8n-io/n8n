@@ -2227,10 +2227,26 @@ describe('JobProcessor', () => {
 			);
 		});
 
+		it('should not relay an MCP Service response, which main reads from stored data', async () => {
+			const { hooks, job, binaryDataService } = await processJobAndCaptureHooks(
+				1,
+				{ isMcpExecution: true, mcpSessionId: 'session-1', mcpType: 'service' },
+				'database',
+			);
+			const relayedBefore = (job.progress as Mock).mock.calls.length;
+
+			await hooks.runHook('sendResponse', [
+				{ body: { blob: 'x'.repeat(2 * 1024 * 1024) }, headers: {}, statusCode: 200 },
+			]);
+
+			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
+			expect(binaryDataService.store).not.toHaveBeenCalled();
+		});
+
 		it('should refuse to relay an oversized MCP payload with no body to offload', async () => {
 			const { hooks, job, binaryDataService } = await processJobAndCaptureHooks(
 				1,
-				{ isMcpExecution: true, mcpSessionId: 'session-1' },
+				{ isMcpExecution: true, mcpSessionId: 'session-1', mcpType: 'trigger' },
 				'database',
 			);
 			const relayedBefore = (job.progress as Mock).mock.calls.length;

@@ -197,6 +197,13 @@ export class JobProcessor {
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
+			// An MCP Service call takes its result from the execution's stored data, so a
+			// response relayed to main has no reader. Relaying one would also reach main
+			// mid-execution, resolving the call on data the run has not finished writing.
+			if (job.data.isMcpExecution && job.data.mcpSessionId && job.data.mcpType !== 'trigger') {
+				return;
+			}
+
 			const relayed = await this.webhookResponseRelay.prepare(response, {
 				workflowId: job.data.workflowId,
 				executionId,
@@ -207,7 +214,7 @@ export class JobProcessor {
 				const msg: McpResponseMessage = {
 					kind: 'mcp-response',
 					executionId,
-					mcpType: job.data.mcpType ?? 'service',
+					mcpType: 'trigger',
 					sessionId: job.data.mcpSessionId,
 					messageId: job.data.mcpMessageId ?? '',
 					response: relayed,
