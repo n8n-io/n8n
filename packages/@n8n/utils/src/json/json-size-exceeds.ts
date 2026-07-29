@@ -93,7 +93,7 @@ function serializedKeys(entries: Record<string, unknown>): string[] {
 
 /** Lower bound of the bytes the entry `key`/`value` occupies, separator excluded. */
 function minEntrySize(key: string, value: unknown): number {
-	return QUOTES_SIZE + key.length + COLON_SIZE + minSerializedSize(value);
+	return QUOTES_SIZE + Buffer.byteLength(key) + COLON_SIZE + minSerializedSize(value);
 }
 
 const SHORTEST_NUMBER_SIZE = 1;
@@ -103,7 +103,7 @@ const EMPTY_CONTAINER_SIZE = 2; // "{}", "[]"
 function minSerializedSize(value: unknown): number {
 	switch (typeof value) {
 		case 'string':
-			return value.length + QUOTES_SIZE;
+			return Buffer.byteLength(value) + QUOTES_SIZE;
 		case 'number':
 			return minNumberSize(value);
 		case 'boolean':

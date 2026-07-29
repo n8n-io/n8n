@@ -31,6 +31,7 @@ describe('jsonSizeExceeds', () => {
 			['a string', 'hello'],
 			['an empty string', ''],
 			['a multi-byte string', 'pour sûr 😀'],
+			['a multi-byte key', { ['clé 蟹']: 'valeur' }],
 			['a string needing escapes', 'a"b\\c\nd'],
 			['integers', [0, -0, 1, -1, 9, 10, 99, 100, 999999, 1000000]],
 			['extreme magnitudes', [1e20, 1e21, 1e22, 1e-7, 5e-324, Number.MAX_SAFE_INTEGER]],
@@ -63,6 +64,8 @@ describe('jsonSizeExceeds', () => {
 	describe('reports an oversized value', () => {
 		it.each<[string, () => unknown]>([
 			['a long string', () => 'x'.repeat(3 * ONE_MIB)],
+			['a string whose characters take three bytes each', () => '蟹'.repeat(ONE_MIB)],
+			['a key whose characters take three bytes each', () => ({ ['蟹'.repeat(ONE_MIB)]: 0 })],
 			['a string in an object', () => ({ blob: 'x'.repeat(3 * ONE_MIB) })],
 			[
 				'a string split across keys',
