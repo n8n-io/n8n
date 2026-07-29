@@ -146,12 +146,16 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			throw new UserError(result.message);
 		}
 
-		// this is the only import path that publishes, so load the license and
-		// backend modules here, otherwise the workflow-reviews module never
-		// registers its publish guard and the import bypasses an open review.
+		// this is the only import path that publishes, so load the license and the
+		// workflow-reviews module here, otherwise it never registers its publish
+		// guard and the import bypasses an open review. Scoped to that one module:
+		// initializing the rest would start timers, connect to secret vaults and
+		// register this short-lived process as an instance member.
 		if (flags.activeState === 'fromJson') {
 			await this.initLicense();
-			await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+			await this.moduleRegistry.initModules(this.instanceSettings.instanceType, [
+				'workflow-reviews',
+			]);
 		}
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);

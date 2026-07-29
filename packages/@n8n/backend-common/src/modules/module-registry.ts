@@ -153,10 +153,19 @@ export class ModuleRegistry {
 	 * specific setup.
 	 *
 	 * `ModuleRegistry.loadModules` must have been called before.
+	 *
+	 * Pass `only` to restrict init to specific modules. Server processes want
+	 * every eligible module, but a short-lived CLI command that needs just one
+	 * module's setup should not trigger the side effects of all the others.
 	 */
-	async initModules(instanceType: InstanceType) {
+	async initModules(instanceType: InstanceType, only?: ModuleName[]) {
 		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
 			const { licenseFlag, instanceTypes, class: ModuleClass } = moduleEntry;
+
+			if (only !== undefined && !only.some((name) => name === moduleName)) {
+				this.logger.debug(`Skipped init for module "${moduleName}" (not requested)`);
+				continue;
+			}
 
 			if (licenseFlag !== undefined && !this.licenseState.isLicensed(licenseFlag)) {
 				this.logger.debug(`Skipped init for unlicensed module "${moduleName}"`);
