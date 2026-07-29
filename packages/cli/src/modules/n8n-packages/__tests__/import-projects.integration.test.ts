@@ -17,7 +17,7 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -34,7 +34,7 @@ import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
-import type { ImportPackageRequest } from '../n8n-packages.types';
+import type { FolderConflictPolicy, ImportPackageRequest } from '../n8n-packages.types';
 import {
 	buildEntityPackageBuffer,
 	credentialRequirementsFromWorkflows,
@@ -221,17 +221,26 @@ describe('project shell import', () => {
 	});
 
 	describe('projectConflictPolicy', () => {
-		const packageWithWorkflow = async (projectName: string) =>
+		/** A renamed P1 carrying a workflow, plus a second project that does not exist on the target. */
+		const reimportPackage = async (extraProject = false) =>
 			await buildEntityPackageBuffer({
 				projects: [
 					{
 						target: 'projects/brie',
 						project: serializedProject({
 							id: 'P1',
-							name: projectName,
+							name: 'brie renamed',
 							description: 'from package',
 						}),
 					},
+					...(extraProject
+						? [
+								{
+									target: 'projects/stilton',
+									project: serializedProject({ id: 'P2', name: 'stilton' }),
+								},
+							]
+						: []),
 				],
 				workflows: [
 					{
@@ -241,7 +250,7 @@ describe('project shell import', () => {
 				],
 			});
 
-		it('leaves the existing project details untouched under merge, still importing its contents', async () => {
+		beforeEach(async () => {
 			await importProjects(
 				owner,
 				await buildEntityPackageBuffer({
@@ -250,15 +259,12 @@ describe('project shell import', () => {
 					],
 				}),
 			);
+		});
 
-			const result = await importProjects(
-				owner,
-				await packageWithWorkflow('brie renamed'),
-				undefined,
-				{
-					projectConflictPolicy: 'merge',
-				},
-			);
+		it('leaves the existing project details untouched under merge, still importing its contents', async () => {
+			const result = await importProjects(owner, await reimportPackage(), undefined, {
+				projectConflictPolicy: 'merge',
+			});
 
 			expect(result.projects).toEqual([
 				{ sourceProjectId: 'P1', localId: 'P1', name: 'brie', status: 'skipped' },
@@ -266,25 +272,17 @@ describe('project shell import', () => {
 			const project = await findProject('P1');
 			expect(project?.name).toBe('brie');
 			expect(project?.description).toBeNull();
-			// The project itself was left alone, but the package's workflow still landed in it.
 			expect(result.workflows[0]).toMatchObject({ projectId: 'P1', status: 'created' });
 		});
 
-		it('blocks and writes nothing under fail when the project already exists', async () => {
-			await importProjects(
-				owner,
-				await buildEntityPackageBuffer({
-					projects: [
-						{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
-					],
-				}),
-			);
-
-			const blocked = importProjects(owner, await packageWithWorkflow('brie renamed'), undefined, {
+		it('refuses the whole package under fail, writing nothing for any project', async () => {
+			const blocked = importProjects(owner, await reimportPackage(true), undefined, {
 				projectConflictPolicy: 'fail',
 			});
 
 			await expect(blocked).rejects.toBeInstanceOf(ConflictError);
+			// Only the conflict is reported: the refused project decides the import before any
+			// project's contents are planned, so P2 is never created either.
 			await expect(blocked).rejects.toMatchObject({
 				meta: {
 					issues: [
@@ -301,53 +299,10 @@ describe('project shell import', () => {
 			const project = await findProject('P1');
 			expect(project?.name).toBe('brie');
 			expect(project?.description).toBeNull();
+			expect(await findProject('P2')).toBeNull();
 			// Counted across every project: `workflowIdPolicy: 'new'` mints a fresh id, so counting
 			// the package's source id would pass even if the workflow had been written.
 			expect(await Container.get(WorkflowRepository).count()).toBe(0);
-		});
-
-		it('refuses the whole package under fail, leaving a non-conflicting project uncreated', async () => {
-			await importProjects(
-				owner,
-				await buildEntityPackageBuffer({
-					projects: [
-						{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
-					],
-				}),
-			);
-
-			const blocked = importProjects(
-				owner,
-				await buildEntityPackageBuffer({
-					projects: [
-						{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
-						{
-							target: 'projects/stilton',
-							project: serializedProject({ id: 'P2', name: 'stilton' }),
-						},
-					],
-				}),
-				undefined,
-				{ projectConflictPolicy: 'fail' },
-			);
-
-			// Only the conflict is reported — the refused project decides the import, so no project's
-			// contents are planned and P2 is never created.
-			await expect(blocked).rejects.toMatchObject({
-				meta: { issues: [{ type: 'project-conflict', sourceProjectId: 'P1' }] },
-			});
-			expect(await findProject('P2')).toBeNull();
-			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(1);
-		});
-
-		it('still creates a project that does not exist yet under fail', async () => {
-			const result = await importProjects(owner, await packageWithWorkflow('brie'), undefined, {
-				projectConflictPolicy: 'fail',
-			});
-
-			expect(result.projects).toEqual([
-				{ sourceProjectId: 'P1', localId: 'P1', name: 'brie', status: 'created' },
-			]);
 		});
 	});
 
@@ -368,22 +323,22 @@ describe('project shell import', () => {
 				],
 			});
 
-		/** Imports the package once, then returns the created project for seeding target-only content. */
-		async function seedProject() {
+		let project: Project;
+		let packagedWorkflowId: string;
+
+		beforeEach(async () => {
 			const first = await importProjects(owner, await projectPackage());
-			const project = await Container.get(ProjectRepository).findOneOrFail({
-				where: { id: 'P1' },
-			});
-			return { project, packagedWorkflowId: first.workflows[0].localId };
-		}
+			project = await Container.get(ProjectRepository).findOneOrFail({ where: { id: 'P1' } });
+			packagedWorkflowId = first.workflows[0].localId;
+		});
+
+		const reconcile = async (folderConflictPolicy: FolderConflictPolicy) =>
+			await importProjects(owner, await projectPackage(), undefined, { folderConflictPolicy });
 
 		it('archives a root workflow the package does not contain, retaining the packaged one', async () => {
-			const { project, packagedWorkflowId } = await seedProject();
 			const stale = await createWorkflow({ name: 'Stale' }, project);
 
-			const result = await importProjects(owner, await projectPackage(), undefined, {
-				folderConflictPolicy: 'overwrite',
-			});
+			const result = await reconcile('overwrite');
 
 			expect(result.archivedWorkflows).toEqual([
 				{ workflowId: stale.id, name: 'Stale', projectId: 'P1', parentFolderId: null },
@@ -393,59 +348,37 @@ describe('project shell import', () => {
 			expect((await findWorkflow(packagedWorkflowId))?.isArchived).toBe(false);
 		});
 
-		it('archives inside a package-defined folder', async () => {
-			const { project } = await seedProject();
+		it('archives inside a package-defined folder but shelters a target-only folder', async () => {
 			const stale = await createWorkflow(
 				{ name: 'Stale', parentFolder: await findFolder('FA') },
 				project,
 			);
+			const sheltered = await createFolder(project, { name: 'sheltered' });
+			const kept = await createWorkflow({ name: 'Kept', parentFolder: sheltered }, project);
 
-			const result = await importProjects(owner, await projectPackage(), undefined, {
-				folderConflictPolicy: 'overwrite',
-			});
+			const result = await reconcile('overwrite');
 
 			expect(result.archivedWorkflows).toEqual([
 				{ workflowId: stale.id, name: 'Stale', projectId: 'P1', parentFolderId: 'FA' },
 			]);
-		});
-
-		it('leaves a workflow in a folder the package does not define alone', async () => {
-			const { project } = await seedProject();
-			const sheltered = await createFolder(project, { name: 'sheltered' });
-			const kept = await createWorkflow({ name: 'Kept', parentFolder: sheltered }, project);
-
-			const result = await importProjects(owner, await projectPackage(), undefined, {
-				folderConflictPolicy: 'overwrite',
-			});
-
-			expect(result.archivedWorkflows).toEqual([]);
 			expect((await findWorkflow(kept.id))?.isArchived).toBe(false);
 		});
 
 		it('archives nothing under merge', async () => {
-			const { project } = await seedProject();
 			const stale = await createWorkflow({ name: 'Stale' }, project);
 
-			const result = await importProjects(owner, await projectPackage(), undefined, {
-				folderConflictPolicy: 'merge',
-			});
+			const result = await reconcile('merge');
 
 			expect(result.archivedWorkflows).toEqual([]);
 			expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
 		});
 
-		it('is idempotent: a second overwrite import reports nothing already archived', async () => {
-			const { project } = await seedProject();
+		it('does not re-report an already-archived workflow on a second reconcile', async () => {
 			await createWorkflow({ name: 'Stale' }, project);
 
-			await importProjects(owner, await projectPackage(), undefined, {
-				folderConflictPolicy: 'overwrite',
-			});
-			const second = await importProjects(owner, await projectPackage(), undefined, {
-				folderConflictPolicy: 'overwrite',
-			});
+			await reconcile('overwrite');
 
-			expect(second.archivedWorkflows).toEqual([]);
+			expect((await reconcile('overwrite')).archivedWorkflows).toEqual([]);
 		});
 
 		it('rejects the import when the API key lacks the workflow:delete scope', async () => {
@@ -460,13 +393,10 @@ describe('project shell import', () => {
 		});
 
 		it('reconciles only the project it is importing, never another project', async () => {
-			await seedProject();
 			const bystander = await createTeamProject('Bystander', owner);
 			const untouched = await createWorkflow({ name: 'Untouched' }, bystander);
 
-			const result = await importProjects(owner, await projectPackage(), undefined, {
-				folderConflictPolicy: 'overwrite',
-			});
+			const result = await reconcile('overwrite');
 
 			expect(result.archivedWorkflows).toEqual([]);
 			expect((await findWorkflow(untouched.id))?.isArchived).toBe(false);

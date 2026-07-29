@@ -10,7 +10,6 @@ import type {
 	WorkflowArchivalFailure,
 } from '../../n8n-packages.types';
 
-/** A workflow on the target that the package does not account for. */
 export interface PrunableWorkflow {
 	id: string;
 	name: string;
@@ -26,11 +25,9 @@ const EMPTY_PLAN: WorkflowPrunePlan = { archivals: [], failures: [] };
 
 /**
  * Reconciles a project scope against the package under `folderConflictPolicy=overwrite`: any
- * workflow the package does not contain is archived.
- *
- * Pruning is deliberately confined to the containers the package describes — the project root and
- * the folders the package defines. A workflow filed under a folder the package knows nothing about
- * is left alone, so a target-only folder shelters its contents from reconciliation.
+ * workflow the package does not contain is archived. Confined to the containers the package
+ * describes — the project root and the folders it defines — so a target-only folder shelters
+ * its contents.
  */
 @Service()
 export class WorkflowPruner {

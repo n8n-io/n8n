@@ -69,6 +69,19 @@ describe('WorkflowPruner.plan', () => {
 		expect(plan.archivals).toEqual([]);
 	});
 
+	it('retains a sub-workflow dependency the package references but does not carry', async () => {
+		const { pruner } = makePruner([{ id: 'sub', name: 'Sub', parentFolderId: null }]);
+
+		const plan = await pruner.plan(context, {
+			workflowItems: [created('parent')],
+			packageFolderIds: [],
+			subWorkflowRequirementIds: ['sub'],
+		});
+
+		// Archiving it would leave the packaged parent unable to publish.
+		expect(plan.archivals).toEqual([]);
+	});
+
 	it('archives inside a package-defined folder but leaves a target-only folder alone', async () => {
 		const { pruner } = makePruner([
 			{ id: 'in-package-folder', name: 'Stale', parentFolderId: 'F1' },

@@ -12,11 +12,8 @@ export interface MatchedProjectDecision {
 }
 
 const PROJECT_CONFLICT_POLICIES: Record<ProjectConflictPolicy, MatchedProjectDecision> = {
-	// Leave the existing project alone and merge the package's contents into it
 	merge: { action: 'skip', blocked: false },
-	// Fail the import if the project exists already
 	fail: { action: 'skip', blocked: true },
-	// Replace the existing project's details with the package's
 	overwrite: { action: 'update', blocked: false },
 };
 
