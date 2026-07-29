@@ -104,7 +104,7 @@ export {
 	CreateVariableRequestDto,
 	NEW_VARIABLE_KEY_REGEX,
 } from './variables/create-variable-request.dto';
-export { TYPE_ENUM, VALUE_MAX_LENGTH, variableValueSchema } from './variables/base.dto';
+export { TYPE_ENUM, variableValueSchema } from './variables/base.dto';
 export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
