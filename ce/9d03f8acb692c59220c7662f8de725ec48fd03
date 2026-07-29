@@ -1,0 +1,33 @@
+packages/@n8n/config/src/configs/languages.config.ts
+  s_5639fb684a6c15::t_f0f4a4086d9862 49-56
+packages/cli/src/services/frontend.service.ts
+  s_5639fb684a6c15::t_cd820cf183c84b 275
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_5639fb684a6c15::t_a53e174de6d591 510
+  s_5639fb684a6c15::t_590505873652bf 102-105
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_5639fb684a6c15::t_bacabe1ddaa908 151
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_5639fb684a6c15::t_205cf54aa6ace5 26
+  s_5639fb684a6c15::t_6e710c35cc7cb1 59,73
+  s_5639fb684a6c15::t_f1aff8d3551d10 263-295
+  s_5639fb684a6c15::t_c16d6a8f0828b7 261-262
+packages/cli/src/services/user.service.ts
+  s_5639fb684a6c15::t_b1e32108f273f4 89-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ce9d03f8acb692c59220c7662f8de725ec48fd03",
+  "prompts": {},
+  "sessions": {
+    "s_5639fb684a6c15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46059b82-7ba7-49ef-8c86-86a5a7a5a2a1",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
