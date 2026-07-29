@@ -1,8 +1,9 @@
-import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
+import type { AIMessageChunk } from '@langchain/core/messages';
 import type { StreamEvent } from '@langchain/core/types/stream';
 import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
+import { extractMessageText } from './extractMessageText';
 import type { AgentResult, ToolCallRequest } from './types';
 
 /**
@@ -35,17 +36,7 @@ export async function processEventStream(
 			case 'on_chat_model_stream':
 				const chunk = event.data?.chunk as AIMessageChunk;
 				if (chunk?.content) {
-					const chunkContent = chunk.content;
-					let chunkText = '';
-					if (Array.isArray(chunkContent)) {
-						for (const message of chunkContent) {
-							if (message?.type === 'text') {
-								chunkText += (message as MessageContentText)?.text;
-							}
-						}
-					} else if (typeof chunkContent === 'string') {
-						chunkText = chunkContent;
-					}
+					const chunkText = extractMessageText(chunk.content);
 					ctx.sendChunk('item', itemIndex, chunkText);
 
 					agentResult.output += chunkText;
@@ -69,7 +60,7 @@ export async function processEventStream(
 								toolCallId: toolCall.id || 'unknown',
 								type: toolCall.type || 'tool_call',
 								log:
-									output.content ||
+									extractMessageText(output.content) ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 								messageLog: [output],
 								// Pass additional_kwargs to ALL tool calls so signature is available

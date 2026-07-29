@@ -7,7 +7,7 @@ import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
+import type { AIMessageChunk } from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import type { StreamEvent } from '@langchain/core/types/stream';
@@ -19,7 +19,7 @@ import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { loadMemory } from '@utils/agent-execution';
+import { extractMessageText, loadMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import {
@@ -152,17 +152,7 @@ async function processEventStream(
 			case 'on_chat_model_stream':
 				const chunk = event.data?.chunk as AIMessageChunk;
 				if (chunk?.content) {
-					const chunkContent = chunk.content;
-					let chunkText = '';
-					if (Array.isArray(chunkContent)) {
-						for (const message of chunkContent) {
-							if (message?.type === 'text') {
-								chunkText += (message as MessageContentText)?.text;
-							}
-						}
-					} else if (typeof chunkContent === 'string') {
-						chunkText = chunkContent;
-					}
+					const chunkText = extractMessageText(chunk.content);
 					ctx.sendChunk('item', itemIndex, chunkText);
 
 					agentResult.output += chunkText;
@@ -182,7 +172,7 @@ async function processEventStream(
 									tool: toolCall.name,
 									toolInput: toolCall.args,
 									log:
-										output.content ||
+										extractMessageText(output.content) ||
 										`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 									messageLog: [output], // Include the full LLM response
 									toolCallId: toolCall.id,
