@@ -622,6 +622,59 @@ describe('ExecutionRecoveryService', () => {
 				).findInFlightByWorkflowId(workflow.id);
 				expect(outboxRecord).toBeNull();
 			});
+
+			test('should mark executions crashed and process remaining workflows when a deactivation fails', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
+
+				const failing = await createActiveWorkflow({ ...OOM_WORKFLOW });
+				const succeeding = await createActiveWorkflow({ ...OOM_WORKFLOW });
+				for (const workflow of [failing, succeeding]) {
+					await createExecution({ status: 'crashed' }, workflow);
+					await createExecution({ status: 'crashed' }, workflow);
+					await createExecution({ status: 'crashed' }, workflow);
+				}
+				// older than the crashed ones so it stays outside the last-N window
+				const running = await createExecution(
+					{ status: 'running', startedAt: new Date(Date.now() - 60_000) },
+					failing,
+				);
+
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(
+					mock<Project>({ id: uuid(), type: 'personal' }),
+				);
+				ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: uuid() }));
+				projectRelationRepository.find.mockResolvedValue([]);
+
+				const { WorkflowService } = await import('@/workflows/workflow.service.js');
+				vi.spyOn(WorkflowService.prototype, 'deactivateWorkflowAsSystem').mockRejectedValueOnce(
+					new Error('deactivation failed'),
+				);
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.autoDeactivateWorkflowsIfNeeded(
+					new Set([failing.id, succeeding.id]),
+				);
+
+				/**
+				 * Assert
+				 */
+				// the failing workflow's executions are still marked as crashed
+				const executions = await executionRepository.findMultipleExecutions({
+					select: ['id', 'status'],
+					where: { id: running.id },
+				});
+				expect(executions).toHaveLength(1);
+				expect(executions[0].status).toBe('crashed');
+
+				// the remaining workflow is still deactivated
+				const updatedSucceeding = await getWorkflowById(succeeding.id);
+				expect(updatedSucceeding?.activeVersionId).toBeNull();
+			});
 		});
 	});
 });
