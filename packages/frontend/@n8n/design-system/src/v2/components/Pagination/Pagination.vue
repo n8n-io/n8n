@@ -46,18 +46,18 @@ const { t } = useI18n();
 
 const rootProps = useForwardProps(reactivePick(props, 'disabled', 'showEdges', 'siblingCount'));
 
-// Always drive PaginationRoot from this model so jumper/sizes work in uncontrolled mode too
-const currentPageRef = ref(props.page ?? props.defaultPage ?? 1);
-const jumperValue = ref(String(currentPageRef.value));
+// Local page state is only for uncontrolled mode; a supplied `page` stays authoritative
+const isControlled = computed(() => props.page !== undefined);
+const uncontrolledPage = ref(props.defaultPage);
+const currentPage = computed(() => {
+	if (props.page !== undefined) return props.page;
+	return uncontrolledPage.value;
+});
+const jumperValue = ref(String(currentPage.value));
 
-watch(
-	() => props.page,
-	(newPage) => {
-		if (newPage === undefined) return;
-		currentPageRef.value = newPage;
-		jumperValue.value = String(newPage);
-	},
-);
+watch(currentPage, (page) => {
+	jumperValue.value = String(page);
+});
 
 function resolvedPageCount() {
 	if (props.pageCount !== undefined) return props.pageCount;
@@ -95,8 +95,9 @@ function pageSizeItems() {
 
 function handlePageUpdate(newPage: number) {
 	if (props.disabled) return;
-	currentPageRef.value = newPage;
-	jumperValue.value = String(newPage);
+	if (!isControlled.value) {
+		uncontrolledPage.value = newPage;
+	}
 	emit('update:page', newPage);
 }
 
@@ -113,15 +114,22 @@ function commitJumperValue() {
 
 	const parsed = parseInt(jumperValue.value, 10);
 	if (Number.isNaN(parsed)) {
-		jumperValue.value = String(currentPageRef.value);
+		jumperValue.value = String(currentPage.value);
 		return;
 	}
 
 	const targetPage = Math.min(Math.max(parsed, 1), resolvedPageCount());
-	jumperValue.value = String(targetPage);
 
-	if (targetPage !== currentPageRef.value) {
-		handlePageUpdate(targetPage);
+	if (targetPage === currentPage.value) {
+		jumperValue.value = String(currentPage.value);
+		return;
+	}
+
+	handlePageUpdate(targetPage);
+
+	// Controlled: keep jumper aligned with the supplied page until the parent accepts
+	if (isControlled.value) {
+		jumperValue.value = String(currentPage.value);
 	}
 }
 
@@ -194,9 +202,9 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		</div>
 
 		<PaginationRoot
-			v-slot="{ page: currentPage, pageCount }"
+			v-slot="{ page: rootPage, pageCount }"
 			v-bind="rootProps"
-			:page="currentPageRef"
+			:page="currentPage"
 			:items-per-page="itemsPerPage"
 			:total="resolvedTotalItems()"
 			@update:page="handlePageUpdate"
@@ -208,13 +216,13 @@ function handlePagerKeydown(event: KeyboardEvent) {
 				@keydown="handlePagerKeydown"
 			>
 				<PaginationPrev as-child>
-					<slot name="prev" :disabled="isPrevDisabled(currentPage)">
+					<slot name="prev" :disabled="isPrevDisabled(rootPage)">
 						<N8nButton
 							variant="ghost"
 							icon-only
 							icon="chevron-left"
 							:size="size"
-							:disabled="isPrevDisabled(currentPage)"
+							:disabled="isPrevDisabled(rootPage)"
 							:aria-label="t('pagination.previousPage')"
 							data-test-id="pagination-prev"
 						/>
@@ -244,13 +252,13 @@ function handlePagerKeydown(event: KeyboardEvent) {
 				</template>
 
 				<PaginationNext as-child>
-					<slot name="next" :disabled="isNextDisabled(currentPage, pageCount)">
+					<slot name="next" :disabled="isNextDisabled(rootPage, pageCount)">
 						<N8nButton
 							variant="ghost"
 							icon-only
 							icon="chevron-right"
 							:size="size"
-							:disabled="isNextDisabled(currentPage, pageCount)"
+							:disabled="isNextDisabled(rootPage, pageCount)"
 							:aria-label="t('pagination.nextPage')"
 							data-test-id="pagination-next"
 						/>

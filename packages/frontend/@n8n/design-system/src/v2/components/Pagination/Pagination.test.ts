@@ -143,6 +143,34 @@ describe('v2/components/Pagination', () => {
 			expect(wrapper.getByText('3')).toHaveAttribute('data-selected');
 		});
 
+		it('should keep the supplied page until the parent accepts the update', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					page: 1,
+					total: 100,
+					itemsPerPage: 10,
+				},
+			});
+
+			await userEvent.click(wrapper.getByText('2'));
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:page')?.[0]).toEqual([2]);
+			});
+			expect(wrapper.getByText('1')).toHaveAttribute('data-selected');
+			expect(wrapper.getByText('2')).not.toHaveAttribute('data-selected');
+			expect(wrapper.getByTestId('pagination-jumper-input')).toHaveValue(1);
+
+			await wrapper.rerender({
+				page: 2,
+				total: 100,
+				itemsPerPage: 10,
+			});
+
+			expect(wrapper.getByText('2')).toHaveAttribute('data-selected');
+			expect(wrapper.getByTestId('pagination-jumper-input')).toHaveValue(2);
+		});
+
 		it('should handle prev button click', async () => {
 			const wrapper = render(Pagination, {
 				props: {
@@ -282,7 +310,7 @@ describe('v2/components/Pagination', () => {
 		it('should clamp jumper input above the last page', async () => {
 			const wrapper = render(Pagination, {
 				props: {
-					page: 1,
+					defaultPage: 1,
 					total: 100,
 					itemsPerPage: 10,
 				},
@@ -303,7 +331,7 @@ describe('v2/components/Pagination', () => {
 		it('should clamp jumper input below the first page', async () => {
 			const wrapper = render(Pagination, {
 				props: {
-					page: 3,
+					defaultPage: 3,
 					total: 100,
 					itemsPerPage: 10,
 				},
