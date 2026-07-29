@@ -1,17 +1,11 @@
 ARG NODE_VERSION=24.18.0
 ARG N8N_VERSION=snapshot
 
-# Debian (glibc) variant of the n8n image. The Alpine image (./Dockerfile)
-# remains the default; see docker/images/n8n-base/Dockerfile.debian for why
-# this variant exists.
-#
-# Builder differences from the Alpine variant:
-# - sqlite3 still needs a rebuild: its install downloads a platform-specific
-#   binary and ./compiled is produced on the host.
-# - the isolated-vm musl workaround is gone: its bundled glibc prebuilds load
-#   as-is. The require() smoke test fails the build if a prebuild is missing.
-# Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for
-# reproducible builds. Bump the tag and digest together when updating.
+# Debian (glibc) variant of ./Dockerfile; see n8n-base/Dockerfile.debian.
+# sqlite3 needs a rebuild (its install downloads a platform-specific binary
+# and ./compiled is produced on the host); isolated-vm's bundled glibc
+# prebuilds load as-is, enforced by the require() gate.
+# Pinned to a multi-arch index digest for reproducible builds.
 FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ ca-certificates && \
@@ -19,9 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
     npm rebuild sqlite3 && \
     node -e "require('sqlite3'); require('isolated-vm')"
 
-# Not digest-pinned yet: n8nio/base debian tags are not published until the
-# base-image workflow builds this variant. Pin the digest here once the first
-# base publish exists, mirroring the Alpine Dockerfile.
+# Pin the digest once the base-image workflow publishes this variant.
 FROM n8nio/base:24.18.0-debian
 
 ARG N8N_VERSION
@@ -29,9 +21,8 @@ ARG N8N_RELEASE_TYPE=dev
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
-# glibc's malloc grows per-thread arenas that add ~70 MB idle RSS over the
-# Alpine image at cloud-starter quotas (measured; scales with visible cores).
-# Capping arenas recovers roughly a third of that for no observed cost.
+# glibc malloc arenas add ~70 MB idle RSS over the Alpine image (measured);
+# capping them recovers about a third at no observed cost.
 ENV MALLOC_ARENA_MAX=2
 
 WORKDIR /home/node
