@@ -1,0 +1,38 @@
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_d8ed300529e078::t_d51cbc641d3977 237
+  s_d8ed300529e078::t_5243e397c412d6 134,144-145
+  s_d8ed300529e078::t_8ef2ba55507399 252,255
+  s_d8ed300529e078::t_1e76af17a96e1c 135,138-143
+  h_5d40c27a8fdfd1 136-137
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_d8ed300529e078::t_77fb99a895d53a 204-205
+  s_d8ed300529e078::t_0e80a978b84a66 9
+  s_d8ed300529e078::t_ecc52a9a6583b0 191,193-202,206
+  s_d8ed300529e078::t_f7cc5f4cb9298b 192,203
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_d8ed300529e078::t_d55fda9c9fad35 28
+  s_d8ed300529e078::t_9206a2e04b0ddf 41
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  s_d8ed300529e078::t_e6e1169d2021e5 12-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "335b29d2a4ff013c247cbd8f815f610309a0a327",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

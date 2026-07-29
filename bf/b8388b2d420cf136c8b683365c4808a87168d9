@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/does-not-close-unverified-failure-as-stale-artifacts.json
+  s_e261f072c3b6bd::t_4fed11c7c24b74 1-131
+packages/@n8n/instance-ai/evaluations/data/workflows/verifies-node-output-not-just-the-endpoint.json
+  s_e261f072c3b6bd::t_a68a4f9d2c8fdc 1-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bfb8388b2d420cf136c8b683365c4808a87168d9",
+  "prompts": {},
+  "sessions": {
+    "s_e261f072c3b6bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba8bff36-5d40-4efa-9b57-d49a4365067c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
