@@ -61,6 +61,8 @@ export interface UseCredentialFormOptions {
 	showAuthSelector?: MaybeRefOrGetter<boolean>;
 	/** Preferred name for a new credential; falls back to a generated default. */
 	suggestedName?: MaybeRefOrGetter<string | undefined>;
+	/** Pre-select End-user credential mode for a freshly created credential (new mode only). */
+	defaultIsResolvable?: MaybeRefOrGetter<boolean | undefined>;
 	/** Ran after a connection test completes — host hook (e.g. scroll the result banner into view). */
 	onTestComplete?: () => void;
 }
@@ -499,6 +501,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			detectCustomOAuth();
 			return;
 		}
+		isResolvable.value = toValue(options.defaultIsResolvable) ?? false;
 		credentialName.value =
 			toValue(options.suggestedName) ||
 			(credentialTypeName.value

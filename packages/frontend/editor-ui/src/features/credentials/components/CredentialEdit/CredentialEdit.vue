@@ -211,6 +211,16 @@ const form = useCredentialForm({
 		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		return isCredentialModalState(modalState) ? modalState.suggestedName : undefined;
 	},
+	// Ignored when private/end-user credentials aren't available (unlicensed, or an
+	// instance-scoped credential) — the connection-mode toggle wouldn't be shown either.
+	defaultIsResolvable: () => {
+		if (!isPrivateCredentialsEnabled.value) return undefined;
+		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+		if (!isCredentialModalState(modalState) || modalState.usageScope === 'instance') {
+			return undefined;
+		}
+		return modalState.defaultIsResolvable;
+	},
 	// Scroll the auth-error/success banner into view after a test (parity with the
 	// modal's former testCredential, which ended with scrollToTop).
 	onTestComplete: scrollToTop,

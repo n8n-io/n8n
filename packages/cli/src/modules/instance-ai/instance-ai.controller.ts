@@ -59,6 +59,7 @@ import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
+import { AuthService } from '@/auth/auth.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -133,6 +134,7 @@ export class InstanceAiController {
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
+		private readonly authService: AuthService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -204,6 +206,11 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
+		// Captured so end-user (dynamic) credentials can resolve the acting
+		// user's own connection when this thread runs/tests a workflow — mirrors
+		// how workflows.controller.ts threads the cookie into manual executions.
+		const n8nAuthCookie = this.authService.getCookieToken(req);
+
 		const runId = this.instanceAiService.startRun(
 			req.user,
 			threadId,
@@ -212,6 +219,7 @@ export class InstanceAiController {
 			payload.context,
 			payload.timeZone,
 			payload.pushRef,
+			n8nAuthCookie,
 		);
 		return { runId };
 	}

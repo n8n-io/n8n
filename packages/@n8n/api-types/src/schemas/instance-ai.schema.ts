@@ -293,6 +293,8 @@ export const credentialRequestSchema = z.object({
 	reason: z.string(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
 	suggestedName: z.string().optional(),
+	/** True when this credential should resolve per-user ("End-user credential") rather than a single shared connection ("Fixed"). Pre-selects that mode when the user creates a new credential from the setup card. */
+	isResolvable: z.boolean().optional(),
 });
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;

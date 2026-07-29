@@ -285,6 +285,7 @@ function openNewCredentialModal() {
 		undefined,
 		{
 			closeOnSave: true,
+			defaultIsResolvable: req.isResolvable,
 		},
 	);
 }

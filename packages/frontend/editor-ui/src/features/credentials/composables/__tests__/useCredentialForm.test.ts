@@ -189,6 +189,26 @@ describe('useCredentialForm', () => {
 			expect(form.credentialData.value.user).toBe('alice');
 		});
 
+		it('defaults isResolvable to false for a new credential', async () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
+
+			await form.initialize();
+
+			expect(form.isResolvable.value).toBe(false);
+		});
+
+		it('seeds isResolvable from defaultIsResolvable for a new credential', async () => {
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'privateOAuth2Api',
+				defaultIsResolvable: true,
+			});
+
+			await form.initialize();
+
+			expect(form.isResolvable.value).toBe(true);
+		});
+
 		it('flags custom OAuth when editing a credential with overridden client fields', async () => {
 			credentialsStore.getCredentialData.mockResolvedValue({
 				id: 'cred-2',

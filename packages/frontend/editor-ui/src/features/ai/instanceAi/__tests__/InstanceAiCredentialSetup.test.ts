@@ -235,7 +235,34 @@ describe('InstanceAiCredentialSetup', () => {
 				undefined,
 				undefined,
 				undefined,
-				{ closeOnSave: true },
+				{ closeOnSave: true, defaultIsResolvable: undefined },
+			);
+		});
+
+		it('opens credential modal pre-set to End-user mode when the request calls for it', async () => {
+			const requests = makeCredentialRequests(1);
+			requests[0].isResolvable = true;
+			const uiStore = useUIStore();
+			const openNewCredSpy = vi.spyOn(uiStore, 'openNewCredential');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
+			expect(openNewCredSpy).toHaveBeenCalledWith(
+				'type1',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ closeOnSave: true, defaultIsResolvable: true },
 			);
 		});
 

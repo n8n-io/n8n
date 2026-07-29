@@ -213,6 +213,11 @@ export interface CredentialSummary {
 	id: string;
 	name: string;
 	type: string;
+	/** True when this credential is set to "End-user credential" connection
+	 *  mode — it resolves to whoever triggers the workflow rather than one
+	 *  shared connection. Check this before describing a credential's mode;
+	 *  never assume "Fixed" by default. */
+	isResolvable: boolean;
 }
 
 export interface CredentialDetail extends CredentialSummary {

@@ -148,9 +148,9 @@ describe('credentials tool', () => {
 	describe('list action', () => {
 		it('should call credentialService.list and return paginated results', async () => {
 			const credentials: CredentialSummary[] = [
-				{ id: '1', name: 'Slack Token', type: 'slackApi' },
-				{ id: '2', name: 'GitHub Token', type: 'githubApi' },
-				{ id: '3', name: 'Notion Key', type: 'notionApi' },
+				{ id: '1', name: 'Slack Token', type: 'slackApi', isResolvable: false },
+				{ id: '2', name: 'GitHub Token', type: 'githubApi', isResolvable: false },
+				{ id: '3', name: 'Notion Key', type: 'notionApi', isResolvable: true },
 			];
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -161,9 +161,9 @@ describe('credentials tool', () => {
 			expect(context.credentialService.list).toHaveBeenCalledWith({ type: undefined });
 			expect(result).toEqual({
 				credentials: [
-					{ id: '1', name: 'Slack Token', type: 'slackApi' },
-					{ id: '2', name: 'GitHub Token', type: 'githubApi' },
-					{ id: '3', name: 'Notion Key', type: 'notionApi' },
+					{ id: '1', name: 'Slack Token', type: 'slackApi', isResolvable: false },
+					{ id: '2', name: 'GitHub Token', type: 'githubApi', isResolvable: false },
+					{ id: '3', name: 'Notion Key', type: 'notionApi', isResolvable: true },
 				],
 				total: 3,
 				hasMore: false,
@@ -171,7 +171,9 @@ describe('credentials tool', () => {
 		});
 
 		it('should filter by type when provided', async () => {
-			const credentials: CredentialSummary[] = [{ id: '1', name: 'Slack Token', type: 'slackApi' }];
+			const credentials: CredentialSummary[] = [
+				{ id: '1', name: 'Slack Token', type: 'slackApi', isResolvable: false },
+			];
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
@@ -186,6 +188,7 @@ describe('credentials tool', () => {
 				id: String(i),
 				name: `Cred ${i}`,
 				type: 'testType',
+				isResolvable: false,
 			}));
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -199,8 +202,8 @@ describe('credentials tool', () => {
 
 			expect(result).toEqual({
 				credentials: [
-					{ id: '3', name: 'Cred 3', type: 'testType' },
-					{ id: '4', name: 'Cred 4', type: 'testType' },
+					{ id: '3', name: 'Cred 3', type: 'testType', isResolvable: false },
+					{ id: '4', name: 'Cred 4', type: 'testType', isResolvable: false },
 				],
 				total: 10,
 				hasMore: true,
@@ -213,6 +216,7 @@ describe('credentials tool', () => {
 				id: String(i),
 				name: `Cred ${i}`,
 				type: 'testType',
+				isResolvable: false,
 			}));
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -226,9 +230,9 @@ describe('credentials tool', () => {
 
 		it('should filter by query (case-insensitive name substring)', async () => {
 			const credentials: CredentialSummary[] = [
-				{ id: '1', name: 'Slack Work', type: 'slackApi' },
-				{ id: '2', name: 'Slack Personal', type: 'slackApi' },
-				{ id: '3', name: 'Notion Key', type: 'notionApi' },
+				{ id: '1', name: 'Slack Work', type: 'slackApi', isResolvable: false },
+				{ id: '2', name: 'Slack Personal', type: 'slackApi', isResolvable: false },
+				{ id: '3', name: 'Notion Key', type: 'notionApi', isResolvable: false },
 			];
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -242,8 +246,8 @@ describe('credentials tool', () => {
 
 			expect(result).toEqual({
 				credentials: [
-					{ id: '1', name: 'Slack Work', type: 'slackApi' },
-					{ id: '2', name: 'Slack Personal', type: 'slackApi' },
+					{ id: '1', name: 'Slack Work', type: 'slackApi', isResolvable: false },
+					{ id: '2', name: 'Slack Personal', type: 'slackApi', isResolvable: false },
 				],
 				total: 2,
 				hasMore: false,
@@ -255,6 +259,7 @@ describe('credentials tool', () => {
 				id: String(i),
 				name: i === 55 ? 'Production Notion' : `Cred ${i}`,
 				type: 'notionApi',
+				isResolvable: false,
 			}));
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -267,7 +272,9 @@ describe('credentials tool', () => {
 			);
 
 			expect(result).toEqual({
-				credentials: [{ id: '55', name: 'Production Notion', type: 'notionApi' }],
+				credentials: [
+					{ id: '55', name: 'Production Notion', type: 'notionApi', isResolvable: false },
+				],
 				total: 1,
 				hasMore: false,
 			});
@@ -278,6 +285,7 @@ describe('credentials tool', () => {
 				id: String(i),
 				name: `Cred ${i}`,
 				type: 'testType',
+				isResolvable: false,
 			}));
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -298,6 +306,7 @@ describe('credentials tool', () => {
 				id: String(i),
 				name: `Cred ${i}`,
 				type: 'slackApi',
+				isResolvable: false,
 			}));
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -313,9 +322,15 @@ describe('credentials tool', () => {
 			expect(result.hint).toBeUndefined();
 		});
 
-		it('should only return id, name, and type fields', async () => {
+		it('should only return id, name, type, and isResolvable fields', async () => {
 			const credentials = [
-				{ id: '1', name: 'Slack Token', type: 'slackApi', extraField: 'should-be-stripped' },
+				{
+					id: '1',
+					name: 'Slack Token',
+					type: 'slackApi',
+					isResolvable: false,
+					extraField: 'should-be-stripped',
+				},
 			];
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -324,7 +339,7 @@ describe('credentials tool', () => {
 			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
 
 			expect((result as { credentials: unknown[] }).credentials).toEqual([
-				{ id: '1', name: 'Slack Token', type: 'slackApi' },
+				{ id: '1', name: 'Slack Token', type: 'slackApi', isResolvable: false },
 			]);
 		});
 	});
@@ -411,6 +426,7 @@ describe('credentials tool', () => {
 				id: '42',
 				name: 'My Notion Key',
 				type: 'notionApi',
+				isResolvable: false,
 				nodesWithAccess: [{ nodeType: 'n8n-nodes-base.notion' }],
 			};
 			const context = createMockContext();
@@ -680,7 +696,7 @@ describe('credentials tool', () => {
 	describe('setup action', () => {
 		it('should suspend with credentialRequests on first call', async () => {
 			const existingCreds: CredentialSummary[] = [
-				{ id: 'c1', name: 'Existing Slack', type: 'slackApi' },
+				{ id: 'c1', name: 'Existing Slack', type: 'slackApi', isResolvable: false },
 			];
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(existingCreds);
@@ -745,6 +761,59 @@ describe('credentials tool', () => {
 					],
 				}),
 			);
+		});
+
+		it('should include isResolvable in credentialRequests when true', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'googleDriveOAuth2Api',
+							reason: 'Set this up as an End-user credential',
+							isResolvable: true,
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					credentialRequests: [
+						expect.objectContaining({
+							isResolvable: true,
+						}),
+					],
+				}),
+			);
+		});
+
+		it('should omit isResolvable from credentialRequests when not provided', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi', reason: 'For notifications' }],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+			const [request] = suspendFn.mock.calls[0][0].credentialRequests;
+			expect(request).not.toHaveProperty('isResolvable');
 		});
 
 		it('should use plural message for multiple credentials', async () => {

@@ -107,12 +107,23 @@ const setupAction = z.object({
 				credentialType: z
 					.string()
 					.describe('n8n credential type name (e.g. "slackApi", "gmailOAuth2Api")'),
-				reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
+				reason: z
+					.string()
+					.optional()
+					.describe(
+						'Why this credential is needed (shown to user). If `isResolvable` is true, say so here explicitly (e.g. "Set this up as an End-user credential so files belong to whoever triggers the workflow") — this is the only text the user sees on the setup card, and it is shown even when an existing-credentials dropdown (not the create-new modal) is rendered.',
+					),
 				suggestedName: z
 					.string()
 					.optional()
 					.describe(
 						'Suggested display name for the credential (e.g. "Linear API key"). Pre-fills the name field when creating a new credential.',
+					),
+				isResolvable: z
+					.boolean()
+					.optional()
+					.describe(
+						'Set true when this credential must resolve to whichever person triggers the workflow ("End-user credential" mode) rather than one shared connection ("Fixed"). When true and the user creates a new credential from this card, its setup modal opens pre-set to End-user mode. Only set this when the request or workflow design clearly calls for per-user credentials — see the End-User Credentials section of the workflow-builder skill.',
 					),
 			}),
 		)
@@ -248,6 +259,7 @@ const suspendSchema = z.object({
 				reason: z.string(),
 				existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
 				suggestedName: z.string().optional(),
+				isResolvable: z.boolean().optional(),
 			}),
 		)
 		.optional(),
@@ -272,6 +284,7 @@ interface StoredCredentialListItem {
 	id: string;
 	name: string;
 	type: string;
+	isResolvable: boolean;
 }
 
 interface AiGatewayManagedListItem {
@@ -308,7 +321,9 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 			// and continue with stored credentials only.
 		}
 	}
-	for (const c of storedCredentials) items.push({ id: c.id, name: c.name, type: c.type });
+	for (const c of storedCredentials) {
+		items.push({ id: c.id, name: c.name, type: c.type, isResolvable: c.isResolvable });
+	}
 
 	const filtered = input.name
 		? items.filter((c) => c.name.toLowerCase().includes(input.name!.toLowerCase()))
@@ -326,7 +341,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		credentials: page.map((c) =>
 			c.id === null
 				? { id: c.id, name: c.name, type: c.type, __aiGatewayManaged: c.__aiGatewayManaged }
-				: { id: c.id, name: c.name, type: c.type },
+				: { id: c.id, name: c.name, type: c.type, isResolvable: c.isResolvable },
 		),
 		total,
 		hasMore,
@@ -423,7 +438,12 @@ async function handleSetup(
 	if (resumeData === undefined || resumeData === null) {
 		const credentialRequests = await Promise.all(
 			input.credentials.map(
-				async (req: { credentialType: string; reason?: string; suggestedName?: string }) => {
+				async (req: {
+					credentialType: string;
+					reason?: string;
+					suggestedName?: string;
+					isResolvable?: boolean;
+				}) => {
 					const existing = await context.credentialService.list({
 						type: req.credentialType,
 						...(context.projectId ? { projectId: context.projectId } : {}),
@@ -433,6 +453,7 @@ async function handleSetup(
 						reason: req.reason ?? `Required for ${req.credentialType}`,
 						existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
 						...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
+						...(req.isResolvable ? { isResolvable: true } : {}),
 					};
 				},
 			),

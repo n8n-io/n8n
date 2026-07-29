@@ -331,6 +331,71 @@ decision after testing.
 - Always declare `output` on nodes that use unresolved credentials when mock
   data is needed for verification.
 
+## End-User Credentials
+
+"End-user credential" is the user-facing name for a credential *connection
+mode* (the alternative is "Fixed credential") — not a different node,
+resolver, or workflow architecture. A credential set to this mode resolves to
+whichever person triggered the workflow, instead of one shared stored
+connection.
+
+**Signal phrases** that imply the user wants this: "for the user who triggers
+it", "their own account", "per user", "each user's own credentials", "so
+everyone connects their own [service]". When you see this in a request, don't
+architect anything special in the workflow — the node and its credential
+reference look exactly the same either way.
+
+**How to apply it:** this is chosen on the credential itself when the user
+creates or selects it (via the credential setup card's connection-mode
+toggle), not something `build-workflow` code controls. If a request clearly
+implies it, when calling `credentials(action="setup")` for that credential,
+set `isResolvable: true` on its entry (this pre-selects End-user mode when the
+setup card opens the create-credential modal) *and* say so in that entry's
+`reason` text (e.g. "Set this up as an End-user credential so files belong to
+whoever triggers the workflow") — the `reason` is what's shown when an
+existing-credentials dropdown renders instead of the create modal, so the
+`isResolvable` flag alone doesn't reach the user in that path. Do not attempt
+to set this via node parameters or SDK code.
+
+**Check, don't guess, the current mode.** `credentials(action="list")` and
+`credentials(action="get")` return an `isResolvable` field on every stored
+credential — `true` means it's already set to End-user mode, `false` means
+Fixed. Always read this field before describing a credential's mode to the
+user; never assume "Fixed" (or any mode) by default. A credential can be
+End-user mode but not yet connected for the current user — those are two
+independent facts: report both accurately (e.g. "already set to End-user
+credential, but you haven't connected your own account yet") rather than
+conflating "not connected" with "not End-user mode".
+
+**How to describe connecting it — be precise, don't describe the setup flow
+from scratch.** Once a node already has an End-user credential selected (not
+"not yet configured"), a dedicated **"Connect"** button appears directly
+below the credential dropdown in the node panel — it's a separate row, not
+part of the dropdown itself. Clicking it immediately opens the OAuth popup;
+there's no need to reopen the credential or re-enter its setup fields. Tell
+the user: "open the node, then click Connect below the credential field" —
+not "click the credential field and follow the OAuth flow," which describes
+the wrong element and reads like the credential still needs to be
+created/configured from scratch.
+
+**Current constraint: OAuth-only.** Only OAuth-based credential types can be
+set to End-user mode today — the connection-mode toggle only appears for
+them, because they're the only ones with a managed authorize endpoint. If a
+request implies per-user credentials for a non-OAuth type (e.g. a plain
+API-key credential), say plainly that end-user mode isn't available for that
+credential type yet, rather than suggesting it as an option.
+
+**Constraint to flag:** end-user credentials require a trigger that can
+identify who is running the workflow — Manual, Chat, MCP server, or
+Sub-workflow triggers work; a Webhook trigger does not (unless a custom
+identity resolver is configured, which is an advanced/admin setup outside
+normal building). If the workflow's trigger is a Webhook, say so rather than
+silently building something that won't resolve credentials at runtime.
+
+**Vocabulary:** always say "End-user credential" (not "private credential",
+"dynamic credential", "per-user credential", or "resolvable credential" —
+those are internal/legacy names only).
+
 ## n8n credits Preference
 
 "n8n credits" is the user-facing name of n8n's managed credential

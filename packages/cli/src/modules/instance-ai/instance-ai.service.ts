@@ -516,6 +516,15 @@ export class InstanceAiService {
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
 
+	/**
+	 * Tracks the n8n-auth cookie per thread, so end-user (dynamic) credentials
+	 * can resolve the acting user's own connection when this thread runs/tests
+	 * a workflow — including background continuations (planned tasks) within
+	 * the same thread. Mirrors threadPushRef's lifecycle: set on startRun, kept
+	 * alive across follow-ups/planned tasks, cleared on thread dispose.
+	 */
+	private readonly threadN8nAuthCookie = new Map<string, string>();
+
 	/** Counts plan-review confirmations per thread, to tell the first plan apart from later revisions. */
 	private readonly planRequestsByThread = new Map<string, number>();
 
@@ -1038,6 +1047,7 @@ export class InstanceAiService {
 		context?: InstanceAiHandoffContext,
 		timeZone?: string,
 		pushRef?: string,
+		n8nAuthCookie?: string,
 	): string {
 		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
@@ -1054,6 +1064,10 @@ export class InstanceAiService {
 
 		if (pushRef !== undefined) {
 			this.threadPushRef.set(threadId, pushRef);
+		}
+
+		if (n8nAuthCookie !== undefined) {
+			this.threadN8nAuthCookie.set(threadId, n8nAuthCookie);
 		}
 
 		this.startExecuteRun(
@@ -1523,6 +1537,7 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
+		this.threadN8nAuthCookie.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
 		this.tracing.deleteTraceContextsForThread(threadId);
@@ -2117,6 +2132,7 @@ export class InstanceAiService {
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
 			modelId,
+			n8nAuthCookie: this.threadN8nAuthCookie.get(threadId),
 		});
 
 		// Merge both local gateway and direct browser-use into a single

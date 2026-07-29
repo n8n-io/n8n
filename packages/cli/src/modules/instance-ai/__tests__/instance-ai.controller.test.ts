@@ -57,6 +57,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { AuthService } from '@/auth/auth.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -105,6 +106,7 @@ describe('InstanceAiController', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
 	const push = mock<Push>();
 	const publisher = mock<Publisher>();
+	const authService = mock<AuthService>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
 		instanceAi: { gatewayApiKey: 'static-key', durableLog: false },
@@ -141,6 +143,7 @@ describe('InstanceAiController', () => {
 		projectService,
 		instanceAiErrorReporter,
 		publisher,
+		authService,
 		globalConfig,
 	);
 
@@ -179,6 +182,7 @@ describe('InstanceAiController', () => {
 				payload.context,
 				payload.timeZone,
 				payload.pushRef,
+				undefined,
 			);
 		});
 
@@ -213,6 +217,27 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.context,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
+				undefined,
+			);
+		});
+
+		it('should forward the n8n-auth cookie to startRun for end-user credential resolution', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-4');
+			authService.getCookieToken.mockReturnValueOnce('n8n-auth-cookie-value');
+
+			await controller.chat(req, res, THREAD_ID, payload);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payload.message,
+				payload.attachments,
+				payload.context,
+				payload.timeZone,
+				payload.pushRef,
+				'n8n-auth-cookie-value',
 			);
 		});
 
@@ -245,6 +270,7 @@ describe('InstanceAiController', () => {
 				payloadWithContext.context,
 				payloadWithContext.timeZone,
 				payloadWithContext.pushRef,
+				undefined,
 			);
 		});
 
@@ -1782,6 +1808,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		mock<ProjectService>(),
 		mock<InstanceAiErrorReporterService>(),
 		mock<Publisher>(),
+		mock<AuthService>(),
 		globalConfig,
 	);
 

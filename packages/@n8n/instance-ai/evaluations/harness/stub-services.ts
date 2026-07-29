@@ -132,7 +132,7 @@ export async function createStubServices(
 			return [];
 		},
 		async get(credentialId: string) {
-			return { id: credentialId, name: credentialId, type: 'unknown' };
+			return { id: credentialId, name: credentialId, type: 'unknown', isResolvable: false };
 		},
 		async delete() {},
 		async test() {

@@ -668,6 +668,8 @@ export interface NewCredentialsModal extends ModalState {
 	hideAskAssistant?: boolean;
 	appendToBody?: boolean;
 	usageScope?: 'project' | 'instance';
+	/** Pre-select "End-user credential" connection mode when creating a new credential from this modal (new mode only). */
+	defaultIsResolvable?: boolean;
 	/** Behavior for the Instance AI credential setup-help button, supplied by the
 	 * surface that opened the modal (an editor capability, or the credentials list).
 	 * Resolves to whether the credential modal should close (false keeps it open for
