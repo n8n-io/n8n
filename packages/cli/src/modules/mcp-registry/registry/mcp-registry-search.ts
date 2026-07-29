@@ -56,6 +56,14 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 	};
 }
 
+/** Map registry servers to the config-ready shape, skipping entries without a usable remote. */
+export function listMcpRegistryServers(servers: McpRegistryServer[]): McpRegistrySearchResult[] {
+	return servers.flatMap((server) => {
+		const result = toSearchResult(server);
+		return result ? [result] : [];
+	});
+}
+
 function normalizeQueries(queries: string[]): string[] {
 	return queries.map((query) => query.trim().toLowerCase()).filter((query) => query.length > 0);
 }
@@ -80,9 +88,5 @@ export function searchMcpRegistryServers(
 ): McpRegistrySearchResult[] {
 	const normalized = normalizeQueries(queries);
 	if (normalized.length === 0) return [];
-	return servers.flatMap((server) => {
-		if (!matchesQuery(server, normalized)) return [];
-		const result = toSearchResult(server);
-		return result ? [result] : [];
-	});
+	return listMcpRegistryServers(servers.filter((server) => matchesQuery(server, normalized)));
 }

@@ -45,7 +45,7 @@ export const AgentsModule: FrontendModuleDescription = {
 	modals: [
 		{
 			key: AGENT_TOOLS_MODAL_KEY,
-			component: async () => await import('./components/AgentToolsModal.vue'),
+			component: async () => await import('./components/AgentToolsConnectionModalWrapper.vue'),
 			initialState: {
 				open: false,
 				data: {
