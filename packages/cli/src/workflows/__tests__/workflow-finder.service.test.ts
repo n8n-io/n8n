@@ -214,7 +214,7 @@ describe('WorkflowFinderService', () => {
 				user,
 				expect.anything(),
 				expect.objectContaining({
-					filter: { query: 'Invoice', active: true },
+					filter: { name: 'Invoice', active: true },
 					skip: 20,
 					take: 5,
 					select: expect.objectContaining({

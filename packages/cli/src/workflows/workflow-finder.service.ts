@@ -365,7 +365,7 @@ export class WorkflowFinderService {
 			{ scopes, projectRoles, workflowRoles },
 			{
 				filter: {
-					...(name !== undefined && { query: name }),
+					...(name !== undefined && { name }),
 					...(active !== undefined && { active }),
 					...(tagNames?.length && { tags: tagNames }),
 					...(projectId && { projectId }),

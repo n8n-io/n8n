@@ -1142,6 +1142,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
+		if (typeof filter?.name === 'string' && filter.name.trim() !== '') {
+			qb.andWhere('workflow.name LIKE :name', { name: `%${filter.name.trim()}%` });
+		}
+
 		const searchWords = this.parseSearchWords(filter?.query);
 
 		if (searchWords.length > 0) {

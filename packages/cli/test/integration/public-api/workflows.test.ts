@@ -500,6 +500,44 @@ describe('GET /workflows', () => {
 		expect(tags).toEqual([]);
 	});
 
+	test('should match `name` as a substring of the workflow name', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({ name: 'Monthly invoice sync' }, member),
+			createWorkflowWithHistory({ name: 'Daily report' }, member),
+		]);
+
+		const response = await authMemberAgent.get('/workflows?name=invoice');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((w: { name: string }) => w.name)).toEqual([
+			'Monthly invoice sync',
+		]);
+	});
+
+	test('should not match `name` against the workflow description', async () => {
+		await createWorkflowWithHistory(
+			{ name: 'Daily report', description: 'Sends the invoice summary' },
+			member,
+		);
+
+		const response = await authMemberAgent.get('/workflows?name=invoice');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual([]);
+	});
+
+	test('should treat a multi-word `name` as one literal substring, not separate terms', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({ name: 'My Workflow' }, member),
+			createWorkflowWithHistory({ name: 'Workflow for my team' }, member),
+		]);
+
+		const response = await authMemberAgent.get('/workflows?name=My Workflow');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((w: { name: string }) => w.name)).toEqual(['My Workflow']);
+	});
+
 	test('should return all workflows for custom global role with workflow:read', async () => {
 		await Promise.all([
 			createWorkflowWithHistory({}, owner),
