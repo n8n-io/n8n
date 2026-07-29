@@ -24,7 +24,7 @@ import type {
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
-	workflowId: z.string().describe('The ID of the workflow to publish'),
+	workflowId: z.string(),
 	versionId: z
 		.string()
 		.optional()
@@ -68,8 +68,7 @@ export const createPublishWorkflowTool = (
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'publish_workflow',
 	config: {
-		description:
-			'Publish (activate) a workflow to make it available for production execution. This creates an active version from the current draft.',
+		description: 'Publish (activate) a workflow: creates an active version from the current draft.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {

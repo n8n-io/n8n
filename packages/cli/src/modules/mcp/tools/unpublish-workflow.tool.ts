@@ -14,7 +14,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
-	workflowId: z.string().describe('The ID of the workflow to unpublish'),
+	workflowId: z.string(),
 });
 
 type UnpublishWorkflowOutput = {
@@ -38,8 +38,6 @@ export const createUnpublishWorkflowTool = (
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'unpublish_workflow',
 	config: {
-		description:
-			'Unpublish (deactivate) a workflow to stop it from being available for production execution.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {

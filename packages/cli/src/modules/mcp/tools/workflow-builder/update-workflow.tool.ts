@@ -338,7 +338,7 @@ const buildToolDescription = (canvasGroupsEnabled: boolean) => {
 
 const buildInputSchema = (canvasGroupsEnabled: boolean) =>
 	({
-		workflowId: z.string().describe('The ID of the workflow to update.'),
+		workflowId: z.string(),
 		skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 		operations: z
 			.array(buildOperationInputSchema(canvasGroupsEnabled))

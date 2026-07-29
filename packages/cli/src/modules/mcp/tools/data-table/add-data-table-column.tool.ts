@@ -14,10 +14,10 @@ import {
 } from '../schemas';
 
 const inputSchema = {
-	dataTableId: z.string().describe('The ID of the data table to add a column to'),
+	dataTableId: z.string(),
 	projectId: dataTableProjectIdSchema,
 	name: columnNameSchema,
-	type: dataTableColumnTypeSchema.describe('The data type of the new column'),
+	type: dataTableColumnTypeSchema,
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -33,7 +33,6 @@ export const createAddDataTableColumnTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'add_data_table_column',
 	config: {
-		description: 'Add a new column to an existing data table.',
 		inputSchema,
 		outputSchema,
 		annotations: {

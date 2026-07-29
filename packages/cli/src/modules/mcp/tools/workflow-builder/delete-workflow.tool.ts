@@ -12,7 +12,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const inputSchema = {
-	workflowId: z.string().describe('The ID of the workflow to archive'),
+	workflowId: z.string(),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -33,7 +33,6 @@ export const createArchiveWorkflowTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_ARCHIVE_WORKFLOW_TOOL.toolName,
 	config: {
-		description: 'Archive a workflow in n8n by its ID.',
 		inputSchema,
 		outputSchema,
 		annotations: {

@@ -39,7 +39,7 @@ import type { WorkflowPublishedDataService } from '@/workflows/workflow-publishe
 export { type FoundWorkflow };
 
 const inputSchema = z.object({
-	workflowId: z.string().describe('The ID of the workflow to execute'),
+	workflowId: z.string(),
 	executionMode: z
 		.enum(['manual', 'production'])
 		.describe(

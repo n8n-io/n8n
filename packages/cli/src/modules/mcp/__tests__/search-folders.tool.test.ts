@@ -60,7 +60,7 @@ describe('search-folders MCP tool', () => {
 
 		expect(tool.name).toBe('search_folders');
 		expect(tool.config).toBeDefined();
-		expect(typeof tool.config.description).toBe('string');
+		expect(tool.config.description).toBeUndefined();
 		expect(tool.config.inputSchema).toBeDefined();
 		expect(typeof tool.handler).toBe('function');
 	});

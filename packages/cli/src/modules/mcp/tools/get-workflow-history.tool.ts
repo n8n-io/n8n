@@ -15,7 +15,7 @@ import { getMcpWorkflow } from './workflow-validation.utils';
 const MAX_RESULTS = 50;
 
 const inputSchema = {
-	workflowId: z.string().describe('The ID of the workflow to read version history for'),
+	workflowId: z.string(),
 	limit: createLimitSchema(MAX_RESULTS),
 	offset: z
 		.number()
@@ -66,8 +66,7 @@ export const createGetWorkflowHistoryTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'get_workflow_history',
 	config: {
-		description:
-			'List the saved version history of a workflow (newest first), so you can inspect how it changed over time and pick a version to retrieve or restore.',
+		description: "List a workflow's saved versions, newest first.",
 		inputSchema,
 		outputSchema,
 		annotations: {

@@ -85,8 +85,6 @@ export const createSearchWorkflowsTool = (
 	return {
 		name: 'search_workflows',
 		config: {
-			description:
-				'Search for workflows with optional filters. Returns a preview of each workflow.',
 			inputSchema,
 			outputSchema,
 			annotations: {

@@ -21,7 +21,7 @@ import { getMcpWorkflowVersion } from './workflow-history.utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = {
-	workflowId: z.string().describe('The ID of the workflow the version belongs to'),
+	workflowId: z.string(),
 	versionId: z.string().describe('The version ID to retrieve, as returned by get_workflow_history'),
 } satisfies z.ZodRawShape;
 
@@ -80,8 +80,6 @@ export const createGetWorkflowVersionTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'get_workflow_version',
 	config: {
-		description:
-			'Retrieve the full content (nodes, connections, node groups) of a specific workflow version from its history. Use the versionId from get_workflow_history.',
 		inputSchema,
 		outputSchema,
 		annotations: {

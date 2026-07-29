@@ -49,7 +49,7 @@ describe('list-tags MCP tool', () => {
 			const tool = createListTagsTool(user, tagService, telemetry);
 
 			expect(tool.name).toBe('list_workflow_tags');
-			expect(tool.config.description).toEqual(expect.any(String));
+			expect(tool.config.description).toBeUndefined();
 			expect(tool.config.inputSchema).toBeDefined();
 			expect(tool.config.outputSchema).toBeDefined();
 			expect(tool.config.annotations).toMatchObject({
