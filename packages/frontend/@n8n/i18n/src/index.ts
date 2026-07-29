@@ -419,7 +419,7 @@ export function setLanguage(locale: string) {
 	return locale;
 }
 
-export function loadLanguage(locale: string, messages: LocaleMessages) {
+export function loadLanguage(locale: string, messages: Partial<LocaleMessages>) {
 	if (loadedLanguages.includes(locale)) {
 		return setLanguage(locale);
 	}

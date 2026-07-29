@@ -4172,6 +4172,8 @@ export interface IUserSettings {
 		modelName?: string;
 		localGatewayDisabled?: boolean;
 	};
+	/** Personal UI language override. Unset falls back to the instance default. */
+	locale?: string;
 }
 
 export interface IProcessedDataConfig {

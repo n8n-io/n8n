@@ -18,6 +18,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '../auth.eventBus';
 import { promptMfaCodeBus } from '../auth.eventBus';
@@ -88,9 +89,18 @@ const rolesStore = useRolesStore();
 const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
 const cloudPlanStore = useCloudPlanStore();
+const rootStore = useRootStore();
 
 const currentUser = computed((): IUser | null => {
 	return usersStore.currentUser;
+});
+
+// Empty string means "use instance default"
+const currentSelectedLocale = ref<string>(currentUser.value?.settings?.locale ?? '');
+const languageOptions = computed(() => rootStore.availableLocales);
+
+const isLanguageSelectVisible = computed((): boolean => {
+	return settingsStore.settings.languageUserSettingEnabled;
 });
 
 const isManagedByEnv = computed((): boolean => {
@@ -137,7 +147,10 @@ const isSecuritySectionVisible = computed((): boolean => {
 });
 
 const hasAnyPersonalisationChanges = computed((): boolean => {
-	return currentSelectedTheme.value !== uiStore.theme;
+	return (
+		currentSelectedTheme.value !== uiStore.theme ||
+		currentSelectedLocale.value !== (currentUser.value?.settings?.locale ?? '')
+	);
 });
 
 const hasAnyChanges = computed(() => {
@@ -312,6 +325,10 @@ async function updatePersonalisationSettings() {
 	}
 
 	uiStore.setTheme(currentSelectedTheme.value);
+
+	if (currentSelectedLocale.value !== (currentUser.value?.settings?.locale ?? '')) {
+		await usersStore.updateUserSettings({ locale: currentSelectedLocale.value || undefined });
+	}
 }
 
 function onSaveClick() {
@@ -485,6 +502,30 @@ onBeforeUnmount(() => {
 							:key="item.name"
 							:label="i18n.baseText(item.label)"
 							:value="item.name"
+						>
+						</N8nOption>
+					</N8nSelect>
+				</N8nInputLabel>
+			</div>
+			<div v-if="isLanguageSelectVisible" class="mt-s">
+				<N8nInputLabel :label="i18n.baseText('settings.personal.language')">
+					<N8nSelect
+						v-model="currentSelectedLocale"
+						:class="$style.themeSelect"
+						data-test-id="language-select"
+						size="small"
+						filterable
+					>
+						<N8nOption
+							:label="i18n.baseText('settings.personal.language.instanceDefault')"
+							value=""
+						>
+						</N8nOption>
+						<N8nOption
+							v-for="item in languageOptions"
+							:key="item.code"
+							:label="item.name"
+							:value="item.code"
 						>
 						</N8nOption>
 					</N8nSelect>

@@ -16,6 +16,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
+import type { LanguageService } from '@/services/language.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
@@ -52,6 +53,7 @@ describe('FrontendService', () => {
 		},
 		personalization: { enabled: false },
 		defaultLocale: 'en',
+		languages: { available: {} },
 		auth: { cookie: { secure: false } },
 		generic: { releaseChannel: 'stable', timezone: 'UTC' },
 		publicApi: { path: 'api', swaggerUiDisabled: false },
@@ -191,6 +193,10 @@ describe('FrontendService', () => {
 
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 
+	const languageService = mock<LanguageService>({
+		getAvailableLanguages: vi.fn().mockReturnValue([{ code: 'en', name: 'English' }]),
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -220,6 +226,7 @@ describe('FrontendService', () => {
 				aiUsageService,
 				workflowRepository,
 				workflowReviewPolicyService,
+				languageService,
 			),
 			license,
 		};

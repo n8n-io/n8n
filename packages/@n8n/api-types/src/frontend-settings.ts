@@ -147,6 +147,8 @@ export interface FrontendSettings {
 	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
+	availableLocales: Array<{ code: string; name: string }>;
+	languageUserSettingEnabled: boolean;
 	userManagement: IUserManagementSettings;
 	sso: {
 		managedByEnv: boolean;

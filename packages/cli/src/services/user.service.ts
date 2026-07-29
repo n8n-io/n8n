@@ -35,6 +35,7 @@ import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
+import { LanguageService } from './language.service';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
@@ -55,6 +56,7 @@ export class UserService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly jwtService: JwtService,
 		private readonly projectService: ProjectService,
+		private readonly languageService: LanguageService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -84,6 +86,15 @@ export class UserService {
 	}
 
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
+		if (newSettings.locale !== undefined) {
+			if (!this.globalConfig.languages.userSettingEnabled) {
+				throw new UserError('Personal UI language selection is not supported on this instance');
+			}
+			if (!this.languageService.isAvailable(newSettings.locale)) {
+				throw new UserError(`Unknown UI language: "${newSettings.locale}"`);
+			}
+		}
+
 		const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
 
 		if (user.settings) {

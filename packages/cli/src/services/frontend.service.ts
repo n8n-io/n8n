@@ -34,6 +34,7 @@ import {
 } from '@/workflows/workflow-history/workflow-history-helper';
 
 import { AiUsageService } from './ai-usage.service';
+import { LanguageService } from './language.service';
 import { UrlService } from './url.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
@@ -141,6 +142,7 @@ export class FrontendService {
 		private readonly aiUsageService: AiUsageService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
+		private readonly languageService: LanguageService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -269,6 +271,8 @@ export class FrontendService {
 			personalizationSurveyEnabled:
 				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
 			defaultLocale: this.globalConfig.defaultLocale,
+			availableLocales: this.languageService.getAvailableLanguages(),
+			languageUserSettingEnabled: this.globalConfig.languages.userSettingEnabled,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
 				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),

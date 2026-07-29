@@ -11,6 +11,7 @@ export type RootStoreState = {
 	baseUrl: string;
 	restEndpoint: string;
 	defaultLocale: string;
+	availableLocales: Array<{ code: string; name: string }>;
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
@@ -41,6 +42,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
 		restEndpoint: getConfigFromMetaTag('rest-endpoint') ?? 'rest',
 		defaultLocale: 'en',
+		availableLocales: [{ code: 'en', name: 'English' }],
 		endpointForm: 'form',
 		endpointFormTest: 'form-test',
 		endpointFormWaiting: 'form-waiting',
@@ -101,6 +103,8 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const binaryDataMode = computed(() => state.value.binaryDataMode);
 
 	const defaultLocale = computed(() => state.value.defaultLocale);
+
+	const availableLocales = computed(() => state.value.availableLocales);
 
 	const urlBaseEditor = computed(() => state.value.urlBaseEditor);
 
@@ -217,6 +221,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.defaultLocale = value;
 	};
 
+	const setAvailableLocales = (value: RootStoreState['availableLocales']) => {
+		state.value.availableLocales = value;
+	};
+
 	const setBinaryDataMode = (value: RootStoreState['binaryDataMode']) => {
 		state.value.binaryDataMode = value;
 	};
@@ -245,6 +253,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		instanceId,
 		pushRef,
 		defaultLocale,
+		availableLocales,
 		binaryDataMode,
 		OAuthCallbackUrls,
 		jwksUri,
@@ -271,6 +280,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setJwksUri,
 		setN8nMetadata,
 		setDefaultLocale,
+		setAvailableLocales,
 		setBinaryDataMode,
 		setPushRef,
 	};

@@ -5,6 +5,8 @@ import type { TranslationRequest } from '@/controllers/translation.controller';
 import { TranslationController } from '@/controllers/translation.controller';
 import type { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { LanguageService } from '@/services/language.service';
 
 // The controller loads the translation file via `require(<computed path>)`.
 // Vitest cannot mock a path that doesn't resolve to a real module, so write a
@@ -37,9 +39,11 @@ vi.mock('@n8n/backend-common', async (importOriginal) => {
 
 describe('TranslationController', () => {
 	const credentialTypes = mock<CredentialTypes>();
+	const languageService = mock<LanguageService>();
 	const controller = new TranslationController(
 		credentialTypes,
 		mock<GlobalConfig>({ defaultLocale: 'de' }),
+		languageService,
 	);
 
 	describe('getCredentialTranslation', () => {
@@ -61,6 +65,23 @@ describe('TranslationController', () => {
 			const response = { translation: 'string' };
 
 			expect(await controller.getCredentialTranslation(req)).toEqual(response);
+		});
+	});
+
+	describe('getEditorLanguage', () => {
+		it('should throw 404 on unknown language code', async () => {
+			languageService.getLanguageCatalog.calledWith('xx').mockResolvedValue(null);
+			const req = mock<TranslationRequest.EditorLanguage>({ params: { code: 'xx' } });
+
+			await expect(controller.getEditorLanguage(req)).rejects.toThrow(NotFoundError);
+		});
+
+		it('should return the catalog for a known language code', async () => {
+			const catalog = { 'generic.save': 'Speichern' };
+			languageService.getLanguageCatalog.calledWith('de').mockResolvedValue(catalog);
+			const req = mock<TranslationRequest.EditorLanguage>({ params: { code: 'de' } });
+
+			expect(await controller.getEditorLanguage(req)).toEqual(catalog);
 		});
 	});
 });

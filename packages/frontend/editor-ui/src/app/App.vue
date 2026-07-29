@@ -13,11 +13,13 @@ import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializ
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
-import { setLanguage } from '@n8n/i18n';
+import { setLanguage, loadLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
+import { getEditorLanguage } from '@n8n/rest-api-client/api/settings';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
@@ -35,6 +37,7 @@ import type {
 const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
 
 const workflowId = useWorkflowId();
 const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(null);
@@ -66,7 +69,12 @@ useTelemetryInitializer();
 useBackendStatus();
 
 const loading = ref(true);
-const defaultLocale = computed(() => rootStore.defaultLocale);
+// Falls back to the instance default for logged-out users and for users with
+// no personal override, so pre-auth pages (login, signup) render in the
+// instance's configured language too.
+const effectiveLocale = computed(
+	() => usersStore.currentUser?.settings?.locale || rootStore.defaultLocale,
+);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 
@@ -96,10 +104,29 @@ watch(route, (r) => {
 	);
 });
 
+const loadedLocales = new Set(['en']);
+
 watch(
-	defaultLocale,
+	effectiveLocale,
 	async (newLocale) => {
-		setLanguage(newLocale);
+		if (!loadedLocales.has(newLocale)) {
+			try {
+				const messages = await getEditorLanguage(rootStore.restApiContext, newLocale);
+				loadLanguage(newLocale, messages);
+				loadedLocales.add(newLocale);
+			} catch (error) {
+				// Admin-configured file may be missing/unreadable, or a user's personal
+				// override may reference a language that's since been removed - degrade
+				// to English rather than breaking app boot.
+				console.warn(`Failed to load UI language "${newLocale}", falling back to English`, error);
+				setLanguage('en');
+				axios.defaults.headers.common['Accept-Language'] = 'en';
+				void locale.use('en');
+				return;
+			}
+		} else {
+			setLanguage(newLocale);
+		}
 
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
 
