@@ -60,7 +60,10 @@ const emit = defineEmits<{
 }>();
 
 const handleTooltipClick = (tab: Value, event: MouseEvent) => emit('tooltipClick', tab, event);
-const handleTabClick = (tab: Value) => emit('update:modelValue', tab);
+const handleTabClick = (option: TabOptions<Value>) => {
+	if (option.disabled) return;
+	emit('update:modelValue', option.value);
+};
 
 const scroll = (left: number) => {
 	const container = tabs.value;
@@ -99,13 +102,15 @@ const scrollRight = () => scroll(50);
 					<template #content>
 						<div v-n8n-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
 					</template>
+					<!-- Disabled link/router tabs fall through to the inert plain-tab branch
+					     below so they can't navigate and get consistent disabled styling. -->
 					<a
-						v-if="option.href"
+						v-if="option.href && !option.disabled"
 						target="_blank"
 						:href="option.href"
 						rel="noopener noreferrer"
 						:class="[$style.link, $style.tab, option.label ? '' : $style.noText]"
-						@click="() => handleTabClick(option.value)"
+						@click="() => handleTabClick(option)"
 					>
 						<div :class="$style.externalLinkContent">
 							{{ option.label }}
@@ -119,7 +124,7 @@ const scrollRight = () => scroll(50);
 						</div>
 					</a>
 					<RouterLink
-						v-else-if="option.to"
+						v-else-if="option.to && !option.disabled"
 						:to="option.to"
 						:class="[
 							$style.tab,
@@ -141,10 +146,12 @@ const scrollRight = () => scroll(50);
 							[$style.activeTab]: modelValue === option.value,
 							[$style.noText]: !option.label,
 							[$style.dangerTab]: option.variant === 'danger',
+							[$style.disabledTab]: option.disabled === true,
 						}"
-						@click="() => handleTabClick(option.value)"
-						@keydown.enter.prevent="() => handleTabClick(option.value)"
-						@keydown.space.prevent="() => handleTabClick(option.value)"
+						:aria-disabled="option.disabled || undefined"
+						@click="() => handleTabClick(option)"
+						@keydown.enter.prevent="() => handleTabClick(option)"
+						@keydown.space.prevent="() => handleTabClick(option)"
 					>
 						<N8nIcon
 							v-if="option.icon && option.iconPosition !== 'right'"
@@ -309,6 +316,15 @@ const scrollRight = () => scroll(50);
 
 	&:hover {
 		color: var(--color--danger);
+	}
+}
+
+.disabledTab {
+	color: var(--color--text--tint-1);
+	cursor: not-allowed;
+
+	&:hover {
+		color: var(--color--text--tint-1);
 	}
 }
 
