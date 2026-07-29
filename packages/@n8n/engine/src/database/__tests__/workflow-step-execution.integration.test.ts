@@ -3,6 +3,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { StepStatus } from '../../execution/execution.types';
+import { StepNotFoundError } from '../../execution/step-store';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
@@ -46,7 +47,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const created = repo.create({ executionId, nodeId: 'node-a', status: 'queued' });
 		await repo.save(created);
 
-		const found = await repo.findOneByOrFail({ id: created.id });
+		const found = await repo.findOneOrFail({ where: { id: created.id } });
 		expect(found.executionId).toBe(executionId);
 		expect(found.nodeId).toBe('node-a');
 		expect(found.status).toBe('queued');
@@ -59,7 +60,9 @@ describe('workflow_step_execution table (integration)', () => {
 
 		const { id } = await store.createStep({ executionId, nodeId: 'x', status: 'queued' });
 
-		const found = await dataSource.getRepository(WorkflowStepExecution).findOneByOrFail({ id });
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
 		expect(found.nodeId).toBe('x');
 		expect(found.status).toBe('queued');
 	});
@@ -71,7 +74,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 		await dataSource.getRepository(WorkflowExecution).delete({ id: executionId });
 
-		expect(await stepRepo.countBy({ executionId })).toBe(0);
+		expect(await stepRepo.count({ where: { executionId } })).toBe(0);
 	});
 
 	it('rejects a step referencing a non-existent execution (foreign key)', async () => {
@@ -83,6 +86,93 @@ describe('workflow_step_execution table (integration)', () => {
 				status: 'queued',
 			}),
 		).rejects.toThrow();
+	});
+
+	it('TypeOrmStepStore.loadStep returns the step, or throws when absent', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await store.createStep({ executionId, nodeId: 'node-a', status: 'queued' });
+
+		const step = await store.loadStep(id);
+
+		// `toMatchObject`: the adapter returns the entity, which carries columns the
+		// `StepRecord` interface doesn't expose.
+		expect(step).toMatchObject({
+			id,
+			executionId,
+			nodeId: 'node-a',
+			status: 'queued',
+			outputs: null,
+		});
+		await expect(store.loadStep('00000000-0000-7000-8000-000000000000')).rejects.toThrow(
+			StepNotFoundError,
+		);
+	});
+
+	it('TypeOrmStepStore.transitionStepStatus only transitions from the expected status', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await store.createStep({ executionId, nodeId: 'a', status: 'queued' });
+
+		expect(await store.transitionStepStatus(id, 'queued', 'running')).toBe(true);
+		// second claim of the same step loses the race
+		expect(await store.transitionStepStatus(id, 'queued', 'running')).toBe(false);
+		expect((await store.loadStep(id)).status).toBe('running');
+	});
+
+	it('TypeOrmStepStore.completeStep persists outputs and marks the step completed', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await store.createStep({ executionId, nodeId: 'a', status: 'running' });
+
+		expect(await store.completeStep(id, [[{ json: { ok: true } }]])).toBe(true);
+
+		const step = await store.loadStep(id);
+		expect(step.status).toBe('completed');
+		expect(step.outputs).toEqual([[{ json: { ok: true } }]]);
+	});
+
+	it('TypeOrmStepStore.completeStep and failStep only record a step that is running', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await store.createStep({ executionId, nodeId: 'a', status: 'queued' });
+
+		expect(await store.completeStep(id, [[{ json: { ok: true } }]])).toBe(false);
+		expect(await store.failStep(id, { name: 'Error', message: 'node blew up' })).toBe(false);
+
+		// neither the status nor the result columns moved
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('queued');
+		expect(found.outputs).toBeNull();
+		expect(found.error).toBeNull();
+	});
+
+	it('TypeOrmStepStore.failStep persists the error and marks the step failed', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await store.createStep({ executionId, nodeId: 'a', status: 'running' });
+
+		expect(await store.failStep(id, { name: 'Error', message: 'node blew up' })).toBe(true);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('failed');
+		expect(found.error).toEqual({ name: 'Error', message: 'node blew up' });
+	});
+
+	it('TypeOrmStepStore.loadStepOutputs returns outputs keyed by node id', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id: aId } = await store.createStep({ executionId, nodeId: 'a', status: 'running' });
+		await store.completeStep(aId, [[{ json: { from: 'a' } }]]);
+		await store.createStep({ executionId, nodeId: 'b', status: 'queued' });
+
+		const outputs = await store.loadStepOutputs(executionId, ['a', 'b']);
+
+		expect(outputs).toEqual({ a: [[{ json: { from: 'a' } }]], b: null });
 	});
 
 	it('rejects an invalid status (check constraint)', async () => {

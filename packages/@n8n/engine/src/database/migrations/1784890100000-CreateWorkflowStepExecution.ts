@@ -14,6 +14,19 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 					{ name: 'node_id', type: 'varchar' },
 					{ name: 'status', type: 'varchar', length: '32' },
 					{
+						name: 'outputs',
+						type: 'jsonb',
+						isNullable: true,
+						comment:
+							'Step outputs, persisted without inspection and reloaded as downstream inputs. Shape is step-type-specific.',
+					},
+					{
+						name: 'error',
+						type: 'jsonb',
+						isNullable: true,
+						comment: 'Name and message of the error that failed this step.',
+					},
+					{
 						name: 'created_at',
 						type: 'timestamptz',
 						precision: 3,

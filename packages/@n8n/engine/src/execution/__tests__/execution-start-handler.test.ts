@@ -19,6 +19,18 @@ function makeStepQueue(): WorkQueue<StepMessage> {
 	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 }
 
+/** Only `createStep` is exercised here; the rest belong to the step worker. */
+function makeStepStore(createStep = vi.fn()): StepStore {
+	return {
+		createStep,
+		loadStep: vi.fn(),
+		transitionStepStatus: vi.fn(),
+		completeStep: vi.fn(),
+		failStep: vi.fn(),
+		loadStepOutputs: vi.fn(),
+	};
+}
+
 function record(graph: WorkflowGraph): ExecutionRecord {
 	return {
 		id: 'exec-1',
@@ -51,7 +63,7 @@ describe('ExecutionStartHandler', () => {
 			.mockResolvedValueOnce({ id: 'step-trigger' })
 			.mockResolvedValueOnce({ id: 'step-a' })
 			.mockResolvedValueOnce({ id: 'step-b' });
-		const stepStore: StepStore = { createStep };
+		const stepStore = makeStepStore(createStep);
 		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
 
@@ -91,7 +103,7 @@ describe('ExecutionStartHandler', () => {
 		const executionStore = makeExecutionStore({
 			transitionStatus: vi.fn().mockResolvedValue(false),
 		});
-		const stepStore: StepStore = { createStep: vi.fn() };
+		const stepStore = makeStepStore();
 		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
 
@@ -107,7 +119,7 @@ describe('ExecutionStartHandler', () => {
 		const executionStore = makeExecutionStore({
 			loadExecution: vi.fn().mockResolvedValue(record(graph)),
 		});
-		const stepStore: StepStore = { createStep: vi.fn() };
+		const stepStore = makeStepStore();
 		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
 
@@ -127,7 +139,7 @@ describe('ExecutionStartHandler', () => {
 			loadExecution: vi.fn().mockResolvedValue(record(graph)),
 		});
 		const createStep = vi.fn().mockResolvedValue({ id: 'step-trigger' });
-		const stepStore: StepStore = { createStep };
+		const stepStore = makeStepStore(createStep);
 		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
 
