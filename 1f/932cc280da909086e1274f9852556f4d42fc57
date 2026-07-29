@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/http-url-expression-delimiters-not-url-encoded.json
+  s_e261f072c3b6bd::t_5b6efad80fd9ec 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f932cc280da909086e1274f9852556f4d42fc57",
+  "prompts": {},
+  "sessions": {
+    "s_e261f072c3b6bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba8bff36-5d40-4efa-9b57-d49a4365067c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
