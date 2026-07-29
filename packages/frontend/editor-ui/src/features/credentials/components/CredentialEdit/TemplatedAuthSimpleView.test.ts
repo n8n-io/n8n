@@ -74,12 +74,12 @@ describe('TemplatedAuthSimpleView', () => {
 		expect(apiKey.textContent).toContain('Expression');
 	});
 
-	it('falls back to the marker name when a def is missing', () => {
+	it('falls back to a humanized marker name when a def is missing', () => {
 		const { getByText } = renderComponent({
 			props: { credentialData: credentialData({ placeholderDefs: '' }) },
 		});
 
-		expect(getByText('api_key')).toBeInTheDocument();
+		expect(getByText('Api key')).toBeInTheDocument();
 	});
 
 	it('prefills plain inputs with the stored values, like other credential fields', async () => {
