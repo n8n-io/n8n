@@ -1,7 +1,8 @@
 import path from 'path';
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { writeFileSync, readFileSync, rmSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import shell from 'shelljs';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { rawTimeZones } from '@vvo/tzdb';
 import glob from 'fast-glob';
 
@@ -11,6 +12,8 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
 const SPEC_FILENAME = 'openapi.yml';
 const SPEC_THEME_FILENAME = 'swagger-theme.css';
+
+const YAML_STRINGIFY_OPTS = { singleQuote: true, aliasDuplicateObjects: false, lineWidth: 0 };
 
 const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
@@ -22,10 +25,7 @@ if (publicApiEnabled) {
 	createPublicApiDirectory();
 	copySwaggerTheme();
 
-	// Must run before bundleOpenApiSpecs(), Zod-generated path fragments need to exist to be bundled.
-	await generateOpenApiDocs();
-
-	bundleOpenApiSpecs();
+	await buildPublicApiSpec();
 }
 
 function generateUserManagementEmailTemplates() {
@@ -63,10 +63,33 @@ function copySwaggerTheme() {
 	shell.cp('-r', swaggerTheme.source, swaggerTheme.destination);
 }
 
-// Generates the subset of paths that have opted into automatic generation via the `@PublicApiController` decorator
-// rather than being defined as hand-written YAML. Imports the already-compiled dist output rather than the .ts source — by the time
+// Builds the v1 spec from two sources:
+// - the hand-written routes (eov) `openapi.yml`
+// - the `@PublicApiController` decorator routes (generated from their DTOs/decorators)
+async function buildPublicApiSpec() {
+	const v1Dir = path.resolve(ROOT_DIR, 'src', 'public-api', 'v1');
+	const { generateDocs, mergeDecoratorDocument, DECORATOR_ROOT_FILENAME } =
+		await loadOpenApiGenerator();
+
+	// 1. Regenerate the committed fragments and the decorator-routes root that $refs them.
+	generateDocs(v1Dir);
+
+	// 2. Bundle every hand-written spec into dist (resolving all $refs), as before.
+	bundleHandWrittenSpecs();
+
+	// 3. Merge the decorator-routed operations into the bundled v1 spec.
+	const distV1Spec = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1', SPEC_FILENAME);
+	const eovDoc = parseYaml(readFileSync(distV1Spec, 'utf8'));
+	const decoratorDoc = bundleSpecToObject(path.join(v1Dir, DECORATOR_ROOT_FILENAME));
+	writeFileSync(
+		distV1Spec,
+		stringifyYaml(mergeDecoratorDocument(eovDoc, decoratorDoc), YAML_STRINGIFY_OPTS),
+	);
+}
+
+// Imports the already-compiled generator from dist rather than the .ts source — by the time
 // build:data runs, `tsc` has already emitted it and build.mjs has no TS loader.
-async function generateOpenApiDocs() {
+async function loadOpenApiGenerator() {
 	const generatorPath = path.resolve(
 		ROOT_DIR,
 		'dist',
@@ -81,18 +104,18 @@ async function generateOpenApiDocs() {
 		);
 	}
 
-	const { generateDocs } = await import(pathToFileURL(generatorPath).href);
-	if (typeof generateDocs !== 'function') {
-		throw new Error(
-			`OpenAPI doc generator at ${generatorPath} does not export a 'generateDocs' function — its export contract may have changed.`,
-		);
+	const generator = await import(pathToFileURL(generatorPath).href);
+	for (const name of ['generateDocs', 'mergeDecoratorDocument', 'DECORATOR_ROOT_FILENAME']) {
+		if (generator[name] === undefined) {
+			throw new Error(
+				`OpenAPI doc generator at ${generatorPath} is missing export '${name}' — its contract may have changed.`,
+			);
+		}
 	}
-
-	const v1Dir = path.resolve(ROOT_DIR, 'src', 'public-api', 'v1');
-	generateDocs(v1Dir);
+	return generator;
 }
 
-function bundleOpenApiSpecs() {
+function bundleHandWrittenSpecs() {
 	const publicApiDir = path.resolve(ROOT_DIR, 'src', 'public-api');
 
 	shell
@@ -106,6 +129,20 @@ function bundleOpenApiSpecs() {
 
 			shell.exec(command, { silent: true });
 		});
+}
+
+// Bundles a single spec through redocly and returns the resolved document as an object.
+function bundleSpecToObject(specPath) {
+	const tmpOutput = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1', '_bundle.tmp.yml');
+	const result = shell.exec(`pnpm openapi bundle "${specPath}" --output "${tmpOutput}"`, {
+		silent: true,
+	});
+	if (result.code !== 0) {
+		throw new Error(`redocly failed to bundle ${specPath}:\n${result.stderr || result.stdout}`);
+	}
+	const doc = parseYaml(readFileSync(tmpOutput, 'utf8'));
+	rmSync(tmpOutput);
+	return doc;
 }
 
 // Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment.

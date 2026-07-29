@@ -3,6 +3,7 @@ import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
 import { UnexpectedError } from 'n8n-workflow';
 import fs from 'node:fs';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { stringify } from 'yaml';
 import type { z } from 'zod';
 
@@ -15,7 +16,20 @@ import {
 
 const COMPONENT_SCHEMA_REF = /^#\/components\/schemas\/(.+)$/;
 const SHARED_SCHEMA_DIR = 'shared/spec/schemas';
-const YAML_OPTS = { aliasDuplicateObjects: false, singleQuote: true } as const;
+const YAML_OPTS = { aliasDuplicateObjects: false, singleQuote: true, lineWidth: 0 } as const;
+
+// Generated root that registers every decorator-routed operation, sitting next to `openapi.yml` so
+// its `$ref`s to the fragment files resolve on the same relative basis.
+export const DECORATOR_ROOT_FILENAME = 'openapi.decorator-routes.generated.yml';
+
+/** The subset of an OpenAPI document this module reads/merges. Everything else passes through. */
+export interface OpenApiDocument {
+	paths?: Record<string, Record<string, unknown>>;
+	components?: Record<string, Record<string, unknown>>;
+	[key: string]: unknown;
+}
+
+const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'];
 
 export interface GeneratedArtifact {
 	/** Where to write the fragment, relative to the `v1` directory. */
@@ -144,6 +158,27 @@ export function registerSharedSchemas(
 	return sharedZodSchemas;
 }
 
+/**
+ * The decorator-routes root: `paths` `$ref`ing each operation fragment by its file path. Bundling
+ * this (see build.mjs) yields a resolved document whose paths are merged into the hand-written spec.
+ */
+function buildDecoratorRootDocument(
+	operations: Array<{ pathKey: string; method: string; outputPath: string }>,
+): OpenApiDocument {
+	const paths: Record<string, Record<string, unknown>> = {};
+	operations.forEach(({ pathKey, method, outputPath }) => {
+		const pathItem = (paths[pathKey] ??= {});
+		if (pathItem[method]) {
+			throw new UnexpectedError(
+				`Two @PublicApiController routes both map to ${method.toUpperCase()} ${pathKey}.`,
+			);
+		}
+		// `./<outputPath>` — the root sits at the v1 dir root and outputPath is relative to that dir.
+		pathItem[method] = { $ref: `./${outputPath}` };
+	});
+	return { openapi: '3.0.0', info: { title: 'decorator-routes', version: '0.0.0' }, paths };
+}
+
 export function getGeneratedArtifacts(): GeneratedArtifact[] {
 	const registry = new OpenAPIRegistry();
 	const sharedZodSchemas = registerSharedSchemas(registry, getSharedResponseSchemas());
@@ -153,10 +188,18 @@ export function getGeneratedArtifacts(): GeneratedArtifact[] {
 	const operations = getDecoratorGeneratedOperations(resolveSchema);
 	operations.forEach(({ config }) => registry.registerPath(config));
 
-	return buildArtifactsFromRegistry(
+	const artifacts = buildArtifactsFromRegistry(
 		registry,
 		operations.map(({ outputPath, pathKey, method }) => ({ outputPath, pathKey, method })),
 	);
+
+	// The root that wires the fragments into the bundle — committed and drift-checked like the rest.
+	artifacts.push({
+		outputPath: DECORATOR_ROOT_FILENAME,
+		content: stringify(buildDecoratorRootDocument(operations), YAML_OPTS),
+	});
+
+	return artifacts;
 }
 
 /**
@@ -172,4 +215,63 @@ export function generateDocs(v1Dir: string): void {
 		fs.mkdirSync(path.dirname(fullPath), { recursive: true });
 		fs.writeFileSync(fullPath, content);
 	});
+}
+
+function mergeComponents(
+	base: OpenApiDocument['components'],
+	extra: OpenApiDocument['components'],
+): OpenApiDocument['components'] {
+	if (!extra) return base;
+	const merged: NonNullable<OpenApiDocument['components']> = { ...base };
+	for (const [section, items] of Object.entries(extra)) {
+		const target = { ...(merged[section] ?? {}) };
+		for (const [name, definition] of Object.entries(items)) {
+			// A component may legitimately appear in both bundles (the same shared file hoisted
+			// independently) — that's a harmless duplicate. Only differing definitions are a clash.
+			if (name in target && !isDeepStrictEqual(target[name], definition)) {
+				throw new UnexpectedError(
+					`OpenAPI component components.${section}.${name} is defined differently by a hand-written ` +
+						'path and a @PublicApiController route — rename one so they no longer collide.',
+				);
+			}
+			target[name] = definition;
+		}
+		merged[section] = target;
+	}
+	return merged;
+}
+
+/**
+ * Merges the decorator-routed document into the hand-written (eov) one at *method* granularity, so a
+ * path served partly by eov and partly by a controller (e.g. eov `POST /tags` + decorator `GET
+ * /tags`) ends up whole. A path+method declared on both sides is a hard error — the same operation
+ * can't have two definitions. Both inputs are expected to be already-bundled (all `$ref`s resolved),
+ * so their `components` are merged too, deduping the shared files each side hoisted independently.
+ */
+export function mergeDecoratorDocument(
+	base: OpenApiDocument,
+	decorator: OpenApiDocument,
+): OpenApiDocument {
+	const paths: Record<string, Record<string, unknown>> = { ...(base.paths ?? {}) };
+
+	for (const [pathKey, methods] of Object.entries(decorator.paths ?? {})) {
+		const existing = paths[pathKey];
+		if (!existing) {
+			paths[pathKey] = methods;
+			continue;
+		}
+		const combined = { ...existing };
+		for (const [method, operation] of Object.entries(methods)) {
+			if (HTTP_METHODS.includes(method) && combined[method] !== undefined) {
+				throw new UnexpectedError(
+					`Duplicate OpenAPI operation ${method.toUpperCase()} ${pathKey}: it is declared by both a ` +
+						'hand-written (eov) path and a @PublicApiController route — remove the hand-written one.',
+				);
+			}
+			combined[method] = operation;
+		}
+		paths[pathKey] = combined;
+	}
+
+	return { ...base, paths, components: mergeComponents(base.components, decorator.components) };
 }

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'yaml';
 
+import { resolvePublicApiRoutes, scopeRequirementToString } from '../../public-api-route-resolver';
 import {
 	extractScopeFromEovHandlerChain,
 	loadPublicControllerScopeMap,
@@ -38,7 +39,7 @@ type RawOperation = {
 	'x-decorator-routed'?: boolean;
 };
 
-async function loadOperations(): Promise<Operation[]> {
+async function loadEovOperations(): Promise<Operation[]> {
 	const spec = await RefParser.dereference(OPENAPI_SPEC_PATH);
 	const paths = (spec as { paths?: Record<string, Record<string, RawOperation>> }).paths ?? {};
 	const ops: Operation[] = [];
@@ -46,14 +47,9 @@ async function loadOperations(): Promise<Operation[]> {
 		for (const method of HTTP_METHODS) {
 			const op = methods[method];
 			if (!op) continue;
+			if (op['x-decorator-routed'] === true) continue;
 
-			const isDecoratorRouted = op['x-decorator-routed'] === true;
-			// A decorator-routed operation carries its real operationId as a plain `operationId`
-			// plus a stub `x-eov-operation-id: unreachable` that exists only to satisfy eov - prefer
-			// the real one for these instead of the usual eov-first fallback.
-			const operationId = isDecoratorRouted
-				? op.operationId
-				: (op['x-eov-operation-id'] ?? op.operationId);
+			const operationId = op['x-eov-operation-id'] ?? op.operationId;
 			if (!operationId) {
 				throw new Error(
 					`Missing operationId / x-eov-operation-id for ${method.toUpperCase()} ${pathStr}`,
@@ -64,12 +60,27 @@ async function loadOperations(): Promise<Operation[]> {
 				pathStr,
 				method,
 				operationId,
-				handlerPath: isDecoratorRouted ? null : (op['x-eov-operation-handler'] ?? null),
+				handlerPath: op['x-eov-operation-handler'] ?? null,
 				requiredScope: op['x-required-scope'] ?? null,
 			});
 		}
 	}
 	return ops;
+}
+
+function loadDecoratorOperations(): Operation[] {
+	return resolvePublicApiRoutes().map((route) => ({
+		// Mirror the OpenAPI path template: `:param` -> `{param}`.
+		pathStr: route.path.replace(/:([A-Za-z0-9_]+)/g, '{$1}'),
+		method: route.method as Method,
+		operationId: route.handlerName,
+		handlerPath: null,
+		requiredScope: route.apiKeyScope ? scopeRequirementToString(route.apiKeyScope) : 'none',
+	}));
+}
+
+async function loadOperations(): Promise<Operation[]> {
+	return [...(await loadEovOperations()), ...loadDecoratorOperations()];
 }
 
 async function loadEovHandlerScope(
