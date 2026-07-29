@@ -1,7 +1,7 @@
 import { fileTypeFromMimeType, type IBinaryData } from 'n8n-workflow';
 
 /** Matches `path.parse().ext`: a leading dot (`.env`) or no dot (`README`) means no extension. */
-export function getFileExtension(fileName: string): string {
+function getFileExtension(fileName: string): string {
 	const dotIndex = fileName.lastIndexOf('.');
 	return dotIndex > 0 ? fileName.slice(dotIndex + 1) : '';
 }

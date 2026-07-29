@@ -1,22 +1,4 @@
-import {
-	convertFileToBinaryData,
-	getBinaryDataFileName,
-	getFileExtension,
-} from '@/app/utils/fileUtils';
-
-describe('getFileExtension', () => {
-	test.each([
-		['report.pdf', 'pdf'],
-		['archive.tar.gz', 'gz'],
-		['README', ''],
-		['.env', ''],
-		['.gitignore', ''],
-		['trailing.', ''],
-		['', ''],
-	])('derives %j as %j', (fileName, expected) => {
-		expect(getFileExtension(fileName)).toBe(expected);
-	});
-});
+import { convertFileToBinaryData, getBinaryDataFileName } from '@/app/utils/fileUtils';
 
 describe('getBinaryDataFileName', () => {
 	it('keeps a name that already carries the extension', () => {
