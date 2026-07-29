@@ -160,14 +160,24 @@ export class AgentChatAttachmentService {
 	}
 
 	/**
-	 * `BuiltFileStore` for an agent runtime. Lookups are scoped to the agent +
-	 * project, so a fileId from another conversation resolves to nothing.
-	 * `provider` drives capability gating of hydration.
+	 * `BuiltFileStore` for an agent runtime. Lookups are scoped to the run's
+	 * thread (+ project) when the runtime provides one, so a fileId from
+	 * another conversation resolves to nothing; runs without a thread fall
+	 * back to the agent + project scope. `provider` drives capability gating
+	 * of hydration.
 	 */
 	getFileStore(scope: { agentId: string; projectId: string }, provider: string): BuiltFileStore {
 		return {
-			load: async (ref: ContentFileRef): Promise<Uint8Array | null> => {
-				const attachment = await this.repository.findByIdForAgent(ref.id, scope);
+			load: async (
+				ref: ContentFileRef,
+				runScope?: { threadId?: string },
+			): Promise<Uint8Array | null> => {
+				const attachment = runScope?.threadId
+					? await this.repository.findByIdInThread(ref.id, {
+							projectId: scope.projectId,
+							threadId: runScope.threadId,
+						})
+					: await this.repository.findByIdForAgent(ref.id, scope);
 				if (!attachment) return null;
 				try {
 					return await this.binaryDataService.getAsBuffer({

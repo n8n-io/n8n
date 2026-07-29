@@ -118,6 +118,40 @@ describe('AgentChatAttachmentService', () => {
 			expect(bytes).toEqual(Buffer.from([1, 2]));
 		});
 
+		it('scopes the lookup to the thread when the run provides one', async () => {
+			repository.findByIdInThread.mockResolvedValue({
+				id: 'att-1',
+				binaryDataId: 'filesystem-v2:x',
+				mimeType: 'image/png',
+			} as AgentChatAttachment);
+			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from([1, 2]));
+
+			const store = service.getFileStore(
+				{ agentId: 'agent-1', projectId: 'project-1' },
+				'anthropic',
+			);
+			const bytes = await store.load({ id: 'att-1' }, { threadId: 'thread-1' });
+
+			expect(repository.findByIdInThread).toHaveBeenCalledWith('att-1', {
+				projectId: 'project-1',
+				threadId: 'thread-1',
+			});
+			expect(repository.findByIdForAgent).not.toHaveBeenCalled();
+			expect(bytes).toEqual(Buffer.from([1, 2]));
+		});
+
+		it('returns null for attachments outside the run thread', async () => {
+			repository.findByIdInThread.mockResolvedValue(null);
+
+			const store = service.getFileStore(
+				{ agentId: 'agent-1', projectId: 'project-1' },
+				'anthropic',
+			);
+
+			expect(await store.load({ id: 'att-1' }, { threadId: 'other-thread' })).toBeNull();
+			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+		});
+
 		it('returns null for attachments outside the agent/project scope', async () => {
 			repository.findByIdForAgent.mockResolvedValue(null);
 

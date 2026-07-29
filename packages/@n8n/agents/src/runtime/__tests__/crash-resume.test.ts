@@ -385,6 +385,7 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 					responseIds: [],
 				},
 				pendingToolCalls: {},
+				persistence: { threadId: 'thread-files', resourceId: 'user-1' },
 			});
 			const fileStore: BuiltFileStore = { load: vi.fn().mockResolvedValue(fileBytes) };
 			const runtime = createFileStoreRuntime(store, fileStore);
@@ -394,7 +395,9 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 			const result = await runtime.crashResume({ runId: 'run_files' });
 			await collectChunks(result.stream);
 
-			expect(fileStore.load).toHaveBeenCalledWith(expect.objectContaining({ id: 'att-1' }));
+			expect(fileStore.load).toHaveBeenCalledWith(expect.objectContaining({ id: 'att-1' }), {
+				threadId: 'thread-files',
+			});
 			expect(findFilePart(streamText.mock.calls[0][0])?.data).toBe(fileBytes);
 		});
 
@@ -435,6 +438,7 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 						runId: 'run_files',
 					},
 				},
+				persistence: { threadId: 'thread-files', resourceId: 'user-1' },
 			});
 			const fileStore: BuiltFileStore = { load: vi.fn().mockResolvedValue(fileBytes) };
 			const runtime = createFileStoreRuntime(store, fileStore);
@@ -448,7 +452,9 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 			);
 			await collectChunks((result as { stream: ReadableStream<unknown> }).stream);
 
-			expect(fileStore.load).toHaveBeenCalledWith(expect.objectContaining({ id: 'att-1' }));
+			expect(fileStore.load).toHaveBeenCalledWith(expect.objectContaining({ id: 'att-1' }), {
+				threadId: 'thread-files',
+			});
 			expect(findFilePart(streamText.mock.calls[0][0])?.data).toBe(fileBytes);
 		});
 	});

@@ -352,7 +352,9 @@ export class AgentRuntime {
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
-		await hydrateFileParts(list.messages(), this.config.fileStore);
+		await hydrateFileParts(list.messages(), this.config.fileStore, {
+			threadId: state.persistence?.threadId,
+		});
 
 		const toolForValidation = this.context
 			.getCurrentTools(state.persistence)
@@ -507,7 +509,9 @@ export class AgentRuntime {
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
-		await hydrateFileParts(list.messages(), this.config.fileStore);
+		await hydrateFileParts(list.messages(), this.config.fileStore, {
+			threadId: state.persistence?.threadId,
+		});
 
 		let abortScope: AgentAbortScope | undefined;
 		try {
@@ -587,7 +591,9 @@ export class AgentRuntime {
 		await this.memory.persistInputMessages(list, options);
 
 		// Hydrate after the eager persist so stored input stays reference-only.
-		await hydrateFileParts(list.messages(), this.config.fileStore);
+		await hydrateFileParts(list.messages(), this.config.fileStore, {
+			threadId: options?.persistence?.threadId,
+		});
 
 		return list;
 	}

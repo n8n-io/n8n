@@ -7,7 +7,11 @@ import { describe, it, expect, vi } from 'vitest';
 import type { BuiltFileStore } from '../../types/sdk/file-store';
 import type { AgentDbMessage, ContentFile, Message } from '../../types/sdk/message';
 import { stripHydratedFileData } from '../../types/sdk/message';
-import { hydrateFileParts } from '../loop/hydrate-file-parts';
+import {
+	hydrateFileParts,
+	MAX_HYDRATED_FILE_BYTES,
+	MAX_HYDRATED_FILE_PARTS,
+} from '../loop/hydrate-file-parts';
 import { toAiMessages } from '../model/messages';
 
 const bytes = new Uint8Array([1, 2, 3]);
@@ -32,7 +36,7 @@ describe('hydrateFileParts', () => {
 
 		await hydrateFileParts([userMessage([block])], store);
 
-		expect(store.load).toHaveBeenCalledWith(block.fileRef);
+		expect(store.load).toHaveBeenCalledWith(block.fileRef, undefined);
 		expect(block.data).toBe(bytes);
 	});
 
@@ -80,6 +84,56 @@ describe('hydrateFileParts', () => {
 	it('is a no-op without a file store', async () => {
 		const block = refFileBlock();
 		await hydrateFileParts([userMessage([block])], undefined);
+		expect(block.data).toBeUndefined();
+	});
+
+	it('passes the run scope through to the store', async () => {
+		const block = refFileBlock();
+		const store: BuiltFileStore = { load: vi.fn().mockResolvedValue(bytes) };
+
+		await hydrateFileParts([userMessage([block])], store, { threadId: 'thread-1' });
+
+		expect(store.load).toHaveBeenCalledWith(block.fileRef, { threadId: 'thread-1' });
+	});
+
+	it('hydrates only the newest parts up to the count cap', async () => {
+		const blocks = Array.from({ length: MAX_HYDRATED_FILE_PARTS + 2 }, (_, index) =>
+			refFileBlock({ fileRef: { id: `att-${index}`, sizeBytes: 1 } }),
+		);
+		const store: BuiltFileStore = { load: vi.fn().mockResolvedValue(bytes) };
+
+		await hydrateFileParts([userMessage(blocks)], store);
+
+		expect(store.load).toHaveBeenCalledTimes(MAX_HYDRATED_FILE_PARTS);
+		expect(blocks[0].data).toBeUndefined();
+		expect(blocks[1].data).toBeUndefined();
+		expect(blocks.at(-1)!.data).toBe(bytes);
+	});
+
+	it('spends the byte budget newest-first and skips parts that would exceed it', async () => {
+		const oldSmall = refFileBlock({ fileRef: { id: 'att-old', sizeBytes: 3 } });
+		const hugeDeclared = refFileBlock({
+			fileRef: { id: 'att-huge', sizeBytes: MAX_HYDRATED_FILE_BYTES + 1 },
+		});
+		const newest = refFileBlock({ fileRef: { id: 'att-new', sizeBytes: 3 } });
+		const store: BuiltFileStore = { load: vi.fn().mockResolvedValue(bytes) };
+
+		await hydrateFileParts([userMessage([oldSmall, hugeDeclared, newest])], store);
+
+		// The over-budget declaration is never loaded; the others hydrate.
+		expect(store.load).toHaveBeenCalledTimes(2);
+		expect(hugeDeclared.data).toBeUndefined();
+		expect(newest.data).toBe(bytes);
+		expect(oldSmall.data).toBe(bytes);
+	});
+
+	it('drops a loaded part whose actual size exceeds the remaining budget', async () => {
+		const block = refFileBlock({ fileRef: { id: 'att-1' } }); // no declared size
+		const oversized = new Uint8Array(MAX_HYDRATED_FILE_BYTES + 1);
+		const store: BuiltFileStore = { load: vi.fn().mockResolvedValue(oversized) };
+
+		await hydrateFileParts([userMessage([block])], store);
+
 		expect(block.data).toBeUndefined();
 	});
 });

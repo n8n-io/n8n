@@ -10,8 +10,13 @@ import type { ContentFileRef } from './message';
  * metadata line instead of a file part.
  */
 export interface BuiltFileStore {
-	/** Resolve a file reference to its bytes. Returns `null` when the file is unknown or deleted. */
-	load(ref: ContentFileRef): Promise<Uint8Array | null>;
+	/**
+	 * Resolve a file reference to its bytes. Returns `null` when the file is
+	 * unknown or deleted. `scope.threadId` is the run's conversation thread
+	 * (when the run has one) — stores should restrict resolution to it so a
+	 * reference can't read files from another conversation.
+	 */
+	load(ref: ContentFileRef, scope?: { threadId?: string }): Promise<Uint8Array | null>;
 
 	/**
 	 * Whether the current model accepts this media type as a file part.

@@ -643,6 +643,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						fileSizeBytes: params.data.byteLength,
 					}),
 				),
+				deleteByIds: vi.fn(async () => {}),
 			};
 		}
 
@@ -709,6 +710,38 @@ describe('AgentChatBridge — consumeStream', () => {
 					],
 				}),
 			);
+		});
+
+		it('deletes stored attachments when execution setup fails before the stream is consumed', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+			const integrationImpl = registry.get('test-streaming')!;
+			// The test integration doesn't implement this optional hook; inject one.
+			integrationImpl.createBridgeExecutionContext = vi
+				.fn()
+				.mockRejectedValue(new Error('platform down'));
+
+			try {
+				await handlers.mention!(thread, {
+					text: 'look at this',
+					author: { userId: 'u1', userName: 'user1' },
+					attachments: [
+						{
+							type: 'image',
+							name: 'photo.png',
+							mimeType: 'image/png',
+							fetchData: vi.fn().mockResolvedValue(pngBytes),
+						},
+					],
+				});
+
+				expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+				expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			} finally {
+				delete integrationImpl.createBridgeExecutionContext;
+			}
 		});
 
 		it('truncates a platform file name to the fileName column width', async () => {

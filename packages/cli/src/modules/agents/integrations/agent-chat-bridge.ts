@@ -292,22 +292,23 @@ export class AgentChatBridge {
 			resourceId,
 		);
 		const statusRetry = new AbortController();
-		// Platform status hooks, the lazy `message.subject` fetch, and any
-		// thread-history fetch are all remote round-trips on independent
-		// resources — run them concurrently.
-		const [bridgeExecutionContext, subject] = await Promise.all([
-			this.resolveBridgeExecutionContext(
-				thread,
-				message,
-				platformAgentContext,
-				statusRetry,
-				isNewMention,
-			),
-			this.messageContextBridge.resolveSubject(message),
-		]);
-		const statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
+		let statusHandle: ReturnType<typeof onceStatusHandle> | undefined;
 		let consumeStarted = false;
 		try {
+			// Platform status hooks, the lazy `message.subject` fetch, and any
+			// thread-history fetch are all remote round-trips on independent
+			// resources — run them concurrently.
+			const [bridgeExecutionContext, subject] = await Promise.all([
+				this.resolveBridgeExecutionContext(
+					thread,
+					message,
+					platformAgentContext,
+					statusRetry,
+					isNewMention,
+				),
+				this.messageContextBridge.resolveSubject(message),
+			]);
+			statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
 			await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
 				messageId: message.id,
 				interactingUserId: message.author.userId,
