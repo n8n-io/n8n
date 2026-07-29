@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_8c0bb2d06aee91::t_97fcdde4b82eda 224,226
+  s_8c0bb2d06aee91::t_03c12767d84e97 254,287,315,332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4af6933fc6c7927706d78ef98390e5b511c0bd44",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
