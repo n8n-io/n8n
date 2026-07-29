@@ -1,0 +1,25 @@
+packages/cli/src/services/language-demo.md
+  s_198bac45d5149d::t_a24c54d80ce04d 1-25,27-39
+  h_c63dce324dfc7b 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "99f99e638def901ac04db64ee195cd3484e50283",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_198bac45d5149d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51687197-b0e4-4982-a3b3-6565d2def6e0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
