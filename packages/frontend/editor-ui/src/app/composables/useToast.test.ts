@@ -4,14 +4,13 @@ import { setActivePinia } from 'pinia';
 import { useToast } from '@/app/composables/useToast';
 
 /**
- * This module is a pure re-export — the bootstrap registration it used to carry
- * moved to `@/app/init/toastNotifier` (N8N-104). Kept as its own test file so the
+ * This module is a pure re-export. Kept as its own test file so the
  * assertion below runs in a module registry where nothing else could have
  * registered a notifier: importing the shim, and only the shim, must leave
  * `useToast` unwired.
  *
  * That is what makes deleting this file behaviour-neutral when the shim is
- * retired (N8N-89). Re-adding a registration here fails this test.
+ * retired. Re-adding a registration here fails this test.
  */
 describe('useToast shim', () => {
 	beforeEach(() => {
