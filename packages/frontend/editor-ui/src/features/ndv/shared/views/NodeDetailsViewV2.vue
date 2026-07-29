@@ -22,7 +22,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useStyles } from '@/app/composables/useStyles';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	APP_MODALS_ELEMENT_ID,
 	EXECUTABLE_TRIGGER_NODE_TYPES,

@@ -5,7 +5,7 @@ const openThreadWithContextMock = vi.fn();
 const trackMock = vi.fn();
 let instanceAiAvailable = true;
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 

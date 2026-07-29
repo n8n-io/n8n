@@ -7,7 +7,7 @@ import type { RoleMappingRuleResponse } from '@n8n/rest-api-client/api/roleMappi
 
 vi.mock('@n8n/rest-api-client/api/provisioning');
 vi.mock('@n8n/rest-api-client/api/roleMappingRule');
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: vi.fn(),
 	}),

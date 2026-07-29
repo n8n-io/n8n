@@ -18,7 +18,7 @@ import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useStorage } from '@/app/composables/useStorage';
 import { jsonParse } from 'n8n-workflow';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 type SetVersionParams = { versions: Version[]; currentVersion: string };
 
