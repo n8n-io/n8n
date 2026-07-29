@@ -25,7 +25,7 @@ export async function convertFileToBinaryData(file: File): Promise<IBinaryData> 
 				mimeType: file.type,
 				fileName: file.name,
 				fileSize: `${file.size} bytes`,
-				fileExtension: getFileExtension(file.name),
+				fileExtension: getFileExtension(file.name) || undefined,
 				fileType: fileTypeFromMimeType(file.type),
 			};
 			resolve(binaryData);

@@ -42,13 +42,13 @@ describe('getBinaryDataFileName', () => {
 describe('convertFileToBinaryData', () => {
 	test.each([
 		['report.pdf', 'application/pdf', 'pdf', 'pdf'],
-		['README', 'text/plain', '', 'text'],
-		['.env', 'text/plain', '', 'text'],
-		['README', '', '', undefined],
+		['README', 'text/plain', undefined, 'text'],
+		['.env', 'text/plain', undefined, 'text'],
+		['README', '', undefined, undefined],
 		['archive.tar.gz', 'application/gzip', 'gz', undefined],
 		['data.json', 'application/json', 'json', 'json'],
 		['page.html', 'text/html', 'html', 'html'],
-		['trailing.', 'text/plain', '', 'text'],
+		['trailing.', 'text/plain', undefined, 'text'],
 	])(
 		'derives %j (%j) as fileExtension %j and fileType %j',
 		async (fileName, mimeType, fileExtension, fileType) => {
@@ -64,13 +64,13 @@ describe('convertFileToBinaryData', () => {
 	it('carries over the file name, size, mime type and base64 data', async () => {
 		const file = new File(['hello'], 'report.pdf', { type: 'application/pdf' });
 
-		const binaryData = await convertFileToBinaryData(file);
-
-		expect(binaryData).toMatchObject({
+		expect(await convertFileToBinaryData(file)).toEqual({
 			data: btoa('hello'),
 			mimeType: 'application/pdf',
 			fileName: 'report.pdf',
 			fileSize: '5 bytes',
+			fileExtension: 'pdf',
+			fileType: 'pdf',
 		});
 	});
 
