@@ -23,6 +23,7 @@ import { DbLock, DbLockService, SettingsRepository, UserRepository } from '@n8n/
 import type { CredentialsEntity, ICredentialsDb, OperationContext, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
+import { parseModelHeadersJson } from '../../../../../@n8n/instance-ai/src/utils/parse-model-headers';
 import { hasGlobalScope } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
@@ -1362,7 +1363,15 @@ export class InstanceAiSettingsService {
 	}
 
 	private envVarModelConfigForModel(model: string): ModelConfig {
-		const { modelUrl, modelApiKey, vertexProject, vertexLocation, vertexCredentials } = this.config;
+		const {
+			modelUrl,
+			modelApiKey,
+			vertexProject,
+			vertexLocation,
+			vertexCredentials,
+			modelHeadersJson,
+		} = this.config;
+		const headers = this.resolveEnvModelHeaders(modelHeadersJson);
 		const id: `${string}/${string}` = model.includes('/')
 			? (model as `${string}/${string}`)
 			: `custom/${model}`;
@@ -1381,14 +1390,37 @@ export class InstanceAiSettingsService {
 		}
 
 		if (modelUrl) {
-			return { id, url: modelUrl, ...(modelApiKey ? { apiKey: modelApiKey } : {}) };
+			return {
+				id,
+				url: modelUrl,
+				...(modelApiKey ? { apiKey: modelApiKey } : {}),
+				...(headers ? { headers } : {}),
+			};
 		}
 
 		if (modelApiKey) {
-			return { id, url: '', apiKey: modelApiKey };
+			return {
+				id,
+				url: '',
+				apiKey: modelApiKey,
+				...(headers ? { headers } : {}),
+			};
 		}
 
 		return model;
+	}
+
+	private resolveEnvModelHeaders(modelHeadersJson: string): Record<string, string> | undefined {
+		const raw = modelHeadersJson.trim();
+		if (!raw) return undefined;
+
+		const headers = parseModelHeadersJson(raw);
+		if (!headers) {
+			this.logger.warn(
+				'N8N_INSTANCE_AI_MODEL_HEADERS is set but could not be parsed as a JSON object of string headers',
+			);
+		}
+		return headers;
 	}
 
 	private extractModelName(model: string): string {

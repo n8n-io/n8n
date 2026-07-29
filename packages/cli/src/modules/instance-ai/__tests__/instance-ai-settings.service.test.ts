@@ -39,6 +39,7 @@ describe('InstanceAiSettingsService', () => {
 			model: 'openai/gpt-4',
 			modelUrl: '',
 			modelApiKey: '',
+			modelHeadersJson: '',
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
 			mcpServers: '',
@@ -1670,8 +1671,35 @@ describe('InstanceAiSettingsService', () => {
 				model: 'openai/gpt-4',
 				modelApiKey: '',
 				modelUrl: '',
+				modelHeadersJson: '',
 				n8nSandboxServiceUrl: '',
 			});
+		});
+
+		it('passes JSON model headers from the environment for custom endpoints', async () => {
+			globalConfig.instanceAi.model = 'custom/moonshotai/Kimi-K3';
+			globalConfig.instanceAi.modelUrl = 'https://example.modal.direct/v1';
+			globalConfig.instanceAi.modelHeadersJson = '{"Modal-Key":"wk-test","Modal-Secret":"ws-test"}';
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'custom/moonshotai/Kimi-K3',
+				url: 'https://example.modal.direct/v1',
+				headers: { 'Modal-Key': 'wk-test', 'Modal-Secret': 'ws-test' },
+			});
+		});
+
+		it('warns when model headers JSON is invalid', async () => {
+			globalConfig.instanceAi.model = 'custom/moonshotai/Kimi-K3';
+			globalConfig.instanceAi.modelUrl = 'https://example.modal.direct/v1';
+			globalConfig.instanceAi.modelHeadersJson = '{invalid';
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'custom/moonshotai/Kimi-K3',
+				url: 'https://example.modal.direct/v1',
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'N8N_INSTANCE_AI_MODEL_HEADERS is set but could not be parsed as a JSON object of string headers',
+			);
 		});
 
 		it('reports the model as env-configured when a custom or provider key is set', async () => {

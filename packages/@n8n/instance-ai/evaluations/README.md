@@ -296,6 +296,9 @@ Not yet covered: an automatic "unexpected artifact" fail (a build producing an a
 |----------|----------|-------------|
 | `N8N_INSTANCE_AI_MODEL` | Yes | Model used by Instance AI and, by default, the eval helper calls for mock generation and verification |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | No | Generic eval-model API key override |
+| `N8N_INSTANCE_AI_MODEL_URL` | No | OpenAI-compatible base URL for custom eval models (used with `custom/...` model ids) |
+| `N8N_INSTANCE_AI_MODEL_HEADERS` | No | JSON object of extra HTTP headers for custom eval model endpoints |
+| `EVAL_MODAL_LLM_HEADERS` | No | Eval-only override for Modal proxy auth headers; takes precedence over `N8N_INSTANCE_AI_MODEL_HEADERS` |
 | `OPENAI_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `openai/` |
 | `ANTHROPIC_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `anthropic/` |
 | `BASETEN_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `baseten/` |
