@@ -18,6 +18,7 @@ export { loadMemory, saveToMemory, buildToolContext } from './memoryManagement';
 export { processHitlResponses, type HitlProcessingResult } from './processHitlResponses';
 export { serializeIntermediateSteps } from './serializeIntermediateSteps';
 export type {
+	ChatModelEndOutput,
 	ToolCallRequest,
 	ToolCallData,
 	AgentResult,

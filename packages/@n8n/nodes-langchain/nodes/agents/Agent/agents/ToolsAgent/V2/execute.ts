@@ -19,7 +19,7 @@ import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { extractMessageText, loadMemory } from '@utils/agent-execution';
+import { type ChatModelEndOutput, extractMessageText, loadMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import {
@@ -145,10 +145,10 @@ async function processEventStream(
 		agentResult.intermediateSteps = [];
 	}
 
-	// This agent runs every model turn inside a single stream, so text is held until the
-	// turn ends: a turn that also requests tools was announcing itself rather than
-	// answering, and its text belongs to neither the stream nor the output. Keyed by run
-	// so interleaved or fallback model runs cannot mix, and dropped if a run never ends.
+	// Every model turn runs inside this one stream, so text is held until its turn ends and
+	// released only if the turn requested no tools. Keyed by run because runs interleave,
+	// and dropped when a run never ends — LangChain reports no error event for chat models,
+	// so a missing end event is the only sign a run produced nothing usable.
 	const pendingChunksByRun = new Map<string, string[]>();
 
 	ctx.sendChunk('begin', itemIndex);
@@ -165,15 +165,14 @@ async function processEventStream(
 				break;
 			}
 			case 'on_chat_model_end': {
-				const chatModelData = event.data as any;
-				const output = chatModelData?.output;
-				const hasToolCalls = !!output?.tool_calls?.length;
+				const output = event.data?.output as ChatModelEndOutput | undefined;
+				const toolCalls = output?.tool_calls ?? [];
 
 				const pending = pendingChunksByRun.get(event.run_id) ?? [];
 				pendingChunksByRun.delete(event.run_id);
 
 				// Only a turn that produced no tool calls is the actual answer
-				if (!hasToolCalls) {
+				if (toolCalls.length === 0) {
 					for (const chunkText of pending) {
 						ctx.sendChunk('item', itemIndex, chunkText);
 
@@ -182,14 +181,14 @@ async function processEventStream(
 				}
 
 				// Capture full LLM response with tool calls for intermediate steps
-				if (returnIntermediateSteps && hasToolCalls) {
-					for (const toolCall of output.tool_calls) {
+				if (returnIntermediateSteps) {
+					for (const toolCall of toolCalls) {
 						agentResult.intermediateSteps!.push({
 							action: {
 								tool: toolCall.name,
 								toolInput: toolCall.args,
 								log:
-									extractMessageText(output.content) ||
+									extractMessageText(output?.content) ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 								messageLog: [output], // Include the full LLM response
 								toolCallId: toolCall.id,
