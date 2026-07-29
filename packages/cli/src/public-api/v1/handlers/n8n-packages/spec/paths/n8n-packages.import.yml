@@ -213,8 +213,10 @@ post:
                 workflows is absent from the target project and the global scope
                 (lookup order: project, then global). `create-with-value` (default)
                 creates the variable with its package value and lists its name under
-                `variables.created`. If values were excluded during export, it creates
-                an empty stub listed under `variables.stubbed`. `do-nothing` imports without creating the variable and
+                `variables.created`. When the package carries no value for it — values
+                were excluded at export, or the exported value was itself empty — it
+                creates an empty stub listed under `variables.stubbed`.
+                `do-nothing` imports without creating the variable and
                 lists its name under `variables.missing`. `must-preexist` rejects
                 the import unless every referenced variable already resolves.
                 `create-stub` creates each missing variable with an empty value at

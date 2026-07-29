@@ -85,7 +85,7 @@ export default class PackageImport extends BaseCommand {
 		}),
 		variableMissingMode: Flags.string({
 			description:
-				'What to do when a referenced variable is absent from the target project and global scope (default: create-with-value). create-with-value uses the package value or an empty stub when values were excluded; create-stub always creates an empty value; do-nothing reports unresolved names; must-preexist rejects the import. Creating modes use variable-parent-policy, and an import that creates a variable needs a variables-enabled license plus variable:create',
+				'What to do when a referenced variable is absent from the target project and global scope (default: create-with-value). create-with-value uses the package value, or an empty stub when the package carries no value for it; create-stub always creates an empty value; do-nothing reports unresolved names; must-preexist rejects the import. Creating modes use variable-parent-policy, and an import that creates a variable needs a variables-enabled license plus variable:create',
 			options: ['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
 			aliases: ['variable-missing-mode'],
 		}),

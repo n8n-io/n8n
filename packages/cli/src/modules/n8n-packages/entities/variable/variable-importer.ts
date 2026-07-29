@@ -127,10 +127,12 @@ export class VariableImporter {
 					value: creation.value ?? '',
 					...(creation.projectId ? { projectId: creation.projectId } : {}),
 				});
-				if (creation.value === undefined) {
-					stubbed.push(creation.name);
-				} else {
+				// Classified by the value the row ends up with, not by whether the package
+				// carried one: a bundled empty value still leaves the user something to fill in.
+				if (creation.value) {
 					created.push(creation.name);
+				} else {
+					stubbed.push(creation.name);
 				}
 			} catch (error) {
 				// One error type covers both "key taken here" and "quota full" (LIGO-880), so re-check

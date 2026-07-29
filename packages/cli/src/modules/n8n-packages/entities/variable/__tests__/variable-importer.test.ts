@@ -283,6 +283,20 @@ describe('VariableImporter', () => {
 			expect(variablesService.create).not.toHaveBeenCalled();
 		});
 
+		// The valued and value-less creations are asserted against real rows by the import
+		// integration suites; a bundled-but-empty value is the case only this split decides.
+		it('reports a creation with an empty package value as stubbed, not created', async () => {
+			const { importer, variablesService } = makeImporter();
+			variablesService.getAllCached.mockResolvedValue([]);
+
+			const result = await importer.apply(context, {
+				...projectCreationPlan,
+				creations: [{ ...projectCreationPlan.creations[0], value: '' }],
+			});
+
+			expect(result).toEqual({ created: [], stubbed: ['API_KEY'], skippedExisting: [] });
+		});
+
 		// Stub, valued and global creations, and the skip when the destination is already
 		// occupied, are asserted against real rows by the import integration suites.
 		it('still creates when a variable with the same name exists in a different scope', async () => {

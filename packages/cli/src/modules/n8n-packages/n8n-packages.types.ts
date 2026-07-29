@@ -93,7 +93,7 @@ export const VariableMissingMode = {
 	MustPreexist: 'must-preexist',
 	/** Creates each unresolved variable with an empty value at the placement scope; the response lists the created names under `stubbed`. */
 	CreateStub: 'create-stub',
-	/** Creates each unresolved variable with its package value, falling back to an empty stub when no value was exported. */
+	/** Creates each unresolved variable with its package value, falling back to an empty stub when the package carries no value for it. */
 	CreateWithValue: 'create-with-value',
 } as const;
 
