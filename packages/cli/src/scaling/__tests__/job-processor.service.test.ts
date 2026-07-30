@@ -2110,7 +2110,7 @@ describe('JobProcessor', () => {
 		const processJobAndCaptureHooks = async (
 			webhookResponseRelaySizeMaxMiB: number,
 			jobData: Partial<Job['data']> = {},
-			mode: BinaryDataConfig['mode'] = 'filesystem',
+			mode: BinaryDataConfig['mode'] = 'default',
 		) => {
 			const { relay, binaryDataService } = buildRelay(webhookResponseRelaySizeMaxMiB, mode);
 			const executionPersistence = mock<ExecutionPersistence>();
@@ -2189,7 +2189,7 @@ describe('JobProcessor', () => {
 			);
 		});
 
-		it('should refuse to relay a response over the size limit without a shared store', async () => {
+		it('should refuse to relay a response over the size limit without a store', async () => {
 			const { hooks, job } = await processJobAndCaptureHooks(1);
 			const relayedBefore = (job.progress as Mock).mock.calls.length;
 

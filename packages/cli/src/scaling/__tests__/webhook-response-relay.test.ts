@@ -134,7 +134,7 @@ describe('WebhookResponseRelay', () => {
 		});
 	});
 
-	describe('prepare, over the limit with a shared store', () => {
+	describe('prepare, over the limit with a store', () => {
 		it.each([
 			['a Buffer body', Buffer.alloc(3 * ONE_MIB), 'buffer'],
 			['a string body', 'x'.repeat(3 * ONE_MIB), 'string'],
@@ -195,18 +195,21 @@ describe('WebhookResponseRelay', () => {
 			);
 		});
 
-		it.each(['database', 's3', 'azure'] as const)(
+		it.each(['filesystem', 'database', 's3', 'azure'] as const)(
 			"stores under the execution's location in %s mode",
 			async (mode) => {
 				const { relay, binaryDataService } = buildRelay(mode);
 
-				await relay.prepare(fullResponse('x'.repeat(3 * ONE_MIB)), ctx);
+				const prepared = await relay.prepare(fullResponse('x'.repeat(3 * ONE_MIB)), ctx);
 
 				expect(binaryDataService.store).toHaveBeenCalledWith(
 					FileLocation.ofExecution(ctx.workflowId, ctx.executionId),
 					expect.anything(),
 					expect.anything(),
 				);
+				expect(bodyOf(prepared)).toEqual({
+					binaryData: expect.objectContaining({ id: `${mode}:stored-file-id` }),
+				});
 			},
 		);
 
@@ -280,35 +283,24 @@ describe('WebhookResponseRelay', () => {
 		});
 	});
 
-	describe('prepare, over the limit without a shared store', () => {
-		it.each(['default', 'filesystem'] as const)(
-			'rejects an oversized body in %s mode',
-			async (mode) => {
-				const { relay, binaryDataService } = buildRelay(mode);
-
-				await expect(relay.prepare(fullResponse('x'.repeat(3 * ONE_MIB)), ctx)).rejects.toThrow(
-					WebhookResponseTooLargeError,
-				);
-				expect(binaryDataService.store).not.toHaveBeenCalled();
-			},
-		);
-
+	describe('prepare, over the limit without a store', () => {
 		it.each([
 			['a Buffer body', Buffer.alloc(3 * ONE_MIB)],
 			['a string body', 'x'.repeat(3 * ONE_MIB)],
 			['a multi-byte string body', 'é'.repeat(2 * ONE_MIB)],
 			['a JSON body', { blob: 'x'.repeat(3 * ONE_MIB) }],
 			['a JSON body nested in an array', { items: [{ blob: 'x'.repeat(3 * ONE_MIB) }] }],
-		])('rejects %s', async (_label, body) => {
-			const { relay } = buildRelay('filesystem');
+		])('rejects %s where bytes are only kept in memory', async (_label, body) => {
+			const { relay, binaryDataService } = buildRelay('default');
 
 			await expect(relay.prepare(fullResponse(body), ctx)).rejects.toThrow(
 				WebhookResponseTooLargeError,
 			);
+			expect(binaryDataService.store).not.toHaveBeenCalled();
 		});
 
 		it('names the limit and both ways out', async () => {
-			const { relay } = buildRelay('filesystem');
+			const { relay } = buildRelay('default');
 
 			const error = await relay
 				.prepare(fullResponse('x'.repeat(3 * ONE_MIB)), ctx)
@@ -325,7 +317,7 @@ describe('WebhookResponseRelay', () => {
 	});
 
 	describe('prepare, over the limit with nothing to offload', () => {
-		it('rejects oversized headers, which cannot be stored, even with a shared store', async () => {
+		it('rejects oversized headers, which cannot be stored, even with a store', async () => {
 			const { relay, binaryDataService } = buildRelay();
 			const response = fullResponse(null, { 'x-data': 'x'.repeat(3 * ONE_MIB) });
 
@@ -509,6 +501,17 @@ describe('WebhookResponseRelay', () => {
 				relay.restoreOffloadedBody(offloadedResponse('json'), { reclaim: true }),
 			).rejects.toThrow(OperationalError);
 			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
+		});
+
+		it('names the store as the thing to check when the fetch fails', async () => {
+			const { relay, binaryDataService } = buildRelay();
+			binaryDataService.getAsBuffer.mockRejectedValue(new Error('gone'));
+
+			const error = await relay
+				.restoreOffloadedBody(offloadedResponse('json'), { reclaim: true })
+				.catch((e: OperationalError) => e);
+
+			expect((error as OperationalError).description).toContain('N8N_DEFAULT_BINARY_DATA_MODE');
 		});
 
 		it.each([

@@ -37,8 +37,15 @@ export const ENCODED_BUFFER_KEY = '__@N8nEncodedBuffer@__';
  */
 export const OFFLOADED_BODY_KIND_KEY = '__@N8nOffloadedBodyKind@__';
 
-/** Modes storing where every instance can read. `default` keeps bytes in memory, `filesystem` on one host's disk. */
-const SHARED_STORE_MODES: Array<BinaryDataConfig['mode']> = ['database', 's3', 'azure'];
+/**
+ * The one mode with nowhere to offload a body to: it keeps bytes in memory, so a
+ * body stored in it would travel inline after all.
+ *
+ * Every other mode has a store, and whether main reaches it is the deployment's to
+ * get right: a store only the instance that wrote the body can read surfaces when
+ * main reads it back, rather than being refused up front.
+ */
+const IN_MEMORY_MODE: BinaryDataConfig['mode'] = 'default';
 
 /** What Express sets on a string body sent inline through `res.send`. */
 const INLINE_STRING_CONTENT_TYPE = 'text/html; charset=utf-8';
@@ -46,8 +53,11 @@ const INLINE_STRING_CONTENT_TYPE = 'text/html; charset=utf-8';
 /** What Express sets on a JSON body sent inline through `res.json`. */
 const INLINE_JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 
-const NO_SHARED_STORE_GUIDANCE =
-	'In scaling mode a response over this size is stored for the main instance to stream, which needs a binary-data store both share. Set N8N_DEFAULT_BINARY_DATA_MODE to database, s3 or azure, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX.';
+const NO_STORE_GUIDANCE =
+	'In scaling mode a response over this size is stored for the main instance to stream, which the in-memory binary-data mode cannot do. Set N8N_DEFAULT_BINARY_DATA_MODE to a mode with a store, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX.';
+
+const UNREADABLE_BODY_GUIDANCE =
+	'A response over N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX is stored by the instance that produced it, so N8N_DEFAULT_BINARY_DATA_MODE has to name a store every instance can read.';
 
 const NOT_OFFLOADABLE_GUIDANCE =
 	'In scaling mode a response is relayed to the main instance through the queue, which limits how large it can be. Only a response body can be stored for the main instance to stream instead, so raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX to relay a payload this large.';
@@ -110,7 +120,7 @@ export class WebhookResponseRelay {
 	 * @returns The same `response`.
 	 *
 	 * @throws WebhookResponseTooLargeError When:
-	 * - the response is over the limit and no store shared with main can hold its body,
+	 * - the response is over the limit and there is no store to hold its body,
 	 * - or when what is left once the body is offloaded is over the limit on its own,
 	 * - or when the response has no offload path and is over the limit as a whole.
 	 *
@@ -140,9 +150,9 @@ export class WebhookResponseRelay {
 			return encodeBufferBody(response);
 		}
 
-		if (!SHARED_STORE_MODES.includes(this.binaryDataConfig.mode)) {
+		if (this.binaryDataConfig.mode === IN_MEMORY_MODE) {
 			throw new WebhookResponseTooLargeError(this.tooLargeMessage(), {
-				description: NO_SHARED_STORE_GUIDANCE,
+				description: NO_STORE_GUIDANCE,
 			});
 		}
 
@@ -180,9 +190,13 @@ export class WebhookResponseRelay {
 			if (reclaim) {
 				throw new OperationalError('The stored webhook response body could not be read', {
 					cause: error,
+					description: UNREADABLE_BODY_GUIDANCE,
 				});
 			}
-			this.logger.warn('Failed to restore an offloaded webhook response body', { error });
+			this.logger.warn('Failed to restore an offloaded webhook response body', {
+				binaryDataId: offloaded.binaryData.id,
+				error,
+			});
 			response.body = emptyBodyOf(offloaded.kind);
 			clearOffloadMarker(response);
 			return response;
@@ -260,9 +274,8 @@ export class WebhookResponseRelay {
 	 * read, so duplicating it to a parent execution would copy bytes already gone,
 	 * and counting it towards an execution's binary-data size would report bytes no
 	 * reader can fetch. It is still stored under the execution, so that pruning
-	 * reclaims a body no reader deleted, in `database` mode: pruning deletes a
-	 * location by prefix, which the `s3` and `azure` byte stores do not implement,
-	 * leaving those to store-side lifecycle rules.
+	 * reclaims a body no reader deleted: pruning deletes a location by prefix, so a
+	 * store implementing no prefix deletion leaves that to its lifecycle rules.
 	 */
 	private async offload(
 		response: OffloadMarkedResponse,
