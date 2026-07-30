@@ -35,7 +35,7 @@ describe('McpProtectedResource', () => {
 
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 			expect(scopeTools['workflow:read']).toContain('search_nodes');
-			expect(scopeTools['tag:read']).toContain('list_tags');
+			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
 		});
 
 		it('should drop tools this instance does not expose', () => {
@@ -53,7 +53,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).not.toContain('search_nodes');
 			expect(scopeTools['workflow:write']).not.toContain('create_workflow_from_code');
 			expect(scopeTools['project:read']).toEqual([]);
-			// list_tags is hidden when tags are disabled
+			// list_workflow_tags is hidden when tags are disabled
 			expect(scopeTools['tag:read']).toEqual([]);
 		});
 	});

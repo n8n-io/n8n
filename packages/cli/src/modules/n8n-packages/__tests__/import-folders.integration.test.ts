@@ -50,6 +50,8 @@ async function importFolders(params: FolderImportParams) {
 		dataTableSchemaConflictPolicy: 'keep-existing',
 		variableMissingMode: 'do-nothing',
 		variableParentPolicy: 'project',
+		tagMissingMode: 'create',
+		tagConflictPolicy: 'skip',
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
 }

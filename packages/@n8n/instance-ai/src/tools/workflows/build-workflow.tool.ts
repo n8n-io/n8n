@@ -37,7 +37,10 @@ import {
 	reportWorkflowBuildOutcome,
 } from './workflow-build-reporting';
 import { withDeterministicRouting } from './workflow-build-routing';
-import { trackWorkflowSourceBuild } from './workflow-build-telemetry';
+import {
+	trackWaitGateVerificationPlan,
+	trackWorkflowSourceBuild,
+} from './workflow-build-telemetry';
 import {
 	bindSourceFileToExistingWorkflow,
 	getWorkflowSourceFileBinding,
@@ -109,7 +112,7 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools).',
+				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools, and required before `workflow-sdk validate`).',
 			),
 		workflowId: z
 			.string()
@@ -283,8 +286,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
 				'Use TypeScript SDK source for new workflows, or WorkflowJSON .json source for existing workflow edits. ' +
-				'For new or fully rewritten source, pass it in `sourceCode` (the tool writes filePath and builds in one call — ' +
-				'do not spend a separate workspace_write_file call). Pass filePath alone only after editing an existing file with file tools.',
+				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
+				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
 		.input(buildWorkflowInputSchema)
 		.output(
@@ -495,7 +498,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_source_read_failed',
 					guidance:
-						'The workflow source file could not be read. Recreate or edit the returned filePath, then call build-workflow again with the same filePath.',
+						'The workflow source file could not be read. Write it with `workspace_write_file`, then call build-workflow again with the same filePath.',
 				});
 				trackWorkflowSourceBuild(context, {
 					result: 'failure',
@@ -585,6 +588,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 										{
 											code: 'auto_imported_sdk_symbols',
 											message: `Auto-added missing @n8n/workflow-sdk import(s): ${recovery.symbols.join(', ')}. Include them in future source.`,
+											severity: 'informational',
 										},
 									],
 								}
@@ -638,9 +642,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const partitionedWarnings = partitionWarnings(compiled.warnings);
 			informational = partitionedWarnings.informational;
 
-			if (partitionedWarnings.errors.length > 0) {
+			if (partitionedWarnings.blocking.length > 0) {
 				const formattedErrors = withEscalation(
-					partitionedWarnings.errors.map(
+					partitionedWarnings.blocking.map(
 						(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
 					),
 				);
@@ -757,14 +761,21 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				) => {
 					const setupRequests = await analyzeWorkflow(context, saved.id);
 					const workflowNeedsSetup = setupRequests.some((request) => request.needsAction);
-					const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
-						workflow: json,
-						mockedNodeNames: mockResult.mockedNodeNames,
-						declaredOutputFixtures: compiled.declaredOutputFixtures,
-						workflowId: saved.id,
-						outputSchemaLookup: context.outputSchemaLookup,
-						fallbackModelConfig: context.modelId,
-						logger: context.logger,
+					const { nodeSimulationPlan, simulationFixtures, waitGateScripts } =
+						await planVerificationSimulation({
+							workflow: json,
+							mockedNodeNames: mockResult.mockedNodeNames,
+							declaredOutputFixtures: compiled.declaredOutputFixtures,
+							workflowId: saved.id,
+							outputSchemaLookup: context.outputSchemaLookup,
+							fallbackModelConfig: context.modelId,
+							logger: context.logger,
+						});
+					trackWaitGateVerificationPlan(context, {
+						haltedGateCount: (nodeSimulationPlan ?? []).filter((verdict) => verdict.haltBranch)
+							.length,
+						scriptedGateCount: waitGateScripts?.length ?? 0,
+						savedWorkflowId: saved.id,
 					});
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
@@ -831,6 +842,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowNeedsSetup,
 						nodeSimulationPlan,
 						simulationFixtures,
+						waitGateScripts,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,

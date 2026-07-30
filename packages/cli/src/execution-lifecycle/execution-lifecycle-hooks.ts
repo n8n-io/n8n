@@ -662,12 +662,14 @@ function hookFunctionsSave(
 	});
 }
 
+/**
+ * Modes whose run data may be skipped when main is certain to discard it.
+ */
 const DISCARDABLE_DATA_MODES: WorkflowExecuteMode[] = ['trigger', 'cli', 'error', 'internal'];
 
 /**
  * Returns hook functions to save workflow execution and call error workflow
- * for running with queues. Manual executions should never run on queues as
- * they are always executed in the main process.
+ * for running with queues.
  */
 function hookFunctionsSaveWorker(
 	hooks: ExecutionLifecycleHooks,
@@ -724,7 +726,6 @@ function hookFunctionsSaveWorker(
 				runDataAttemptedDynamicCredentials(resultRunData);
 
 			const mainWillDiscardData =
-				process.env.N8N_SKIP_UNSAVED_EXECUTION_DATA_WRITES === 'true' &&
 				fullRunData.status === 'success' &&
 				!saveSettings.success &&
 				!fullRunData.waitTill &&

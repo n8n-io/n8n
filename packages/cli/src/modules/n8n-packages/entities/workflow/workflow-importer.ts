@@ -17,6 +17,7 @@ import type {
 	PreparedWorkflow,
 	WorkflowConflict,
 	WorkflowFolderConflict,
+	WorkflowImportContext,
 	WorkflowImportPlan,
 	WorkflowPlanItem,
 	WorkflowPlannedAction,
@@ -138,7 +139,7 @@ export class WorkflowImporter {
 	 * package exists — see `WorkflowPublisher.applyToPackage`.
 	 */
 	async apply(
-		context: ImportContext,
+		context: WorkflowImportContext,
 		plan: WorkflowImportPlan,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowImportResult> {
@@ -157,7 +158,7 @@ export class WorkflowImporter {
 	}
 
 	private async applyItem(
-		context: ImportContext,
+		context: WorkflowImportContext,
 		item: WorkflowPlanItem,
 		bindings: PackageImportBindings,
 	): Promise<PersistedWorkflowOutcome> {
@@ -178,10 +179,13 @@ export class WorkflowImporter {
 	}
 
 	private async persistWorkflow(
-		context: ImportContext,
+		context: WorkflowImportContext,
 		item: PersistedWorkflowPlanItem,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowEntity> {
+		const tagIds =
+			item.tagIds && [...new Set(item.tagIds)].filter((id) => !context.droppedTagIds.has(id));
+
 		if (item.action === 'create') {
 			const entity = prepareEntityForPersist(item.entity, bindings, item.decidedId);
 			return await this.workflowCreationService.createWorkflow(context.user, entity, {
@@ -190,6 +194,7 @@ export class WorkflowImporter {
 				publicApi: true,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,
+				...(tagIds !== undefined ? { tagIds } : {}),
 			});
 		}
 
@@ -197,6 +202,7 @@ export class WorkflowImporter {
 		return await this.workflowService.update(context.user, entity, item.existing.id, {
 			publicApi: true,
 			source: 'import',
+			...(tagIds !== undefined ? { tagIds } : {}),
 		});
 	}
 }
