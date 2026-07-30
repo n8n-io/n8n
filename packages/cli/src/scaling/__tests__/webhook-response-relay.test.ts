@@ -7,7 +7,7 @@ import {
 	assertRelayableSize,
 	decodeRelayedWebhookResponse,
 	ENCODED_BUFFER_KEY,
-	prepareWebhookResponseForRelay,
+	encodeRelayedWebhookResponse,
 } from '../webhook-response-relay';
 
 const fullResponse = (body: unknown): IExecuteResponsePromiseData =>
@@ -15,14 +15,14 @@ const fullResponse = (body: unknown): IExecuteResponsePromiseData =>
 
 const ONE_MIB = 1024 * 1024;
 
-describe('prepareWebhookResponseForRelay', () => {
+describe('encodeRelayedWebhookResponse', () => {
 	it('wraps a Buffer body in a base64 envelope', () => {
 		const response = fullResponse(Buffer.from('hello'));
 
-		const prepared = prepareWebhookResponseForRelay(response);
+		const encoded = encodeRelayedWebhookResponse(response);
 
-		expect(prepared).toBe(response);
-		expect(prepared).toEqual(
+		expect(encoded).toBe(response);
+		expect(encoded).toEqual(
 			expect.objectContaining({ body: { [ENCODED_BUFFER_KEY]: 'aGVsbG8=' } }),
 		);
 	});
@@ -33,23 +33,23 @@ describe('prepareWebhookResponseForRelay', () => {
 		['a null body', null],
 		['a binary-data reference', { binaryData: { id: 'database:abc' } }],
 	])('leaves %s untouched', (_label, body) => {
-		const prepared = prepareWebhookResponseForRelay(fullResponse(body));
+		const encoded = encodeRelayedWebhookResponse(fullResponse(body));
 
-		expect(prepared).toEqual(expect.objectContaining({ body }));
+		expect(encoded).toEqual(expect.objectContaining({ body }));
 	});
 
 	it('leaves a stream body untouched', () => {
 		const stream = Readable.from('hello');
 
-		const prepared = prepareWebhookResponseForRelay(fullResponse(stream));
+		const encoded = encodeRelayedWebhookResponse(fullResponse(stream));
 
-		expect(prepared).toEqual(expect.objectContaining({ body: stream }));
+		expect(encoded).toEqual(expect.objectContaining({ body: stream }));
 	});
 
 	it('leaves a payload that is not a full response untouched', () => {
 		const payload = { toolResult: 'done' };
 
-		expect(prepareWebhookResponseForRelay(payload)).toBe(payload);
+		expect(encodeRelayedWebhookResponse(payload)).toBe(payload);
 	});
 });
 
@@ -66,9 +66,7 @@ describe('decodeRelayedWebhookResponse', () => {
 	it('round-trips a Buffer body', () => {
 		const body = Buffer.from([0x00, 0xff, 0x10]);
 
-		const decoded = decodeRelayedWebhookResponse(
-			prepareWebhookResponseForRelay(fullResponse(body)),
-		);
+		const decoded = decodeRelayedWebhookResponse(encodeRelayedWebhookResponse(fullResponse(body)));
 
 		expect((decoded as { body: Buffer }).body).toEqual(body);
 	});

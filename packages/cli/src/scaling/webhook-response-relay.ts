@@ -77,14 +77,14 @@ function isJsonObject(body: IN8nHttpFullResponse['body']): body is IDataObject {
 }
 
 /**
- * Prepares a worker's webhook response for relay to main:
+ * Encodes a worker's webhook response into the form it travels in:
  * - a Buffer body is base64-encoded
  * - every other body passes through untouched.
  *
  * @param response Worker response. Mutated and returned.
  * @returns The same `response`, with a Buffer body wrapped in a base64 envelope.
  */
-export function prepareWebhookResponseForRelay(
+export function encodeRelayedWebhookResponse(
 	response: IExecuteResponsePromiseData,
 ): IExecuteResponsePromiseData {
 	if (!isFullResponse(response)) {
@@ -99,7 +99,7 @@ export function prepareWebhookResponseForRelay(
 }
 
 /**
- * Reverses {@link prepareWebhookResponseForRelay} on main, decoding a base64
+ * Reverses {@link encodeRelayedWebhookResponse} on main, decoding a base64
  * envelope back into a Buffer. Every other body passes through untouched.
  *
  * @param response Relayed response. Mutated and returned.

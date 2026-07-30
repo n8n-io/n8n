@@ -57,7 +57,7 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
-import { assertRelayableSize, prepareWebhookResponseForRelay } from './webhook-response-relay';
+import { assertRelayableSize, encodeRelayedWebhookResponse } from './webhook-response-relay';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -219,7 +219,7 @@ export class JobProcessor {
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,
-				response: prepareWebhookResponseForRelay(response),
+				response: encodeRelayedWebhookResponse(response),
 				workerId: this.instanceSettings.hostId,
 			};
 
