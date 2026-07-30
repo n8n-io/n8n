@@ -585,6 +585,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 										{
 											code: 'auto_imported_sdk_symbols',
 											message: `Auto-added missing @n8n/workflow-sdk import(s): ${recovery.symbols.join(', ')}. Include them in future source.`,
+											severity: 'informational',
 										},
 									],
 								}
@@ -638,9 +639,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const partitionedWarnings = partitionWarnings(compiled.warnings);
 			informational = partitionedWarnings.informational;
 
-			if (partitionedWarnings.errors.length > 0) {
+			if (partitionedWarnings.blocking.length > 0) {
 				const formattedErrors = withEscalation(
-					partitionedWarnings.errors.map(
+					partitionedWarnings.blocking.map(
 						(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
 					),
 				);

@@ -18,19 +18,19 @@ export function isInformationalIssue(issue: unknown): boolean {
 }
 
 export function partitionValidationIssues<T>(issues: readonly T[]): {
-	errors: T[];
+	blocking: T[];
 	informational: T[];
 } {
-	const errors: T[] = [];
+	const blocking: T[] = [];
 	const informational: T[] = [];
 
 	for (const issue of issues) {
 		if (isInformationalIssue(issue)) {
 			informational.push(issue);
 		} else {
-			errors.push(issue);
+			blocking.push(issue);
 		}
 	}
 
-	return { errors, informational };
+	return { blocking, informational };
 }

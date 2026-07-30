@@ -15,7 +15,7 @@ describe('partitionWarnings', () => {
 
 		expect(partitionWarnings(warnings)).toEqual({
 			informational: warnings.slice(0, 2),
-			errors: [warnings[2]],
+			blocking: [warnings[2]],
 		});
 	});
 
@@ -23,7 +23,7 @@ describe('partitionWarnings', () => {
 		const warnings: ValidationWarning[] = [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown key' }];
 		expect(partitionWarnings(warnings)).toEqual({
 			informational: [],
-			errors: warnings,
+			blocking: warnings,
 		});
 	});
 });

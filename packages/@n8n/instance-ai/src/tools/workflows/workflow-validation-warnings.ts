@@ -28,7 +28,7 @@ export function collectValidationIssues(
 }
 
 export function partitionWarnings(warnings: ValidationWarning[]): {
-	errors: ValidationWarning[];
+	blocking: ValidationWarning[];
 	informational: ValidationWarning[];
 } {
 	// Severity is set where each issue is created (SDK validators / lint /

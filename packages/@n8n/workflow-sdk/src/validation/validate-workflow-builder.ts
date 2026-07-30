@@ -1,7 +1,6 @@
 import { lintWorkflowSource, type SourceLintIssue } from '../lint';
-import type { WorkflowJSON } from '../types/base';
 import { type IssueSeverity, partitionValidationIssues } from './issue-severity';
-import { setSchemaBaseDirs } from './node-parameter-schema/schema-validator';
+import { getSchemaBaseDirs, setSchemaBaseDirs } from './node-parameter-schema/schema-validator';
 import {
 	validateWorkflow,
 	type ValidationError,
@@ -9,6 +8,7 @@ import {
 	type ValidationResult,
 	type ValidationWarning,
 } from './validate-workflow';
+import type { WorkflowJSON } from '../types/base';
 
 export type ValidationIssueSource = 'graph' | 'schema' | 'sdk' | 'jsCode' | 'pythonCode';
 
@@ -123,7 +123,9 @@ function toCollected(
 		const parameterPath =
 			'parameterPath' in issue && typeof issue.parameterPath === 'string'
 				? issue.parameterPath
-				: undefined;
+				: 'parameterName' in issue && typeof issue.parameterName === 'string'
+					? issue.parameterName
+					: undefined;
 		const location =
 			issue.nodeName && sourceLines ? findNodeLocation(sourceLines, issue.nodeName) : undefined;
 		return {
@@ -155,12 +157,15 @@ function sourceLintToCollected(issue: SourceLintIssue): CollectedValidationIssue
 /**
  * Dedupe overlapping graph+schema findings (e.g. DISCONNECTED_NODE) without
  * requiring identical messages — plugins and validateWorkflow phrase them differently.
+ *
+ * Keep `parameterPath` so distinct INVALID_PARAMETER (etc.) findings on the same
+ * node are not collapsed into one.
  */
 function dedupeIssues(issues: CollectedValidationIssue[]): CollectedValidationIssue[] {
 	const seen = new Set<string>();
 	const deduped: CollectedValidationIssue[] = [];
 	for (const issue of issues) {
-		const key = `${issue.code}|${issue.nodeName ?? ''}|${issue.line ?? ''}|${issue.column ?? ''}`;
+		const key = `${issue.code}|${issue.nodeName ?? ''}|${issue.parameterPath ?? ''}|${issue.line ?? ''}|${issue.column ?? ''}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
 		deduped.push(issue);
@@ -181,53 +186,59 @@ export function validateWorkflowBuilder(
 	options: ValidateWorkflowBuilderOptions = {},
 ): ValidateWorkflowBuilderResult {
 	const nodeDefinitionDirs = options.nodeDefinitionDirs ?? [];
-	if (nodeDefinitionDirs.length > 0) {
-		setSchemaBaseDirs(nodeDefinitionDirs);
+	// Scope schema dirs to this call only — omit/empty must not reuse a prior
+	// call's dirs, and we must not leak empty/cleared dirs into later callers
+	// (tests and long-lived hosts share the process-level schema registry).
+	const previousSchemaDirs = getSchemaBaseDirs();
+	setSchemaBaseDirs(nodeDefinitionDirs);
+
+	try {
+		const unchecked = buildUncheckedNotes({
+			schemasLoaded: nodeDefinitionDirs.length > 0,
+			hasNodeTypesProvider: options.nodeTypesProvider !== undefined,
+		});
+
+		const validationOptions: ValidationOptions = {
+			strictMode: options.strictMode,
+			allowDisconnectedNodes: options.allowDisconnectedNodes,
+			allowNoTrigger: options.allowNoTrigger,
+			validateSchema: options.validateSchema,
+			nodeTypesProvider: options.nodeTypesProvider,
+		};
+
+		const graph = workflow.validate(validationOptions);
+		const schema = validateWorkflow(workflow.toJSON({ tidyUp: true }), validationOptions);
+
+		const source = options.source ?? '';
+		const sourceLines = source.length > 0 ? source.split(/\r?\n/) : undefined;
+		const lint =
+			options.lint === true && source.length > 0
+				? lintWorkflowSource(source)
+				: ([] as SourceLintIssue[]);
+
+		const allIssues = dedupeIssues([
+			...toCollected(graph.errors, 'graph', sourceLines),
+			...toCollected(graph.warnings, 'graph', sourceLines),
+			...toCollected(schema.errors, 'schema', sourceLines),
+			...toCollected(schema.warnings, 'schema', sourceLines),
+			...lint.map(sourceLintToCollected),
+		]);
+
+		const { blocking, informational } = partitionValidationIssues(allIssues);
+
+		return {
+			valid: graph.valid && schema.valid,
+			ok: blocking.length === 0,
+			issues: allIssues,
+			blocking,
+			informational,
+			graph,
+			schema,
+			lint,
+			unchecked,
+			nodeDefinitionDirs,
+		};
+	} finally {
+		setSchemaBaseDirs(previousSchemaDirs);
 	}
-
-	const unchecked = buildUncheckedNotes({
-		schemasLoaded: nodeDefinitionDirs.length > 0,
-		hasNodeTypesProvider: options.nodeTypesProvider !== undefined,
-	});
-
-	const validationOptions: ValidationOptions = {
-		strictMode: options.strictMode,
-		allowDisconnectedNodes: options.allowDisconnectedNodes,
-		allowNoTrigger: options.allowNoTrigger,
-		validateSchema: options.validateSchema,
-		nodeTypesProvider: options.nodeTypesProvider,
-	};
-
-	const graph = workflow.validate(validationOptions);
-	const schema = validateWorkflow(workflow.toJSON({ tidyUp: true }), validationOptions);
-
-	const source = options.source ?? '';
-	const sourceLines = source.length > 0 ? source.split(/\r?\n/) : undefined;
-	const lint =
-		options.lint === true && source.length > 0
-			? lintWorkflowSource(source)
-			: ([] as SourceLintIssue[]);
-
-	const allIssues = dedupeIssues([
-		...toCollected(graph.errors, 'graph', sourceLines),
-		...toCollected(graph.warnings, 'graph', sourceLines),
-		...toCollected(schema.errors, 'schema', sourceLines),
-		...toCollected(schema.warnings, 'schema', sourceLines),
-		...lint.map(sourceLintToCollected),
-	]);
-
-	const { errors: blocking, informational } = partitionValidationIssues(allIssues);
-
-	return {
-		valid: graph.valid && schema.valid,
-		ok: blocking.length === 0,
-		issues: allIssues,
-		blocking,
-		informational,
-		graph,
-		schema,
-		lint,
-		unchecked,
-		nodeDefinitionDirs,
-	};
 }

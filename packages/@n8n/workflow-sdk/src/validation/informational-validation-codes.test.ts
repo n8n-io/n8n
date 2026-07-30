@@ -9,7 +9,7 @@ describe('partitionValidationIssues', () => {
 		];
 		expect(partitionValidationIssues(issues)).toEqual({
 			informational: [issues[0], issues[2]],
-			errors: [issues[1]],
+			blocking: [issues[1]],
 		});
 	});
 
@@ -17,7 +17,7 @@ describe('partitionValidationIssues', () => {
 		const issues = [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown key' }];
 		expect(partitionValidationIssues(issues)).toEqual({
 			informational: [],
-			errors: [issues[0]],
+			blocking: [issues[0]],
 		});
 	});
 });
