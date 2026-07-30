@@ -151,22 +151,33 @@ write_env() {
 # n8n version to run. 'get-n8n.sh --upgrade' updates this line and nothing else.
 N8N_VERSION=${INSTALL_VERSION}
 
+N8N_ENABLED_MODULES=instance-ai
+
 # Instance AI (optional): fill these in to enable the AI assistant in n8n.
 # n8n works fine without them.
 N8N_INSTANCE_AI_MODEL_API_KEY=
 INSTANCE_AI_BRAVE_SEARCH_API_KEY=
 
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
+N8N_INSTANCE_AI_SANDBOX_ENABLED=true
+N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
+N8N_INSTANCE_AI_SANDBOX_IMAGE=ghcr.io/n8n-io/n8n-sandbox-service-sandbox:latest
+N8N_INSTANCE_AI_SANDBOX_API_URL=http://sandbox-api:8080
+N8N_SANDBOX_SERVICE_URL=http://sandbox-api:8080
+
 # Sandbox service secrets — generated uniquely for this install.
 # The API and runner sides must agree, so each secret appears twice.
-SANDBOX_API_KEYS=${sandbox_api_key}
-SANDBOX_API_RUNNER_REGISTRATION_TOKEN=${registration_token}
-SANDBOX_API_RUNNER_API_KEY=${runner_key}
-SANDBOX_RUNNER_REGISTRATION_TOKEN=${registration_token}
-SANDBOX_RUNNER_API_KEYS=${runner_key}
-
+#
 # Must match a value in SANDBOX_API_KEYS above — this is how n8n authenticates
 # to the sandbox.
-N8N_INSTANCE_AI_SANDBOX_API_KEY=${sandbox_api_key}
+SANDBOX_API_KEYS=${sandbox_api_key}
+N8N_SANDBOX_SERVICE_API_KEY=${sandbox_api_key}
+
+SANDBOX_API_RUNNER_REGISTRATION_TOKEN=${registration_token}
+SANDBOX_RUNNER_REGISTRATION_TOKEN=${registration_token}
+
+SANDBOX_API_RUNNER_API_KEY=${runner_key}
+SANDBOX_RUNNER_API_KEYS=${runner_key}
 EOF
 	chmod 600 "${N8N_DIR}/.env"
 }
@@ -250,12 +261,6 @@ services:
     ports:
       - '5678:5678' # the only port that should be internet-facing
     env_file: .env
-    environment:
-      N8N_ENABLED_MODULES: instance-ai
-      N8N_INSTANCE_AI_MODEL: anthropic/claude-opus-4-8
-      N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true'
-      N8N_INSTANCE_AI_SANDBOX_IMAGE: ghcr.io/n8n-io/n8n-sandbox-service-sandbox:latest
-      N8N_INSTANCE_AI_SANDBOX_API_URL: http://sandbox-api:8080
     volumes:
       - n8n-data:/home/node/.n8n
 EOF
