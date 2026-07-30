@@ -735,5 +735,101 @@ describe('resolve_llm tool', () => {
 			});
 			expect(modelLookup.list).toHaveBeenCalledWith(AI_GATEWAY_MANAGED_TAG, 'openAiApi', 'openai');
 		});
+
+		it('uses the provider to disambiguate repeated managed credential ids', async () => {
+			const modelLookup = makeModelLookup(async (_credentialId, _credentialType, provider) =>
+				provider === 'google'
+					? [{ name: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' }]
+					: [{ name: 'GPT-5 mini', value: 'gpt-5-mini' }],
+			);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup,
+				isProviderServedByGateway: async (provider) =>
+					provider === 'openai' || provider === 'google',
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!(
+				{ provider: 'google', credentialId: AI_GATEWAY_MANAGED_TAG },
+				{},
+			);
+
+			expect(result).toEqual({
+				ok: true,
+				provider: 'google',
+				model: 'gemini-2.5-pro',
+				credentialId: AI_GATEWAY_MANAGED_TAG,
+				credentialName: 'n8n Connect',
+			});
+			expect(modelLookup.list).toHaveBeenCalledWith(
+				AI_GATEWAY_MANAGED_TAG,
+				'googlePalmApi',
+				'google',
+			);
+		});
+
+		it('stays ambiguous for a passed-back managed tag when no provider disambiguates it', async () => {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async (provider) =>
+					provider === 'openai' || provider === 'google',
+				freeCredits: makeFreeCredits(),
+			});
+			// Several managed entries share the tag; without a provider the tool must not
+			// silently pick the first one.
+			const result = await tool.handler!({ credentialId: AI_GATEWAY_MANAGED_TAG }, {});
+
+			expect(result).toMatchObject({ ok: false, reason: 'ambiguous_credential' });
+			const { credentials } = result as {
+				credentials: Array<{ id: string; type: string; provider: string }>;
+			};
+			expect(credentials).toContainEqual({
+				id: AI_GATEWAY_MANAGED_TAG,
+				name: 'n8n Connect',
+				type: 'openAiApi',
+				provider: 'openai',
+			});
+			expect(credentials).toContainEqual({
+				id: AI_GATEWAY_MANAGED_TAG,
+				name: 'n8n Connect',
+				type: 'googlePalmApi',
+				provider: 'google',
+			});
+		});
+
+		it('returns unsupported_provider when the passed-back managed tag is paired with an unknown provider', async () => {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async (provider) =>
+					provider === 'openai' || provider === 'google',
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!(
+				{ provider: 'not-a-provider', credentialId: AI_GATEWAY_MANAGED_TAG },
+				{},
+			);
+
+			expect(result).toMatchObject({ ok: false, reason: 'unsupported_provider' });
+		});
+
+		it('stays ambiguous when the provider is valid but matches no repeated managed entry', async () => {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(),
+				// Anthropic is a known provider but not served here, so no managed entry
+				// matches it — the tag stays ambiguous rather than resolving wrongly.
+				isProviderServedByGateway: async (provider) =>
+					provider === 'openai' || provider === 'google',
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!(
+				{ provider: 'anthropic', credentialId: AI_GATEWAY_MANAGED_TAG },
+				{},
+			);
+
+			expect(result).toMatchObject({ ok: false, reason: 'ambiguous_credential' });
+		});
 	});
 });

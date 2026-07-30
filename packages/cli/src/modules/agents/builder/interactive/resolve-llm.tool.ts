@@ -245,8 +245,8 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				const llmCredentials = [...ownCredentials, ...managedCredentials];
 
 				if (credentialId) {
-					const credential = llmCredentials.find((c) => c.id === credentialId);
-					if (!credential) {
+					const matchingCredentials = llmCredentials.filter((c) => c.id === credentialId);
+					if (matchingCredentials.length === 0) {
 						return {
 							ok: false as const,
 							reason: 'unknown_credential' as const,
@@ -258,6 +258,44 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 							})),
 						};
 					}
+
+					let credential = matchingCredentials.length === 1 ? matchingCredentials[0] : undefined;
+					if (!credential && provider) {
+						const providerEntry = findProviderDefault(provider);
+						if (!providerEntry) {
+							return {
+								ok: false as const,
+								reason: 'unsupported_provider' as const,
+								provider,
+								supportedProviders: Object.values(LLM_PROVIDER_DEFAULTS).map(
+									(defaults) => defaults.provider,
+								),
+							};
+						}
+
+						const [credentialType] = providerEntry;
+						const providerMatches = matchingCredentials.filter((c) => c.type === credentialType);
+						if (providerMatches.length === 1) {
+							credential = providerMatches[0];
+						}
+					}
+
+					if (!credential) {
+						return {
+							ok: false as const,
+							reason: 'ambiguous_credential' as const,
+							credentials: matchingCredentials.map((c) => {
+								const defaults = LLM_PROVIDER_DEFAULTS[c.type];
+								return {
+									id: c.id,
+									name: c.name,
+									type: c.type,
+									provider: defaults.provider,
+								};
+							}),
+						};
+					}
+
 					const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
 					if (model?.trim()) {
 						return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
