@@ -103,6 +103,25 @@ describe('SDK node groups', () => {
 
 			expect(json.nodeGroups![0]).not.toHaveProperty('description');
 		});
+
+		it('builds authored code that passes a description to .group()', () => {
+			const code = `
+				const start = trigger({ type: '${MANUAL_TRIGGER_NODE_TYPE}', version: 1, config: { name: 'Start' } });
+				const a = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A' } });
+
+				export default workflow('${WF_ID}', 'wf')
+					.add(start)
+					.to(a)
+					.group('G', [a], { description: 'Pulls the CRM contacts' });
+			`;
+
+			const json = parseWorkflowCodeToBuilder(code).toJSON();
+
+			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
+			expect(json.nodeGroups).toHaveLength(1);
+			expect(json.nodeGroups![0].name).toBe('G');
+			expect(json.nodeGroups![0].nodeIds).toEqual([idByName.get('A')]);
+		});
 	});
 
 	describe('regenerateNodeIds()', () => {
