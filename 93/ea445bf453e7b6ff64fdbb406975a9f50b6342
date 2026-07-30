@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/app/init.ts
+  s_fd88e3166bde43::t_943ee45ba135cf 11,14
+  s_fd88e3166bde43::t_44c9bf5acb8b1a 221-222
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+  s_fd88e3166bde43::t_531348eab6acaa 101
+  s_fd88e3166bde43::t_5c159d2a33d13b 2-7
+  s_fd88e3166bde43::t_52067a7c28680a 102-123
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_fd88e3166bde43::t_c04b894a4beb07 71-77
+  s_fd88e3166bde43::t_134e330126f31f 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "93ea445bf453e7b6ff64fdbb406975a9f50b6342",
+  "prompts": {},
+  "sessions": {
+    "s_fd88e3166bde43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f2ad785-b48e-41b7-99c4-c11bb72bed21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

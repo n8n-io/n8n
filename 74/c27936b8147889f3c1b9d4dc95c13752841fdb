@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_0237a66f4d3f8f::t_2924036ec9b00b 28
+  s_0237a66f4d3f8f::t_71dfc13c216d4a 67
+  s_0237a66f4d3f8f::t_9d12cffc9097c4 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "74c27936b8147889f3c1b9d4dc95c13752841fdb",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

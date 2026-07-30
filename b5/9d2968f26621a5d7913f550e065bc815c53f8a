@@ -1,0 +1,20 @@
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.vue
+  s_7e73d932529dbe::t_5db8cf1a477881 101-103
+  s_7e73d932529dbe::t_0879d6c8b40aa2 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b59d2968f26621a5d7913f550e065bc815c53f8a",
+  "prompts": {},
+  "sessions": {
+    "s_7e73d932529dbe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55e31275-cbfe-47dc-a65e-bbd320d7308e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_9f30e357c1bf9d::t_7915f973aaa82d 51-57
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.ts
+  s_9f30e357c1bf9d::t_ca9b685f4ec157 14
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  s_9f30e357c1bf9d::t_887d88d24e430c 16-17
+  s_9f30e357c1bf9d::t_cd8ddb31c8a82e 686-700
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_9f30e357c1bf9d::t_ffe7bc17f534a5 557-558
+  s_9f30e357c1bf9d::t_ce48d3bdd39555 528-529
+  s_9f30e357c1bf9d::t_e7f94ff317a64c 592
+  s_9f30e357c1bf9d::t_0964cfb20672b5 1473
+  s_9f30e357c1bf9d::t_7417146df1a509 115
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_9f30e357c1bf9d::t_76624e70281bd4 1998,2000
+  s_9f30e357c1bf9d::t_05247c22770342 1519-1521,1525
+  s_9f30e357c1bf9d::t_047de0570a78f7 993
+  s_9f30e357c1bf9d::t_e1899148615259 100
+  s_9f30e357c1bf9d::t_5d8ff4ca0d4c25 1596
+  s_9f30e357c1bf9d::t_b0b467f46fab13 1908,1911
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "73fa0434eb456c03e73802c6eb8e56c3d1bd2d40",
+  "prompts": {},
+  "sessions": {
+    "s_9f30e357c1bf9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86539bcf-af50-43ad-a4ae-f42388f0e524",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

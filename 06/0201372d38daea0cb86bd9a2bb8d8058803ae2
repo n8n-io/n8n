@@ -1,0 +1,88 @@
+packages/@n8n/cli/src/commands/package/shared.ts
+  s_ce38e707b3774d::t_b9bb95fc8a6699 11,30
+  s_ce38e707b3774d::t_0e3b6cfd43f91d 31
+packages/@n8n/cli/src/commands/package/import.ts
+  s_ce38e707b3774d::t_7c69d065c32925 65-70,140
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_ce38e707b3774d::t_a078ab68428520 334-341
+  s_ce38e707b3774d::t_b9bb95fc8a6699 348,372,407,416,436
+  s_ce38e707b3774d::t_16da653ba4b729 349-355,373-379
+  s_ce38e707b3774d::t_98fd5e321e5b73 35-39
+  s_ce38e707b3774d::t_9d3f4f6c69697e 384-401
+  s_ce38e707b3774d::t_49af18dacbb852 71
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_ce38e707b3774d::t_b9bb95fc8a6699 146
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_ce38e707b3774d::t_49af18dacbb852 18,48
+packages/@n8n/cli/docs/commands/package.md
+  s_ce38e707b3774d::t_130a24060a2f43 64-65,87
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_ce38e707b3774d::t_49af18dacbb852 72
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_ce38e707b3774d::t_b9bb95fc8a6699 48,81,273,320
+  s_ce38e707b3774d::t_7759a3586913cf 261,263-267
+  s_ce38e707b3774d::t_517ba4e579268a 166
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_ce38e707b3774d::t_7c69d065c32925 210
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_ce38e707b3774d::t_7c69d065c32925 18,105
+packages/@n8n/cli/src/client.ts
+  s_ce38e707b3774d::t_7c69d065c32925 24
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_ce38e707b3774d::t_d907a161a34469 414,417,426,430,440-448
+  s_ce38e707b3774d::t_4d0b656c4023b6 188-214
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_ce38e707b3774d::t_b954bf07a6b170 152,154
+  s_ce38e707b3774d::t_0e3b6cfd43f91d 165
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_ce38e707b3774d::t_49af18dacbb852 75
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-pruner.test.ts
+  s_ce38e707b3774d::t_517ba4e579268a 55,70,83,97,105,129
+  s_ce38e707b3774d::t_f429428cec50e0 4,135-143,146-149,151-156,158-160,164-181,187,191
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_ce38e707b3774d::t_b9bb95fc8a6699 226
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_ce38e707b3774d::t_49af18dacbb852 49
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_ce38e707b3774d::t_49af18dacbb852 45,75,94,114
+  s_ce38e707b3774d::t_98fd5e321e5b73 95
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_ce38e707b3774d::t_3a6a060c352d0a 21,48,77,105,491
+  s_ce38e707b3774d::t_adcfdadb968c43 320-353
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_ce38e707b3774d::t_b9bb95fc8a6699 16,140,155,178
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_ce38e707b3774d::t_b9bb95fc8a6699 9,62,72
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-tags.integration.test.ts
+  s_ce38e707b3774d::t_49af18dacbb852 248
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ce38e707b3774d::t_b9bb95fc8a6699 360,377,458
+  s_ce38e707b3774d::t_0b1cf481e9948c 204-205
+  s_ce38e707b3774d::t_ca6f3db4576f51 66,71-75
+  s_ce38e707b3774d::t_928f5637e9b1b7 140-142
+  s_ce38e707b3774d::t_b9cc72689065e2 318-320,322,327
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-pruner.ts
+  s_ce38e707b3774d::t_ba7ad700d994d2 3,8,11,22,26,30-31,73,77,87
+  s_ce38e707b3774d::t_b9bb95fc8a6699 12,23,74,95
+  s_ce38e707b3774d::t_a139352ef818ca 90-94,97-99,101,107-110,116-129
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_ce38e707b3774d::t_b9bb95fc8a6699 65
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_ce38e707b3774d::t_3a6a060c352d0a 24,73,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "060201372d38daea0cb86bd9a2bb8d8058803ae2",
+  "prompts": {},
+  "sessions": {
+    "s_ce38e707b3774d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f3d3be-4e23-4ead-99eb-53993886261e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

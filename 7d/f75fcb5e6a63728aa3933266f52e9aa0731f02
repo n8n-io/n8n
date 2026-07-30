@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_a55607386d990f::t_020c5b8edae66d 14
+packages/frontend/editor-ui/src/app/components/MainSidebar.test.ts
+  s_a55607386d990f::t_020c5b8edae66d 9
+packages/frontend/editor-ui/src/app/composables/useBasePageRedirectionHelper.ts
+  s_a55607386d990f::t_020c5b8edae66d 3
+packages/frontend/editor-ui/src/app/components/VersionUpdateCTA.test.ts
+  s_a55607386d990f::t_020c5b8edae66d 8
+packages/frontend/editor-ui/src/app/components/WhatsNewModal.vue
+  s_a55607386d990f::t_020c5b8edae66d 6
+packages/frontend/editor-ui/src/app/init.ts
+  s_a55607386d990f::t_020c5b8edae66d 27
+packages/frontend/editor-ui/src/app/composables/useBasePageRedirectionHelper.test.ts
+  s_a55607386d990f::t_020c5b8edae66d 9
+packages/frontend/editor-ui/src/app/components/WhatsNewModal.test.ts
+  s_a55607386d990f::t_020c5b8edae66d 8
+packages/frontend/editor-ui/src/app/components/BottomMenu.vue
+  s_a55607386d990f::t_020c5b8edae66d 12
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_a55607386d990f::t_020c5b8edae66d 12
+packages/frontend/editor-ui/src/app/components/VersionUpdateCTA.vue
+  s_a55607386d990f::t_020c5b8edae66d 2
+packages/frontend/editor-ui/src/app/components/UpdatesPanel.vue
+  s_a55607386d990f::t_020c5b8edae66d 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7df75fcb5e6a63728aa3933266f52e9aa0731f02",
+  "prompts": {},
+  "sessions": {
+    "s_a55607386d990f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ece89e3d-db65-4083-8214-448808ba47cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

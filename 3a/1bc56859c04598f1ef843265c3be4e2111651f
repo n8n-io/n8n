@@ -1,0 +1,25 @@
+packages/workflow/test/redaction-channels.test.ts
+  s_456b1fff7bb2dc::t_e05ec321e468bd 2
+  s_456b1fff7bb2dc::t_1d26e8e03e1f16 6,46-77
+  s_456b1fff7bb2dc::t_d7ca90e21c6802 3-5,78-83
+packages/workflow/src/redaction-channels.ts
+  s_456b1fff7bb2dc::t_cd040d868f006c 1
+  s_456b1fff7bb2dc::t_32144036819983 46-75
+  s_456b1fff7bb2dc::t_17f3f0442e7324 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3a1bc56859c04598f1ef843265c3be4e2111651f",
+  "prompts": {},
+  "sessions": {
+    "s_456b1fff7bb2dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffba89ca-6fe5-4fd6-9331-7e707027dc54",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

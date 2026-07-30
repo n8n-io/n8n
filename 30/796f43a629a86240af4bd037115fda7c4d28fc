@@ -7,13 +7,13 @@ docs/generated/sqlite-schema/README.md
 docs/generated/sqlite-schema/instance_ai_threads.md
   s_44a98ba2784a12::t_e7de892e1b7d06 19,49,86-92
 packages/@n8n/db/src/migrations/postgresdb/index.ts
-  s_44a98ba2784a12::t_591d9ac7718227 222-223
-  s_44a98ba2784a12::t_0e1b7d2554975c 448-449
+  s_44a98ba2784a12::t_591d9ac7718227 222-223,222
+  s_44a98ba2784a12::t_0e1b7d2554975c 448-449,448
 docs/generated/sqlite-schema/instance_ai_events.md
   s_44a98ba2784a12::t_e7de892e1b7d06 1-71
 packages/@n8n/db/src/migrations/sqlite/index.ts
-  s_44a98ba2784a12::t_40ef558442421f 214-215
-  s_44a98ba2784a12::t_e003fa0ab06b5c 430-431
+  s_44a98ba2784a12::t_40ef558442421f 214-215,214
+  s_44a98ba2784a12::t_e003fa0ab06b5c 430-431,430
 docs/generated/postgres-schema/public.instance_ai_events.md
   s_44a98ba2784a12::t_e7de892e1b7d06 1-65
 packages/@n8n/db/src/migrations/common/1784000000047-CreateWorkflowReviewRequestTables.ts

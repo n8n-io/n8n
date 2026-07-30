@@ -1,0 +1,29 @@
+AGENTS.md
+  s_0a030118333b72::t_6558a8b42a3671 211-219,221
+  s_2b2954a4956f3a::t_fd13fc09bb4236 220
+  s_2b2954a4956f3a::t_26f622492958ca 196-210,222-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7331d08892c4ce53e1c4363b48699a5916777a01",
+  "prompts": {},
+  "sessions": {
+    "s_0a030118333b72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b75b67b-fe9e-4fe4-8d22-4eff97db9a41",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_2b2954a4956f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "293ec869-ab9a-4cc9-a9cd-047924821740",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

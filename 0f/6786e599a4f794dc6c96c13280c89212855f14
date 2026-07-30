@@ -1,0 +1,23 @@
+packages/cli/test/integration/public-api/sso-oidc.test.ts
+  s_182a54609314c2::t_3b3d11dc9a0745 106,140,146,163,192,199,207,211,230,241,253,265,274,287
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_182a54609314c2::t_f68b6bef86fd11 211
+packages/cli/src/public-api/v1/handlers/sso-oidc/spec/paths/settings.sso.oidc.yml
+  s_182a54609314c2::t_3fe3a89b846914 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0f6786e599a4f794dc6c96c13280c89212855f14",
+  "prompts": {},
+  "sessions": {
+    "s_182a54609314c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2303d3a-2838-4479-86fc-b42a19fd31e6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
