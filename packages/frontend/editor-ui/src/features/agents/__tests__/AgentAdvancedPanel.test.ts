@@ -133,6 +133,18 @@ function makeCatalog(): ProviderCatalog {
 				},
 			},
 		},
+		'aws-bedrock': {
+			id: 'aws-bedrock',
+			name: 'AWS Bedrock',
+			models: {
+				'anthropic.claude-sonnet-4-5-v1:0': {
+					id: 'anthropic.claude-sonnet-4-5-v1:0',
+					name: 'Claude Sonnet 4.5',
+					reasoning: true,
+					toolCall: true,
+				},
+			},
+		},
 	};
 }
 
@@ -391,7 +403,9 @@ describe('AgentAdvancedPanel', () => {
 	});
 
 	it('shows the reasoning toggle when the selected model supports reasoning', () => {
-		const config = makeConfig({ model: 'google/gemini-pro' });
+		const config = makeConfig({
+			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+		});
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config, projectId: 'project-1' },
 			global: { stubs: globalStubs },

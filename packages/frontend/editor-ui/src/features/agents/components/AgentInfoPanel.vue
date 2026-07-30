@@ -29,6 +29,7 @@ import type { AgentJsonConfig } from '../types';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
+import { normalizeReasoningForModelChange } from '../utils/reasoning';
 import AgentModelSelector from './AgentModelSelector.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
@@ -141,17 +142,10 @@ function onModelChange(selection: AgentModelSelection) {
 	);
 	const normalizedConfig =
 		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;
-	let reasoningChanges: Partial<AgentJsonConfig> = {};
-	if (
-		catalog.value[selection.provider]?.models[modelName]?.reasoning === false &&
-		normalizedConfig?.reasoning !== undefined
-	) {
-		const configWithoutReasoning = { ...normalizedConfig };
-		delete configWithoutReasoning.reasoning;
-		reasoningChanges = {
-			config: Object.keys(configWithoutReasoning).length > 0 ? configWithoutReasoning : undefined,
-		};
-	}
+	const reasoningChanges = normalizeReasoningForModelChange(
+		normalizedConfig,
+		catalog.value[selection.provider]?.models[modelName]?.reasoning,
+	);
 	emit('update:config', {
 		model,
 		credential: credentialId,
