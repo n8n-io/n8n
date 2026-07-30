@@ -261,7 +261,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
 	});
 
-	it('should retire the old provider and publish a failed connection for retry', async () => {
+	it('should retire an unconnected old provider and publish a failed connection for retry', async () => {
 		const existingProvider = new DummyProvider();
 		providersMap.set('my-vault', existingProvider);
 
@@ -292,6 +292,79 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 			'External secrets provider replacement reached terminal failure',
 			expect.objectContaining({ phase: 'connection' }),
 		);
+	});
+
+	it('should keep a connected old provider active while a replacement connection retries', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const replacementProvider = new DummyProvider();
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: true,
+			provider: replacementProvider,
+		});
+		mockProviderLifecycle.connect.mockResolvedValue({
+			success: false,
+			error: new Error('Connection failed'),
+		});
+
+		await upsertProvider();
+
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+		expect(replacementProvider.state).toBe('error');
+		expect(mockProviderLifecycle.disconnect).not.toHaveBeenCalledWith(existingProvider);
+		expect(scopedLogger.error).toHaveBeenCalledWith(
+			'External secrets provider replacement connection attempt failed',
+			expect.objectContaining({
+				providerKey: 'my-vault',
+				phase: 'connection',
+				error: expect.any(Error),
+			}),
+		);
+	});
+
+	it('should activate a retried replacement over a preserved connected old provider', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const replacementProvider = new DummyProvider();
+		const hydration = createDeferred<undefined>();
+		vi.spyOn(replacementProvider, 'update').mockReturnValue(hydration.promise);
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: true,
+			provider: replacementProvider,
+		});
+
+		let retryOperation!: () => Promise<{ success: boolean; error?: Error }>;
+		mockRetryManager.runWithRetry.mockImplementation(async (_key, operation) => {
+			retryOperation = operation;
+			return await operation();
+		});
+		mockProviderLifecycle.connect.mockResolvedValueOnce({
+			success: false,
+			error: new Error('Connection failed'),
+		});
+
+		await upsertProvider();
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+
+		mockProviderLifecycle.connect.mockImplementationOnce(async (provider) => {
+			provider.setState('connected');
+			return { success: true };
+		});
+		await retryOperation();
+
+		// The old provider keeps serving secrets while the retried candidate hydrates.
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+
+		hydration.resolve(undefined);
+
+		await vi.waitFor(() => {
+			expect(providersMap.get('my-vault')).toBe(replacementProvider);
+		});
+		expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
 	});
 
 	it('should keep a connection retry off-registry until its hydration succeeds', async () => {

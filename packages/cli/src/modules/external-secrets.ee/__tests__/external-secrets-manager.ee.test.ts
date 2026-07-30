@@ -1310,7 +1310,7 @@ describe('ExternalSecretsManager', () => {
 				expect(providerRegistry.get('my-vault')).toBe(providerAtShutdown);
 			});
 
-			it('should stop serving stale secrets when replacement connection fails', async () => {
+			it('should keep serving secrets from the connected provider while a failed replacement retries', async () => {
 				class FailingConnectProvider extends DummyProvider {
 					protected override async doConnect(): Promise<void> {
 						throw new Error('Connection failed');
@@ -1336,8 +1336,8 @@ describe('ExternalSecretsManager', () => {
 				try {
 					await manager.reloadAllProviders();
 
-					expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
-					expect(providerRegistry.get('my-vault')?.state).toBe('error');
+					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
+					expect(providerRegistry.get('my-vault')?.state).toBe('connected');
 				} finally {
 					manager.shutdown();
 				}

@@ -343,7 +343,9 @@ export class ExternalSecretsProviderConnectionManager {
 	}
 
 	/**
-	 * Publishes a failed candidate to the registry so its error state is visible between retries.
+	 * Publishes a failed candidate to the registry so its error state is visible between retries,
+	 * unless a still-connected predecessor occupies the slot — that one keeps serving secrets to
+	 * executions during the retry window, so the candidate stays off-registry until it succeeds.
 	 * Returns false when the candidate was superseded while connecting and was disposed instead.
 	 */
 	private async publishRetryableConnectionFailure(
@@ -356,8 +358,6 @@ export class ExternalSecretsProviderConnectionManager {
 		}
 
 		candidate.provider.setState('error', error);
-		const existingProvider = this.providerRegistry.get(candidate.providerKey);
-		this.providerRegistry.set(candidate.providerKey, candidate.provider);
 
 		this.logger.error('External secrets provider replacement connection attempt failed', {
 			providerKey: candidate.providerKey,
@@ -365,6 +365,18 @@ export class ExternalSecretsProviderConnectionManager {
 			phase: 'connection',
 			error,
 		});
+
+		const existingProvider = this.providerRegistry.get(candidate.providerKey);
+		const hasConnectedPredecessor =
+			existingProvider !== undefined &&
+			existingProvider !== candidate.provider &&
+			existingProvider.state === 'connected';
+
+		if (hasConnectedPredecessor) {
+			return true;
+		}
+
+		this.providerRegistry.set(candidate.providerKey, candidate.provider);
 
 		if (existingProvider && existingProvider !== candidate.provider) {
 			await this.providerLifecycle.disconnect(existingProvider);
