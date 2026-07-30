@@ -72,9 +72,12 @@ describe('LogStreamingEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					missingNodeTypeMode: 'fail',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingMode: 'create-stub',
+					variableParentPolicy: 'project',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -100,6 +103,12 @@ describe('LogStreamingEventRelay', () => {
 						created: 1,
 						requirements: 1,
 					},
+					variables: {
+						matched: 0,
+						missing: 1,
+						created: 0,
+						requirements: 1,
+					},
 				},
 			};
 
@@ -122,9 +131,12 @@ describe('LogStreamingEventRelay', () => {
 						credentialMatchingMode: 'id-only',
 						credentialMissingMode: 'must-preexist',
 						workflowPublishingPolicy: 'preserve-published-state',
+						missingNodeTypeMode: 'fail',
 						dataTableMatchingMode: 'by-id',
 						dataTableMissingMode: 'create',
 						dataTableSchemaConflictPolicy: 'keep-existing',
+						variableMissingMode: 'create-stub',
+						variableParentPolicy: 'project',
 					},
 					packageSourceId: 'source-instance-1',
 					packageVersion: '1',
@@ -156,6 +168,7 @@ describe('LogStreamingEventRelay', () => {
 					credentials: 1,
 					dataTables: 1,
 					variables: 1,
+					tags: 1,
 				},
 			};
 

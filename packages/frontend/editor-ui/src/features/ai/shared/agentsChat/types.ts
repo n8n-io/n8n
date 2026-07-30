@@ -13,6 +13,8 @@ export interface ToolCall {
 	output?: unknown;
 	canceled?: boolean;
 	state: ToolCallState;
+	/** Run id for a currently suspended call, used to cancel non-card HITL waits. */
+	runId?: string;
 	/** Epoch ms when the tool started executing (live: client clock; reload: recorded). */
 	startTime?: number;
 	/** Epoch ms when the tool settled. Absent while still running. */
@@ -81,16 +83,27 @@ export type ChatMessageRenderPart =
 	| { type: 'text'; text: string }
 	| { type: 'interactive'; toolCallId: string };
 
+export interface ThinkingSegment {
+	id: string;
+	content: string;
+	startTime?: number;
+	endTime?: number;
+}
+
 export interface AgentsChatMessage {
 	id: string;
 	role: 'user' | 'assistant';
 	content: string;
 	renderParts?: ChatMessageRenderPart[];
+	thinkingSegments?: ThinkingSegment[];
+	/** Legacy aggregate kept for messages created before timed segments were added. */
 	thinking?: string;
 	toolCalls?: ToolCall[];
 	status?: ChatMessageStatus;
 	interactives?: InteractivePayload[];
 	interactive?: InteractivePayload;
+	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
+	executionId?: string;
 }
 
 export type ChatMessage = AgentsChatMessage;

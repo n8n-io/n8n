@@ -1,7 +1,7 @@
 import type { SerializableAgentState } from '@n8n/agents';
+import type { ModuleRegistry } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
-import type { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -62,6 +62,19 @@ describe('N8NCheckpointStorage', () => {
 			JSON.stringify({ ...suspendedState, status: 'running' }),
 		);
 		await expect(service.claimForResume('run-1', suspendedState)).resolves.toBe(false);
+	});
+
+	it('atomically expires a suspended checkpoint for an agent', async () => {
+		const { service, repository } = makeService();
+		repository.cancelSuspended.mockResolvedValue(true);
+
+		await expect(service.cancelSuspended('run-1', suspendedState, 'agent-1')).resolves.toBe(true);
+
+		expect(repository.cancelSuspended).toHaveBeenCalledWith(
+			'run-1',
+			'agent-1',
+			JSON.stringify(suspendedState),
+		);
 	});
 
 	it('expires a checkpoint by runId when no agentId is given', async () => {

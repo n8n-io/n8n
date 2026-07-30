@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, ExecuteAgentData, NodeParameterValueType } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { getNodeParameters, NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -577,6 +577,133 @@ describe('MessageAnAgent Node', () => {
 		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
 	});
 
+	describe('v3 schema from example', () => {
+		let v3: MessageAnAgentV2;
+
+		beforeEach(() => {
+			v3 = new MessageAnAgentV2(baseDescription);
+			executeFunctions.getNode.mockReturnValue({
+				id: 'test-node-id',
+				name: 'Message an Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 3,
+				position: [0, 0],
+				parameters: {},
+			});
+		});
+
+		it('infers an all-required JSON Schema from a JSON example, without a $schema keyword', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({
+				useStructuredOutput: true,
+				schemaType: 'fromJson',
+				jsonSchemaExample: JSON.stringify({
+					result: 'ok',
+					nested: { count: 1 },
+				}),
+			});
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await v3.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					outputSchema: {
+						type: 'object',
+						properties: {
+							result: { type: 'string' },
+							nested: {
+								type: 'object',
+								properties: {
+									count: { type: 'number' },
+								},
+								required: ['count'],
+							},
+						},
+						required: ['result', 'nested'],
+					},
+				}),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
+		});
+
+		it('forwards a manual output schema when schemaType is manual', async () => {
+			const schemaString = JSON.stringify({
+				type: 'object',
+				properties: { result: { type: 'string' } },
+				required: ['result'],
+			});
+
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({
+				useStructuredOutput: true,
+				schemaType: 'manual',
+				outputSchema: schemaString,
+			});
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await v3.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					outputSchema: {
+						type: 'object',
+						properties: { result: { type: 'string' } },
+						required: ['result'],
+					},
+				}),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
+		});
+
+		it('throws when the JSON example is empty', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({
+				useStructuredOutput: true,
+				schemaType: 'fromJson',
+				jsonSchemaExample: '   ',
+			});
+			executeFunctions.continueOnFail.mockReturnValue(false);
+
+			await expect(v3.execute.call(executeFunctions)).rejects.toThrow('JSON example is empty');
+			expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+		});
+
+		it('throws when the JSON example is not valid JSON', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({
+				useStructuredOutput: true,
+				schemaType: 'fromJson',
+				jsonSchemaExample: '{ not valid',
+			});
+			executeFunctions.continueOnFail.mockReturnValue(false);
+
+			await expect(v3.execute.call(executeFunctions)).rejects.toThrow(
+				'JSON example is not valid JSON',
+			);
+			expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+		});
+
+		it('throws when the JSON example is an array instead of an object', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({
+				useStructuredOutput: true,
+				schemaType: 'fromJson',
+				jsonSchemaExample: JSON.stringify([{ result: 'ok' }]),
+			});
+			executeFunctions.continueOnFail.mockReturnValue(false);
+
+			await expect(v3.execute.call(executeFunctions)).rejects.toThrow(
+				'JSON example must be a JSON object',
+			);
+			expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+		});
+	});
+
 	it('invokes the agent once with all-items scope in "Once for All Items" mode', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: { i: 0 } }, { json: { i: 1 } }]);
 		executeFunctions.getNodeParameter.mockImplementation(
@@ -683,11 +810,17 @@ describe('MessageAnAgent Node', () => {
 });
 
 describe('MessageAnAgent versioning', () => {
-	it('exposes v1 and v2 with v2 as the default', () => {
+	it('uses AI Agent V1 as the display and default name', () => {
+		expect(baseDescription.displayName).toBe('AI Agent V1');
+		expect(new MessageAnAgentV1(baseDescription).description.defaults.name).toBe('AI Agent V1');
+		expect(new MessageAnAgentV2(baseDescription).description.defaults.name).toBe('AI Agent V1');
+	});
+
+	it('exposes v1, v2, and v3 with v3 as the default', () => {
 		const versioned = new MessageAnAgent();
 
-		expect(versioned.description.defaultVersion).toBe(2);
-		expect(Object.keys(versioned.nodeVersions)).toEqual(['1', '2']);
+		expect(versioned.description.defaultVersion).toBe(3);
+		expect(Object.keys(versioned.nodeVersions)).toEqual(['1', '2', '3']);
 	});
 
 	it('keeps the original resourceLocator picker on v1 (non-breaking) with the listAgents method', () => {
@@ -699,12 +832,88 @@ describe('MessageAnAgent versioning', () => {
 		expect(v1.methods?.listSearch?.listAgents).toBeDefined();
 	});
 
-	it('uses the agentSelector picker on v2', () => {
+	it('keeps advanced parameters when resolving v1 workflows', () => {
+		const v1 = new MessageAnAgentV1(baseDescription);
+
+		const parameters = getNodeParameters(
+			v1.description.properties,
+			{
+				agentId: { __rl: true, mode: 'id', value: 'agent-1' },
+				message: 'Hello',
+				useStructuredOutput: false,
+				advanced: {
+					invokeMode: 'perItem',
+					sessionId: 'thread-1',
+					allowOtherNodesData: true,
+				},
+			},
+			false,
+			false,
+			{ typeVersion: 1 },
+			v1.description,
+		);
+
+		expect(parameters?.advanced).toEqual({
+			invokeMode: 'perItem',
+			sessionId: 'thread-1',
+			allowOtherNodesData: true,
+		});
+	});
+
+	it('serves v2 and v3 from the same class with the agentSelector picker', () => {
 		const v2 = new MessageAnAgentV2(baseDescription);
 		const agentId = v2.description.properties.find((p) => p.name === 'agentId');
+		const schemaType = v2.description.properties.find((p) => p.name === 'schemaType');
 
-		expect(v2.description.version).toBe(2);
+		expect(v2.description.version).toEqual([2, 3]);
 		expect(agentId?.type).toBe('agentSelector');
+		expect(schemaType?.default).toBe('fromJson');
+	});
+
+	it('resolves parameters for a newly added v2 node', () => {
+		const v2 = new MessageAnAgentV2(baseDescription);
+
+		expect(() =>
+			getNodeParameters(
+				v2.description.properties,
+				{
+					agentSource: 'referenced',
+					agentId: { __rl: true, mode: 'list', value: '' },
+					inlineAgent: {},
+					message: '',
+					useStructuredOutput: false,
+					advanced: {},
+				},
+				false,
+				false,
+				{ typeVersion: 2 },
+				v2.description,
+			),
+		).not.toThrow();
+	});
+
+	it('resolves parameters for a newly added v3 node', () => {
+		const v3 = new MessageAnAgentV2(baseDescription);
+
+		expect(() =>
+			getNodeParameters(
+				v3.description.properties,
+				{
+					agentSource: 'referenced',
+					agentId: { __rl: true, mode: 'list', value: '' },
+					inlineAgent: {},
+					message: '',
+					useStructuredOutput: true,
+					schemaType: 'fromJson',
+					jsonSchemaExample: '{ "result": "ok" }',
+					advanced: {},
+				},
+				false,
+				false,
+				{ typeVersion: 3 },
+				v3.description,
+			),
+		).not.toThrow();
 	});
 
 	it('keeps agentSource hidden with a referenced default on v2', () => {

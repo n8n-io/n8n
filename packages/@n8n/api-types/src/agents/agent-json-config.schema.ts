@@ -1,6 +1,8 @@
 import { z, type ZodError } from 'zod';
 
+import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
  * Regex for valid custom tool ids. Shared with the backend service layer
  * so validation stays in sync with the JSON config schema.
@@ -70,12 +72,6 @@ const MemoryConfigSchema = z.object({
 	episodicMemory: EpisodicMemoryConfigSchema.optional(),
 });
 
-const ThinkingConfigSchema = z.object({
-	provider: z.enum(['anthropic', 'openai']),
-	budgetTokens: z.number().int().optional(),
-	reasoningEffort: z.string().optional(),
-});
-
 // Mandatory for supporting providers (the user cannot disable it). Anthropic
 // exposes a cache-breakpoint TTL; OpenAI has no sub-config.
 export const PromptCachingConfigSchema = z.object({
@@ -89,7 +85,9 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
-const HexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
+const HexColorSchema = z
+	.string()
+	.regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a 6-digit hex value (e.g. #FF5500)');
 
 export const DEFAULT_AGENT_PERSONALISATION = {
 	icon: 'bot',
@@ -195,7 +193,10 @@ const AgentJsonSkillConfigSchema = z.object({
 	id: z
 		.string()
 		.min(1)
-		.regex(/^[A-Za-z0-9_-]+$/),
+		.regex(
+			/^[A-Za-z0-9_-]+$/,
+			'Skill id can only contain letters, numbers, hyphens, and underscores',
+		),
 });
 
 const AgentJsonTaskConfigSchema = z.object({
@@ -203,7 +204,10 @@ const AgentJsonTaskConfigSchema = z.object({
 	id: z
 		.string()
 		.min(1)
-		.regex(/^[A-Za-z0-9_-]+$/),
+		.regex(
+			/^[A-Za-z0-9_-]+$/,
+			'Task id can only contain letters, numbers, hyphens, and underscores',
+		),
 	enabled: z.boolean(),
 });
 
@@ -227,10 +231,8 @@ export const McpServerConfigSchema = z
 			.string()
 			.min(1)
 			.max(64)
-			.regex(/^[a-zA-Z0-9_-]+$/)
-			.describe(
-				'Unique server name, also used as the SDK tool-name prefix (e.g. github -> github_create_issue)',
-			),
+			.refine((name) => name.trim().length > 0, 'MCP server name cannot be blank')
+			.describe('Unique display name. The SDK normalizes it when building model-facing tool names'),
 		description: z.string().max(512).optional().describe('Human-readable server description'),
 		url: z.string().describe('MCP server endpoint URL. Empty string means setup is incomplete'),
 		transport: z
@@ -324,7 +326,10 @@ const VectorStoreBaseShape = {
 		.string()
 		.min(1)
 		.max(64)
-		.regex(VECTOR_STORE_NAME_REGEX)
+		.regex(
+			VECTOR_STORE_NAME_REGEX,
+			'Vector store name can only contain letters, numbers, hyphens, and underscores',
+		)
 		.describe('Unique connection name, also used as the SDK tool-name suffix: search_<name>'),
 	credential: CredentialIdSchema,
 	useWhen: z.string().trim().min(1).max(VECTOR_STORE_USE_WHEN_MAX_LENGTH),
@@ -366,14 +371,20 @@ export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
 
 const CustomToolJsonConfigSchema = z.object({
 	type: z.literal('custom'),
-	id: z.string().min(1).regex(CUSTOM_TOOL_ID_REGEX),
+	id: z
+		.string()
+		.min(1)
+		.regex(
+			CUSTOM_TOOL_ID_REGEX,
+			'Custom tool id can only contain letters, numbers, and underscores',
+		),
 	requireApproval: z.boolean().optional(),
 });
 
 export const WorkflowToolJsonConfigSchema = z
 	.object({
 		type: z.literal('workflow'),
-		workflow: z.string().min(1),
+		workflow: z.string().min(1).describe("The workflow's display name (not its ID)."),
 		name: z.string().optional(),
 		description: z.string().optional(),
 		requireApproval: z.boolean().optional(),
@@ -401,7 +412,12 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	NodeToolJsonConfigSchema,
 ]);
 
-export const AgentJsonConfigSchema = z.object({
+/**
+ * Unrefined agent config object shape. Use for schema derivation only
+ * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
+ * {@link AgentJsonConfigSchema} instead.
+ */
+export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
@@ -462,7 +478,7 @@ export const AgentJsonConfigSchema = z.object({
 		.optional(),
 	config: z
 		.object({
-			thinking: ThinkingConfigSchema.optional(),
+			reasoning: z.enum(AGENT_REASONING_LEVELS).optional(),
 			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
@@ -479,14 +495,22 @@ export const AgentJsonConfigSchema = z.object({
 		.optional(),
 });
 
-export const RunnableAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
+export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((config, ctx) => {
+	if (config.credential?.trim() && isDraftAgentConfig(config)) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['credential'],
+			message: 'A credential requires a model to be set',
+		});
+	}
+});
+
+export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 	model: AgentModelSchema,
 	credential: z.string().refine((value) => value.trim().length > 0, {
 		message: 'Credential is required',
 	}),
 });
-
-export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
@@ -561,4 +585,10 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 		expected: 'expected' in issue ? String(issue.expected) : undefined,
 		received: 'received' in issue ? String(issue.received) : undefined,
 	}));
+}
+
+export function formatAgentConfigZodError(error: ZodError): string {
+	return formatZodErrors(error)
+		.map((issue) => `${issue.path}: ${issue.message}`)
+		.join('; ');
 }

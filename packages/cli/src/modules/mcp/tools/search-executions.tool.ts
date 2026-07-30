@@ -67,14 +67,14 @@ export const createSearchExecutionsTool = (
 	workflowFinderService: WorkflowFinderService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: 'search_executions',
+	name: 'search_workflow_executions',
 	config: {
 		description:
 			'Search for workflow executions with optional filters. Returns execution metadata including status, timing, and workflow ID.',
 		inputSchema,
 		outputSchema,
 		annotations: {
-			title: 'Search Executions',
+			title: 'Search Workflow Executions',
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -99,7 +99,7 @@ export const createSearchExecutionsTool = (
 		const parameters = { workflowId, status, startedAfter, startedBefore, limit, lastId };
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'search_executions',
+			tool_name: 'search_workflow_executions',
 			parameters,
 		};
 

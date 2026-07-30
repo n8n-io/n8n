@@ -4,6 +4,7 @@ import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { watch } from 'vue';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
@@ -11,7 +12,6 @@ import {
 	VIEWS,
 	AutoSaveState,
 	DEBOUNCE_TIME,
-	getDebounceTime,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -23,7 +23,7 @@ import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-clien
 import { isExpression, type IDataObject } from 'n8n-workflow';
 import { useToast } from './useToast';
 import { useExternalHooks } from './useExternalHooks';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isDebouncedFunction } from '@/app/utils/typeGuards';

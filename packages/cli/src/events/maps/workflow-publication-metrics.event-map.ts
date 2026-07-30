@@ -51,6 +51,16 @@ export type WorkflowPublicationMetricsEventMap = {
 		result: PublicationOperationResult;
 		/** Workflows re-enqueued because their in-memory triggers were missing. */
 		deficientCount: number;
+		/** Registered workflows torn down because they are no longer published. */
+		surplusCount: number;
+		/** Workflows re-enqueued because their published version diverged from the active version. */
+		versionSkewCount: number;
 		durationMs: number;
+	};
+
+	/** Emitted only when a sweep found something, so idle follower passes stay off the bus. */
+	'workflow-publication-ghost-trigger-sweep': {
+		/** Workflows whose ghost triggers were torn down on a non-leader instance. */
+		removedCount: number;
 	};
 };

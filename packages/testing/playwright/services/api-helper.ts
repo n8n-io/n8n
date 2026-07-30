@@ -227,6 +227,26 @@ export class ApiHelpers {
 		});
 	}
 
+	async countScheduledJobs(workflowId: string, nodeId: string): Promise<number> {
+		const response = await this.request.get('/rest/e2e/scheduled-jobs/count', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to count scheduled jobs: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as { data: { count: number } };
+		return data.count;
+	}
+
+	async fireScheduledJobsNow(workflowId: string, nodeId: string): Promise<void> {
+		const response = await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
+			data: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to fire scheduled jobs: ${await response.text()}`);
+		}
+	}
+
 	// ===== FEATURE FLAG METHODS =====
 
 	async setEnvFeatureFlags(flags: Record<string, string>): Promise<{
@@ -330,7 +350,11 @@ export class ApiHelpers {
 	async createInstanceAiThread(projectId?: string): Promise<InstanceAiThreadInfo> {
 		const resolvedProjectId = projectId ?? (await this.projects.getMyPersonalProject()).id;
 		const response = await this.request.post('/rest/instance-ai/threads', {
-			data: { projectId: resolvedProjectId },
+			data: {
+				projectId: resolvedProjectId,
+				source: 'playwright',
+				origin: 'internal',
+			},
 		});
 		if (!response.ok()) {
 			throw new TestError(

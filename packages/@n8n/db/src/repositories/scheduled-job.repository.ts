@@ -15,7 +15,7 @@ export interface JobAdvance {
 	lastFiredAt: Date | null;
 }
 
-/** A job row to insert; bookkeeping columns take their schema defaults. */
+/** A job row to insert; remaining bookkeeping columns take their schema defaults. */
 export type NewScheduledJob = Pick<
 	ScheduledJob,
 	| 'name'
@@ -31,6 +31,7 @@ export type NewScheduledJob = Pick<
 	| 'intervalSeconds'
 	| 'fireAt'
 	| 'nextRunAt'
+	| 'maxAttempts'
 >;
 
 /** A changed schedule definition, plus the fresh clock it restarts from. */
@@ -128,6 +129,20 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	async findManyByIds(manager: EntityManager, ids: number[]): Promise<ScheduledJob[]> {
 		if (ids.length === 0) return [];
 		return await manager.findBy(ScheduledJob, { id: In(ids) });
+	}
+
+	/** Test-only: how many jobs a node currently owns. */
+	async countByWorkflowNode(workflowId: string, nodeId: string): Promise<number> {
+		return await this.count({ where: { workflowId, nodeId } });
+	}
+
+	/** Test-only: sets `nextRunAt` to now, so the next sweep claims the job. */
+	async forceDueNowByWorkflowNode(workflowId: string, nodeId: string): Promise<void> {
+		await this.createQueryBuilder()
+			.update(ScheduledJob)
+			.set({ nextRunAt: () => dbNowLiteral(this.isPostgres) })
+			.where('"workflowId" = :workflowId AND "nodeId" = :nodeId', { workflowId, nodeId })
+			.execute();
 	}
 
 	/**

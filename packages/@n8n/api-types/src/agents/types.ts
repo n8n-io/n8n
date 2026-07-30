@@ -200,9 +200,9 @@ export interface AgentPersistedMessageContentPart {
 	output?: unknown;
 	canceled?: boolean;
 	error?: string;
-	/** Epoch ms when the tool handler started executing. */
+	/** Epoch ms when this content part started. */
 	startTime?: number;
-	/** Epoch ms when the tool handler settled. */
+	/** Epoch ms when this content part settled. */
 	endTime?: number;
 }
 
@@ -210,6 +210,10 @@ export interface AgentPersistedMessageDto {
 	id: string;
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
+	/** Agent-execution turn id when this message was produced from an execution transcript. */
+	executionId?: string;
+	/** Outcome of the execution that produced this message. */
+	executionStatus?: 'success' | 'error';
 }
 
 export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;

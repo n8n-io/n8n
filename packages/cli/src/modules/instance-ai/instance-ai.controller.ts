@@ -14,12 +14,16 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
-	normalizeInstanceAiThreadSource,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiAgentNode,
+	InstanceAiEvent,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -32,6 +36,7 @@ import {
 	Put,
 	Patch,
 	Delete,
+	OnPubSubEvent,
 	Param,
 	Body,
 	Query,
@@ -42,6 +47,7 @@ import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/in
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from './eval/thread-restore.service';
@@ -60,6 +66,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UrlService } from '@/services/url.service';
 
@@ -112,6 +119,7 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
+		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
@@ -124,6 +132,7 @@ export class InstanceAiController {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly publisher: Publisher,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -659,26 +668,61 @@ export class InstanceAiController {
 	@Get('/settings')
 	@GlobalScope('instanceAi:manage')
 	async getAdminSettings(_req: AuthenticatedRequest) {
-		return this.settingsService.getAdminSettings();
+		return await this.settingsService.getAdminSettings();
 	}
 
 	@Put('/settings')
 	@GlobalScope('instanceAi:manage')
 	async updateAdminSettings(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body payload: InstanceAiAdminSettingsUpdateRequest,
 	) {
-		const result = await this.settingsService.updateAdminSettings(payload);
-		await this.moduleRegistry.refreshModuleSettings('instance-ai');
+		const result = await this.settingsService.updateAdminSettings(payload, req.user);
+		const [publishResult] = await Promise.allSettled([
+			this.publisher.publishCommand({ command: 'reload-instance-ai-settings' }),
+			this.applyAdminSettingsSideEffects(result),
+		]);
 
-		if (payload.enabled === false || payload.browserUseEnabled === false) {
-			await this.browserSessionService.shutdown();
+		if (publishResult.status === 'rejected') {
+			this.instanceAiErrorReporter.report(publishResult.reason, {
+				component: 'settings-publish',
+				threadId: 'admin-settings',
+			});
 		}
 
-		if (payload.enabled === false || payload.localGatewayDisabled === true) {
-			const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
-			if (disconnectedUserIds.length > 0) {
+		return result;
+	}
+
+	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })
+	async reloadAdminSettings() {
+		await this.settingsService.reloadFromDb();
+		await this.applyAdminSettingsSideEffects({
+			enabled: this.settingsService.isInstanceAiEnabled(),
+			browserUseEnabled: this.settingsService.isBrowserUseEnabled(),
+			localGatewayDisabled: this.settingsService.isLocalGatewayDisabled(),
+		});
+	}
+
+	private async applyAdminSettingsSideEffects(
+		settings: Pick<
+			InstanceAiAdminSettingsResponse,
+			'enabled' | 'browserUseEnabled' | 'localGatewayDisabled'
+		>,
+	) {
+		const sideEffects: Array<() => Promise<void> | void> = [
+			async () => {
+				await this.moduleRegistry.refreshModuleSettings('instance-ai');
+			},
+		];
+		if (!settings.enabled || !settings.browserUseEnabled) {
+			sideEffects.push(async () => await this.browserSessionService.shutdown());
+		}
+
+		if (!settings.enabled || settings.localGatewayDisabled) {
+			sideEffects.push(() => {
+				const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
+				if (disconnectedUserIds.length === 0) return;
 				this.push.sendToUsers(
 					{
 						type: 'instanceAiGatewayStateChanged',
@@ -691,10 +735,18 @@ export class InstanceAiController {
 					},
 					disconnectedUserIds,
 				);
-			}
+			});
 		}
 
-		return result;
+		const results = await Promise.allSettled(sideEffects.map(async (apply) => await apply()));
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				this.instanceAiErrorReporter.report(result.reason, {
+					component: 'settings-side-effects',
+					threadId: 'admin-settings',
+				});
+			}
+		}
 	}
 
 	// ── User preferences (per-user, self-service) ──────────────────────────
@@ -719,16 +771,16 @@ export class InstanceAiController {
 		return result;
 	}
 
-	@Get('/settings/credentials')
-	@GlobalScope('instanceAi:message')
-	async listModelCredentials(req: AuthenticatedRequest) {
-		return await this.settingsService.listModelCredentials(req.user);
-	}
-
 	@Get('/settings/service-credentials')
 	@GlobalScope('instanceAi:manage')
-	async listServiceCredentials(req: AuthenticatedRequest) {
-		return await this.settingsService.listServiceCredentials(req.user);
+	async listServiceCredentials(_req: AuthenticatedRequest) {
+		return await this.settingsService.listInstanceServiceCredentials();
+	}
+
+	@Get('/settings/model-credentials')
+	@GlobalScope('instanceAi:manage')
+	async listInstanceModelCredentials(_req: AuthenticatedRequest) {
+		return await this.settingsService.listInstanceModelCredentials();
 	}
 
 	@Get('/threads')
@@ -755,14 +807,11 @@ export class InstanceAiController {
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
 
-		const launchMetadata =
-			payload.source !== undefined || payload.origin !== undefined
-				? {
-						source: normalizeInstanceAiThreadSource(payload.source),
-						origin: payload.origin ?? ('internal' as const),
-						sourceContext: payload.sourceContext,
-					}
-				: undefined;
+		const launchMetadata = {
+			source: payload.source,
+			origin: payload.origin ?? ('internal' as const),
+			sourceContext: payload.sourceContext,
+		};
 
 		try {
 			return await this.memoryService.ensureThread(
@@ -926,6 +975,18 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
+	}
+
+	// Runs for minutes; same client timeout handling as the workflow variant.
+	@Post('/eval/execute-agent-with-llm-mock/:agentId')
+	@GlobalScope('instanceAi:eval')
+	async executeAgentWithLlmMock(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: InstanceAiEvalAgentExecutionRequest,
+	) {
+		return await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload);
 	}
 
 	/**
@@ -1254,7 +1315,7 @@ export class InstanceAiController {
 	// ── Helpers ──────────────────────────────────────────────────────────────
 
 	private assertBrowserChannelEnabled(): void {
-		if (!this.settingsService.getAdminSettings().browserUseEnabled) {
+		if (!this.settingsService.isBrowserUseEnabled()) {
 			throw new ForbiddenError('Browser Use is disabled');
 		}
 	}

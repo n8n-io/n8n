@@ -40,6 +40,7 @@ import {
 } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
 
@@ -75,15 +76,25 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		this.abortSignal?.addEventListener('abort', fn);
 	}
 
+	onExecutionFinish(handler: () => unknown) {
+		this.additionalData.hooks?.addHandler('workflowExecuteAfter', async (fullRunData) => {
+			if (fullRunData.status === 'waiting') return;
+			try {
+				await handler();
+			} catch (error) {
+				this.logger.warn(`Execution-finish handler of node "${this.node.name}" failed`, {
+					error,
+				});
+			}
+		});
+	}
+
 	getExecuteData() {
 		return this.executeData;
 	}
 
 	setMetadata(metadata: ITaskMetadata): void {
-		this.executeData.metadata = {
-			...(this.executeData.metadata ?? {}),
-			...metadata,
-		};
+		this.executeData.metadata = deepMerge(this.executeData.metadata ?? {}, metadata);
 	}
 
 	getContext(type: ContextType): IContextObject {
@@ -218,6 +229,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			workflowId: this.workflow.id,
 			workflowName: this.workflow.name,
 			callingNodeName: this.node.name,
+			callingNodeId: this.node.id,
 			inputData: scopedInput,
 			inputDataScope,
 			exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,

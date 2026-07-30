@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
-import type { IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
 
 import type {
@@ -36,7 +36,7 @@ import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -255,10 +255,20 @@ const closeOnSave = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
+const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
+	if (props.mode !== 'new') return undefined;
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.usageScope : undefined;
+});
+
 const appendToBody = computed<boolean>(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.appendToBody === true;
 });
+
+const isInstanceCredential = computed(
+	() => presetUsageScope.value === 'instance' || currentCredential.value?.usageScope === 'instance',
+);
 
 const sidebarItems = computed(() => {
 	const menuItems: IMenuItem[] = [
@@ -267,11 +277,15 @@ const sidebarItems = computed(() => {
 			label: i18n.baseText('credentialEdit.credentialEdit.connection'),
 			position: 'top',
 		},
-		{
-			id: 'sharing',
-			label: i18n.baseText('credentialEdit.credentialEdit.sharing'),
-			position: 'top',
-		},
+		...(isInstanceCredential.value
+			? []
+			: [
+					{
+						id: 'sharing',
+						label: i18n.baseText('credentialEdit.credentialEdit.sharing'),
+						position: 'top',
+					} satisfies IMenuItem,
+				]),
 		{
 			id: 'details',
 			label: i18n.baseText('credentialEdit.credentialEdit.details'),
@@ -550,11 +564,14 @@ async function onResolvableChange(value: boolean) {
 	}
 
 	isResolvable.value = value;
-	// Switching sharing mode invalidates any carried-over connection state: a
-	// freshly-private credential has no per-user connection for the current
-	// user yet, so reset it to avoid rendering a stale "connected" state with a
-	// Disconnect button that has nothing to disconnect.
+	// Switching sharing mode invalidates any carried-over connection state: `connectedByMe`
+	// doesn't apply to the new mode, and `oauthTokenData` (mirrored true for a connected
+	// end-user credential) would otherwise be read as "connected" once static.
 	connectedByMe.value = false;
+	credentialData.value = {
+		...credentialData.value,
+		oauthTokenData: null as unknown as CredentialInformation,
+	};
 	hasUnsavedChanges.value = true;
 }
 
@@ -647,6 +664,9 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
+		if (presetUsageScope.value) {
+			credentialDetails.usageScope = presetUsageScope.value;
+		}
 		credential = await createCredential(credentialDetails, projectsStore.currentProject);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
@@ -674,6 +694,8 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (credential) {
 		credentialId.value = credential.id;
 		currentCredential.value = credential;
+		// Resync in case the save cleared this user's connection server-side.
+		connectedByMe.value = credential.connectedByMe === true;
 
 		// Re-fetch to display server-redacted JSON shape for credentials with leaf-redacted fields
 		if (credentialProperties.value.some((p) => p.typeOptions?.redactJsonLeaves)) {
@@ -1157,8 +1179,14 @@ async function onDisconnectMyConnection(): Promise<void> {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	try {
-		await credentialsStore.disconnectMyConnection({ id: credentialId.value });
-		connectedByMe.value = false;
+		// End-user creds clear the caller's own per-user connection; fixed creds
+		// clear the shared OAuth token stored on the credential itself.
+		if (isResolvable.value) {
+			await credentialsStore.disconnectMyConnection({ id: credentialId.value });
+			connectedByMe.value = false;
+		} else {
+			await credentialsStore.disconnectOauthToken({ id: credentialId.value });
+		}
 		credentialData.value = {
 			...credentialData.value,
 			oauthTokenData: null as unknown as CredentialInformation,
@@ -1355,7 +1383,7 @@ const { width } = useElementSize(credNameRef);
 							:credential-permissions="credentialPermissions"
 							:mode="mode"
 							:selected-credential="selectedCredential"
-							:is-private-credentials-enabled="isPrivateCredentialsEnabled"
+							:is-private-credentials-enabled="isPrivateCredentialsEnabled && !isInstanceCredential"
 							:is-resolvable="isResolvable"
 							:connected-by-me="connectedByMe"
 							:is-new-credential="isNewCredential"

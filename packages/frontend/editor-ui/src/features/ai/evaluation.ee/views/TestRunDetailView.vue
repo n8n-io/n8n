@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -216,6 +216,8 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 			:current-metrics="run?.metrics"
 			:previous-metrics="previousRun?.metrics"
 			:metric-sources="metricSources"
+			:metric-scales="run?.metricScales"
+			:previous-metric-scales="previousRun?.metricScales"
 			:case-values-by-key="caseValuesByKey"
 			class="mb-m"
 		/>
@@ -231,6 +233,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 				:test-case="testCase"
 				:index="index + 1"
 				:metric-sources="metricSources"
+				:metric-scales="run?.metricScales"
 				@view="openRelatedExecution"
 				@cancel="cancelPendingCase"
 				@rerun="rerunRun"

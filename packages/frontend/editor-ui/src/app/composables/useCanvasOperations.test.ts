@@ -69,7 +69,7 @@ import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 import { isVNode, nextTick, reactive, ref } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowsApi from '@/app/api/workflows';
@@ -117,7 +117,7 @@ import {
 	AGENT_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
 	GRID_SIZE,
-	PUSH_NODES_OFFSET,
+	HORIZONTAL_NODE_STEP,
 } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
@@ -147,7 +147,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({ track }),
@@ -550,7 +550,8 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([320, 112]);
+			// 112 + HORIZONTAL_NODE_STEP (224) = 336, matching the auto-layout step
+			expect(position).toEqual([336, 112]);
 		});
 
 		it('should place the node clear of the agent card when added after a message an agent node', () => {
@@ -579,9 +580,11 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
+			// The new node keeps a constant NODE_X_SPACING gap past the agent card's
+			// right edge: HORIZONTAL_NODE_STEP + (agent width - default width).
 			expect(position).toEqual([
 				lastInteracted.position[0] +
-					PUSH_NODES_OFFSET +
+					HORIZONTAL_NODE_STEP +
 					(AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]),
 				lastInteracted.position[1],
 			]);
@@ -643,7 +646,7 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([448, 96]);
+			expect(position).toEqual([464, 96]);
 		});
 
 		it('should place the node at the last clicked position if no other position is set', () => {
@@ -1524,7 +1527,7 @@ describe('useCanvasOperations', () => {
 				name: nodes[1].name,
 				type: nodeTypeName,
 				typeVersion: 1,
-				position: [32 + PUSH_NODES_OFFSET + 2 * GRID_SIZE, 32 + GRID_SIZE],
+				position: [32 + HORIZONTAL_NODE_STEP + 2 * GRID_SIZE, 32 + GRID_SIZE],
 				parameters: {},
 			});
 		});

@@ -26,7 +26,6 @@ import {
 	Query,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
@@ -131,7 +130,9 @@ export class CredentialsController {
 					// to do so.
 					query.includeData,
 				)
-			: await this.credentialsService.getOne(req.user, credentialId, query.includeData);
+			: await this.credentialsService.getOne(req.user, credentialId, query.includeData, {
+					includeInstanceCredentials: true,
+				});
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
@@ -211,6 +212,7 @@ export class CredentialsController {
 			credentialId,
 			user,
 			['credential:update'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -225,6 +227,25 @@ export class CredentialsController {
 
 		if (credential.isManaged) {
 			throw new BadRequestError('Managed credentials cannot be updated');
+		}
+
+		if (
+			credential.usageScope === 'instance' &&
+			body.type !== undefined &&
+			body.type !== credential.type
+		) {
+			throw new BadRequestError(
+				'Provider connection type cannot be changed. Create a new connection instead.',
+			);
+		}
+
+		if (
+			credential.usageScope === 'instance' &&
+			(body.isGlobal === true || body.isResolvable === true)
+		) {
+			throw new BadRequestError(
+				'Provider connections cannot be globally shared or converted to end-user credentials',
+			);
 		}
 
 		// We never want to allow users to change the oauthTokenData
@@ -291,7 +312,11 @@ export class CredentialsController {
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
-			{ deleteUserEntries: isTogglingToStatic || sharedFieldsChanged },
+			{
+				deleteUserEntries: isTogglingToStatic || sharedFieldsChanged,
+				instanceCredential: credential.usageScope === 'instance' ? credential : undefined,
+				user: req.user,
+			},
 		);
 
 		if (responseData === null) {
@@ -342,6 +367,40 @@ export class CredentialsController {
 		return { ...rest, scopes };
 	}
 
+	@Delete('/:credentialId/oauth-token')
+	@ProjectScope('credential:update')
+	async disconnectOauthToken(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			req.user,
+			['credential:update'],
+		);
+
+		if (!credential) {
+			throw new NotFoundError(
+				'Credential not found. You can only modify credentials you have access to.',
+			);
+		}
+
+		if (credential.isManaged) {
+			throw new BadRequestError('Managed credentials cannot be updated');
+		}
+
+		if (!this.credentialsService.isOAuthCredentialType(credential.type)) {
+			throw new BadRequestError('Only OAuth credentials can be disconnected');
+		}
+
+		await this.credentialsService.clearOauthTokenData(credential);
+
+		this.logger.debug('Credential OAuth token cleared', { credentialId });
+
+		return { success: true };
+	}
+
 	@Delete('/:credentialId')
 	@ProjectScope('credential:delete')
 	async deleteCredentials(req: CredentialRequest.Delete) {
@@ -351,6 +410,7 @@ export class CredentialsController {
 			credentialId,
 			req.user,
 			['credential:delete'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -363,7 +423,9 @@ export class CredentialsController {
 			);
 		}
 
-		await this.credentialsService.delete(req.user, credential.id);
+		await this.credentialsService.delete(req.user, credential.id, {
+			includeInstanceCredentials: true,
+		});
 
 		this.eventService.emit('credentials-deleted', {
 			user: req.user,

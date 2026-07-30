@@ -1,16 +1,16 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import type { CodeBuilderSearchResult } from '@n8n/ai-utilities/node-catalog';
-import {
-	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
-	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
-} from '@n8n/api-types';
+import { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { NodeCatalogService } from '@/node-catalog';
-import { isAgentProviderNode } from '@/node-execution';
+import {
+	isUnsupportedEphemeralNodeOperation,
+	unsupportedEphemeralNodeOperationMessage,
+} from '@/node-execution';
 
 import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
 
@@ -31,20 +31,15 @@ type NodeRequest =
 export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeType(nodeId);
 
 const hiddenAgentToolNodeTypes = new Set<string>(AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES);
-const aiUtilityAgentToolNodeTypes = new Set<string>(
-	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
-);
 
 /**
  * Node IDs the agent builder should surface when configuring node-backed
  * tools. For regular nodes marked `usableAsTool`, the loader creates a
  * mirrored `*Tool` node type; native tool nodes already follow this shape.
  * HITL tools are excluded because the builder wires regular executable tools,
- * not approval-gated workflow steps. Provider nodes (OpenAI etc.) are
- * admitted via the explicit whitelist — they ship the full vendor API
- * (image, audio, …) but lack the `usableAsTool` flag.
- * Frontend-hidden tool variants are excluded here too, so `search_nodes`
- * cannot offer tools the modal intentionally hides.
+ * not approval-gated workflow steps. `AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES`
+ * is shared with the frontend tools picker, so discovery and the picker cannot
+ * offer different tool sets.
  *
  * Exported as a stable reference so the catalog service can cache its
  * filtered search tool per filter identity.
@@ -57,10 +52,7 @@ export const isAgentToolNodeType = (nodeId: string): boolean => {
 		return false;
 	}
 
-	const isAllowedAiUtilityTool = aiUtilityAgentToolNodeTypes.has(nodeId);
-	const isAllowedTool = isToolType(nodeId, { includeHitl: false }) && !isMcpToolNodeType(nodeId);
-	const isAllowedProviderNode = isAgentProviderNode(nodeId);
-	return isAllowedAiUtilityTool || isAllowedTool || isAllowedProviderNode;
+	return isToolType(nodeId, { includeHitl: false }) && !isMcpToolNodeType(nodeId);
 };
 
 const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
@@ -160,6 +152,23 @@ export class AgentsToolsService {
 			)
 			.input(getNodeTypesInputSchema)
 			.handler(async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
+				const unsupportedOperations = nodeIds.flatMap((request) => {
+					if (
+						typeof request === 'string' ||
+						!isUnsupportedEphemeralNodeOperation(request.operation)
+					) {
+						return [];
+					}
+
+					return [
+						`Node "${request.nodeId}": ${unsupportedEphemeralNodeOperationMessage(request.operation)}`,
+					];
+				});
+
+				if (unsupportedOperations.length > 0) {
+					return { results: `# Errors\n\n${unsupportedOperations.join('\n')}` };
+				}
+
 				await this.nodeCatalogService.initialize();
 				const results = await this.nodeCatalogService.getNodeTypes(
 					nodeIds.map(normalizeNodeRequestForCatalog),
@@ -180,7 +189,7 @@ export class AgentsToolsService {
 					usageHint,
 			)
 			.input(listCredentialsInputSchema)
-			.handler(async ({ types }) => {
+			.handler(async ({ types }: { types?: string[] }) => {
 				const creds = await credentialProvider.list();
 				if (!types || types.length === 0) return { credentials: creds };
 				const allowed = new Set(types);

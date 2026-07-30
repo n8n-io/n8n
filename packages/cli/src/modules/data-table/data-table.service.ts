@@ -688,7 +688,10 @@ export class DataTableService {
 		return validationResult.newValue as DataTableColumnJsType;
 	}
 
-	private async validateDataTableExists(dataTableId: string, projectId: string) {
+	/**
+	 * Performs no authorization — callers must pass an already-authorized `projectId`.
+	 */
+	async validateDataTableExists(dataTableId: string, projectId: string) {
 		const existingTable = await this.dataTableRepository.findOneBy({
 			id: dataTableId,
 			project: {

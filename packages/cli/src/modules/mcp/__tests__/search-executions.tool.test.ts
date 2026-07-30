@@ -60,7 +60,7 @@ describe('search-executions MCP tool', () => {
 	test('creates tool with correct metadata', () => {
 		const tool = createTool();
 
-		expect(tool.name).toBe('search_executions');
+		expect(tool.name).toBe('search_workflow_executions');
 		expect(tool.config.annotations?.readOnlyHint).toBe(true);
 		expect(typeof tool.handler).toBe('function');
 	});
@@ -196,7 +196,7 @@ describe('search-executions MCP tool', () => {
 			'User called mcp tool',
 			expect.objectContaining({
 				user_id: 'user-1',
-				tool_name: 'search_executions',
+				tool_name: 'search_workflow_executions',
 				results: { success: true, data: { count: 1, estimated: false } },
 			}),
 		);
@@ -220,7 +220,7 @@ describe('search-executions MCP tool', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'User called mcp tool',
 			expect.objectContaining({
-				tool_name: 'search_executions',
+				tool_name: 'search_workflow_executions',
 				results: { success: false, error: 'DB connection lost' },
 			}),
 		);
