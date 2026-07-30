@@ -180,7 +180,7 @@ describe('WorkflowExecutionService', () => {
 			nodes: [node],
 		});
 		const workflow = mock<Workflow>({ id: 'workflow-1' });
-		const cursor = { lastItemId: 'a' };
+		const staged = { cursor: { lastItemId: 'a' }, version: 0 };
 
 		const runPolledWorkflow = async () =>
 			await workflowExecutionService.runPolledWorkflow(
@@ -190,7 +190,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				'trigger',
 				workflow,
-				cursor,
+				staged,
 			);
 
 		beforeEach(() => {
@@ -224,13 +224,13 @@ describe('WorkflowExecutionService', () => {
 				workflow,
 				node,
 				expect.objectContaining({ executionMode: 'trigger' }),
-				cursor,
+				staged,
 			);
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.anything(),
 				true,
 				undefined,
-				{ executionId: 'committed-execution-id', expectedStatus: 'new' },
+				'committed-execution-id',
 				undefined,
 			);
 		});

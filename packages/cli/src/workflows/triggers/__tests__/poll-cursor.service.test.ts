@@ -181,7 +181,7 @@ describe('PollCursorService', () => {
 
 			expect(executionId).toBe('exec-1');
 			expect(executionPersistence.create).toHaveBeenCalledWith(
-				expect.objectContaining({ status: 'new', workflowId: 'workflow-1', finished: false }),
+				expect.objectContaining({ status: 'waiting', workflowId: 'workflow-1', finished: false }),
 				{ trx },
 			);
 			expect(pollerStateRepository.advanceCursor).toHaveBeenCalledWith(

@@ -45,7 +45,6 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
-import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -238,19 +237,12 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
-		existingExecutionId?: string | ResumableExecution,
+		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		const existingExecution: ResumableExecution | undefined =
-			existingExecutionId === undefined
-				? undefined
-				: typeof existingExecutionId === 'string'
-					? { executionId: existingExecutionId, expectedStatus: 'waiting' }
-					: existingExecutionId;
-
 		const establishContextError = await this.establishContextBeforePersist(data);
 		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, existingExecution);
+		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
 		if (establishContextError) {
 			await this.failExecution(data, executionId, establishContextError, responsePromise);
@@ -297,10 +289,10 @@ export class WorkflowRunner {
 				data,
 				loadStaticData,
 				realtime,
-				existingExecution?.executionId,
+				restartExecutionId,
 			);
 		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
+			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 		}
 
 		// only run these when not in queue mode or when the execution is manual,

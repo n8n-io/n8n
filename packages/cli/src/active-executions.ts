@@ -23,11 +23,7 @@ import type PCancelable from 'p-cancelable';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type {
-	IExecutingWorkflowData,
-	IExecutionsCurrentSummary,
-	ResumableExecution,
-} from '@/interfaces';
+import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
@@ -64,19 +60,9 @@ export class ActiveExecutions {
 	 */
 	async add(
 		executionData: IWorkflowExecutionDataProcess,
-		existingExecutionId?: string | ResumableExecution,
+		maybeExecutionId?: string,
 	): Promise<string> {
-		// A bare id is a resume of an execution left `waiting` (the only case before
-		// `ResumableExecution` existed); callers reclaiming any other status pass the
-		// object form explicitly.
-		const existingExecution: ResumableExecution | undefined =
-			existingExecutionId === undefined
-				? undefined
-				: typeof existingExecutionId === 'string'
-					? { executionId: existingExecutionId, expectedStatus: 'waiting' }
-					: existingExecutionId;
-
-		let executionStatus: ExecutionStatus = existingExecution ? 'running' : 'new';
+		let executionStatus: ExecutionStatus = maybeExecutionId ? 'running' : 'new';
 		const mode = executionData.executionMode;
 		const capacityReservation = new ConcurrencyCapacityReservation(this.concurrencyControl);
 
@@ -92,10 +78,8 @@ export class ActiveExecutions {
 		// nothing was reserved.
 		const shouldReserveCapacity = mode !== 'evaluation';
 
-		let executionId: string;
-
 		try {
-			if (existingExecution === undefined) {
+			if (maybeExecutionId === undefined) {
 				const fullExecutionData: CreateExecutionPayload = {
 					data: executionData.executionData!,
 					mode,
@@ -113,47 +97,41 @@ export class ActiveExecutions {
 					fullExecutionData.workflowId = workflowId;
 				}
 
-				executionId = await this.executionPersistence.create(fullExecutionData);
-				assert(executionId);
+				maybeExecutionId = await this.executionPersistence.create(fullExecutionData);
+				assert(maybeExecutionId);
 
 				if (shouldReserveCapacity) {
-					await capacityReservation.reserve({ mode, executionId });
+					await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
 				}
 
 				if (this.executionsConfig.mode === 'regular') {
-					await this.executionRepository.setRunning(executionId);
+					await this.executionRepository.setRunning(maybeExecutionId);
 				}
 				executionStatus = 'running';
 			} else {
 				// Is an existing execution we want to finish so update in DB
-				executionId = existingExecution.executionId;
 
 				if (shouldReserveCapacity) {
-					await capacityReservation.reserve({ mode, executionId });
+					await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
 				}
 
-				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> & {
-					startedAt?: Date;
-				} = {
-					id: executionId,
+				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
+					id: maybeExecutionId,
 					data: executionData.executionData!,
 					waitTill: null,
 					status: executionStatus,
-					// An enqueued execution has no `startedAt` yet, so stamp it now.
-					// A resuming execution keeps the `startedAt` it already had.
-					startedAt: existingExecution.expectedStatus === 'new' ? new Date() : undefined,
+					// this is resuming, so keep `startedAt` as it was
 				};
 
 				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
-					executionId,
+					maybeExecutionId,
 					execution,
-					// Only claim the execution if it is still in the status the caller expected
-					{ requireStatus: existingExecution.expectedStatus },
+					{ requireStatus: 'waiting' }, // Only update if status is 'waiting'
 				);
 
 				if (!updateSucceeded) {
 					// Another process is already resuming this execution
-					throw new ExecutionAlreadyResumingError(executionId);
+					throw new ExecutionAlreadyResumingError(maybeExecutionId);
 				}
 			}
 		} catch (error) {
@@ -161,6 +139,8 @@ export class ActiveExecutions {
 			throw error;
 		}
 
+		// At this point executionId is guaranteed to be defined - capture it for use in closures
+		const executionId = maybeExecutionId;
 		const resumingExecution = this.activeExecutions[executionId];
 		const postExecutePromise = createDeferredPromise<IRun | undefined>();
 

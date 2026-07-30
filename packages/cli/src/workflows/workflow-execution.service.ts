@@ -12,7 +12,6 @@ import {
 	anyReachableRootHasRunData,
 } from 'n8n-core';
 import type {
-	IDataObject,
 	IExecuteData,
 	IExecuteResponsePromiseData,
 	INode,
@@ -23,6 +22,7 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
+	StagedPollCursor,
 } from 'n8n-workflow';
 import {
 	SubworkflowOperationError,
@@ -103,7 +103,7 @@ export class WorkflowExecutionService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		workflow: Workflow,
-		stagedCursor: IDataObject | undefined,
+		staged: StagedPollCursor | undefined,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	) {
 		const runData = await this.buildTriggerRunData(workflowData, node, data, additionalData, mode);
@@ -112,21 +112,10 @@ export class WorkflowExecutionService {
 		// the context again and the second call is a no-op, but by then the row exists.
 		await this.workflowRunner.establishContextBeforePersist(runData);
 
-		const executionId = await this.pollCursorService.commitPoll(
-			workflow,
-			node,
-			runData,
-			stagedCursor,
-		);
+		const executionId = await this.pollCursorService.commitPoll(workflow, node, runData, staged);
 
 		try {
-			return await this.workflowRunner.run(
-				runData,
-				true,
-				undefined,
-				{ executionId, expectedStatus: 'new' },
-				responsePromise,
-			);
+			return await this.workflowRunner.run(runData, true, undefined, executionId, responsePromise);
 		} catch (error) {
 			// The row and the cursor are already committed, so an execution that cannot be
 			// started is marked crashed rather than left at `new`, where only a restart in

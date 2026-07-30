@@ -192,9 +192,12 @@ export class PollCursorService {
 			mode: runData.executionMode,
 			finished: false,
 			workflowData,
-			// Inserted at `new` and started only once the transaction has committed, so an
-			// execution never exists for a cursor advance that was rolled back.
-			status: 'new',
+			// Inserted at `waiting` and started by id only once the transaction has
+			// committed, so an execution never exists for a cursor advance that was rolled
+			// back. `waiting` (not `new`) so `run()` can claim it through its existing,
+			// unmodified resume-by-id path with no `waitTill`, so nothing else picks it up
+			// first.
+			status: 'waiting',
 			workflowId: workflowData.id,
 			retryOf: runData.retryOf ?? undefined,
 			tracingContext: runData.tracingContext ?? null,
