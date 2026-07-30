@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type {
+	EntityManager,
 	FindManyOptions,
 	FindOneOptions,
 	FindOperator,
@@ -18,7 +19,6 @@ import {
 	LessThanOrEqual,
 	MoreThanOrEqual,
 	Not,
-	Repository,
 	And,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
@@ -49,6 +49,7 @@ import {
 	SharedWorkflow,
 	WorkflowEntity,
 } from '../entities';
+import { BaseRepository } from './base-repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type {
 	ExecutionSummaries,
@@ -56,6 +57,8 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '../entities/types-db';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { separate } from '../utils/separate';
 
@@ -151,7 +154,7 @@ const moreThanOrEqual = (date: string): unknown => {
 const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
-export class ExecutionRepository extends Repository<ExecutionEntity> {
+export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	private hardDeletionBatchSize = 100;
 
 	constructor(
@@ -161,8 +164,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly errorReporter: ErrorReporter,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly transactionRunner: TransactionRunner,
 	) {
 		super(ExecutionEntity, dataSource.manager);
+	}
+
+	async runInTransaction<T>(
+		ctx: OperationContext,
+		fn: (tx: EntityManager) => Promise<T>,
+	): Promise<T> {
+		return await this.transactionRunner.run(ctx, async (c) => await fn(this.managerFor(c)));
 	}
 
 	async findMultipleExecutions(
