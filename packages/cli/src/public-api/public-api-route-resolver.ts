@@ -10,6 +10,7 @@ import type {
 } from '@n8n/decorators';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { ApiKeyScope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
 export type ResolvedRouteArg =
@@ -108,11 +109,17 @@ export function resolveRouteArgs(
 /**
  * Every decorator route must state its success status via `@ApiResponse` - `@ApiResponse(200, Dto)`
  * for a route with a body, `@ApiResponse(204)` for one without.
+ *
+ * Also rejects a `204` paired with a response DTO. `@ApiResponse`'s overloads already make that
+ * uncallable, but stacking two `@ApiResponse` decorators could otherwise reach it, and the two sides
+ * would then disagree: the generator would document JSON content while the registry sends an empty
+ * body.
  */
 export function resolveSuccessStatus(
 	controllerName: string,
 	handlerName: HandlerName,
 	successStatus: SuccessStatus | undefined,
+	responseDto: ResponseDtoClass | undefined,
 ): SuccessStatus {
 	if (successStatus === undefined) {
 		throw new UnexpectedError(
@@ -121,7 +128,58 @@ export function resolveSuccessStatus(
 		);
 	}
 
+	if (successStatus === 204 && responseDto !== undefined) {
+		throw new UnexpectedError(
+			`Public API route ${controllerName}.${handlerName} declares a 204 success status and a ` +
+				'response DTO, but a 204 sends no body. Declare `@ApiResponse(204)` on its own, or use a ' +
+				'status that carries a body.',
+		);
+	}
+
 	return successStatus;
+}
+
+/**
+ * Whether a set of granted API-key scopes satisfies a route's requirement. Single source of truth
+ * for any/all semantics, shared by `PublicApiControllerRegistry` (enforcement) and
+ * `discover.service` (visibility) so the two can't disagree about who may call a route.
+ */
+export function apiKeyScopesSatisfy(
+	granted: readonly string[] | undefined,
+	requirement: ApiKeyScopeRequirement,
+): boolean {
+	if (!granted) return false;
+
+	if (typeof requirement === 'string') {
+		return granted.includes(requirement);
+	}
+
+	if ('anyOf' in requirement) {
+		return requirement.anyOf.some((scope) => granted.includes(scope));
+	}
+
+	return requirement.allOf.every((scope) => granted.includes(scope));
+}
+
+/** Every individual scope named by a requirement, regardless of any/all semantics. */
+export function scopesInRequirement(requirement: ApiKeyScopeRequirement): readonly ApiKeyScope[] {
+	if (typeof requirement === 'string') return [requirement];
+	return 'anyOf' in requirement ? requirement.anyOf : requirement.allOf;
+}
+
+/**
+ * Parses the comma-joined `x-required-scope` form back into a requirement. Legacy eov routes tag
+ * their middleware with a flat string (see `publicApiCompositeScope`), which doesn't record whether
+ * the scopes are any/all - the one composite route today defers the choice to the handler based on
+ * the request payload, so a caller holding any listed scope can use it. `anyOf` matches that.
+ */
+export function scopeRequirementFromString(serialized: string): ApiKeyScopeRequirement {
+	const scopes = serialized
+		.split(',')
+		.map((scope) => scope.trim())
+		.filter(Boolean) as ApiKeyScope[];
+
+	return scopes.length === 1 ? scopes[0] : { anyOf: scopes };
 }
 
 /**
@@ -179,7 +237,12 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				requestBodyDto,
 				requestQueryDto,
 				responseDto: route.responseDto,
-				successStatus: resolveSuccessStatus(controllerClass.name, handlerName, route.successStatus),
+				successStatus: resolveSuccessStatus(
+					controllerClass.name,
+					handlerName,
+					route.successStatus,
+					route.responseDto,
+				),
 				apiKeyScope: route.apiKeyScope,
 				summary: route.summary,
 				description: route.description,

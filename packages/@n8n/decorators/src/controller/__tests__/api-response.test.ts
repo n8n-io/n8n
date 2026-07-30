@@ -52,6 +52,24 @@ describe('@ApiResponse Decorator', () => {
 		expect(route.successStatus).toBe(201);
 	});
 
+	it('should clear a DTO left by a lower stacked @ApiResponse, so a 204 keeps no body', () => {
+		// Decorators evaluate bottom-up: without a full overwrite the 200's DTO survived onto the 204,
+		// which the generator would then document as a 204 carrying JSON.
+		class TestController {
+			@Get('/')
+			@ApiResponse(204)
+			@ApiResponse(200, ExampleDto)
+			async handler() {}
+		}
+
+		const route = controllerRegistryMetadata.getRouteMetadata(
+			TestController as Controller,
+			'handler',
+		);
+		expect(route.successStatus).toBe(204);
+		expect(route.responseDto).toBeUndefined();
+	});
+
 	it('should store a bare success status with no DTO', () => {
 		class TestController {
 			@Get('/')

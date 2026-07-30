@@ -1,11 +1,14 @@
 import RefParser from '@apidevtools/json-schema-ref-parser';
+import type { ApiKeyScopeRequirement } from '@n8n/decorators';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 
 import {
+	apiKeyScopesSatisfy,
 	resolvePublicApiRoutes,
-	scopeRequirementToString,
+	scopeRequirementFromString,
+	scopesInRequirement,
 } from '../../../public-api-route-resolver';
 import { extractScopeFromEovHandlerChain } from '../../shared/public-api-scope-lookup';
 
@@ -18,7 +21,11 @@ interface EndpointInfo {
 	path: string;
 	operationId: string;
 	tag: string;
-	scope: ApiKeyScope | null;
+	/**
+	 * The route's whole API-key requirement, not a single scope - a route can require any/all of
+	 * several, and flattening that to one string made no caller ever match it.
+	 */
+	scope: ApiKeyScopeRequirement | null;
 	requestSchema?: Record<string, unknown>;
 }
 
@@ -133,7 +140,8 @@ async function buildEovEndpoints(): Promise<EndpointInfo[]> {
 				path: `/api/v1${pathKey}`,
 				operationId,
 				tag,
-				scope: scope ?? null,
+				// eov middleware tags itself with a flat, possibly comma-joined scope string.
+				scope: scope ? scopeRequirementFromString(scope) : null,
 				requestSchema: extractRequestSchema(operation),
 			});
 		}
@@ -149,7 +157,7 @@ function buildDecoratorEndpoints(): EndpointInfo[] {
 		path: `/api/v1${route.path.replace(/:([A-Za-z0-9_]+)/g, '{$1}')}`,
 		operationId: route.handlerName,
 		tag: route.tags?.[0] ?? 'Other',
-		scope: route.apiKeyScope ? (scopeRequirementToString(route.apiKeyScope) as ApiKeyScope) : null,
+		scope: route.apiKeyScope ?? null,
 	}));
 }
 
@@ -158,10 +166,20 @@ export async function buildDiscoverResponse(
 	options?: DiscoverOptions,
 ): Promise<DiscoverResponse> {
 	const allEndpoints = await parseEndpointsFromSpec();
-	const scopeSet = new Set(callerScopes);
 	const includeSchemas = options?.includeSchemas === true;
 
-	const filtered = allEndpoints.filter((ep) => ep.scope === null || scopeSet.has(ep.scope));
+	// Same any/all matching the registry enforces, so /discover shows exactly what the caller may call.
+	const filtered = allEndpoints.filter(
+		(ep) => ep.scope === null || apiKeyScopesSatisfy(callerScopes, ep.scope),
+	);
+
+	/** The `read` of `tag:read`, one per scope the requirement names. */
+	const operationsOf = (scope: ApiKeyScopeRequirement | null): string[] =>
+		scope === null
+			? []
+			: scopesInRequirement(scope)
+					.map((s) => s.split(':')[1])
+					.filter((operation): operation is string => Boolean(operation));
 
 	const resources: Record<string, ResourceInfo> = {};
 
@@ -184,9 +202,10 @@ export async function buildDiscoverResponse(
 
 		resources[resourceKey].endpoints.push(entry);
 
-		const operation = ep.scope?.split(':')[1];
-		if (operation && !resources[resourceKey].operations.includes(operation)) {
-			resources[resourceKey].operations.push(operation);
+		for (const operation of operationsOf(ep.scope)) {
+			if (!resources[resourceKey].operations.includes(operation)) {
+				resources[resourceKey].operations.push(operation);
+			}
 		}
 	}
 
@@ -201,13 +220,17 @@ export async function buildDiscoverResponse(
 	}
 
 	if (operationFilter) {
-		const scopeByOperationId = new Map(
-			filtered.map((f) => [f.operationId, f.scope?.split(':')[1]?.toLowerCase()]),
+		// A composite requirement contributes several operations, so match against all of them.
+		const operationsByOperationId = new Map(
+			filtered.map((f) => [
+				f.operationId,
+				new Set(operationsOf(f.scope).map((operation) => operation.toLowerCase())),
+			]),
 		);
 		const result: Record<string, ResourceInfo> = {};
 		for (const [key, info] of Object.entries(filteredResources)) {
-			const matchingEndpoints = info.endpoints.filter(
-				(ep) => scopeByOperationId.get(ep.operationId) === operationFilter,
+			const matchingEndpoints = info.endpoints.filter((ep) =>
+				operationsByOperationId.get(ep.operationId)?.has(operationFilter),
 			);
 			if (matchingEndpoints.length > 0) {
 				result[key] = {
