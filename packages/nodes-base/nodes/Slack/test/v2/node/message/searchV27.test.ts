@@ -74,11 +74,11 @@ describe('Test SlackV2 v2.7, message => search', () => {
 	nock('https://slack.com')
 		.post('/api/assistant.search.context', {
 			query: 'test',
-			content_types: 'messages',
+			content_types: ['messages'],
 			sort: 'timestamp',
 			sort_dir: 'desc',
 			modifiers: 'in:test-002',
-			channel_types: 'public_channel',
+			channel_types: ['public_channel', 'private_channel'],
 			disable_semantic_search: true,
 			limit: 2,
 		})

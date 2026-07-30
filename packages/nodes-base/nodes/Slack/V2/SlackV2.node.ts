@@ -1099,9 +1099,11 @@ export class SlackV2 implements INodeType {
 						const sortDir = sort === 'asc' ? 'asc' : 'desc';
 
 						if (nodeVersion >= 2.7) {
+							// channel_types/content_types are array args: the JSON body needs real
+							// arrays, not the comma-separated form used for query-string params
 							const body: IDataObject = {
 								query,
-								content_types: 'messages',
+								content_types: ['messages'],
 								sort: sortBy,
 								sort_dir: sortDir,
 							};
@@ -1114,7 +1116,7 @@ export class SlackV2 implements INodeType {
 							}
 							const channelTypes = toMultiOptionsCsv(options.channelTypes);
 							if (channelTypes) {
-								body.channel_types = channelTypes;
+								body.channel_types = channelTypes.split(',');
 							}
 							const timezone = this.getTimezone();
 							if (options.after) {

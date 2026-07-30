@@ -16,7 +16,7 @@
 				"limit": 2,
 				"options": {
 					"searchChannel": ["test-002"],
-					"channelTypes": ["public_channel"],
+					"channelTypes": ["public_channel", "private_channel"],
 					"keywordSearchOnly": true
 				}
 			},
