@@ -1,0 +1,30 @@
+packages/cli/src/scaling/job-processor.ts
+  s_1d360ad69afd30::t_df7009cbc065bd 383-386,388
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_1d360ad69afd30::t_3b8f6d7a7081e2 210,216-222
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_1d360ad69afd30::t_d3a154851e7f78 28
+  s_1d360ad69afd30::t_7460ff88e9efa3 966-1002,1006-1049
+  s_1d360ad69afd30::t_7482774089d510 1003-1005
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c92d0c253b9de67bbe00a9c5ed02cfd233f27978",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
