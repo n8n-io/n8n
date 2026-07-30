@@ -15,6 +15,7 @@ import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferr
 import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.error';
 import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error';
 import { TaskRunnerExecutionTimeoutError } from '@/task-runners/task-broker/errors/task-runner-execution-timeout.error';
+import { TaskRunnerUnreachableError } from '@/task-runners/task-broker/errors/task-runner-unreachable.error';
 import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 export interface TaskRunner {
@@ -494,6 +495,11 @@ export class TaskBroker {
 			await this.failTask(taskId, error);
 			throw error;
 		}
+		if (!runner.isRunnerReachable()) {
+			const error = new TaskRunnerUnreachableError(taskId, task.runnerId);
+			await this.failTask(taskId, error);
+			throw error;
+		}
 		return runner.runner;
 	}
 
@@ -664,6 +670,10 @@ export class TaskBroker {
 			if (e instanceof TaskRejectError) {
 				await this.cancelTask(task.id, e.reason);
 				this.logger.info(`Task (${taskId}) rejected by Requester with reason "${e.reason}"`);
+				return;
+			}
+			if (e instanceof TaskRunnerUnreachableError) {
+				this.logger.warn(e.message);
 				return;
 			}
 			await this.cancelTask(task.id, 'Unknown reason');
