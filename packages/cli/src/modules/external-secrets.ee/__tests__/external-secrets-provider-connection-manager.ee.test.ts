@@ -284,7 +284,6 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 			'External secrets provider replacement connection attempt failed',
 			expect.objectContaining({
 				providerKey: 'my-vault',
-				generation: 1,
 				phase: 'connection',
 				error: expect.any(Error),
 			}),
@@ -358,7 +357,6 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 			'External secrets provider replacement reached terminal failure',
 			expect.objectContaining({
 				providerKey: 'my-vault',
-				generation: 1,
 				phase: 'hydration',
 				error: expect.any(Error),
 			}),
@@ -398,11 +396,11 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		});
 		expect(providersMap.get('my-vault')).toBe(candidateB);
 		expect(scopedLogger.debug).toHaveBeenCalledWith(
-			'External secrets provider superseded completion ignored and disposed',
+			'External secrets provider superseded replacement discarded',
 			expect.objectContaining({
 				providerKey: 'my-vault',
-				generation: 1,
 				phase: 'hydration',
+				disposed: true,
 			}),
 		);
 	});
@@ -532,8 +530,10 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		connection.resolve({ success: true });
 
 		await upsertPromise;
+		await vi.waitFor(() => {
+			expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(replacementProvider);
+		});
 		expect(providersMap.get('my-vault')).toBe(existingProvider);
-		expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(replacementProvider);
 	});
 
 	it('should prevent late activation after shutdown during hydration', async () => {
@@ -562,7 +562,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		expect(providersMap.get('my-vault')).toBe(existingProvider);
 	});
 
-	it('should use a generation for replacement lifecycle logs', async () => {
+	it('should log replacement lifecycle transitions', async () => {
 		const existingProvider = new DummyProvider();
 		providersMap.set('my-vault', existingProvider);
 
@@ -579,7 +579,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 			expect.objectContaining({
 				providerKey: 'my-vault',
 				providerType: 'dummy',
-				generation: 1,
+				phase: 'initialization',
 			}),
 		);
 		await vi.waitFor(() => {
@@ -588,7 +588,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 				expect.objectContaining({
 					providerKey: 'my-vault',
 					providerType: 'dummy',
-					generation: 1,
+					phase: 'hydration',
 				}),
 			);
 		});

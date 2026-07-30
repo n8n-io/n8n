@@ -25,7 +25,6 @@ interface PreparedProviderConnection {
 interface ReplacementCandidate {
 	providerKey: string;
 	providerType: string;
-	generation: number;
 	provider?: SecretsProvider;
 }
 
@@ -48,8 +47,6 @@ const COMPLETED_CONNECTION = {
 
 @Service()
 export class ExternalSecretsProviderConnectionManager {
-	private replacementGeneration = 0;
-
 	private readonly replacementCandidates = new Map<string, ReplacementCandidate>();
 
 	constructor(
@@ -183,13 +180,6 @@ export class ExternalSecretsProviderConnectionManager {
 		const initResult = await this.providerLifecycle.initialize(providerType, config);
 		candidate.provider = initResult.provider;
 
-		// initialize() can take a while; a newer upsert/remove may have superseded
-		// this candidate while we awaited. This is a safe guard against race conditions.
-		if (!this.isCurrentReplacement(candidate)) {
-			await this.disposeSupersededReplacement(candidate, 'initialization');
-			return;
-		}
-
 		if (!initResult.success || !initResult.provider) {
 			await this.settleReplacement(candidate, {
 				kind: 'failed',
@@ -210,6 +200,13 @@ export class ExternalSecretsProviderConnectionManager {
 			return;
 		}
 
+		// initialize() can take a while; a superseded candidate must not enter the retry loop,
+		// because runWithRetry() would cancel the retries of the replacement that superseded it.
+		if (!this.isCurrentReplacement(candidate)) {
+			await this.disposeSupersededCandidate(candidate, 'initialization');
+			return;
+		}
+
 		await this.retryManager.runWithRetry(
 			providerKey,
 			async () => await this.connectReplacement(candidate),
@@ -217,18 +214,13 @@ export class ExternalSecretsProviderConnectionManager {
 	}
 
 	private beginReplacement(providerKey: string, providerType: string): ReplacementCandidate {
-		const candidate: ReplacementCandidate = {
-			providerKey,
-			providerType,
-			generation: ++this.replacementGeneration,
-		};
+		const candidate: ReplacementCandidate = { providerKey, providerType };
 
 		this.replacementCandidates.set(providerKey, candidate);
 		this.retryManager.cancelRetry(providerKey);
 		this.logger.debug('External secrets provider replacement started', {
 			providerKey,
 			providerType,
-			generation: candidate.generation,
 			phase: 'initialization',
 		});
 
@@ -239,8 +231,7 @@ export class ExternalSecretsProviderConnectionManager {
 		candidate: ReplacementCandidate,
 	): Promise<ProviderConnectResult> {
 		const provider = candidate.provider;
-		if (!this.isCurrentReplacement(candidate) || !provider) {
-			await this.disposeSupersededReplacement(candidate, 'before-connection');
+		if (!provider) {
 			return { success: true };
 		}
 
@@ -252,24 +243,20 @@ export class ExternalSecretsProviderConnectionManager {
 
 		const connectResult = await this.providerLifecycle.connect(provider);
 
-		if (!this.isCurrentReplacement(candidate)) {
-			await this.disposeSupersededReplacement(candidate, 'connection');
+		if (connectResult.success) {
+			this.startReplacementHydration(candidate, provider);
 			return { success: true };
 		}
 
-		if (!connectResult.success) {
-			await this.publishRetryableConnectionFailure(
-				candidate,
-				connectResult.error ??
-					new UnexpectedError(`Failed to connect provider ${candidate.providerKey}`),
-			);
+		const published = await this.publishRetryableConnectionFailure(
+			candidate,
+			connectResult.error ??
+				new UnexpectedError(`Failed to connect provider ${candidate.providerKey}`),
+		);
 
-			// A newer request may have arrived while the previous provider was being retired.
-			return this.isCurrentReplacement(candidate) ? connectResult : { success: true };
-		}
-
-		this.startReplacementHydration(candidate, provider);
-		return { success: true };
+		// A superseded candidate must not report failure: that would re-schedule a retry the
+		// superseding operation has already cancelled.
+		return published ? connectResult : { success: true };
 	}
 
 	// Hydration is fire-and-forget: the caller's upsert resolves once hydration has started,
@@ -282,7 +269,6 @@ export class ExternalSecretsProviderConnectionManager {
 			this.logger.error('Unexpected error settling external secrets provider replacement', {
 				providerKey: candidate.providerKey,
 				providerType: candidate.providerType,
-				generation: candidate.generation,
 				phase: 'hydration-settlement',
 				error: ensureError(error),
 			});
@@ -293,11 +279,6 @@ export class ExternalSecretsProviderConnectionManager {
 		candidate: ReplacementCandidate,
 		provider: SecretsProvider,
 	): Promise<void> {
-		if (!this.isCurrentReplacement(candidate)) {
-			await this.disposeSupersededReplacement(candidate, 'before-hydration');
-			return;
-		}
-
 		try {
 			await provider.update();
 		} catch (error) {
@@ -321,8 +302,11 @@ export class ExternalSecretsProviderConnectionManager {
 		candidate: ReplacementCandidate,
 		outcome: ReplacementOutcome,
 	): Promise<void> {
+		// Initialization, connection and hydration all await slow calls; a newer upsert/remove may
+		// have superseded this candidate in the meantime. Discard its outcome here, at the single
+		// point where replacements publish to the registry.
 		if (!this.isCurrentReplacement(candidate)) {
-			await this.disposeSupersededReplacement(candidate, outcome.phase);
+			await this.disposeSupersededCandidate(candidate, outcome.phase);
 			return;
 		}
 
@@ -333,7 +317,6 @@ export class ExternalSecretsProviderConnectionManager {
 			this.logger.debug('External secrets provider replacement activated', {
 				providerKey: candidate.providerKey,
 				providerType: candidate.providerType,
-				generation: candidate.generation,
 				phase: outcome.phase,
 			});
 		} else {
@@ -347,7 +330,6 @@ export class ExternalSecretsProviderConnectionManager {
 			this.logger.error('External secrets provider replacement reached terminal failure', {
 				providerKey: candidate.providerKey,
 				providerType: candidate.providerType,
-				generation: candidate.generation,
 				phase: outcome.phase,
 				error: outcome.error,
 			});
@@ -360,13 +342,17 @@ export class ExternalSecretsProviderConnectionManager {
 		}
 	}
 
+	/**
+	 * Publishes a failed candidate to the registry so its error state is visible between retries.
+	 * Returns false when the candidate was superseded while connecting and was disposed instead.
+	 */
 	private async publishRetryableConnectionFailure(
 		candidate: ReplacementCandidate,
 		error: Error,
-	): Promise<void> {
+	): Promise<boolean> {
 		if (!this.isCurrentReplacement(candidate) || !candidate.provider) {
-			await this.disposeSupersededReplacement(candidate, 'connection');
-			return;
+			await this.disposeSupersededCandidate(candidate, 'connection');
+			return false;
 		}
 
 		candidate.provider.setState('error', error);
@@ -376,7 +362,6 @@ export class ExternalSecretsProviderConnectionManager {
 		this.logger.error('External secrets provider replacement connection attempt failed', {
 			providerKey: candidate.providerKey,
 			providerType: candidate.providerType,
-			generation: candidate.generation,
 			phase: 'connection',
 			error,
 		});
@@ -384,39 +369,28 @@ export class ExternalSecretsProviderConnectionManager {
 		if (existingProvider && existingProvider !== candidate.provider) {
 			await this.providerLifecycle.disconnect(existingProvider);
 		}
+
+		return true;
 	}
 
-	private async disposeSupersededReplacement(
+	private async disposeSupersededCandidate(
 		candidate: ReplacementCandidate,
 		phase: string,
 	): Promise<void> {
+		const { provider, providerKey, providerType } = candidate;
 		const shouldDispose =
-			candidate.provider !== undefined &&
-			this.providerRegistry.get(candidate.providerKey) !== candidate.provider;
+			provider !== undefined && this.providerRegistry.get(providerKey) !== provider;
 
-		this.logSupersededCompletion(candidate, phase, shouldDispose);
+		this.logger.debug('External secrets provider superseded replacement discarded', {
+			providerKey,
+			providerType,
+			phase,
+			disposed: shouldDispose,
+		});
 
-		if (shouldDispose && candidate.provider) {
-			await this.providerLifecycle.disconnect(candidate.provider);
+		if (shouldDispose) {
+			await this.providerLifecycle.disconnect(provider);
 		}
-	}
-
-	private logSupersededCompletion(
-		candidate: ReplacementCandidate,
-		phase: string,
-		disposed = false,
-	): void {
-		this.logger.debug(
-			disposed
-				? 'External secrets provider superseded completion ignored and disposed'
-				: 'External secrets provider superseded completion ignored',
-			{
-				providerKey: candidate.providerKey,
-				providerType: candidate.providerType,
-				generation: candidate.generation,
-				phase,
-			},
-		);
 	}
 
 	private isCurrentReplacement(candidate: ReplacementCandidate): boolean {
