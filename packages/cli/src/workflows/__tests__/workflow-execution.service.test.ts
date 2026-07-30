@@ -19,6 +19,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type ExecutionError,
 	type IExecuteResponsePromiseData,
+	type Workflow,
 	createRunExecutionData,
 } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -188,9 +189,12 @@ describe('WorkflowExecutionService', () => {
 			nodes: [node],
 		});
 		const cursor = { lastItemId: 'a' };
+		let liveWorkflow: MockProxy<Workflow>;
 
 		beforeEach(() => {
 			vi.clearAllMocks();
+			liveWorkflow = mock<Workflow>();
+			liveWorkflow.getStaticData.mockReturnValue({});
 			pollCursorService.commitWithExecution.mockResolvedValue('exec-9');
 			pollCursorService.mirrorToStaticData.mockResolvedValue(undefined);
 			workflowRunner.run.mockResolvedValue('exec-9');
@@ -211,6 +215,7 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 			);
 
 			expect(workflowRunner.establishContextForPersistence).toHaveBeenCalledTimes(1);
@@ -234,6 +239,7 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 			);
 
 			expect(returned).toBe('exec-9');
@@ -247,6 +253,9 @@ describe('WorkflowExecutionService', () => {
 		});
 
 		test('mirrors the committed cursor to the static data of the polled node', async () => {
+			const nodeStaticData = { lastItemId: 'stale' };
+			liveWorkflow.getStaticData.mockReturnValue(nodeStaticData);
+
 			await workflowExecutionService.runPolledWorkflow(
 				workflow,
 				node,
@@ -254,12 +263,14 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 			);
 
 			expect(pollCursorService.mirrorToStaticData).toHaveBeenCalledWith(
 				'wf-1',
 				'Poll Node',
 				cursor,
+				nodeStaticData,
 			);
 		});
 
@@ -275,6 +286,7 @@ describe('WorkflowExecutionService', () => {
 					additionalData,
 					'trigger',
 					cursor,
+					liveWorkflow,
 				),
 			).rejects.toBe(duplicateError);
 
@@ -293,6 +305,7 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 			);
 
 			expect(returned).toBe('exec-9');
@@ -317,6 +330,7 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 				responsePromise,
 			);
 
@@ -336,6 +350,7 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 			);
 
 			expect(workflowRunner.registerAndFailExecution).not.toHaveBeenCalled();
@@ -352,6 +367,7 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 				responsePromise,
 			);
 
@@ -375,6 +391,7 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 			);
 
 			expect(returned).toBe('exec-9');
@@ -395,6 +412,7 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 				responsePromise,
 			);
 
@@ -411,6 +429,7 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 			);
 
 			expect(returned).toBe('exec-9');
@@ -427,6 +446,7 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
+				liveWorkflow,
 			);
 
 			const [{ payload }] = pollCursorService.commitWithExecution.mock.calls[0];

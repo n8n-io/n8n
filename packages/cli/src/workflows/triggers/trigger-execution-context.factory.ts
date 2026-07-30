@@ -283,6 +283,7 @@ export class TriggerExecutionContextFactory {
 								additionalData,
 								mode,
 								cursor,
+								workflow,
 								responsePromise,
 							),
 				);
