@@ -1,5 +1,5 @@
 import { MODAL_CONFIRM } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useQuickConnect } from './useQuickConnect';
 import type { QuickConnectOption } from '@n8n/api-types';
@@ -10,7 +10,7 @@ import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
 import type * as i18n from '@n8n/i18n';
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return { useTelemetry: () => ({ track }) };
 });

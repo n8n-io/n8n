@@ -5,7 +5,7 @@ import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { BinaryDataService, InstanceSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
@@ -30,6 +30,7 @@ import {
 	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
 } from './agent-knowledge-commands';
+import { AgentKnowledgeFileStore } from './agent-knowledge-file-store';
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import {
 	assertValidKnowledgeFilePath,
@@ -216,7 +217,7 @@ export class AgentKnowledgeSandboxService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly agentRepository: AgentRepository,
-		private readonly binaryDataService: BinaryDataService,
+		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
 	) {}
 
 	async warmSandbox(projectId: string, agentId: string): Promise<void> {
@@ -497,8 +498,8 @@ export class AgentKnowledgeSandboxService {
 
 		const filesByName = new Map(files.map((file) => [file.file, file]));
 		const copiedNames = await this.uploadMirrorFiles(sandbox, toCopy, filesByName, sandboxName);
-		// Files that failed to load from BinaryDataService are left out of the
-		// manifest, so the next sync attempt retries them as `toCopy` again.
+		// Files that failed to load from the knowledge file store are left out of
+		// the manifest, so the next sync attempt retries them as `toCopy` again.
 		const finalManifestNames = expectedNames.filter(
 			(name) => copiedNames.has(name) || presentSet.has(name),
 		);
@@ -521,11 +522,11 @@ export class AgentKnowledgeSandboxService {
 	}
 
 	/**
-	 * Fetches each `names` entry from BinaryDataService and uploads it to the
-	 * sandbox mirror under a `.tmp-` prefix; `buildMirrorFinalizeCommand` moves
-	 * it into place so a concurrent search never sees a partially-written file.
-	 * Uploads flush in `MIRROR_UPLOAD_BATCH_BYTES`-sized batches so the whole
-	 * knowledge base (up to 1.5 GB) is never held in memory at once.
+	 * Fetches each `names` entry from the knowledge file store and uploads it to
+	 * the sandbox mirror under a `.tmp-` prefix; `buildMirrorFinalizeCommand`
+	 * moves it into place so a concurrent search never sees a partially-written
+	 * file. Uploads flush in `MIRROR_UPLOAD_BATCH_BYTES`-sized batches so the
+	 * whole knowledge base (up to 1.5 GB) is never held in memory at once.
 	 * Returns the subset of `names` that were fetched and uploaded successfully.
 	 */
 	private async uploadMirrorFiles(
@@ -557,11 +558,18 @@ export class AgentKnowledgeSandboxService {
 			if (!file) continue;
 
 			try {
-				const buffer = await this.binaryDataService.getAsBuffer({
-					id: file.binaryDataId,
-					data: '',
-					mimeType: file.mimeType,
+				const buffer = await this.agentKnowledgeFileStore.readAsBuffer({
+					storedAt: file.storedAt,
+					storageKey: file.storageKey,
 				});
+				if (!buffer) {
+					this.logger.warn('Failed to load agent knowledge file for mirror sync', {
+						sandboxName,
+						file: name,
+						error: 'not found',
+					});
+					continue;
+				}
 				batch.push({ source: buffer, destination: `${KNOWLEDGE_MIRROR_FILES_DIR}/.tmp-${name}` });
 				batchNames.push(name);
 				batchBytes += buffer.length;
@@ -639,7 +647,8 @@ export class AgentKnowledgeSandboxService {
 		return files.map((file) => ({
 			file: storageFileNameForOriginalFileName(file.fileName),
 			fileId: file.id,
-			binaryDataId: file.binaryDataId,
+			storedAt: file.storedAt,
+			storageKey: file.storageKey,
 			displayName: file.fileName,
 			mimeType: file.mimeType,
 			fileSizeBytes: file.fileSizeBytes,

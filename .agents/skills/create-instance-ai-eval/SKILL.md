@@ -31,7 +31,7 @@ exhaustive field reference; this skill is the opinionated *how*.
 >
 > **Exception — seeded cases.** The case-write API can't hold any seeding mode, so
 > seeded cases are never pushed. A `seedThread` case is a local throwaway (don't
-> commit it either — it dies when its trace is pruned); a `seedFile` or
+> commit it either — it dies when its trace is pruned); a `conversationSeed` or
 > `priorConversation` case isn't transient and has no suite home, so it's the one
 > sanctioned exception — it lives as committed JSON. See [`case-shapes.md`](case-shapes.md).
 
@@ -104,7 +104,7 @@ case can still assert outcome), but the primary shape drives the work.
 | **Build** (default) | Does the workflow the agent builds actually *work*? | `outcomeExpectations` + `executionScenarios` |
 | **Behaviour / process** | Does the agent *converse* correctly (ask the right clarifying question, not re-ask, honour a correction, respect plan approval)? | `processExpectations` + multi-turn director script; often **build-only** |
 | **Credential** | Does the build behave correctly given a specific credential view? | `credentials[]` |
-| **Seeded** | Reproduce a conversation mid-thread and drive the turn under test | `seedThread` / `priorConversation` / `seedFile` |
+| **Seeded** | Reproduce a conversation mid-thread and drive the turn under test | `seedThread` / `priorConversation` / `conversationSeed` |
 
 **Build** is documented in full below. The other three, the director-script
 vocabulary, and the seeding modes are in [`case-shapes.md`](case-shapes.md).
@@ -207,7 +207,7 @@ calibration you hand the driver the thread link + login to review the real build
    case's home, not the repo. Leave the `data/workflows/*.json` file uncommitted
    (or delete it once it's in the suite). Committing new case JSONs into the repo
    is no longer the approach. (Exception: seeded cases can't be pushed — a
-   `seedFile`/`priorConversation` case stays committed JSON, a `seedThread` case is
+   `conversationSeed`/`priorConversation` case stays committed JSON, a `seedThread` case is
    a local throwaway; see [`case-shapes.md`](case-shapes.md).) For a sourced case,
    finish by **linking it to its source thread/finding** over the MCP — see
    [Link the pushed case to its source](#link-the-pushed-case-to-its-source-provenance-step--always-do-this).
@@ -661,10 +661,10 @@ npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --cha
   deployment predating that change silently ignores the key; if a pushed scenario
   edit doesn't land, update the scenario in the lang-tracer UI.
 - **Seeded cases can't be pushed:** the case-write API rejects every seeding mode
-  (`seedThread` / `seedFile` / `priorConversation`), so the push lists them under
+  (`seedThread` / `conversationSeed` / `priorConversation`), so the push lists them under
   `skipped:` and they never reach the suite. A `seedThread` case shouldn't be
   committed either — it dies when its trace is pruned or deleted — so derive a
-  durable synthetic case as the artifact instead. A `seedFile`/`priorConversation`
+  durable synthetic case as the artifact instead. A `conversationSeed`/`priorConversation`
   case isn't transient and has no suite home, so it's the one exception to
   "don't commit the JSON" — it lives as a committed artifact.
 

@@ -165,14 +165,16 @@ export class WorkflowFinderService {
 		workflowIds: string[],
 		user: User,
 		scopes: Scope[],
-		options: { includeParentFolder?: boolean } = {},
+		options: { includeParentFolder?: boolean; includeTags?: boolean } = {},
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) return [];
 
 		const where = await this.findAllWhere(user, scopes);
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { ...where, workflowId: In(workflowIds) },
-			relations: { workflow: { parentFolder: options.includeParentFolder } },
+			relations: {
+				workflow: { parentFolder: options.includeParentFolder, tags: options.includeTags },
+			},
 		});
 
 		// A workflow may appear via several share paths (project membership +

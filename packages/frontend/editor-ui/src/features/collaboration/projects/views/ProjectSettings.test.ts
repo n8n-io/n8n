@@ -30,7 +30,7 @@ const { emitters, addEmitter } = useEmitters<
 	'projectMembersTable' | 'n8nUserSelect' | 'n8nIconPicker'
 >();
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTrack,
 	}),

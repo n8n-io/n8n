@@ -63,17 +63,22 @@ const reviewerOptions = computed<IUser[]>(() =>
 	})),
 );
 
+let loadReviewersSequence = 0;
+
 const loadEligibleReviewers = async () => {
+	const sequence = ++loadReviewersSequence;
 	isLoadingReviewers.value = true;
 	try {
 		const { data } = await fetchEligibleReviewers(rootStore.restApiContext, {
 			workflowId: props.workflowId,
 		});
+		if (sequence !== loadReviewersSequence) return;
 		eligibleReviewers.value = data;
 	} catch {
+		if (sequence !== loadReviewersSequence) return;
 		eligibleReviewers.value = [];
 	} finally {
-		isLoadingReviewers.value = false;
+		if (sequence === loadReviewersSequence) isLoadingReviewers.value = false;
 	}
 };
 
@@ -103,10 +108,17 @@ const handleOpenAutoFocus = (event: Event) => {
 const submit = async () => {
 	if (isSubmitDisabled.value) return;
 
+	const workflowId = props.workflowId;
+
 	isSubmitting.value = true;
 
 	try {
 		const workflowVersionId = await props.flushSave();
+
+		// Navigated away while saving: flushSave reads the version of the workflow
+		// that is open now, so pairing it with the pinned id would mismatch.
+		if (props.workflowId !== workflowId) return;
+
 		if (!workflowVersionId) {
 			toast.showError(
 				new Error(i18n.baseText('workflowReviews.submitForReview.error.save')),
@@ -116,22 +128,33 @@ const submit = async () => {
 		}
 
 		const trimmedDescription = description.value.trim();
-		await createWorkflowReviewRequest(rootStore.restApiContext, {
+		const reviewRequest = await createWorkflowReviewRequest(rootStore.restApiContext, {
 			title: reviewTitle.value.trim(),
 			description: trimmedDescription || undefined,
-			workflows: [{ workflowId: props.workflowId, workflowVersionId }],
+			workflows: [{ workflowId, workflowVersionId }],
 			reviewerUserIds: selectedReviewerId.value ? [selectedReviewerId.value] : undefined,
 		});
 
-		reviewRequiredStore.setReviewRequired(props.workflowId, false);
-		void reviewStatusStore.fetchStatus(props.workflowId);
+		// Navigated away mid-flight: the review belongs to a workflow this dialog no
+		// longer targets, and writing it here would corrupt the current one's status.
+		if (props.workflowId !== workflowId) return;
+
+		// install the response before clearing the local flag so the
+		// publish gate never opens while a refetch is in flight
+		reviewStatusStore.setOpenReview(workflowId, reviewRequest);
+		reviewRequiredStore.setReviewRequired(workflowId, false);
 		emit('update:open', false);
 		emit('submitted');
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
 			// The conflict proves an open review this client didn't know about — lock
 			// immediately and hand off to the update-review dialog.
-			void reviewStatusStore.fetchStatus(props.workflowId);
+			void reviewStatusStore.fetchStatus(workflowId);
+
+			// Navigated away mid-flight: the conflict belongs to the pinned workflow,
+			// so the update-review dialog must not open for the current one.
+			if (props.workflowId !== workflowId) return;
+
 			emit('update:open', false);
 			emit('conflict');
 			return;

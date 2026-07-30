@@ -1,4 +1,4 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/app/constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';

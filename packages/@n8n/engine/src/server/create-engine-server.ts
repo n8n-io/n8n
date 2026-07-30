@@ -4,13 +4,13 @@ import express, { type Application } from 'express';
 import type { AdmittanceService } from '../admittance';
 import { TypeOrmExecutionStore, WorkflowExecution } from '../database';
 import { StartExecutionService } from '../execution/start-execution.service';
-import type { WorkQueue } from '../queue';
+import type { OrchestrationMessage, WorkQueue } from '../queue';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
 
 export interface EngineServerDeps {
 	dataSource: DataSource;
 	admittance: AdmittanceService;
-	workQueue: WorkQueue;
+	workQueue: WorkQueue<OrchestrationMessage>;
 }
 
 /**

@@ -20,6 +20,7 @@ import type {
 	ChatMessage,
 	ChatMessageRenderPart,
 	InteractivePayload,
+	ThinkingSegment,
 	ToolCall,
 } from './types';
 
@@ -173,17 +174,25 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 
 		let text = '';
 		let thinking = '';
+		const thinkingSegments: ThinkingSegment[] = [];
 		const toolCalls: ToolCall[] = [];
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
-		let status: ChatMessage['status'];
+		let status: ChatMessage['status'] =
+			msg.executionStatus === 'error' ? CHAT_MESSAGE_STATUS.ERROR : undefined;
 
-		for (const part of msg.content) {
+		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {
 				text += part.text;
 				renderParts.push({ type: 'text', text: part.text });
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
+				thinkingSegments.push({
+					id: `${msg.id}:reasoning:${partIndex}`,
+					content: part.text,
+					...(part.startTime !== undefined && { startTime: part.startTime }),
+					...(part.endTime !== undefined && { endTime: part.endTime }),
+				});
 			} else if (part.type === 'tool-call' && part.toolName) {
 				let state: ToolCallState;
 				let output: unknown;
@@ -198,6 +207,9 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 						state = TOOL_CALL_STATE.DONE;
 					}
 				} else if (part.state === 'rejected') {
+					state = TOOL_CALL_STATE.ERROR;
+					output = part.error;
+				} else if (msg.executionStatus === 'error') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
 				} else {
@@ -220,7 +232,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 
 				const rebuilt = rebuildInteractiveFromHistory(toolCall);
 				if (!rebuilt) continue;
-				if (rebuilt.resolvedAt === undefined) {
+				if (rebuilt.resolvedAt === undefined && msg.executionStatus !== 'error') {
 					toolCall.state = TOOL_CALL_STATE.SUSPENDED;
 					status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
@@ -235,6 +247,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			content: text,
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
+			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
@@ -246,10 +259,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 }
 
 /**
- * Re-attach a `runId` to each interactive card whose underlying tool call is
- * still suspended on the backend. The sidecar comes from chat history
- * (`openSuspensions`) — `convertDbMessages` can't surface it on its own
- * because raw persisted messages don't carry runIds.
+ * Reconcile unfinished tool calls and interactive cards with the suspensions
+ * still open on the backend. The sidecar comes from chat history
+ * (`openSuspensions`) — raw persisted messages don't carry runIds or enough
+ * information to distinguish a live suspension from an interrupted run.
  *
  * Mutates `chat` in place (history-load happens before reactivity wraps the
  * messages, so this is safe and avoids an extra deep clone) and returns it
@@ -259,15 +272,53 @@ export function applyOpenSuspensions(
 	chat: ChatMessage[],
 	suspensions: AgentBuilderOpenSuspension[],
 ): ChatMessage[] {
-	if (suspensions.length === 0) return chat;
 	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s.runId]));
 	for (const msg of chat) {
-		const interactives = getMessageInteractives(msg);
-		for (const interactive of interactives) {
-			const runId = byToolCallId.get(interactive.toolCallId);
-			if (runId) interactive.runId = runId;
+		let hasOpenToolCall = false;
+		for (const toolCall of msg.toolCalls ?? []) {
+			if (
+				toolCall.state === TOOL_CALL_STATE.DONE ||
+				toolCall.state === TOOL_CALL_STATE.ERROR ||
+				toolCall.state === TOOL_CALL_STATE.CANCELLED
+			) {
+				continue;
+			}
+
+			const runId = byToolCallId.get(toolCall.toolCallId);
+			if (runId) {
+				toolCall.state = TOOL_CALL_STATE.SUSPENDED;
+				toolCall.runId = runId;
+				hasOpenToolCall = true;
+			} else if (msg.status === CHAT_MESSAGE_STATUS.ERROR) {
+				toolCall.state = TOOL_CALL_STATE.ERROR;
+			} else {
+				toolCall.state = TOOL_CALL_STATE.CANCELLED;
+				toolCall.canceled = true;
+			}
 		}
-		setMessageInteractives(msg, interactives);
+
+		const interactives = getMessageInteractives(msg);
+		const retained: InteractivePayload[] = [];
+		for (const interactive of interactives) {
+			if (interactive.resolvedAt !== undefined) {
+				retained.push(interactive);
+				continue;
+			}
+
+			const runId = byToolCallId.get(interactive.toolCallId);
+			if (runId) {
+				interactive.runId = runId;
+				retained.push(interactive);
+			}
+		}
+		setMessageInteractives(msg, retained);
+		if (hasOpenToolCall) {
+			msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
+		} else if (msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER) {
+			msg.status = msg.toolCalls?.some((tc) => tc.state === TOOL_CALL_STATE.ERROR)
+				? CHAT_MESSAGE_STATUS.ERROR
+				: CHAT_MESSAGE_STATUS.SUCCESS;
+		}
 	}
 	return chat;
 }

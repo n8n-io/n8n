@@ -43,7 +43,9 @@ export interface ToLangTracerOptions {
  *  using any of them can't be pushed. Returns a human-readable reason, else null. */
 export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
 	if (testCase.seedThread) return 'uses seedThread (not supported by the case-write API)';
-	if (testCase.seedFile) return 'uses seedFile (not supported by the case-write API)';
+	if (testCase.conversationSeed) {
+		return 'uses conversationSeed (not supported by the case-write API)';
+	}
 	if (testCase.priorConversation) {
 		return 'uses priorConversation (not supported by the case-write API)';
 	}
