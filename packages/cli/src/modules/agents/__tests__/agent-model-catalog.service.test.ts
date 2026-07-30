@@ -204,6 +204,7 @@ describe('AgentModelCatalogService', () => {
 		expect(result.models).toEqual([
 			expect.objectContaining({ id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' }),
 		]);
+		expect(result.models[0]).not.toHaveProperty('reasoning');
 	});
 
 	it('returns an empty unverified list when both the lookup and the catalog fail', async () => {

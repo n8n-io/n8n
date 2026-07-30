@@ -27,6 +27,11 @@ function makeCatalog(): ProviderCatalog {
 					reasoning: false,
 					toolCall: true,
 				},
+				'claude-unknown': {
+					id: 'claude-unknown',
+					name: 'Claude Unknown',
+					toolCall: true,
+				},
 			},
 		},
 	};
@@ -234,25 +239,28 @@ describe('AgentInfoPanel', () => {
 		expect(last.config?.reasoning).toBe('high');
 	});
 
-	it('preserves reasoning when the selected model is missing from the catalog', async () => {
-		const config: AgentJsonConfig = {
-			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
-			credential: 'credential-1',
-			instructions: 'Help users.',
-			config: { reasoning: 'high' },
-		};
-		const wrapper = mountModelPanel(config);
+	it.each(['model-missing-from-catalog', 'claude-unknown'])(
+		'preserves reasoning when support metadata is unavailable for %s',
+		async (model) => {
+			const config: AgentJsonConfig = {
+				name: 'Support agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'credential-1',
+				instructions: 'Help users.',
+				config: { reasoning: 'high' },
+			};
+			const wrapper = mountModelPanel(config);
 
-		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
-			provider: 'anthropic',
-			model: 'model-missing-from-catalog',
-		});
-		await wrapper.vm.$nextTick();
+			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+				provider: 'anthropic',
+				model,
+			});
+			await wrapper.vm.$nextTick();
 
-		const events = wrapper.emitted('update:config') ?? [];
-		expect(events).toHaveLength(1);
-		const last = events[0][0] as Partial<AgentJsonConfig>;
-		expect(last.config?.reasoning).toBe('high');
-	});
+			const events = wrapper.emitted('update:config') ?? [];
+			expect(events).toHaveLength(1);
+			const last = events[0][0] as Partial<AgentJsonConfig>;
+			expect(last.config?.reasoning).toBe('high');
+		},
+	);
 });

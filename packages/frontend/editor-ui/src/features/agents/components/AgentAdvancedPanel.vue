@@ -64,12 +64,21 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const isExpanded = ref(!props.collapsible);
 
 const provider = computed(() => parseProvider(props.config?.model));
+const selectedModel = computed(() => parseModelString(modelToString(props.config?.model)));
 const selectedCatalogModel = computed(() => {
-	const parsed = parseModelString(modelToString(props.config?.model));
-	if (!parsed) return undefined;
-	return catalog.value[parsed.provider]?.models[parsed.name];
+	if (!selectedModel.value) return undefined;
+	return catalog.value[selectedModel.value.provider]?.models[selectedModel.value.name];
 });
-const supportsReasoning = computed(() => selectedCatalogModel.value?.reasoning === true);
+const isReasoningUnavailable = computed(
+	() => !selectedModel.value || selectedCatalogModel.value?.reasoning === false,
+);
+const reasoningHintKey = computed(() => {
+	if (!selectedModel.value) return 'agents.builder.advanced.reasoning.noModelHint';
+	if (selectedCatalogModel.value?.reasoning === false) {
+		return 'agents.builder.advanced.reasoning.unsupportedHint';
+	}
+	return 'agents.builder.advanced.reasoning.hint';
+});
 const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
 const hasNativeWebSearch = computed(() => Boolean(capabilities.value.webSearch));
 
@@ -552,19 +561,23 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 			</div>
 
-			<div v-if="supportsReasoning" :class="$style.settingGroup">
+			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.reasoning.label')
 						}}</N8nText>
-						<N8nText size="small" :class="shared.dataEntrySubLabel">
-							{{ i18n.baseText('agents.builder.advanced.reasoning.hint') }}
+						<N8nText
+							size="small"
+							:class="shared.dataEntrySubLabel"
+							data-testid="agent-reasoning-hint"
+						>
+							{{ i18n.baseText(reasoningHintKey) }}
 						</N8nText>
 					</div>
 					<N8nSwitch2
 						:model-value="reasoningEnabled"
-						:disabled="props.disabled"
+						:disabled="props.disabled || isReasoningUnavailable"
 						:class="$style.switchControl"
 						data-testid="agent-reasoning-toggle"
 						@update:model-value="(v) => onReasoningToggle(Boolean(v))"
@@ -583,7 +596,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						<N8nSelect
 							:model-value="reasoningLevel"
 							size="small"
-							:disabled="props.disabled"
+							:disabled="props.disabled || isReasoningUnavailable"
 							:class="$style.shortInput"
 							data-testid="agent-reasoning-effort-select"
 							@update:model-value="onReasoningLevelChange"

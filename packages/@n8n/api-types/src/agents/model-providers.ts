@@ -27,7 +27,7 @@ export interface AgentCatalogModel {
 	id: string;
 	name: string;
 	releaseDate?: string;
-	reasoning: boolean;
+	reasoning?: boolean;
 	toolCall: boolean;
 	cost?: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
 	limits?: { context?: number; output?: number };

@@ -19,7 +19,15 @@ vi.mock('../composables/useModelCatalog', () => ({
 }));
 
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (k: string) => k }),
+	useI18n: () => ({
+		baseText: (key: string) =>
+			({
+				'agents.builder.advanced.reasoning.hint': 'Let the model reason before responding.',
+				'agents.builder.advanced.reasoning.unsupportedHint':
+					'This model does not support reasoning',
+				'agents.builder.advanced.reasoning.noModelHint': 'No model selected',
+			})[key] ?? key,
+	}),
 }));
 
 vi.mock('@/features/credentials/credentials.store', () => ({
@@ -116,6 +124,11 @@ function makeCatalog(): ProviderCatalog {
 					id: 'gpt-4.1-mini',
 					name: 'GPT-4.1 mini',
 					reasoning: false,
+					toolCall: true,
+				},
+				'gpt-unknown': {
+					id: 'gpt-unknown',
+					name: 'GPT Unknown',
 					toolCall: true,
 				},
 			},
@@ -386,6 +399,9 @@ describe('AgentAdvancedPanel', () => {
 		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
 		expect(toggle.exists()).toBe(true);
 		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
 	});
 
 	it('enables generic medium reasoning when the toggle flips on', async () => {
@@ -434,7 +450,7 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.config?.reasoning).toBeUndefined();
 	});
 
-	it('hides reasoning for an unsupported model', async () => {
+	it('disables reasoning and explains when the selected model does not support it', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: {
 				config: makeConfig({
@@ -447,11 +463,19 @@ describe('AgentAdvancedPanel', () => {
 		});
 		await nextTick();
 
-		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').exists()).toBe(false);
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'This model does not support reasoning',
+		);
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			true,
+		);
 		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
-	it('hides reasoning when no model is selected', async () => {
+	it('disables reasoning and explains when no model is selected', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: {
 				config: makeConfig({
@@ -464,11 +488,17 @@ describe('AgentAdvancedPanel', () => {
 		});
 		await nextTick();
 
-		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').exists()).toBe(false);
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe('No model selected');
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			true,
+		);
 		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
-	it('shows reasoning when support metadata finishes loading', async () => {
+	it('keeps reasoning enabled while support metadata loads', async () => {
 		modelCatalog.value = {};
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: {
@@ -478,20 +508,51 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 
-		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').exists()).toBe(false);
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
 
 		modelCatalog.value = makeCatalog();
 		await nextTick();
 
-		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeUndefined();
 		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
-	it('hides reasoning without removing configuration when model metadata is unavailable', async () => {
+	it('disables reasoning when loaded metadata explicitly marks the model unsupported', async () => {
+		modelCatalog.value = {};
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ model: 'openai/gpt-4.1-mini' }),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
+
+		modelCatalog.value = makeCatalog();
+		await nextTick();
+
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'This model does not support reasoning',
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('keeps reasoning enabled when the catalog model omits support metadata', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: {
 				config: makeConfig({
-					model: 'anthropic/model-missing-from-catalog',
+					model: 'openai/gpt-unknown',
 					config: { reasoning: 'medium' },
 				}),
 				projectId: 'project-1',
@@ -500,11 +561,19 @@ describe('AgentAdvancedPanel', () => {
 		});
 		await nextTick();
 
-		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').exists()).toBe(false);
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			false,
+		);
 		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
-	it('hides reasoning when the selected model changes to an unsupported model', async () => {
+	it('disables reasoning when the selected model changes to an unsupported model', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: {
 				config: makeConfig({ config: { reasoning: 'high' } }),
@@ -522,7 +591,15 @@ describe('AgentAdvancedPanel', () => {
 		});
 		await nextTick();
 
-		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').exists()).toBe(false);
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'This model does not support reasoning',
+		);
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			true,
+		);
 		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
