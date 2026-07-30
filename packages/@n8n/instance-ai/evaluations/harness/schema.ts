@@ -57,6 +57,12 @@ const inlineSeedMessagesSchema = z.preprocess(
  * diverging rebuilds the old→new translation layer this union exists to delete.
  * `replay` names an action next to `inline`'s location — an asymmetry we take
  * knowingly, because renaming it would break an LT HTTP body contract.
+ *
+ * Both arms are `.strict()`, matching the case schema: exclusivity has to fail
+ * loudly, not by stripping. `{ mode: replay, threadId, messages }` would
+ * otherwise parse as a valid replay seed with `messages` silently dropped —
+ * the case runs unseeded and grades as if it were a build from scratch, which
+ * is the misgrading the one-slot union exists to prevent.
  */
 export const CaseSeedSchema = z.discriminatedUnion('mode', [
 	/** Prior messages plus the workflows/tables they reference, carried in the case
@@ -66,24 +72,26 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 	ConversationSeedSchema.extend({
 		mode: z.literal('inline'),
 		messages: inlineSeedMessagesSchema,
-	}),
+	}).strict(),
 	/** Reproduce a real conversation from its LangSmith trace at run time (seed =
 	 *  before the live turn, live = that turn). Commits only the thread id;
 	 *  workspace auto-discovered. Supplies the live turn itself, so `conversation`
 	 *  is optional and continues after it. Transient (~14d trace retention). */
-	z.object({
-		mode: z.literal('replay'),
-		threadId: z.string().min(1),
-		project: z.string().min(1).optional(),
-		/** LangSmith host the source trace lives on (dual-tenant reads during the
-		 *  US→EU migration). Omit ⇒ the eval's home (EU) tenant, so existing cases
-		 *  are unchanged. A US-sourced case carries the US host; the harness maps
-		 *  host→key via env (LANGSMITH_API_KEY_US). */
-		endpoint: z.string().url().optional(),
-		/** Pin which user turn is sent live (its LangSmith run id); everything before
-		 *  it is seeded. Omit ⇒ the thread's last user turn (default). */
-		liveTurnRunId: z.string().min(1).optional(),
-	}),
+	z
+		.object({
+			mode: z.literal('replay'),
+			threadId: z.string().min(1),
+			project: z.string().min(1).optional(),
+			/** LangSmith host the source trace lives on (dual-tenant reads during the
+			 *  US→EU migration). Omit ⇒ the eval's home (EU) tenant, so existing cases
+			 *  are unchanged. A US-sourced case carries the US host; the harness maps
+			 *  host→key via env (LANGSMITH_API_KEY_US). */
+			endpoint: z.string().url().optional(),
+			/** Pin which user turn is sent live (its LangSmith run id); everything before
+			 *  it is seeded. Omit ⇒ the thread's last user turn (default). */
+			liveTurnRunId: z.string().min(1).optional(),
+		})
+		.strict(),
 ]);
 
 export type CaseSeed = z.infer<typeof CaseSeedSchema>;

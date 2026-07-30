@@ -143,6 +143,35 @@ describe('EvalTestCaseSchema', () => {
 		).toThrow(/mode/);
 	});
 
+	// Both arms are strict, so a seed mixing them fails instead of having the
+	// wrong-arm field stripped — which would run the case unseeded and grade it
+	// as a build from scratch.
+	it('rejects a replay seed carrying inline fields', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'replay',
+					threadId: 'thread-1',
+					messages: [{ role: 'user', text: 'build it' }],
+				},
+			}),
+		).toThrow(/messages/);
+	});
+
+	it('rejects an inline seed carrying replay fields', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					threadId: 'thread-1',
+				},
+			}),
+		).toThrow(/threadId/);
+	});
+
 	it('expands a {role, text} shorthand message into a full envelope', () => {
 		const parsed = EvalTestCaseSchema.parse({
 			...validFixture(),
