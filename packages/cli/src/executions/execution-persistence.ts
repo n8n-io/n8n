@@ -162,7 +162,8 @@ export class ExecutionPersistence {
 	 * it up, so a redelivery racing that window deletes a genuinely enqueued row and
 	 * re-dispatches the occurrence (the worker's job then finds no execution and fails
 	 * noisily, but the occurrence still runs). Telling "inserted, never enqueued" from
-	 * "enqueued, not yet picked up" apart needs schema the misfire-policy work owns.
+	 * "enqueued, not yet picked up" apart needs an enqueued marker the execution row
+	 * does not carry.
 	 *
 	 * @returns the deleted tombstone's storage location, so `create` can clear its
 	 * out-of-band data after committing, or `null` when there was nothing to reclaim.
