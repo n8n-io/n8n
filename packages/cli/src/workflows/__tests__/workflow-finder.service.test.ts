@@ -230,6 +230,20 @@ describe('WorkflowFinderService', () => {
 			expect(result.count).toBe(1);
 		});
 
+		it('selects bare share rows by default and the home project on request', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read'], {});
+			await service.findWorkflowsForUser(user, ['workflow:read'], { includeProjects: true });
+
+			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
+			assert(first?.[2] && second?.[2]);
+			expect(first[2].select).toMatchObject({ shared: true });
+			expect(first[2].select).not.toHaveProperty('ownedBy');
+			expect(second[2].select).toMatchObject({ ownedBy: true });
+			expect(second[2].select).not.toHaveProperty('shared');
+		});
+
 		it('omits pagination when no limit is given', async () => {
 			const { service, workflowRepository } = setup();
 

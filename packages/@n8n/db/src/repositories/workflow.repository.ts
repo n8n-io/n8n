@@ -1252,7 +1252,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.andWhere('dep.publishedVersionId IS NULL');
 	}
 
-	private applyOwnedByRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
+	private applyOwnedByRelation(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		includeProject: boolean,
+	): void {
 		// Check if 'shared' join already exists from project filter
 		if (!qb.expressionMap.aliases.find((alias) => alias.name === 'shared')) {
 			qb.leftJoin('workflow.shared', 'shared');
@@ -1265,16 +1268,18 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			'shared.updatedAt',
 			'shared.workflowId',
 			'shared.projectId',
-		])
-			.leftJoin('shared.project', 'project')
-			.addSelect([
-				'project.id',
-				'project.name',
-				'project.type',
-				'project.icon',
-				'project.createdAt',
-				'project.updatedAt',
-			]);
+		]);
+
+		if (!includeProject) return;
+
+		qb.leftJoin('shared.project', 'project').addSelect([
+			'project.id',
+			'project.name',
+			'project.type',
+			'project.icon',
+			'project.createdAt',
+			'project.updatedAt',
+		]);
 	}
 
 	private applySelect(
@@ -1304,7 +1309,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		// Handle special fields separately
 		const regularFields = Object.entries(select).filter(
-			([field]) => !['ownedBy', 'tags', 'parentFolder', 'activeVersion'].includes(field),
+			([field]) => !['ownedBy', 'shared', 'tags', 'parentFolder', 'activeVersion'].includes(field),
 		);
 
 		// Add regular fields
@@ -1326,6 +1331,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const isDefaultSelect = select === undefined;
 		const areTagsRequested = isDefaultSelect || select?.tags;
 		const isOwnedByIncluded = isDefaultSelect || select?.ownedBy;
+		const isSharedOnlyIncluded = !isOwnedByIncluded && select?.shared;
 		const isParentFolderIncluded = isDefaultSelect || select?.parentFolder;
 		const isActiveVersionIncluded = select?.activeVersion;
 
@@ -1342,7 +1348,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 
 		if (isOwnedByIncluded) {
-			this.applyOwnedByRelation(qb);
+			this.applyOwnedByRelation(qb, true);
+		} else if (isSharedOnlyIncluded) {
+			this.applyOwnedByRelation(qb, false);
 		}
 
 		if (isActiveVersionIncluded) {
@@ -1353,14 +1361,19 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	private applyActiveVersionRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
 		qb.leftJoin('workflow.activeVersion', 'activeVersion').addSelect([
 			'activeVersion.versionId',
+			'activeVersion.workflowId',
 			'activeVersion.nodes',
 			'activeVersion.connections',
+			'activeVersion.nodeGroups',
+			'activeVersion.authors',
+			'activeVersion.createdAt',
+			'activeVersion.updatedAt',
 		]);
 	}
 
 	private applyTagsRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
 		qb.leftJoin('workflow.tags', 'tags')
-			.addSelect(['tags.id', 'tags.name'])
+			.addSelect(['tags.id', 'tags.name', 'tags.createdAt', 'tags.updatedAt'])
 			.addOrderBy('tags.createdAt', 'ASC');
 	}
 
