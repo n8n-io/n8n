@@ -1,5 +1,10 @@
 import type { ManifestEntry } from '../../spec/manifest.schema';
-import { deriveParentFolderId, foldersInScope, workflowsInScope } from '../package-layout';
+import {
+	deriveParentFolderId,
+	deriveVariableScope,
+	foldersInScope,
+	workflowsInScope,
+} from '../package-layout';
 
 const entry = (id: string, target: string): ManifestEntry => ({ id, name: id, target });
 
@@ -48,6 +53,40 @@ describe('package-layout', () => {
 				'pRoot',
 				'pFolder',
 			]);
+		});
+	});
+
+	describe('deriveVariableScope', () => {
+		const named = (name: string, target: string): ManifestEntry => ({ id: name, name, target });
+
+		it('reads a top-level entry as global', () => {
+			const entries = [named('SHARED_URL', 'variables/shared_url')];
+			expect(deriveVariableScope(entries, 'projects/x/', 'SHARED_URL')).toBe('global');
+		});
+
+		it('reads an entry bundled under the scope as project-scoped', () => {
+			const entries = [named('API_URL', 'projects/x/variables/api_url')];
+			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
+		});
+
+		it("prefers the scope's own entry over a top-level one of the same name", () => {
+			const entries = [
+				named('API_URL', 'variables/api_url'),
+				named('API_URL', 'projects/x/variables/api_url'),
+			];
+			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
+			// The other project sees only the top-level entry.
+			expect(deriveVariableScope(entries, 'projects/y/', 'API_URL')).toBe('global');
+		});
+
+		it('falls back to the consuming project when the name is bundled under another project only', () => {
+			const entries = [named('API_URL', 'projects/y/variables/api_url')];
+			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
+		});
+
+		it('does not let one project prefix match another that shares its start', () => {
+			const entries = [named('API_URL', 'projects/xy/variables/api_url')];
+			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
 		});
 	});
 

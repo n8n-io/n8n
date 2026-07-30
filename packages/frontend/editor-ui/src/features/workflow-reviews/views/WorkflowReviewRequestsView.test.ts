@@ -1,3 +1,4 @@
+import type { WorkflowReviewInboxItem } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
@@ -44,7 +45,7 @@ describe('WorkflowReviewRequestsView', () => {
 		store.showSidebar = false;
 		store.selectedItem = null;
 		store.items = [];
-		store.activeState = 'open';
+		store.activeTab = 'open';
 		store.selectedId = null;
 		store.loading = false;
 		store.loadingMore = false;
@@ -107,6 +108,106 @@ describe('WorkflowReviewRequestsView', () => {
 		expect(getByTestId('workflow-review-requests-sidebar')).toBeInTheDocument();
 		expect(getByTestId('workflow-review-request-title')).toHaveTextContent('Needs review');
 		expect(getByTestId('workflow-review-request-detail-stub')).toBeInTheDocument();
+	});
+
+	describe('decision actions', () => {
+		const openItem: WorkflowReviewInboxItem = {
+			id: 'req-1',
+			projectId: 'proj-1',
+			title: 'Needs review',
+			workflowName: 'My workflow',
+			workflowVersionId: null,
+			requester: null,
+			reviewers: [],
+			decision: 'pending',
+			state: 'open',
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+		};
+
+		beforeEach(() => {
+			store.probeSettled = true;
+			store.showSidebar = true;
+			store.selectedItem = { ...openItem };
+			store.decideOnReview.mockResolvedValue(undefined);
+		});
+
+		it('renders both action buttons for an open review', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-approve-button')).toBeInTheDocument();
+			expect(getByTestId('workflow-review-request-changes-button')).toBeInTheDocument();
+		});
+
+		it('hides the action buttons for a closed review', async () => {
+			store.selectedItem = { ...openItem, state: 'closed', decision: 'approved' };
+
+			const { queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(queryByTestId('workflow-review-approve-button')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-review-request-changes-button')).not.toBeInTheDocument();
+		});
+
+		it('submits an approval for the selected review', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(store.decideOnReview).toHaveBeenCalledWith('req-1', 'approved');
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('submits a change request for the selected review', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-request-changes-button').click();
+			await waitAllPromises();
+
+			expect(store.decideOnReview).toHaveBeenCalledWith('req-1', 'changes_requested');
+		});
+
+		it('shows an error toast when the decision fails', async () => {
+			const error = new Error('forbidden');
+			store.decideOnReview.mockRejectedValueOnce(error);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(showError).toHaveBeenCalledWith(error, 'Could not submit review decision');
+		});
+
+		it('disables both buttons while a decision is in flight', async () => {
+			let resolveDecision!: () => void;
+			store.decideOnReview.mockImplementationOnce(
+				async () =>
+					await new Promise<void>((resolve) => {
+						resolveDecision = resolve;
+					}),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await vi.waitFor(() => {
+				expect(getByTestId('workflow-review-approve-button')).toBeDisabled();
+			});
+			expect(getByTestId('workflow-review-request-changes-button')).toBeDisabled();
+
+			resolveDecision();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-approve-button')).not.toBeDisabled();
+			expect(getByTestId('workflow-review-request-changes-button')).not.toBeDisabled();
+		});
 	});
 
 	it('shows an error toast when probing the inbox fails', async () => {

@@ -27,6 +27,11 @@ const linear: AgentIntegrationConfig = {
 	credentialId: 'cred-c',
 };
 
+const telegram: AgentIntegrationConfig = {
+	type: 'telegram',
+	credentialId: 'cred-telegram',
+};
+
 function makeInterruptibleCtx(
 	overrides: Partial<InterruptibleToolContext> = {},
 ): InterruptibleToolContext {
@@ -448,6 +453,72 @@ describe('integration tools', () => {
 			},
 		});
 		expect(actionExecutor.execute).not.toHaveBeenCalled();
+	});
+
+	it('validates the opt-in edit_message action shape', () => {
+		const telegramTool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+				actions: ['respond', 'send_dm', 'edit_message'],
+			}))[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const telegramSchema = telegramTool.inputSchema as z.ZodType;
+
+		expect(
+			telegramSchema.safeParse({
+				action: 'edit_message',
+				input: {
+					messageId: '123456:1000',
+					message: { text: 'Updated status' },
+				},
+			}).success,
+		).toBe(true);
+		expect(
+			telegramSchema.safeParse({
+				action: 'edit_message',
+				input: { message: { text: 'Updated status' } },
+			}).success,
+		).toBe(false);
+		expect(
+			telegramSchema.safeParse({
+				action: 'edit_message',
+				input: { messageId: '', message: { text: 'Updated status' } },
+			}).success,
+		).toBe(false);
+		expect(
+			telegramSchema.safeParse({
+				action: 'edit_message',
+				input: { messageId: '123456:1000' },
+			}).success,
+		).toBe(false);
+		expect(
+			telegramSchema.safeParse({
+				action: 'edit_message',
+				input: {
+					threadId: 'telegram:999999',
+					messageId: '123456:1000',
+					message: { text: 'Updated status' },
+				},
+			}).success,
+		).toBe(false);
+		expect(telegramTool.description).toContain(
+			'Uses the latest message context to choose the conversation',
+		);
+
+		const slackTool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1')[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const slackSchema = slackTool.inputSchema as z.ZodType;
+
+		expect(
+			slackSchema.safeParse({
+				action: 'edit_message',
+				input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			}).success,
+		).toBe(false);
 	});
 
 	it('action tool schema requires platform IDs for explicit user and channel targets', () => {

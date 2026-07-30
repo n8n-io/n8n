@@ -114,6 +114,8 @@ describe('CredentialsController', () => {
 		ensureCanManageEndUserCredentialSpy = vi
 			.spyOn(credentialsService, 'ensureCanManageEndUserCredential')
 			.mockResolvedValue(undefined);
+		// stubbed by default: backed by connectionStatusProxy, which unit tests don't wire up
+		vi.spyOn(credentialsService, 'populateConnectedByMe').mockResolvedValue(undefined);
 		findCredentialOwningProjectSpy = sharedCredentialsRepository.findCredentialOwningProject;
 		emitSpy = eventService.emit;
 		// Set up credentialsRepository.create to return the input data
@@ -850,6 +852,7 @@ describe('CredentialsController', () => {
 			expect(getChangedSharedFieldsSpy).toHaveBeenCalled();
 			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
 				deleteUserEntries: true,
+				user: ownerReq.user,
 			});
 			expect(emitSpy).toHaveBeenCalledWith('private-credential-connections-cleared', {
 				user: ownerReq.user,
@@ -879,6 +882,7 @@ describe('CredentialsController', () => {
 
 			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
 				deleteUserEntries: false,
+				user: ownerReq.user,
 			});
 			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-connections-cleared');
@@ -906,6 +910,7 @@ describe('CredentialsController', () => {
 			expect(getChangedSharedFieldsSpy).not.toHaveBeenCalled();
 			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
 				deleteUserEntries: true,
+				user: ownerReq.user,
 			});
 		});
 

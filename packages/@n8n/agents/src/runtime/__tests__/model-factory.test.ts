@@ -58,7 +58,7 @@ vi.mock('@ai-sdk/openai', () => ({
 }));
 
 vi.mock('@ai-sdk/google', () => ({
-	createGoogleGenerativeAI: (opts?: ProviderOpts) => (model: string) => ({
+	createGoogle: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'google',
 		modelId: model,
 		apiKey: opts?.apiKey,
@@ -68,12 +68,14 @@ vi.mock('@ai-sdk/google', () => ({
 }));
 
 vi.mock('@ai-sdk/xai', () => ({
-	createXai: (opts?: ProviderOpts) => (model: string) => ({
-		provider: 'xai',
-		modelId: model,
-		apiKey: opts?.apiKey,
-		fetch: opts?.fetch,
-		specificationVersion: 'v3',
+	createXai: (opts?: ProviderOpts) => ({
+		chat: (model: string) => ({
+			provider: 'xai',
+			modelId: model,
+			apiKey: opts?.apiKey,
+			fetch: opts?.fetch,
+			specificationVersion: 'v3',
+		}),
 	}),
 }));
 

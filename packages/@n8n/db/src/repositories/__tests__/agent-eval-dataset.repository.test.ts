@@ -77,4 +77,14 @@ describe('AgentEvalDatasetRepository', () => {
 			});
 		});
 	});
+
+	describe('findById', () => {
+		it('looks up a single dataset by id', async () => {
+			entityManager.findOneBy.mockResolvedValueOnce(null);
+
+			await repo.findById('ds-1');
+
+			expect(entityManager.findOneBy.mock.calls[0]?.[1]).toEqual({ id: 'ds-1' });
+		});
+	});
 });

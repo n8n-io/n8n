@@ -15,7 +15,7 @@ import { useClipboard } from '@n8n/composables/useClipboard';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { inject, computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { N8nIconButton } from '@n8n/design-system';
 type JsonPathData = {

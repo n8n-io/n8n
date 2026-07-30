@@ -1,4 +1,6 @@
 import { randomCredentialPayload, type CredentialPayload } from '@n8n/backend-test-utils';
+import type { WorkflowEntity } from '@n8n/db';
+import { EXECUTE_WORKFLOW_NODE_TYPE, getSubworkflowId, type INode } from 'n8n-workflow';
 
 import { TarPackageWriter } from '../../io/tar/tar-package-writer';
 import { FORMAT_VERSION } from '../../spec/constants';
@@ -6,6 +8,7 @@ import type { PackageManifest } from '../../spec/manifest.schema';
 import type {
 	PackageCredentialRequirement,
 	PackageDataTableRequirement,
+	PackageWorkflowRequirement,
 } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
 import type { SerializedFolder } from '../../spec/serialized/folder.schema';
@@ -76,6 +79,99 @@ export function serializedWorkflowWithCredential(options: {
 			},
 		],
 	});
+}
+
+/**
+ * Builds a workflow whose Execute Sub-workflow node references another workflow by
+ * id, optionally carrying `callerIds`/`callerPolicy` settings.
+ */
+export function serializedWorkflowWithSubWorkflow(options: {
+	id: string;
+	name: string;
+	subWorkflowId: string;
+	mode?: 'id' | 'list';
+	callerIds?: string;
+	callerPolicy?: string;
+}): SerializedWorkflow {
+	const settings =
+		options.callerIds !== undefined || options.callerPolicy !== undefined
+			? {
+					...(options.callerPolicy !== undefined ? { callerPolicy: options.callerPolicy } : {}),
+					...(options.callerIds !== undefined ? { callerIds: options.callerIds } : {}),
+				}
+			: undefined;
+
+	return serializedWorkflow({
+		id: options.id,
+		name: options.name,
+		nodes: [
+			{
+				id: 'execute-workflow',
+				name: 'Execute Sub-workflow',
+				type: EXECUTE_WORKFLOW_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {
+					workflowId: { __rl: true, mode: options.mode ?? 'id', value: options.subWorkflowId },
+				},
+			},
+		],
+		...(settings ? { settings } : {}),
+	});
+}
+
+/**
+ * Builds manifest workflow requirements from each workflow's sub-workflow node refs and
+ * `settings.errorWorkflow` (simulates export — mirrors `extractWorkflowRequirements`).
+ */
+export function workflowRequirementsFromWorkflows(
+	workflows: SerializedWorkflow[],
+): PackageWorkflowRequirement[] {
+	const nameById = new Map(workflows.map((workflow) => [workflow.id, workflow.name]));
+	const byId = new Map<string, PackageWorkflowRequirement>();
+
+	const addRequirement = (referencedId: string | undefined, workflowId: string) => {
+		if (!referencedId) return;
+		const existing = byId.get(referencedId);
+		if (existing) {
+			if (!existing.usedByWorkflows.includes(workflowId)) existing.usedByWorkflows.push(workflowId);
+			return;
+		}
+		byId.set(referencedId, {
+			id: referencedId,
+			name: nameById.get(referencedId) ?? referencedId,
+			usedByWorkflows: [workflowId],
+		});
+	};
+
+	for (const workflow of workflows) {
+		for (const node of workflow.nodes) addRequirement(getSubworkflowId(node as INode), workflow.id);
+		addRequirement(errorWorkflowRef(workflow), workflow.id);
+	}
+
+	return [...byId.values()];
+}
+
+/** Static `settings.errorWorkflow` id referenced by a workflow, if any (mirrors the exporter). */
+function errorWorkflowRef(workflow: SerializedWorkflow): string | undefined {
+	const errorWorkflow = workflow.settings?.errorWorkflow;
+	if (
+		typeof errorWorkflow !== 'string' ||
+		errorWorkflow === 'DEFAULT' ||
+		errorWorkflow.startsWith('=')
+	) {
+		return undefined;
+	}
+	return errorWorkflow;
+}
+
+/** Returns the id the workflow's Execute Sub-workflow node points at. */
+export function subWorkflowRefOf(workflow: WorkflowEntity): string | undefined {
+	for (const node of workflow.nodes) {
+		const referencedId = getSubworkflowId(node);
+		if (referencedId) return referencedId;
+	}
+	return undefined;
 }
 
 /** Builds manifest credential requirements from workflow node refs (simulates export). */
