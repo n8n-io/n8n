@@ -3035,7 +3035,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('mcp-oauth-completed', event);
 
 			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.mcp.oauth.completed',
+				eventName: 'n8n.audit.mcp.oauth.completed',
 				payload: {
 					userId: 'user-mcp-1',
 					clientId: 'client-abc',
@@ -3062,7 +3062,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('mcp-tool-called', event);
 
 			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.mcp.tool.called',
+				eventName: 'n8n.audit.mcp.tool.called',
 				payload: {
 					userId: 'user-mcp-2',
 					_email: 'mcp@n8n.io',
@@ -3095,7 +3095,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('mcp-tool-called', event);
 
 			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.mcp.tool.called',
+				eventName: 'n8n.audit.mcp.tool.called',
 				payload: {
 					userId: 'user-mcp-3',
 					_email: 'err@n8n.io',
@@ -3126,7 +3126,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('mcp-access-updated', event);
 
 			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.mcp.access.updated',
+				eventName: 'n8n.audit.mcp.access.updated',
 				payload: {
 					userId: 'user-mcp-4',
 					_email: 'owner@n8n.io',

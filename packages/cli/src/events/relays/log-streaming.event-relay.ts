@@ -1295,7 +1295,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		clientName,
 	}: RelayEventMap['mcp-oauth-completed']) {
 		void this.eventBus.sendMcpEvent({
-			eventName: 'n8n.mcp.oauth.completed',
+			eventName: 'n8n.audit.mcp.oauth.completed',
 			payload: { userId, clientId, clientName },
 		});
 	}
@@ -1303,7 +1303,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	@Redactable()
 	private mcpToolCalled({ user, ...rest }: RelayEventMap['mcp-tool-called']) {
 		void this.eventBus.sendMcpEvent({
-			eventName: 'n8n.mcp.tool.called',
+			eventName: 'n8n.audit.mcp.tool.called',
 			payload: { ...user, ...rest },
 		});
 	}
@@ -1311,7 +1311,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	@Redactable()
 	private mcpAccessUpdated({ user, ...rest }: RelayEventMap['mcp-access-updated']) {
 		void this.eventBus.sendMcpEvent({
-			eventName: 'n8n.mcp.access.updated',
+			eventName: 'n8n.audit.mcp.access.updated',
 			payload: { ...user, ...rest },
 		});
 	}

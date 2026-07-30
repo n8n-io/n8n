@@ -39,9 +39,9 @@ describe('EventBusController', () => {
 
 			expect(result).toEqual(
 				expect.arrayContaining([
-					'n8n.mcp.oauth.completed',
-					'n8n.mcp.tool.called',
-					'n8n.mcp.access.updated',
+					'n8n.audit.mcp.oauth.completed',
+					'n8n.audit.mcp.tool.called',
+					'n8n.audit.mcp.access.updated',
 				]),
 			);
 		});

@@ -34,14 +34,6 @@ export const eventNamesRunner = [
 
 export type EventNamesRunnerType = (typeof eventNamesRunner)[number];
 
-export const eventNamesMcp = [
-	'n8n.mcp.oauth.completed',
-	'n8n.mcp.tool.called',
-	'n8n.mcp.access.updated',
-] as const;
-
-export type EventNamesMcpType = (typeof eventNamesMcp)[number];
-
 export const eventNamesQueue = [
 	'n8n.queue.job.enqueued',
 	'n8n.queue.job.dequeued',
@@ -148,6 +140,16 @@ export const eventNamesAudit = [
 	'n8n.audit.oauth.callback.binding.rejected',
 	'n8n.audit.credentials.authorize.rejected',
 ] as const;
+
+// Instance MCP server events. Kept as their own list and message class because the payload
+// shape differs, but named under `n8n.audit.` so they group with audit events in the UI.
+export const eventNamesMcp = [
+	'n8n.audit.mcp.oauth.completed',
+	'n8n.audit.mcp.tool.called',
+	'n8n.audit.mcp.access.updated',
+] as const;
+
+export type EventNamesMcpType = (typeof eventNamesMcp)[number];
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
 export type EventNamesAuditType = (typeof eventNamesAudit)[number];
