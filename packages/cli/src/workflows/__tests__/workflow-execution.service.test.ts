@@ -180,7 +180,7 @@ describe('WorkflowExecutionService', () => {
 			nodes: [node],
 		});
 		const workflow = mock<Workflow>({ id: 'workflow-1' });
-		const staged = { cursor: { lastItemId: 'a' }, version: 0 };
+		const cursor = { lastItemId: 'a' };
 
 		const runPolledWorkflow = async () =>
 			await workflowExecutionService.runPolledWorkflow(
@@ -190,15 +190,13 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				'trigger',
 				workflow,
-				staged,
+				cursor,
 			);
 
 		beforeEach(() => {
 			vi.clearAllMocks();
 			workflowRunner.run.mockReset();
 			workflowRunner.run.mockResolvedValue('committed-execution-id');
-			workflowRunner.establishContextBeforePersist.mockReset();
-			workflowRunner.establishContextBeforePersist.mockResolvedValue(undefined);
 			pollCursorService.commitPoll.mockReset();
 			pollCursorService.commitPoll.mockResolvedValue('committed-execution-id');
 		});
@@ -226,7 +224,7 @@ describe('WorkflowExecutionService', () => {
 				workflow,
 				node,
 				expect.objectContaining({ executionMode: 'trigger' }),
-				staged,
+				cursor,
 			);
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.anything(),
@@ -253,30 +251,6 @@ describe('WorkflowExecutionService', () => {
 
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
-		});
-
-		test('commits the poll, then fails the execution instead of starting it, when context establishment fails', async () => {
-			const establishError = mock<ExecutionError>();
-			workflowRunner.establishContextBeforePersist.mockResolvedValue(establishError);
-
-			const executionId = await runPolledWorkflow();
-
-			expect(executionId).toBe('committed-execution-id');
-			// The commit still runs: the poll occurred and the cursor must still advance,
-			// even though the row it committed will now be marked failed rather than run.
-			expect(pollCursorService.commitPoll).toHaveBeenCalledWith(
-				workflow,
-				node,
-				expect.objectContaining({ executionMode: 'trigger' }),
-				staged,
-			);
-			expect(workflowRunner.failExecution).toHaveBeenCalledWith(
-				expect.objectContaining({ executionMode: 'trigger' }),
-				'committed-execution-id',
-				establishError,
-				undefined,
-			);
-			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 	});
 

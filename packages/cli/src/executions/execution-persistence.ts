@@ -53,14 +53,7 @@ type FoundExecution = IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 
 type UpdatableEntityColumns = Omit<
 	Partial<IExecutionResponse>,
-	| 'id'
-	| 'data'
-	| 'workflowId'
-	| 'workflowData'
-	| 'workflowVersionId'
-	| 'createdAt'
-	| 'startedAt'
-	| 'customData'
+	'id' | 'data' | 'workflowId' | 'workflowData' | 'workflowVersionId' | 'createdAt' | 'customData'
 >;
 
 /**
@@ -732,27 +725,12 @@ export class ExecutionPersistence {
 		return targets.filter((t): t is T & { storedAt: BlobStorageLocation } => t.storedAt !== 'db');
 	}
 
-	/** `startedAt` is otherwise stripped by {@link pickUpdatableEntityColumns}; this is the
-	 * one caller-requested path back in, gated on the condition rather than the payload,
-	 * so a caller's own (possibly stale) `startedAt` can never leak through instead. */
-	private withStampedStartedAt(
-		updatableColumns: UpdatableEntityColumns,
-		conditions?: UpdateExecutionConditions,
-	): UpdatableEntityColumns & { startedAt?: Date } {
-		return conditions?.stampStartedAt
-			? { ...updatableColumns, startedAt: new Date() }
-			: updatableColumns;
-	}
-
 	private async updateEntityOnly(
 		executionId: string,
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
-		const updatableColumns = this.withStampedStartedAt(
-			this.pickUpdatableEntityColumns(execution),
-			conditions,
-		);
+		const updatableColumns = this.pickUpdatableEntityColumns(execution);
 		if (Object.keys(updatableColumns).length === 0) return true;
 
 		const whereCondition = this.buildEntityWhereCondition(executionId, conditions);
@@ -768,10 +746,7 @@ export class ExecutionPersistence {
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
 		const { data, workflowData } = execution;
-		const updatableColumns = this.withStampedStartedAt(
-			this.pickUpdatableEntityColumns(execution),
-			conditions,
-		);
+		const updatableColumns = this.pickUpdatableEntityColumns(execution);
 
 		return await this.executionRepository.manager.transaction(async (tx) => {
 			const whereCondition = this.buildEntityWhereCondition(ref.executionId, conditions);
@@ -858,10 +833,9 @@ export class ExecutionPersistence {
 	 * - **Identity / routing**: `id`, `workflowId` — never updated here.
 	 * - **Stored elsewhere**: `data`, `workflowData` — persisted per the execution's
 	 *   storage location (DB rows or a blob store), not as columns on the entity row.
-	 * - **Immutable after creation**: `workflowVersionId`, `createdAt`, `startedAt` — set once
-	 *   at insert time (or, for `startedAt`, at claim time via `stampStartedAt`) and never
-	 *   overwritten by a caller's own value. A resumed execution's finishing save otherwise
-	 *   carries its *own* fresh `startedAt`, which would silently overwrite the original.
+	 * - **Immutable after creation**: `workflowVersionId`, `createdAt` — set once at insert time
+	 *   and never overwritten. `startedAt` is *not* immutable: an execution enqueued as `new` is
+	 *   inserted without one, so whoever claims it stamps it here.
 	 * - **Not persisted on the entity**: `customData` — handled separately.
 	 * - **Computed locally**: `jsonSizeBytes` and `binaryDataSizeBytes` — derived from
 	 *   the persisted bundle / run data, never trusted from the caller.
@@ -876,7 +850,6 @@ export class ExecutionPersistence {
 			workflowData: _workflowData,
 			workflowVersionId: _workflowVersionId,
 			createdAt: _createdAt,
-			startedAt: _startedAt,
 			customData: _customData,
 			jsonSizeBytes: _jsonSizeBytes,
 			binaryDataSizeBytes: _binaryDataSizeBytes,

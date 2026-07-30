@@ -69,12 +69,6 @@ export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
 	requireNotFinished?: boolean;
 	requireNotCanceled?: boolean;
-	/**
-	 * Stamp `startedAt` with the current time as part of this update, for an execution
-	 * claimed out of `new` that has never had one. `startedAt` is otherwise immutable
-	 * once set, so this is the only way to write it outside of insert.
-	 */
-	stampStartedAt?: boolean;
 }
 
 export interface IGetExecutionsQueryFilter {

@@ -26,7 +26,6 @@ import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
-import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -411,12 +410,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(N8NCheckpointStorage).init();
 		Container.get(DurableScheduler).start();
 
-		// Regular mode's own restart can strand a `new` row (main dies before it runs the
-		// row it just claimed); queue mode's main can strand one too, one step earlier
-		// (dies after committing the row, before ever enqueuing the job) — a poll's
-		// atomic commit is one such source. Only the leader scans in multi-main so every
-		// stranded row is picked up exactly once rather than raced over by every main.
-		if (!this.instanceSettings.isMultiMain || this.instanceSettings.isLeader) {
+		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();
 		}
 
@@ -539,26 +533,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			});
 
 			// do not block - each execution either runs concurrently or is queued
-			void workflowRunner
-				.run(data, undefined, false, {
-					executionId: execution.id,
-					expectedStatus: 'new',
-				})
-				.catch((error) => {
-					// A leader flip mid-scan (or, pre-multi-main-gate, another main scanning
-					// the same row) loses this claim to whichever main got there first; the
-					// row still runs, just not via this call.
-					if (error instanceof ExecutionAlreadyResumingError) {
-						this.logger.debug('[Startup] Execution already claimed by another process', {
-							executionId: execution.id,
-						});
-						return;
-					}
-					this.logger.error('[Startup] Failed to resume enqueued execution', {
-						executionId: execution.id,
-						error,
-					});
-				});
+			void workflowRunner.run(data, undefined, false, {
+				executionId: execution.id,
+				expectedStatus: 'new',
+			});
 		}
 	}
 }

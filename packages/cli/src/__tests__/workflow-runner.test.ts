@@ -270,56 +270,6 @@ describe('run', () => {
 		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
 	});
 
-	it.each([
-		{
-			existingExecution: undefined,
-			expectedRestartExecutionId: undefined,
-			description: 'a fresh execution',
-		},
-		{
-			existingExecution: { executionId: '42', expectedStatus: 'waiting' as const },
-			expectedRestartExecutionId: '42',
-			description: 'a resumed `waiting` execution',
-		},
-		{
-			existingExecution: { executionId: '42', expectedStatus: 'new' as const },
-			expectedRestartExecutionId: undefined,
-			description: 'an execution committed as `new` (e.g. by a poll)',
-		},
-	])(
-		'passes restartExecutionId $expectedRestartExecutionId for $description',
-		async ({ existingExecution, expectedRestartExecutionId }) => {
-			// ARRANGE
-			const activeExecutions = Container.get(ActiveExecutions);
-			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-			const permissionChecker = Container.get(CredentialsPermissionChecker);
-			vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
-			// @ts-expect-error Private method
-			const runMainProcessSpy = vi.spyOn(runner, 'runMainProcess').mockResolvedValue(undefined);
-
-			const data = mock<IWorkflowExecutionDataProcess>({
-				triggerToStartFrom: undefined,
-				workflowData: { nodes: [], staticData: {} },
-				executionData: undefined,
-				startNodes: undefined,
-				destinationNode: undefined,
-				runData: undefined,
-			});
-
-			// ACT
-			await runner.run(data, undefined, false, existingExecution);
-
-			// ASSERT
-			expect(runMainProcessSpy).toHaveBeenCalledWith(
-				'1',
-				data,
-				undefined,
-				expectedRestartExecutionId,
-			);
-		},
-	);
-
 	it('run partial execution with additional data', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
@@ -468,6 +418,7 @@ describe('run', () => {
 				{},
 			);
 			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
 			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
 			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
 
@@ -480,6 +431,7 @@ describe('run', () => {
 		it('still rejects on other startup errors', async () => {
 			const error = new Error('boom');
 			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
 			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
 			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
 

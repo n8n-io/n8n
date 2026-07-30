@@ -1155,13 +1155,14 @@ describe('ExecutionPersistence', () => {
 				);
 			});
 
-			it('should strip immutable fields, including a caller-supplied startedAt, before updating the entity', async () => {
+			it('should strip immutable fields before updating the entity', async () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
 				jsonStore.read.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
+				const startedAt = new Date();
 
 				await executionPersistence.updateExistingExecution(executionId, {
 					id: executionId,
@@ -1169,46 +1170,18 @@ describe('ExecutionPersistence', () => {
 					workflowId: 'other-wf',
 					workflowVersionId: 'v-new',
 					createdAt: new Date(),
-					startedAt: new Date(),
+					startedAt,
 					customData: { foo: 'bar' },
 					status: 'success',
 				});
 
-				// A caller's own `startedAt` never lands: a resumed execution's finishing
-				// save carries its own fresh one, which would otherwise overwrite the
-				// original start time. `stampStartedAt` (below) is the only way back in.
+				// `startedAt` passes through: an execution enqueued at `new` is inserted
+				// without one, so whoever claims it stamps it on update.
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ status: 'success' },
+					{ status: 'success', startedAt },
 				);
-			});
-
-			it('should stamp startedAt with the current time when stampStartedAt is requested, ignoring any caller-supplied value', async () => {
-				const executionPersistence = createPersistenceService('fs');
-				mockEntity('fs');
-				jsonStore.read.mockResolvedValue(existingBundle);
-
-				const mockTx = createMockTransaction();
-				executionRepository.manager.transaction = createMockTx(mockTx);
-
-				await executionPersistence.updateExistingExecution(
-					executionId,
-					{ data: runData, startedAt: new Date('2020-01-01'), status: 'running' },
-					{ stampStartedAt: true },
-				);
-
-				expect(mockTx.update).toHaveBeenCalledWith(
-					ExecutionEntity,
-					expect.objectContaining({ id: executionId }),
-					expect.objectContaining({ status: 'running', startedAt: expect.any(Date) as Date }),
-				);
-				const [, , updatedColumns] = mockTx.update.mock.calls[0] as [
-					unknown,
-					unknown,
-					{ startedAt: Date },
-				];
-				expect(updatedColumns.startedAt.getTime()).not.toBe(new Date('2020-01-01').getTime());
 			});
 		});
 

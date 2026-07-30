@@ -122,23 +122,23 @@ export class ActiveExecutions {
 					await capacityReservation.reserve({ mode, executionId });
 				}
 
-				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
+				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> & {
+					startedAt?: Date;
+				} = {
 					id: executionId,
 					data: executionData.executionData!,
 					waitTill: null,
 					status: executionStatus,
+					// An enqueued execution has no `startedAt` yet, so stamp it now.
+					// A resuming execution keeps the `startedAt` it already had.
+					startedAt: existingExecution.expectedStatus === 'new' ? new Date() : undefined,
 				};
 
 				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
 					executionId,
 					execution,
-					{
-						// Only claim the execution if it is still in the status the caller expected.
-						requireStatus: existingExecution.expectedStatus,
-						// An enqueued execution has no `startedAt` yet, so stamp it now. A resuming
-						// execution keeps the `startedAt` it already had.
-						stampStartedAt: existingExecution.expectedStatus === 'new',
-					},
+					// Only claim the execution if it is still in the status the caller expected
+					{ requireStatus: existingExecution.expectedStatus },
 				);
 
 				if (!updateSucceeded) {
