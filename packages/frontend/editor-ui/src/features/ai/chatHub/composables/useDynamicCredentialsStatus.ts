@@ -61,13 +61,19 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 				id,
 			);
 
+			// Refreshing must not reset in-flight connection state: authorize()
+			// verifies pending OAuth flows by re-fetching the status, and dropping
+			// `isConnecting` here would re-enable Connect mid-flow.
+			const connecting = new Set(
+				credentials.value.filter((c) => c.isConnecting).map((c) => c.credentialId),
+			);
 			credentials.value = (status.credentials ?? []).map((c) => ({
 				credentialId: c.credentialId,
 				credentialName: c.credentialName,
 				credentialType: c.credentialType,
 				credentialStatus: c.credentialStatus,
 				resolverId: parseResolverId(c.authorizationUrl),
-				isConnecting: false,
+				isConnecting: connecting.has(c.credentialId),
 				error: null,
 			}));
 		} catch {
@@ -75,6 +81,16 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 		} finally {
 			isLoading.value = false;
 		}
+	}
+
+	// fetchStatus() replaces the credential objects, so long-running flows must
+	// update state by id instead of holding on to a stale array item.
+	function updateCredentialState(
+		credentialId: string,
+		update: Partial<Pick<DynamicCredentialItem, 'isConnecting' | 'error'>>,
+	) {
+		const cred = credentials.value.find((c) => c.credentialId === credentialId);
+		if (cred) Object.assign(cred, update);
 	}
 
 	async function pollUntilConfigured(credentialId: string, maxAttempts = 10, intervalMs = 1000) {
@@ -88,10 +104,9 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 
 	async function authorize(credentialId: string) {
 		const cred = credentials.value.find((c) => c.credentialId === credentialId);
-		if (!cred) return;
+		if (!cred || cred.isConnecting) return;
 
-		cred.isConnecting = true;
-		cred.error = null;
+		updateCredentialState(credentialId, { isConnecting: true, error: null });
 
 		try {
 			const oauthUrl = await authorizeDynamicCredential(
@@ -105,13 +120,17 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 			try {
 				const parsedUrl = new URL(oauthUrl);
 				if (!allowedProtocols.includes(parsedUrl.protocol)) {
-					cred.error = 'Invalid authorization URL';
-					cred.isConnecting = false;
+					updateCredentialState(credentialId, {
+						error: 'Invalid authorization URL',
+						isConnecting: false,
+					});
 					return;
 				}
 			} catch {
-				cred.error = 'Invalid authorization URL';
-				cred.isConnecting = false;
+				updateCredentialState(credentialId, {
+					error: 'Invalid authorization URL',
+					isConnecting: false,
+				});
 				return;
 			}
 
@@ -121,8 +140,10 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 			const oauthPopup = window.open(oauthUrl, 'OAuth Authorization', params);
 
 			if (!oauthPopup) {
-				cred.error = 'Failed to start authorization';
-				cred.isConnecting = false;
+				updateCredentialState(credentialId, {
+					error: 'Failed to start authorization',
+					isConnecting: false,
+				});
 				return;
 			}
 
@@ -145,27 +166,28 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 			} else {
 				await fetchStatus();
 			}
-			cred.isConnecting = false;
+			updateCredentialState(credentialId, { isConnecting: false });
 		} catch {
-			cred.error = 'Failed to start authorization';
-			cred.isConnecting = false;
+			updateCredentialState(credentialId, {
+				error: 'Failed to start authorization',
+				isConnecting: false,
+			});
 		}
 	}
 
 	async function revoke(credentialId: string) {
 		const cred = credentials.value.find((c) => c.credentialId === credentialId);
-		if (!cred) return;
+		if (!cred || cred.isConnecting) return;
 
-		cred.isConnecting = true;
-		cred.error = null;
+		updateCredentialState(credentialId, { isConnecting: true, error: null });
 
 		try {
 			await revokeDynamicCredential(rootStore.restApiContext, credentialId, cred.resolverId);
 			await fetchStatus();
 		} catch {
-			cred.error = 'Failed to disconnect credential';
+			updateCredentialState(credentialId, { error: 'Failed to disconnect credential' });
 		} finally {
-			cred.isConnecting = false;
+			updateCredentialState(credentialId, { isConnecting: false });
 		}
 	}
 

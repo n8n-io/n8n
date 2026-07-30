@@ -709,6 +709,63 @@ describe('useCredentialOAuth', () => {
 				vi.useRealTimers();
 			}
 		});
+
+		it('should re-check the backend on timeout before treating the flow as failed', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			// Popup stays open, no callback message ever arrives: the flow times
+			// out just as the backend commits the token.
+			MockBroadcastChannel.noopEventListener = true;
+			credentialsStore.getCredentialData
+				.mockResolvedValueOnce(undefined) // pre-flow snapshot: no token yet
+				.mockResolvedValue({
+					data: { oauthTokenData: '__n8n_BLANK_VALUE' },
+				} as unknown as ICredentialsResponse);
+
+			vi.useFakeTimers();
+			try {
+				const { authorize } = useCredentialOAuth();
+				const promise = authorize(mockCredential);
+
+				await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1000);
+
+				await expect(promise).resolves.toBe(true);
+				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should not verify end-user (resolvable) credentials by token presence', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			mockPopup.closed = true;
+			MockBroadcastChannel.noopEventListener = true;
+			// Would read as an immediate false success if verification ran: for
+			// resolvable credentials the shared blueprint data never carries the
+			// per-user token.
+			credentialsStore.getCredentialData.mockResolvedValue({
+				data: { oauthTokenData: '__n8n_BLANK_VALUE' },
+			} as unknown as ICredentialsResponse);
+
+			vi.useFakeTimers();
+			try {
+				const controller = new AbortController();
+				const { authorize } = useCredentialOAuth();
+				const promise = authorize({ ...mockCredential, isResolvable: true }, controller.signal);
+				let resolved = false;
+				void promise.then(() => (resolved = true));
+
+				await vi.advanceTimersByTimeAsync(5000);
+				expect(resolved).toBe(false);
+				expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
+
+				controller.abort();
+				await expect(promise).resolves.toBe(false);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	describe('createAndAuthorize', () => {

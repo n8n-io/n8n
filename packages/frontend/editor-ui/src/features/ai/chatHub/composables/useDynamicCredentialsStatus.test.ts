@@ -319,6 +319,53 @@ describe('useDynamicCredentialsStatus', () => {
 			vi.unstubAllGlobals();
 		});
 
+		it('should keep isConnecting while backend verification refreshes the status', async () => {
+			vi.useFakeTimers();
+
+			const workflowId = ref<string | null>('wf-1');
+			const { credentials, authorize } = useDynamicCredentialsStatus(workflowId);
+
+			await vi.waitFor(() => {
+				expect(credentials.value).toHaveLength(2);
+			});
+
+			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
+			const mockPopup = { closed: false, close: vi.fn() };
+			vi.stubGlobal(
+				'open',
+				vi.fn(() => mockPopup),
+			);
+
+			const authorizePromise = authorize('cred-1');
+			mockPopup.closed = true;
+
+			// Several verification rounds while the flow is pending: the refreshed
+			// status must not reset the credential back to a connectable state.
+			mockFetchWorkflowExecutionStatus.mockResolvedValue(createExecutionStatus());
+			await vi.advanceTimersByTimeAsync(500 + 2 * 2000);
+			expect(credentials.value[0].isConnecting).toBe(true);
+
+			mockFetchWorkflowExecutionStatus.mockResolvedValue(
+				createExecutionStatus({
+					credentials: [
+						{
+							credentialId: 'cred-1',
+							credentialName: 'Google Sheets',
+							credentialType: 'googleSheetsOAuth2Api',
+							credentialStatus: 'configured',
+						},
+					],
+				}),
+			);
+			await vi.advanceTimersByTimeAsync(2000);
+			await authorizePromise;
+
+			expect(credentials.value[0].isConnecting).toBe(false);
+
+			vi.useRealTimers();
+			vi.unstubAllGlobals();
+		});
+
 		it('should stop waiting at the flow timeout if never configured', async () => {
 			vi.useFakeTimers();
 

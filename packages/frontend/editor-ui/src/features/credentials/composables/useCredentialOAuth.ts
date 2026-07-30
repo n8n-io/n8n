@@ -222,10 +222,12 @@ export function useCredentialOAuth() {
 		credential: ICredentialsResponse,
 		signal?: AbortSignal,
 	): Promise<boolean> {
-		// Snapshot before opening the popup: token presence can only confirm the
-		// flow for credentials that had no token yet (a reconnect's old token
-		// would read as an immediate false success).
-		const hadTokenData = await isConnected(credential.id);
+		// Token presence in credential data can only confirm the flow for fixed
+		// credentials that had no token before the popup opened: a reconnect's old
+		// token would read as an immediate false success, and end-user
+		// (resolvable) credentials store tokens per user outside the credential
+		// data, so presence never changes there.
+		const canVerifyConnected = !credential.isResolvable && !(await isConnected(credential.id));
 
 		const urlResult = await getOAuthAuthorizationUrl(credential);
 		if (!urlResult.ok) {
@@ -244,12 +246,22 @@ export function useCredentialOAuth() {
 			return false;
 		}
 
-		const outcome = await waitForOAuthCallback({
+		let outcome = await waitForOAuthCallback({
 			popup,
 			trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
 			signal,
-			verifyConnected: hadTokenData ? undefined : async () => await isConnected(credential.id),
+			verifyConnected: canVerifyConnected
+				? async () => await isConnected(credential.id)
+				: undefined,
 		});
+
+		// The timeout can race the backend committing the token (authorization can
+		// legitimately take longer). Re-check before treating the flow as failed —
+		// a wrong failure deletes the credential in createAndAuthorize and would
+		// resurface "Credential not found" on the callback page.
+		if (outcome === 'timeout' && canVerifyConnected && (await isConnected(credential.id))) {
+			outcome = 'success';
+		}
 
 		// No-op when the opener relationship was severed by the provider's COOP
 		// policy; the callback page closes itself in that case.

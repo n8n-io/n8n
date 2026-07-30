@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
@@ -166,6 +166,12 @@ const requiredCredentials = ref(false); // Are credentials required or optional 
 const contentRef = ref<HTMLDivElement>();
 const isSharedGlobally = ref(false);
 const pendingAuthType = ref<string | null>(null);
+// Pending OAuth connect flow; aborted on re-click and on unmount so its
+// listeners and backend polling don't outlive the modal.
+const oauthFlowAbortController = ref<AbortController | null>(null);
+onBeforeUnmount(() => {
+	oauthFlowAbortController.value?.abort();
+});
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
 
 // The credential editor can open outside the workflow editor (e.g. the
@@ -1055,9 +1061,11 @@ async function oAuthCredentialAuthorize() {
 		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
 	const oauthPopup = window.open(url, 'OAuth Authorization', params);
 
-	// Token presence can only confirm the flow when there was no token yet; a
-	// reconnect's old token would read as an immediate false success.
-	const hadTokenData = isOAuthTokenDataSet(credentialData.value);
+	// Token presence in credential data can only confirm the flow when there was
+	// no token yet (a reconnect's old token would read as an immediate false
+	// success) and only for fixed credentials — end-user (resolvable)
+	// credentials store tokens per user outside the credential data.
+	const canVerifyConnected = !credential.isResolvable && !isOAuthTokenDataSet(credentialData.value);
 
 	credentialData.value = {
 		...credentialData.value,
@@ -1112,14 +1120,25 @@ async function oAuthCredentialAuthorize() {
 		return;
 	}
 
+	// Supersede any previous pending flow so a re-click doesn't leave a second
+	// set of listeners alive; unmounting the modal aborts too (onBeforeUnmount).
+	oauthFlowAbortController.value?.abort();
+	const abortController = new AbortController();
+	oauthFlowAbortController.value = abortController;
+
 	const outcome = await waitForOAuthCallback({
 		popup: oauthPopup,
 		trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
-		verifyConnected: hadTokenData
-			? undefined
-			: async () =>
-					hasOAuthTokenData(await credentialsStore.getCredentialData({ id: credential.id })),
+		signal: abortController.signal,
+		verifyConnected: canVerifyConnected
+			? async () =>
+					hasOAuthTokenData(await credentialsStore.getCredentialData({ id: credential.id }))
+			: undefined,
 	});
+
+	// A superseded or unmounted flow must not report a result: its telemetry
+	// and UI side effects would describe a flow the user is no longer running.
+	if (outcome === 'aborted') return;
 
 	handleOAuthResult(outcome === 'success');
 }
