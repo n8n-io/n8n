@@ -603,6 +603,7 @@ export class TaskBroker {
 			}
 			if (e instanceof TaskRunnerAcceptTimeoutError) {
 				this.logger.warn(e.message);
+				this.runnerAcceptRejects.delete(taskId);
 				return;
 			}
 			throw e;

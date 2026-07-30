@@ -1076,6 +1076,19 @@ describe('TaskBroker', () => {
 				expect.stringContaining('Runner (runner1) took too long to acknowledge acceptance of task'),
 			);
 		});
+
+		it('should stop tracking the acknowledgment that timed out', async () => {
+			taskBroker = new TaskBroker(mock<Logger>(), mock(), mock(), mock());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+
+			await expectAcceptTimeout(offerFor('runner1', 'offer1'), {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+			});
+
+			expect(taskBroker.getRunnerAcceptRejects().size).toBe(0);
+		});
 	});
 
 	describe('request timeout', () => {
