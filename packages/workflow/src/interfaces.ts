@@ -1521,6 +1521,11 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * established). Used by the MCP trigger to gate a tool call before execution.
 	 */
 	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
+	/**
+	 * Runs `fn` in an expression-isolate window. For triggers whose work can outlive the
+	 * request that started it, by which point the caller's own window may have closed.
+	 */
+	withExpressionIsolate<T>(fn: () => Promise<T>): Promise<T>;
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,

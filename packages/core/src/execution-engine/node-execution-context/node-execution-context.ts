@@ -103,6 +103,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.workflow.getStaticData(type, this.node);
 	}
 
+	async withExpressionIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		return await this.workflow.expression.withIsolate(fn);
+	}
+
 	getChildNodes(nodeName: string, options?: { includeNodeParameters?: boolean }) {
 		const output: NodeTypeAndVersion[] = [];
 		const nodeNames = this.workflow.getChildNodes(nodeName);

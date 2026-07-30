@@ -1399,4 +1399,47 @@ describe('Expression', () => {
 			expect(result).toBe('HELLO');
 		});
 	});
+
+	describe('withIsolate()', () => {
+		const setup = () => {
+			const expression = new Expression('UTC');
+			return {
+				expression,
+				acquire: vi.spyOn(expression, 'acquireIsolate'),
+				release: vi.spyOn(expression, 'releaseIsolate').mockResolvedValue(),
+			};
+		};
+
+		it('should acquire before the callback and release after when newly acquired', async () => {
+			const { expression, acquire, release } = setup();
+			acquire.mockResolvedValue(true);
+			const fn = vi.fn().mockResolvedValue('result');
+
+			await expect(expression.withIsolate(fn)).resolves.toBe('result');
+
+			expect(acquire.mock.invocationCallOrder[0]).toBeLessThan(fn.mock.invocationCallOrder[0]);
+			expect(release.mock.invocationCallOrder[0]).toBeGreaterThan(fn.mock.invocationCallOrder[0]);
+		});
+
+		it('should release when the callback throws', async () => {
+			const { expression, acquire, release } = setup();
+			acquire.mockResolvedValue(true);
+			const error = new Error('boom');
+
+			await expect(expression.withIsolate(async () => await Promise.reject(error))).rejects.toThrow(
+				error,
+			);
+
+			expect(release).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not release an isolate the caller already held', async () => {
+			const { expression, acquire, release } = setup();
+			acquire.mockResolvedValue(false);
+
+			await expression.withIsolate(async () => await Promise.resolve());
+
+			expect(release).not.toHaveBeenCalled();
+		});
+	});
 });
