@@ -23,7 +23,7 @@ const MCP_SSE_MESSAGES_PATH = 'messages';
  * the request's expression-isolate window. Give each invocation its own; a no-op when the
  * caller's window is still open.
  */
-function bracketToolsWithIsolate(context: IWebhookFunctions, tools: Tool[]): Tool[] {
+function wrapToolsWithIsolate(context: IWebhookFunctions, tools: Tool[]): Tool[] {
 	for (const tool of tools) {
 		const invoke = tool.invoke.bind(tool);
 		tool.invoke = async (input, config) =>
@@ -219,10 +219,7 @@ export class McpTrigger extends Node {
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
 					: req.path;
 
-			const connectedTools = bracketToolsWithIsolate(
-				context,
-				await getConnectedTools(context, true),
-			);
+			const connectedTools = wrapToolsWithIsolate(context, await getConnectedTools(context, true));
 			await mcpServer.handleSetupRequest(req, resp, serverName, postUrl, connectedTools);
 
 			return { noWebhookResponse: true };
@@ -235,7 +232,7 @@ export class McpTrigger extends Node {
 				context.logger.debug('MCP POST request received for existing session');
 
 				if (sessionId) {
-					const connectedTools = bracketToolsWithIsolate(
+					const connectedTools = wrapToolsWithIsolate(
 						context,
 						await getConnectedTools(context, true),
 					);
@@ -276,7 +273,7 @@ export class McpTrigger extends Node {
 						};
 					}
 				} else {
-					const connectedTools = bracketToolsWithIsolate(
+					const connectedTools = wrapToolsWithIsolate(
 						context,
 						await getConnectedTools(context, true),
 					);
