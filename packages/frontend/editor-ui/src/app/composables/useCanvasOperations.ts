@@ -37,6 +37,8 @@ import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormaliza
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
@@ -56,6 +58,7 @@ import {
 import * as workflowsApi from '@/app/api/workflows';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { getAutoSelectedCredential } from '@/features/credentials/credentials.utils';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -1165,6 +1168,41 @@ export function useCanvasOperations() {
 		});
 
 		return nodeData;
+	}
+
+	/**
+	 * Auto-select a default credential for pasted/imported nodes that have none.
+	 * HTTP Request nodes are skipped: their credentials are generic (any API can
+	 * use e.g. header auth), so silently binding one is likely wrong. The setup
+	 * panel excludes them for the same reason.
+	 */
+	function autoSelectNodeCredentials(nodes: INode[]) {
+		const autoSelected = nodes.flatMap((node) => {
+			if (node.type === HTTP_REQUEST_NODE_TYPE || node.type === HTTP_REQUEST_TOOL_NODE_TYPE) {
+				return [];
+			}
+
+			const selection = getAutoSelectedCredential(node);
+			if (!selection) return [];
+
+			node.credentials = {
+				...(node.credentials ?? {}),
+				[selection.credentialType]: selection.credential,
+			};
+			return { nodeName: node.name, credentialName: selection.credential.name };
+		});
+		if (autoSelected.length === 0) return;
+
+		const single = autoSelected.length === 1 ? autoSelected[0] : undefined;
+		toast.showMessage({
+			type: 'info',
+			title: i18n.baseText('nodeView.showMessage.credentialsAutoAdded.title'),
+			message: single
+				? i18n.baseText('nodeView.showMessage.credentialsAutoAdded.message.single', {
+						interpolate: { credentialName: single.credentialName, nodeName: single.nodeName },
+					})
+				: i18n.baseText('nodeView.showMessage.credentialsAutoAdded.message.multiple'),
+		});
 	}
 
 	async function revertAddNode(nodeName: string) {
@@ -2998,6 +3036,7 @@ export function useCanvasOperations() {
 			}
 
 			removeUnknownCredentials(workflowData);
+			autoSelectNodeCredentials(workflowData.nodes ?? []);
 
 			try {
 				if (trackEvents) {
