@@ -29,6 +29,7 @@ describe('PollTriggerExecutor', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
+		pollFunctions.__runPoll.mockImplementation(async (poll) => await poll());
 		acquireIsolate = vi.fn().mockResolvedValue(undefined);
 		releaseIsolate = vi.fn().mockResolvedValue(undefined);
 		workflow = mock<Workflow>({ id: 'wf-id', name: 'My Workflow' });
@@ -159,6 +160,47 @@ describe('PollTriggerExecutor', () => {
 			await execute();
 
 			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+		});
+
+		it('runs the poll, the emit and the commit inside one __runPoll scope', async () => {
+			const calls: string[] = [];
+			pollFunctions.__runPoll.mockImplementation(async (poll) => {
+				calls.push('scope-open');
+				const result = await poll();
+				calls.push('scope-close');
+				return result;
+			});
+			triggersAndPollers.runPollFunction.mockImplementationOnce(async () => {
+				calls.push('poll');
+				return null;
+			});
+			pollFunctions.__commitCursor.mockImplementationOnce(async () => {
+				calls.push('commit');
+			});
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute();
+
+			expect(calls).toEqual(['scope-open', 'poll', 'commit', 'scope-close']);
+		});
+
+		it('emits inside the __runPoll scope', async () => {
+			const calls: string[] = [];
+			pollFunctions.__runPoll.mockImplementation(async (poll) => {
+				calls.push('scope-open');
+				const result = await poll();
+				calls.push('scope-close');
+				return result;
+			});
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce([[{ json: { ok: true } }]]);
+			pollFunctions.__emit.mockImplementationOnce(() => {
+				calls.push('emit');
+			});
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute();
+
+			expect(calls).toEqual(['scope-open', 'emit', 'scope-close']);
 		});
 
 		it('does not commit the cursor when the poll throws', async () => {

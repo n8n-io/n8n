@@ -9,6 +9,7 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
+import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import { isPollTriggerTaskPayload, POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
@@ -19,6 +20,7 @@ describe('PollTriggerTaskHandler', () => {
 	const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const pollCursorService = mock<PollCursorService>({ enabled: true });
 
 	const scopedLogger = mock<Logger>();
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
@@ -28,6 +30,7 @@ describe('PollTriggerTaskHandler', () => {
 		triggerExecutionContextFactory,
 		triggersAndPollers,
 		workflowRepository,
+		pollCursorService,
 	);
 
 	const onDispatch = vi.fn();
@@ -103,6 +106,7 @@ describe('PollTriggerTaskHandler', () => {
 		const workflowData = buildWorkflowData();
 		workflow = buildWorkflow(workflowData);
 		pollFunctions = mock<IPollFunctions>();
+		pollFunctions.__runPoll.mockImplementation(async (poll) => await poll());
 
 		triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(workflowData);
 		triggerExecutionContextFactory.createPollExecutionContext.mockResolvedValue({
@@ -255,16 +259,84 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
 		});
 
-		test('routes a failing cursor commit to the error workflow', async () => {
+		test('logs a failing cursor commit instead of routing it to the error workflow', async () => {
 			triggersAndPollers.runPollFunction.mockResolvedValue(null);
 			const commitError = new Error('poller state write failed');
 			pollFunctions.__commitCursor.mockRejectedValue(commitError);
 
 			await handler.execute(buildTask(), report);
 
-			expect(pollFunctions.__emitError).toHaveBeenCalledWith(commitError);
-			expect(onDispatch).toHaveBeenCalledTimes(1);
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(scopedLogger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to commit the poll cursor'),
+				expect.objectContaining({ workflowId: 'wf-1', nodeId: 'node-1', error: commitError }),
+			);
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('durable cursors disabled', () => {
+		beforeEach(() => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(false);
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+		});
+
+		test('neither commits the cursor nor queries the stored active state on an empty poll', async () => {
+			await handler.execute(buildTask(), report);
+
+			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+			expect(workflowRepository.isActive).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+		});
+
+		test('still queries the stored active state when the poll returns data', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValue(pollData);
+
+			await handler.execute(buildTask(), report);
+
+			expect(workflowRepository.isActive).toHaveBeenCalledWith('wf-1');
+			expect(pollFunctions.__emit).toHaveBeenCalledWith(pollData);
+		});
+	});
+
+	describe('staged cursor scope', () => {
+		test('runs poll(), the emit and the commit inside one __runPoll scope', async () => {
+			const calls: string[] = [];
+			pollFunctions.__runPoll.mockImplementation(async (poll) => {
+				calls.push('scope-open');
+				const result = await poll();
+				calls.push('scope-close');
+				return result;
+			});
+			triggersAndPollers.runPollFunction.mockImplementation(async () => {
+				calls.push('poll');
+				return null;
+			});
+			pollFunctions.__commitCursor.mockImplementation(async () => {
+				calls.push('commit');
+			});
+
+			await handler.execute(buildTask(), report);
+
+			expect(calls).toEqual(['scope-open', 'poll', 'commit', 'scope-close']);
+		});
+
+		test('emits inside the __runPoll scope', async () => {
+			const calls: string[] = [];
+			pollFunctions.__runPoll.mockImplementation(async (poll) => {
+				calls.push('scope-open');
+				const result = await poll();
+				calls.push('scope-close');
+				return result;
+			});
+			pollFunctions.__emit.mockImplementation(() => {
+				calls.push('emit');
+			});
+
+			await handler.execute(buildTask(), report);
+
+			expect(calls).toEqual(['scope-open', 'emit', 'scope-close']);
 		});
 	});
 
