@@ -83,7 +83,6 @@ import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-c
 import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
 import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
 import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
-import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
 
 /**
  * Pending MCP execution response, used for queue mode support.
@@ -481,11 +480,6 @@ export class McpService {
 			this.telemetry,
 		);
 		registerIfAllowed(exploreNodeResourcesTool);
-
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
-		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
 		registerIfAllowed(validateNodeTool);

@@ -2,7 +2,7 @@ import { type Project, type ProjectRepository, type User, WorkflowEntity } from 
 import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
 import {
 	autoPopulateNodeCredentials,
@@ -10,6 +10,7 @@ import {
 	trackAutoassignOutcomes,
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import { collectNodeGroupViolations } from './node-group-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
 	buildCreateVersionMetadata,
@@ -37,12 +38,10 @@ const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
 export type CreateWorkflowFromCodeToolOptions = {
 	/**
 	 * `102_mcp_canvas_groups` rollout flag: when true, node groups authored in the
-	 * SDK code (`.group(...)`) are persisted on the created workflow. Off by
-	 * default — groups are then dropped at the entity assembly, exactly like
-	 * before groups were supported. Note that with the flag on, invalid groups
-	 * fail the creation: `WorkflowCreationService.createWorkflow` rejects them
-	 * with the same messages the `validate_workflow` tool reports as errors,
-	 * so agents can catch group problems before calling this tool.
+	 * SDK code (`.group(...)`) are persisted on the created workflow, and invalid
+	 * groups fail the creation with ALL violations reported (the save path alone
+	 * would throw only the first). Off by default — groups are then dropped at
+	 * the entity assembly, exactly like before groups were supported.
 	 */
 	canvasGroupsEnabled?: boolean;
 };
@@ -63,7 +62,7 @@ const inputSchema = {
 	code: z
 		.string()
 		.describe(
-			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
+			'Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must include the workflow export.',
 		),
 	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	name: z
@@ -186,7 +185,8 @@ export const createCreateWorkflowFromCodeTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
+		description:
+			"Create a workflow in n8n from n8n Workflow SDK code. The code is parsed and validated before saving — when validation fails, nothing is created and the errors are returned so you can fix the code and call this tool again. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).",
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -269,6 +269,70 @@ export const createCreateWorkflowFromCodeTool = (
 				telemetry,
 			);
 			if (invalidToolSourceResponse) return invalidToolSourceResponse;
+
+			// Fatal validation issues (the validators' `errors` arrays — e.g. missing
+			// required subnodes, hardcoded credentials, malformed node configs) block
+			// the creation. Advisory warnings still pass through and are surfaced on
+			// the success response. This tool is the validation gate: there is no
+			// separate pre-flight validate tool, so nothing may be persisted when the
+			// SDK validators report the workflow as broken.
+			const validationErrors = result.errors ?? [];
+			if (validationErrors.length > 0) {
+				const errorMessage = [
+					'Workflow validation failed. Fix the following and call this tool again:',
+					...validationErrors.map((error) => `- ${error.message}`),
+				].join('\n');
+
+				telemetryPayload.results = {
+					success: false,
+					error: errorMessage,
+					data: {
+						validationErrorCount: validationErrors.length,
+						validationErrorCodes: [...new Set(validationErrors.map((error) => error.code))],
+					},
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+				const output = { error: errorMessage };
+				return {
+					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+					structuredContent: output,
+					isError: true,
+				};
+			}
+
+			// `102_mcp_canvas_groups` rollout: reject group violations before the
+			// save path does. `createWorkflow` would throw only the first violation;
+			// checking here reports ALL of them, so agents can fix every group
+			// problem in a single round trip. Flag off: groups are dropped at entity
+			// assembly below, so there is nothing to validate.
+			if (options.canvasGroupsEnabled) {
+				const groupViolations = collectNodeGroupViolations(workflowJson, nodeTypes);
+				if (groupViolations.length > 0) {
+					const errorMessage = [
+						'Workflow node groups are invalid. Fix the following and call this tool again:',
+						...groupViolations.map((violation) => `- ${violation.message}`),
+					].join('\n');
+
+					telemetryPayload.results = {
+						success: false,
+						error: groupViolations.map((violation) => violation.message).join(' '),
+						data: {
+							groupCount: workflowJson.nodeGroups?.length ?? 0,
+							groupViolationCount: groupViolations.length,
+							groupViolationCodes: [...new Set(groupViolations.map((violation) => violation.code))],
+						},
+					};
+					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+					const output = { error: errorMessage };
+					return {
+						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+						structuredContent: output,
+						isError: true,
+					};
+				}
+			}
 
 			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
@@ -463,7 +527,7 @@ export const createCreateWorkflowFromCodeTool = (
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			const hint = getSdkReferenceHint(error, {
-				afterReference: `Rewrite the code, call ${CODE_BUILDER_VALIDATE_TOOL.toolName} until it returns valid=true, then call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} again.`,
+				afterReference: `Rewrite the code, then call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} again.`,
 			});
 			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
 

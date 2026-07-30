@@ -104,6 +104,10 @@ describe('ParseValidateHandler', () => {
 			expect(result.warnings[0].code).toBe('ERR001');
 			expect(result.warnings[0].message).toBe('Graph error');
 			expect(result.warnings[0].nodeName).toBe('TestNode');
+			// ...and exposed separately so consumers can hard-block on them
+			expect(result.errors).toEqual([
+				{ code: 'ERR001', message: 'Graph error', nodeName: 'TestNode' },
+			]);
 		});
 
 		it('should collect warnings from graph validation', async () => {
@@ -132,6 +136,8 @@ describe('ParseValidateHandler', () => {
 
 			expect(result.warnings).toHaveLength(1);
 			expect(result.warnings[0].code).toBe('WARN001');
+			// Plain warnings are not fatal — the errors channel stays empty.
+			expect(result.errors).toEqual([]);
 		});
 
 		it('should collect warnings from JSON validation', async () => {
@@ -191,6 +197,10 @@ describe('ParseValidateHandler', () => {
 			expect(result.warnings[0].code).toBe('JSON_ERR');
 			expect(result.warnings[0].message).toBe('JSON validation error');
 			expect(result.warnings[0].nodeName).toBe('TestNode');
+			// ...and exposed separately so consumers can hard-block on them
+			expect(result.errors).toEqual([
+				{ code: 'JSON_ERR', message: 'JSON validation error', nodeName: 'TestNode' },
+			]);
 		});
 
 		it('should collect both errors and warnings from JSON validation', async () => {

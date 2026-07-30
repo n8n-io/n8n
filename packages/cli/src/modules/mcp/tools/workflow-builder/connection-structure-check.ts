@@ -151,8 +151,8 @@ export function createNodeOutputsResolver(nodeTypes: NodeTypes): NodeOutputsReso
  * `null` when the workflow is clean so the caller can continue normally.
  *
  * The caller controls the structured output shape via `buildOutput`, since
- * `validate_workflow_code` returns `{ valid: false, errors: [...] }` while
- * `create_workflow_from_code` returns `{ error }`.
+ * the create and update tools declare different error fields in their output
+ * schemas.
  */
 export function buildInvalidAiToolSourceErrorResponse<T extends Record<string, unknown>>(
 	workflow: WorkflowForToolSourceCheck,
