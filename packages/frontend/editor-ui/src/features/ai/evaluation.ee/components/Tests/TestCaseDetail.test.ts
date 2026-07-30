@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -87,7 +88,7 @@ vi.mock('@/features/execution/executions/executions.store', () => ({
 vi.mock('./TestCaseRunResult.vue', () => ({
 	default: {
 		name: 'TestCaseRunResult',
-		props: ['index', 'expanded', 'separated', 'pending'],
+		props: ['index', 'expanded', 'separated'],
 		template: '<div :data-test-id="`stub-run-result-${index}`" />',
 	},
 }));
@@ -123,6 +124,39 @@ describe('TestCaseDetail', () => {
 		const { getByTestId } = renderComponent();
 		await userEvent.click(getByTestId('tests-detail-run'));
 		expect(mockPersistAndRunCase).toHaveBeenCalledWith('initial');
+	});
+
+	// The Config pane's collapse state lives on the reka-ui CollapsibleContent
+	// wrapping our config content.
+	function configPaneState(container: Element): string | null | undefined {
+		return container
+			.querySelector('[data-test-id="tests-detail-config"]')
+			?.closest('[data-state]')
+			?.getAttribute('data-state');
+	}
+
+	it('collapses the Config pane once a run dispatches successfully', async () => {
+		setup();
+		const { getByTestId, container } = renderComponent();
+		expect(configPaneState(container)).toBe('open');
+
+		await userEvent.click(getByTestId('tests-detail-run'));
+
+		// handleRun collapses Config only after persistAndRunCase resolves true.
+		await waitFor(() => expect(configPaneState(container)).toBe('closed'));
+	});
+
+	it('leaves the Config pane open when the run fails to dispatch', async () => {
+		setup();
+		mockPersistAndRunCase.mockResolvedValueOnce(false);
+		const { getByTestId, container } = renderComponent();
+
+		await userEvent.click(getByTestId('tests-detail-run'));
+
+		// Let the (failed) handler settle, then confirm Config was never collapsed —
+		// otherwise the user is stranded on a closed pane with no result to show.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(configPaneState(container)).toBe('open');
 	});
 
 	it('returns to the list when the breadcrumb root is clicked', async () => {

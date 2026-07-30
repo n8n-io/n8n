@@ -40,11 +40,8 @@ const props = withDefaults(
 		expanded?: boolean;
 		// Draw a full-bleed top separator — used when embedded below a card's title.
 		separated?: boolean;
-		// A run has been triggered but may not be in the store yet: show the running
-		// state instead of nothing while the result loads (detail "Latest run" pane).
-		pending?: boolean;
 	}>(),
-	{ expanded: false, separated: false, pending: false },
+	{ expanded: false, separated: false },
 );
 
 const locale = useI18n();
@@ -190,9 +187,9 @@ const failureReason = computed(() => {
 </script>
 
 <template>
-	<!-- Running (or a triggered run not yet loaded into the store) -->
+	<!-- Running -->
 	<div
-		v-if="isRunning || (pending && !hasResult)"
+		v-if="isRunning"
 		:class="[$style.runSection, { [$style.separated]: separated }]"
 		:data-test-id="`tests-result-running-${index}`"
 	>

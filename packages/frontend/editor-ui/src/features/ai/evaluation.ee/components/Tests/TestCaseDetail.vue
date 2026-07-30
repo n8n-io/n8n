@@ -207,12 +207,15 @@ const runResultIndex = computed<number | null>(() =>
 );
 
 async function handleRun() {
-	configOpen.value = false;
-	runOpen.value = true;
+	// The Run button shows its own loading state during the persist chain, so keep
+	// Config open until the run has actually landed. Collapsing it only on success
+	// avoids stranding it closed if the dispatch fails, and means the Latest-run
+	// pane is only revealed once the store has the run to show (no empty gap).
 	const ok = await persistAndRunCase(activeRunId.value ? 'run_again' : 'initial');
-	// If the run never dispatched there's no result pane to show — reopen Config
-	// so the user isn't left staring at a collapsed pane with no feedback.
-	if (!ok) configOpen.value = true;
+	if (ok) {
+		configOpen.value = false;
+		runOpen.value = true;
+	}
 }
 </script>
 
@@ -387,10 +390,8 @@ async function handleRun() {
 				:title="locale.baseText('evaluations.tests.detail.latestRun')"
 			>
 				<div :class="$style.paneContent" data-test-id="tests-detail-results">
-					<!-- Only fetch/show the full run output while the pane is open.
-					     `pending` keeps the pane from flashing empty in the window between
-					     dispatch and the run appearing in the store. -->
-					<TestCaseRunResult :index="runResultIndex" :expanded="runOpen" pending />
+					<!-- Only fetch/show the full run output while the pane is open. -->
+					<TestCaseRunResult :index="runResultIndex" :expanded="runOpen" />
 				</div>
 			</N8nCollapsiblePanel>
 		</div>
