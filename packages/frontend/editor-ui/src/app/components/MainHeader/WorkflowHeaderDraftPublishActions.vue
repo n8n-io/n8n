@@ -61,7 +61,10 @@ import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequir
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { useWorkflowReviewStatusSync } from '@/features/workflow-reviews/composables/useWorkflowReviewStatusSync';
 import { useWorkflowReviewDialogPreferences } from '@/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences';
-import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
+import {
+	REVIEW_INBOX_QUERY_PARAM,
+	WORKFLOW_REVIEW_REQUESTS_VIEW,
+} from '@/features/workflow-reviews/constants';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -300,12 +303,17 @@ const onReviewConflict = () => {
 };
 
 const onOpenReviewFromBanner = async () => {
-	const reviewRequestId = latestReviewRequest.value?.id;
-	if (!reviewRequestId) return;
+	const review = latestReviewRequest.value;
+	if (!review) return;
 
 	await router.push({
 		name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-		params: { reviewRequestId },
+		params: { reviewRequestId: review.id },
+		// The inbox opens on its "Open" tab, so a closed review would land in a list
+		// that cannot contain its card. Keyed off the review's own state rather than
+		// an approved decision, so any way a review gets closed still lands right.
+		query:
+			review.state === 'closed' ? { [REVIEW_INBOX_QUERY_PARAM.state]: review.state } : undefined,
 	});
 };
 

@@ -31,12 +31,16 @@ import {
 	LOCAL_STORAGE_WORKFLOW_REVIEW_SUBMITTED_DIALOG_HIDDEN,
 } from '@/app/constants/localStorage';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import {
 	createWorkflowReviewRequest,
 	fetchWorkflowReviewRequests,
 	updateWorkflowReviewRequestVersion,
 } from '@/features/workflow-reviews/workflowReviews.api';
 import { ResponseError } from '@n8n/rest-api-client';
+
+// Hoisted: the vue-router mock factory runs before module-level consts initialize
+const { mockRouterPush } = vi.hoisted(() => ({ mockRouterPush: vi.fn() }));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -46,7 +50,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	}),
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
-		push: vi.fn().mockResolvedValue(undefined),
+		push: mockRouterPush,
 		currentRoute: {
 			value: {
 				params: { workflowId: 'test' },
@@ -234,6 +238,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
 		mockPublishWorkflow.mockClear();
 		mockPublishWorkflow.mockResolvedValue({ success: true });
+		mockRouterPush.mockClear();
+		mockRouterPush.mockResolvedValue(undefined);
 		vi.mocked(createWorkflowReviewRequest).mockResolvedValue({
 			id: 'review-1',
 			state: 'open',
@@ -1260,6 +1266,32 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(getByTestId('workflow-review-open-review-button')).toBeEnabled();
 			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+		});
+
+		it.each([
+			{
+				name: 'an open review, leaving the inbox on its default tab',
+				seed: () => seedLatestReview(),
+				query: undefined,
+			},
+			{
+				name: 'a closed review, selecting the closed inbox tab',
+				seed: seedApprovedUnpublishedReview,
+				query: { state: 'closed' },
+			},
+		])('opens $name', async ({ seed, query }) => {
+			setWorkflowReviewGates();
+			seed();
+
+			const { pill, getByTestId } = await renderWithBanner();
+			await userEvent.click(pill);
+			await userEvent.click(getByTestId('workflow-review-open-review-button'));
+
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+				params: { reviewRequestId: 'req-1' },
+				query,
+			});
 		});
 
 		it('retries publishing the approved pinned version, then refreshes the status', async () => {
