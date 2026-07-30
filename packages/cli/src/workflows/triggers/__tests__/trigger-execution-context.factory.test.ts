@@ -506,13 +506,16 @@ describe('TriggerExecutionContextFactory', () => {
 		const activation: WorkflowActivateMode = 'activate';
 		const pollData: INodeExecutionData[][] = [[{ json: { id: 1 } }]];
 
+		type RunnablePollFunctions = IPollFunctions &
+			Required<Pick<IPollFunctions, '__runPoll' | '__commitCursor'>>;
+
 		const buildWorkflow = () => {
 			const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' });
 			workflow.getStaticData.mockReturnValue({});
 			return workflow;
 		};
 
-		const buildContext = (workflow: Workflow, node: INode) => {
+		const buildContext = (workflow: Workflow, node: INode): RunnablePollFunctions => {
 			const getPollFunctions = factory.getExecutePollFunctions(
 				mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
 				additionalData,
@@ -520,7 +523,13 @@ describe('TriggerExecutionContextFactory', () => {
 				activation,
 				async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
 			);
-			return getPollFunctions(workflow, node, additionalData, mode, activation);
+			return getPollFunctions(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+			) as RunnablePollFunctions;
 		};
 
 		beforeEach(() => {
@@ -727,13 +736,32 @@ describe('TriggerExecutionContextFactory', () => {
 			});
 		});
 
-		test('discards and reports a cursor staged outside a poll', async () => {
+		test('throws when a cursor is staged outside of a poll', () => {
 			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
 			const workflow = buildWorkflow();
 			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
 			const context = buildContext(workflow, node);
 
-			context.setCursor({ lastItemId: 'a' });
+			expect(() => context.setCursor({ lastItemId: 'a' })).toThrow(UnexpectedError);
+		});
+
+		test('discards and warns when a cursor is staged by a callback that outlives its poll', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+			let lateSetCursor!: Promise<void>;
+
+			await context.__runPoll(async () => {
+				lateSetCursor = new Promise((resolve) => {
+					setTimeout(() => {
+						context.setCursor({ lastItemId: 'late' });
+						resolve();
+					}, 0);
+				});
+				await Promise.resolve();
+			});
+			await lateSetCursor;
 
 			await context.__runPoll(async () => {
 				await context.__commitCursor();
@@ -741,7 +769,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
 			expect(scopedLogger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('staged a cursor outside of a poll'),
+				expect.stringContaining('staged a cursor after its poll had already finished'),
 				{ workflowId: 'wf-1', nodeId: 'node-1' },
 			);
 		});
@@ -759,14 +787,20 @@ describe('TriggerExecutionContextFactory', () => {
 				activation,
 				async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
 			);
-			const firstContext = getPollFunctions(workflow, firstNode, additionalData, mode, activation);
+			const firstContext = getPollFunctions(
+				workflow,
+				firstNode,
+				additionalData,
+				mode,
+				activation,
+			) as RunnablePollFunctions;
 			const secondContext = getPollFunctions(
 				workflow,
 				secondNode,
 				additionalData,
 				mode,
 				activation,
-			);
+			) as RunnablePollFunctions;
 
 			await firstContext.__runPoll(async () => {
 				firstContext.setCursor({ lastItemId: 'first-only' });
@@ -807,6 +841,34 @@ describe('TriggerExecutionContextFactory', () => {
 			await expect(context.getCursor()).resolves.toEqual({ lastItemId: 'from-db' });
 			expect(pollCursorService.readCursor).toHaveBeenCalledWith('wf-1', 'node-1', {
 				lastItemId: 'from-static-data',
+			});
+		});
+
+		test('resolves getCursor to the cursor staged earlier in the same poll', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			pollCursorService.readCursor.mockResolvedValue({ lastItemId: 'from-db' });
+			const context = buildContext(workflow, node);
+
+			await context.__runPoll(async () => {
+				context.setCursor({ lastItemId: 'staged' });
+
+				await expect(context.getCursor()).resolves.toEqual({ lastItemId: 'staged' });
+			});
+
+			expect(pollCursorService.readCursor).not.toHaveBeenCalled();
+		});
+
+		test('resolves getCursor to the stored cursor when the poll has staged nothing yet', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			pollCursorService.readCursor.mockResolvedValue({ lastItemId: 'from-db' });
+			const context = buildContext(workflow, node);
+
+			await context.__runPoll(async () => {
+				await expect(context.getCursor()).resolves.toEqual({ lastItemId: 'from-db' });
 			});
 		});
 
