@@ -84,6 +84,24 @@ describe('TaskBrokerWsServer', () => {
 			expect(taskBroker.deregisterRunner).toHaveBeenCalled();
 		});
 
+		it('should not deregister a runner that reconnects before disconnect analysis completes', async () => {
+			const { disconnectAnalyzer, complete } = pendingAnalysis();
+			const taskBroker = mock<TaskBroker>();
+			const server = createServer({ taskBroker, disconnectAnalyzer });
+			const newWs = mockWs();
+			server.runnerConnections.set('test-runner', mockWs());
+
+			const removal = server.removeConnection('test-runner');
+			await Promise.resolve();
+
+			server.runnerConnections.set('test-runner', newWs);
+			complete(new Error('disconnected'));
+			await removal;
+
+			expect(taskBroker.deregisterRunner).not.toHaveBeenCalled();
+			expect(server.runnerConnections.get('test-runner')).toBe(newWs);
+		});
+
 		it('should ignore stale close events from replaced connections', async () => {
 			const taskBroker = mock<TaskBroker>();
 			const server = createServer({ taskBroker });

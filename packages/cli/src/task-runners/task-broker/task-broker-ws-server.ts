@@ -176,8 +176,12 @@ export class TaskBrokerWsServer {
 				heartbeatInterval: this.taskRunnersConfig.heartbeatInterval,
 			});
 
-			this.taskBroker.deregisterRunner(id, disconnectError);
-			this.logger.debug(`Deregistered runner "${id}"`);
+			const hasReconnected = this.runnerConnections.has(id);
+
+			if (!hasReconnected) {
+				this.taskBroker.deregisterRunner(id, disconnectError);
+				this.logger.debug(`Deregistered runner "${id}"`);
+			}
 		}
 	}
 
