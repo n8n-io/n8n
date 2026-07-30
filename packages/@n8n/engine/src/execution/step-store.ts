@@ -12,6 +12,13 @@ export interface NewStepRecord {
 export interface StepError {
 	name: string;
 	message: string;
+	stack?: string;
+	/**
+	 * Step-type-specific error detail, persisted without inspection — the engine
+	 * owns only `name`/`message`/`stack`. Unpopulated until executors have a way
+	 * to hand structured detail across the seam; they only throw today.
+	 */
+	details?: JsonValue;
 }
 
 /** A step record. */
@@ -22,6 +29,8 @@ export interface StepRecord {
 	status: StepStatus;
 	/** Outputs of a completed step; `null` until it completes. */
 	outputs: JsonValue | null;
+	/** The error that failed the step; `null` unless it failed. */
+	error: StepError | null;
 }
 
 /** Thrown by `loadStep` when no step exists for the given id. */
@@ -45,16 +54,21 @@ export interface StepStore {
 	loadStep(id: string): Promise<StepRecord>;
 
 	/**
-	 * Compare-and-set status transition. Returns `true` iff this call performed
-	 * the transition, so duplicate/redelivered events are handled idempotently.
+	 * Claim a queued step for execution (`queued → running`). A compare-and-set,
+	 * so it returns `true` for at most one caller and duplicate/redelivered
+	 * events are handled idempotently.
+	 *
+	 * Transitions are exposed one named method at a time rather than as a generic
+	 * `(from, to)` pair, so the interface can't express a transition the
+	 * lifecycle doesn't allow.
 	 */
-	transitionStepStatus(id: string, from: StepStatus, to: StepStatus): Promise<boolean>;
+	claimStep(id: string): Promise<boolean>;
 
 	/**
 	 * Record a successful run: persist `outputs` and mark the step completed.
 	 * A compare-and-set on `running`, so it returns `false` if the caller no
 	 * longer holds the claim — the outcome and the status are written together,
-	 * which a bare `transitionStepStatus` can't do.
+	 * so they can't be observed apart.
 	 */
 	completeStep(id: string, outputs: JsonValue): Promise<boolean>;
 
@@ -62,8 +76,13 @@ export interface StepStore {
 	failStep(id: string, error: StepError): Promise<boolean>;
 
 	/**
-	 * Outputs of the given nodes within an execution, keyed by node id. A node
-	 * with no step row, or one that hasn't completed, maps to `null`.
+	 * Outputs of the given nodes' *completed* steps within an execution, keyed by
+	 * node id. A node whose step is absent or hasn't completed maps to `null`.
+	 *
+	 * This is for gathering a step's inputs, so it deliberately can't answer
+	 * "have all predecessors completed?" — the two are indistinguishable from a
+	 * `null` here. Readiness belongs to whoever plans the next step
+	 * (TODO(CAT-2871)), and will need its own method.
 	 */
 	loadStepOutputs(
 		executionId: string,

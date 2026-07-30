@@ -30,8 +30,8 @@ export class TypeOrmStepStore implements StepStore {
 		return row;
 	}
 
-	async transitionStepStatus(id: string, from: StepStatus, to: StepStatus): Promise<boolean> {
-		return await this.transition(id, from, to);
+	async claimStep(id: string): Promise<boolean> {
+		return await this.transition(id, 'queued', 'running');
 	}
 
 	async completeStep(id: string, outputs: JsonValue): Promise<boolean> {
@@ -64,8 +64,10 @@ export class TypeOrmStepStore implements StepStore {
 		for (const nodeId of nodeIds) outputsByNodeId[nodeId] = null;
 		if (nodeIds.length === 0) return outputsByNodeId;
 
+		// Filter on `completed` rather than relying on non-completed rows having a
+		// null `outputs` column, so the contract holds however writes are ordered.
 		const rows = await this.repo.find({
-			where: { executionId, nodeId: In(nodeIds) },
+			where: { executionId, nodeId: In(nodeIds), status: 'completed' },
 			select: ['nodeId', 'outputs'],
 		});
 		for (const row of rows) outputsByNodeId[row.nodeId] = row.outputs;

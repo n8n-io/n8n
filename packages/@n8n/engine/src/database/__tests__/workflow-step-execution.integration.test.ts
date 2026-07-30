@@ -141,20 +141,21 @@ describe('workflow_step_execution table (integration)', () => {
 			nodeId: 'node-a',
 			status: 'queued',
 			outputs: null,
+			error: null,
 		});
 		await expect(store.loadStep('00000000-0000-7000-8000-000000000000')).rejects.toThrow(
 			StepNotFoundError,
 		);
 	});
 
-	it('TypeOrmStepStore.transitionStepStatus only transitions from the expected status', async () => {
+	it('TypeOrmStepStore.claimStep only claims a queued step', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await createStep(store, { executionId, nodeId: 'a', status: 'queued' });
 
-		expect(await store.transitionStepStatus(id, 'queued', 'running')).toBe(true);
+		expect(await store.claimStep(id)).toBe(true);
 		// second claim of the same step loses the race
-		expect(await store.transitionStepStatus(id, 'queued', 'running')).toBe(false);
+		expect(await store.claimStep(id)).toBe(false);
 		expect((await store.loadStep(id)).status).toBe('running');
 	});
 
@@ -192,25 +193,38 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
 
-		expect(await store.failStep(id, { name: 'Error', message: 'node blew up' })).toBe(true);
+		const error = {
+			name: 'Error',
+			message: 'node blew up',
+			stack: 'Error: node blew up\n    at somewhere',
+			details: { httpCode: '500' },
+		};
+		expect(await store.failStep(id, error)).toBe(true);
 
 		const found = await dataSource
 			.getRepository(WorkflowStepExecution)
 			.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('failed');
-		expect(found.error).toEqual({ name: 'Error', message: 'node blew up' });
+		expect(found.error).toEqual(error);
 	});
 
-	it('TypeOrmStepStore.loadStepOutputs returns outputs keyed by node id', async () => {
+	it('TypeOrmStepStore.loadStepOutputs returns only completed outputs, keyed by node id', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id: aId } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
 		await store.completeStep(aId, [[{ json: { from: 'a' } }]]);
 		await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
+		const { id: cId } = await createStep(store, { executionId, nodeId: 'c', status: 'running' });
+		await store.failStep(cId, { name: 'Error', message: 'node blew up' });
 
-		const outputs = await store.loadStepOutputs(executionId, ['a', 'b']);
+		const outputs = await store.loadStepOutputs(executionId, ['a', 'b', 'c', 'd']);
 
-		expect(outputs).toEqual({ a: [[{ json: { from: 'a' } }]], b: null });
+		expect(outputs).toEqual({
+			a: [[{ json: { from: 'a' } }]],
+			b: null, // queued
+			c: null, // failed
+			d: null, // no step row
+		});
 	});
 
 	it('rejects an invalid status (check constraint)', async () => {

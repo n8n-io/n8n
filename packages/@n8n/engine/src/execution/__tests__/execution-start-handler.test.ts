@@ -24,7 +24,7 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 	return {
 		createSteps,
 		loadStep: vi.fn(),
-		transitionStepStatus: vi.fn(),
+		claimStep: vi.fn(),
 		completeStep: vi.fn(),
 		failStep: vi.fn(),
 		loadStepOutputs: vi.fn(),
