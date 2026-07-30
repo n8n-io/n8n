@@ -783,6 +783,8 @@ describe('ActiveWorkflowTriggers', () => {
 		});
 
 		it('should return false when removing non-existent workflow', async () => {
+			scheduledTaskManager.deregisterGroup.mockReturnValue(false);
+
 			const result = await activeWorkflowTriggers.remove('non-existent');
 
 			expect(result).toBe(false);
@@ -1211,16 +1213,17 @@ describe('ActiveWorkflowTriggers', () => {
 			vi.useRealTimers();
 		});
 
-		it('should stop a stranded cron on remove even when the workflow is not active in memory', async () => {
+		it('should stop a stranded cron on remove and report it as removed even when the workflow is not active in memory', async () => {
 			// A cron registered in the ScheduledTaskManager while the workflow is not
-			// tracked as active in memory must still be stoppable via remove().
+			// tracked as active in memory must still be stoppable via remove(), and
+			// counts as a removal so callers (e.g. the follower ghost sweep) see it.
 			registerStrandedCron(workflowId);
 			expect(realScheduledTaskManager.hasGroup(workflowGroup())).toBe(true);
 			expect(activeWorkflowTriggersReal.isActive(workflowId)).toBe(false);
 
 			const result = await activeWorkflowTriggersReal.remove(workflowId);
 
-			expect(result).toBe(false);
+			expect(result).toBe(true);
 			expect(realScheduledTaskManager.hasGroup(workflowGroup())).toBe(false);
 		});
 

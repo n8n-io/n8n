@@ -249,3 +249,51 @@ describe('findProviderShapeViolation', () => {
 		expect(findProviderShapeViolation(googleDocs, { replies: [{}] })).toBeUndefined();
 	});
 });
+
+describe('Gmail messages.list', () => {
+	const gmailList = info({
+		hostname: 'www.googleapis.com',
+		pathname: '/gmail/v1/users/me/messages',
+		method: 'GET',
+	});
+
+	it('wraps a bare array into the messages envelope', () => {
+		const spec: Spec = {
+			type: 'json',
+			body: [{ id: 'msg_1', threadId: 'thr_1' }],
+		};
+		applyProviderShapeNormalizers(gmailList, spec);
+		expect(spec.body).toEqual({
+			messages: [{ id: 'msg_1', threadId: 'thr_1' }],
+			resultSizeEstimate: 1,
+		});
+	});
+
+	it('leaves a correct envelope untouched', () => {
+		const spec: Spec = {
+			type: 'json',
+			body: { messages: [{ id: 'msg_1' }], resultSizeEstimate: 1 },
+		};
+		const before = structuredClone(spec.body);
+		applyProviderShapeNormalizers(gmailList, spec);
+		expect(spec.body).toEqual(before);
+	});
+
+	it('does not touch the single-message GET', () => {
+		const single = info({
+			hostname: 'www.googleapis.com',
+			pathname: '/gmail/v1/users/me/messages/msg_1',
+			method: 'GET',
+		});
+		const spec: Spec = { type: 'json', body: [{ anything: true }] };
+		applyProviderShapeNormalizers(single, spec);
+		expect(Array.isArray(spec.body)).toBe(true);
+	});
+
+	it('reports a violation for a bare array and passes the envelope', () => {
+		expect(findProviderShapeViolation(gmailList, [{ id: 'msg_1' }])).toContain('bare array');
+		expect(
+			findProviderShapeViolation(gmailList, { messages: [], resultSizeEstimate: 0 }),
+		).toBeUndefined();
+	});
+});
