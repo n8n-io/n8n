@@ -739,6 +739,12 @@ describe('AgentChatBridge — consumeStream', () => {
 
 				expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
 				expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+				// The mention handler swallows the re-thrown error and reports it to
+				// the platform thread — the awaited call above resolving (rather than
+				// rejecting) is by design.
+				expect(thread.post).toHaveBeenCalledWith(
+					'⚠️ Something went wrong while processing your request. Please try again.',
+				);
 			} finally {
 				delete integrationImpl.createBridgeExecutionContext;
 			}
