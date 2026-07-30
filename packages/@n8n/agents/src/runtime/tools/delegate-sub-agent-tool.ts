@@ -7,6 +7,7 @@ import {
 	type SubAgentTaskPath,
 	type SubAgentTaskPathPolicy,
 } from './sub-agent-task-path';
+import { isAbortError } from '../../sdk/abort';
 import { filterLlmMessages } from '../../sdk/message';
 import { Tool } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
@@ -62,7 +63,7 @@ const delegateSubAgentInputSchema = z.object({
 // returned object (not this schema) is what is actually sent back to the model,
 // so this is kept in sync with DelegateSubAgentToolOutput by hand.
 const delegateSubAgentOutputSchema = z.object({
-	status: z.enum(['completed', 'failed', 'suspended']),
+	status: z.enum(['completed', 'failed', 'suspended', 'cancelled']),
 	taskPath: z.string().optional(),
 	runId: z.string().optional(),
 	threadId: z.string().optional(),
@@ -145,7 +146,7 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 
 /** The result a delegation returns to the parent model and to lifecycle events. */
 export interface DelegateSubAgentToolOutput {
-	status: 'completed' | 'failed' | 'suspended';
+	status: 'completed' | 'failed' | 'suspended' | 'cancelled';
 	/** Echoed back so consumers can correlate the result with the delegation. */
 	taskPath?: SubAgentTaskPath;
 	/** The child run's id, when the executor produced one. */
@@ -431,9 +432,10 @@ function formatDelegationPolicyInstructions(
  * Tool handler: assign the child's task path,
  * assemble the {@link DelegateSubAgentRequest} from the model input plus the
  * parent tool context, then run the child via the host `runSubAgent` callback
- * while emitting started/progress/completed lifecycle events. Any error is
+ * while emitting started/progress/completed lifecycle events. A failure is
  * converted into a `status: 'failed'` output (never thrown) so one failed
- * delegation can't abort the parent's run.
+ * delegation can't abort the parent's run; an abort is rethrown, because a
+ * cancelled run must end the parent too.
  */
 async function handleDelegateSubAgent(
 	input: DelegateSubAgentInput,
@@ -489,22 +491,21 @@ async function handleDelegateSubAgent(
 		emitSubAgentCompleted(ctx, request, output, startedAt);
 		return output;
 	} catch (error) {
-		if (request !== undefined && startedAt !== undefined) {
-			const failedOutput: DelegateSubAgentToolOutput = {
-				status: 'failed',
-				...(taskPath !== undefined ? { taskPath } : {}),
-				answer: '',
-				error: stringifyUnknown(error),
-			};
-			emitSubAgentCompleted(ctx, request, failedOutput, startedAt);
-			return failedOutput;
-		}
-		return {
-			status: 'failed',
+		// When the parent has a signal it is the authority: `isAbortError` also
+		// matches by message text, and an unrelated child error must not be
+		// mistaken for a cancellation and kill the parent run.
+		const aborted = ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error);
+		const output: DelegateSubAgentToolOutput = {
+			status: aborted ? 'cancelled' : 'failed',
 			...(taskPath !== undefined ? { taskPath } : {}),
 			answer: '',
-			error: error instanceof Error ? error.message : String(error),
+			...(aborted ? {} : { error: stringifyUnknown(error) }),
 		};
+		if (request !== undefined && startedAt !== undefined) {
+			emitSubAgentCompleted(ctx, request, output, startedAt);
+		}
+		if (aborted) throw error;
+		return output;
 	}
 }
 
@@ -621,7 +622,9 @@ function resolveDelegateSubAgentStatus(
 	result: GenerateResult,
 ): DelegateSubAgentToolOutput['status'] {
 	if (result.finishReason === 'error' || result.error !== undefined) {
-		return 'failed';
+		// An aborted child sets its state to `cancelled` but still reports an
+		// error, so the state decides which of the two this really was.
+		return result.getState().status === 'cancelled' ? 'cancelled' : 'failed';
 	}
 	if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
 		return 'suspended';

@@ -8,6 +8,7 @@ import {
 	type BuiltTelemetry,
 	type CredentialProvider,
 	type GenerateResult,
+	type SerializableAgentState,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
@@ -171,9 +172,7 @@ export class SubAgentForegroundRunner {
 						messages: [],
 						finishReason: 'error',
 						error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
-						getState: () => {
-							throw new Error('getState is not implemented for sub-agent foreground runner');
-						},
+						getState: () => resultStream.getState(),
 					},
 				};
 			}
@@ -182,6 +181,7 @@ export class SubAgentForegroundRunner {
 				resultStream.runId,
 				messageRecord,
 				structuredOutput,
+				() => resultStream.getState(),
 			);
 
 			return {
@@ -271,6 +271,7 @@ function buildGenerateResultFromRecord(
 	runId: string,
 	record: MessageRecord,
 	structuredOutput: unknown,
+	getState: () => SerializableAgentState,
 ): GenerateResult {
 	const messages = createAssistantMessages(record.assistantResponse);
 	const finishReason = toKnownFinishReason(record.finishReason);
@@ -289,9 +290,7 @@ function buildGenerateResultFromRecord(
 			: {}),
 		...(structuredOutput !== undefined ? { structuredOutput } : {}),
 		...(record.error !== null ? { error: record.error } : {}),
-		getState: () => {
-			throw new Error('getState is not implemented for sub-agent foreground runner');
-		},
+		getState,
 	};
 	return result;
 }

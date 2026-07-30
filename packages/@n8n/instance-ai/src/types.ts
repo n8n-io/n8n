@@ -899,6 +899,8 @@ export interface BuilderDelegateSession {
 	 * can outlive the parent trace's root finalization.
 	 */
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
+	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
+	abortSignal: AbortSignal;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
@@ -984,7 +986,7 @@ export interface InstanceAiContext {
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
-	agentBuilderTarget?: { agentId: string; projectId: string };
+	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**
