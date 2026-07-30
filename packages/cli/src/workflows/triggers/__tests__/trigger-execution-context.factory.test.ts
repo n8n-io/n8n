@@ -19,7 +19,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -40,6 +40,7 @@ import type {
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { createNodeTypes } from './trigger-test-utils';
+import type { PollCursorService } from '../poll-cursor.service';
 import {
 	TriggerExecutionContextFactory,
 	type TriggerFailureHandler,
@@ -61,9 +62,11 @@ describe('TriggerExecutionContextFactory', () => {
 	const nodeTypes = createNodeTypes();
 
 	let factory: TriggerExecutionContextFactory;
+	let pollCursorService: MockProxy<PollCursorService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		pollCursorService = mock<PollCursorService>({ enabled: false });
 		workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 		workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
 		executionService.createErrorExecution.mockResolvedValue(undefined);
@@ -88,6 +91,7 @@ describe('TriggerExecutionContextFactory', () => {
 			scheduleTriggerJobRegistrar,
 			ownershipService,
 			nodeTypes,
+			pollCursorService,
 		);
 	});
 
@@ -492,6 +496,149 @@ describe('TriggerExecutionContextFactory', () => {
 				);
 				expect(executeErrorWorkflowSpy).toHaveBeenCalledWith(executionError, workflowData, mode);
 			});
+		});
+	});
+
+	describe('durable poll cursors', () => {
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const mode: WorkflowExecuteMode = 'trigger';
+		const activation: WorkflowActivateMode = 'activate';
+		const pollData: INodeExecutionData[][] = [[{ json: { id: 1 } }]];
+
+		const buildWorkflow = () => {
+			const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' });
+			workflow.getStaticData.mockReturnValue({});
+			return workflow;
+		};
+
+		const buildContext = (workflow: Workflow, node: INode) => {
+			const getPollFunctions = factory.getExecutePollFunctions(
+				mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+				additionalData,
+				mode,
+				activation,
+				async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+			);
+			return getPollFunctions(workflow, node, additionalData, mode, activation);
+		};
+
+		beforeEach(() => {
+			pollCursorService.readCursor.mockResolvedValue(null);
+			pollCursorService.commitCursorOnly.mockResolvedValue(undefined);
+			pollCursorService.mirrorToStaticData.mockResolvedValue(undefined);
+			workflowExecutionService.runPolledWorkflow.mockResolvedValue('exec-polled');
+		});
+
+		test('routes a staged cursor to runWorkflow and still saves static data when the flag is off', async () => {
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.setCursor({ lastItemId: 'a' });
+			context.__emit(pollData);
+			await sleep(0);
+
+			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+			expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+		});
+
+		test('routes a staged cursor to runPolledWorkflow and skips saveStaticData when the flag is on', async () => {
+			pollCursorService.enabled = true;
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.setCursor({ lastItemId: 'a' });
+			context.__emit(pollData);
+			await sleep(0);
+
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				node,
+				pollData,
+				additionalData,
+				mode,
+				{ lastItemId: 'a' },
+				undefined,
+			);
+			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+			expect(workflowStaticDataService.saveStaticData).not.toHaveBeenCalled();
+		});
+
+		test('falls through to runWorkflow when the flag is on but nothing was staged', async () => {
+			pollCursorService.enabled = true;
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.__emit(pollData);
+			await sleep(0);
+
+			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('does not re-commit on a later tick a cursor staged on an earlier one', async () => {
+			pollCursorService.enabled = true;
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.setCursor({ lastItemId: 'a' });
+			context.__emit(pollData);
+			await sleep(0);
+
+			context.__emit(pollData);
+			await sleep(0);
+
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+		});
+
+		test('keeps the staged cursors of two poll nodes built from one factory apart', async () => {
+			pollCursorService.enabled = true;
+			const workflow = buildWorkflow();
+			const firstNode = mock<INode>({ id: 'node-1', name: 'First Poll Node' });
+			const secondNode = mock<INode>({ id: 'node-2', name: 'Second Poll Node' });
+
+			const getPollFunctions = factory.getExecutePollFunctions(
+				mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+				additionalData,
+				mode,
+				activation,
+				async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+			);
+			const firstContext = getPollFunctions(workflow, firstNode, additionalData, mode, activation);
+			const secondContext = getPollFunctions(
+				workflow,
+				secondNode,
+				additionalData,
+				mode,
+				activation,
+			);
+
+			firstContext.setCursor({ lastItemId: 'first-only' });
+
+			secondContext.__emit(pollData);
+			await sleep(0);
+
+			expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+
+			firstContext.__emit(pollData);
+			await sleep(0);
+
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledWith(
+				expect.anything(),
+				firstNode,
+				pollData,
+				additionalData,
+				mode,
+				{ lastItemId: 'first-only' },
+				undefined,
+			);
 		});
 	});
 

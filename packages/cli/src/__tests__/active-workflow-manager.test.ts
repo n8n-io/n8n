@@ -44,6 +44,7 @@ import type {
 	ScheduleTriggerJobRegistrar,
 } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -436,6 +437,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // scheduleTriggerJobRegistrar
 				ownershipService,
 				mock(), // nodeTypes
+				mock<PollCursorService>({ enabled: false }),
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
