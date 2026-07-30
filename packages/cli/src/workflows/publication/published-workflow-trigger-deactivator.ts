@@ -89,22 +89,18 @@ export class PublishedWorkflowTriggerDeactivator {
 		return ghosts.length;
 	}
 
-	private incrementCounter(workflowId: string) {
-		let counter = this.consecutiveLockSkipsByWorkflowId.get(workflowId) ?? 0;
-		counter++;
+	/** Records a locked-skip and reports the lock as stuck once the streak hits the threshold. */
+	private trackSkippedWhileLocked(workflowId: string) {
+		const skips = (this.consecutiveLockSkipsByWorkflowId.get(workflowId) ?? 0) + 1;
 
-		if (counter === STUCK_LOCK_WARN_AFTER_PASSES) {
+		if (skips === STUCK_LOCK_WARN_AFTER_PASSES) {
 			this.logger.warn(
-				`Lifecycle lock for workflow "${workflowId}" still held after ${counter} teardown passes; its triggers cannot be torn down until the holder releases the lock`,
-				{ workflowId, passes: counter },
+				`Lifecycle lock for workflow "${workflowId}" still held after ${skips} teardown passes; its triggers cannot be torn down until the holder releases the lock`,
+				{ workflowId, passes: skips },
 			);
 		}
 
-		this.consecutiveLockSkipsByWorkflowId.set(workflowId, counter);
-	}
-
-	private clearCounter(workflowId: string) {
-		this.consecutiveLockSkipsByWorkflowId.delete(workflowId);
+		this.consecutiveLockSkipsByWorkflowId.set(workflowId, skips);
 	}
 
 	private async deactivateWorkflows(workflowIds: string[]) {
@@ -113,7 +109,7 @@ export class PublishedWorkflowTriggerDeactivator {
 		for (const workflowId of workflowIds) {
 			try {
 				if (this.lifecycleLock.isLocked(workflowId)) {
-					this.incrementCounter(workflowId);
+					this.trackSkippedWhileLocked(workflowId);
 					continue;
 				}
 				const result = await this.lifecycleLock.runExclusive(workflowId, async () => {
@@ -123,7 +119,7 @@ export class PublishedWorkflowTriggerDeactivator {
 				if (result) {
 					deactivatedWorkflows.push(workflowId);
 				}
-				this.clearCounter(workflowId);
+				this.consecutiveLockSkipsByWorkflowId.delete(workflowId);
 			} catch (error) {
 				this.errorReporter.error(error, { shouldBeLogged: true });
 			}
