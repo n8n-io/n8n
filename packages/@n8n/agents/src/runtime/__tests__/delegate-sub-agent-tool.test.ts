@@ -527,6 +527,94 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
+	it('forwards only allowlisted child chunks, keeping args, results and nesting out', async () => {
+		const events: AgentEventData[] = [];
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async (_request, helpers) => {
+				helpers.emitChunk({ type: 'text-delta', id: 't-1', delta: 'hello' });
+				helpers.emitChunk({
+					type: 'tool-call',
+					toolCallId: 'child-tc-1',
+					toolName: 'web_search',
+					input: { query: 'x'.repeat(5_000) },
+				});
+				helpers.emitChunk({
+					type: 'tool-result',
+					toolCallId: 'child-tc-1',
+					toolName: 'web_search',
+					output: { body: 'y'.repeat(5_000) },
+				});
+				helpers.emitChunk({
+					type: 'subagent-started',
+					taskName: 'nested',
+					taskPath: '/root/research_api_0/nested_0',
+					startedAt: 1,
+				});
+				return await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				});
+			},
+		});
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'tool-call-1',
+			emitEvent: (event) => events.push(event),
+		});
+
+		const forwarded = events.filter((event) => event.type === AgentEvent.SubAgentChunk);
+		expect(forwarded).toHaveLength(1);
+		expect(forwarded[0]).toMatchObject({
+			parentToolCallId: 'tool-call-1',
+			chunk: { type: 'text-delta', delta: 'hello' },
+		});
+	});
+
+	it('caps forwarded child text at the budget but keeps tool lifecycle flowing', async () => {
+		const events: AgentEventData[] = [];
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async (_request, helpers) => {
+				// Neither delta lands on the boundary, so the second must be trimmed
+				// rather than forwarded whole.
+				helpers.emitChunk({ type: 'text-delta', id: 't-1', delta: 'a'.repeat(15_000) });
+				helpers.emitChunk({ type: 'text-delta', id: 't-1', delta: 'b'.repeat(15_000) });
+				helpers.emitChunk({ type: 'reasoning-delta', id: 'r-1', delta: 'over budget' });
+				helpers.emitChunk({
+					type: 'tool-execution-end',
+					toolCallId: 'child-tc-1',
+					toolName: 'web_search',
+					isError: false,
+					endTime: 1,
+				});
+				return await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				});
+			},
+		});
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'tool-call-1',
+			emitEvent: (event) => events.push(event),
+		});
+
+		const forwarded = events.filter((event) => event.type === AgentEvent.SubAgentChunk);
+		expect(forwarded.map((event) => event.chunk.type)).toEqual([
+			'text-delta',
+			'text-delta',
+			'tool-execution-end',
+		]);
+		const forwardedChars = forwarded.reduce(
+			(total, event) => total + ('delta' in event.chunk ? event.chunk.delta.length : 0),
+			0,
+		);
+		expect(forwardedChars).toBe(20_000);
+	});
+
 	it('defaults maxChildren to 10 when policy is omitted', () => {
 		const tool = createDelegateSubAgentTool({
 			runSubAgent: async () =>
@@ -645,6 +733,47 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
+	it('rethrows an abort instead of reporting the delegation as failed', async () => {
+		const events: AgentEventData[] = [];
+		const abortError = new Error('This operation was aborted');
+		abortError.name = 'AbortError';
+		const controller = new AbortController();
+		controller.abort();
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async () => await Promise.reject(abortError),
+		});
+
+		await expect(
+			tool.handler?.(input, {
+				runId: 'parent-run-1',
+				abortSignal: controller.signal,
+				emitEvent: (event) => events.push(event),
+			}),
+		).rejects.toBe(abortError);
+		expect(events[events.length - 1]).toMatchObject({
+			type: AgentEvent.SubAgentCompleted,
+			status: 'cancelled',
+		});
+	});
+
+	it('reports an abort-shaped child error as failed while the parent signal is live', async () => {
+		const abortError = new Error('This operation was aborted');
+		abortError.name = 'AbortError';
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async () => await Promise.reject(abortError),
+		});
+
+		await expect(
+			tool.handler?.(input, {
+				runId: 'parent-run-1',
+				abortSignal: new AbortController().signal,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			error: 'This operation was aborted',
+		});
+	});
+
 	it('returns a failed output for invalid task names', async () => {
 		const runSubAgent = vi.fn();
 		const tool = createDelegateSubAgentTool({ runSubAgent });
@@ -755,6 +884,24 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 		});
 	});
 
+	it('maps a cancelled child run to cancelled, even though it also reports an error', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-5',
+			messages: [],
+			finishReason: 'error',
+			error: new Error('Aborted'),
+			getState: () => ({
+				status: 'cancelled',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
+			status: 'cancelled',
+		});
+	});
+
 	it('returns a failed delegate output for delegated child suspension stopgap', async () => {
 		const { failedDelegatedChildSuspendOutput } = await import(
 			'../tools/delegate-sub-agent-tool.js'
@@ -825,9 +972,11 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 					suspendPayload: {},
 				},
 			],
-			getState: () => {
-				throw new Error('getState is not implemented');
-			},
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
 		};
 
 		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({

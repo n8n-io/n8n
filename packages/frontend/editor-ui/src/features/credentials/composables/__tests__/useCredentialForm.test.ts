@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 
 import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsDecryptedResponse } from '../../credentials.types';
@@ -66,11 +67,26 @@ const skipManagedOAuth: ICredentialType = {
 	],
 };
 
+// Plain per-auth-option types for a node with an auth selector.
+const alphaApi: ICredentialType = {
+	name: 'alphaApi',
+	displayName: 'Alpha API',
+	properties: [],
+};
+
+const betaApi: ICredentialType = {
+	name: 'betaApi',
+	displayName: 'Beta API',
+	properties: [],
+};
+
 const typesByName: Record<string, ICredentialType> = {
 	httpBasicAuth,
 	acmeOAuth2Api: managedOAuth,
 	privateOAuth2Api: privateOAuth,
 	skipOAuth2Api: skipManagedOAuth,
+	alphaApi,
+	betaApi,
 };
 
 describe('useCredentialForm', () => {
@@ -199,6 +215,88 @@ describe('useCredentialForm', () => {
 			const form = await loadPrivateCred();
 
 			expect(form.getChangedSharedFields({ clientId: 'id', clientSecret: 'secret' })).toEqual([]);
+		});
+	});
+
+	describe('selectedCredentialType (auth selector)', () => {
+		const twoAuthNodeType = {
+			displayName: 'Two Auth Service',
+			name: 'n8n-nodes-base.twoAuth',
+			group: ['input'],
+			version: 1,
+			description: 'Service with two auth options',
+			defaults: { name: 'Two Auth Service' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: 'alphaApi',
+					required: true,
+					displayOptions: { show: { authentication: ['alpha'] } },
+				},
+				{
+					name: 'betaApi',
+					required: true,
+					displayOptions: { show: { authentication: ['beta'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{ name: 'Alpha', value: 'alpha' },
+						{ name: 'Beta', value: 'beta' },
+					],
+					default: 'alpha',
+				},
+			],
+		} as unknown as INodeTypeDescription;
+
+		const contextNode = {
+			id: 'node-1',
+			name: 'Two Auth Node',
+			type: 'n8n-nodes-base.twoAuth',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		} as INode;
+
+		beforeEach(() => {
+			mockedStore(useNodeTypesStore).getNodeType = () => twoAuthNodeType;
+		});
+
+		it('defaults to the activeId credential type when the node has multiple auth options', () => {
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'betaApi',
+				contextNode,
+				showAuthSelector: true,
+			});
+
+			expect(form.credentialTypeName.value).toBe('betaApi');
+		});
+
+		it('falls back to the first auth option when activeId is not among the node credentials', () => {
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'gammaApi',
+				contextNode,
+				showAuthSelector: true,
+			});
+
+			expect(form.credentialTypeName.value).toBe('alphaApi');
+		});
+
+		it('falls back to the first auth option when no activeId is given', () => {
+			const form = useCredentialForm({
+				mode: 'new',
+				contextNode,
+				showAuthSelector: true,
+			});
+
+			expect(form.credentialTypeName.value).toBe('alphaApi');
 		});
 	});
 

@@ -1,7 +1,8 @@
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext } from '../../../types';
 import {
-	findSessionAgentByName,
+	getSessionAgentByRef,
+	normalizeAgentRef,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 } from '../agent-target-binding';
@@ -38,17 +39,32 @@ function createContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiCo
 	} as unknown as InstanceAiContext;
 }
 
-const TARGET = { agentId: 'agent-1', projectId: 'project-1' };
+const TARGET = { agentId: 'agent-1', projectId: 'project-1', ref: 'support-triage' };
+
+describe('normalizeAgentRef', () => {
+	it('slugifies casing, whitespace, and punctuation to the same key', () => {
+		expect(normalizeAgentRef('Support Triage')).toBe('support-triage');
+		expect(normalizeAgentRef('support_triage')).toBe('support-triage');
+		expect(normalizeAgentRef('  Support-Triage  ')).toBe('support-triage');
+	});
+
+	it('keeps non-Latin names addressable instead of slugifying them away', () => {
+		expect(normalizeAgentRef('支持代理')).toBe('支持代理');
+		expect(normalizeAgentRef('Служба поддержки')).toBe('служба-поддержки');
+	});
+});
 
 describe('agent-builder target binding', () => {
 	it('round-trips the target through thread metadata across contexts', async () => {
 		const threadMemory = createThreadMemory();
 		await saveAgentBuilderTarget(createContext({ threadMemory }), TARGET);
 
-		// A fresh context (next turn) resolves the persisted target and hydrates itself.
 		const nextTurn = createContext({ threadMemory });
-		await expect(resolveAgentBuilderTarget(nextTurn)).resolves.toEqual(TARGET);
-		expect(nextTurn.agentBuilderTarget).toEqual(TARGET);
+		await expect(resolveAgentBuilderTarget(nextTurn)).resolves.toEqual({
+			...TARGET,
+			ref: 'support-triage',
+		});
+		expect(nextTurn.agentBuilderTarget).toEqual({ ...TARGET, ref: 'support-triage' });
 	});
 
 	it('prefers the in-memory context target over the persisted binding', async () => {
@@ -96,37 +112,47 @@ describe('agent-builder target binding', () => {
 	});
 
 	describe('session agent registry', () => {
-		it('upserts every saved target into the session registry', async () => {
+		it('saves then resolves by ref', async () => {
 			const threadMemory = createThreadMemory();
 			await saveAgentBuilderTarget(createContext({ threadMemory }), {
 				agentId: 'agent-1',
 				projectId: 'p',
-				name: 'First',
-			});
-			await saveAgentBuilderTarget(createContext({ threadMemory }), {
-				agentId: 'agent-2',
-				projectId: 'p',
-				name: 'Second',
-			});
-			// Re-saving agent-1 under a new name replaces its old registry entry.
-			await saveAgentBuilderTarget(createContext({ threadMemory }), {
-				agentId: 'agent-1',
-				projectId: 'p',
-				name: 'Renamed',
+				name: 'Support Triage',
+				ref: 'support-triage',
 			});
 
-			const lookupContext = createContext({ threadMemory });
-			await expect(findSessionAgentByName(lookupContext, 'Second')).resolves.toEqual({
-				agentId: 'agent-2',
-				projectId: 'p',
-				name: 'Second',
-			});
-			await expect(findSessionAgentByName(lookupContext, 'Renamed')).resolves.toEqual({
+			await expect(
+				getSessionAgentByRef(createContext({ threadMemory }), 'Support_Triage'),
+			).resolves.toEqual({
 				agentId: 'agent-1',
 				projectId: 'p',
-				name: 'Renamed',
+				name: 'Support Triage',
+				ref: 'support-triage',
 			});
-			await expect(findSessionAgentByName(lookupContext, 'First')).resolves.toBeUndefined();
+		});
+
+		it('keeps the addressing ref when a later save changes only the display name', async () => {
+			const threadMemory = createThreadMemory();
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Tracker',
+				ref: 'tracker',
+			});
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Renamed Tracker',
+			});
+
+			await expect(
+				getSessionAgentByRef(createContext({ threadMemory }), 'tracker'),
+			).resolves.toEqual({
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Renamed Tracker',
+				ref: 'tracker',
+			});
 		});
 
 		it('preserves the registered name when a later save for the same agent carries none', async () => {
@@ -135,73 +161,49 @@ describe('agent-builder target binding', () => {
 				agentId: 'agent-1',
 				projectId: 'p',
 				name: 'Tracker',
+				ref: 'tracker',
 			});
-			// Simulates an agentId-path switch, which carries no name.
 			await saveAgentBuilderTarget(createContext({ threadMemory }), {
 				agentId: 'agent-1',
 				projectId: 'p',
+				ref: 'tracker',
 			});
 
 			await expect(
-				findSessionAgentByName(createContext({ threadMemory }), 'Tracker'),
-			).resolves.toEqual({ agentId: 'agent-1', projectId: 'p', name: 'Tracker' });
-
+				getSessionAgentByRef(createContext({ threadMemory }), 'tracker'),
+			).resolves.toEqual({
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Tracker',
+				ref: 'tracker',
+			});
 			await expect(resolveAgentBuilderTarget(createContext({ threadMemory }))).resolves.toEqual({
 				agentId: 'agent-1',
 				projectId: 'p',
 				name: 'Tracker',
+				ref: 'tracker',
 			});
 		});
 
-		it('finds the most recently targeted agent when names collide', async () => {
-			const threadMemory = createThreadMemory();
-			await saveAgentBuilderTarget(createContext({ threadMemory }), {
-				agentId: 'a1',
-				projectId: 'p',
-				name: 'Dup',
-			});
-			await saveAgentBuilderTarget(createContext({ threadMemory }), {
-				agentId: 'a2',
-				projectId: 'p',
-				name: 'Dup',
-			});
-
-			await expect(findSessionAgentByName(createContext({ threadMemory }), 'Dup')).resolves.toEqual(
-				{ agentId: 'a2', projectId: 'p', name: 'Dup' },
-			);
-		});
-
-		it('matches names ignoring case and surrounding whitespace', async () => {
-			const threadMemory = createThreadMemory();
-			await saveAgentBuilderTarget(createContext({ threadMemory }), {
-				agentId: 'agent-1',
-				projectId: 'p',
-				name: 'Platform Cycle Tracker',
-			});
-
-			await expect(
-				findSessionAgentByName(createContext({ threadMemory }), '  platform cycle tracker '),
-			).resolves.toEqual({ agentId: 'agent-1', projectId: 'p', name: 'Platform Cycle Tracker' });
-		});
-
-		it('returns undefined for unknown names, missing persistence, and malformed registries', async () => {
+		it('returns undefined for unknown refs, missing persistence, and malformed registries', async () => {
 			const threadMemory = createThreadMemory();
 			await saveAgentBuilderTarget(createContext({ threadMemory }), {
 				agentId: 'agent-1',
 				projectId: 'p',
 				name: 'First',
+				ref: 'first',
 			});
 			await expect(
-				findSessionAgentByName(createContext({ threadMemory }), 'Unknown'),
+				getSessionAgentByRef(createContext({ threadMemory }), 'unknown'),
 			).resolves.toBeUndefined();
 
 			const noPersistence = createContext({ threadMemory: undefined, threadId: undefined });
-			await expect(findSessionAgentByName(noPersistence, 'First')).resolves.toBeUndefined();
+			await expect(getSessionAgentByRef(noPersistence, 'first')).resolves.toBeUndefined();
 
 			const malformed = createContext({
 				threadMemory: createThreadMemory({ instanceAiAgentBuilderTargets: 'garbage' }),
 			});
-			await expect(findSessionAgentByName(malformed, 'First')).resolves.toBeUndefined();
+			await expect(getSessionAgentByRef(malformed, 'first')).resolves.toBeUndefined();
 		});
 	});
 });

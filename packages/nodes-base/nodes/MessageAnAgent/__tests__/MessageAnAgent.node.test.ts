@@ -810,10 +810,10 @@ describe('MessageAnAgent Node', () => {
 });
 
 describe('MessageAnAgent versioning', () => {
-	it('uses AI Agent V1 as the display and default name', () => {
-		expect(baseDescription.displayName).toBe('AI Agent V1');
-		expect(new MessageAnAgentV1(baseDescription).description.defaults.name).toBe('AI Agent V1');
-		expect(new MessageAnAgentV2(baseDescription).description.defaults.name).toBe('AI Agent V1');
+	it('uses AI Agent V2 as the display and default name', () => {
+		expect(baseDescription.displayName).toBe('AI Agent V2');
+		expect(new MessageAnAgentV1(baseDescription).description.defaults.name).toBe('AI Agent V2');
+		expect(new MessageAnAgentV2(baseDescription).description.defaults.name).toBe('AI Agent V2');
 	});
 
 	it('exposes v1, v2, and v3 with v3 as the default', () => {
