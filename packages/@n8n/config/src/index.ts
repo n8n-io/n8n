@@ -48,6 +48,7 @@ import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
+import { WebhooksConfig } from './configs/webhooks.config';
 import { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 import { WorkflowHistoryConfig } from './configs/workflow-history.config';
 import { WorkflowsConfig } from './configs/workflows.config';
@@ -86,6 +87,7 @@ export { ChatHubConfig } from './configs/chat-hub.config';
 export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
+export { WebhooksConfig } from './configs/webhooks.config';
 export { PasswordConfig } from './configs/password.config';
 export { AgentsConfig } from './configs/agents.config';
 export { CompressionNodeConfig } from './configs/compression.config';
@@ -301,6 +303,9 @@ export class GlobalConfig {
 
 	@Nested
 	expressionEngine: ExpressionEngineConfig;
+
+	@Nested
+	webhooks: WebhooksConfig;
 
 	@Nested
 	evaluation: EvaluationConfig;

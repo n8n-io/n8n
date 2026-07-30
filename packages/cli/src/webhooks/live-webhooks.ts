@@ -1,10 +1,11 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowsConfig } from '@n8n/config';
+import { WebhooksConfig, WorkflowsConfig } from '@n8n/config';
 import { WorkflowRepository, type WorkflowEntity, type WorkflowHistory } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
+import pLimit from 'p-limit';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
@@ -33,6 +34,9 @@ import type {
  */
 @Service()
 export class LiveWebhooks implements IWebhookManager {
+	/** Per-workflow webhook-processing concurrency limiter. Never evicted — negligible per-entry cost. */
+	private readonly processingLimiters = new Map<string, ReturnType<typeof pLimit>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,
@@ -40,8 +44,21 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly workflowsConfig: WorkflowsConfig,
+		private readonly webhooksConfig: WebhooksConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 	) {}
+
+	/** Undefined when unconfigured - unlimited by default. */
+	private getProcessingLimiter(workflowId: string) {
+		const limit = this.webhooksConfig.maxConcurrentProcessingPerWorkflow;
+		if (!limit) return undefined;
+		let limiter = this.processingLimiters.get(workflowId);
+		if (!limiter) {
+			limiter = pLimit(limit);
+			this.processingLimiters.set(workflowId, limiter);
+		}
+		return limiter;
+	}
 
 	async getWebhookMethods(path: string) {
 		return await this.webhookService.getWebhookMethods(path);
@@ -131,60 +148,67 @@ export class LiveWebhooks implements IWebhookManager {
 			projectId: ownerProjectId,
 		});
 
-		await workflow.expression.acquireIsolate();
-		try {
-			const webhookData = this.webhookService
-				.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
-				.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
+		const runExecution = async (): Promise<IWebhookResponseCallbackData> => {
+			await workflow.expression.acquireIsolate();
+			try {
+				const webhookData = this.webhookService
+					.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
+					.find(
+						(w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath,
+					) as IWebhookData;
 
-			if (
-				expectedNodeType &&
-				!matchesExpectedNodeType(expectedNodeType, webhookData?.webhookDescription.nodeType)
-			) {
-				throw new WebhookNotFoundError(
-					{ path, httpMethod, webhookMethods: await this.getWebhookMethods(path) },
-					{ hint: 'production' },
-				);
+				if (
+					expectedNodeType &&
+					!matchesExpectedNodeType(expectedNodeType, webhookData?.webhookDescription.nodeType)
+				) {
+					throw new WebhookNotFoundError(
+						{ path, httpMethod, webhookMethods: await this.getWebhookMethods(path) },
+						{ hint: 'production' },
+					);
+				}
+
+				// Get the node which has the webhook defined to know where to start from and to
+				// get additional data
+				const workflowStartNode = workflow.getNode(webhookData.node);
+
+				if (workflowStartNode === null) {
+					throw new NotFoundError('Could not find node to process webhook.');
+				}
+
+				if (!authAllowlistedNodes.has(workflowStartNode.type)) {
+					sanitizeWebhookRequest(request);
+				}
+
+				return await new Promise((resolve, reject) => {
+					const executionMode = 'webhook';
+					WebhookHelpers.executeWebhook(
+						workflow,
+						webhookData,
+						activeWorkflowData, // Use activeWorkflowData instead of workflowData
+						workflowStartNode,
+						executionMode,
+						undefined,
+						undefined,
+						undefined,
+						request,
+						response,
+						async (error: Error | null, data: object) => {
+							if (error !== null) {
+								return reject(error);
+							}
+							// Save static data if it changed
+							await this.workflowStaticDataService.saveStaticData(workflow);
+							resolve(data);
+						},
+					).catch(reject); // ensure the Promise settles even if executeWebhook throws
+				});
+			} finally {
+				await workflow.expression.releaseIsolate();
 			}
+		};
 
-			// Get the node which has the webhook defined to know where to start from and to
-			// get additional data
-			const workflowStartNode = workflow.getNode(webhookData.node);
-
-			if (workflowStartNode === null) {
-				throw new NotFoundError('Could not find node to process webhook.');
-			}
-
-			if (!authAllowlistedNodes.has(workflowStartNode.type)) {
-				sanitizeWebhookRequest(request);
-			}
-
-			return await new Promise((resolve, reject) => {
-				const executionMode = 'webhook';
-				WebhookHelpers.executeWebhook(
-					workflow,
-					webhookData,
-					activeWorkflowData, // Use activeWorkflowData instead of workflowData
-					workflowStartNode,
-					executionMode,
-					undefined,
-					undefined,
-					undefined,
-					request,
-					response,
-					async (error: Error | null, data: object) => {
-						if (error !== null) {
-							return reject(error);
-						}
-						// Save static data if it changed
-						await this.workflowStaticDataService.saveStaticData(workflow);
-						resolve(data);
-					},
-				).catch(reject); // ensure the Promise settles even if executeWebhook throws
-			});
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+		const limiter = this.getProcessingLimiter(webhook.workflowId);
+		return limiter ? await limiter(runExecution) : await runExecution();
 	}
 
 	private async loadWebhookExecutionData(

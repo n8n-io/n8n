@@ -628,6 +628,7 @@ describe('GlobalConfig', () => {
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
 		},
+		webhooks: {},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
 			ownerEmail: '',

@@ -1,5 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowsConfig } from '@n8n/config';
+import type { WebhooksConfig, WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { Response } from 'express';
 import type {
@@ -38,12 +38,14 @@ describe('LiveWebhooks', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
 	const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: false });
+	const webhooksConfig = mock<WebhooksConfig>({ maxConcurrentProcessingPerWorkflow: undefined });
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
 
 	let liveWebhooks: LiveWebhooks;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		webhooksConfig.maxConcurrentProcessingPerWorkflow = undefined;
 		liveWebhooks = new LiveWebhooks(
 			mockLogger(),
 			nodeTypes,
@@ -51,6 +53,7 @@ describe('LiveWebhooks', () => {
 			workflowRepository,
 			workflowStaticDataService,
 			workflowsConfig,
+			webhooksConfig,
 			workflowPublishedDataService,
 		);
 
@@ -601,6 +604,116 @@ describe('LiveWebhooks', () => {
 			await expect(
 				liveWebhooks.executeWebhook(buildRequest(), mock<Response>()),
 			).resolves.toBeDefined();
+		});
+	});
+
+	describe('per-workflow concurrency limit', () => {
+		it('queues a second concurrent execution for the same workflow until the first releases its slot', async () => {
+			webhooksConfig.maxConcurrentProcessingPerWorkflow = 1;
+
+			const workflowEntity = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				nodes: [],
+				connections: {},
+				staticData: {},
+				activeVersion: mock<WorkflowHistory>({
+					versionId: 'v1',
+					workflowId: WORKFLOW_ID,
+					nodes: [
+						{
+							id: 'webhook-node',
+							name: NODE_NAME,
+							type: 'n8n-nodes-base.webhook',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { path: WEBHOOK_PATH, httpMethod: 'GET' },
+						},
+					],
+					connections: {},
+					authors: 'test-user',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				}),
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
+			});
+
+			setupExecuteWebhookMocks(workflowEntity);
+			const requestA = mock<WebhookRequest>({ method: 'GET', params: { path: WEBHOOK_PATH } });
+			const requestB = mock<WebhookRequest>({ method: 'GET', params: { path: WEBHOOK_PATH } });
+
+			const order: string[] = [];
+			let releaseFirst: (() => void) | undefined;
+			(WebhookHelpers.executeWebhook as Mock).mockImplementation(async (...args: unknown[]) => {
+				const callIndex = order.filter((entry) => entry.startsWith('start')).length;
+				order.push(`start-${callIndex}`);
+				if (callIndex === 0) {
+					await new Promise<void>((resolve) => {
+						releaseFirst = resolve;
+					});
+				}
+				order.push(`end-${callIndex}`);
+				const webhookCallback = args[args.length - 1] as (
+					error: Error | null,
+					data: object,
+				) => void;
+				webhookCallback(null, {});
+			});
+
+			const first = liveWebhooks.executeWebhook(requestA, mock<Response>());
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(order).toEqual(['start-0']);
+
+			const second = liveWebhooks.executeWebhook(requestB, mock<Response>());
+			await new Promise((resolve) => setImmediate(resolve));
+			// Second must not have started yet — the first still holds the only slot.
+			expect(order).toEqual(['start-0']);
+
+			releaseFirst?.();
+			await Promise.all([first, second]);
+
+			expect(order).toEqual(['start-0', 'end-0', 'start-1', 'end-1']);
+		});
+
+		it('does not gate executions when unset (default)', async () => {
+			// webhooksConfig.maxConcurrentProcessingPerWorkflow left undefined by beforeEach.
+			const workflowEntity = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				nodes: [],
+				connections: {},
+				staticData: {},
+				activeVersion: mock<WorkflowHistory>({
+					versionId: 'v1',
+					workflowId: WORKFLOW_ID,
+					nodes: [
+						{
+							id: 'webhook-node',
+							name: NODE_NAME,
+							type: 'n8n-nodes-base.webhook',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { path: WEBHOOK_PATH, httpMethod: 'GET' },
+						},
+					],
+					connections: {},
+					authors: 'test-user',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				}),
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
+			});
+
+			setupExecuteWebhookMocks(workflowEntity);
+			const requestA = mock<WebhookRequest>({ method: 'GET', params: { path: WEBHOOK_PATH } });
+			const requestB = mock<WebhookRequest>({ method: 'GET', params: { path: WEBHOOK_PATH } });
+
+			await expect(liveWebhooks.executeWebhook(requestA, mock<Response>())).resolves.toBeDefined();
+			await expect(liveWebhooks.executeWebhook(requestB, mock<Response>())).resolves.toBeDefined();
 		});
 	});
 });
