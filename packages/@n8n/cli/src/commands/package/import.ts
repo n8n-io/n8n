@@ -9,31 +9,46 @@ export default class PackageImport extends BaseCommand {
 	static override description = 'Import an n8n package (.n8np) into a project';
 
 	static override examples = [
-		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail',
-		'<%= config.bin %> package import --file=export.n8np --project=<id> --conflict-policy=new-version',
-		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail --credential-missing-mode=must-preexist',
-		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail --bindings=\'{"credentials":{"<sourceId>":"<targetId>"}}\'',
+		'<%= config.bin %> package import --file=export.n8np',
+		'<%= config.bin %> package import --file=export.n8np --project-id=<id> --workflow-conflict-policy=skip',
+		'<%= config.bin %> package import --file=export.n8np --workflow-conflict-policy=fail --credential-missing-mode=must-preexist',
+		'<%= config.bin %> package import --file=export.n8np --workflow-conflict-policy=fail --bindings=\'{"credentials":{"<sourceId>":"<targetId>"}}\'',
 	];
 
 	static override flags = {
 		...BaseCommand.baseFlags,
 		file: Flags.string({ description: 'Path to the .n8np package file', required: true }),
-		project: Flags.string({
+		projectId: Flags.string({
+			char: 'p',
 			description: 'Target project ID (defaults to your personal project)',
+			aliases: ['project-id', 'project'],
 		}),
-		folder: Flags.string({
+		folderId: Flags.string({
 			description: 'Target folder ID within the project (defaults to the project root)',
+			aliases: ['folder-id', 'folder'],
 		}),
-		conflictPolicy: Flags.string({
+		workflowConflictPolicy: Flags.string({
 			description: 'What to do when a workflow already exists in the target project',
 			options: ['new-version', 'fail', 'skip'],
-			required: true,
-			aliases: ['conflict-policy'],
+			default: 'new-version',
+			aliases: ['workflow-conflict-policy'],
+		}),
+		workflowPublishingPolicy: Flags.string({
+			description:
+				"Whether imported workflows end up published: preserve-published-state (instance default) never publishes drafts — an updated workflow is republished only when it was already published and the package workflow is published too; match-source follows the package workflow's published flag; publish-all publishes every imported workflow; unpublish-all leaves new workflows unpublished and unpublishes updated ones",
+			options: ['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
+			aliases: ['workflow-publishing-policy'],
 		}),
 		workflowIdPolicy: Flags.string({
 			description: 'Whether imported workflows keep their source ID or receive a new one',
 			options: ['new', 'source'],
 			aliases: ['workflow-id-policy'],
+		}),
+		missingNodeTypeMode: Flags.string({
+			description:
+				'What to do when a workflow uses a node type or version this instance does not have (default on the instance: fail). With import-anyway, affected workflows are imported but never published',
+			options: ['fail', 'import-anyway'],
+			aliases: ['missing-node-type-mode'],
 		}),
 		folderConflictPolicy: Flags.string({
 			description: 'What to do when a package folder already exists in the target project',
@@ -68,6 +83,18 @@ export default class PackageImport extends BaseCommand {
 			options: ['keep-existing', 'fail'],
 			aliases: ['data-table-schema-conflict-policy'],
 		}),
+		variableMissingMode: Flags.string({
+			description:
+				'What to do when a referenced variable is absent from the target project and the global scope (default on the instance: do-nothing). do-nothing imports the workflows and lists unresolved names as warnings without creating anything; must-preexist rejects the import unless every referenced variable already resolves; create-stub creates each missing variable with an empty value (see variable-parent-policy) and needs an API key with the variable:create scope',
+			options: ['do-nothing', 'must-preexist', 'create-stub'],
+			aliases: ['variable-missing-mode'],
+		}),
+		variableParentPolicy: Flags.string({
+			description:
+				'Where create-stub creates missing variables for workflow/folder packages (default: project): project creates them in the target project; global creates them at global scope. Both placements need an API key with the variable:create scope when the package has variable requirements. Ignored for project packages, where placement follows the package layout',
+			options: ['project', 'global'],
+			aliases: ['variable-parent-policy'],
+		}),
 		bindings: Flags.string({
 			description:
 				'Explicit source→target id bindings as a JSON object keyed by entity type, e.g. \'{"credentials":{"<sourceId>":"<targetId>"}}\'. Applied before credential-matching-mode resolution.',
@@ -89,16 +116,20 @@ export default class PackageImport extends BaseCommand {
 				result = await client.importPackage(
 					{ buffer, filename: path.basename(flags.file) },
 					{
-						projectId: flags.project,
-						folderId: flags.folder,
-						workflowConflictPolicy: flags.conflictPolicy,
+						projectId: flags.projectId,
+						folderId: flags.folderId,
+						workflowConflictPolicy: flags.workflowConflictPolicy,
+						workflowPublishingPolicy: flags.workflowPublishingPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
+						missingNodeTypeMode: flags.missingNodeTypeMode,
 						folderConflictPolicy: flags.folderConflictPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,
 						dataTableMatchingMode: flags.dataTableMatchingMode,
 						dataTableMissingMode: flags.dataTableMissingMode,
 						dataTableSchemaConflictPolicy: flags.dataTableSchemaConflictPolicy,
+						variableMissingMode: flags.variableMissingMode,
+						variableParentPolicy: flags.variableParentPolicy,
 						bindings: flags.bindings,
 					},
 				);

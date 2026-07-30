@@ -2,10 +2,16 @@
 // Shared types for the instance-ai workflow test case evaluator
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
+import type {
+	InstanceAiEvalAgentExecutionResult,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedDataTable,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
+import type { ConversationSeed } from './harness/conversation-seed';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -182,6 +188,10 @@ export interface ExecutionScenario {
 	dataSetup: string;
 	/** Criteria the LLM verifier checks against the execution result */
 	successCriteria: string;
+	/** Typed data tables to create + row-seed before the scenario executes
+	 *  (TRUST-311). Seeded under their exact declared names so the built
+	 *  workflow's by-name data-table references resolve. */
+	seedDataTables?: InstanceAiEvalSeedDataTable[];
 }
 
 export interface ConversationTurn {
@@ -229,11 +239,11 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
-	/** Synthetic seed file (messages + workflows) restored before the live turn.
-	 *  Synthetic fixtures only; mutually exclusive with the other seeds. */
-	seedFile?: string;
+	/** Prior messages + the workflows they reference, restored before the live turn.
+	 *  Mutually exclusive with the other seeds. */
+	conversationSeed?: ConversationSeed;
 	/** Prose turns seeded as plain-text history (no tool calls/workflows).
-	 *  Mutually exclusive with `seedFile`. */
+	 *  Mutually exclusive with the other seeds. */
 	priorConversation?: ConversationTurn[];
 	/** Reproduce a real conversation from its LangSmith trace at run time: restore
 	 *  up to the live turn (the last user message, or one pinned by `liveTurnRunId`)
@@ -253,6 +263,10 @@ export interface ExecutionScenarioResult {
 	scenario: ExecutionScenario;
 	success: boolean;
 	evalResult?: InstanceAiEvalExecutionResult;
+	/** Set when the scenario ran against a first-class Agent instead of a workflow. */
+	agentEvalResult?: InstanceAiEvalAgentExecutionResult;
+	/** Agent the scenario executed, for agent-artifact cases. */
+	agentId?: string;
 	/** Workflow actually executed for this scenario, after multi-workflow routing. */
 	workflowId?: string;
 	score: number;
@@ -282,6 +296,10 @@ export interface WorkflowTestCaseResult {
 	/** Source-file slug (matches the PR-comment / comparison label, for consistency). */
 	fileSlug?: string;
 	workflowId?: string;
+	/** Agent the case's scenarios executed (agent-artifact cases). */
+	agentId?: string;
+	/** Rendered agent config + skills — the agent analog of `workflowJson`, for the report. */
+	agentArtifactContext?: string;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
 	executionScenarioResults: ExecutionScenarioResult[];
@@ -293,6 +311,10 @@ export interface WorkflowTestCaseResult {
 	workflowChecks?: CheckOutcome[];
 	/** Captured build-time sub-agent/tool activity for builder debugging. */
 	buildTrace?: BuildTrace;
+	/** `claude` build spend in USD for this iteration's build (--build-via-mcp only). */
+	buildCostUsd?: number;
+	/** Assistant turns across the `claude` build's attempts (--build-via-mcp only). */
+	buildTurns?: number;
 	/** Per-expectation verdicts from the build-expectations judge. Aggregated as
 	 *  scoring units alongside execution scenarios. */
 	buildExpectationResults?: BuildExpectationResult[];
@@ -426,6 +448,15 @@ export interface BuildExpectationAggregation {
 	passHatK: number[];
 }
 
+/**
+ * Whether a case produced any scoreable verdict across its runs.
+ * - `verified`  — at least one scenario or build expectation was evaluated.
+ * - `notVerified` — every measured unit came back incomplete / was skipped (no
+ *   transcript for process expectations, verifier gaps for scenarios), so nothing
+ *   could actually be checked. Such a case MUST NOT roll up as a silent pass.
+ */
+export type CaseVerificationStatus = 'verified' | 'notVerified';
+
 export interface TestCaseAggregation {
 	testCase: WorkflowTestCase;
 	runs: WorkflowTestCaseResult[];
@@ -433,6 +464,9 @@ export interface TestCaseAggregation {
 	executionScenarios: ExecutionScenarioAggregation[];
 	/** Build expectations aggregated as measured units (counted in the pass rate). */
 	buildExpectations: BuildExpectationAggregation[];
+	/** `notVerified` when no unit (scenario or expectation) was evaluated across
+	 *  all runs — nothing could be checked, so the case is not a pass. */
+	status: CaseVerificationStatus;
 }
 
 export interface MultiRunEvaluation {

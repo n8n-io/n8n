@@ -70,6 +70,60 @@ describe('rebuildInteractiveFromHistory', () => {
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
+	it('restores reasoning segments and their timing from history', () => {
+		const [assistant] = convertDbMessages([
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'Inspect the inputs.', startTime: 1_000, endTime: 2_000 },
+					{ type: 'reasoning', text: 'Form the answer.', startTime: 3_000, endTime: 5_000 },
+					{ type: 'text', text: 'Done' },
+				],
+			},
+		]);
+
+		expect(assistant.thinkingSegments).toEqual([
+			{
+				id: 'assistant-1:reasoning:0',
+				content: 'Inspect the inputs.',
+				startTime: 1_000,
+				endTime: 2_000,
+			},
+			{
+				id: 'assistant-1:reasoning:1',
+				content: 'Form the answer.',
+				startTime: 3_000,
+				endTime: 5_000,
+			},
+		]);
+	});
+
+	it('uses executionId from the persisted message dto', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'exec-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi' }],
+				executionId: 'exec-1',
+			},
+		]);
+
+		expect(chat[0].executionId).toBe('exec-1');
+	});
+
+	it('does not invent executionId from the message id when the dto omits it', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'exec-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi' }],
+			},
+		]);
+
+		expect(chat[0].executionId).toBeUndefined();
+	});
+
 	it('preserves multiple resolved n8n chat cards from one persisted assistant message', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{
@@ -190,6 +244,35 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('error');
 		expect(tc?.output).toBe('Error: permission denied');
+	});
+
+	it('marks unfinished tool calls from failed executions as errors', () => {
+		const [assistant] = applyOpenSuspensions(
+			convertDbMessages([
+				{
+					id: 'm-error',
+					role: 'assistant',
+					executionStatus: 'error',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: 'calculator',
+							toolCallId: 'tc-error',
+							input: {
+								type: 'approval',
+								toolName: 'calculator',
+								args: { input: '2 + 2' },
+							},
+						},
+					],
+				},
+			]),
+			[],
+		);
+
+		expect(assistant.toolCalls?.[0].state).toBe('error');
+		expect(assistant.status).toBe('error');
+		expect(assistant.interactive).toBeUndefined();
 	});
 
 	it('treats state:resolved non-interactive tool call as done with output', () => {
@@ -537,22 +620,56 @@ describe('applyOpenSuspensions', () => {
 		expect(result[1].interactive?.runId).toBeUndefined();
 	});
 
-	it('returns chat unchanged when the suspension list is empty', () => {
+	it('retires unmatched unresolved interactive cards when no suspension is open', () => {
 		const chat: ChatMessage[] = [
 			{
 				id: 'm1',
 				role: 'assistant',
 				content: '',
+				toolCalls: [{ tool: 'tool_a', toolCallId: 'c1', state: 'suspended' }],
 				interactive: {
 					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c1',
 					input: { type: 'approval', toolName: 'tool_a', args: {} },
 				},
+				status: 'awaitingUser',
 			},
 		];
 		const result = applyOpenSuspensions(chat, []);
 		expect(result).toBe(chat);
-		expect(result[0].interactive?.runId).toBeUndefined();
+		expect(result[0].interactive).toBeUndefined();
+		expect(result[0].toolCalls?.[0]).toMatchObject({ state: 'cancelled', canceled: true });
+		expect(result[0].status).toBe('success');
+	});
+
+	it('retires unfinished non-interactive tools when no suspension is open', () => {
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'external_action', toolCallId: 'c1', state: 'running' }],
+			},
+		];
+
+		applyOpenSuspensions(chat, []);
+
+		expect(chat[0].toolCalls?.[0]).toMatchObject({ state: 'cancelled', canceled: true });
+	});
+
+	it('attaches the run id to an open non-interactive suspension', () => {
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'external_action', toolCallId: 'c1', state: 'running' }],
+			},
+		];
+
+		applyOpenSuspensions(chat, [{ toolCallId: 'c1', runId: 'run-1' }]);
+
+		expect(chat[0].toolCalls?.[0]).toMatchObject({ state: 'suspended', runId: 'run-1' });
 	});
 
 	it('ignores suspensions that do not match any interactive card', () => {
@@ -569,6 +686,6 @@ describe('applyOpenSuspensions', () => {
 			},
 		];
 		applyOpenSuspensions(chat, [{ toolCallId: 'unknown', runId: 'run-x' }]);
-		expect(chat[0].interactive?.runId).toBeUndefined();
+		expect(chat[0].interactive).toBeUndefined();
 	});
 });

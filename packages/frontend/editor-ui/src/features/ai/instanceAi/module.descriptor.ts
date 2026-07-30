@@ -121,7 +121,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
 					rbac: {
-						scope: 'instanceAi:message',
+						scope: ['instanceAi:message', 'instanceAi:manage'],
 					},
 				},
 				telemetry: {
@@ -132,6 +132,16 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		// Permanent redirect from the legacy `/settings/instance-ai` path.
 		{
 			path: 'instance-ai',
+			redirect: (to) => ({ name: INSTANCE_AI_SETTINGS_VIEW, query: to.query, hash: to.hash }),
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		// Permanent redirect from the removed `/settings/assistant/credentials` page.
+		{
+			path: 'assistant/credentials',
 			redirect: (to) => ({ name: INSTANCE_AI_SETTINGS_VIEW, query: to.query, hash: to.hash }),
 			meta: {
 				telemetry: {
@@ -158,7 +168,9 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			preview: true,
 			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } });
+				return hasPermission(['rbac'], {
+					rbac: { scope: ['instanceAi:message', 'instanceAi:manage'] },
+				});
 			},
 		},
 	],

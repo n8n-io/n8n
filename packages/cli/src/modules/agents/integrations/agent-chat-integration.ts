@@ -50,10 +50,35 @@ export interface BridgeStatusHandle {
 	clearBeforeResponse(): Promise<void>;
 }
 
+/**
+ * Wrap a status handle so the underlying clear runs at most once, with every
+ * caller awaiting the same in-flight clear. The bridge clears both from the
+ * stream consumer (right before the first response) and from its cleanup
+ * path, so this wrapper keeps platform handles free of dedupe concerns.
+ */
+export function onceStatusHandle(
+	handle: BridgeStatusHandle | undefined,
+): BridgeStatusHandle | undefined {
+	if (!handle) return undefined;
+	let clearing: Promise<void> | undefined;
+	return {
+		clearBeforeResponse: async () => {
+			clearing ??= handle.clearBeforeResponse();
+			await clearing;
+		},
+	};
+}
+
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
+	/**
+	 * Platform-fetched conversation context (e.g. prior Slack thread messages)
+	 * that the bridge prepends to the agent input message. Undefined when the
+	 * platform did not surface any context for this message.
+	 */
+	historyContext?: string;
 }
 
 export type BridgeResumeExecutionContext = Pick<
@@ -68,7 +93,24 @@ export interface BridgeMessageContextParams {
 	logger: Logger;
 	agentId: string;
 	statusRetry?: AbortController;
+	/**
+	 * True when this is the first message that pulled the agent into the
+	 * conversation (a fresh @mention / DM), false for follow-ups in an already
+	 * subscribed thread. Platforms use this to decide whether to fetch prior
+	 * thread context that the agent has never seen.
+	 */
+	isNewMention: boolean;
 }
+
+export interface ApprovalDecisionMessageParams {
+	approved: boolean;
+	raw: unknown;
+	user: Author;
+}
+
+export type ApprovalDecisionMessageFormatter = (
+	params: ApprovalDecisionMessageParams,
+) => string | undefined;
 
 /**
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
@@ -147,6 +189,9 @@ export abstract class AgentChatIntegration {
 	 * CallbackStore instead of carrying the full payload.
 	 */
 	readonly needsShortCallbackData: boolean = false;
+
+	/** Whether action messages are deleted before the agent resumes. */
+	readonly deleteActionMessageBeforeResume: boolean = true;
 
 	/**
 	 * True if the bridge should buffer streaming output and post it as a single
@@ -257,6 +302,9 @@ export abstract class AgentChatIntegration {
 
 	/** Optional text normalization before the message is handed to the agent. */
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
+
+	/** Replacement text for approval cards preserved after a user responds. */
+	formatApprovalDecisionMessage?(params: ApprovalDecisionMessageParams): string | undefined;
 
 	/**
 	 * Optional per-message execution policy for platform-specific bridge behavior,

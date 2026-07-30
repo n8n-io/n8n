@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
 import { useSecretsProvidersList } from './useSecretsProvidersList.ee';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import * as secretsProviderApi from '@n8n/rest-api-client';

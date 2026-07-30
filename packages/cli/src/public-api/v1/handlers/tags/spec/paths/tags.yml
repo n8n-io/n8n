@@ -27,9 +27,8 @@ post:
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 get:
-  x-eov-operation-id: getTags
+  operationId: getTags
   x-required-scope: tag:list
-  x-eov-operation-handler: v1/handlers/tags/tags.handler
   tags:
     - Tags
   summary: Retrieve all tags

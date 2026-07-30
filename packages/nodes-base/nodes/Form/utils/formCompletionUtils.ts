@@ -12,6 +12,7 @@ import {
 
 import {
 	generateFormUserAuthToken,
+	getNodeReference,
 	handleNewlines,
 	resolveRawData,
 	sanitizeCustomCss,
@@ -25,7 +26,7 @@ const getBinaryDataFromNode = (
 	context: IWebhookFunctions,
 	nodeName: string,
 ): IDataObject | undefined => {
-	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as
+	return context.evaluateExpression(`{{ ${getNodeReference(nodeName)}.first().binary }}`) as
 		| IDataObject
 		| undefined;
 };
@@ -92,14 +93,15 @@ export const renderFormCompletion = async (
 		| 'showText'
 		| 'returnBinary';
 	const binary = respondWith === 'returnBinary' ? await binaryResponse(context) : [];
+	const triggerRef = getNodeReference(trigger.name);
 
 	let title = options.formTitle;
 	if (!title) {
-		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
+		title = context.evaluateExpression(`{{ ${triggerRef}.params.formTitle }}`) as string;
 		title = resolveRawData(context, title);
 	}
 	const appendAttribution = context.evaluateExpression(
-		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
+		`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
 	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {

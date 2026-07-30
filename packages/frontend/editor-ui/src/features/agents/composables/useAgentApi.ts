@@ -1,6 +1,7 @@
 import type {
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
+	AgentConfigValidationResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
@@ -9,6 +10,7 @@ import type {
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentCatalogModel,
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
@@ -322,13 +324,7 @@ export const getSlackAgentAppManifest = async (
 	);
 };
 
-export interface ModelInfo {
-	id: string;
-	name: string;
-	releaseDate?: string;
-	reasoning: boolean;
-	toolCall: boolean;
-}
+export type ModelInfo = AgentCatalogModel;
 
 export interface ProviderInfo {
 	id: string;
@@ -441,6 +437,24 @@ export const getAgentConfig = async (
 	);
 };
 
+/**
+ * Static, authoritative readiness check for the current draft. Never
+ * performs live/network validation — safe to call frequently. The publish
+ * endpoint re-checks this independently, so this is purely for UI feedback
+ * (disabled Publish tooltip, invalid capability chips).
+ */
+export const getAgentConfigValidation = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentConfigValidationResponse> => {
+	return await makeRestApiRequest<AgentConfigValidationResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/validation`,
+	);
+};
+
 export const getAgentCapabilitySummary = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -530,6 +544,19 @@ export const clearTestChatMessages = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const cancelAgentChatRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	runId: string,
+): Promise<{ cancelled: boolean }> => {
+	return await makeRestApiRequest<{ cancelled: boolean }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/runs/${runId}`,
 	);
 };
 

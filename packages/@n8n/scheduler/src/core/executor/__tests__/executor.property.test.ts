@@ -5,7 +5,7 @@ import type { ClaimedTask } from '../../types';
 import { Executor } from '../executor';
 import type { PrecisionTimer } from '../precision-timer';
 import type { ExecutorTaskStore } from '../store';
-import type { TaskHandler, TaskHandlerRegistry } from '../task-handler';
+import type { DispatchReporter, TaskHandler, TaskHandlerRegistry } from '../task-handler';
 
 const HOST = 'main-property';
 const TASK_TYPE = 'property-test-task';
@@ -44,7 +44,10 @@ describe('Executor claim/dispatch (fast-check)', () => {
 					const timer = mock<PrecisionTimer>();
 					const tasks = entries.map((entry) => claimedTask(entry.id));
 					const executeCalls: string[] = [];
-					const handlerExecute = vi.fn().mockResolvedValue(undefined);
+					const handlerExecute = vi.fn(async (_task: ClaimedTask, report: DispatchReporter) => {
+						await Promise.resolve();
+						return report.notDispatched();
+					});
 					const handler: TaskHandler = { execute: handlerExecute };
 
 					registry.registeredTypes.mockReturnValue([TASK_TYPE]);
@@ -57,6 +60,7 @@ describe('Executor claim/dispatch (fast-check)', () => {
 						store.beginDispatch.mockResolvedValueOnce(entry.started ? 1 : 0);
 					}
 					store.completeTask.mockResolvedValue(1);
+					store.markDispatched.mockResolvedValue(1);
 
 					const executor = new Executor(store, registry, timer, {
 						leaseSeconds: 60,
@@ -72,7 +76,7 @@ describe('Executor claim/dispatch (fast-check)', () => {
 					await new Promise((resolve) => setImmediate(resolve));
 
 					for (const call of handlerExecute.mock.calls) {
-						executeCalls.push((call[0] as ClaimedTask).id);
+						executeCalls.push(call[0].id);
 					}
 
 					for (const entry of entries) {

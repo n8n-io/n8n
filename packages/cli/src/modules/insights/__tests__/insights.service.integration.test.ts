@@ -7,7 +7,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { InstanceType } from '@n8n/constants';
-import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb, Project, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
@@ -15,6 +15,8 @@ import { UserError } from 'n8n-workflow';
 import type { MockInstance, Mocked } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
+
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
@@ -66,6 +68,7 @@ describe('InsightsService (Integration)', () => {
 				mock<LicenseState>(),
 				instanceSettings,
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
 
 			// Get the real service from the container and spy on it
@@ -310,6 +313,9 @@ describe('InsightsService (Integration)', () => {
 	describe('getInsightsByWorkflow', () => {
 		let insightsService: InsightsService;
 
+		// Owner-like user with the global `workflow:read` scope, so every workflow is accessible
+		const owner = { role: { scopes: [{ slug: 'workflow:read' }] } } as unknown as User;
+
 		beforeAll(() => {
 			insightsService = Container.get(InsightsService);
 		});
@@ -409,6 +415,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate,
 			});
@@ -475,6 +482,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 				sortBy: 'runTime:desc',
@@ -502,6 +510,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 				sortBy: 'succeeded:desc',
@@ -529,6 +538,7 @@ describe('InsightsService (Integration)', () => {
 			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 				skip: 10,
@@ -598,6 +608,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 				projectId: project.id,
@@ -644,6 +655,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 			});
@@ -988,6 +1000,7 @@ describe('InsightsService (Integration)', () => {
 				licenseStateMock,
 				mock<InstanceSettings>(),
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
 		});
 
@@ -1096,6 +1109,7 @@ describe('InsightsService (Integration)', () => {
 				mock<LicenseState>(),
 				mock<InstanceSettings>({ instanceType: 'main' }),
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
 		});
 

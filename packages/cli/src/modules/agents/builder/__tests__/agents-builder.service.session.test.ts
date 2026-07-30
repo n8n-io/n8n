@@ -1,6 +1,5 @@
 import type { BuiltTelemetry, BuiltTool, CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -27,6 +26,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 	const instructionsCalls: string[] = [];
 	const registeredToolNames: string[] = [];
 	const modelCalls: unknown[] = [];
+	const promptCachingCalls: unknown[] = [];
+	const reasoningCalls: string[] = [];
 	const skillsCalls: unknown[] = [];
 	const telemetryCalls: unknown[] = [];
 	const memoryTaskObserverCalls: unknown[] = [];
@@ -47,6 +48,14 @@ const agentsSdkMocks = vi.hoisted(() => {
 		constructor(_name: string) {}
 		model(config: unknown) {
 			modelCalls.push(config);
+			return this;
+		}
+		promptCaching(config?: unknown) {
+			promptCachingCalls.push(config);
+			return this;
+		}
+		reasoning(effort: string) {
+			reasoningCalls.push(effort);
 			return this;
 		}
 		instructions(text: string) {
@@ -107,11 +116,17 @@ const agentsSdkMocks = vi.hoisted(() => {
 		return { model, options, kind: 'reflect' };
 	}
 
+	function createPlannerTodosTool(): BuiltTool {
+		return { name: 'write_todos', description: 'planner todos tool' } as BuiltTool;
+	}
+
 	return {
 		streamCalls,
 		instructionsCalls,
 		registeredToolNames,
 		modelCalls,
+		promptCachingCalls,
+		reasoningCalls,
 		skillsCalls,
 		telemetryCalls,
 		memoryTaskObserverCalls,
@@ -120,6 +135,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		MockMemory,
 		createObservationLogObserveFn,
 		createObservationLogReflectFn,
+		createPlannerTodosTool,
 	};
 });
 
@@ -128,6 +144,7 @@ vi.mock('@n8n/agents', () => ({
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
 	createObservationLogReflectFn: agentsSdkMocks.createObservationLogReflectFn,
+	createPlannerTodosTool: agentsSdkMocks.createPlannerTodosTool,
 }));
 
 // Avoid a real `models.dev` catalog fetch — irrelevant to thread isolation and
@@ -158,7 +175,6 @@ function setup(
 	const instanceAiCreditService = mock<InstanceAiCreditService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 	const agentCheckpointRepository = mock<AgentCheckpointRepository>();
-	const agentsConfig = mock<AgentsConfig>();
 
 	nodeCatalogService.initialize.mockResolvedValue(undefined);
 	agentsBuilderToolsService.getTools.mockReturnValue(standardTools);
@@ -185,7 +201,6 @@ function setup(
 		instanceAiCreditService,
 		n8nCheckpointStorage,
 		agentCheckpointRepository,
-		agentsConfig,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -216,6 +231,8 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.instructionsCalls.length = 0;
 		agentsSdkMocks.registeredToolNames.length = 0;
 		agentsSdkMocks.modelCalls.length = 0;
+		agentsSdkMocks.promptCachingCalls.length = 0;
+		agentsSdkMocks.reasoningCalls.length = 0;
 		agentsSdkMocks.skillsCalls.length = 0;
 		agentsSdkMocks.telemetryCalls.length = 0;
 		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
@@ -284,7 +301,7 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
 	});
 
-	it('includes the integrations skill', async () => {
+	it('includes the external services skill', async () => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
@@ -292,7 +309,7 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
-		expect(skills.some((skill) => skill.id === 'agent-builder-integrations')).toBe(true);
+		expect(skills.some((skill) => skill.id === 'agent-builder-external-services')).toBe(true);
 	});
 
 	it('uses session.modelConfig directly for the builder model', async () => {
@@ -303,6 +320,33 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.modelCalls).toEqual(['anthropic/claude-sonnet-host-resolved']);
+	});
+
+	it('enables prompt caching with a 5m Anthropic TTL for the builder agent', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+		);
+
+		expect(agentsSdkMocks.promptCachingCalls).toEqual([{ anthropic: { ttl: '5m' } }]);
+	});
+
+	it.each([
+		['Anthropic', 'anthropic/claude-sonnet-host-resolved'],
+		['OpenAI', 'openai/gpt-5.5'],
+		['Google', 'google/gemini-2.5-pro'],
+	])('enables generic reasoning for a %s builder model', async (_provider, modelConfig) => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				modelConfig,
+			}),
+		);
+
+		expect(agentsSdkMocks.reasoningCalls).toEqual(['medium']);
 	});
 
 	it('attaches session.telemetry when provided, and omits it otherwise', async () => {

@@ -11,12 +11,15 @@ import { useEvaluationStore } from '../evaluation.store';
 import { useParallelEvalStore } from '../parallelEval.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { N8nButton, N8nIcon, N8nPopover } from '@n8n/design-system';
 
 const props = defineProps<{
 	workflowId: string;
+	// When set, the runs table paginates to this many rows per page (used when
+	// stacked alongside the collections list so both fit). Omitted → no paging.
+	runsPageSize?: number;
 }>();
 
 const locale = useI18n();
@@ -260,6 +263,7 @@ watch(runningTestRun, (run) => {
 					:class="$style.runs"
 					:runs="runs"
 					:workflow-id="props.workflowId"
+					:page-size="runsPageSize"
 				/>
 			</div>
 		</div>

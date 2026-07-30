@@ -418,8 +418,6 @@ describe('WorkflowExecutionService', () => {
 				dirtyNodeNames: [],
 			} as WorkflowRequest.ManualRunPayload;
 
-			// Not jest.spyOn/vi.spyOn: the mock proxy exposes mock methods
-			// directly, keeping this test agnostic of the test runner
 			nodeTypes.getByNameAndVersion.mockReturnValueOnce(
 				mock<INodeType>({ description: { group: [] } }),
 			);

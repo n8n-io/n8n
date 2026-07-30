@@ -59,10 +59,12 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
+import type { EvalAgentExecutionService } from '../eval/agent-execution.service';
 import type { EvalExecutionService } from '../eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
@@ -94,6 +96,7 @@ function scopeOf(handlerName: string): { scope: Scope; globalOnly: boolean } | u
 describe('InstanceAiController', () => {
 	const instanceAiService = mock<InstanceAiService>();
 	const gatewayService = mock<InstanceAiGatewayService>();
+	const browserSessionService = mock<InstanceAiBrowserSessionService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const eventBus = mock<InProcessEventBus>();
@@ -101,6 +104,7 @@ describe('InstanceAiController', () => {
 	const durableLogMetrics = mock<DurableLogMetrics>();
 	const moduleRegistry = mock<ModuleRegistry>();
 	const push = mock<Push>();
+	const publisher = mock<Publisher>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
 		instanceAi: { gatewayApiKey: 'static-key', durableLog: false },
@@ -119,10 +123,11 @@ describe('InstanceAiController', () => {
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
-		mock<InstanceAiBrowserSessionService>(),
+		browserSessionService,
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		mock<EvalAgentExecutionService>(),
 		evalCredentialAllowlists,
 		evalThreadRestore,
 		eventBus,
@@ -135,6 +140,7 @@ describe('InstanceAiController', () => {
 		credentialsService,
 		projectService,
 		instanceAiErrorReporter,
+		publisher,
 		globalConfig,
 	);
 
@@ -750,13 +756,41 @@ describe('InstanceAiController', () => {
 				dataTables: [dataTable],
 			} as InstanceAiEvalRestoreThreadRequest);
 
-			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1');
+			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1', {
+				uniquifyNames: true,
+			});
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
 				idMap,
 			);
 			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
+		});
+
+		it('seeds data tables only (no messages) under exact names when uniquifyNames is false (TRUST-311)', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map([['dt-old-1234', 'dt-new']]));
+
+			const dataTable = {
+				id: 'dt-old-1234',
+				name: 'Job Applications',
+				columns: [{ name: 'application_id', type: 'string' as const }],
+				rows: [{ application_id: 'row_001' }],
+			};
+			const result = await controller.restoreEvalThread(req, res, {
+				threadId: THREAD_ID,
+				messages: [],
+				dataTables: [dataTable],
+				uniquifyNames: false,
+			} as InstanceAiEvalRestoreThreadRequest);
+
+			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1', {
+				uniquifyNames: false,
+			});
+			// No messages to restore — the message write is skipped.
+			expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ restored: 0, dataTableIds: ['dt-new'] });
 		});
 
 		it('should roll back created workflows and data tables when a later step fails', async () => {
@@ -893,7 +927,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should disconnect all gateways when enabled is set to false', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			settingsService.updateAdminSettings.mockResolvedValue({ enabled: false } as never);
 			gatewayService.disconnectAllGateways.mockReturnValue(['user-a', 'user-b']);
 			const payload = { enabled: false } as InstanceAiAdminSettingsUpdateRequest;
 
@@ -910,7 +944,10 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should disconnect all gateways when localGatewayDisabled is set to true', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			settingsService.updateAdminSettings.mockResolvedValue({
+				enabled: true,
+				localGatewayDisabled: true,
+			} as never);
 			gatewayService.disconnectAllGateways.mockReturnValue(['user-c']);
 			const payload = { localGatewayDisabled: true } as InstanceAiAdminSettingsUpdateRequest;
 
@@ -926,7 +963,10 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should not disconnect gateways when enabling features', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			settingsService.updateAdminSettings.mockResolvedValue({
+				enabled: true,
+				localGatewayDisabled: false,
+			} as never);
 			const payload = {
 				enabled: true,
 				localGatewayDisabled: false,
@@ -935,6 +975,80 @@ describe('InstanceAiController', () => {
 			await controller.updateAdminSettings(req, res, payload);
 
 			expect(gatewayService.disconnectAllGateways).not.toHaveBeenCalled();
+		});
+
+		it('should publish settings reloads to other mains', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({ enabled: true } as never);
+
+			await controller.updateAdminSettings(req, res, { enabled: true });
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-instance-ai-settings',
+			});
+		});
+
+		it('should publish and attempt every local side effect when one fails', async () => {
+			const refreshError = new Error('refresh failed');
+			settingsService.updateAdminSettings.mockResolvedValue({
+				enabled: false,
+				browserUseEnabled: false,
+				localGatewayDisabled: true,
+			} as never);
+			moduleRegistry.refreshModuleSettings.mockRejectedValueOnce(refreshError);
+			gatewayService.disconnectAllGateways.mockReturnValue([]);
+
+			await expect(
+				controller.updateAdminSettings(req, res, { enabled: false }),
+			).resolves.toBeDefined();
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-instance-ai-settings',
+			});
+			expect(browserSessionService.shutdown).toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
+			expect(instanceAiErrorReporter.report).toHaveBeenCalledWith(refreshError, {
+				component: 'settings-side-effects',
+				threadId: 'admin-settings',
+			});
+		});
+
+		it('should report a publish failure after applying committed settings', async () => {
+			const committedSettings = {
+				enabled: false,
+				browserUseEnabled: false,
+				localGatewayDisabled: true,
+			};
+			const publishError = new Error('publish failed');
+			settingsService.updateAdminSettings.mockResolvedValue(committedSettings as never);
+			publisher.publishCommand.mockRejectedValue(publishError);
+			gatewayService.disconnectAllGateways.mockReturnValue([]);
+
+			await expect(controller.updateAdminSettings(req, res, { enabled: false })).resolves.toBe(
+				committedSettings,
+			);
+			expect(instanceAiErrorReporter.report).toHaveBeenCalledWith(publishError, {
+				component: 'settings-publish',
+				threadId: 'admin-settings',
+			});
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
+			expect(browserSessionService.shutdown).toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
+		});
+	});
+
+	describe('reloadAdminSettings', () => {
+		it('should apply side effects from the reloaded local flags', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+			settingsService.isBrowserUseEnabled.mockReturnValue(false);
+			settingsService.isLocalGatewayDisabled.mockReturnValue(true);
+			gatewayService.disconnectAllGateways.mockReturnValue([]);
+
+			await controller.reloadAdminSettings();
+
+			expect(settingsService.reloadFromDb).toHaveBeenCalled();
+			expect(settingsService.getAdminSettings).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
+			expect(browserSessionService.shutdown).toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
 		});
 	});
 
@@ -982,18 +1096,18 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('listModelCredentials', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('listModelCredentials')).toEqual({
-				scope: 'instanceAi:message',
+	describe('listServiceCredentials', () => {
+		it('should require instanceAi:manage scope', () => {
+			expect(scopeOf('listServiceCredentials')).toEqual({
+				scope: 'instanceAi:manage',
 				globalOnly: true,
 			});
 		});
 	});
 
-	describe('listServiceCredentials', () => {
+	describe('listInstanceModelCredentials', () => {
 		it('should require instanceAi:manage scope', () => {
-			expect(scopeOf('listServiceCredentials')).toEqual({
+			expect(scopeOf('listInstanceModelCredentials')).toEqual({
 				scope: 'instanceAi:manage',
 				globalOnly: true,
 			});
@@ -1016,12 +1130,10 @@ describe('InstanceAiController', () => {
 			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			const threadResult = mock<InstanceAiEnsureThreadResponse>();
 			memoryService.ensureThread.mockResolvedValue(threadResult);
-			// Launch fields must be explicitly undefined: the deep mock proxies
-			// absent properties, which would look like a launch to the controller.
 			const payload = mock<InstanceAiEnsureThreadRequest>({
 				threadId: 'custom-id',
 				projectId: 'project-1',
-				source: undefined,
+				source: 'assistant_page',
 				origin: undefined,
 				sourceContext: undefined,
 			});
@@ -1029,12 +1141,11 @@ describe('InstanceAiController', () => {
 			const result = await controller.ensureThread(req, res, payload);
 
 			expect(result).toBe(threadResult);
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(
-				USER_ID,
-				'custom-id',
-				'project-1',
-				undefined,
-			);
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1', {
+				source: 'assistant_page',
+				origin: 'internal',
+				sourceContext: undefined,
+			});
 		});
 
 		it('should generate a UUID when threadId is not provided', async () => {
@@ -1044,7 +1155,7 @@ describe('InstanceAiController', () => {
 			const payload = mock<InstanceAiEnsureThreadRequest>({
 				threadId: undefined,
 				projectId: 'project-1',
-				source: undefined,
+				source: 'assistant_page',
 				origin: undefined,
 				sourceContext: undefined,
 			});
@@ -1056,27 +1167,31 @@ describe('InstanceAiController', () => {
 				USER_ID,
 				expect.any(String),
 				'project-1',
-				undefined,
+				{
+					source: 'assistant_page',
+					origin: 'internal',
+					sourceContext: undefined,
+				},
 			);
 		});
 
-		it('normalizes and forwards launch metadata when a source is provided', async () => {
+		it('forwards launch metadata with the provided source and origin', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
 			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			memoryService.ensureThread.mockResolvedValue(mock<InstanceAiEnsureThreadResponse>());
 			const payload = {
 				threadId: 'custom-id',
 				projectId: 'project-1',
-				source: 'not-a-known-source',
+				source: 'website-template',
+				origin: 'external',
 				sourceContext: { templateId: '6270' },
 			} as InstanceAiEnsureThreadRequest;
 
 			await controller.ensureThread(req, res, payload);
 
-			// Unknown sources normalize to the fallback; origin defaults to internal.
 			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1', {
-				source: 'unknown',
-				origin: 'internal',
+				source: 'website-template',
+				origin: 'external',
 				sourceContext: { templateId: '6270' },
 			});
 		});
@@ -1089,6 +1204,7 @@ describe('InstanceAiController', () => {
 			const payload = mock<InstanceAiEnsureThreadRequest>({
 				threadId: 'thread-new',
 				projectId: 'project-1',
+				source: 'assistant_page',
 			});
 
 			await expect(controller.ensureThread(req, res, payload)).rejects.toThrow(error);
@@ -1652,6 +1768,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		mock<EvalAgentExecutionService>(),
 		new EvalThreadCredentialAllowlistService(),
 		mock<EvalThreadRestoreService>(),
 		eventBus,
@@ -1664,6 +1781,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		mock<CredentialsService>(),
 		mock<ProjectService>(),
 		mock<InstanceAiErrorReporterService>(),
+		mock<Publisher>(),
 		globalConfig,
 	);
 

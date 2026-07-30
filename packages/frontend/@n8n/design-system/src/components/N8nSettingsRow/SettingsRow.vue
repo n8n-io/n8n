@@ -306,11 +306,12 @@ function onKeydown(event: KeyboardEvent) {
 
 <style lang="scss" module>
 @use '../../css/mixins/utils';
+@use '../../css/mixins/motion';
 
-// The expand/collapse motion. No DS duration token equals 350ms (snappy=200, base=400) and the
-// curve has no token either, so both live here as local constants per the motion spec.
-$expand-duration: 350ms;
-$expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
+// The expand/collapse motion: the shared settings-surface blur motion, whose
+// canonical duration/easing live in the motion mixins.
+$expand-duration: motion.$blur-motion-duration;
+$expand-easing: motion.$blur-motion-easing;
 
 .row {
 	position: relative;

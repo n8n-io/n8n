@@ -3,7 +3,13 @@ import type { ScheduledJob, WorkflowEntity } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
-import type { ClaimedTask, Scheduler, SchedulerPasses, TaskHandler } from '@n8n/scheduler';
+import type {
+	ClaimedTask,
+	DispatchReporter,
+	Scheduler,
+	SchedulerPasses,
+	TaskHandler,
+} from '@n8n/scheduler';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -19,7 +25,7 @@ import {
  *
  * A handler models `ScheduleTriggerTaskHandler` faithfully: it inserts a real
  * execution row under the occurrence-derived dedup key (hitting the real partial
- * unique index), then reports the dispatch via `onDispatch` (as the real handler
+ * unique index), then reports the dispatch via `report.dispatched()` (as the real handler
  * does right after `runWorkflow`), standing in for the running workflow with a
  * dispatch spy. Assertions are on that spy, never on the presence of an
  * `execution_entity` row.
@@ -91,11 +97,11 @@ describe('durable scheduler effect boundary', () => {
 	 * Mirrors `ScheduleTriggerTaskHandler.execute`: insert the execution row under the
 	 * occurrence's dedup key (real unique index), then report the dispatch. A
 	 * pre-existing row makes the insert collide, and `DuplicateExecutionError` is
-	 * swallowed like `recordExistingHandoff` does: no dispatch, and no `onDispatch`
-	 * (the effect already exists and isn't ours).
+	 * swallowed like `recordExistingHandoff` does: report `notDispatched()`, so no
+	 * marker is stamped (the effect already exists and isn't ours).
 	 */
 	const effectBoundaryHandler = (opts: { hangAfterDispatch?: boolean } = {}): TaskHandler => ({
-		execute: async (task: ClaimedTask, onDispatch: () => void) => {
+		execute: async (task: ClaimedTask, report: DispatchReporter) => {
 			const deduplicationKey = scheduleTriggerDeduplicationKey(task);
 			try {
 				// The insert transaction: claims the key (execution-persistence.create).
@@ -111,18 +117,19 @@ describe('durable scheduler effect boundary', () => {
 			} catch (error) {
 				if (!(error instanceof DuplicateExecutionError)) throw error;
 				// A row already holds the key: swallow and complete, as the handler does.
-				return;
+				return report.notDispatched();
 			}
 			// The insert committed and the run was initiated: the effect is real. Stand in
 			// for the running workflow with the spy, then report the dispatch so the task
 			// carries its marker (as the real handler does after runWorkflow).
 			dispatchSpy(task);
-			onDispatch();
+			const decision = report.dispatched();
 			if (opts.hangAfterDispatch) {
 				const gate = deferred();
 				releases.push(gate.resolve);
 				await gate.promise;
 			}
+			return decision;
 		},
 	});
 

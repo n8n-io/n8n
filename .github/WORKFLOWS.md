@@ -179,7 +179,7 @@ These only run if specific files changed:
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
-| `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-sync-api-docs.yml`    | master     |
+| `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-publish-api-schema.yml` | master   |
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 
 ### On PR Review
@@ -198,7 +198,7 @@ The current trigger fires once per `opened` / `reopened` / `ready_for_review`
 on a non-fork PR touching the eval surface, and runs the `pr` test-case dataset
 (a small set of high-reliability, capability-diverse cases) instead of the full
 suite. Test cases are pulled at run time from the LangTracer suite
-`n8n-workflows` — the source of truth; CI has no disk fallback (local runs
+`baseline` — the source of truth; CI has no disk fallback (local runs
 keep `--source disk` for authoring). To
 re-run after pushing a fix, dispatch `ci-instance-ai-evals.yml` with the PR
 number (optionally `tier: full` for broader coverage) — results post back to

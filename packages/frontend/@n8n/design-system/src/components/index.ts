@@ -1,4 +1,3 @@
-export { default as N8nActionBox } from './N8nActionBox';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
 export {
 	default as N8nAskAssistantChat,
@@ -39,7 +38,10 @@ export { default as N8nCard } from './N8nCard';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
 export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
+export { default as N8nCopyInput } from './N8nCopyInput';
 export { default as N8nDatatable } from './N8nDatatable';
+export { default as N8nEmptyState } from './N8nEmptyState';
+export type { EmptyStateCardIcon, EmptyStateIconCards } from './N8nEmptyState';
 export { default as N8nExternalLink } from './N8nExternalLink';
 export { default as N8nFloatingWindow } from './N8nFloatingWindow';
 export { default as N8nFormBox } from './N8nFormBox';
@@ -108,6 +110,7 @@ export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
+export { default as N8nStatusDot } from './N8nStatusDot';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
 export { default as N8nSuggestedActions } from './N8nSuggestedActions';

@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "rimraf": "catalog:",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",

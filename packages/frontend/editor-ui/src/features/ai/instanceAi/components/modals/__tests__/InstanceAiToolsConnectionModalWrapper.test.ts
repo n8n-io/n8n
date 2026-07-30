@@ -134,6 +134,12 @@ const connectedLinearItem: McpServerConnectionItem = {
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
 };
 
+const toolSettings: ToolConnectionSettings = {
+	inclusionMode: 'selected',
+	selectedTools: ['search'],
+	excludedTools: [],
+};
+
 let modalListeners: Record<string, unknown> = {};
 
 const ToolsConnectionModalStub = defineComponent({
@@ -205,18 +211,15 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		];
 		mcpStoreMock.connectionsByServerSlug = new Map();
 		mcpStoreMock.connectionToolsById = new Map();
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = {};
 		mockConnect.mockResolvedValue(null);
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
 	});
 
-	it('tracks tool filter settings after a successful save', async () => {
+	it('keeps the modal open after saving settings opened from the tools list', async () => {
 		renderComponent();
 
-		emitSave({
-			inclusionMode: 'selected',
-			selectedTools: ['search'],
-			excludedTools: [],
-		});
+		emitSave(toolSettings);
 		await flushPromises();
 
 		expect(mockUpdateConnection).toHaveBeenCalledWith('conn-1', {
@@ -225,6 +228,28 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			excludedTools: [],
 		});
 		expect(telemetryMock.trackToolFilterSettingsUpdated).toHaveBeenCalledWith('linear', 'selected');
+		expect(uiStoreMock.closeModal).not.toHaveBeenCalled();
+	});
+
+	it('closes the modal after saving settings opened directly', async () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
+		renderComponent();
+
+		emitSave(toolSettings);
+		await flushPromises();
+
+		expect(uiStoreMock.closeModal).toHaveBeenCalledWith('instanceAiToolsConnection');
+	});
+
+	it('keeps the directly opened modal open when saving fails', async () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
+		mockUpdateConnection.mockResolvedValue(null);
+		renderComponent();
+
+		emitSave(toolSettings);
+		await flushPromises();
+
+		expect(uiStoreMock.closeModal).not.toHaveBeenCalled();
 	});
 
 	it('tracks first credential connection start', () => {
