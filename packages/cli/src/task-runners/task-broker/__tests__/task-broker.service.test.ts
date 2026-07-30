@@ -1229,6 +1229,82 @@ describe('TaskBroker', () => {
 
 			expect(taskBroker.getRunnerAcceptRejects().size).toBe(0);
 		});
+
+		it('should restart the request expiry window when the runner fails to acknowledge', async () => {
+			vi.useFakeTimers();
+
+			const config = mock<TaskRunnersConfig>({ taskRequestTimeout: 60 });
+			taskBroker = new TaskBroker(mock(), config, mock(), mock());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+
+			const requesterCallback = vi.fn();
+			taskBroker.registerRequester('requester1', requesterCallback);
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				timeout: taskBroker['createRequestTimeout']('request1'),
+				acceptInProgress: true,
+			};
+			taskBroker.setPendingTaskRequests([request]);
+
+			// most of the window elapses before the matched runner fails to acknowledge
+			vi.advanceTimersByTime(55_000);
+			const acceptPromise = taskBroker.acceptOffer(offerFor('runner1', 'offer1'), request);
+			vi.advanceTimersByTime(ACCEPT_TIMEOUT_MS);
+			await acceptPromise;
+
+			// without the restart, the original window would have expired by now
+			vi.advanceTimersByTime(30_000);
+			expect(taskBroker.getPendingTaskRequests()).toHaveLength(1);
+
+			vi.advanceTimersByTime(60_000);
+			expect(taskBroker.getPendingTaskRequests()).toHaveLength(0);
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:requestexpired',
+				requestId: 'request1',
+				reason: 'timeout',
+			});
+
+			vi.useRealTimers();
+		});
+
+		it('should stop restarting the expiry window after repeated acknowledgment failures', async () => {
+			vi.useFakeTimers();
+
+			const config = mock<TaskRunnersConfig>({ taskRequestTimeout: 60 });
+			taskBroker = new TaskBroker(mock(), config, mock(), mock());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				acceptInProgress: true,
+			};
+			taskBroker.setPendingTaskRequests([request]);
+
+			const timeoutAfterAcceptFailure = async (offerId: string) => {
+				const acceptPromise = taskBroker.acceptOffer(offerFor('runner1', offerId), request);
+				vi.advanceTimersByTime(ACCEPT_TIMEOUT_MS);
+				await acceptPromise;
+				return request.timeout;
+			};
+
+			let previousTimeout = await timeoutAfterAcceptFailure('offer1');
+			expect(previousTimeout).toBeDefined();
+
+			for (const offerId of ['offer2', 'offer3']) {
+				const refreshedTimeout = await timeoutAfterAcceptFailure(offerId);
+				expect(refreshedTimeout).not.toBe(previousTimeout);
+				previousTimeout = refreshedTimeout;
+			}
+
+			expect(await timeoutAfterAcceptFailure('offer4')).toBe(previousTimeout);
+
+			vi.useRealTimers();
+		});
 	});
 
 	describe('request timeout', () => {

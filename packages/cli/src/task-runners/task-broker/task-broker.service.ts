@@ -43,12 +43,15 @@ export interface TaskOffer {
 	validUntil: bigint;
 }
 
+const MAX_REQUEST_TIMEOUT_REFRESHES = 3;
+
 export interface TaskRequest {
 	requestId: string;
 	requesterId: string;
 	taskType: string;
 	timeout?: NodeJS.Timeout;
 	acceptInProgress?: boolean;
+	timeoutRefreshes?: number;
 }
 
 export type MessageCallback = (message: BrokerMessage.ToRunner.All) => Promise<void> | void;
@@ -116,6 +119,21 @@ export class TaskBroker {
 		return setTimeout(() => {
 			this.handleRequestTimeout(requestId);
 		}, this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds);
+	}
+
+	/**
+	 * Restarts the request's expiry window, so a request that lost part of its window
+	 * to a failure the requester is not responsible for gets a full window for the
+	 * next matching attempt. Capped per request, so a runner that keeps offering but
+	 * never acknowledges cannot postpone the expiry indefinitely.
+	 */
+	private refreshRequestTimeout(request: TaskRequest) {
+		const refreshes = request.timeoutRefreshes ?? 0;
+		if (refreshes < MAX_REQUEST_TIMEOUT_REFRESHES) {
+			request.timeoutRefreshes = refreshes + 1;
+			clearTimeout(request.timeout);
+			request.timeout = this.createRequestTimeout(request.requestId);
+		}
 	}
 
 	private handleRequestTimeout(requestId: string) {
@@ -611,6 +629,7 @@ export class TaskBroker {
 			if (e instanceof TaskRunnerAcceptTimeoutError) {
 				this.logger.warn(e.message);
 				this.runnerAcceptRejects.delete(taskId);
+				this.refreshRequestTimeout(request);
 				// A runner missing the acknowledgement window may be gone without its transport
 				// having reported it yet, so its remaining offers cannot be trusted either.
 				this.discardOffersFrom(offer.runnerId);
