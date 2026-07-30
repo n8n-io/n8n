@@ -218,6 +218,31 @@ for (const pattern of phantomDirs) {
 }
 echo(chalk.green('✅ Phantom dirs stripped'));
 
+// Strip non-runtime files (Node never loads these) to cut the image's file count,
+// which dominates layer extraction time on constrained hosts. .js.map is kept —
+// source-map-support needs it for production stack traces.
+echo(chalk.yellow('INFO: Stripping non-runtime files (.ts/.d.ts/.md) from production closure...'));
+// `@n8n/instance-ai` reads these markdown trees off disk on every agent request,
+// so they are runtime data despite the extension. Excluded via `-not -path` and
+// not `-prune`: `-delete` implies `-depth`, which makes `-prune` a no-op.
+const runtimeAssetGlobs = ['*/@n8n/instance-ai/skills/*', '*/@n8n/instance-ai/knowledge-base/*'];
+const keepRuntimeAssets = runtimeAssetGlobs.flatMap((glob) => ['-not', '-path', glob]);
+await $`find ${config.compiledAppDir} -type f \\( -name '*.ts' -o -name '*.d.ts.map' -o -name '*.md' -o -name '*.test.js' -o -name '*.spec.js' \\) ${keepRuntimeAssets} -delete 2>/dev/null || true`;
+echo(chalk.green('✅ Non-runtime files stripped'));
+
+// Stripping the trees above leaves a bootable image whose agent has no skills and
+// no knowledge base, so the damage only surfaces on the first request. Fail here.
+// `.nothrow()` because zx runs with `pipefail`: one unreadable path would
+// otherwise turn a healthy build into an unhandled rejection.
+for (const glob of runtimeAssetGlobs) {
+	const found = await $`find ${config.compiledAppDir} -type f -path ${glob}`.nothrow();
+	if (found.stdout.split('\n').filter(Boolean).length === 0) {
+		echo(chalk.red(`ERROR: no files left under ${glob} — runtime assets were stripped`));
+		process.exit(1);
+	}
+}
+echo(chalk.green('✅ Runtime assets intact'));
+
 await fs.ensureDir(config.compiledTaskRunnerDir);
 
 echo(

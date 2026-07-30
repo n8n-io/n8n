@@ -80,6 +80,7 @@ export type IntegrationAction =
 	| 'respond'
 	| 'send_dm'
 	| 'send_channel_message'
+	| 'edit_message'
 	| 'add_reaction'
 	| 'create_issue'
 	| 'update_issue'

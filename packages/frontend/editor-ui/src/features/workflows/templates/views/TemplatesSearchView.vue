@@ -16,7 +16,7 @@ import { useDebounce } from '@n8n/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, onBeforeRouteLeave, useRouter } from 'vue-router';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { N8nButton, N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 interface ISearchEvent {

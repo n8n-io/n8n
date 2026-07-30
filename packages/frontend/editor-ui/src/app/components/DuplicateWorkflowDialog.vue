@@ -13,7 +13,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 
 import { N8nButton, N8nInput } from '@n8n/design-system';
