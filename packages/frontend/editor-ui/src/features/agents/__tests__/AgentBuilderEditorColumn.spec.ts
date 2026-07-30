@@ -98,10 +98,6 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 	},
 }));
 
-vi.mock('../components/AgentJsonEditor.vue', () => ({
-	default: { name: 'AgentJsonEditor', template: '<div />' },
-}));
-
 vi.mock('../components/AgentPanelHeader.vue', () => ({
 	default: { name: 'AgentPanelHeader', template: '<h3 data-testid="agent-panel-header" />' },
 }));

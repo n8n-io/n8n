@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowDependencyResolver } from '../workflow-dependency-resolver';
-import { WorkflowRequirementsExtractor } from '../workflow-requirements.extractor';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -37,7 +36,7 @@ function makeResolver(workflows: WorkflowEntity[]) {
 	);
 
 	return {
-		resolver: new WorkflowDependencyResolver(workflowFinder, new WorkflowRequirementsExtractor()),
+		resolver: new WorkflowDependencyResolver(workflowFinder),
 		workflowFinder,
 	};
 }

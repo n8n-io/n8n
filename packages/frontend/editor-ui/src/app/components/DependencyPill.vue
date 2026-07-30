@@ -8,7 +8,7 @@ import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system'
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
