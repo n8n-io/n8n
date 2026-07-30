@@ -233,26 +233,23 @@ export class McpServer {
 
 			// SSE acks with 202 before the detached handler runs, so settling on that would
 			// release the caller's expression isolate mid-tool-call.
-			const awaitToolHandler =
+			const shouldAwaitToolHandler =
 				isToolCall && transport.transportType === 'sse' && !this.executionCoordinator.isQueueMode();
+
 			try {
 				await new Promise<void>((resolve) => {
 					this.resolveFunctions[callId] = resolve;
-					// Armed before dispatch, since the handler clears it on entry and may run
-					// before handleRequest returns.
-					if (awaitToolHandler) {
+					// Armed before dispatch: the handler may run before handleRequest returns.
+					if (shouldAwaitToolHandler) {
 						this.dispatchBackstops[callId] = setTimeout(() => {
 							this.logger.warn(`Tool call ${callId} was never dispatched; releasing caller`);
 							resolve();
 						}, TOOL_DISPATCH_TIMEOUT_MS);
 					}
+
 					const handled = transport.handleRequest(req, resp, message as IncomingMessage);
-					if (!awaitToolHandler) {
-						void handled.finally(resolve);
-						return;
-					}
-					// The CallTool handler releases us; this covers a transport-level failure.
-					void handled.catch(() => resolve());
+					if (shouldAwaitToolHandler) void handled.catch(() => resolve());
+					else void handled.finally(resolve);
 				});
 			} finally {
 				this.clearDispatchBackstop(callId);
@@ -639,9 +636,10 @@ export class McpServer {
 			const callId = extra.requestId
 				? `${extra.sessionId}_${extra.requestId}`
 				: (extra.sessionId ?? '');
-			// Dispatched, so the caller now waits on the finally below however long the
-			// tool takes — never on the dispatch backstop.
+
+			// Successfully dispatched, so we can clear the backstop now.
 			this.clearDispatchBackstop(callId);
+
 			try {
 				if (!request.params?.name || !request.params?.arguments) {
 					throw new OperationalError('Require a name and arguments for the tool call');
