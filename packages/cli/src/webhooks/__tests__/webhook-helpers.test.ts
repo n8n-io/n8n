@@ -52,9 +52,12 @@ import {
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
 import type { Project } from '@n8n/db';
+import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
+import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { WorkflowRunner } from '@/workflow-runner';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WebhookService } from '../webhook.service';
 
@@ -950,10 +953,14 @@ describe('getWebhookErrorMessage', () => {
 describe('executeWebhook credential-status gate', () => {
 	const ownershipService = mockInstance(OwnershipService);
 	const webhookService = mockInstance(WebhookService);
+	const workflowRunner = mockInstance(WorkflowRunner);
+	const activeExecutions = mockInstance(ActiveExecutions);
 	mockInstance(AuthService);
+	mockInstance(EventService);
 	mockInstance(WorkflowStatisticsService);
 
 	const WORKFLOW_ID = 'wf-1';
+	const EXECUTION_ID = 'exec-1';
 
 	const missingGateResult: CredentialCheckResult = {
 		readyToExecute: false,
@@ -987,11 +994,14 @@ describe('executeWebhook credential-status gate', () => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
 
-		ownershipService.getWorkflowProjectCached.mockResolvedValue(mock<Project>({ id: 'project-1' }));
-		// The gate runs *after* the webhook node executes, so `runWebhook` must resolve.
-		// `noWebhookResponse` lets execution return before reaching the workflow runner,
-		// keeping the test focused on the gate itself.
-		webhookService.runWebhook.mockResolvedValue({ noWebhookResponse: true });
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		// The gate only runs when the webhook decided the workflow should execute
+		// (workflowData present). Cases that pass the gate continue into WorkflowRunner.
+		webhookService.runWebhook.mockResolvedValue({ workflowData: [[{ json: {} }]] });
+		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
+		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
 	});
 
 	/**
@@ -1002,14 +1012,21 @@ describe('executeWebhook credential-status gate', () => {
 	const runGate = async (options: {
 		authentication: string;
 		gateResult?: CredentialCheckResult;
+		webhookResult?: IWebhookResponseData;
 	}) => {
 		const checkCredentialStatus = vi.fn().mockResolvedValue(options.gateResult);
 
 		const additionalData = {
 			'dynamic-credentials': { credentialCheckProxy: { checkCredentialStatus } },
 			encryptedRunnerIdentity: 'encrypted-runner-identity',
+			webhookWaitingBaseUrl: 'https://n8n.test/webhook-waiting',
+			formWaitingBaseUrl: 'https://n8n.test/form-waiting',
 		} as unknown as IWorkflowExecuteAdditionalData;
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		if (options.webhookResult !== undefined) {
+			webhookService.runWebhook.mockResolvedValue(options.webhookResult);
+		}
 
 		const workflowStartNode = mock<INode>({
 			name: 'Webhook',
@@ -1021,6 +1038,7 @@ describe('executeWebhook credential-status gate', () => {
 		// Force a valid `onReceived` response mode; the deep mock would otherwise return undefined.
 		const workflow = mock<Workflow>({
 			id: WORKFLOW_ID,
+			name: 'Test Workflow',
 			nodeTypes: {
 				getByNameAndVersion: vi
 					.fn()
@@ -1037,7 +1055,7 @@ describe('executeWebhook credential-status gate', () => {
 			workflowId: WORKFLOW_ID,
 		} as unknown as IWebhookData;
 
-		const workflowData = mock<IWorkflowBase>({ id: WORKFLOW_ID });
+		const workflowData = mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' });
 		const req = mock<WebhookRequest>({ method: 'POST', contentType: undefined });
 		const res = mock<express.Response>({ headersSent: false });
 		const responseCallback = vi.fn();
@@ -1084,6 +1102,7 @@ describe('executeWebhook credential-status gate', () => {
 		expect(missingGateResult.credentials[0].authorizationUrl).toContain(
 			'/credentials/cred-1/authorize?token=',
 		);
+		expect(workflowRunner.run).not.toHaveBeenCalled();
 	});
 
 	it('proceeds without a 428 when all resolvable credentials are connected', async () => {
@@ -1097,8 +1116,8 @@ describe('executeWebhook credential-status gate', () => {
 			null,
 			expect.objectContaining({ responseCode: 428 }),
 		);
-		// Execution continued past the gate to the normal webhook response.
-		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+		// Execution continued past the gate into the workflow runner.
+		expect(workflowRunner.run).toHaveBeenCalled();
 	});
 
 	it('does not gate webhooks that do not establish a triggering identity', async () => {
@@ -1112,6 +1131,28 @@ describe('executeWebhook credential-status gate', () => {
 			null,
 			expect.objectContaining({ responseCode: 428 }),
 		);
-		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+		expect(workflowRunner.run).toHaveBeenCalled();
+	});
+
+	it('does not gate when Only Run If prevents the workflow from executing', async () => {
+		const { checkCredentialStatus, responseCallback } = await runGate({
+			authentication: 'n8nOAuth2',
+			gateResult: missingGateResult,
+			// Bare `{}` is what Webhook.node returns when Only Run If evaluates falsy.
+			webhookResult: {},
+		});
+
+		expect(checkCredentialStatus).not.toHaveBeenCalled();
+		expect(responseCallback).not.toHaveBeenCalledWith(
+			null,
+			expect.objectContaining({ responseCode: 428 }),
+		);
+		expect(responseCallback).toHaveBeenCalledWith(
+			null,
+			expect.objectContaining({
+				data: { message: 'Webhook call received' },
+			}),
+		);
+		expect(workflowRunner.run).not.toHaveBeenCalled();
 	});
 });

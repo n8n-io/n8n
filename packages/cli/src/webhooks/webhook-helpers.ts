@@ -737,23 +737,6 @@ export async function executeWebhook(
 			};
 		}
 
-		// Reactive credential-status gate. Once the webhook node has established the
-		// triggering user's identity (n8nOAuth2 mode), block the run if any of that
-		// user's resolvable (private) credentials are still unconnected, responding
-		// 428 Precondition Required with the missing-credential list and a signed
-		// connect link for each.
-		if (!didSendResponse && !res.headersSent && shouldEstablishTriggerIdentity(workflowStartNode)) {
-			const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
-			if (credentialGate && !credentialGate.readyToExecute) {
-				responseCallback(null, {
-					data: credentialGate,
-					responseCode: 428,
-				});
-				didSendResponse = true;
-				return;
-			}
-		}
-
 		const responseHeaders = evaluateResponseHeaders(context);
 
 		if (!res.headersSent && responseHeaders) {
@@ -794,6 +777,25 @@ export async function executeWebhook(
 				}
 			}
 			return;
+		}
+
+		// Reactive credential-status gate. Runs only once we know the workflow will
+		// execute (workflowData is defined), so a falsy "Only Run If" short-circuits
+		// above without surfacing a misleading 428. Once the webhook node has established
+		// the triggering user's identity (n8nOAuth2 mode), block the run if any of that
+		// user's resolvable (private) credentials are still unconnected, responding
+		// 428 Precondition Required with the missing-credential list and a signed
+		// connect link for each.
+		if (!didSendResponse && !res.headersSent && shouldEstablishTriggerIdentity(workflowStartNode)) {
+			const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
+			if (credentialGate && !credentialGate.readyToExecute) {
+				responseCallback(null, {
+					data: credentialGate,
+					responseCode: 428,
+				});
+				didSendResponse = true;
+				return;
+			}
 		}
 
 		// For "onReceived" mode, we need to defer response sending until after the execution
