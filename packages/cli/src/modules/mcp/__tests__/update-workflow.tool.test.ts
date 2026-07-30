@@ -2089,7 +2089,7 @@ describe('update-workflow MCP tool', () => {
 				expect(response.error).toContain('Operation 0 failed');
 				expect(response.error).toContain("node 'DT'");
 				expect(response.error).toContain("data table with id 'missing' not found");
-				expect(response.error).toContain('create_data_table');
+				expect(response.error).toContain('manage_data_table');
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 

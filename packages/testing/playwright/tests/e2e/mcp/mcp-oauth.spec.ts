@@ -518,14 +518,14 @@ test.describe(
 				const toolNames = tools.map((tool) => tool.name);
 				expect(toolNames).toContain('search_workflows');
 				expect(toolNames).not.toContain('execute_workflow');
-				expect(toolNames).not.toContain('create_data_table');
+				expect(toolNames).not.toContain('manage_data_table');
 				expect(toolNames).not.toContain('publish_workflow');
 
 				// Calling a write tool is rejected because it is not registered
 				const callResponse = await api.mcp.internalMcpSendMessageNoAuth(
 					api.mcp.createMessage('tools/call', {
-						name: 'create_data_table',
-						arguments: { name: `e2e table ${nanoid(8)}`, columns: [] },
+						name: 'manage_data_table',
+						arguments: { operation: 'create', name: `e2e table ${nanoid(8)}`, columns: [] },
 					}),
 					{ Authorization: `Bearer ${tokens.access_token}` },
 				);
@@ -534,7 +534,7 @@ test.describe(
 					content: Array<{ text: string }>;
 				}>(callResponse);
 				expect(callResult.isError).toBe(true);
-				expect(callResult.content[0].text).toContain('Tool create_data_table not found');
+				expect(callResult.content[0].text).toContain('Tool manage_data_table not found');
 			});
 		});
 	},
