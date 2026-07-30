@@ -1,9 +1,0 @@
-{
-    "type": "object",
-    "properties": {
-        "_value": {
-            "type": "null"
-        }
-    },
-    "version": 1
-}
