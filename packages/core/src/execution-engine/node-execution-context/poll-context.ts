@@ -35,6 +35,14 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		private readonly activation: WorkflowActivateMode,
 		readonly __emit: IPollFunctions['__emit'] = throwOnEmit,
 		readonly __emitError: IPollFunctions['__emitError'] = throwOnEmitError,
+		readonly getCursor: IPollFunctions['getCursor'] = async () => {
+			const nodeStaticData = this.getWorkflowStaticData('node');
+			return Object.keys(nodeStaticData).length === 0 ? null : nodeStaticData;
+		},
+		readonly setCursor: IPollFunctions['setCursor'] = (cursor) => {
+			Object.assign(this.getWorkflowStaticData('node'), cursor);
+		},
+		readonly __commitCursor: IPollFunctions['__commitCursor'] = async () => {},
 	) {
 		super(workflow, node, additionalData, mode);
 
