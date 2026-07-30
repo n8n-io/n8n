@@ -218,15 +218,18 @@ export class TaskBroker {
 			}
 		}
 
-		// Fail any tasks
-		for (const task of this.tasks.values()) {
-			if (task.runnerId === runnerId) {
-				void this.failTask(task.id, error);
-				this.handleRunnerReject(
-					task.id,
-					`The Task Runner (${runnerId}) has disconnected: ${error.message}`,
-				);
-			}
+		this.failTasks(this.getInFlightTaskIds(runnerId), error);
+	}
+
+	getInFlightTaskIds(runnerId: TaskRunner['id']): Array<Task['id']> {
+		return [...this.tasks.values()]
+			.filter((task) => task.runnerId === runnerId)
+			.map((task) => task.id);
+	}
+
+	failTasks(taskIds: Array<Task['id']>, error: Error) {
+		for (const taskId of taskIds) {
+			void this.failTask(taskId, error);
 		}
 	}
 

@@ -387,7 +387,6 @@ describe('TaskBroker', () => {
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const failSpy = vi.spyOn(taskBroker as any, 'failTask');
-			const rejectSpy = vi.spyOn(taskBroker, 'handleRunnerReject');
 
 			taskBroker.registerRunner(runner, messageCallback);
 			taskBroker.setTasks({
@@ -398,10 +397,7 @@ describe('TaskBroker', () => {
 			taskBroker.deregisterRunner(runnerId, error);
 
 			expect(failSpy).toBeCalledWith(taskId, error);
-			expect(rejectSpy).toBeCalledWith(
-				taskId,
-				`The Task Runner (${runnerId}) has disconnected: error`,
-			);
+			expect(failSpy).not.toBeCalledWith('task2', expect.anything());
 		});
 	});
 
