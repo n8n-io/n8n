@@ -1,4 +1,5 @@
 import type { Mock, Mocked } from 'vitest';
+import type { LicenseState } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
@@ -6,6 +7,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Project, User, UserRepository } from '@n8n/db';
@@ -48,6 +50,7 @@ let requestMock: Mock;
 function makeService({
 	baseUrl = BASE_URL as string | null,
 	aiGatewayEnabled = true,
+	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
 	userRepository = mock<UserRepository>({ findOneBy: vi.fn().mockResolvedValue(null) }),
 	urlService = mock<UrlService>({
@@ -62,10 +65,14 @@ function makeService({
 		loadCertStr: vi.fn().mockResolvedValue(LICENSE_CERT),
 		getConsumerId: vi.fn().mockReturnValue(CONSUMER_ID),
 	});
+	const licenseState = mock<LicenseState>({
+		isAiGatewayLicensed: vi.fn().mockReturnValue(isAiGatewayLicensed),
+	});
 	const instanceSettings = mock<InstanceSettings>({ instanceId: INSTANCE_ID });
 	return new AiGatewayService(
 		globalConfig,
 		license,
+		licenseState,
 		instanceSettings,
 		ownershipService,
 		userRepository,
@@ -153,6 +160,15 @@ describe('AiGatewayService', () => {
 			expect(requestMock).not.toHaveBeenCalled();
 		});
 
+		it('returns available:false when the AI Gateway is not licensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
 		it('returns available:false when baseUrl is not configured', async () => {
 			const service = makeService({ baseUrl: null });
 
@@ -181,6 +197,13 @@ describe('AiGatewayService', () => {
 	});
 
 	describe('getSyntheticCredential()', () => {
+		it('throws FeatureNotLicensedError when the AI Gateway is not licensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+			).rejects.toThrow(FeatureNotLicensedError);
+		});
+
 		it('throws when n8n Connect is not enabled', async () => {
 			const service = makeService({ aiGatewayEnabled: false });
 			await expect(

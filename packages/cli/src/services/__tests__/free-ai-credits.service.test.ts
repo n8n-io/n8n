@@ -31,6 +31,7 @@ describe('FreeAiCreditsService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		licenseState.isAiCreditsLicensed.mockReturnValue(true);
+		licenseState.isAiGatewayLicensed.mockReturnValue(false);
 		globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
 		globalConfig.aiGateway.enabled = false;
 	});
@@ -58,11 +59,19 @@ describe('FreeAiCreditsService', () => {
 			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
 		});
 
-		it('returns false when n8n Connect is enabled', () => {
+		it('returns false when n8n Connect is enabled and licensed', () => {
 			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
 			const user = { settings: {} } as User;
 
 			expect(service.isEligible(user)).toBe(false);
+		});
+
+		it('returns true when n8n Connect is enabled but not licensed', () => {
+			globalConfig.aiGateway.enabled = true;
+			const user = { settings: {} } as User;
+
+			expect(service.isEligible(user)).toBe(true);
 		});
 
 		it('returns false when the user already claimed free credits', () => {

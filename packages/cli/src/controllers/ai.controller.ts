@@ -251,6 +251,7 @@ export class AiController {
 		}
 	}
 
+	@Licensed('feat:aiGateway')
 	@Get('/gateway/config')
 	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
 		this.requireAiGatewayEnabled();
@@ -262,6 +263,7 @@ export class AiController {
 		}
 	}
 
+	@Licensed('feat:aiGateway')
 	@Get('/gateway/wallet')
 	async getGatewayWallet(req: AuthenticatedRequest): Promise<{ budget: number; balance: number }> {
 		this.requireAiGatewayEnabled();
@@ -273,6 +275,7 @@ export class AiController {
 		}
 	}
 
+	@Licensed('feat:aiGateway')
 	@Get('/gateway/usage')
 	async getGatewayUsage(
 		req: AuthenticatedRequest,
