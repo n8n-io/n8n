@@ -263,10 +263,10 @@ describe('McpServer', () => {
 					await registerWith('never-handled', 'sse');
 					const { pending, settled } = postToolCall('never-handled');
 
-					await vi.advanceTimersByTimeAsync(1_000);
+					await vi.advanceTimersByTimeAsync(100);
 					expect(settled()).toBe(false);
 
-					await vi.advanceTimersByTimeAsync(5_000);
+					await vi.advanceTimersByTimeAsync(1_000);
 					await pending;
 
 					expect(settled()).toBe(true);
