@@ -64,7 +64,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
+			version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6],
 			defaults: {
 				name: 'Slack',
 			},
