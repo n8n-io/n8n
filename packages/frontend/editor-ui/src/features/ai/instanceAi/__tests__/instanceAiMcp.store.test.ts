@@ -29,7 +29,6 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	},
 }));
 
-/** Replays a successful `credentialsStore.deleteCredential` to its subscribers. */
 function emitCredentialDeleted(id: string): void {
 	for (const listener of deletionListeners) listener(id);
 }
@@ -243,8 +242,6 @@ describe('useInstanceAiMcpStore', () => {
 			store.connectionToolsById.set('conn-1', [{ name: 'search' }]);
 		});
 
-		// The connection row is cascaded away server-side, so the UI only has to
-		// stop showing it
 		it('drops connections that used the deleted credential', () => {
 			emitCredentialDeleted('cred-1');
 

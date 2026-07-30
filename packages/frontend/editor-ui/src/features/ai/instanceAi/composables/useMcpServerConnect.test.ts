@@ -32,8 +32,6 @@ vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	}),
 }));
 
-// Creating a credential for real would mean driving the whole credential edit
-// modal, so its subscribers are replayed by hand
 const credentialCreatedListeners = new Set<(credential: ICredentialsResponse) => void>();
 vi.mock('@/features/credentials/credentials.store', async (importOriginal) => ({
 	...(await importOriginal<object>()),
@@ -75,7 +73,6 @@ describe('useMcpServerConnect', () => {
 		await flushPromises();
 	}
 
-	/** Starts a connect attempt, resolving once the credential modal is open. */
 	async function startConnect(): Promise<{ connecting: Promise<string | null> }> {
 		const connecting = useMcpServerConnect().connectServer(linear);
 		await flushPromises();
@@ -94,8 +91,6 @@ describe('useMcpServerConnect', () => {
 		mockCanQuickConnect.mockReturnValue(false);
 	});
 
-	// Attempts are deduped per server in module scope, so a test that leaves one
-	// pending would hand it to the next test
 	afterEach(async () => {
 		await closeCredentialModal();
 	});
@@ -164,6 +159,26 @@ describe('useMcpServerConnect', () => {
 			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open).toBe(false);
 		});
 
+		it('shares one attempt across concurrent quick-connect callers', async () => {
+			mockCanQuickConnect.mockReturnValue(true);
+			let authorize!: (credential: { id: string }) => void;
+			mockCreateAndAuthorize.mockReturnValue(
+				new Promise<{ id: string }>((resolve) => {
+					authorize = resolve;
+				}),
+			);
+			const { connectServer } = useMcpServerConnect();
+
+			const first = connectServer(linear);
+			const second = connectServer(linear);
+			authorize({ id: 'cred-new' });
+
+			await expect(first).resolves.toBe('conn-new');
+			await expect(second).resolves.toBe('conn-new');
+			expect(mockCreateAndAuthorize).toHaveBeenCalledTimes(1);
+			expect(mcpStore.connect).toHaveBeenCalledTimes(1);
+		});
+
 		it('stops when the user aborts the OAuth flow', async () => {
 			mockCanQuickConnect.mockReturnValue(true);
 			mockCreateAndAuthorize.mockResolvedValue(null);
@@ -191,8 +206,6 @@ describe('useMcpServerConnect', () => {
 				'modal unavailable',
 			);
 
-			// An attempt with no modal to close would reconcile against an
-			// unrelated close later on
 			emitCredentialCreated('cred-new');
 			await closeCredentialModal();
 
@@ -265,8 +278,6 @@ describe('useMcpServerConnect', () => {
 			expect(mcpStore.connect).toHaveBeenCalledTimes(1);
 		});
 
-		// Any surface can drive the flow, so an attempt must not be tied to the
-		// lifetime of the one that started it
 		it('finishes an attempt whose surface was torn down while the modal was open', async () => {
 			let connecting: Promise<string | null> | undefined;
 			const scope = effectScope();
@@ -287,8 +298,6 @@ describe('useMcpServerConnect', () => {
 			await expect(connecting).resolves.toBe('conn-new');
 		});
 
-		// Two surfaces connecting one server share the modal, so they must not
-		// both create a connection for it
 		it('shares one attempt when the same server is connected twice', async () => {
 			const { connectServer } = useMcpServerConnect();
 			const first = connectServer(linear);
@@ -318,8 +327,6 @@ describe('useMcpServerConnect', () => {
 			await expect(retried).resolves.toBe('conn-new');
 		});
 
-		// Credential types are per server, so overlapping attempts can't pick up
-		// each other's credential
 		it('keeps concurrent attempts for different servers apart', async () => {
 			const { connectServer } = useMcpServerConnect();
 			const connectingLinear = connectServer(linear);

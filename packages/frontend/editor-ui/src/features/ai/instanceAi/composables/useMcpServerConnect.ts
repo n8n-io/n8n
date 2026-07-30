@@ -15,10 +15,7 @@ export interface McpConnectTarget {
 	credentialType: string;
 }
 
-// The credential edit modal is app-wide, so without this two surfaces connecting
-// one server would both reconcile its close and race to create the same
-// connection — the loser fails the one-connection-per-server rule
-const attemptsByServerSlug = new Map<string, Promise<string | null>>();
+const inFlightConnectsByServerSlug = new Map<string, Promise<string | null>>();
 
 /**
  * The credential half of connecting an MCP server, shared by the tools
@@ -69,6 +66,19 @@ export function useMcpServerConnect() {
 	 * modal. Resolves once the user is done, with null if they backed out.
 	 */
 	async function connectServer(server: McpConnectTarget): Promise<string | null> {
+		const inFlight = inFlightConnectsByServerSlug.get(server.slug);
+		if (inFlight) return await inFlight;
+
+		const attempt = startConnect(server);
+		inFlightConnectsByServerSlug.set(server.slug, attempt);
+		try {
+			return await attempt;
+		} finally {
+			inFlightConnectsByServerSlug.delete(server.slug);
+		}
+	}
+
+	async function startConnect(server: McpConnectTarget): Promise<string | null> {
 		if (canOAuthCredentialQuickConnect(server.credentialType)) {
 			const credential = await createAndAuthorize(server.credentialType);
 			return credential ? await connectWithCredential(server.slug, credential.id) : null;
@@ -82,10 +92,7 @@ export function useMcpServerConnect() {
 	 * outside an attempt, so unrelated credential edits stay free.
 	 */
 	async function connectViaCredentialModal(server: McpConnectTarget): Promise<string | null> {
-		const inFlight = attemptsByServerSlug.get(server.slug);
-		if (inFlight) return await inFlight;
-
-		const attempt = new Promise<string | null>((settle) => {
+		return await new Promise<string | null>((settle) => {
 			let createdCredentialId: string | null = null;
 
 			// Detached because pinia disposes subscriptions with the effect scope they
@@ -125,11 +132,6 @@ export function useMcpServerConnect() {
 				throw error;
 			}
 		});
-
-		attemptsByServerSlug.set(server.slug, attempt);
-		// Cleared however it ends, so the next connect for this server starts fresh
-		void attempt.catch(() => null).then(() => attemptsByServerSlug.delete(server.slug));
-		return await attempt;
 	}
 
 	return { connectServer, connectWithCredential };
