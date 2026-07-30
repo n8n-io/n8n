@@ -44,11 +44,11 @@ import { TransportFactory } from './transport/TransportFactory';
 const ELICITATION_TIMEOUT_MS = 300_000;
 
 /**
- * Releases a caller when the CallTool handler never runs (the SDK rejects a malformed
- * `tools/call` pre-dispatch). ponytail: fixed ceiling, matching the queue-mode tool
- * timeout; a slower direct-mode call releases early.
+ * How long to wait for a `tools/call` to reach the CallTool handler before assuming it
+ * never will (the SDK rejects a malformed request pre-dispatch) and releasing the caller.
+ * Cancelled once the handler runs, so it never bounds the tool call itself.
  */
-const TOOL_HANDLER_WAIT_TIMEOUT_MS = 120_000;
+const TOOL_DISPATCH_TIMEOUT_MS = 30_000;
 
 export interface HandlePostResult {
 	wasToolCall: boolean;
@@ -81,6 +81,8 @@ export class McpServer {
 	 * a single `handlePostMessage` on the transport-holding main.
 	 */
 	private pendingGateResults: Record<string, CredentialCheckResult> = {};
+	/** Per-callId timers that release a caller whose tool call never reached the handler. */
+	private dispatchBackstops: Record<string, ReturnType<typeof setTimeout>> = {};
 	private logger: Logger;
 
 	private idleTtlMs: number;
@@ -97,6 +99,11 @@ export class McpServer {
 		this.idleTtlMs = config.sessionIdleTtl;
 		this.sweepIntervalMs = config.sessionSweepInterval;
 		this.logger.debug('McpServer created');
+	}
+
+	private clearDispatchBackstop(callId: string): void {
+		clearTimeout(this.dispatchBackstops[callId]);
+		delete this.dispatchBackstops[callId];
 	}
 
 	static instance(logger: Logger): McpServer {
@@ -228,26 +235,27 @@ export class McpServer {
 			// release the caller's expression isolate mid-tool-call.
 			const awaitToolHandler =
 				isToolCall && transport.transportType === 'sse' && !this.executionCoordinator.isQueueMode();
-			let backstop: ReturnType<typeof setTimeout> | undefined;
-
 			try {
 				await new Promise<void>((resolve) => {
 					this.resolveFunctions[callId] = resolve;
+					// Armed before dispatch, since the handler clears it on entry and may run
+					// before handleRequest returns.
+					if (awaitToolHandler) {
+						this.dispatchBackstops[callId] = setTimeout(() => {
+							this.logger.warn(`Tool call ${callId} was never dispatched; releasing caller`);
+							resolve();
+						}, TOOL_DISPATCH_TIMEOUT_MS);
+					}
 					const handled = transport.handleRequest(req, resp, message as IncomingMessage);
 					if (!awaitToolHandler) {
 						void handled.finally(resolve);
 						return;
 					}
-					// The CallTool handler releases us. These cover it never being reached:
-					// a transport-level failure, or the SDK rejecting the request pre-dispatch.
+					// The CallTool handler releases us; this covers a transport-level failure.
 					void handled.catch(() => resolve());
-					backstop = setTimeout(() => {
-						this.logger.warn(`Tool call ${callId} was never handled; releasing caller`);
-						resolve();
-					}, TOOL_HANDLER_WAIT_TIMEOUT_MS);
 				});
 			} finally {
-				clearTimeout(backstop);
+				this.clearDispatchBackstop(callId);
 				delete this.resolveFunctions[callId];
 				delete this.pendingGateResults[callId];
 			}
@@ -631,6 +639,9 @@ export class McpServer {
 			const callId = extra.requestId
 				? `${extra.sessionId}_${extra.requestId}`
 				: (extra.sessionId ?? '');
+			// Dispatched, so the caller now waits on the finally below however long the
+			// tool takes — never on the dispatch backstop.
+			this.clearDispatchBackstop(callId);
 			try {
 				if (!request.params?.name || !request.params?.arguments) {
 					throw new OperationalError('Require a name and arguments for the tool call');

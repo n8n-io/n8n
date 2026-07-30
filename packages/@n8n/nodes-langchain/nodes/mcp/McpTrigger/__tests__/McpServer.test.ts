@@ -257,7 +257,7 @@ describe('McpServer', () => {
 			// The SDK can reject a malformed tools/call before dispatch, so the handler
 			// never runs and never releases us. Without a backstop that hangs forever,
 			// holding the caller's isolate.
-			it('should settle via the backstop when the tool call is never handled', async () => {
+			it('should settle via the backstop when the tool call is never dispatched', async () => {
 				vi.useFakeTimers();
 				try {
 					await registerWith('never-handled', 'sse');
@@ -266,13 +266,71 @@ describe('McpServer', () => {
 					await vi.advanceTimersByTimeAsync(1_000);
 					expect(settled()).toBe(false);
 
-					await vi.advanceTimersByTimeAsync(120_000);
+					await vi.advanceTimersByTimeAsync(30_000);
 					await pending;
 
 					expect(settled()).toBe(true);
 					expect(mockLogger.warn).toHaveBeenCalledWith(
-						expect.stringContaining('never handled; releasing caller'),
+						expect.stringContaining('never dispatched; releasing caller'),
 					);
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+
+			// Once dispatched the backstop must not apply: a slow tool would otherwise have
+			// its caller released mid-invocation, recreating the missing-bridge failure.
+			it('should keep waiting for a dispatched tool call that outlives the backstop', async () => {
+				vi.useFakeTimers();
+				try {
+					let finishTool = () => {};
+					const tool = createMockTool('get_weather');
+					tool.invoke.mockImplementation(
+						async () => await new Promise((r) => (finishTool = () => r('done'))),
+					);
+
+					const transport = createMockTransport('slow-tool', 'sse');
+					await (
+						mcpServer as unknown as { sessionManager: SessionManager }
+					).sessionManager.registerSession('slow-tool', createMockServer(), transport, [tool]);
+
+					// Mirror real SSE: handleRequest acks immediately and the handler runs detached.
+					const handlerServer = createMockServer();
+					(mcpServer as unknown as { setupHandlers(s: unknown): void }).setupHandlers(
+						handlerServer,
+					);
+					const callTool = (
+						handlerServer.setRequestHandler as unknown as { mock: { calls: unknown[][] } }
+					).mock.calls[1][1] as (req: unknown, extra: unknown) => Promise<unknown>;
+					transport.handleRequest.mockImplementation(async () => {
+						void callTool(
+							{ params: { name: 'get_weather', arguments: { city: 'London' } } },
+							{ sessionId: 'slow-tool', requestId: 7 },
+						);
+					});
+
+					let settled = false;
+					const pending = mcpServer
+						.handlePostMessage(
+							createMockRequestWithSessionId(
+								'slow-tool',
+								createValidToolCallMessage('get_weather', { city: 'London' }, 7),
+							),
+							createMockResponse(),
+							[tool],
+						)
+						.then(() => (settled = true));
+
+					// Well past the dispatch backstop, with the tool still running.
+					await vi.advanceTimersByTimeAsync(120_000);
+					expect(tool.invoke).toHaveBeenCalled();
+					expect(settled).toBe(false);
+
+					finishTool();
+					await vi.advanceTimersByTimeAsync(0);
+					await pending;
+
+					expect(settled).toBe(true);
 				} finally {
 					vi.useRealTimers();
 				}
