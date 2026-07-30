@@ -440,6 +440,9 @@ describe('project shell import', () => {
 	});
 
 	it('blocks a package whose projects reconcile and rename the same target tag', async () => {
+		// Each project's plan resolves only its own workflows' tags, so neither plan
+		// sees the other project's claim on the holder row; only the package-wide
+		// gate can catch the contradiction.
 		const holder = await createTag({ name: 'prod' });
 		const packageBuffer = await buildEntityPackageBuffer({
 			projects: [

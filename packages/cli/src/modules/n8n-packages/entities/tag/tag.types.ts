@@ -86,13 +86,18 @@ export function sortedUnique(values: string[]): string[] {
 }
 
 /**
- * Gates reconciles that contradict each other or another plan's use of the
- * same target tag: a reconcile re-keys its `oldId` row, so a plan that also
- * matches, renames, or reconciles that row would silently lose it at apply
- * and FK-fail on attach. Identical reconciles in several scopes are the
- * multi-scope union case and stay allowed.
+ * Gates package tags that lay contradictory claims on one target tag row.
+ * Example: the package carries tag X `prod` (project A) and tag H `staging`
+ * (project B), while the target's tag H was manually renamed to `prod`.
+ * Alone, each plan is fine: A reconciles X onto H's row, B renames H. Applied
+ * together, A re-keys the row first and B's rename and attach find it gone,
+ * failing the import halfway. Runs over ALL scopes' plans because each
+ * project's plan only resolves the tags its own workflows reference, so no
+ * single plan sees the pair; gating here keeps apply unable to fail after the
+ * gate. Identical reconciles in several scopes are the multi-scope union case
+ * and stay allowed.
  */
-export function crossPlanReconcileOverlapFailures(
+export function contestedReconcileTargetFailures(
 	scopes: Array<{ tagPlan: TagImportPlan; workflows: ReferencingWorkflow[] }>,
 ): TagResolutionFailure[] {
 	const reconcilesByKey = new Map<string, TagReconcile>();

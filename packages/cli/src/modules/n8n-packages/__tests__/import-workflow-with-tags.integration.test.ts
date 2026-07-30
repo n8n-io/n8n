@@ -602,6 +602,8 @@ describe('workflow package import — with tags', () => {
 		});
 
 		it('blocks two package tags that would reconcile onto the same target tag', async () => {
+			// Distinct rows on the source (the unique name index is on the raw value),
+			// but both trim to 'prod' on import and claim the same holder row.
 			const workflow = serializedWorkflow({
 				id: 'wf-0',
 				name: 'Workflow 0',
@@ -658,6 +660,9 @@ describe('workflow package import — with tags', () => {
 		});
 
 		it('blocks a reconcile whose target tag is also matched by the package', async () => {
+			// A round-tripped package can carry the holder tag itself (an exact id match)
+			// next to a tag whose name collides with it; the reconcile would re-key the
+			// very row the match attaches to.
 			const holder = await createTag({ name: 'prod' });
 			const workflow = serializedWorkflow({
 				id: 'wf-0',
@@ -706,6 +711,9 @@ describe('workflow package import — with tags', () => {
 		});
 
 		it('blocks a reconcile whose target tag the package also renames', async () => {
+			// On the source the tag was renamed to 'staging' and a fresh 'prod' tag was
+			// created; the target still holds the old row under 'prod', so the rename and
+			// the reconcile both claim it.
 			const holder = await createTag({ name: 'prod' });
 			const workflow = serializedWorkflow({
 				id: 'wf-0',

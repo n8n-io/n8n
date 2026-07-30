@@ -22,7 +22,7 @@ import type {
 } from '../entities/folder/folder-import.types';
 import { FolderImporter } from '../entities/folder/folder-importer';
 import { TagImporter } from '../entities/tag/tag-importer';
-import { crossPlanReconcileOverlapFailures, droppedTagIds } from '../entities/tag/tag.types';
+import { contestedReconcileTargetFailures, droppedTagIds } from '../entities/tag/tag.types';
 import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
 import { VariableImporter } from '../entities/variable/variable-importer';
 import type {
@@ -122,7 +122,7 @@ export class ImportOrchestrator {
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
 
 		issues.push(
-			...crossPlanReconcileOverlapFailures(
+			...contestedReconcileTargetFailures(
 				plans.map((plan) => ({
 					tagPlan: plan.tagPlan,
 					workflows: plan.workflowPlan.items.filter((item) => item.action !== 'skip'),
