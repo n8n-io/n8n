@@ -166,15 +166,18 @@ export class TaskBrokerWsServer {
 		const isStaleRemoval = expectedConnection !== undefined && connection !== expectedConnection;
 
 		if (connection && !isStaleRemoval) {
+			// Stop routing to the runner before the disconnect analysis, which may be slow.
+			this.runnerConnections.delete(id);
+			connection.close(code);
+
 			const disconnectError = await this.disconnectAnalyzer.toDisconnectError({
 				runnerId: id,
 				reason,
 				heartbeatInterval: this.taskRunnersConfig.heartbeatInterval,
 			});
+
 			this.taskBroker.deregisterRunner(id, disconnectError);
 			this.logger.debug(`Deregistered runner "${id}"`);
-			connection.close(code);
-			this.runnerConnections.delete(id);
 		}
 	}
 

@@ -41,6 +41,17 @@ const createServer = ({
 		globalConfig,
 	);
 
+const pendingAnalysis = () => {
+	let complete: (error: Error) => void = () => {};
+	const disconnectAnalyzer = mock<DefaultTaskRunnerDisconnectAnalyzer>();
+	disconnectAnalyzer.toDisconnectError.mockReturnValue(
+		new Promise<Error>((resolve) => {
+			complete = resolve;
+		}),
+	);
+	return { disconnectAnalyzer, complete: (error: Error) => complete(error) };
+};
+
 describe('TaskBrokerWsServer', () => {
 	describe('removeConnection', () => {
 		it('should close with 1000 status code by default', async () => {
@@ -51,6 +62,26 @@ describe('TaskBrokerWsServer', () => {
 			await server.removeConnection('test-runner');
 
 			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseNormal);
+		});
+
+		it('should stop routing to the runner before the disconnect analysis completes', async () => {
+			const { disconnectAnalyzer, complete } = pendingAnalysis();
+			const taskBroker = mock<TaskBroker>();
+			const server = createServer({ taskBroker, disconnectAnalyzer });
+			const ws = mockWs();
+			server.runnerConnections.set('test-runner', ws);
+
+			const removal = server.removeConnection('test-runner');
+			await Promise.resolve();
+
+			expect(server.runnerConnections.has('test-runner')).toBe(false);
+			expect(ws.close).toHaveBeenCalled();
+			expect(taskBroker.deregisterRunner).not.toHaveBeenCalled();
+
+			complete(new Error('disconnected'));
+			await removal;
+
+			expect(taskBroker.deregisterRunner).toHaveBeenCalled();
 		});
 
 		it('should ignore stale close events from replaced connections', async () => {
