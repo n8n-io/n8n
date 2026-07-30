@@ -145,7 +145,7 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// the top-level `reasoning_effort` body field via providerOptions.baseten.
 		thinkingToProviderOptions: (thinking) => {
 			const cfg = thinking as OpenAIThinkingConfig;
-			return { baseten: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
+			return { baseten: { reasoningEffort: cfg.reasoningEffort ?? 'none' } };
 		},
 	},
 	fireworks: {
