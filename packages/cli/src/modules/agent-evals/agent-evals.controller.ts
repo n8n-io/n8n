@@ -22,20 +22,13 @@ type DatasetParam = AgentParam & { datasetId: string };
 type RunParam = AgentParam & { runId: string };
 
 /**
- * REST surface for agent evals: draft-case generation, datasets, runs, and
- * per-case results.
+ * REST surface for agent evals: generation, datasets, runs and per-case results.
+ * Nested under the agent so `@ProjectScope` rejects before the handler runs.
  *
- * Nested under the agent so `@ProjectScope` can resolve the project straight
- * from `:projectId` and reject before the handler runs. Scope choices mirror the
- * agent's own controllers: `agent:read` for every read, `agent:execute` for
- * starting and cancelling a run (it really does execute the agent, the same
- * capability a project viewer already has), and `agent:update` for anything that
- * writes eval configuration — including case generation, which creates a Data
- * Table and spends the builder's own model credits, so it must not be open to
- * viewers.
- *
- * Ratings live on their own route in a follow-up, together with the service that
- * persists them.
+ * `agent:read` for reads, `agent:execute` for running a run, `agent:update` for
+ * eval-config writes — including generation, which spends the builder's model
+ * credits and so must stay closed to viewers (they hold `agent:execute`).
+ * Ratings ship with the service that persists them.
  */
 @RestController('/projects/:projectId/agents/v2')
 export class AgentEvalsController {
@@ -59,9 +52,8 @@ export class AgentEvalsController {
 	async createDataset(req: AuthenticatedRequest<AgentParam>): Promise<AgentEvalDatasetRecord> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
-		// Hand-parsed rather than bound via `@Body`: the body carries the
-		// `DatasetRef` discriminated union, which `Z.class` (flat shapes only)
-		// can't express, so this DTO ships as a schema instead of a class.
+		// Hand-parsed, not `@Body`-bound: the `DatasetRef` union can't be expressed as
+		// a `Z.class`, so this DTO ships as a schema and the handler owns the 400.
 		const parsed = createAgentEvalDatasetSchema.safeParse(req.body);
 		if (!parsed.success) {
 			throw new BadRequestError(parsed.error.issues.map((i) => i.message).join(', '));
@@ -100,11 +92,8 @@ export class AgentEvalsController {
 
 	// ---- case generation ----
 
-	/**
-	 * Drafts cases from the agent's own config and persists them as a new dataset.
-	 * Calls the agent's model with the agent's credential, so it is never exposed
-	 * on a read-only scope.
-	 */
+	// Drafts cases from the agent's config into a new dataset, calling the agent's
+	// model with its own credential — hence never on a read-only scope.
 	@Post('/:agentId/evals/generate')
 	@ProjectScope('agent:update')
 	async generateDraftCases(

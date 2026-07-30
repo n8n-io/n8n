@@ -102,47 +102,46 @@ describe('AgentEvalDatasetRepository', () => {
 	});
 
 	describe('updateDataset', () => {
-		const existing = () =>
-			({
-				id: 'ds-1',
-				agentId: 'agent-1',
-				name: 'old',
-				description: 'old desc',
-				columnMapping: { input: 'q' },
-			}) as AgentEvalDataset;
+		const updated = { affected: 1, generatedMaps: [], raw: [] };
 
-		it('applies only the provided fields', async () => {
-			entityManager.findOneBy.mockResolvedValueOnce(existing());
-			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
+		it('writes only the provided fields, scoped to the agent', async () => {
+			entityManager.update.mockResolvedValueOnce(updated);
+			entityManager.findOneBy.mockResolvedValueOnce({ id: 'ds-1' } as AgentEvalDataset);
 
 			await repo.updateDataset('ds-1', 'agent-1', { name: 'new' });
 
-			expect(entityManager.save.mock.calls[0]?.[1]).toMatchObject({
-				name: 'new',
-				// untouched by an absent key
-				description: 'old desc',
-				columnMapping: { input: 'q' },
-			});
+			const [, criteria, patch] = entityManager.update.mock.calls[0] ?? [];
+			expect(criteria).toEqual({ id: 'ds-1', agentId: 'agent-1' });
+			// Absent keys stay out of the patch entirely, so their columns are untouched
+			// and a concurrent patch of a different field can't be clobbered.
+			expect(patch).toEqual({ name: 'new' });
 		});
 
 		it('clears a field when explicitly passed null', async () => {
-			entityManager.findOneBy.mockResolvedValueOnce(existing());
-			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
+			entityManager.update.mockResolvedValueOnce(updated);
+			entityManager.findOneBy.mockResolvedValueOnce({ id: 'ds-1' } as AgentEvalDataset);
 
 			await repo.updateDataset('ds-1', 'agent-1', { description: null, columnMapping: null });
 
-			expect(entityManager.save.mock.calls[0]?.[1]).toMatchObject({
+			expect(entityManager.update.mock.calls[0]?.[2]).toEqual({
 				description: null,
 				columnMapping: null,
 			});
 		});
 
-		it('returns null without writing when the dataset is not this agent’s', async () => {
+		it('skips the write when no known field was given', async () => {
+			entityManager.findOneBy.mockResolvedValueOnce({ id: 'ds-1' } as AgentEvalDataset);
+
+			await repo.updateDataset('ds-1', 'agent-1', {});
+
+			expect(entityManager.update).not.toHaveBeenCalled();
+		});
+
+		it('returns null when the dataset is not this agent’s', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: [] });
 			entityManager.findOneBy.mockResolvedValueOnce(null);
 
 			await expect(repo.updateDataset('ds-1', 'other-agent', { name: 'new' })).resolves.toBeNull();
-
-			expect(entityManager.save).not.toHaveBeenCalled();
 		});
 	});
 

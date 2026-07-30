@@ -1,6 +1,7 @@
 import type { DatasetRef } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentEvalDataset } from '../entities';
 import type { AgentEvalColumnMapping } from '../entities/agent-eval-dataset.ee';
@@ -15,11 +16,8 @@ type CreateAgentEvalDatasetAttrs = {
 	createdById?: string | null;
 };
 
-/**
- * Metadata-only patch. The dataset *source* (`datasetSource` + `datasetRef`) is
- * deliberately absent: repointing a dataset at a different table would silently
- * change what its existing runs were measured against, so that's a new dataset.
- */
+// Metadata only: repointing the source would change what existing runs were
+// measured against, so that's a new dataset.
 type UpdateAgentEvalDatasetAttrs = {
 	name?: string;
 	description?: string | null;
@@ -54,39 +52,34 @@ export class AgentEvalDatasetRepository extends Repository<AgentEvalDataset> {
 		return await this.findOneBy({ id });
 	}
 
-	/**
-	 * Ownership-scoped read: resolves the dataset only if it belongs to `agentId`.
-	 * The REST layer authorizes the *agent*, so every dataset lookup behind it
-	 * must filter on the agent too — a plain `findById` would let a caller
-	 * authorized for one agent address another agent's dataset by id.
-	 */
+	// The REST layer authorizes an agent, so lookups behind it must filter on the
+	// agent — `findById` alone would expose another agent's dataset by id.
 	async findByIdAndAgentId(id: string, agentId: string): Promise<AgentEvalDataset | null> {
 		return await this.findOneBy({ id, agentId });
 	}
 
-	/**
-	 * Patch a dataset's metadata, scoped to its agent. Only the fields present in
-	 * `attrs` are applied, so an absent key leaves the column untouched while an
-	 * explicit `null` clears it. Returns the updated dataset, or `null` when the
-	 * id doesn't resolve for this agent.
-	 *
-	 * Read-modify-save rather than a bare `update`: `columnMapping` is a JSON
-	 * column, which TypeORM's partial-update type can't express, and the read is
-	 * needed anyway to return the current record.
-	 */
+	// An absent key leaves the column alone; an explicit `null` clears it. Writes
+	// only the named columns, so concurrent patches can't clobber each other.
 	async updateDataset(
 		id: string,
 		agentId: string,
 		attrs: UpdateAgentEvalDatasetAttrs,
 	): Promise<AgentEvalDataset | null> {
-		const dataset = await this.findByIdAndAgentId(id, agentId);
-		if (!dataset) return null;
+		const patch: QueryDeepPartialEntity<AgentEvalDataset> = {
+			...(attrs.name !== undefined && { name: attrs.name }),
+			...(attrs.description !== undefined && { description: attrs.description }),
+			...(attrs.columnMapping !== undefined && { columnMapping: attrs.columnMapping }),
+		};
 
-		if (attrs.name !== undefined) dataset.name = attrs.name;
-		if (attrs.description !== undefined) dataset.description = attrs.description;
-		if (attrs.columnMapping !== undefined) dataset.columnMapping = attrs.columnMapping;
+		// Agent-scoped so a foreign agent's patch matches no row. TypeORM rejects an
+		// empty patch, and a body with no known field is a no-op anyway.
+		if (Object.keys(patch).length > 0) {
+			await this.update({ id, agentId }, patch);
+		}
 
-		return await this.save(dataset);
+		// Authoritative for "not found": covers an unknown id and a foreign agent
+		// without depending on driver-specific affected-row counts.
+		return await this.findByIdAndAgentId(id, agentId);
 	}
 
 	/** Delete a dataset, scoped to its agent. Returns whether a row was removed. */

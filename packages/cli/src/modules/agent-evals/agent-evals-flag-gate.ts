@@ -6,19 +6,13 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { PostHogClient } from '@/posthog';
 
 /**
- * Per-user rollout gate for every agent-eval surface.
+ * Per-user rollout gate for every agent-eval surface, shared by the controller
+ * and the services behind it so the two can't disagree on what "enabled" means.
  *
- * PostHog is the source of truth for cohort rollout, so the flag is resolved per
- * user rather than per instance; `N8N_AGENT_EVALS_ENABLED` still force-enables it
+ * PostHog owns cohort rollout; `N8N_AGENT_EVALS_ENABLED` still force-enables
  * because {@link PostHogClient} layers that override on top of the resolved
- * flags. A rolled-out user therefore needs no env var, and an operator can still
- * switch the feature on for a whole instance.
- *
- * Shared by the controller and the services behind it so the routes and the
- * business logic can't drift on what "enabled" means. Resolution is cheap to
- * repeat: `getFeatureFlags` caches per user, and it degrades to the env
- * overrides on its own when PostHog is unreachable — so no error handling is
- * needed here, and an outage reads as flag-off rather than failing the request.
+ * flags. It also caches per user and falls back to those overrides when PostHog
+ * is unreachable, so this needs no caching or error handling of its own.
  */
 @Service()
 export class AgentEvalsFlagGate {
@@ -29,10 +23,7 @@ export class AgentEvalsFlagGate {
 		return flags?.[AGENT_EVALS_FLAG] === true;
 	}
 
-	/**
-	 * Throws `NotFoundError` rather than `ForbiddenError` when the flag is off, so
-	 * the surface looks like an unknown feature and leaks no flag state.
-	 */
+	// 404 rather than 403: a flag-off surface should look unknown, not forbidden.
 	async assertEnabled(user: User): Promise<void> {
 		if (!(await this.isEnabled(user))) throw new NotFoundError('Not found');
 	}

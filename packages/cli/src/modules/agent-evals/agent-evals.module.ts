@@ -3,13 +3,11 @@ import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 /**
- * Agent-scoped evaluations. Runs eval datasets against a real agent and
- * persists per-case results, and serves the REST surface the editor consumes.
- * Main-process only — the reused tool-mock substrate cannot cross a queue
- * boundary. Opt-in (not a default module) and dark until the `101_agent_evals`
- * flag is on, so the routes register only on an instance that asked for the
- * module and answer only for a user in the rollout; the persistence layer lives
- * in `@n8n/db`.
+ * Agent-scoped evaluations: runs eval datasets against a real agent, persists
+ * per-case results, and serves the REST surface the editor consumes.
+ *
+ * Main-process only — the reused tool-mock substrate can't cross a queue
+ * boundary. Opt-in module, and dark until `101_agent_evals` is on for the user.
  */
 @BackendModule({ name: 'agent-evals', instanceTypes: ['main'] })
 export class AgentEvalsModule implements ModuleInterface {

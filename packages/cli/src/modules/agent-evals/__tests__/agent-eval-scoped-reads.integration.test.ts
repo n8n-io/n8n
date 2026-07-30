@@ -10,18 +10,10 @@ import { DataSource } from '@n8n/typeorm';
 import { Agent } from '@/modules/agents/entities/agent.entity';
 
 /**
- * The agent-eval REST layer authorizes an *agent*, then reaches dataset and run
- * rows by id. Everything that keeps one agent's caller out of another agent's
- * evals therefore rests on these repository reads actually filtering by agent in
- * SQL — including `agent_eval_run`, which has no agent column of its own and has
- * to constrain through its dataset relation.
- *
- * These assertions run against a real database on purpose. Mocking the entity
- * manager can only check which `where` object was constructed; it cannot tell
- * whether the relation is joined and the predicate applied. A test that passes
- * the *matching* agent would keep passing even if the filter were dropped
- * entirely — so every case below pairs the allowed read with the foreign-agent
- * read that must come back empty.
+ * Real DB on purpose: mocking the entity manager only proves which `where` object
+ * was built, not that the filter applied — and a test using the *matching* agent
+ * would pass even with the filter dropped. So every case here pairs the allowed
+ * read with the foreign-agent read that must come back empty.
  */
 describe('agent-eval scoped repository reads (integration)', () => {
 	let datasetRepository: AgentEvalDatasetRepository;
@@ -99,8 +91,7 @@ describe('agent-eval scoped repository reads (integration)', () => {
 		});
 	});
 
-	// A run carries no agentId — the agent under test is its dataset's — so these
-	// reads are the ones that have to walk the relation to filter.
+	// A run has no agentId of its own, so these reads filter via the dataset relation.
 	describe('run reads', () => {
 		it('resolves a run for its dataset’s agent and hides it from another', async () => {
 			const { own, foreign, run } = await seedTwoAgents();
@@ -117,8 +108,8 @@ describe('agent-eval scoped repository reads (integration)', () => {
 			await expect(
 				runRepository.findByDatasetIdAndAgentId(dataset.id, own.id),
 			).resolves.toMatchObject([{ id: run.id }]);
-			// Right dataset id, wrong agent — the pairing has to be checked, not just
-			// the dataset id, or a foreign caller reads another agent's run history.
+			// Right dataset id, wrong agent: the pairing has to be checked, or a foreign
+			// caller reads another agent's run history.
 			await expect(
 				runRepository.findByDatasetIdAndAgentId(dataset.id, foreign.id),
 			).resolves.toEqual([]);
@@ -155,8 +146,7 @@ describe('agent-eval scoped repository reads (integration)', () => {
 			await expect(datasetRepository.findById(dataset.id)).resolves.not.toBeNull();
 		});
 
-		// The service reports a delete as success without touching runs or results,
-		// so the cascade is what actually removes them.
+		// The service never touches runs or results, so the cascade is what removes them.
 		it('deletes a dataset for its own agent, cascading to its runs and results', async () => {
 			const { own, dataset, run, result } = await seedTwoAgents();
 

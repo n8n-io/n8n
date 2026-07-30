@@ -10,20 +10,14 @@ import type { AgentEvalDataset, AgentEvalResult, AgentEvalRun } from '@n8n/db';
 import { UnexpectedError } from 'n8n-workflow';
 
 /**
- * Entity → wire-record mappers for the agent-eval REST responses.
- *
- * Explicit field-by-field mapping rather than returning entities directly: it
- * serializes dates as ISO strings, and it keeps the run's cross-main
- * coordination columns (`runningInstanceId`, `cancelRequested`) out of the
- * contract — they're internal scheduling state, and `runningInstanceId` would
- * expose an instance host id. A new entity column therefore can't leak onto the
- * API by accident.
+ * Entity → wire-record mappers. Mapped field-by-field so dates serialize as ISO
+ * strings and a new entity column can't leak onto the API by accident — notably
+ * the run's `runningInstanceId` (an instance host id) and `cancelRequested`.
  */
 
 const toIso = (date: Date | null): string | null => date?.toISOString() ?? null;
 
-// The two ref shapes are disjoint, so each is recognizable from the value alone.
-// Used to re-narrow the ref, never to decide which source a dataset is.
+// Used only to re-narrow a ref, never to decide which source a dataset is.
 const isDataTableRef = (ref: DatasetRef['datasetRef']): ref is DataTableDatasetRef =>
 	'dataTableId' in ref;
 
@@ -31,18 +25,10 @@ const isGoogleSheetsRef = (ref: DatasetRef['datasetRef']): ref is GoogleSheetsDa
 	'spreadsheetId' in ref;
 
 /**
- * Rebuild the `datasetSource` + `datasetRef` discriminated union from the
- * entity, which stores the two halves as independent columns and so has lost
- * their correlation.
- *
- * Switches on the persisted `datasetSource` — the authoritative discriminator —
- * and uses the predicates only to re-narrow the ref. Inferring the source from
- * the ref's shape instead would silently relabel any future third source as one
- * of these two, reporting a wrong-but-well-typed `datasetSource` to the client.
- * A source/ref disagreement is unreachable through `createDataset` (which
- * persists the pair from an already-validated union) and barred by the column's
- * CHECK constraint, so it can only mean a corrupt row — hence the loud failure
- * rather than a guess.
+ * Rebuild the source/ref union, which the entity stores as two uncorrelated
+ * columns. Switches on `datasetSource` — inferring it from the ref's shape would
+ * silently relabel a future third source as one of today's two. A disagreeing
+ * pair is unreachable via `createDataset`, so it means a corrupt row.
  */
 function toDatasetRefPair(dataset: AgentEvalDataset): DatasetRef {
 	const { datasetSource, datasetRef } = dataset;

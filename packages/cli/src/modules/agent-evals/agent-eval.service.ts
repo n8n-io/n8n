@@ -29,18 +29,12 @@ import { AgentEvalRunnerService } from './agent-eval-runner.service';
 const CANCELLABLE_STATUSES = new Set(['new', 'running']);
 
 /**
- * Read/write operations behind the agent-eval REST routes: dataset CRUD, run
- * listing and detail, cancellation, and the delegations to case generation and
- * the runner.
+ * Dataset CRUD, run reads and cancellation behind the agent-eval REST routes.
  *
- * **Every method is agent-scoped.** `@ProjectScope` on the routes proves the
- * caller may act on `:projectId`, but nothing about it proves the addressed
- * agent lives in that project, nor that a dataset/run id belongs to that agent.
- * So each entry point resolves the agent through `(agentId, projectId)` and then
- * loads datasets and runs through agent-filtered repository reads — a caller
- * can't reach another project's agent, or another agent's evals, by id. Missing
- * or foreign ids are all reported as 404 so the routes don't confirm that an id
- * exists somewhere else.
+ * **Every method is agent-scoped.** `@ProjectScope` proves the caller may act on
+ * `:projectId` — not that the agent lives there, nor that a dataset/run id
+ * belongs to it. So each entry point resolves `(agentId, projectId)` and then
+ * reads through agent-filtered queries. Foreign ids 404 like missing ones.
  */
 @Service()
 export class AgentEvalService {
@@ -70,11 +64,8 @@ export class AgentEvalService {
 		return toDatasetRecord(await this.resolveDataset(agentId, datasetId));
 	}
 
-	/**
-	 * The body carries `agentId` as well as the path, so a mismatch is rejected
-	 * rather than silently resolved in favour of one of them — the two disagreeing
-	 * means the client is confused about which agent it's configuring.
-	 */
+	// `agentId` is in both the body and the path; disagreement means the client is
+	// confused about which agent it's configuring, so neither side wins.
 	async createDataset(
 		user: User,
 		agentId: string,
@@ -114,11 +105,8 @@ export class AgentEvalService {
 		return toDatasetRecord(updated);
 	}
 
-	/**
-	 * Deletes the dataset and — by FK cascade — its runs and their results. The
-	 * backing Data Table is left alone: it's an independent resource the user may
-	 * share with other datasets or have authored by hand.
-	 */
+	// FK cascade takes the runs and results. The backing Data Table is left alone —
+	// it's independent, and may be shared or hand-authored.
 	async deleteDataset(agentId: string, projectId: string, datasetId: string): Promise<void> {
 		await this.assertAgentInProject(agentId, projectId);
 		const deleted = await this.datasetRepository.deleteDataset(datasetId, agentId);
@@ -139,13 +127,8 @@ export class AgentEvalService {
 
 	// ---- runs ----
 
-	/**
-	 * Starts a run and returns as soon as it's been created and seeded — the cases
-	 * then execute in the background, so the caller polls
-	 * {@link getRunSummary} for progress. The runner's `finished` promise is
-	 * deliberately dropped rather than awaited: it settles only once every case
-	 * has run, and it never rejects (the runner records failures on the run).
-	 */
+	// Returns once seeded; cases run in the background, so callers poll the summary.
+	// The runner's `finished` promise is dropped on purpose — it never rejects.
 	async startRun(
 		user: User,
 		agentId: string,
@@ -156,8 +139,7 @@ export class AgentEvalService {
 		await this.assertAgentInProject(agentId, projectId);
 		await this.resolveDataset(agentId, datasetId);
 
-		// Accepting this and quietly running the live agent instead would misreport
-		// what was measured, so refuse until the runner can execute a snapshot.
+		// Accepting a pin and running the live agent would misreport what was measured.
 		if (payload.agentVersionId !== undefined) {
 			throw new BadRequestError('Pinning an agent version for an eval run is not supported yet.');
 		}
@@ -192,11 +174,8 @@ export class AgentEvalService {
 		return { ...toRunRecord(run), results: results.map(toResultRecord) };
 	}
 
-	/**
-	 * Per-case status counts for polling a run's progress. Ownership is resolved
-	 * here before the summary is read, so this read path is gated exactly like the
-	 * write paths.
-	 */
+	// Per-case status counts for progress polling, ownership-resolved first so this
+	// read path is gated like the writes.
 	async getRunSummary(
 		agentId: string,
 		projectId: string,
@@ -206,12 +185,8 @@ export class AgentEvalService {
 		return await this.runner.getRunSummary(runId, agentId);
 	}
 
-	/**
-	 * Requests cancellation. This sets the run's flag rather than stopping anything
-	 * synchronously: the executing cases poll it and abort at their next
-	 * checkpoint, so the returned run is still `running` and settles to `cancelled`
-	 * shortly after.
-	 */
+	// Sets the flag rather than stopping anything: running cases abort at their next
+	// checkpoint, so the returned run is still `running` and settles shortly after.
 	async cancelRun(agentId: string, projectId: string, runId: string): Promise<AgentEvalRunRecord> {
 		await this.assertAgentInProject(agentId, projectId);
 		const run = await this.resolveRun(agentId, runId);
@@ -228,11 +203,8 @@ export class AgentEvalService {
 
 	// ---- internals ----
 
-	/**
-	 * The agent must exist *in this project*. Rejecting here is what stops a
-	 * caller with legitimate access to one project from addressing an agent in
-	 * another: `@ProjectScope` only checks the project in the URL.
-	 */
+	// `@ProjectScope` only checks the project in the URL, so this is what stops a
+	// caller with access to one project from addressing an agent in another.
 	private async assertAgentInProject(agentId: string, projectId: string): Promise<void> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent ${agentId} not found.`);

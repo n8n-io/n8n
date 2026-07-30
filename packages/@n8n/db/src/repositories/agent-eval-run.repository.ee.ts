@@ -80,13 +80,8 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		return await this.findOneBy({ id });
 	}
 
-	/**
-	 * Ownership-scoped read: resolves the run only if its dataset belongs to
-	 * `agentId`. A run carries no agent column of its own — the agent under test
-	 * is the dataset's — so the check has to walk the relation. The REST layer
-	 * authorizes an agent, so every run lookup behind it filters on that agent
-	 * rather than trusting a bare run id.
-	 */
+	// A run has no agent column — the agent under test is its dataset's — so the
+	// ownership check walks the relation instead of trusting a bare run id.
 	async findByIdAndAgentId(id: string, agentId: string): Promise<AgentEvalRun | null> {
 		return await this.findOne({ where: { id, dataset: { agentId } } });
 	}

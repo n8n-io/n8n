@@ -76,10 +76,8 @@ export type AgentEvalVote = z.infer<typeof agentEvalVoteSchema>;
 // which `Z.class` (flat shape only) cannot express.
 // ---------------------------------------------------------------------------
 
-// `agentId` is also a path param on the create route, which resolves the agent
-// against the project. The two must agree — the API rejects a mismatch rather
-// than picking a winner, since disagreement means the client is confused about
-// which agent it is configuring.
+// `agentId` is also a path param on the create route; the API rejects a mismatch
+// rather than picking a winner.
 export const createAgentEvalDatasetSchema = z
 	.object({
 		name: z.string().min(1).max(128),
@@ -101,13 +99,8 @@ export const updateAgentEvalDatasetSchema = z.object(updateAgentEvalDatasetShape
 export type UpdateAgentEvalDatasetPayload = z.infer<typeof updateAgentEvalDatasetSchema>;
 export class UpdateAgentEvalDatasetDto extends Z.class(updateAgentEvalDatasetShape) {}
 
-// Kicks off a run of the path dataset. `agentVersionId` optionally pins a
-// published version of the dataset's own agent; omitted runs the current one.
-//
-// The runner has no snapshot-execution path yet, so the API currently *rejects*
-// a pinned version rather than silently running the live agent and misreporting
-// what was measured. Keep the field: the shape is the target contract, and the
-// rejection lifts once version-pinned execution lands.
+// Kicks off a run of the path dataset. `agentVersionId` would pin a published
+// version, but the API rejects it until the runner can execute a snapshot.
 const createAgentEvalRunShape = {
 	agentVersionId: z.string().min(1).optional(),
 };
@@ -193,15 +186,8 @@ export type AgentEvalRunDetail = AgentEvalRunRecord & {
 	results: AgentEvalResultRecord[];
 };
 
-/**
- * Run status plus per-case status tallies — the progress-polling shape, kept
- * deliberately free of the per-case rows so polling it stays cheap.
- *
- * `pending` folds `new` + `running`: a caller watching progress only needs "not
- * settled yet", and collapsing them here means the UI doesn't have to know the
- * result lifecycle. `total` is the sum of every per-status count, so it also
- * reflects cases added by a re-seed rather than a value captured at run start.
- */
+// The progress-polling shape: status plus tallies, no per-case rows, so polling
+// stays cheap. `pending` folds `new` + `running` — watchers only need "not settled".
 export type AgentEvalRunSummary = {
 	runId: string;
 	status: AgentEvalRunStatus;

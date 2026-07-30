@@ -96,9 +96,8 @@ export class AgentEvalRunnerService {
 		user: User,
 		options: { timeoutMs?: number } = {},
 	): Promise<{ runId: string; finished: Promise<void> }> {
-		// Resolved per user: PostHog owns cohort rollout, and the operator env
-		// override is layered on top of it, so a rolled-out user needs no env var.
-		// The REST layer gates too — this is the backstop for any other caller.
+		// Per user, since PostHog owns cohort rollout. The REST layer gates too — this
+		// is the backstop for any other caller.
 		await this.flagGate.assertEnabled(user);
 
 		if (this.globalConfig.executions.mode === 'queue') {
@@ -181,15 +180,8 @@ export class AgentEvalRunnerService {
 		return { runId: run.id, finished };
 	}
 
-	/**
-	 * Run + per-case status counts, for polling a run's progress.
-	 *
-	 * Scoped to the agent under test: the REST layer authorizes an agent, so a
-	 * bare run id must not be enough to read a run's progress. Resolving through
-	 * the agent means a run belonging to a different agent — in a project the
-	 * caller has no access to — reads as "not found" here too, rather than relying
-	 * on the caller having checked.
-	 */
+	// Scoped to the agent under test, so a bare run id can't read another agent's
+	// progress even if the caller skipped its own check.
 	async getRunSummary(runId: string, agentId: string): Promise<AgentEvalRunSummary> {
 		const run = await this.runRepository.findByIdAndAgentId(runId, agentId);
 		if (!run) throw new NotFoundError(`Agent eval run ${runId} not found.`);
