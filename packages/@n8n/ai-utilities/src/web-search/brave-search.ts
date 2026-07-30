@@ -3,6 +3,10 @@ import type { WebSearchOptions, WebSearchResponse } from './types';
 const BRAVE_SEARCH_PATH = '/res/v1/web/search';
 const BRAVE_SEARCH_URL = `https://api.search.brave.com${BRAVE_SEARCH_PATH}`;
 
+/** Brave rate-limits per second, so concurrent searches trip 429 rather than failing outright. */
+const MAX_ATTEMPTS = 3;
+const RETRY_BASE_MS = 250;
+
 interface BraveWebResult {
 	title: string;
 	url: string;
@@ -60,10 +64,23 @@ export async function braveSearch(
 		...(proxyHeaders ?? { 'X-Subscription-Token': apiKey }),
 	};
 
-	const response = await fetch(`${baseUrl}?${params}`, {
-		headers,
-		...(options.abortSignal ? { signal: options.abortSignal } : {}),
-	});
+	const runSearch = async () =>
+		await fetch(`${baseUrl}?${params}`, {
+			headers,
+			...(options.abortSignal ? { signal: options.abortSignal } : {}),
+		});
+	const isRetryable = (status: number) => status === 429 || status >= 500;
+
+	let response = await runSearch();
+	for (
+		let attempt = 1;
+		attempt < MAX_ATTEMPTS && !response.ok && isRetryable(response.status);
+		attempt++
+	) {
+		const backoffMs = RETRY_BASE_MS * 2 ** (attempt - 1);
+		await new Promise((resolve) => setTimeout(resolve, backoffMs));
+		response = await runSearch();
+	}
 
 	if (!response.ok) {
 		throw new Error(`Brave search failed: ${response.status} ${response.statusText}`);

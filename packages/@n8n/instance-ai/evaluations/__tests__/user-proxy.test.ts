@@ -160,6 +160,25 @@ function domainAccessEvent(requestId: string): CapturedEvent {
 	};
 }
 
+function webSearchEvent(requestId: string): CapturedEvent {
+	return {
+		timestamp: 100,
+		type: 'confirmation-request',
+		data: {
+			type: 'confirmation-request',
+			payload: {
+				requestId,
+				toolCallId: 'tc-y',
+				toolName: 'research',
+				args: {},
+				severity: 'info',
+				message: 'n8n AI wants to search the web for: stripe webhook signing',
+				webSearch: { query: 'stripe webhook signing' },
+			},
+		},
+	};
+}
+
 function resourceDecisionEvent(requestId: string, options: string[]): CapturedEvent {
 	return {
 		timestamp: 100,
@@ -519,6 +538,21 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		});
 
 		const response = await proxy.respondToConfirmation(domainAccessEvent('req-dom'));
+		expect(response.kind).toBe('domainAccessApprove');
+		if (response.kind === 'domainAccessApprove') {
+			expect(response.domainAccessAction).toBe('allow_all');
+		}
+		expect(agent.callCount).toBe(0);
+	});
+
+	it('handles web-search events deterministically with allow_all', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'go' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(webSearchEvent('req-search'));
 		expect(response.kind).toBe('domainAccessApprove');
 		if (response.kind === 'domainAccessApprove') {
 			expect(response.domainAccessAction).toBe('allow_all');
