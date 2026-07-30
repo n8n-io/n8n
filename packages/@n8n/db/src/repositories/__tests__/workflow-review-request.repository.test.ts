@@ -92,6 +92,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			queryBuilder.where.mockReturnThis();
 			queryBuilder.andWhere.mockReturnThis();
 			queryBuilder.orderBy.mockReturnThis();
+			queryBuilder.addOrderBy.mockReturnThis();
 			queryBuilder.skip.mockReturnThis();
 			queryBuilder.take.mockReturnThis();
 			queryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
@@ -99,13 +100,14 @@ describe('WorkflowReviewRequestRepository', () => {
 			(entityManager.createQueryBuilder as Mock).mockReturnValue(queryBuilder);
 		});
 
-		it('scopes to the requested workflow and orders by createdAt DESC', async () => {
+		it('scopes to the requested workflow and orders newest first, ties broken by id', async () => {
 			await repo.findRequestsForWorkflow('workflow-1');
 
 			expect(queryBuilder.where).toHaveBeenCalledWith('requestWorkflow.workflowId = :workflowId', {
 				workflowId: 'workflow-1',
 			});
 			expect(queryBuilder.orderBy).toHaveBeenCalledWith('request.createdAt', 'DESC');
+			expect(queryBuilder.addOrderBy).toHaveBeenCalledWith('request.id', 'DESC');
 			expect(queryBuilder.andWhere).not.toHaveBeenCalled();
 			expect(queryBuilder.skip).not.toHaveBeenCalled();
 			expect(queryBuilder.take).not.toHaveBeenCalled();

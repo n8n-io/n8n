@@ -113,7 +113,11 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			)
 			.addSelect('requestWorkflow.workflowVersionId', 'pinnedWorkflowVersionId')
 			.where('requestWorkflow.workflowId = :workflowId', { workflowId })
-			.orderBy('request.createdAt', 'DESC');
+			.orderBy('request.createdAt', 'DESC')
+			// Ids are random, so this only breaks ties deterministically: callers ask
+			// for the newest review to decide the publish gate, and that answer must
+			// not flip between requests when two reviews share a timestamp.
+			.addOrderBy('request.id', 'DESC');
 
 		if (options.state) {
 			qb.andWhere('request.state = :state', { state: options.state });

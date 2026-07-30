@@ -1184,6 +1184,10 @@ describe('GET /workflow-review-requests', () => {
 			createdById: owner.id,
 		});
 		await linkRequestToWorkflow(newest.id, workflow.id, versionId);
+		// Both rows are created within the same millisecond, so state the age
+		// explicitly instead of asserting against a timestamp tie.
+		await requestRepository.update(older.id, { createdAt: new Date('2026-01-01T00:00:00.000Z') });
+		await requestRepository.update(newest.id, { createdAt: new Date('2026-01-02T00:00:00.000Z') });
 
 		const response = await ownerAgent
 			.get('/workflow-review-requests')
