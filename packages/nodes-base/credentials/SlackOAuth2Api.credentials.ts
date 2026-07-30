@@ -9,6 +9,8 @@ export const userScopes = [
 	'files:read',
 	'files:write',
 	'groups:read',
+	// Private-channel management: conversations.create/invite/kick/archive/rename/setTopic.
+	'groups:write',
 	'groups:history',
 	'im:read',
 	'im:history',

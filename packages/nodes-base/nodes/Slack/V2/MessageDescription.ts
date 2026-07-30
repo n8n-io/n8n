@@ -317,6 +317,72 @@ export const replyToMessageField: INodeProperties = {
 	],
 };
 
+// Shared between the pre-2.6 (always shown) and 2.6+ (access-token only) variants below.
+const botProfileField: INodeProperties = {
+	displayName: 'Custom Bot Profile Photo',
+	name: 'botProfile',
+	type: 'fixedCollection',
+	default: {
+		imageValues: [
+			{
+				profilePhotoType: '',
+			},
+		],
+	},
+	description:
+		'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user.',
+	options: [
+		{
+			name: 'imageValues',
+			displayName: 'Add Bot Profile Photo',
+			values: [
+				{
+					displayName: 'Profile Photo Type',
+					name: 'profilePhotoType',
+					type: 'options',
+					options: [
+						{
+							name: 'Image URL',
+							value: 'image',
+						},
+						{
+							name: 'Emoji Code',
+							value: 'emoji',
+						},
+					],
+					default: '',
+					placeholder: 'Select a type…',
+				},
+				{
+					displayName: 'Emoji Code',
+					name: 'icon_emoji',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							profilePhotoType: ['emoji'],
+						},
+					},
+					description:
+						'Only used if sending message as a bot. Use emoji codes like +1, not an actual emoji like 👍. <a target="_blank" href=" https://www.webfx.com/tools/emoji-cheat-sheet/">List of common emoji codes</a>',
+				},
+				{
+					displayName: 'Image URL',
+					name: 'icon_url',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							profilePhotoType: ['image'],
+						},
+					},
+					description: 'Only used if sending message as a bot',
+				},
+			],
+		},
+	],
+};
+
 export const messageFields: INodeProperties[] = [
 	/* ----------------------------------------------------------------------- */
 	/*                                 message:getPermalink
@@ -693,68 +759,25 @@ export const messageFields: INodeProperties[] = [
 					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending Slack messages.',
 			},
 			{
-				displayName: 'Custom Bot Profile Photo',
-				name: 'botProfile',
-				type: 'fixedCollection',
-				default: {
-					imageValues: [
-						{
-							profilePhotoType: '',
-						},
-					],
-				},
-				description:
-					'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user.',
-				options: [
-					{
-						name: 'imageValues',
-						displayName: 'Add Bot Profile Photo',
-						values: [
-							{
-								displayName: 'Profile Photo Type',
-								name: 'profilePhotoType',
-								type: 'options',
-								options: [
-									{
-										name: 'Image URL',
-										value: 'image',
-									},
-									{
-										name: 'Emoji Code',
-										value: 'emoji',
-									},
-								],
-								default: '',
-								placeholder: 'Select a type…',
-							},
-							{
-								displayName: 'Emoji Code',
-								name: 'icon_emoji',
-								type: 'string',
-								default: '',
-								displayOptions: {
-									show: {
-										profilePhotoType: ['emoji'],
-									},
-								},
-								description:
-									'Only used if sending message as a bot. Use emoji codes like +1, not an actual emoji like 👍. <a target="_blank" href=" https://www.webfx.com/tools/emoji-cheat-sheet/">List of common emoji codes</a>',
-							},
-							{
-								displayName: 'Image URL',
-								name: 'icon_url',
-								type: 'string',
-								default: '',
-								displayOptions: {
-									show: {
-										profilePhotoType: ['image'],
-									},
-								},
-								description: 'Only used if sending message as a bot',
-							},
-						],
+				...botProfileField,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lte: 2.5 } }],
 					},
-				],
+				},
+			},
+			{
+				// Slack ignores icon_url/icon_emoji on user tokens, and the OAuth2 credential
+				// authenticates as the user, so from 2.6 this is only offered for token auth.
+				...botProfileField,
+				description:
+					'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user. Add chat:write.customize scope on Slack API',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.6 } }],
+						'/authentication': ['accessToken'],
+					},
+				},
 			},
 			{
 				displayName: 'Link User and Channel Names',

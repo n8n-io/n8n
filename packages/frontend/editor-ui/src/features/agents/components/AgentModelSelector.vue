@@ -48,6 +48,7 @@ const {
 	isLoading,
 	projectId,
 	warnMissingCredentials = false,
+	boundCredentialId = null,
 	disabled = false,
 	isManagedCredential = false,
 	credentialModalAppendToBody = false,
@@ -58,6 +59,12 @@ const {
 	isLoading: boolean;
 	projectId: string;
 	warnMissingCredentials?: boolean;
+	/**
+	 * The credential the host has actually persisted for this model. The picker
+	 * falls back to any credential of the provider, so only this tells us
+	 * whether the saved config can run.
+	 */
+	boundCredentialId?: string | null;
 	disabled?: boolean;
 	/** The selected model uses the n8n Connect (AI Gateway) managed credential. */
 	isManagedCredential?: boolean;
@@ -124,8 +131,8 @@ const isCredentialsMissing = computed(
 	() =>
 		!isManagedCredential &&
 		warnMissingCredentials &&
-		selectedModel?.provider &&
-		!selectedCredential.value,
+		Boolean(selectedModel?.provider) &&
+		!(boundCredentialId && credentialsStore.getCredentialById(boundCredentialId)),
 );
 
 const selectedLabel = computed(
