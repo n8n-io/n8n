@@ -1,4 +1,4 @@
-import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { GROUP_DESCRIPTION_MAX_LENGTH, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { generateWorkflowCode } from './codegen';
 import { parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
@@ -89,13 +89,20 @@ describe('SDK node groups', () => {
 				: builder.group('G', [a], { description });
 		}
 
-		it('accepts the options argument without disturbing the group name or members', () => {
+		it('emits the description alongside the group name and members', () => {
 			const json = buildDescribedWorkflow('Pulls the CRM contacts').toJSON();
 
 			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
 			expect(json.nodeGroups).toHaveLength(1);
 			expect(json.nodeGroups![0].name).toBe('G');
 			expect(json.nodeGroups![0].nodeIds).toEqual([idByName.get('A')]);
+			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
+		});
+
+		it('caps the description at the canvas limit', () => {
+			const json = buildDescribedWorkflow('x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50)).toJSON();
+
+			expect(json.nodeGroups![0].description).toBe('x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH));
 		});
 
 		it('leaves the description key off a group declared without options', () => {
@@ -104,7 +111,13 @@ describe('SDK node groups', () => {
 			expect(json.nodeGroups![0]).not.toHaveProperty('description');
 		});
 
-		it('builds authored code that passes a description to .group()', () => {
+		it('leaves the description key off when the authored description is blank', () => {
+			const json = buildDescribedWorkflow('').toJSON();
+
+			expect(json.nodeGroups![0]).not.toHaveProperty('description');
+		});
+
+		it('keeps a description authored in code through the build', () => {
 			const code = `
 				const start = trigger({ type: '${MANUAL_TRIGGER_NODE_TYPE}', version: 1, config: { name: 'Start' } });
 				const a = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A' } });
@@ -121,6 +134,7 @@ describe('SDK node groups', () => {
 			expect(json.nodeGroups).toHaveLength(1);
 			expect(json.nodeGroups![0].name).toBe('G');
 			expect(json.nodeGroups![0].nodeIds).toEqual([idByName.get('A')]);
+			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
 		});
 	});
 
