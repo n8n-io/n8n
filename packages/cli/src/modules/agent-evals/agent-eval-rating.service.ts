@@ -163,17 +163,16 @@ function assertPayloadWithinBounds(payload: CreateAgentEvalRatingPayload): void 
 	const { correction } = payload;
 	if (correction === undefined) return;
 
-	// `finalText` mirrors the runner's output key, keeping the two diffable.
-	if ('finalText' in correction) {
-		const finalText = correction.finalText;
-		if (finalText !== null && typeof finalText !== 'string') {
-			throw new BadRequestError("A correction's 'finalText' must be a string.");
-		}
-		if (typeof finalText === 'string' && finalText.length > MAX_CORRECTION_TEXT_CHARS) {
-			throw new BadRequestError(
-				`A corrected answer cannot exceed ${MAX_CORRECTION_TEXT_CHARS} characters.`,
-			);
-		}
+	// Required, not optional: a correction without a readable `finalText` records an
+	// edit that calibration can never compare against the agent's answer.
+	const finalText = correction.finalText;
+	if (typeof finalText !== 'string' || finalText.trim().length === 0) {
+		throw new BadRequestError("A correction must carry the edited answer in 'finalText'.");
+	}
+	if (finalText.length > MAX_CORRECTION_TEXT_CHARS) {
+		throw new BadRequestError(
+			`A corrected answer cannot exceed ${MAX_CORRECTION_TEXT_CHARS} characters.`,
+		);
 	}
 	if (JSON.stringify(correction).length > MAX_CORRECTION_CHARS) {
 		throw new BadRequestError(
