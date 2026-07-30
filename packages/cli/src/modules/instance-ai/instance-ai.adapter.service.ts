@@ -745,9 +745,15 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				const projectId = await resolveBoundProjectId(['workflow:create']);
 
+				// Without an explicit order the engine falls back to legacy v0, which walks
+				// the graph breadth-first. Generated code still wins if it sets its own.
+				const settings = {
+					executionOrder: 'v1',
+					...(json.settings ?? {}),
+				} as IWorkflowSettings;
+
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
-				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
 					const canUpdateRedaction = await userHasScopes(
 						user,
