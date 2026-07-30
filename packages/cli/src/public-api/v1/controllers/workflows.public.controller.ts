@@ -33,7 +33,7 @@ export class WorkflowsPublicController {
 		'Returns a paginated list of workflow versions (version IDs and metadata) for a workflow.',
 	)
 	@ApiTags(['Workflow'])
-	@ApiResponse(WorkflowVersionHistoryListPublicDto)
+	@ApiResponse(200, WorkflowVersionHistoryListPublicDto)
 	@ApiErrorResponse(404)
 	async getWorkflowHistory(
 		req: AuthenticatedRequest,

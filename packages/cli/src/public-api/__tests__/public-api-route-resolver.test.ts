@@ -216,6 +216,7 @@ describe('public-api-route-resolver', () => {
 		it('joins a basePath with the route root path, dropping the trailing slash', () => {
 			class WidgetsPublicController {
 				@Get('/')
+				@ApiResponse(200)
 				method() {}
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -231,6 +232,7 @@ describe('public-api-route-resolver', () => {
 		it('joins a root basePath with a sub-path without doubling the slash', () => {
 			class RootPublicController {
 				@Get('/widgets')
+				@ApiResponse(200)
 				method() {}
 			}
 			markPublicApiController(RootPublicController as Controller, '/');
@@ -244,6 +246,7 @@ describe('public-api-route-resolver', () => {
 		it('normalizes a param path nested under a basePath', () => {
 			class WidgetsPublicController {
 				@Get('/:id/history')
+				@ApiResponse(200)
 				method(@Param('id') _id: string) {}
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -276,7 +279,7 @@ describe('public-api-route-resolver', () => {
 				@ApiSummary('Create a widget')
 				@ApiDescription('Create a widget.')
 				@ApiTags(['Widgets'])
-				@ApiResponse(WidgetResponseDto)
+				@ApiResponse(201, WidgetResponseDto)
 				@ApiErrorResponse(409)
 				method(@Body _body: WidgetBodyDto, @Query _query: WidgetQueryDto) {}
 			}
@@ -293,20 +296,37 @@ describe('public-api-route-resolver', () => {
 			expect(route.tags).toEqual(['Widgets']);
 			expect(route.description).toBe('Create a widget.');
 			expect(route.errorResponses).toEqual([409]);
+			expect(route.successStatus).toBe(201);
+		});
+
+		it('throws for a route whose @ApiResponse is missing, rather than assuming a 200', () => {
+			class WidgetsPublicController {
+				@Get('/')
+				method() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			expect(() => resolvePublicApiRoutes()).toThrow(UnexpectedError);
+			expect(() => resolvePublicApiRoutes()).toThrow(
+				/WidgetsPublicController\.method does not declare a success status/,
+			);
 		});
 
 		it('discovers every route across multiple @PublicApiController classes', () => {
 			class WidgetsPublicController {
 				@Get('/')
+				@ApiResponse(200)
 				list() {}
 
 				@Get('/:id')
+				@ApiResponse(200)
 				get(@Param('id') _id: string) {}
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
 			class GadgetsPublicController {
 				@Get('/')
+				@ApiResponse(200)
 				list() {}
 			}
 			markPublicApiController(GadgetsPublicController as Controller, '/gadgets');

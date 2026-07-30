@@ -8,7 +8,7 @@ import { Router as createRouter } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { resolveRouteArgs } from '@/public-api/public-api-route-resolver';
+import { resolveRouteArgs, resolveSuccessStatus } from '@/public-api/public-api-route-resolver';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
@@ -60,9 +60,16 @@ export class PublicApiControllerRegistry {
 
 		for (const [handlerName, route] of metadata.routes) {
 			// Resolved once per route at activation time (not per request) — also means a
-			// controller with a `@Body`/`@Query` arg missing its Zod DTO fails at startup rather
-			// than on first request.
+			// controller with a `@Body`/`@Query` arg missing its Zod DTO, or with no declared
+			// success status, fails at startup rather than on first request.
 			const resolvedArgs = resolveRouteArgs(controllerClass, handlerName, route.args);
+			// Same value the OpenAPI generator documents as the success response, so the two can't
+			// drift — see `@ApiResponse`.
+			const successStatus = resolveSuccessStatus(
+				controllerClass.name,
+				handlerName,
+				route.successStatus,
+			);
 
 			const handler = async (req: Request, res: Response) => {
 				const args: unknown[] = [req, res];
@@ -83,12 +90,17 @@ export class PublicApiControllerRegistry {
 
 				if (res.headersSent) return;
 
-				if (route.responseDto) {
-					res.json(route.responseDto.parse(result));
+				if (successStatus === 204) {
+					res.status(204).send();
 					return;
 				}
 
-				res.json(result);
+				if (route.responseDto) {
+					res.status(successStatus).json(route.responseDto.parse(result));
+					return;
+				}
+
+				res.status(successStatus).json(result);
 			};
 
 			const middlewares: RequestHandler[] = [this.createAuthMiddleware(apiVersion)];

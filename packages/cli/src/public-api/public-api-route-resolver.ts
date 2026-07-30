@@ -6,6 +6,7 @@ import type {
 	HandlerName,
 	Method,
 	ResponseDtoClass,
+	SuccessStatus,
 } from '@n8n/decorators';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -33,6 +34,8 @@ export interface ResolvedPublicApiRoute {
 	requestBodyDto?: ZodClass;
 	requestQueryDto?: ZodClass;
 	responseDto?: ResponseDtoClass;
+	/** Success status declared via `@ApiResponse` - always present, see `resolveSuccessStatus`. */
+	successStatus: SuccessStatus;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	summary?: string;
 	description?: string;
@@ -103,6 +106,25 @@ export function resolveRouteArgs(
 }
 
 /**
+ * Every decorator route must state its success status via `@ApiResponse` - `@ApiResponse(200, Dto)`
+ * for a route with a body, `@ApiResponse(204)` for one without.
+ */
+export function resolveSuccessStatus(
+	controllerName: string,
+	handlerName: HandlerName,
+	successStatus: SuccessStatus | undefined,
+): SuccessStatus {
+	if (successStatus === undefined) {
+		throw new UnexpectedError(
+			`Public API route ${controllerName}.${handlerName} does not declare a success status. Add ` +
+				'`@ApiResponse(200, SomeDto)` if it returns a body, or `@ApiResponse(204)` if it does not.',
+		);
+	}
+
+	return successStatus;
+}
+
+/**
  * Renders an `ApiKeyScopeRequirement` as the flat, comma-joined string the hand-written
  * `x-required-scope` YAML convention already uses (see `scope-parity.test.ts`'s `requiredScope`
  * parsing) — `anyOf`/`allOf` semantics aren't distinguished there today, so this doesn't invent a
@@ -157,6 +179,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				requestBodyDto,
 				requestQueryDto,
 				responseDto: route.responseDto,
+				successStatus: resolveSuccessStatus(controllerClass.name, handlerName, route.successStatus),
 				apiKeyScope: route.apiKeyScope,
 				summary: route.summary,
 				description: route.description,
