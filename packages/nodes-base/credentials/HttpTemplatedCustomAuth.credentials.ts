@@ -19,8 +19,8 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 	displayName = 'Simplified Custom Auth';
 
 	// No documentationUrl on purpose: the generic HTTP Request docs don't cover
-	// this type, and setting one makes the credential modal render a docs banner
-	// alongside the recipe's own "Get it from <service>" link.
+	// this type, and setting one makes the credential modal render a docs
+	// banner — the guided form and the AI Assistant handle setup help instead.
 
 	genericAuth = true;
 
@@ -65,22 +65,6 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			type: 'string',
 			description:
 				'Side-effect-free GET endpoint the credential is verified against (e.g. an account or profile endpoint). Must never trigger billable work.',
-			default: '',
-		},
-		{
-			displayName: 'Documentation URL',
-			name: 'docsUrl',
-			type: 'string',
-			description:
-				'Page where the user obtains the secret (e.g. the provider\'s API-keys dashboard) — shown as the "Get it from" link on setup surfaces',
-			default: '',
-		},
-		{
-			displayName: 'Icon URL',
-			name: 'iconUrl',
-			type: 'string',
-			description:
-				"The service's logo or favicon (https), shown on setup surfaces. Falls back to the documentation URL's favicon when empty.",
 			default: '',
 		},
 		{
