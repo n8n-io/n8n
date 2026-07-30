@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest';
 import type { TagEntity, TagRepository } from '@n8n/db';
-import { FindOperator, QueryFailedError } from '@n8n/typeorm';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExternalHooks } from '@/external-hooks';
@@ -71,41 +71,19 @@ describe('TagService', () => {
 		});
 	});
 
-	describe('findByNames', () => {
-		test('returns existing tags by name, preserving input order', async () => {
-			const tags = [
-				makeTag({ id: 'tag-1', name: 'production' }),
-				makeTag({ id: 'tag-2', name: 'critical' }),
-			];
-			tagRepository.find.mockResolvedValue(tags);
-
-			const result = await tagService.findByNames(['critical', 'production', 'missing']);
-
-			expect(result.map((t) => t.name)).toEqual(['critical', 'production']);
-			expect(tagRepository.save).not.toHaveBeenCalled();
-		});
-
-		test('returns empty for whitespace-only inputs without querying', async () => {
-			const result = await tagService.findByNames(['', '   ']);
-
-			expect(result).toEqual([]);
-			expect(tagRepository.find).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('findOrCreateByNames', () => {
 		test('returns empty array for empty input', async () => {
 			const result = await tagService.findOrCreateByNames([]);
 
 			expect(result).toEqual([]);
-			expect(tagRepository.find).not.toHaveBeenCalled();
+			expect(tagRepository.findManyByName).not.toHaveBeenCalled();
 		});
 
 		test('returns empty array when all inputs are whitespace', async () => {
 			const result = await tagService.findOrCreateByNames(['', '   ']);
 
 			expect(result).toEqual([]);
-			expect(tagRepository.find).not.toHaveBeenCalled();
+			expect(tagRepository.findManyByName).not.toHaveBeenCalled();
 		});
 
 		test('returns existing tags without creating', async () => {
@@ -113,7 +91,7 @@ describe('TagService', () => {
 				makeTag({ id: 'tag-1', name: 'production' }),
 				makeTag({ id: 'tag-2', name: 'critical' }),
 			];
-			tagRepository.find.mockResolvedValue(existing);
+			tagRepository.findManyByName.mockResolvedValue(existing);
 
 			const result = await tagService.findOrCreateByNames(['production', 'critical']);
 
@@ -121,28 +99,35 @@ describe('TagService', () => {
 			expect(tagRepository.save).not.toHaveBeenCalled();
 		});
 
-		test('deduplicates the input case-insensitively before lookup', async () => {
-			tagRepository.find.mockResolvedValue([]);
-			const createdTag = makeTag({ id: 'tag-new', name: 'Prod' });
+		test('trims names and collapses exact duplicates before lookup', async () => {
+			tagRepository.findManyByName.mockResolvedValue([]);
+			const createdTag = makeTag({ id: 'tag-new', name: 'prod' });
 			tagRepository.create.mockReturnValue(createdTag);
 			tagRepository.save.mockResolvedValue(createdTag);
 
-			const result = await tagService.findOrCreateByNames(['Prod', 'prod', 'PROD']);
+			const result = await tagService.findOrCreateByNames(['  prod ', 'prod']);
 
-			expect(tagRepository.find).toHaveBeenCalledTimes(1);
-			const findArg = tagRepository.find.mock.calls[0][0] as unknown as {
-				where: { name: FindOperator<string[]> };
-			};
-			expect(findArg.where.name).toBeInstanceOf(FindOperator);
-			expect(findArg.where.name.value).toEqual(['Prod']);
-			// One create using the first-seen original case.
+			expect(tagRepository.findManyByName).toHaveBeenCalledTimes(1);
+			expect(tagRepository.findManyByName).toHaveBeenCalledWith(['prod']);
 			expect(tagRepository.save).toHaveBeenCalledTimes(1);
-			expect(tagRepository.create).toHaveBeenCalledWith({ name: 'Prod' });
-			expect(result.map((t) => t.name)).toEqual(['Prod']);
+			expect(result.map((t) => t.name)).toEqual(['prod']);
+		});
+
+		test('creates case-variant names as distinct tags', async () => {
+			tagRepository.findManyByName.mockResolvedValue([]);
+			tagRepository.create.mockImplementation((attrs) => makeTag(attrs as Partial<TagEntity>));
+			tagRepository.save.mockImplementation(async (tag) => tag as TagEntity);
+
+			const result = await tagService.findOrCreateByNames(['Prod', 'prod']);
+
+			expect(tagRepository.save).toHaveBeenCalledTimes(2);
+			expect(result.map((t) => t.name)).toEqual(['Prod', 'prod']);
 		});
 
 		test('matches the DB case-sensitively (parity with REST tags API)', async () => {
-			tagRepository.find.mockResolvedValue([makeTag({ id: 'tag-1', name: 'Production' })]);
+			tagRepository.findManyByName.mockResolvedValue([
+				makeTag({ id: 'tag-1', name: 'Production' }),
+			]);
 			const createdTag = makeTag({ id: 'tag-new', name: 'production' });
 			tagRepository.create.mockReturnValue(createdTag);
 			tagRepository.save.mockResolvedValue(createdTag);
@@ -162,7 +147,7 @@ describe('TagService', () => {
 		};
 
 		test('returns the now-existing row when a concurrent caller wins the create race (postgres)', async () => {
-			tagRepository.find.mockResolvedValue([]);
+			tagRepository.findManyByName.mockResolvedValue([]);
 			const racedTag = makeTag({ id: 'tag-raced', name: 'critical' });
 
 			tagRepository.create.mockReturnValue(racedTag);
@@ -176,7 +161,7 @@ describe('TagService', () => {
 		});
 
 		test('recognises sqlite unique-constraint code', async () => {
-			tagRepository.find.mockResolvedValue([]);
+			tagRepository.findManyByName.mockResolvedValue([]);
 			const racedTag = makeTag({ id: 'tag-raced', name: 'critical' });
 
 			tagRepository.create.mockReturnValue(racedTag);
@@ -189,7 +174,7 @@ describe('TagService', () => {
 		});
 
 		test('rethrows unrelated QueryFailedError instead of masking it as a race', async () => {
-			tagRepository.find.mockResolvedValue([]);
+			tagRepository.findManyByName.mockResolvedValue([]);
 			tagRepository.create.mockReturnValue(makeTag({ name: 'critical' }));
 			const unrelated = new QueryFailedError('insert', undefined, new Error('connection lost'));
 			tagRepository.save.mockRejectedValueOnce(unrelated);
@@ -199,7 +184,7 @@ describe('TagService', () => {
 		});
 
 		test('rethrows when the loser of the race cannot find the row afterwards', async () => {
-			tagRepository.find.mockResolvedValue([]);
+			tagRepository.findManyByName.mockResolvedValue([]);
 			tagRepository.create.mockReturnValue(makeTag({ name: 'critical' }));
 			const err = uniqueViolationError('23505');
 			tagRepository.save.mockRejectedValueOnce(err);
@@ -209,7 +194,9 @@ describe('TagService', () => {
 		});
 
 		test('creates missing tags and merges with existing', async () => {
-			tagRepository.find.mockResolvedValue([makeTag({ id: 'tag-1', name: 'production' })]);
+			tagRepository.findManyByName.mockResolvedValue([
+				makeTag({ id: 'tag-1', name: 'production' }),
+			]);
 			const createdTag = makeTag({ id: 'tag-new', name: 'critical' });
 			tagRepository.create.mockReturnValue(createdTag);
 			tagRepository.save.mockResolvedValue(createdTag);
