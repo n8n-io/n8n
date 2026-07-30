@@ -357,6 +357,11 @@ describe('inline sub-agent tool filtering', () => {
 			error: 'model failed',
 			messages: [],
 			usage: {},
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
 		});
 		const runner = createInlineRunner({
 			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },

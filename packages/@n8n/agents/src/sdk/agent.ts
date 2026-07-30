@@ -50,6 +50,7 @@ import type {
 	AgentMiddleware,
 	BuiltAgent,
 	BuiltEval,
+	BuiltFileStore,
 	BuiltGuardrail,
 	BuiltMemory,
 	BuiltProviderTool,
@@ -167,6 +168,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private hasRuntimeSkillTool = false;
 
 	private memoryConfig?: MemoryConfig;
+
+	private fileStoreValue?: BuiltFileStore;
 
 	private onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 
@@ -361,6 +364,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	/** Observe observational-memory background task lifecycle (observer/reflector). */
 	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this {
 		this.onMemoryTaskEvent = observer;
+		return this;
+	}
+
+	/** Inject the host store that hydrates file-reference content parts before LLM calls. */
+	fileStore(store: BuiltFileStore): this {
+		this.fileStoreValue = store;
 		return this;
 	}
 
@@ -1085,6 +1094,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: memoryConfig?.memory,
+			...(this.fileStoreValue !== undefined ? { fileStore: this.fileStoreValue } : {}),
 			observationLog: memoryConfig?.observationLog,
 			observationalMemory: memoryConfig?.observationalMemory,
 			episodicMemory: memoryConfig?.episodicMemory,
