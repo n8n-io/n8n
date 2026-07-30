@@ -25,12 +25,9 @@
         "status": {
             "type": "string"
         },
-        "storedAt": {
-            "type": "string"
-        },
         "workflowId": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 3
 }
