@@ -23,6 +23,10 @@ export class PollerState extends WithTimestamps {
 	@JsonColumn({ default: '{}' })
 	cursor: Record<string, unknown>;
 
+	/** Incremented on every cursor advance; the CAS target for the repository's update. */
+	@Column({ type: 'int', default: 0 })
+	version: number;
+
 	@Column({ type: 'int', default: 0 })
 	consecutiveErrors: number;
 

@@ -90,7 +90,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 7 |  | table |
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
-| [poller_state](poller_state.md) | 7 |  | table |
+| [poller_state](poller_state.md) | 8 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
 | [project](project.md) | 9 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
@@ -1141,6 +1141,7 @@ erDiagram
   TEXT cursor
   varchar_36_ nodeId PK
   datetime_3_ updatedAt
+  INTEGER version
   varchar_36_ workflowId PK
 }
 "processed_data" {

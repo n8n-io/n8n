@@ -43,15 +43,21 @@ describe('PollerStateRepository', () => {
 		it('distinguishes an empty cursor from a missing one', async () => {
 			await seed('node-1', {});
 
-			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({});
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ cursor: {}, version: 0 });
 		});
 
 		it('keeps the cursors of two nodes in the same workflow separate', async () => {
 			await seed('node-1', { lastItemId: 'a' });
 			await seed('node-2', { lastItemId: 'b' });
 
-			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
-			expect(await repository.findCursor(workflowId, 'node-2')).toEqual({ lastItemId: 'b' });
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({
+				cursor: { lastItemId: 'a' },
+				version: 0,
+			});
+			expect(await repository.findCursor(workflowId, 'node-2')).toEqual({
+				cursor: { lastItemId: 'b' },
+				version: 0,
+			});
 		});
 
 		it('round-trips nested objects, arrays and unicode', async () => {
@@ -63,33 +69,33 @@ describe('PollerStateRepository', () => {
 			};
 			await seed('node-1', cursor);
 
-			expect(await repository.findCursor(workflowId, 'node-1')).toEqual(cursor);
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ cursor, version: 0 });
 		});
 	});
 
 	describe('ensureCursor', () => {
-		it('creates the row with the given cursor and returns it', async () => {
-			const cursor = await repository.ensureCursor(
+		it('creates the row with the given cursor at version 0 and returns it', async () => {
+			const result = await repository.ensureCursor(
 				workflowId,
 				'node-1',
 				{ lastTimeChecked: '2026-07-28' },
 				{},
 			);
 
-			expect(cursor).toEqual({ lastTimeChecked: '2026-07-28' });
+			expect(result).toEqual({ cursor: { lastTimeChecked: '2026-07-28' }, version: 0 });
 		});
 
 		it('returns the stored cursor rather than the starting value when a row exists', async () => {
 			await repository.ensureCursor(workflowId, 'node-1', { lastItemId: 'first' }, {});
 
-			const cursor = await repository.ensureCursor(
+			const result = await repository.ensureCursor(
 				workflowId,
 				'node-1',
 				{ lastItemId: 'second' },
 				{},
 			);
 
-			expect(cursor).toEqual({ lastItemId: 'first' });
+			expect(result).toEqual({ cursor: { lastItemId: 'first' }, version: 0 });
 		});
 
 		it('returns one shared cursor when two callers race to create the row', async () => {
@@ -98,7 +104,7 @@ describe('PollerStateRepository', () => {
 				repository.ensureCursor(workflowId, 'node-1', { lastItemId: 'b' }, {}),
 			]);
 
-			expect([{ lastItemId: 'a' }, { lastItemId: 'b' }]).toContainEqual(first);
+			expect([{ lastItemId: 'a' }, { lastItemId: 'b' }]).toContainEqual(first.cursor);
 			expect(second).toEqual(first);
 		});
 
@@ -121,12 +127,15 @@ describe('PollerStateRepository', () => {
 	});
 
 	describe('advanceCursor', () => {
-		it('replaces the cursor', async () => {
+		it('replaces the cursor and increments the version', async () => {
 			await seed('node-1', { lastItemId: 'a' });
 
-			await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, {});
+			await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, 0, {});
 
-			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'b' });
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({
+				cursor: { lastItemId: 'b' },
+				version: 1,
+			});
 		});
 
 		it('moves updatedAt forward', async () => {
@@ -136,7 +145,7 @@ describe('PollerStateRepository', () => {
 			const backdated = new Date(Date.now() - 60_000);
 			await repository.update({ workflowId, nodeId: 'node-1' }, { updatedAt: backdated });
 
-			await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, {});
+			await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, 0, {});
 
 			const { updatedAt } = await readRow('node-1');
 			expect(updatedAt.getTime()).toBeGreaterThan(backdated.getTime());
@@ -144,18 +153,54 @@ describe('PollerStateRepository', () => {
 
 		it('throws when the node has no cursor row', async () => {
 			await expect(
-				repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'a' }, {}),
-			).rejects.toThrow('Poller cursor row disappeared');
+				repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'a' }, 0, {}),
+			).rejects.toThrow('Poller cursor row disappeared or was advanced by a concurrent poll');
+		});
+
+		it('throws instead of overwriting when the version has already moved on', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+			await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, 0, {});
+
+			await expect(
+				repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'stale' }, 0, {}),
+			).rejects.toThrow('Poller cursor row disappeared or was advanced by a concurrent poll');
+
+			// The winning advance's cursor survives; the stale one never lands.
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({
+				cursor: { lastItemId: 'b' },
+				version: 1,
+			});
+		});
+
+		it('lets exactly one of two overlapping polls of the same node commit', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+
+			const results = await Promise.allSettled([
+				repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'from-first' }, 0, {}),
+				repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'from-second' }, 0, {}),
+			]);
+
+			const fulfilled = results.filter((result) => result.status === 'fulfilled');
+			const rejected = results.filter((result) => result.status === 'rejected');
+			expect(fulfilled).toHaveLength(1);
+			expect(rejected).toHaveLength(1);
+
+			const { cursor, version } = (await repository.findCursor(workflowId, 'node-1'))!;
+			expect(version).toBe(1);
+			expect([{ lastItemId: 'from-first' }, { lastItemId: 'from-second' }]).toContainEqual(cursor);
 		});
 
 		it('commits the new cursor with the surrounding transaction', async () => {
 			await seed('node-1', { lastItemId: 'a' });
 
 			await txRunner.run({}, async (ctx) => {
-				await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, ctx);
+				await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, 0, ctx);
 			});
 
-			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'b' });
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({
+				cursor: { lastItemId: 'b' },
+				version: 1,
+			});
 		});
 
 		it('discards the advance when the surrounding transaction rolls back', async () => {
@@ -163,12 +208,15 @@ describe('PollerStateRepository', () => {
 
 			await expect(
 				txRunner.run({}, async (ctx) => {
-					await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, ctx);
+					await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, 0, ctx);
 					throw new Error('execution insert failed');
 				}),
 			).rejects.toThrow('execution insert failed');
 
-			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({
+				cursor: { lastItemId: 'a' },
+				version: 0,
+			});
 		});
 	});
 
@@ -180,7 +228,10 @@ describe('PollerStateRepository', () => {
 			await repository.deleteNode(workflowId, 'node-1', {});
 
 			expect(await repository.findCursor(workflowId, 'node-1')).toBeNull();
-			expect(await repository.findCursor(workflowId, 'node-2')).toEqual({ lastItemId: 'b' });
+			expect(await repository.findCursor(workflowId, 'node-2')).toEqual({
+				cursor: { lastItemId: 'b' },
+				version: 0,
+			});
 		});
 
 		it('ignores a node that has no cursor row', async () => {

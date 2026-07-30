@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "poller_state" ("workflowId" varchar(36) NOT NULL, "nodeId" varchar(36) NOT NULL, "cursor" text NOT NULL DEFAULT ('{}'), "consecutiveErrors" integer NOT NULL DEFAULT (0), "backoffUntil" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_poller_state_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, PRIMARY KEY ("workflowId", "nodeId"))
+CREATE TABLE "poller_state" ("workflowId" varchar(36) NOT NULL, "nodeId" varchar(36) NOT NULL, "cursor" text NOT NULL DEFAULT ('{}'), "version" integer NOT NULL DEFAULT (0), "consecutiveErrors" integer NOT NULL DEFAULT (0), "backoffUntil" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_poller_state_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, PRIMARY KEY ("workflowId", "nodeId"))
 ```
 
 </details>
@@ -21,6 +21,7 @@ CREATE TABLE "poller_state" ("workflowId" varchar(36) NOT NULL, "nodeId" varchar
 | cursor | TEXT | '{}' | false |  |  |  |
 | nodeId | varchar(36) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| version | INTEGER | 0 | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
@@ -52,6 +53,7 @@ erDiagram
   TEXT cursor
   varchar_36_ nodeId PK
   datetime_3_ updatedAt
+  INTEGER version
   varchar_36_ workflowId PK
 }
 "workflow_entity" {

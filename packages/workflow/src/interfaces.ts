@@ -1387,6 +1387,16 @@ export interface IWorkflowLoader {
 	get(workflowId: string): Promise<IWorkflowBase>;
 }
 
+/**
+ * A cursor staged during a poll, together with the version it read at poll start. The
+ * version is the CAS target for the write that advances it, so an overlapping poll of
+ * the same node cannot silently overwrite it.
+ */
+export interface StagedPollCursor {
+	cursor: IDataObject;
+	version: number;
+}
+
 export interface IPollFunctions
 	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	__emit(
@@ -1409,10 +1419,10 @@ export interface IPollFunctions
 	 */
 	setCursor<T extends IDataObject = IDataObject>(cursor: T): void;
 	/**
-	 * The cursor staged during this poll, for the caller that persists it. `undefined`
-	 * when the node staged none.
+	 * The cursor staged during this poll, for the caller that persists it, together with
+	 * the version it must be conditioned on. `undefined` when the node staged none.
 	 */
-	__takeStagedCursor(): IDataObject | undefined;
+	__takeStagedCursor(): StagedPollCursor | undefined;
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,

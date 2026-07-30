@@ -11,6 +11,11 @@ export class CreatePollerStateTable1785256245223 implements ReversibleMigration 
 					.comment(
 						'How far the poll node has consumed its source, in whatever shape that node uses.',
 					),
+				column('version')
+					.int.notNull.default(0)
+					.comment(
+						'Incremented on every cursor advance; the CAS target that stops two overlapping polls of the same node from silently overwriting each other.',
+					),
 				column('consecutiveErrors')
 					.int.notNull.default(0)
 					.comment('Polls that have failed since the last successful one.'),

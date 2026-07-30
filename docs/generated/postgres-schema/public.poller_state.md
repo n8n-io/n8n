@@ -10,6 +10,7 @@
 | cursor | json | '{}'::json | false |  |  | How far the poll node has consumed its source, in whatever shape that node uses. |
 | nodeId | varchar(36) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| version | integer | 0 | false |  |  | Incremented on every cursor advance; the CAS target that stops two overlapping polls of the same node from silently overwriting each other. |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
@@ -23,6 +24,7 @@
 | poller_state_cursor_not_null | n | NOT NULL cursor |
 | poller_state_nodeId_not_null | n | NOT NULL "nodeId" |
 | poller_state_updatedAt_not_null | n | NOT NULL "updatedAt" |
+| poller_state_version_not_null | n | NOT NULL version |
 | poller_state_workflowId_not_null | n | NOT NULL "workflowId" |
 
 ## Indexes
@@ -45,6 +47,7 @@ erDiagram
   json cursor
   varchar_36_ nodeId
   timestamp_3__with_time_zone updatedAt
+  integer version
   varchar_36_ workflowId FK
 }
 "public.workflow_entity" {

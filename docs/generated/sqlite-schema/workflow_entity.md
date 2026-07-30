@@ -222,6 +222,7 @@ erDiagram
   TEXT cursor
   varchar_36_ nodeId PK
   datetime_3_ updatedAt
+  INTEGER version
   varchar_36_ workflowId PK
 }
 "processed_data" {

@@ -9,6 +9,11 @@ import type { OperationContext } from '../services/transaction';
 
 export type PollerCursor = Record<string, unknown>;
 
+export interface VersionedCursor {
+	cursor: PollerCursor;
+	version: number;
+}
+
 @Service()
 export class PollerStateRepository extends BaseRepository<PollerState> {
 	constructor(dataSource: DataSource) {
@@ -24,12 +29,12 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		workflowId: string,
 		nodeId: string,
 		ctx: OperationContext = {},
-	): Promise<PollerCursor | null> {
+	): Promise<VersionedCursor | null> {
 		const row = await this.managerFor(ctx).findOne(PollerState, {
-			select: ['cursor'],
+			select: ['cursor', 'version'],
 			where: { workflowId, nodeId },
 		});
-		return row === null ? null : row.cursor;
+		return row === null ? null : { cursor: row.cursor, version: row.version };
 	}
 
 	/**
@@ -44,7 +49,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		nodeId: string,
 		initial: PollerCursor,
 		ctx: OperationContext,
-	): Promise<PollerCursor> {
+	): Promise<VersionedCursor> {
 		const manager = this.managerFor(ctx);
 
 		await manager
@@ -56,39 +61,49 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			.execute();
 
 		const row = await manager.findOneOrFail(PollerState, {
-			select: ['cursor'],
+			select: ['cursor', 'version'],
 			where: { workflowId, nodeId },
 		});
-		return row.cursor;
+		return { cursor: row.cursor, version: row.version };
 	}
 
 	/**
-	 * Move the cursor of an existing row.
+	 * Move the cursor of an existing row, on the condition that it is still at
+	 * `expectedVersion` — the version read before `poll()` ran.
 	 *
 	 * Call inside the transaction that also inserts the execution the poll produced, so
-	 * neither can commit without the other. Throws when no row matched: the row was read
-	 * before `poll()` ran, so its absence means the workflow or node went away mid-poll
-	 * and the surrounding transaction must not commit.
+	 * neither can commit without the other. Throws when no row matched: either the
+	 * workflow or node went away mid-poll, or another poll of the same node committed
+	 * first and moved the version on — the scheduler documents that a poll occurrence
+	 * can run twice, and this is what stops the loser from overwriting the winner's
+	 * cursor or creating a duplicate execution.
 	 */
 	async advanceCursor(
 		workflowId: string,
 		nodeId: string,
 		cursor: PollerCursor,
+		expectedVersion: number,
 		ctx: OperationContext,
 	): Promise<void> {
 		// TypeORM's QueryDeepPartialEntity doesn't accept `Record<string, unknown>`, so the
 		// well-typed value is cast at this boundary.
-		const result = await this.managerFor(ctx).update(PollerState, { workflowId, nodeId }, {
-			cursor,
-			updatedAt: new Date(),
-		} as QueryDeepPartialEntity<PollerState>);
+		const result = await this.managerFor(ctx).update(
+			PollerState,
+			{ workflowId, nodeId, version: expectedVersion },
+			{
+				cursor,
+				version: expectedVersion + 1,
+				updatedAt: new Date(),
+			} as QueryDeepPartialEntity<PollerState>,
+		);
 
 		// `affected` is optional in TypeORM and not reported by every driver, so anything
 		// other than a definite single row is treated as a miss.
 		if (result.affected !== 1) {
-			throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
-				extra: { workflowId, nodeId },
-			});
+			throw new UnexpectedError(
+				'Poller cursor row disappeared or was advanced by a concurrent poll',
+				{ extra: { workflowId, nodeId, expectedVersion } },
+			);
 		}
 	}
 

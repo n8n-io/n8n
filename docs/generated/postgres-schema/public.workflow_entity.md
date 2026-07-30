@@ -223,6 +223,7 @@ erDiagram
   json cursor
   varchar_36_ nodeId
   timestamp_3__with_time_zone updatedAt
+  integer version
   varchar_36_ workflowId FK
 }
 "public.processed_data" {
