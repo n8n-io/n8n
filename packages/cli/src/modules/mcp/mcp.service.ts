@@ -152,6 +152,18 @@ function getToolCallOutcome(result: CallToolResult | undefined): {
 	return { status: 'error' };
 }
 
+/**
+ * Reads a `workflowId` off a tool's arguments or its structured output. Most
+ * tools take the workflow they act on as an argument, but the ones that create
+ * a workflow only report it back (`create_workflow_from_code`), so both sides
+ * are checked.
+ */
+function getWorkflowId(source: unknown): string | undefined {
+	if (!source || typeof source !== 'object' || !('workflowId' in source)) return undefined;
+	const workflowId = (source as { workflowId: unknown }).workflowId;
+	return typeof workflowId === 'string' ? workflowId : undefined;
+}
+
 @Service()
 export class McpService {
 	/**
@@ -286,11 +298,7 @@ export class McpService {
 			const invoke = handler as (...handlerArgs: unknown[]) => Promise<CallToolResult>;
 
 			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
-				const toolArgs = handlerArgs[0];
-				const workflowId =
-					toolArgs && typeof toolArgs === 'object' && 'workflowId' in toolArgs
-						? String((toolArgs as { workflowId: unknown }).workflowId)
-						: undefined;
+				const workflowId = getWorkflowId(handlerArgs[0]);
 
 				try {
 					const result = await invoke(...handlerArgs);
@@ -298,7 +306,7 @@ export class McpService {
 					this.eventService.emit('mcp-tool-called', {
 						user,
 						toolName: name,
-						workflowId,
+						workflowId: workflowId ?? getWorkflowId(result?.structuredContent),
 						status,
 						errorMessage,
 						clientName: clientInfo?.name,

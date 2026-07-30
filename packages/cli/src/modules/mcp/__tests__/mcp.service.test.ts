@@ -579,6 +579,46 @@ describe('McpService', () => {
 			});
 		});
 
+		it('should emit `mcp-tool-called` with the workflow reported in the structured output', async () => {
+			// `create_workflow_from_code` takes no `workflowId` argument — the
+			// workflow it created is only in the result.
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			const output = { workflowId: 'wf-new', workflowName: 'My workflow' };
+			await registerAndInvoke(server, 'creating_tool', async () => ({
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+			}));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'creating_tool',
+					workflowId: 'wf-new',
+					status: 'success',
+				}),
+			);
+		});
+
+		it('should prefer the requested workflow over the one in the structured output', async () => {
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			await registerAndInvoke(
+				server,
+				'updating_tool',
+				async () => ({
+					content: [{ type: 'text', text: 'ok' }],
+					structuredContent: { workflowId: 'wf-other' },
+				}),
+				{ workflowId: 'wf-42' },
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({ toolName: 'updating_tool', workflowId: 'wf-42' }),
+			);
+		});
+
 		it('should emit `mcp-tool-called` with error status when a tool throws', async () => {
 			const user = mcpUser();
 			const server = await mcpService.getServer(user, mcpFeatureFlags());
