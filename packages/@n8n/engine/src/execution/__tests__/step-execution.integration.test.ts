@@ -137,7 +137,12 @@ describe('step execution (integration)', () => {
 		const { step } = await runWorkflow(executor, {});
 
 		expect(step?.status).toBe('failed');
-		expect(step?.error).toEqual({ name: 'TypeError', message: 'credentials missing' });
+		expect(step?.error).toEqual({
+			name: 'TypeError',
+			message: 'credentials missing',
+			// the stack survives the round trip through jsonb
+			stack: expect.stringContaining('TypeError: credentials missing') as string,
+		});
 		expect(step?.outputs).toBeNull();
 	});
 
@@ -156,12 +161,10 @@ describe('step execution (integration)', () => {
 			graph,
 			triggerPayload: null,
 		});
-		await stepStore.createStep({ executionId, nodeId: 'trigger', status: 'completed' });
-		const { id: stepId } = await stepStore.createStep({
-			executionId,
-			nodeId: 'node-a',
-			status: 'queued',
-		});
+		const [, { id: stepId }] = await stepStore.createSteps([
+			{ executionId, nodeId: 'trigger', status: 'completed' },
+			{ executionId, nodeId: 'node-a', status: 'queued' },
+		]);
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.
 		const event = { type: 'step:ready', executionId, stepId } as const;

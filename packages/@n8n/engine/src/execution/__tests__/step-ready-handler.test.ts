@@ -44,12 +44,13 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		nodeId: 'a',
 		status: 'running',
 		outputs: null,
+		error: null,
 		...step,
 	};
 	return {
-		createStep: vi.fn(),
+		createSteps: vi.fn(),
 		loadStep: vi.fn().mockResolvedValue(record),
-		transitionStepStatus: vi.fn().mockResolvedValue(true),
+		claimStep: vi.fn().mockResolvedValue(true),
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
 		loadStepOutputs: vi.fn().mockResolvedValue({}),
@@ -78,7 +79,7 @@ describe('StepReadyHandler', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.transitionStepStatus).toHaveBeenCalledWith('step-a', 'queued', 'running');
+		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
@@ -142,7 +143,7 @@ describe('StepReadyHandler', () => {
 	});
 
 	it('is a no-op when the step cannot be claimed (duplicate delivery)', async () => {
-		const stepStore = makeStepStore({}, { transitionStepStatus: vi.fn().mockResolvedValue(false) });
+		const stepStore = makeStepStore({}, { claimStep: vi.fn().mockResolvedValue(false) });
 		const queue = makeQueue();
 		const executor = makeExecutor();
 		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
@@ -200,6 +201,8 @@ describe('StepReadyHandler', () => {
 		expect(stepStore.failStep).toHaveBeenCalledWith('step-a', {
 			name: 'TypeError',
 			message: 'node blew up',
+			// the stack is what makes a failed step debuggable
+			stack: expect.stringContaining('TypeError: node blew up') as string,
 		});
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		// the orchestrator still has to hear about it
@@ -221,6 +224,7 @@ describe('StepReadyHandler', () => {
 		expect(stepStore.failStep).toHaveBeenCalledWith('step-a', {
 			name: 'UnimplementedError',
 			message: expect.stringContaining('v1-node') as string,
+			stack: expect.any(String) as string,
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:completed',
@@ -252,6 +256,7 @@ describe('StepReadyHandler', () => {
 		expect(stepStore.failStep).toHaveBeenCalledWith('step-b', {
 			name: 'UnimplementedError',
 			message: expect.stringContaining('more than one') as string,
+			stack: expect.any(String) as string,
 		});
 	});
 
@@ -268,6 +273,7 @@ describe('StepReadyHandler', () => {
 		expect(stepStore.failStep).toHaveBeenCalledWith('step-a', {
 			name: 'UnexpectedError',
 			message: expect.stringContaining('ghost') as string,
+			stack: expect.any(String) as string,
 		});
 	});
 });

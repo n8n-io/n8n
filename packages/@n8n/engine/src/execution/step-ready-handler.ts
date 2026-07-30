@@ -24,7 +24,7 @@ export class StepReadyHandler {
 
 	async handle(event: StepReadyEvent): Promise<void> {
 		// Claim via CAS so a duplicate/redelivered event is a no-op.
-		const claimed = await this.stepStore.transitionStepStatus(event.stepId, 'queued', 'running');
+		const claimed = await this.stepStore.claimStep(event.stepId);
 		if (!claimed) return;
 
 		let recorded: boolean;
@@ -119,6 +119,8 @@ function isTrigger(graph: WorkflowGraph, nodeId: string): boolean {
 }
 
 function toStepError(error: unknown): StepError {
-	if (error instanceof Error) return { name: error.name, message: error.message };
+	if (error instanceof Error) {
+		return { name: error.name, message: error.message, stack: error.stack };
+	}
 	return { name: 'Error', message: String(error) };
 }
