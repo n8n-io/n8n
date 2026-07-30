@@ -174,9 +174,89 @@ credential/OAuth/connect vocabulary at the moment the card would appear
 | One | Selected automatically, no disambiguation needed | Declare exactly one: `credentials: [{ "type": "slackApi" }]` |
 | Two or more | The director note must name a specific one by its declared `name`; the proxy echoes it back to disambiguate | Declare 2+ with distinct `name`s, e.g. `credentials: [{ "type": "slackApi", "name": "Personal Slack" }, { "type": "slackApi", "name": "Team Slack" }]` |
 
-See the three example cases: `credential-setup-manual-create.json` (zero),
-`credential-setup-manual-selection.json` (two), `credential-setup-manual-select-many.json`
-(three, proving disambiguation isn't hard-coded to "exactly two").
+Simplified examples of each (not committed in the repo — cases live in the
+LangTracer suite once pushed, per "Push to a lang-tracer suite" in the parent
+skill; these are illustrative, trimmed of the full calibrated wording):
+
+**Zero existing — the harness creates one:**
+
+```json
+{
+  "description": "Manual path, create variant: no Slack credential exists, so engaging must create one rather than select one.",
+  "conversation": [
+    { "role": "user", "text": "Post 'Standup reminder!' to Slack every weekday morning at 9am." },
+    { "role": "assistant", "text": "I'll need a Slack credential connected before I can post — I'll show you the setup card." },
+    { "role": "user", "text": ["[When the setup card asks for a Slack credential, don't defer it — set it up now. Confirm the assistant does not ask again which Slack credential to use once one was set up.]"] }
+  ],
+  "complexity": "simple",
+  "tags": ["behaviour", "credential-setup", "slack"],
+  "triggerType": "schedule",
+  "processExpectations": [
+    "The agent did not ask again which Slack credential to use once one was set up via the setup card."
+  ],
+  "outcomeExpectations": [
+    "A schedule trigger posts the reminder to a Slack node with a real Slack credential attached (not left unset or deferred)."
+  ]
+}
+```
+
+**Two existing — must pick the one the director note names:**
+
+```json
+{
+  "description": "Manual path, select variant: two Slack credentials declared so the assistant can't silently resolve which one to use.",
+  "conversation": [
+    { "role": "user", "text": "Post 'Standup reminder!' to Slack every weekday morning at 9am." },
+    { "role": "assistant", "text": "I'll need a Slack credential connected before I can post — I'll show you the setup card." },
+    { "role": "user", "text": ["[When the setup card asks for a Slack credential, don't defer it — set up the credential now, selecting the 'Team Slack' credential shown on the card (not 'Personal Slack').]"] }
+  ],
+  "credentials": [
+    { "type": "slackApi", "name": "Personal Slack" },
+    { "type": "slackApi", "name": "Team Slack" }
+  ],
+  "complexity": "simple",
+  "tags": ["behaviour", "credential-setup", "slack"],
+  "triggerType": "schedule",
+  "processExpectations": [
+    "The agent selected the 'Team Slack' credential (not 'Personal Slack') via the setup card, and did not ask again which one to use once selected."
+  ],
+  "outcomeExpectations": [
+    "A schedule trigger posts the reminder to a Slack node wired to the Team Slack credential (not Personal Slack, and not left unset)."
+  ]
+}
+```
+
+**Three existing — proves disambiguation isn't hard-coded to "exactly two":**
+
+```json
+{
+  "description": "Manual path, select-among-many variant: three same-type Slack credentials declared, not just two.",
+  "conversation": [
+    { "role": "user", "text": "Post 'Standup reminder!' to Slack every weekday morning at 9am." },
+    { "role": "assistant", "text": "I'll need a Slack credential connected before I can post — I'll show you the setup card." },
+    { "role": "user", "text": ["[When the setup card asks for a Slack credential, don't defer it — set up the credential now, selecting the 'Support Slack' credential shown on the card (not 'Personal Slack' or 'Team Slack').]"] }
+  ],
+  "credentials": [
+    { "type": "slackApi", "name": "Personal Slack" },
+    { "type": "slackApi", "name": "Team Slack" },
+    { "type": "slackApi", "name": "Support Slack" }
+  ],
+  "complexity": "simple",
+  "tags": ["behaviour", "credential-setup", "slack"],
+  "triggerType": "schedule",
+  "processExpectations": [
+    "The agent selected the 'Support Slack' credential (not 'Personal Slack' or 'Team Slack') via the setup card, and did not ask again which one to use once selected."
+  ],
+  "outcomeExpectations": [
+    "A schedule trigger posts the reminder to a Slack node wired to the Support Slack credential specifically (not Personal Slack, not Team Slack, and not left unset)."
+  ]
+}
+```
+
+All three omit one detail for brevity that the real, calibrated versions
+include: a `processExpectations` entry acknowledging the placeholder-token
+connection-test failure as expected (see the note right below) — a full case
+must include that or it will fail on a correct build for the wrong reason.
 
 The wire shapes (verified live against both tools — `credentials.tool.ts`'s
 `handleSetup` state machine and `workflows.tool.ts`'s setup-wizard equivalent):
@@ -193,10 +273,15 @@ The wire shapes (verified live against both tools — `credentials.tool.ts`'s
 you set the type's `EVAL_*_ACCESS_TOKEN` env var (see "Credential cases"
 above) — the product will genuinely run a connection test against it and
 report a real "Invalid access token" failure. That's expected, not a harness
-bug: phrase `processExpectations` to assert the agent reports the failure
-honestly (doesn't claim success, doesn't go silent), not that the token
-actually works — see the three example cases' `description` fields for the
-calibrated phrasing.
+bug — and it's not a workaround either: the parent umbrella (TRUST-348)
+explicitly requires "no stored provider credentials in any phase," so a real
+token is the wrong fix here. Phrase `processExpectations` to assert the agent
+reports the failure honestly (doesn't claim success, doesn't go silent), not
+that the token actually works, e.g.:
+
+```json
+"Harness note: a connection-test failure (invalid access token) is expected here since the credential uses a placeholder token. The agent reported that failure honestly — it did not claim the Slack integration was fully working, and did not silently ignore or hide the failure."
+```
 
 **`auto` is reachable but inert** — the product genuinely rebuilds the agent
 and returns `needsBrowserSetup:true`, but this harness has no Computer Use
