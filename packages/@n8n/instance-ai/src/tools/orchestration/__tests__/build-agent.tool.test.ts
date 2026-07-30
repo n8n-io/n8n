@@ -291,6 +291,7 @@ describe('build-agent tool', () => {
 			hostThreadId: 'thread-1',
 			runId: 'run-1',
 			modelConfig: context.modelId,
+			abortSignal: context.abortSignal,
 		});
 	});
 
@@ -468,6 +469,7 @@ describe('build-agent tool', () => {
 			hostThreadId: 'thread-1',
 			runId: 'run-1',
 			modelConfig: context.modelId,
+			abortSignal: context.abortSignal,
 		});
 	});
 
@@ -502,6 +504,58 @@ describe('build-agent tool', () => {
 		expect(last && 'payload' in last ? last.payload : undefined).toMatchObject({
 			role: 'agent-builder',
 			error: 'The agent builder run errored.',
+		});
+	});
+
+	describe('cancellation', () => {
+		it('throws without starting a builder turn when the run is already aborted', async () => {
+			const { context, delegate } = makeContext();
+			const controller = new AbortController();
+			controller.abort();
+			context.abortSignal = controller.signal;
+
+			await expect(runTool(context, { message: 'Build it', name: 'New Agent' })).rejects.toThrow(
+				'The agent builder run was cancelled.',
+			);
+			expect(delegate.streamBuild).not.toHaveBeenCalled();
+		});
+
+		it('throws an abort error and still claims usage when the builder turn is cancelled mid-stream', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			const controller = new AbortController();
+			context.abortSignal = controller.signal;
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue({
+				fullStream: (async function* () {
+					await Promise.resolve();
+					controller.abort();
+					yield finishChunk();
+				})(),
+				text: Promise.resolve(''),
+			});
+
+			await expect(
+				runToolWithCtx(
+					context,
+					{ message: 'Build it', name: 'New Agent' },
+					{ toolCallId: 'orch-call-1' },
+				),
+			).rejects.toMatchObject({ name: 'AbortError' });
+			expect(context.claimSubAgentUsage).toHaveBeenCalledWith(
+				'run-1:orch-call-1',
+				[expectedUsageItem],
+				'cancelled',
+			);
+			const completed = publishedEvents.find((event) => event.type === 'agent-completed');
+			expect(completed && 'payload' in completed ? completed.payload : undefined).toEqual({
+				role: 'agent-builder',
+				result: '',
+				status: 'cancelled',
+			});
 		});
 	});
 
@@ -860,6 +914,7 @@ describe('build-agent tool', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: context.modelId,
+				abortSignal: context.abortSignal,
 			});
 		});
 
@@ -909,6 +964,7 @@ describe('build-agent tool', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: context.modelId,
+				abortSignal: context.abortSignal,
 			});
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, sessionAgent);
 		});
@@ -973,6 +1029,7 @@ describe('build-agent tool', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: context.modelId,
+				abortSignal: context.abortSignal,
 			});
 		});
 
@@ -1005,6 +1062,7 @@ describe('build-agent tool', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: context.modelId,
+				abortSignal: context.abortSignal,
 			});
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, {
 				agentId: 'agent-2',
@@ -1039,6 +1097,7 @@ describe('build-agent tool', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: context.modelId,
+				abortSignal: context.abortSignal,
 			});
 		});
 
@@ -1238,6 +1297,7 @@ describe('build-agent tool', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: context.modelId,
+				abortSignal: context.abortSignal,
 			});
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
@@ -1247,6 +1307,7 @@ describe('build-agent tool', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: context.modelId,
+					abortSignal: context.abortSignal,
 				},
 			);
 			expect(result).toEqual({
@@ -1322,6 +1383,7 @@ describe('build-agent tool', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: context.modelId,
+				abortSignal: context.abortSignal,
 			});
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
@@ -1331,6 +1393,7 @@ describe('build-agent tool', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: context.modelId,
+					abortSignal: context.abortSignal,
 				},
 			);
 		});
@@ -1364,6 +1427,7 @@ describe('build-agent tool', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: context.modelId,
+					abortSignal: context.abortSignal,
 				},
 			);
 		});

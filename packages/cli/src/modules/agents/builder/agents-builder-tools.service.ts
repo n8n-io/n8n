@@ -1,4 +1,5 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { isAbortError } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	applyNativeWebSearchDefaultOn,
@@ -796,7 +797,7 @@ export class AgentsBuilderToolsService {
 						.describe('Complete TypeScript source using export default new Tool(...)'),
 				}),
 			)
-			.handler(async ({ code }: { code: string }) => {
+			.handler(async ({ code }: { code: string }, ctx) => {
 				try {
 					const descriptor = await this.secureRuntime.describeToolSecurely(code);
 					const built = await this.agentCustomToolsService.buildCustomTool(
@@ -807,6 +808,12 @@ export class AgentsBuilderToolsService {
 					);
 					return { ok: true, id: built.id, name: descriptor.name };
 				} catch (e) {
+					// Unlike its sibling handlers, this one runs long isolate work, so an
+					// abort can land mid-call and must not be reported as a build error.
+					// When a signal is present it is the authority: the isolate compiles
+					// model-authored code, so a generated tool throwing `Aborted` must not
+					// be mistaken for a cancellation and kill the whole builder run.
+					if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(e)) throw e;
 					return {
 						ok: false,
 						errors: [{ message: e instanceof Error ? e.message : String(e) }],

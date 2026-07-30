@@ -23,7 +23,7 @@
  * builder UI — it is a private sub-agent conversation.
  */
 import type { InterruptibleToolContext } from '@n8n/agents';
-import { Tool } from '@n8n/agents';
+import { createAbortError, Tool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
@@ -63,6 +63,7 @@ import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from '
 
 const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
 const BUILDER_SUB_AGENT_KIND = 'agent-builder';
+const BUILDER_RUN_CANCELLED_MESSAGE = 'The agent builder run was cancelled.';
 
 function getErrorCode(error: unknown): string | undefined {
 	if (!isRecord(error)) return undefined;
@@ -128,7 +129,7 @@ function buildOutboundMessage(message: string, workflowContext?: SessionWorkflow
 }
 
 /** Builder sessions are keyed per assistant thread + target agent; the resume
- *  leg must reconstruct this byte-identically after a restart. */
+ *  leg must reconstruct the same `threadId` byte-identically after a restart. */
 function builderSessionFor(context: OrchestrationContext, agentId: string) {
 	const telemetry = context.tracing?.getTelemetry?.({
 		agentRole: BUILDER_SUB_AGENT_ROLE,
@@ -145,6 +146,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 		...(context.tracing?.onMemoryTaskEvent
 			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
 			: {}),
+		abortSignal: context.abortSignal,
 	};
 }
 
@@ -318,7 +320,19 @@ function publishAgentBuilderFailure(
 	return message;
 }
 
-/** Publish the terminal `agent-completed` event and map the result to the tool output. */
+/** Publish the terminal `agent-completed` event for a stopped builder turn: no
+ *  `error`, so the tree stays quiet and the run-level stopped indicator speaks. */
+function publishAgentBuilderCancelled(context: OrchestrationContext, builderAgentId: string): void {
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-completed',
+		runId: context.runId,
+		agentId: builderAgentId,
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', status: 'cancelled' },
+	});
+}
+
+/** Publish the terminal `agent-completed` event and map the result to the tool output.
+ *  A cancelled turn is intercepted by the caller, so that status never arrives here. */
 async function finishTurn(
 	context: OrchestrationContext,
 	builderAgentId: string,
@@ -460,6 +474,14 @@ async function runBuilderConsumeLoop(params: {
 	}
 
 	if (result.status !== 'suspended') {
+		if (result.status === 'cancelled') {
+			const cancelled = createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
+			publishAgentBuilderCancelled(context, builderAgentId);
+			await failTraceRun(context, traceRun, cancelled);
+			await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
+			throw cancelled;
+		}
+
 		const output = await finishTurn(context, builderAgentId, result, carriedConfigUpdated);
 		if (output.ok) {
 			await finishTraceRun(context, traceRun, { outputs: output });
@@ -788,6 +810,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 		.suspend(buildAgentSuspendSchema)
 		.resume(buildAgentResumeSchema)
 		.handler(async (input: z.infer<typeof buildAgentInputSchema>, ctx: BuildAgentToolContext) => {
+			if (context.abortSignal.aborted) {
+				throw createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
+			}
+
 			const domainContext = context.domainContext;
 			const delegate = domainContext?.builderDelegate;
 			if (!domainContext || !delegate) {

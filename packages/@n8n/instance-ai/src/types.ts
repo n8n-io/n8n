@@ -893,6 +893,8 @@ export interface BuilderDelegateSession {
 	 * can outlive the parent trace's root finalization.
 	 */
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
+	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
+	abortSignal: AbortSignal;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
