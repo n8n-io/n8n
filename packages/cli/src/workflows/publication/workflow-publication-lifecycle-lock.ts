@@ -32,11 +32,6 @@ export class WorkflowPublicationLifecycleLock {
 		return this.stateByWorkflowId.has(workflowId);
 	}
 
-	/** Workflow ids currently holding or waiting on a lifecycle lock. */
-	getLockedWorkflowIds(): string[] {
-		return Array.from(this.stateByWorkflowId.keys());
-	}
-
 	/** Runs `fn` under the workflow's lock, waiting indefinitely to acquire it. */
 	async runExclusive<T>(workflowId: string, fn: () => Promise<T>): Promise<T> {
 		await this.acquire(workflowId);
@@ -45,32 +40,6 @@ export class WorkflowPublicationLifecycleLock {
 		} finally {
 			this.release(workflowId);
 		}
-	}
-
-	/**
-	 * Acquires the workflow's lock within `timeoutMs` and runs `fn` under it. If it
-	 * cannot be acquired in time (e.g. an in-flight record is stuck), `fn` runs
-	 * WITHOUT the lock so the caller still makes progress, and `timedOut` is `true`.
-	 */
-	async runExclusiveOrTimeout(
-		workflowId: string,
-		fn: () => Promise<void>,
-		timeoutMs: number,
-	): Promise<{ timedOut: boolean }> {
-		const acquired = await this.acquireWithTimeout(workflowId, timeoutMs);
-
-		if (!acquired) {
-			await fn();
-			return { timedOut: true };
-		}
-
-		try {
-			await fn();
-		} finally {
-			this.release(workflowId);
-		}
-
-		return { timedOut: false };
 	}
 
 	private getOrCreateState(workflowId: string): WorkflowLockState {
@@ -103,38 +72,5 @@ export class WorkflowPublicationLifecycleLock {
 		} else {
 			this.stateByWorkflowId.delete(workflowId);
 		}
-	}
-
-	private async acquireWithTimeout(workflowId: string, timeoutMs: number): Promise<boolean> {
-		const state = this.getOrCreateState(workflowId);
-		if (!state.locked) {
-			state.locked = true;
-			return true;
-		}
-
-		return await new Promise<boolean>((resolve) => {
-			// `settled` resolves the timeout-vs-handoff race: whichever fires first
-			// wins, so the lock is never granted twice nor wedged on an abandoned
-			// waiter. On timeout we splice the waiter out so `release` never hands
-			// ownership to it.
-			let settled = false;
-
-			const waiter = () => {
-				if (settled) return;
-				settled = true;
-				clearTimeout(timer);
-				resolve(true);
-			};
-
-			const timer = setTimeout(() => {
-				if (settled) return;
-				settled = true;
-				const index = state.waiters.indexOf(waiter);
-				if (index !== -1) state.waiters.splice(index, 1);
-				resolve(false);
-			}, timeoutMs);
-
-			state.waiters.push(waiter);
-		});
 	}
 }
