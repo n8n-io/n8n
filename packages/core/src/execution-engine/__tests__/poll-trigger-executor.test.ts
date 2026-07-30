@@ -95,6 +95,15 @@ describe('PollTriggerExecutor', () => {
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
 		});
 
+		it('does not commit the cursor when the poll returns null', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null);
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute(true);
+
+			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+		});
+
 		it('rethrows the poll error so activation fails', async () => {
 			const error = new Error('poll failed');
 			triggersAndPollers.runPollFunction.mockRejectedValueOnce(error);
@@ -117,6 +126,48 @@ describe('PollTriggerExecutor', () => {
 			expect(acquireIsolate).toHaveBeenCalledTimes(1);
 			expect(pollFunctions.__emit).toHaveBeenCalledWith(result);
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		it('commits the cursor when the poll returns null', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null);
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute();
+
+			expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(1);
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		it('leaves the cursor to the emit path when the poll returns data', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce([[{ json: { ok: true } }]]);
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute();
+
+			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+		});
+
+		it('does not commit the cursor when superseded after an empty poll resolves', async () => {
+			let isCurrent = true;
+			triggersAndPollers.runPollFunction.mockImplementationOnce(async () => {
+				isCurrent = false;
+				return null;
+			});
+
+			const execute = executor.create(workflow, node, pollFunctions, () => isCurrent);
+			await execute();
+
+			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+		});
+
+		it('does not commit the cursor when the poll throws', async () => {
+			triggersAndPollers.runPollFunction.mockRejectedValueOnce(new Error('poll failed'));
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute();
+
+			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
 		});
 
 		it('emits an error when the poll fails for a current workflow', async () => {

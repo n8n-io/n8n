@@ -10,6 +10,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -95,6 +96,23 @@ describe('PollCursorService', () => {
 
 			await expect(service.readCursor('wf-1', 'node-1', {})).resolves.toBeNull();
 		});
+
+		it('returns the cursor another process seeded when this one seeded nothing', async () => {
+			const service = buildService();
+			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-the-other-poll' });
+
+			const cursor = await service.readCursor('wf-1', 'node-1', {});
+
+			expect(cursor).toEqual({ lastItemId: 'from-the-other-poll' });
+		});
+
+		it('propagates a failing read so the poll does not run against an unknown cursor', async () => {
+			const service = buildService();
+			const readError = new Error('poller state read failed');
+			pollerStateRepository.ensureCursor.mockRejectedValue(readError);
+
+			await expect(service.readCursor('wf-1', 'node-1', {})).rejects.toBe(readError);
+		});
 	});
 
 	describe('commitWithExecution', () => {
@@ -163,6 +181,24 @@ describe('PollCursorService', () => {
 				}),
 			).rejects.toBe(insertError);
 		});
+
+		it('propagates a duplicate execution so the cursor advance rolls back with it', async () => {
+			const service = buildService();
+			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'a' });
+			const duplicateError = new DuplicateExecutionError('dedup-key');
+			executionPersistence.create.mockRejectedValue(duplicateError);
+
+			await expect(
+				service.commitWithExecution({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					cursor: { lastItemId: 'b' },
+					payload: payload(),
+				}),
+			).rejects.toBe(duplicateError);
+
+			expect(workflowStaticDataService.saveStaticDataById).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('commitCursorOnly', () => {
@@ -206,6 +242,19 @@ describe('PollCursorService', () => {
 
 			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
 				'node:Other Poll Node': { lastItemId: 'x' },
+				'node:Poll Node': { lastItemId: 'b' },
+			});
+		});
+
+		it("replaces the node's previous entry rather than merging into it", async () => {
+			const service = buildService();
+			workflowStaticDataService.getStaticDataById.mockResolvedValue({
+				'node:Poll Node': { lastItemId: 'a', lastTimeChecked: '2026-07-28T10:00:00.000Z' },
+			});
+
+			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' });
+
+			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
 				'node:Poll Node': { lastItemId: 'b' },
 			});
 		});
