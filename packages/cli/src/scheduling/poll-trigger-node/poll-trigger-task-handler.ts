@@ -7,6 +7,7 @@ import { TriggersAndPollers } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import {
@@ -34,6 +35,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly pollCursorService: PollCursorService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -52,68 +54,77 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const { workflow, pollFunctions } =
 			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node);
 
-		// Scheduled polls run outside any activation isolate window, so acquire and
-		// release one per tick; the finally releases even when poll() throws.
-		await workflow.expression.acquireIsolate();
-		try {
-			const pollResponse = await this.triggersAndPollers.runPollFunction(
-				workflow,
-				node,
-				pollFunctions,
-			);
+		return await pollFunctions.__runPoll(async () => {
+			// Scheduled polls run outside any activation isolate window, so acquire and
+			// release one per tick; the finally releases even when poll() throws.
+			await workflow.expression.acquireIsolate();
+			try {
+				const pollResponse = await this.triggersAndPollers.runPollFunction(
+					workflow,
+					node,
+					pollFunctions,
+				);
 
-			if (pollResponse !== null) {
-				// poll() can run for a while (network I/O against the polled source), so
-				// the workflow may have been deactivated while it was in flight. There is
-				// no in-memory registration to check here, so re-read the stored active state.
-				if (!(await this.workflowRepository.isActive(workflowId))) {
-					this.logger.debug('Workflow deactivated during poll; discarding the result', {
+				if (pollResponse !== null) {
+					// poll() can run for a while (network I/O against the polled source), so
+					// the workflow may have been deactivated while it was in flight. There is
+					// no in-memory registration to check here, so re-read the stored active state.
+					if (!(await this.workflowRepository.isActive(workflowId))) {
+						this.logger.debug('Workflow deactivated during poll; discarding the result', {
+							taskId: task.id,
+							jobId: task.jobId,
+							workflowId,
+							nodeId,
+						});
+						return report.notDispatched();
+					}
+
+					// __emit saves the cursor and starts the run without waiting on it.
+					pollFunctions.__emit(pollResponse);
+					this.logger.debug('Poll returned new data; handed off to a new execution', {
 						taskId: task.id,
 						jobId: task.jobId,
 						workflowId,
 						nodeId,
 					});
-					return report.notDispatched();
+					return report.dispatched();
 				}
 
-				// __emit saves the cursor and starts the run without waiting on it.
-				pollFunctions.__emit(pollResponse);
-				this.logger.debug('Poll returned new data; handed off to a new execution', {
+				if (this.pollCursorService.enabled && (await this.workflowRepository.isActive(workflowId))) {
+					try {
+						await pollFunctions.__commitCursor();
+					} catch (error) {
+						this.logger.error(
+							'Failed to commit the poll cursor; the next poll repeats the same window',
+							{ taskId: task.id, jobId: task.jobId, workflowId, nodeId, error },
+						);
+					}
+				}
+
+				this.logger.debug('Poll returned no new data; nothing to hand off', {
 					taskId: task.id,
 					jobId: task.jobId,
 					workflowId,
 					nodeId,
 				});
+				return report.notDispatched();
+			} catch (error) {
+				// Routed to the error workflow instead of rethrown, which would retry and
+				// dead-letter without ever running it. __emitError skips saveStaticData, so
+				// the cursor holds and the next tick retries the same window.
+				pollFunctions.__emitError(ensureError(error));
+				this.logger.debug('Poll failed at runtime; routed to the error workflow', {
+					taskId: task.id,
+					jobId: task.jobId,
+					workflowId,
+					nodeId,
+				});
+				// The error was handed off, so this occurrence is handled and must not retry.
 				return report.dispatched();
+			} finally {
+				await workflow.expression.releaseIsolate();
 			}
-
-			if (await this.workflowRepository.isActive(workflowId)) {
-				await pollFunctions.__commitCursor();
-			}
-
-			this.logger.debug('Poll returned no new data; nothing to hand off', {
-				taskId: task.id,
-				jobId: task.jobId,
-				workflowId,
-				nodeId,
-			});
-			return report.notDispatched();
-		} catch (error) {
-			// Routed to the error workflow instead of rethrown, which would retry and
-			// dead-letter without ever running it. __emitError skips saveStaticData, so
-			// the cursor holds and the next tick retries the same window.
-			pollFunctions.__emitError(ensureError(error));
-			this.logger.debug('Poll failed at runtime; routed to the error workflow', {
-				taskId: task.id,
-				jobId: task.jobId,
-				workflowId,
-				nodeId,
-			});
-			// The error was handed off, so this occurrence is handled and must not retry.
-			return report.dispatched();
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+		});
 	}
 
 	private parsePayload(task: ClaimedTask): PollTriggerTaskPayload {

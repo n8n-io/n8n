@@ -40,9 +40,15 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 			return Object.keys(nodeStaticData).length === 0 ? null : nodeStaticData;
 		},
 		readonly setCursor: IPollFunctions['setCursor'] = (cursor) => {
-			Object.assign(this.getWorkflowStaticData('node'), cursor);
+			if (Object.keys(cursor).length === 0) return;
+			const nodeStaticData = this.getWorkflowStaticData('node');
+			for (const key of Object.keys(nodeStaticData)) {
+				if (!(key in cursor)) delete nodeStaticData[key];
+			}
+			Object.assign(nodeStaticData, cursor);
 		},
 		readonly __commitCursor: IPollFunctions['__commitCursor'] = async () => {},
+		readonly __runPoll: IPollFunctions['__runPoll'] = async (poll) => await poll(),
 	) {
 		super(workflow, node, additionalData, mode);
 
