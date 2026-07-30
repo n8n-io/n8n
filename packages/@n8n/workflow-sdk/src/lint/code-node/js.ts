@@ -3,7 +3,7 @@ import type { CallExpression, Node, Program } from 'estree';
 
 import { walkAst } from '../ast-walk';
 import type { CodeExecutionMode } from './extract-snippets';
-import type { SourceLintIssue } from '../types';
+import { lintIssue, type SourceLintIssue } from '../types';
 
 const NETWORK_CALLEE_NAMES = new Set(['fetch', 'axios', 'XMLHttpRequest']);
 
@@ -160,54 +160,62 @@ export function lintJsCode(jsCode: string, options: LintJsCodeOptions = {}): Sou
 	});
 
 	if (sawNetwork) {
-		issues.push({
-			code: 'CODE_NODE_NETWORK_CALL',
-			message:
-				`${namePrefix}Code node calls fetch/axios/XMLHttpRequest or requires an HTTP module. ` +
-				'Code nodes have no network access at runtime — make the HTTP/API call with an HTTP Request node ' +
-				'and transform its output in the Code node instead.',
-			lintTarget: 'jsCode',
-			nodeName: options.nodeName,
-			parameterPath: 'jsCode',
-		});
+		issues.push(
+			lintIssue({
+				code: 'CODE_NODE_NETWORK_CALL',
+				message:
+					`${namePrefix}Code node calls fetch/axios/XMLHttpRequest or requires an HTTP module. ` +
+					'Code nodes have no network access at runtime — make the HTTP/API call with an HTTP Request node ' +
+					'and transform its output in the Code node instead.',
+				lintTarget: 'jsCode',
+				nodeName: options.nodeName,
+				parameterPath: 'jsCode',
+			}),
+		);
 	}
 
 	if (sawForbiddenImport) {
-		issues.push({
-			code: 'CODE_NODE_FORBIDDEN_IMPORT',
-			message:
-				`${namePrefix}Code node imports a module unavailable in the sandbox (luxon, openai, langchain, …). ` +
-				'Use JavaScript `Date`/`Intl`, `$now`/`$today`, existing workflow data, or dedicated AI nodes instead.',
-			lintTarget: 'jsCode',
-			nodeName: options.nodeName,
-			parameterPath: 'jsCode',
-		});
+		issues.push(
+			lintIssue({
+				code: 'CODE_NODE_FORBIDDEN_IMPORT',
+				message:
+					`${namePrefix}Code node imports a module unavailable in the sandbox (luxon, openai, langchain, …). ` +
+					'Use JavaScript `Date`/`Intl`, `$now`/`$today`, existing workflow data, or dedicated AI nodes instead.',
+				lintTarget: 'jsCode',
+				nodeName: options.nodeName,
+				parameterPath: 'jsCode',
+			}),
+		);
 	}
 
 	if (options.mode === 'runOnceForEachItem' && disallowedInputMethod !== undefined) {
-		issues.push({
-			code: 'CODE_MODE_API_MISUSE',
-			message:
-				`${namePrefix}uses mode: 'runOnceForEachItem' but calls $input.${disallowedInputMethod}(). ` +
-				`$input.${disallowedInputMethod}() is only available in runOnceForAllItems (the default). ` +
-				'Switch mode to runOnceForAllItems, or use $input.item / $json for per-item work.',
-			lintTarget: 'jsCode',
-			nodeName: options.nodeName,
-			parameterPath: 'jsCode',
-		});
+		issues.push(
+			lintIssue({
+				code: 'CODE_MODE_API_MISUSE',
+				message:
+					`${namePrefix}uses mode: 'runOnceForEachItem' but calls $input.${disallowedInputMethod}(). ` +
+					`$input.${disallowedInputMethod}() is only available in runOnceForAllItems (the default). ` +
+					'Switch mode to runOnceForAllItems, or use $input.item / $json for per-item work.',
+				lintTarget: 'jsCode',
+				nodeName: options.nodeName,
+				parameterPath: 'jsCode',
+			}),
+		);
 	}
 
 	if (hasNestedTemplateLiteral(ast)) {
-		issues.push({
-			code: 'CODE_NESTED_TEMPLATE_LITERAL',
-			message:
-				`${namePrefix}Code node uses nested template literals, which often break after save. ` +
-				'Build multi-line strings with arrays joined by a runtime separator, e.g. ' +
-				'`const LF = String.fromCharCode(10); return lines.join(LF);`.',
-			lintTarget: 'jsCode',
-			nodeName: options.nodeName,
-			parameterPath: 'jsCode',
-		});
+		issues.push(
+			lintIssue({
+				code: 'CODE_NESTED_TEMPLATE_LITERAL',
+				message:
+					`${namePrefix}Code node uses nested template literals, which often break after save. ` +
+					'Build multi-line strings with arrays joined by a runtime separator, e.g. ' +
+					'`const LF = String.fromCharCode(10); return lines.join(LF);`.',
+				lintTarget: 'jsCode',
+				nodeName: options.nodeName,
+				parameterPath: 'jsCode',
+			}),
+		);
 	}
 
 	return issues;

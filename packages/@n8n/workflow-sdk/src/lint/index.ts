@@ -6,6 +6,7 @@
  */
 
 export type { LintTarget, SourceLintIssue } from './types';
+export { lintIssue } from './types';
 export { walkAst, dedupeSourceLintIssues } from './ast-walk';
 export { lintWorkflowSource } from './lint-workflow-source';
 export {

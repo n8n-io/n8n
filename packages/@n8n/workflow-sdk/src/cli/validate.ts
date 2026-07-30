@@ -3,14 +3,11 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { resolveNodeDefinitionDirs, NODE_DEFINITION_DIRS_ENV_VAR } from './node-definition-dirs';
-import { lintWorkflowSource, type SourceLintIssue } from '../lint';
 import type { WorkflowJSON } from '../types/base';
 import {
-	isInformationalValidationCode,
-	setSchemaBaseDirs,
-	validateWorkflow,
-	type ValidationError,
-	type ValidationWarning,
+	buildUncheckedNotes,
+	validateWorkflowBuilder,
+	type CollectedValidationIssue,
 	type ValidationResult,
 } from '../validation';
 
@@ -19,36 +16,18 @@ export interface ValidateCliOptions {
 	nodeTypes?: string[];
 }
 
-interface CollectedIssue {
-	code: string;
-	message: string;
-	nodeName?: string;
-	parameterPath?: string;
-	/** 1-based line in the workflow source file, when resolvable */
-	line?: number;
-	/** 1-based column in the workflow source file, when resolvable */
-	column?: number;
-	source: 'graph' | 'schema' | 'sdk' | 'jsCode' | 'pythonCode';
-}
-
 interface WorkflowBuilderLike {
 	validate: () => ValidationResult;
 	toJSON: (options?: { tidyUp?: boolean }) => WorkflowJSON;
 }
 
-const UNCHECKED_ALWAYS = [
-	'wrong-kind resource locator values',
-	// IF/Switch/SIB/Merge bounds are covered by connection-index-validator;
-	// other node types still need a full nodeTypesProvider.
-	'input/output index bounds for non-control-flow nodes',
-	'AI input type / required-input support',
-	'n8n credits aiGateway constraints (needs Instance AI metadata)',
-] as const;
-
-const UNCHECKED_WITHOUT_SCHEMAS = `node parameter names and values (no node definitions found — pass --node-types <dir> or set ${NODE_DEFINITION_DIRS_ENV_VAR})`;
-
-function buildUnchecked(schemasLoaded: boolean): string[] {
-	return schemasLoaded ? [...UNCHECKED_ALWAYS] : [...UNCHECKED_ALWAYS, UNCHECKED_WITHOUT_SCHEMAS];
+/** Blocking issues report as `error`, informational ones as `warning`. */
+interface ReportEntry {
+	line?: number;
+	column?: number;
+	severity: 'error' | 'warning';
+	code: string;
+	message: string;
 }
 
 function buildTrailer(unchecked: string[]): string {
@@ -59,7 +38,7 @@ function usageAndExit(): never {
 	console.error('Usage: workflow-sdk validate <file-path> [--json] [--node-types <dir>]');
 	console.error('');
 	console.error('Load a workflow SDK TypeScript file via dynamic import, run graph');
-	console.error('validators (wf.validate) plus schema validateWorkflow, and report issues.');
+	console.error('validators (wf.validate), schema validateWorkflow, and source lint.');
 	console.error('Exit non-zero only for issues that would block a build-workflow save.');
 	console.error('');
 	console.error('Node parameter validation needs generated node definitions. They are');
@@ -104,82 +83,10 @@ function parseArgs(argv: string[]): { filePath: string; options: ValidateCliOpti
 	return { filePath, options: { json, nodeTypes } };
 }
 
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Best-effort: locate the `config.name` assignment for a node in the source.
- * Validators don't carry AST locations, so we map nodeName → source line/column.
- */
-function findNodeLocation(
-	sourceLines: string[],
-	nodeName: string,
-): { line: number; column: number } | undefined {
-	const pattern = new RegExp(`\\bname:\\s*['"]${escapeRegExp(nodeName)}['"]`);
-	for (let i = 0; i < sourceLines.length; i++) {
-		const match = pattern.exec(sourceLines[i] ?? '');
-		if (match) {
-			return { line: i + 1, column: match.index + 1 };
-		}
-	}
-	return undefined;
-}
-
-function readSourceLines(absolutePath: string): string[] | undefined {
-	try {
-		return fs.readFileSync(absolutePath, 'utf8').split(/\r?\n/);
-	} catch {
-		return undefined;
-	}
-}
-
-function toCollected(
-	issues: ReadonlyArray<ValidationError | ValidationWarning>,
-	source: CollectedIssue['source'],
-	sourceLines: string[] | undefined,
-): CollectedIssue[] {
-	return issues.map((issue) => {
-		const parameterPath =
-			'parameterPath' in issue && typeof issue.parameterPath === 'string'
-				? issue.parameterPath
-				: undefined;
-		const location =
-			issue.nodeName && sourceLines ? findNodeLocation(sourceLines, issue.nodeName) : undefined;
-		return {
-			code: issue.code,
-			message: issue.message,
-			nodeName: issue.nodeName,
-			parameterPath,
-			line: location?.line,
-			column: location?.column,
-			source,
-		};
-	});
-}
-
-function sourceLintToCollected(issue: SourceLintIssue): CollectedIssue {
-	return {
-		code: issue.code,
-		message: issue.message,
-		line: issue.line,
-		column: issue.column,
-		source: issue.lintTarget,
-		nodeName: issue.nodeName,
-		parameterPath: issue.parameterPath,
-	};
-}
-
-/** Blocking issues report as `error`, informational ones as `warning`. */
-interface ReportEntry {
-	line?: number;
-	column?: number;
-	severity: 'error' | 'warning';
-	code: string;
-	message: string;
-}
-
-function toReportEntry(issue: CollectedIssue, severity: ReportEntry['severity']): ReportEntry {
+function toReportEntry(
+	issue: CollectedValidationIssue,
+	severity: ReportEntry['severity'],
+): ReportEntry {
 	// Most validator messages already name the node; only prefix when they don't.
 	const message =
 		issue.nodeName && !issue.message.includes(issue.nodeName)
@@ -239,8 +146,8 @@ function formatReport(file: string, entries: ReportEntry[], unchecked: string[])
 
 function formatText(
 	file: string,
-	blocking: CollectedIssue[],
-	informational: CollectedIssue[],
+	blocking: CollectedValidationIssue[],
+	informational: CollectedValidationIssue[],
 	unchecked: string[],
 ): string {
 	return formatReport(
@@ -307,58 +214,33 @@ function resolveWorkflowExport(mod: { default?: unknown }): unknown {
 	return exported;
 }
 
-function partitionIssues(issues: CollectedIssue[]): {
-	blocking: CollectedIssue[];
-	informational: CollectedIssue[];
-} {
-	const blocking: CollectedIssue[] = [];
-	const informational: CollectedIssue[] = [];
-	for (const issue of issues) {
-		if (isInformationalValidationCode(issue.code)) {
-			informational.push(issue);
-		} else {
-			blocking.push(issue);
-		}
-	}
-	return { blocking, informational };
-}
-
-function dedupeIssues(issues: CollectedIssue[]): CollectedIssue[] {
-	const seen = new Set<string>();
-	const deduped: CollectedIssue[] = [];
-	for (const issue of issues) {
-		const key = `${issue.code}|${issue.nodeName ?? ''}|${issue.line ?? ''}|${issue.column ?? ''}|${issue.message}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		deduped.push(issue);
-	}
-	return deduped;
-}
-
 /**
  * Validate a workflow SDK TypeScript source file.
  *
- * Mirrors the sandbox build.mjs path: dynamic import → wf.validate() →
- * validateWorkflow(wf.toJSON()) without a nodeTypesProvider. Does not use the
- * AST interpreter (parseWorkflowCodeToBuilder) so results stay faithful to
- * build-workflow. Source lint is the extra pass that build-workflow does not
- * run — agents are expected to call this CLI before build-workflow.
+ * Thin CLI wrapper around {@link validateWorkflowBuilder} with `lint: true`.
  */
 export async function validateCommand(argv: string[] = process.argv.slice(3)): Promise<void> {
 	const { filePath, options } = parseArgs(argv);
 	const absolutePath = path.resolve(filePath);
 	const displayPath = path.relative(process.cwd(), absolutePath) || absolutePath;
 	const importUrl = pathToFileURL(absolutePath).href;
-	const sourceLines = readSourceLines(absolutePath);
 
 	const nodeDefinitionDirs = resolveNodeDefinitionDirs({
 		explicit: options.nodeTypes,
 		workflowDir: path.dirname(absolutePath),
 	});
-	if (nodeDefinitionDirs.length > 0) {
-		setSchemaBaseDirs(nodeDefinitionDirs);
+
+	let source = '';
+	try {
+		source = fs.readFileSync(absolutePath, 'utf8');
+	} catch {
+		// Load failure below reports a clearer error; lint simply skips.
 	}
-	const unchecked = buildUnchecked(nodeDefinitionDirs.length > 0);
+
+	const earlyUnchecked = buildUncheckedNotes({
+		schemasLoaded: nodeDefinitionDirs.length > 0,
+		hasNodeTypesProvider: false,
+	});
 
 	let mod: { default?: unknown };
 	try {
@@ -366,7 +248,7 @@ export async function validateCommand(argv: string[] = process.argv.slice(3)): P
 	} catch (error) {
 		failAndExit(
 			options,
-			unchecked,
+			earlyUnchecked,
 			'LOAD_FAILED',
 			`Failed to load workflow: ${error instanceof Error ? error.message : String(error)}`,
 			displayPath,
@@ -377,43 +259,33 @@ export async function validateCommand(argv: string[] = process.argv.slice(3)): P
 	if (!isWorkflowBuilder(workflowExport)) {
 		failAndExit(
 			options,
-			unchecked,
+			earlyUnchecked,
 			'INVALID_DEFAULT_EXPORT',
 			'Default export is not a workflow. Make sure your file has: export default workflow(...)',
 			displayPath,
 		);
 	}
 
-	const graphResult = workflowExport.validate();
-	const schemaResult = validateWorkflow(workflowExport.toJSON({ tidyUp: true }));
-	const sourceText = sourceLines?.join('\n') ?? '';
-	const sourceIssues = sourceText.length > 0 ? lintWorkflowSource(sourceText) : [];
-
-	const allIssues: CollectedIssue[] = [
-		...toCollected(graphResult.errors, 'graph', sourceLines),
-		...toCollected(graphResult.warnings, 'graph', sourceLines),
-		...toCollected(schemaResult.errors, 'schema', sourceLines),
-		...toCollected(schemaResult.warnings, 'schema', sourceLines),
-		...sourceIssues.map(sourceLintToCollected),
-	];
-
-	const deduped = dedupeIssues(allIssues);
-	const { blocking, informational } = partitionIssues(deduped);
+	const result = validateWorkflowBuilder(workflowExport, {
+		lint: true,
+		source,
+		nodeDefinitionDirs,
+	});
 
 	if (options.json) {
 		console.log(
 			JSON.stringify({
-				ok: blocking.length === 0,
+				ok: result.ok,
 				file: displayPath,
-				blocking,
-				informational,
-				unchecked,
-				nodeDefinitionDirs,
+				blocking: result.blocking,
+				informational: result.informational,
+				unchecked: result.unchecked,
+				nodeDefinitionDirs: result.nodeDefinitionDirs,
 			}),
 		);
 	} else {
-		console.log(formatText(displayPath, blocking, informational, unchecked));
+		console.log(formatText(displayPath, result.blocking, result.informational, result.unchecked));
 	}
 
-	process.exit(blocking.length === 0 ? 0 : 1);
+	process.exit(result.ok ? 0 : 1);
 }

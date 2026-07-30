@@ -1,13 +1,20 @@
-import { partitionValidationIssues } from '@n8n/workflow-sdk';
+import { partitionValidationIssues, type IssueSeverity } from '@n8n/workflow-sdk';
 
 export interface ValidationWarning {
 	code: string;
 	message: string;
 	nodeName?: string;
+	/** Set at the creation site; `informational` never blocks save. */
+	severity?: IssueSeverity;
 }
 
 export function collectValidationIssues(
-	issues: Array<{ code: string; message: string; nodeName?: string }>,
+	issues: Array<{
+		code: string;
+		message: string;
+		nodeName?: string;
+		severity?: IssueSeverity;
+	}>,
 	allWarnings: ValidationWarning[],
 ): void {
 	for (const issue of issues) {
@@ -15,6 +22,7 @@ export function collectValidationIssues(
 			code: issue.code,
 			message: issue.message,
 			nodeName: issue.nodeName,
+			severity: issue.severity,
 		});
 	}
 }
@@ -23,7 +31,8 @@ export function partitionWarnings(warnings: ValidationWarning[]): {
 	errors: ValidationWarning[];
 	informational: ValidationWarning[];
 } {
-	// Codes come from @n8n/workflow-sdk INFORMATIONAL_VALIDATION_CODES so the
-	// CLI `validate` exit code and the build-workflow save gate stay aligned.
+	// Severity is set where each issue is created (SDK validators / lint /
+	// Instance AI host detectors). CLI validate and this save gate share
+	// {@link partitionValidationIssues}.
 	return partitionValidationIssues(warnings);
 }

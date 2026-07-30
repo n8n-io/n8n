@@ -8,9 +8,14 @@ export {
 	type ValidationResult,
 	type ValidationOptions,
 	type ValidationErrorCode,
-	INFORMATIONAL_VALIDATION_CODES,
-	isInformationalValidationCode,
+	type IssueSeverity,
+	isInformationalIssue,
 	partitionValidationIssues,
+	validateWorkflowBuilder,
+	buildUncheckedNotes,
+	type ValidateWorkflowBuilderOptions,
+	type ValidateWorkflowBuilderResult,
+	type CollectedValidationIssue,
 } from './validation/index';
 
 export {

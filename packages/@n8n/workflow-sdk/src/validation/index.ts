@@ -22,10 +22,19 @@ export {
 } from './node-parameter-schema/schema-validator';
 
 export {
-	INFORMATIONAL_VALIDATION_CODES,
-	isInformationalValidationCode,
+	type IssueSeverity,
+	isInformationalIssue,
 	partitionValidationIssues,
-} from './informational-validation-codes';
+} from './issue-severity';
+
+export {
+	validateWorkflowBuilder,
+	buildUncheckedNotes,
+	type ValidateWorkflowBuilderOptions,
+	type ValidateWorkflowBuilderResult,
+	type CollectedValidationIssue,
+	type ValidationIssueSource,
+} from './validate-workflow-builder';
 
 export {
 	matchesDisplayOptions,

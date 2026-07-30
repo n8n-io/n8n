@@ -1,4 +1,4 @@
-import type { SourceLintIssue } from '../types';
+import { lintIssue, type SourceLintIssue } from '../types';
 
 /** Match real import/from lines — not identifiers that merely contain "requests". */
 const PYTHON_NETWORK_IMPORT =
@@ -24,16 +24,18 @@ export function lintPythonCode(
 	const namePrefix = options.nodeName ? `'${options.nodeName}' ` : '';
 
 	if (PYTHON_NETWORK_IMPORT.test(pythonCode) || PYTHON_NETWORK_FROM_IMPORT.test(pythonCode)) {
-		issues.push({
-			code: 'CODE_NODE_NETWORK_CALL',
-			message:
-				`${namePrefix}Code node uses requests/urllib/httpx or another HTTP library. ` +
-				'Code nodes have no network access at runtime — make the HTTP/API call with an HTTP Request node ' +
-				'and process its output in this node instead.',
-			lintTarget: 'pythonCode',
-			nodeName: options.nodeName,
-			parameterPath: 'pythonCode',
-		});
+		issues.push(
+			lintIssue({
+				code: 'CODE_NODE_NETWORK_CALL',
+				message:
+					`${namePrefix}Code node uses requests/urllib/httpx or another HTTP library. ` +
+					'Code nodes have no network access at runtime — make the HTTP/API call with an HTTP Request node ' +
+					'and process its output in this node instead.',
+				lintTarget: 'pythonCode',
+				nodeName: options.nodeName,
+				parameterPath: 'pythonCode',
+			}),
+		);
 	}
 
 	return issues;

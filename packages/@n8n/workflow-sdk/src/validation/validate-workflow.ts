@@ -59,6 +59,7 @@ export class ValidationError {
 	readonly parameterName?: string;
 	/** Violation level for evaluation scoring (defaults to 'minor' if not set) */
 	readonly violationLevel?: 'critical' | 'major' | 'minor';
+	readonly severity = 'error' as const;
 
 	constructor(
 		code: ValidationErrorCode,
@@ -76,7 +77,10 @@ export class ValidationError {
 }
 
 /**
- * Validation warning class (non-fatal issues)
+ * Validation warning class (non-fatal for `ValidationResult.valid`).
+ *
+ * Save/CLI gating uses {@link severity}: `informational` never blocks;
+ * `warning` blocks unless the caller chooses otherwise.
  */
 export class ValidationWarning {
 	readonly code: ValidationErrorCode;
@@ -86,6 +90,7 @@ export class ValidationWarning {
 	readonly originalName?: string;
 	/** Violation level for evaluation scoring (defaults to 'minor' if not set) */
 	readonly violationLevel?: 'critical' | 'major' | 'minor';
+	readonly severity: 'warning' | 'informational';
 
 	constructor(
 		code: ValidationErrorCode,
@@ -94,6 +99,7 @@ export class ValidationWarning {
 		parameterPath?: string,
 		originalName?: string,
 		violationLevel?: 'critical' | 'major' | 'minor',
+		severity: 'warning' | 'informational' = 'warning',
 	) {
 		this.code = code;
 		this.message = message;
@@ -101,6 +107,27 @@ export class ValidationWarning {
 		this.parameterPath = parameterPath;
 		this.originalName = originalName;
 		this.violationLevel = violationLevel;
+		this.severity = severity;
+	}
+
+	/** Soft graph findings that must not block save / CLI exit. */
+	static informational(
+		code: ValidationErrorCode,
+		message: string,
+		nodeName?: string,
+		parameterPath?: string,
+		originalName?: string,
+		violationLevel?: 'critical' | 'major' | 'minor',
+	): ValidationWarning {
+		return new ValidationWarning(
+			code,
+			message,
+			nodeName,
+			parameterPath,
+			originalName,
+			violationLevel,
+			'informational',
+		);
 	}
 }
 
@@ -409,7 +436,7 @@ export function validateWorkflow(
 		const hasTrigger = json.nodes.some((node) => isTriggerNodeType(node.type));
 		if (!hasTrigger) {
 			warnings.push(
-				new ValidationWarning(
+				ValidationWarning.informational(
 					'MISSING_TRIGGER',
 					'Workflow has no trigger node. It will need to be started manually.',
 				),
@@ -422,7 +449,7 @@ export function validateWorkflow(
 		const disconnected = findDisconnectedNodes(json);
 		for (const nodeName of disconnected) {
 			warnings.push(
-				new ValidationWarning(
+				ValidationWarning.informational(
 					'DISCONNECTED_NODE',
 					`Node '${nodeName}' is not connected to any input. It will not receive data.`,
 					nodeName,

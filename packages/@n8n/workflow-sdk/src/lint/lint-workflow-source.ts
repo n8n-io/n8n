@@ -4,7 +4,7 @@ import { buildParentMap, extractEmbeddedCodeSnippets } from './code-node/extract
 import { lintJsCode } from './code-node/js';
 import { lintPythonCode } from './code-node/python';
 import { lintWorkflowSdkAst, prepareSourceForLint } from './sdk/workflow-sdk-lint';
-import type { SourceLintIssue } from './types';
+import { lintIssue, type SourceLintIssue } from './types';
 
 /**
  * Run SDK, embedded JavaScript, and embedded Python linters on a workflow source file.
@@ -19,14 +19,16 @@ export function lintWorkflowSource(source: string): SourceLintIssue[] {
 	} catch {
 		// Still surface `as const` findings when the file does not parse.
 		return dedupeSourceLintIssues(
-			asConstMatches.map((match) => ({
-				code: 'SDK_AS_CONST',
-				message:
-					'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
-				line: match.line,
-				column: match.column + 1,
-				lintTarget: 'sdk' as const,
-			})),
+			asConstMatches.map((match) =>
+				lintIssue({
+					code: 'SDK_AS_CONST',
+					message:
+						'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
+					line: match.line,
+					column: match.column + 1,
+					lintTarget: 'sdk' as const,
+				}),
+			),
 		);
 	}
 

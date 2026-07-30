@@ -159,9 +159,13 @@ export {
 	type ValidationErrorCode,
 	validateNodeConfig,
 	type SchemaValidationResult,
-	INFORMATIONAL_VALIDATION_CODES,
-	isInformationalValidationCode,
+	type IssueSeverity,
+	isInformationalIssue,
 	partitionValidationIssues,
+	validateWorkflowBuilder,
+	type ValidateWorkflowBuilderOptions,
+	type ValidateWorkflowBuilderResult,
+	type CollectedValidationIssue,
 } from './validation';
 
 // Code generation

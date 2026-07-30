@@ -15,7 +15,7 @@ import {
 } from '../../ast-interpreter';
 import { dedupeSourceLintIssues, walkAst } from '../ast-walk';
 import { isEmbeddedCodePropertyValue } from '../code-node/extract-snippets';
-import type { SourceLintIssue } from '../types';
+import { lintIssue, type SourceLintIssue } from '../types';
 
 const NATIVE_ARRAY_METHODS = new Set([
 	'map',
@@ -173,14 +173,16 @@ export function lintWorkflowSdkAst(
 	const stringRanges = stringContentRanges(ast);
 	for (const match of asConstMatches) {
 		if (stringRanges.some((range) => rangeContains(range, match.line, match.column))) continue;
-		issues.push({
-			code: 'SDK_AS_CONST',
-			message:
-				'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
-			line: match.line,
-			column: match.column + 1,
-			lintTarget: 'sdk',
-		});
+		issues.push(
+			lintIssue({
+				code: 'SDK_AS_CONST',
+				message:
+					'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
+				line: match.line,
+				column: match.column + 1,
+				lintTarget: 'sdk',
+			}),
+		);
 	}
 
 	const exportIndex = ast.body.findIndex((stmt) => stmt.type === 'ExportDefaultDeclaration');
@@ -188,14 +190,16 @@ export function lintWorkflowSdkAst(
 		for (let i = exportIndex + 1; i < ast.body.length; i++) {
 			const stmt = ast.body[i];
 			if (!stmt || stmt.type === 'EmptyStatement') continue;
-			issues.push({
-				code: 'SDK_CODE_AFTER_EXPORT_DEFAULT',
-				message:
-					'Statement after `export default workflow(...)` never reaches the builder — nodes/wiring here are dropped. ' +
-					'Compose all `.to()` / `.onTrue()` / `.onFalse()` / `.onCase()` inside the export default chain.',
-				...locationOf(stmt),
-				lintTarget: 'sdk',
-			});
+			issues.push(
+				lintIssue({
+					code: 'SDK_CODE_AFTER_EXPORT_DEFAULT',
+					message:
+						'Statement after `export default workflow(...)` never reaches the builder — nodes/wiring here are dropped. ' +
+						'Compose all `.to()` / `.onTrue()` / `.onFalse()` / `.onCase()` inside the export default chain.',
+					...locationOf(stmt),
+					lintTarget: 'sdk',
+				}),
+			);
 		}
 	}
 
@@ -208,12 +212,14 @@ export function lintWorkflowSdkAst(
 
 			const forbidden = FORBIDDEN_NODE_TYPES[node.type];
 			if (forbidden) {
-				issues.push({
-					code: 'SDK_FORBIDDEN_CONSTRUCT',
-					message: forbidden,
-					...locationOf(node),
-					lintTarget: 'sdk',
-				});
+				issues.push(
+					lintIssue({
+						code: 'SDK_FORBIDDEN_CONSTRUCT',
+						message: forbidden,
+						...locationOf(node),
+						lintTarget: 'sdk',
+					}),
+				);
 			}
 
 			if (node.type === 'Identifier' && DANGEROUS_GLOBALS.has(node.name)) {
@@ -228,12 +234,14 @@ export function lintWorkflowSdkAst(
 					parent.property.type === 'Identifier' &&
 					getSafeJSONMethod(node.name, parent.property.name) !== undefined;
 				if (!isPropertyName && !isObjectKey && !isSafeMethodObject) {
-					issues.push({
-						code: 'SDK_FORBIDDEN_CONSTRUCT',
-						message: `Global '${node.name}' is unavailable in SDK builder code. Move runtime logic to a Code node or expr().`,
-						...locationOf(node),
-						lintTarget: 'sdk',
-					});
+					issues.push(
+						lintIssue({
+							code: 'SDK_FORBIDDEN_CONSTRUCT',
+							message: `Global '${node.name}' is unavailable in SDK builder code. Move runtime logic to a Code node or expr().`,
+							...locationOf(node),
+							lintTarget: 'sdk',
+						}),
+					);
 				}
 			}
 
@@ -241,14 +249,16 @@ export function lintWorkflowSdkAst(
 			const call = node;
 
 			if (call.callee.type === 'Identifier' && call.callee.name === 'sticky') {
-				issues.push({
-					code: 'SDK_UNSOLICITED_STICKY',
-					message:
-						'Do not add sticky() / stickyNote nodes unless the user explicitly asked for canvas notes. ' +
-						'Put explanations in the chat reply instead.',
-					...locationOf(call),
-					lintTarget: 'sdk',
-				});
+				issues.push(
+					lintIssue({
+						code: 'SDK_UNSOLICITED_STICKY',
+						message:
+							'Do not add sticky() / stickyNote nodes unless the user explicitly asked for canvas notes. ' +
+							'Put explanations in the chat reply instead.',
+						...locationOf(call),
+						lintTarget: 'sdk',
+					}),
+				);
 			}
 
 			if (
@@ -274,14 +284,16 @@ export function lintWorkflowSdkAst(
 				}
 
 				if (!SDK_FLUENT_METHODS.has(method) && NATIVE_ARRAY_METHODS.has(method)) {
-					issues.push({
-						code: 'SDK_FORBIDDEN_CONSTRUCT',
-						message:
-							`'.${method}()' is not available on SDK builder objects. Build strings with template ` +
-							'literals, or do transforms in a Code node / expr().',
-						...locationOf(call),
-						lintTarget: 'sdk',
-					});
+					issues.push(
+						lintIssue({
+							code: 'SDK_FORBIDDEN_CONSTRUCT',
+							message:
+								`'.${method}()' is not available on SDK builder objects. Build strings with template ` +
+								'literals, or do transforms in a Code node / expr().',
+							...locationOf(call),
+							lintTarget: 'sdk',
+						}),
+					);
 				}
 			}
 
@@ -289,37 +301,43 @@ export function lintWorkflowSdkAst(
 				for (const arg of call.arguments) {
 					if (arg.type === 'SpreadElement') continue;
 					if (arg.type === 'CallExpression' && isPlaceholderCall(arg)) {
-						issues.push({
-							code: 'SDK_PLACEHOLDER_WRAPPED',
-							message:
-								"Do not wrap placeholder() in expr(). Use placeholder('hint') directly as the parameter value.",
-							...locationOf(call),
-							lintTarget: 'sdk',
-						});
+						issues.push(
+							lintIssue({
+								code: 'SDK_PLACEHOLDER_WRAPPED',
+								message:
+									"Do not wrap placeholder() in expr(). Use placeholder('hint') directly as the parameter value.",
+								...locationOf(call),
+								lintTarget: 'sdk',
+							}),
+						);
 					}
 					if (arg.type === 'TemplateLiteral') {
 						for (const expr of arg.expressions) {
 							if (expr.type === 'CallExpression' && isPlaceholderCall(expr)) {
-								issues.push({
-									code: 'SDK_PLACEHOLDER_WRAPPED',
-									message:
-										'Do not embed placeholder() inside expr()/template strings. Use placeholder() as the direct parameter value.',
-									...locationOf(call),
-									lintTarget: 'sdk',
-								});
+								issues.push(
+									lintIssue({
+										code: 'SDK_PLACEHOLDER_WRAPPED',
+										message:
+											'Do not embed placeholder() inside expr()/template strings. Use placeholder() as the direct parameter value.',
+										...locationOf(call),
+										lintTarget: 'sdk',
+									}),
+								);
 							}
 						}
 					}
 					if (arg.type === 'ArrayExpression') {
 						for (const el of arg.elements) {
 							if (el && el.type === 'CallExpression' && isPlaceholderCall(el)) {
-								issues.push({
-									code: 'SDK_PLACEHOLDER_WRAPPED',
-									message:
-										'Do not wrap placeholder() in an array unless the node definition expects an array and placeholder is a direct element value with no expr() wrapper.',
-									...locationOf(call),
-									lintTarget: 'sdk',
-								});
+								issues.push(
+									lintIssue({
+										code: 'SDK_PLACEHOLDER_WRAPPED',
+										message:
+											'Do not wrap placeholder() in an array unless the node definition expects an array and placeholder is a direct element value with no expr() wrapper.',
+										...locationOf(call),
+										lintTarget: 'sdk',
+									}),
+								);
 							}
 						}
 					}
@@ -332,15 +350,17 @@ export function lintWorkflowSdkAst(
 	for (const [key, info] of branchCounts) {
 		if (info.count < 2) continue;
 		const [, method] = key.split('.');
-		issues.push({
-			code: 'SDK_REPEATED_BRANCH_WIRING',
-			message:
-				`Repeated \`.${method}()\` (${info.count} times) — each call overwrites the previous target. ` +
-				'Wire once on the workflow builder chain.',
-			line: info.line,
-			column: info.column,
-			lintTarget: 'sdk',
-		});
+		issues.push(
+			lintIssue({
+				code: 'SDK_REPEATED_BRANCH_WIRING',
+				message:
+					`Repeated \`.${method}()\` (${info.count} times) — each call overwrites the previous target. ` +
+					'Wire once on the workflow builder chain.',
+				line: info.line,
+				column: info.column,
+				lintTarget: 'sdk',
+			}),
+		);
 	}
 
 	return dedupeSourceLintIssues(issues);
@@ -357,14 +377,16 @@ export function lintWorkflowSdkSource(source: string): SourceLintIssue[] {
 		ast = parseSDKCode(code);
 	} catch {
 		return dedupeSourceLintIssues(
-			asConstMatches.map((match) => ({
-				code: 'SDK_AS_CONST',
-				message:
-					'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
-				line: match.line,
-				column: match.column + 1,
-				lintTarget: 'sdk' as const,
-			})),
+			asConstMatches.map((match) =>
+				lintIssue({
+					code: 'SDK_AS_CONST',
+					message:
+						'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
+					line: match.line,
+					column: match.column + 1,
+					lintTarget: 'sdk' as const,
+				}),
+			),
 		);
 	}
 
