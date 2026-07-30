@@ -1,0 +1,32 @@
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_442b113d88c721::t_57faa4b4fe523f 133-153
+  s_442b113d88c721::t_5befb6a04283ed 110
+  s_442b113d88c721::t_99f1f4298fcd0b 18
+  s_442b113d88c721::t_1c8a1e3e637017 5
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable.exporter.test.ts
+  s_442b113d88c721::t_ccc04127929db4 8
+  s_442b113d88c721::t_681de07cbb5a1c 607-609,615-633,637-639
+  s_442b113d88c721::t_ed719925a3956a 610-614
+  s_442b113d88c721::t_7daebd89512890 634-636
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d1c938b22d640ef260dcdbd269be55365cf2740",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_442b113d88c721": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "607b7981-53e5-4851-ba95-f417c3acadff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}
