@@ -70,6 +70,25 @@ export async function braveSearch(
 			...(options.abortSignal ? { signal: options.abortSignal } : {}),
 		});
 	const isRetryable = (status: number) => status === 429 || status >= 500;
+	/** Abort-aware so a cancelled run doesn't sit out the delay; the retried fetch
+	 *  then rejects on the aborted signal. */
+	const backoff = async (ms: number) =>
+		await new Promise<void>((resolve) => {
+			const signal = options.abortSignal;
+			if (signal?.aborted) {
+				resolve();
+				return;
+			}
+			const timer = setTimeout(() => {
+				signal?.removeEventListener('abort', onAbort);
+				resolve();
+			}, ms);
+			function onAbort() {
+				clearTimeout(timer);
+				resolve();
+			}
+			signal?.addEventListener('abort', onAbort, { once: true });
+		});
 
 	let response = await runSearch();
 	for (
@@ -77,8 +96,7 @@ export async function braveSearch(
 		attempt < MAX_ATTEMPTS && !response.ok && isRetryable(response.status);
 		attempt++
 	) {
-		const backoffMs = RETRY_BASE_MS * 2 ** (attempt - 1);
-		await new Promise((resolve) => setTimeout(resolve, backoffMs));
+		await backoff(RETRY_BASE_MS * 2 ** (attempt - 1));
 		response = await runSearch();
 	}
 
