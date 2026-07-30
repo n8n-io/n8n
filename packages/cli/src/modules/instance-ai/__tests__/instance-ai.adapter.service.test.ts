@@ -2245,6 +2245,57 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('defaults executionOrder to v1 when the SDK workflow declares no settings', async () => {
+		// Regression: the SDK omits the settings argument when empty, so AI-authored
+		// workflows persisted with `{}` and ran on legacy v0.
+		const { adapter, mockWorkflowRepository, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+		);
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('keeps an explicit executionOrder from the SDK workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON({
+			...minimalWorkflowJSON,
+			settings: { executionOrder: 'v0' },
+		} as unknown as WorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v0' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('does not inject executionOrder on update, leaving the stored value to the merge', async () => {
+		// update merges over stored settings, so forcing v1 here would upgrade a
+		// workflow the user deliberately kept on v0.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: {} }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
 	it('clears existing node groups when the SDK workflow declares none (update is authoritative)', async () => {
 		// Regression: the SDK omits `nodeGroups` when no `.group(...)` is declared. The
 		// update path must treat that as "no groups" and send [] so a removed group is
@@ -2996,6 +3047,32 @@ describe('createExecutionAdapter run()', () => {
 		const [firstRun, secondRun] = mockWorkflowRunner.run.mock.calls.map((call) => call[0]);
 		expect(firstRun.workflowData.settings?.executionTimeout).toBe(60);
 		expect(secondRun.workflowData.settings?.executionTimeout).toBe(600);
+	});
+
+	it('omits the listed connections on the ephemeral run copy only', async () => {
+		const workflow = {
+			id: 'wf-1',
+			nodes: [],
+			connections: {
+				Revise: { main: [[{ node: 'Format', type: 'main', index: 0 }]] },
+				Format: { main: [[{ node: 'Gate', type: 'main', index: 0 }]] },
+			},
+		};
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflow);
+
+		await adapter.run('wf-1', undefined, {
+			omitConnections: [{ source: 'Revise', target: 'Format' }],
+		});
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.connections.Revise.main).toEqual([[]]);
+		expect(runData.workflowData.connections.Format.main).toEqual([
+			[{ node: 'Gate', type: 'main', index: 0 }],
+		]);
+		// The saved workflow object is untouched.
+		expect(workflow.connections.Revise.main).toEqual([
+			[{ node: 'Format', type: 'main', index: 0 }],
+		]);
 	});
 
 	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
