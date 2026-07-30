@@ -1,5 +1,5 @@
 import type { GraphEdge, GraphNode, WorkflowGraph } from '@n8n/engine';
-import type { INode, IWorkflowBase } from 'n8n-workflow';
+import type { INode, INodeConnections, IWorkflowBase } from 'n8n-workflow';
 
 import {
 	UnsupportedConnectionTypeError,
@@ -107,32 +107,51 @@ export class V1WorkflowConverter {
 
 	private toEdges(workflow: IWorkflowBase): GraphEdge[] {
 		const idsByName = new Map(workflow.nodes.map((node) => [node.name, node.id]));
+
+		return Object.entries(workflow.connections).flatMap(([sourceName, connectionsByType]) =>
+			this.toEdgesForSource(sourceName, connectionsByType, idsByName),
+		);
+	}
+
+	/**
+	 * v1 connections of one source node have the shape
+	 * `{ main: [ [connection, ...], null, [connection, ...] ] }`: connections
+	 * grouped by type, then by the source's output slot, where a slot with
+	 * nothing connected may hold null.
+	 */
+	private toEdgesForSource(
+		sourceName: string,
+		connectionsByType: INodeConnections,
+		idsByName: Map<string, string>,
+	): GraphEdge[] {
+		const from = idsByName.get(sourceName);
 		const edges: GraphEdge[] = [];
 
-		for (const [sourceName, connectionsByType] of Object.entries(workflow.connections)) {
-			for (const [connectionType, outputs] of Object.entries(connectionsByType)) {
-				if (connectionType !== MAIN_CONNECTION_TYPE) {
-					throw new UnsupportedConnectionTypeError(sourceName, connectionType);
-				}
+		for (const [connectionType, outputSlots] of Object.entries(connectionsByType)) {
+			this.validateSupportedConnectionType(sourceName, connectionType);
 
-				for (const [outputIndex, connections] of outputs.entries()) {
-					for (const connection of connections ?? []) {
-						if (connection.type !== MAIN_CONNECTION_TYPE) {
-							throw new UnsupportedConnectionTypeError(sourceName, connection.type);
-						}
+			for (let outputIndex = 0; outputIndex < outputSlots.length; outputIndex++) {
+				for (const connection of outputSlots[outputIndex] ?? []) {
+					this.validateSupportedConnectionType(sourceName, connection.type);
 
-						const from = idsByName.get(sourceName);
-						const to = idsByName.get(connection.node);
+					const to = idsByName.get(connection.node);
 
-						if (from === undefined || to === undefined) continue;
+					// v1 skips connections whose endpoint no longer exists, so dropping
+					// them is the faithful translation
+					if (from === undefined || to === undefined) continue;
 
-						edges.push({ from, to, outputIndex, inputIndex: connection.index });
-					}
+					edges.push({ from, to, outputIndex, inputIndex: connection.index });
 				}
 			}
 		}
 
 		return edges;
+	}
+
+	private validateSupportedConnectionType(nodeName: string, connectionType: string): void {
+		if (connectionType !== MAIN_CONNECTION_TYPE) {
+			throw new UnsupportedConnectionTypeError(nodeName, connectionType);
+		}
 	}
 
 	private spliceOutDisabledNodes(edges: GraphEdge[], disabledNodeIds: string[]): GraphEdge[] {
