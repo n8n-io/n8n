@@ -204,6 +204,39 @@ describe('N8nMemory', () => {
 		} as unknown as AgentMessageEntity;
 	}
 
+	describe('saveMessages — hydrated file parts', () => {
+		it('strips data from fileRef file parts before upserting, keeping the reference', async () => {
+			const bytes = new Uint8Array([1, 2, 3]);
+			await memory.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [
+					{
+						id: 'm-1',
+						createdAt: new Date('2026-05-12T10:00:00Z'),
+						role: 'user',
+						content: [
+							{ type: 'text', text: 'look at this' },
+							{
+								type: 'file',
+								mediaType: 'image/png',
+								data: bytes,
+								fileRef: { id: 'att-1', fileName: 'photo.png', sizeBytes: 3 },
+							},
+						],
+					},
+				],
+			});
+
+			expect(messageRepository.upsert).toHaveBeenCalledTimes(1);
+			const [entities] = messageRepository.upsert.mock.calls[0];
+			const content = (entities as Array<{ content: { content: unknown[] } }>)[0].content;
+			const filePart = content.content[1] as Record<string, unknown>;
+			expect(filePart.data).toBeUndefined();
+			expect(filePart.fileRef).toEqual({ id: 'att-1', fileName: 'photo.png', sizeBytes: 3 });
+		});
+	});
+
 	describe('getMessages — resourceId filter', () => {
 		beforeEach(() => {
 			messageRepository.find.mockResolvedValue([]);

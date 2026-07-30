@@ -234,6 +234,8 @@ import { AddAvailableInMcpToAgents1784897791636 } from '../common/1784897791636-
 import { AddIsFirstPartyToOAuthClients1785162364001 } from '../common/1785162364001-AddIsFirstPartyToOAuthClients';
 import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
 import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/1785247194306-CrashStaleEnqueuedExecutions';
+import { AddMisfirePolicyToScheduler1785247194307 } from '../common/1785247194307-AddMisfirePolicyToScheduler';
+import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -473,4 +475,6 @@ export const postgresMigrations: Migration[] = [
 	AddIsFirstPartyToOAuthClients1785162364001,
 	AddAgentFileStorageColumns1785186578138,
 	CrashStaleEnqueuedExecutions1785247194306,
+	AddMisfirePolicyToScheduler1785247194307,
+	CreateAgentChatAttachmentsTable1785255306000,
 ];

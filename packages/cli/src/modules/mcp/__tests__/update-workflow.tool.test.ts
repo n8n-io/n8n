@@ -92,7 +92,7 @@ describe('update-workflow MCP tool', () => {
 	let dataTableOps: DataTableOpsMock;
 	let tagService: TagService;
 	let findOrCreateByNamesMock: Mock;
-	let findByNamesMock: Mock;
+	let getByNamesMock: Mock;
 	let globalConfig: GlobalConfig;
 	let subworkflowPolicyChecker: SubworkflowPolicyChecker;
 	let policyCheckMock: Mock;
@@ -165,10 +165,10 @@ describe('update-workflow MCP tool', () => {
 		};
 
 		findOrCreateByNamesMock = vi.fn();
-		findByNamesMock = vi.fn();
+		getByNamesMock = vi.fn();
 		tagService = mockInstance(TagService, {
 			findOrCreateByNames: findOrCreateByNamesMock,
-			findByNames: findByNamesMock,
+			getByNames: getByNamesMock,
 		});
 		globalConfig = mockInstance(GlobalConfig, {
 			tags: { disabled: false },
@@ -2257,6 +2257,18 @@ describe('update-workflow MCP tool', () => {
 				expect(updateOptions.tagIds.sort()).toEqual(['tag-0', 'tag-new']);
 			});
 
+			test('collapses case-duplicate tag names before resolving', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'Critical' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['Critical', ' critical ', 'CRITICAL'] }],
+				});
+
+				expect(findOrCreateByNamesMock).toHaveBeenCalledWith(['Critical']);
+			});
+
 			test('removeTags drops names from the resolved set', async () => {
 				findWorkflowMock.mockResolvedValue(workflowWithTags(['production', 'critical']));
 				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'production' }]);
@@ -2320,7 +2332,7 @@ describe('update-workflow MCP tool', () => {
 			test('without tag:create scope, attaches only existing tags', async () => {
 				const memberUser = userWithScopes([]);
 				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
-				findByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
+				getByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
 
 				const tool = createUpdateWorkflowTool(
 					memberUser,
@@ -2348,8 +2360,45 @@ describe('update-workflow MCP tool', () => {
 					tool,
 				);
 
-				expect(findByNamesMock).toHaveBeenCalledWith(['production']);
+				expect(getByNamesMock).toHaveBeenCalledWith(['production']);
 				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual(['tag-existing']);
+			});
+
+			test('without tag:create scope, case-duplicate input still attaches the existing tag', async () => {
+				const memberUser = userWithScopes([]);
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				getByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'Prod' }]);
+
+				const tool = createUpdateWorkflowTool(
+					memberUser,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+					subworkflowPolicyChecker,
+					workflowPublishedDataService,
+					aiGatewayService,
+				);
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'addTags', names: ['Prod', 'prod'] }],
+					},
+					tool,
+				);
+
+				expect(result.isError).toBeUndefined();
+				expect(getByNamesMock).toHaveBeenCalledWith(['Prod']);
 				const [, , , updateOptions] = updateMock.mock.calls[0];
 				expect(updateOptions.tagIds).toEqual(['tag-existing']);
 			});
@@ -2357,7 +2406,7 @@ describe('update-workflow MCP tool', () => {
 			test('without tag:create scope, fails when a tag name does not exist', async () => {
 				const memberUser = userWithScopes([]);
 				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
-				findByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
+				getByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
 
 				const tool = createUpdateWorkflowTool(
 					memberUser,

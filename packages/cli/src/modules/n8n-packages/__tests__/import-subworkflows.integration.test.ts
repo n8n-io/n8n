@@ -15,6 +15,8 @@ import {
 	DataTableSchemaConflictPolicy,
 	FolderConflictPolicy,
 	MissingNodeTypeMode,
+	TagConflictPolicy,
+	TagMissingMode,
 	VariableMissingMode,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
@@ -46,6 +48,8 @@ async function importPackage(params: ImportPackageParams) {
 		dataTableMissingMode: DataTableMissingMode.Create,
 		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
 		variableMissingMode: VariableMissingMode.DoNothing,
+		tagMissingMode: TagMissingMode.Create,
+		tagConflictPolicy: TagConflictPolicy.Skip,
 		...params,
 	});
 }

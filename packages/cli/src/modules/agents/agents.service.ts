@@ -6,12 +6,14 @@ import {
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { In, ProjectRelationRepository } from '@n8n/db';
+import { In, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
@@ -19,7 +21,11 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
-import { AgentRepository } from './repositories/agent.repository';
+import {
+	AgentRepository,
+	type AgentSummary,
+	type AgentSummaryFilters,
+} from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { EventService } from '@/events/event.service';
 
@@ -29,6 +35,7 @@ export class AgentsService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
@@ -161,6 +168,35 @@ export class AgentsService {
 		});
 	}
 
+	/**
+	 * Lean agent listing (no JSON config columns, no activeVersion join) with
+	 * filters and limit applied in the database.
+	 */
+	async findSummariesInProjects(
+		projectIds: string[],
+		options: AgentSummaryFilters = {},
+	): Promise<AgentSummary[]> {
+		return await this.agentRepository.findSummariesByProjectIds(projectIds, options);
+	}
+
+	/**
+	 * Resolves an agent by ID within the projects the user can access. Agent IDs
+	 * are globally unique, so this lets callers address an agent without knowing
+	 * its project up front. Mirrors `@ProjectScope`'s access model: global agent
+	 * scopes (instance owners/admins) grant access without an explicit project
+	 * relation.
+	 */
+	async findByIdForUser(agentId: string, user: User): Promise<Agent | null> {
+		if (hasGlobalScope(user, 'agent:read')) {
+			return await this.agentRepository.findById(agentId);
+		}
+
+		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
+		const projectIds = projectRelations.map((pr) => pr.projectId);
+
+		return await this.agentRepository.findByIdInProjects(agentId, projectIds);
+	}
+
 	async findByUserPaginated(
 		userId: string,
 		options: ListAgentsQueryDto,
@@ -206,6 +242,15 @@ export class AgentsService {
 		}
 
 		await this.agentKnowledgeService.destroySandbox(projectId, agentId);
+
+		try {
+			await this.agentChatAttachmentService.deleteByAgent(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to delete chat attachments on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
