@@ -386,7 +386,9 @@ describe('WorkflowSetupSectionBody', () => {
 		expect(help).toBeTypeOf('function');
 
 		// The modal reports the generic type name; the recipe's service name replaces
-		// it, and the pre-filled form's labels turn the question into paste guidance.
+		// it, and the pre-filled form's labels turn the question into a natural
+		// where-do-I-find ask — the paste-only steering rides invisibly in the
+		// handoff context, not in the user-visible message.
 		const shouldCloseModal = await help!({
 			credentialType: 'httpTemplatedCustomAuth',
 			displayName: 'Simplified Custom Auth',
@@ -397,7 +399,7 @@ describe('WorkflowSetupSectionBody', () => {
 		expect(shouldCloseModal).toBe(false);
 		expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
 			'project-1',
-			expect.stringContaining('pre-filled from a recipe'),
+			'Where do I find the "fal.ai API key" for my "fal.ai API Key" credential?',
 			{ source: 'credential_edit', origin: 'internal' },
 			undefined,
 			undefined,
@@ -405,14 +407,13 @@ describe('WorkflowSetupSectionBody', () => {
 				newTab: true,
 				context: expect.objectContaining({
 					source: 'credential-modal',
-					credential: expect.objectContaining({ displayName: 'fal.ai API Key' }),
+					credential: expect.objectContaining({
+						displayName: 'fal.ai API Key',
+						placeholderTitles: ['fal.ai API key'],
+					}),
 				}),
 			}),
 		);
-		const question = instanceAiHandoffMock.startThread.mock.calls[0][1] as string;
-		expect(question).toContain('"fal.ai API Key"');
-		expect(question).toContain('"fal.ai API key"');
-		expect(question).toContain("don't suggest changing the template");
 	});
 
 	it('keeps the modal display name in the help thread when the section has no recipe', async () => {

@@ -27,14 +27,18 @@ function existingCredentialNote(credential: InstanceAiCredentialContext): string
 
 /**
  * A recipe-created (Simplified Custom Auth) credential arrives pre-filled —
- * the user only pastes the guided-form values. The question asks where to
- * find them and pins the scope so the thread doesn't hand out setup
- * instructions for a template the user must not touch.
+ * the user only pastes the guided-form values, so the visible question just
+ * asks where to find them. The paste-only framing and don't-touch-the-template
+ * steering travel invisibly in the credential handoff context instead: this
+ * text renders as the user's own message.
  */
 function templatedValuesQuestion(credential: InstanceAiCredentialContext): string {
-	const titles = (credential.placeholderTitles ?? []).map((title) => `"${title}"`).join(', ');
-	const plural = (credential.placeholderTitles?.length ?? 0) > 1;
-	return `I'm setting up the "${credential.displayName}" credential. The form is already pre-filled from a recipe — I only need to paste ${plural ? 'values for' : 'a value for'} ${titles}. Tell me step by step where to get ${plural ? 'these values' : 'this value'}; don't suggest changing the template or any other field.${existingCredentialNote(credential)}`;
+	const titles = (credential.placeholderTitles ?? []).map((title) => `"${title}"`);
+	const list =
+		titles.length > 1
+			? `${titles.slice(0, -1).join(', ')} and ${titles[titles.length - 1]} values`
+			: titles[0];
+	return `Where do I find the ${list} for my "${credential.displayName}" credential?`;
 }
 
 /**
@@ -44,7 +48,7 @@ function templatedValuesQuestion(credential: InstanceAiCredentialContext): strin
  */
 export function buildInstanceAiCredentialQuestion(credential: InstanceAiCredentialContext): string {
 	if (credential.placeholderTitles?.length) {
-		return `${templatedValuesQuestion(credential)} I'm looking at the credential setup modal.`;
+		return templatedValuesQuestion(credential);
 	}
 	return `How do I set up the credentials for ${credential.displayName}?${existingCredentialNote(credential)} I'm looking at the credential setup modal.`;
 }
@@ -87,6 +91,9 @@ export function buildInstanceAiCredentialHandoffContext(
 			...(credential.id ? { id: credential.id } : {}),
 			...(credential.nodeName ? { nodeName: credential.nodeName } : {}),
 			...(credential.nodeType ? { nodeType: credential.nodeType } : {}),
+			...(credential.placeholderTitles?.length
+				? { placeholderTitles: credential.placeholderTitles }
+				: {}),
 			...(credential.documentationUrl ? { documentationUrl: credential.documentationUrl } : {}),
 			...(credential.oauthRedirectUrl ? { oauthRedirectUrl: credential.oauthRedirectUrl } : {}),
 		},

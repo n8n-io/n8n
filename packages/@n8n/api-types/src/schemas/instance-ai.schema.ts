@@ -954,6 +954,10 @@ export const instanceAiCredentialHandoffContextSchema = z.object({
 		id: z.string().min(1).max(128).optional(),
 		nodeName: z.string().min(1).max(255).optional(),
 		nodeType: z.string().min(1).max(255).optional(),
+		/** Guided-form input labels of a pre-filled (recipe-created) credential —
+		 *  the user only pastes these values, so the thread gives where-to-find
+		 *  guidance instead of configuration steps. */
+		placeholderTitles: z.array(z.string().min(1).max(255)).max(20).optional(),
 		documentationUrl: z.string().url().max(2048).optional(),
 		oauthRedirectUrl: z.string().url().max(2048).optional(),
 	}),
