@@ -45,10 +45,9 @@ import { TransportFactory } from './transport/TransportFactory';
 const ELICITATION_TIMEOUT_MS = 300_000;
 
 /**
- * Backstop for a tool call the CallTool handler never gets to run — the SDK rejects
- * a malformed `tools/call` before dispatch, so nothing would ever release the caller.
- * ponytail: fixed ceiling, matching the queue-mode tool timeout. A direct-mode tool
- * call slower than this releases its caller early; make it configurable if that bites.
+ * Releases a caller when the CallTool handler never runs (the SDK rejects a malformed
+ * `tools/call` pre-dispatch). ponytail: fixed ceiling, matching the queue-mode tool
+ * timeout; a slower direct-mode call releases early.
  */
 const TOOL_HANDLER_WAIT_TIMEOUT_MS = 120_000;
 
