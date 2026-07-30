@@ -101,7 +101,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 			expect(xlsxRead).toHaveBeenCalledWith(
 				Buffer.from(mockBinaryDataInMemory.data, BINARY_ENCODING),
-				{ raw: undefined, cellDates: true },
+				{ raw: undefined },
 			);
 			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet1, {});
 		});
@@ -127,7 +127,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 				262144,
 			);
 			expect(mockExecuteFunctions.helpers.binaryToBuffer).toHaveBeenCalledWith(mockStream);
-			expect(xlsxRead).toHaveBeenCalledWith(mockBuffer, { raw: undefined, cellDates: true });
+			expect(xlsxRead).toHaveBeenCalledWith(mockBuffer, { raw: undefined });
 		});
 	});
 
@@ -144,10 +144,10 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 			await execute.call(mockExecuteFunctions, items);
 
-			expect(xlsxRead).toHaveBeenCalledWith(expect.any(Buffer), { raw: true, cellDates: false });
+			expect(xlsxRead).toHaveBeenCalledWith(expect.any(Buffer), { raw: true });
 		});
 
-		it('should enable cellDates when rawData is false to convert Excel serial dates', async () => {
+		it('should enable cellDates when rawData is false to convert Excel serial dates (v3)', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'options') return { rawData: false };
 				if (paramName === 'fileFormat') return 'xlsx';
@@ -157,7 +157,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 			const items: INodeExecutionData[] = [{ json: {} }];
 
-			await execute.call(mockExecuteFunctions, items);
+			await execute.call(mockExecuteFunctions, items, 'fileFormat', { enableCellDates: true });
 
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(Buffer), { raw: false, cellDates: true });
 		});
@@ -176,7 +176,6 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), {
 				raw: undefined,
-				cellDates: true,
 				type: 'binary',
 			});
 		});
@@ -443,7 +442,6 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), {
 				raw: undefined,
-				cellDates: true,
 				type: 'binary',
 			});
 			const callArgs = (xlsxRead as Mock).mock.calls[0];
@@ -470,7 +468,6 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			// Verify that xlsxRead was called with a Buffer (no type specified)
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(Buffer), {
 				raw: undefined,
-				cellDates: true,
 			});
 		});
 
@@ -506,7 +503,6 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			// Verify that xlsxRead was called with binary string
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), {
 				raw: undefined,
-				cellDates: true,
 				type: 'binary',
 			});
 
@@ -533,7 +529,6 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			// Verify that xlsxRead was called with binary string and rawData option
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), {
 				raw: true,
-				cellDates: false,
 				type: 'binary',
 			});
 
@@ -587,7 +582,6 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			// Verify that xlsxRead was called with binary string type for proper character handling
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), {
 				raw: undefined,
-				cellDates: true,
 				type: 'binary',
 			});
 
@@ -637,7 +631,6 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			// Verify that when readAsString is true, we use binary type for proper character handling
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), {
 				raw: undefined,
-				cellDates: true,
 				type: 'binary',
 			});
 
@@ -662,7 +655,6 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			// Verify that when readAsString is false, we use buffer directly (no type specified)
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(Buffer), {
 				raw: undefined,
-				cellDates: true,
 			});
 		});
 
@@ -716,7 +708,6 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			// Verify that xlsxRead was called with binary string type
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), {
 				raw: undefined,
-				cellDates: true,
 				type: 'binary',
 			});
 
