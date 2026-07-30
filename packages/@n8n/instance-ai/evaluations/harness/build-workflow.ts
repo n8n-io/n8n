@@ -22,12 +22,12 @@ import {
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
 	remapSeedWorkflowIds,
-	seedFromProse,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from './conversation-seed';
-import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
+import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
+import type { CaseSeed } from './schema';
 import { buildSeededTablesNote, dedupeScenarioSeedTables } from './seed-tables';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
@@ -183,7 +183,7 @@ export interface BuildResult {
 export interface BuildWorkflowConfig {
 	client: N8nClient;
 	/** Hand-authored conversation (≥1 turn, first `user`; one user turn →
-	 *  auto-approve, more → proxy). Optional when `seedThread` derives the live turn. */
+	 *  auto-approve, more → proxy). Optional when a `replay` seed derives the live turn. */
 	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
@@ -191,13 +191,10 @@ export interface BuildWorkflowConfig {
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
-	/** Prior messages + workflows restored before the live message. */
-	conversationSeed?: ConversationSeed;
-	/** Prose turns seeded as plain-text history. */
-	priorConversation?: ConversationTurn[];
-	/** Reproduce a real conversation from its LangSmith trace (seed = before the
-	 *  last user message, live = that message). */
-	seedThread?: SeedThreadRef;
+	/** History restored before the live message — carried in the case
+	 *  (`mode: 'inline'`) or reconstructed from a trace (`mode: 'replay'`, which
+	 *  also supplies the live turn). */
+	seed?: CaseSeed;
 	/** Execution scenarios whose declared `seedDataTables` are created + row-seeded
 	 *  after a successful build, before any scenario runs (TRUST-311). */
 	executionScenarios?: ExecutionScenario[];
@@ -274,34 +271,47 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	try {
 		const buildStart = Date.now();
 
-		// `seedThread` derives both seed and live turn from a trace; otherwise the
-		// seed (if any) is a file/prose prelude and the conversation is authored.
+		// `replay` derives both seed and live turn from a trace; `inline` carries the
+		// seed in the case and the conversation is authored.
 		let seed: ConversationSeed | undefined;
 		let conversation = config.conversation ?? [];
 		try {
-			if (config.seedThread) {
-				const reconstructed = await reconstructSeedFromThread(config.seedThread);
-				seed = reconstructed.seed;
-				// The trace's last user message is the live opening; any authored
-				// `conversation` continues from there (proxy-driven follow-ups).
-				conversation = [
-					{ role: 'user', text: reconstructed.liveTurn },
-					...(config.conversation ?? []),
-				];
-				const contSuffix =
-					(config.conversation?.length ?? 0) > 0
-						? ` + ${String(config.conversation!.length)} continuation turn(s)`
-						: '';
-				const wsLabel = reconstructed.sourceWorkspace
-					? `${reconstructed.sourceWorkspace}/${reconstructed.sourceProject}`
-					: reconstructed.sourceProject;
-				logger.info(
-					`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s)${contSuffix} [${wsLabel}]${config.laneTag ?? ''}`,
-				);
-			} else if (config.conversationSeed) {
-				seed = config.conversationSeed;
-			} else if (config.priorConversation && config.priorConversation.length > 0) {
-				seed = seedFromProse(config.priorConversation);
+			switch (config.seed?.mode) {
+				case 'replay': {
+					const reconstructed = await reconstructSeedFromThread(config.seed);
+					seed = reconstructed.seed;
+					// The trace's last user message is the live opening; any authored
+					// `conversation` continues from there (proxy-driven follow-ups).
+					conversation = [
+						{ role: 'user', text: reconstructed.liveTurn },
+						...(config.conversation ?? []),
+					];
+					const contSuffix =
+						(config.conversation?.length ?? 0) > 0
+							? ` + ${String(config.conversation!.length)} continuation turn(s)`
+							: '';
+					const wsLabel = reconstructed.sourceWorkspace
+						? `${reconstructed.sourceWorkspace}/${reconstructed.sourceProject}`
+						: reconstructed.sourceProject;
+					logger.info(
+						`  Reconstructed seed from thread ${config.seed.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s)${contSuffix} [${wsLabel}]${config.laneTag ?? ''}`,
+					);
+					break;
+				}
+				case 'inline':
+					// The arm is a superset of the restore payload — `mode` is the case
+					// schema's discriminant and never reaches restore-thread.
+					seed = config.seed;
+					break;
+				case undefined:
+					break;
+				default: {
+					// A new arm must decide what to restore here; without this the case
+					// would silently run UNSEEDED, which is the failure this slot exists
+					// to make impossible.
+					const unhandled: never = config.seed;
+					throw new Error(`Unhandled seed mode: ${JSON.stringify(unhandled)}`);
+				}
 			}
 		} catch (error: unknown) {
 			// A seed that can't be resolved is a harness/framework problem, not an

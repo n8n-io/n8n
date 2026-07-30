@@ -81,7 +81,7 @@ const baseConfig = {
 	logger: silentLogger,
 };
 
-describe('buildWorkflow with a conversationSeed', () => {
+describe('buildWorkflow with an inline seed', () => {
 	it('restores the inline seed before the live turn', async () => {
 		const restoreThread = vi
 			.fn()
@@ -90,7 +90,7 @@ describe('buildWorkflow with a conversationSeed', () => {
 		const build = await buildWorkflow({
 			client: makeClient(restoreThread),
 			...baseConfig,
-			conversationSeed: inlineSeed(),
+			seed: { mode: 'inline' as const, ...inlineSeed() },
 		});
 
 		expect(build.success).toBe(true);
@@ -115,7 +115,7 @@ describe('buildWorkflow with a conversationSeed', () => {
 		const build = await buildWorkflow({
 			client: makeClient(restoreThread),
 			...baseConfig,
-			conversationSeed: inlineSeed(),
+			seed: { mode: 'inline' as const, ...inlineSeed() },
 		});
 
 		expect(build.success).toBe(false);

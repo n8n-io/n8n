@@ -39,17 +39,12 @@ export interface ToLangTracerOptions {
 	synthetic: boolean;
 }
 
-/** Seeding modes the case-write API can't represent (no fields for them), so a case
- *  using any of them can't be pushed. Returns a human-readable reason, else null. */
+/** The case-write API has no `seed` field, so no seeded case can be pushed yet —
+ *  keyed off the discriminant so a new mode needs no edit here. Returns a
+ *  human-readable reason, else null. */
 export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
-	if (testCase.seedThread) return 'uses seedThread (not supported by the case-write API)';
-	if (testCase.conversationSeed) {
-		return 'uses conversationSeed (not supported by the case-write API)';
-	}
-	if (testCase.priorConversation) {
-		return 'uses priorConversation (not supported by the case-write API)';
-	}
-	return null;
+	if (!testCase.seed) return null;
+	return `uses seed (mode: ${testCase.seed.mode}) — not supported by the case-write API`;
 }
 
 /** Map a schema-parsed disk case to a create-case body. `conversation.text` is already

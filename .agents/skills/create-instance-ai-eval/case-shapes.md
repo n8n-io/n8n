@@ -16,10 +16,10 @@ The schema
 ([`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts))
 enforces the rules you must respect:
 
-- `conversationSeed`, `priorConversation`, `seedThread` are **mutually exclusive** — pick
-  one seeding mode.
-- A case needs a `conversation` **or** a `seedThread` (which supplies the live
-  turn from the trace).
+- Seeding lives in **one** slot, `seed`, whose `mode` is `inline` or `replay` — so
+  the modes are mutually exclusive by construction.
+- A case needs a `conversation` **or** a `seed` with `mode: "replay"` (which
+  supplies the live turn from the trace).
 - A case needs **at least one** `executionScenario`, `processExpectation`, or
   `outcomeExpectation`.
 - `buildExpectations` is a **forbidden key** (fails loudly) — it was split into
@@ -147,13 +147,14 @@ Pick the lightest mode that fits:
 
 | Situation | Mode | Pairs with |
 |---|---|---|
-| Reproduce a real conversation (common case) | `seedThread` — fetch + reconstruct its LangSmith trace at run time; nothing committed | supplies its own live turn (omit `conversation`) |
-| Prelude is just "what was discussed" (no tool calls, no workflows) | `priorConversation` — prose turns, authored inline | a normal `conversation` for the live turn |
-| Prior work already exists (a workflow to repair) | `conversationSeed` — prior messages + the workflows they reference, in the case body | a normal `conversation` for the live turn |
+| Reproduce a real conversation (common case) | `seed.mode: "replay"` — fetch + reconstruct its LangSmith trace at run time; nothing committed | supplies its own live turn (omit `conversation`) |
+| Prior work already exists (a workflow to repair) | `seed.mode: "inline"` — prior messages + the workflows they reference, in the case body | a normal `conversation` for the live turn |
+| Prelude is just "what was discussed" (no tool calls, no workflows) | `seed.mode: "inline"` with `{role, text}` shorthand messages | a normal `conversation` for the live turn |
 | Shallow 2–3 turn prelude where the agent's live replies matter | none — a plain multi-turn `conversation` re-drives it live | — |
 
-All three modes are implemented and wired (`harness/conversation-seed.ts` +
-`harness/langsmith-seed.ts`, threaded through the runner).
+Both modes are implemented and wired (`harness/conversation-seed.ts` +
+`harness/langsmith-seed.ts`, threaded through the runner). The literals match
+lang-tracer's `metadata.seed` verbatim, so nothing translates between the repos.
 
 ### What the seed does — and does not — exercise
 
@@ -172,11 +173,11 @@ everything built or said after the seed**: what the agent does with the restored
 state, how it responds to the triggering message, what the workflow looks like
 after the correction. Asserting on the seeded prelude itself proves nothing.
 
-### Which mode — and when to avoid seedThread
+### Which mode — and when to avoid `replay`
 
-Default to a **synthetic** case (an authored prompt + director script, or a
-`priorConversation` / `conversationSeed` prelude): it's durable, carries no real user
-data, never expires, and you control the setup exactly. Reach for **`seedThread`** only when
+Default to a **synthetic** case (an authored prompt + director script, or an
+`inline` seed prelude): it's durable, carries no real user
+data, never expires, and you control the setup exactly. Reach for **`replay`** only when
 the misbehaviour genuinely needs real prior context that's impractical to
 synthesize — a long accumulated thread, specific built workflows/tables — **and**
 the issue is in a *later* turn. (A turn-0 issue can't be isolated by seeding: it
@@ -194,10 +195,10 @@ costs keep it a last resort, not a default:
 
 If a plain prompt + director script can reproduce the situation, prefer that.
 
-### `seedThread` — reproduce a real conversation
+### `mode: "replay"` — reproduce a real conversation
 
 ```json
-"seedThread": { "threadId": "<thread-id>", "project": "instance-ai" }
+"seed": { "mode": "replay", "threadId": "<thread-id>", "project": "instance-ai" }
 ```
 
 The case carries only the opaque **thread id** — no conversation content lands
@@ -220,7 +221,7 @@ which user turn goes live.
   proxy reference; subsequent `user` turns become follow-ups). Omit it to replay
   just the live turn and stop.
 - **Transient — don't commit it, keep out of CI.** LangSmith base-tier traces
-  retain ~14 days and threads can be deleted or pruned, so a committed `seedThread`
+  retain ~14 days and threads can be deleted or pruned, so a committed `replay`
   case goes dead the moment its trace disappears. Treat it as a **local, throwaway
   reproduction**: don't commit it — run it to confirm the failure, then encode a
   durable synthetic case as the artifact. If you do keep one for a local run, tag
@@ -235,35 +236,22 @@ which user turn goes live.
   seeds with **no workflow to inspect**. Reproduce the target workflow yourself
   (a synthetic case whose `executionScenarios` precondition builds the stand-in),
   or grade the live turn with `processExpectations` only.
-- **Can't be pushed to a lang-tracer suite either.** The case-write API rejects
-  every seeding mode (`seedThread` / `conversationSeed` / `priorConversation`), so
-  `eval:langtracer-push` silently lists them under `skipped:`. Combined with the
-  don't-commit rule above, a `seedThread` case has **no durable home by design** —
-  the durable artifact is always the synthetic case you derive from it. (`conversationSeed`
-  and `priorConversation` carry no thread dependency and can't be pushed either, so
-  — unlike a normal case — they're the one exception to the skill's "push, don't
-  commit the JSON" rule: they live as committed artifacts.)
+- **Can't be pushed to a lang-tracer suite either.** The case-write API has no
+  `seed` field, so `eval:langtracer-push` silently lists any seeded case under
+  `skipped:`. Combined with the don't-commit rule above, a `replay` case has **no
+  durable home by design** — the durable artifact is always the synthetic case you
+  derive from it. (An `inline` seed carries no thread dependency and can't be
+  pushed either, so — unlike a normal case — it's the one exception to the skill's
+  "push, don't commit the JSON" rule: it lives as a committed artifact.)
 
-### `priorConversation` — prose prelude
-
-```json
-"priorConversation": [
-  { "role": "user", "text": "We agreed: digests go to #growth, daily at 9am." },
-  { "role": "assistant", "text": "Noted — #growth, daily at 9am." }
-]
-```
-
-Plain text only — no tool calls, no restored workflows. Paired with a normal
-`conversation` for the live turn.
-
-### `conversationSeed` — durable synthetic fixture
+### `mode: "inline"` — durable synthetic fixture
 
 For a **synthetic, sanitised** seed pinned in git (never a real user's
 conversation): author the prior messages, plus the workflows they reference, in
 the case body (schema in
 [`harness/conversation-seed.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts)
 — `messages` + optional `workflows` + `dataTables`). Real conversations belong in
-`seedThread`, which keeps their content out of the repo.
+`replay`, which keeps their content out of the repo.
 
 Two constraints that bite: a workflow `id` must be ≥8 characters (the id remap
 refuses shorter ones), and a seeded `build-workflow` tool call's
@@ -273,3 +261,25 @@ separates them and the agent can't find the workflow it should act on.
 The seed sits in the case body, not a sibling file, so it travels with the case
 whether it comes off disk, out of a LangTracer suite, or from a dispatched case
 body.
+
+#### `{role, text}` shorthand — a prose prelude
+
+When the prelude is just "what was discussed" — no tool calls, no workflows —
+write a message as `{role, text}` and the schema expands it to a full envelope:
+
+```json
+"seed": {
+  "mode": "inline",
+  "messages": [
+    { "role": "user", "text": "We agreed: digests go to #growth, daily at 9am." },
+    { "role": "assistant", "text": "Noted — #growth, daily at 9am." }
+  ]
+}
+```
+
+`text` also takes an array of lines (newline-joined), like a `conversation` turn.
+The expansion stamps `createdAt` itself — ascending, in the past — so a shorthand
+message can't order *after* the live turn. Shorthand and full envelopes mix freely
+in one array; a full envelope keeps its authored `createdAt`. A near-miss (say
+`text: 123`) is deliberately **not** expanded — it fails at load instead of
+becoming a message the transcript builder would silently drop.

@@ -1,6 +1,7 @@
-// Conversation seeding for eval builds — backs the `conversationSeed` (synthetic)
-// and `priorConversation` (prose) paths. Real conversations use `seedThread`
-// (reconstructed from a LangSmith trace; see langsmith-seed.ts).
+// Conversation seeding for eval builds — the restore payload behind the case
+// schema's `seed` slot. `mode: 'inline'` carries this payload in the case body;
+// `mode: 'replay'` reconstructs one from a LangSmith trace at run time (see
+// langsmith-seed.ts). Either way the shape below is what reaches restore-thread.
 
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
@@ -60,7 +61,15 @@ const SeedMessageBlockSchema = z
  *  the store's contract, not ours. */
 const seedMessageObjectSchema = z
 	.object({
-		id: z.string().min(1),
+		// The required_error names both authoring forms: a message that is neither a
+		// full envelope nor a well-formed `{role, text}` shorthand lands here, and
+		// "Required" alone wouldn't hint that the shorthand exists.
+		id: z
+			.string({
+				required_error:
+					'is required — a prior message is either a full envelope (id/role/type/createdAt/content) or the `{role, text}` shorthand',
+			})
+			.min(1),
 		// Restricted to the two roles the transcript builder renders: any other
 		// value is guaranteed to vanish from the judge transcript, which is the
 		// exact silent failure this schema exists to catch. If the message store
@@ -86,7 +95,7 @@ const seedMessageObjectSchema = z
  *  CI's type-aware lint (same reason as `EvalTestCaseInput` in schema.ts). */
 export type SeedMessage = z.infer<typeof seedMessageObjectSchema>;
 
-const SeedMessageSchema = seedMessageObjectSchema.superRefine((message, ctx) => {
+export const SeedMessageSchema = seedMessageObjectSchema.superRefine((message, ctx) => {
 	// `custom` messages are stored but never rendered (no role, any content
 	// shape). Everything else is read by the transcript builder, which needs a
 	// role it renders and an array of blocks.
@@ -123,24 +132,55 @@ export const ConversationSeedSchema = z.object({
 export type ConversationSeed = z.infer<typeof ConversationSeedSchema>;
 
 // ---------------------------------------------------------------------------
-// Prose prior turns → seed messages
+// `{role, text}` shorthand → seed messages
 // ---------------------------------------------------------------------------
 
-/** Convert authored prose turns into native llm messages, stamped slightly in
- *  the past (ascending) so they order before the live turn. */
-export function seedFromProse(turns: ConversationTurn[]): ConversationSeed {
-	const base = Date.now() - (turns.length + 1) * 1000;
-	return {
-		messages: turns.map((turn, index) => ({
+/** A `{role, text}` prior message — the authoring sugar the `priorConversation`
+ *  key used to be. Recognised by its EXACT key set (and valid values), so a full
+ *  envelope is never mistaken for one, and a near-miss falls through to the
+ *  envelope schema and gets a real error instead of being expanded into a
+ *  message the transcript builder would silently drop. */
+function isShorthandTurn(
+	value: unknown,
+): value is { role: ConversationTurn['role']; text: string | string[] } {
+	if (!isRecord(value)) return false;
+	const keys = Object.keys(value);
+	if (keys.length !== 2 || !keys.includes('role') || !keys.includes('text')) return false;
+	if (value.role !== 'user' && value.role !== 'assistant') return false;
+	return (
+		typeof value.text === 'string' ||
+		(Array.isArray(value.text) && value.text.every((line) => typeof line === 'string'))
+	);
+}
+
+/**
+ * Expand `{role, text}` shorthand messages into native llm envelopes; anything
+ * else passes through for the envelope schema to validate.
+ *
+ * Array-level rather than per-message because the stamped timestamps ascend by
+ * position — slightly in the past, so seeded history always orders before the
+ * live turn and a shorthand author cannot get the ordering wrong. A full
+ * envelope keeps its own authored `createdAt`.
+ */
+export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
+	const base = Date.now() - (messages.length + 1) * 1000;
+	return messages.map((message, index) => {
+		if (!isShorthandTurn(message)) return message;
+		return {
 			id: randomUUID(),
 			type: 'llm',
-			role: turn.role,
-			content: [{ type: 'text', text: turn.text }],
+			role: message.role,
+			// Array form = lines, joined — same normalization as
+			// `conversationTurnTextSchema` applies to an authored conversation turn.
+			content: [
+				{
+					type: 'text',
+					text: Array.isArray(message.text) ? message.text.join('\n') : message.text,
+				},
+			],
 			createdAt: new Date(base + index * 1000).toISOString(),
-		})),
-		workflows: [],
-		dataTables: [],
-	};
+		};
+	});
 }
 
 // ---------------------------------------------------------------------------
