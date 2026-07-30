@@ -19,6 +19,7 @@ import type {
 	IExecutionContext,
 	INodeExecutionData,
 	IRun,
+	IRunData,
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
@@ -59,6 +60,13 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+
+/** First item of a node's first run on its main output, if it produced one. */
+function getFirstOutputJson(runData: IRunData, nodeName: string): IDataObject | undefined {
+	const [firstRun] = runData[nodeName] ?? [];
+	const [firstItem] = firstRun?.data?.main?.[0] ?? [];
+	return firstItem?.json;
+}
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -540,8 +548,10 @@ export class JobProcessor {
 		const [parentNodeName] = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
 		const parentNode = parentNodeName ? (workflow.getNode(parentNodeName) ?? undefined) : undefined;
 
+		// The trigger's output (webhook body + headers) is what the tool sees as `$json`
+		// in direct mode, so carry it over here to keep tool input identical.
 		const triggerJson = parentNodeName
-			? runExecutionData.resultData?.runData?.[parentNodeName]?.[0]?.data?.main?.[0]?.[0]?.json
+			? getFirstOutputJson(runExecutionData.resultData.runData, parentNodeName)
 			: undefined;
 
 		// Create input data for the tool node with the tool arguments
