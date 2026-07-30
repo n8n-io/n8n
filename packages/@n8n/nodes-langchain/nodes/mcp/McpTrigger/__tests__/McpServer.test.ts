@@ -266,7 +266,7 @@ describe('McpServer', () => {
 					await vi.advanceTimersByTimeAsync(1_000);
 					expect(settled()).toBe(false);
 
-					await vi.advanceTimersByTimeAsync(30_000);
+					await vi.advanceTimersByTimeAsync(5_000);
 					await pending;
 
 					expect(settled()).toBe(true);

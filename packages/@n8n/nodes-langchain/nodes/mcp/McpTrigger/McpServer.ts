@@ -46,9 +46,10 @@ const ELICITATION_TIMEOUT_MS = 300_000;
 /**
  * How long to wait for a `tools/call` to reach the CallTool handler before assuming it
  * never will (the SDK rejects a malformed request pre-dispatch) and releasing the caller.
- * Cancelled once the handler runs, so it never bounds the tool call itself.
+ * Dispatch is a microtask drain, so this is orders of magnitude of slack; it is cancelled
+ * once the handler runs and so never bounds the tool call itself.
  */
-const TOOL_DISPATCH_TIMEOUT_MS = 30_000;
+const TOOL_DISPATCH_TIMEOUT_MS = 5_000;
 
 export interface HandlePostResult {
 	wasToolCall: boolean;
