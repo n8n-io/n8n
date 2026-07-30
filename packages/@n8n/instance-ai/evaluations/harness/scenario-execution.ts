@@ -15,7 +15,11 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
-import { isTransientExecutionAbort, MAX_EXEC_ATTEMPTS } from './transient-error';
+import {
+	isServerBudgetStop,
+	isTransientExecutionAbort,
+	MAX_EXEC_ATTEMPTS,
+} from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
 import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-json-utils';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
@@ -306,6 +310,14 @@ async function runScenario(
 			pinNodes,
 		);
 	}
+	// A server-side budget stop is the same event as the client-side abort it
+	// replaces — the run was killed for time, not by the builder. Throw so the
+	// caller's timeout path classifies it (framework_issue + at most one retry)
+	// instead of letting the judge attribute a stopped run to the agent.
+	if (!evalResult.success && isServerBudgetStop(evalResult.errors)) {
+		throw new Error(`The operation was aborted due to timeout: ${evalResult.errors.join('; ')}`);
+	}
+
 	const execMs = Date.now() - execStart;
 
 	const pinTag = pinNodes ? ` pinned=${pinNodes.join(',')}` : '';

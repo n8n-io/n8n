@@ -1662,6 +1662,14 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 * as an error-shaped `InstanceAiEvalExecutionResult`.
 	 */
 	pinNodes: z.array(z.string().min(1)).max(50).optional(),
+	/**
+	 * Budget for the whole run. When omitted the server waits for the execution
+	 * indefinitely, so a caller that gives up first leaves it running — eval mode
+	 * skips concurrency reservation, so nothing else would stop it. Ceiling is
+	 * generous on purpose: a caller's per-case budget can legitimately exceed the
+	 * 15 minutes a plain run takes.
+	 */
+	timeoutMs: z.number().int().min(30_000).max(3_600_000).optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -1734,8 +1742,12 @@ export class InstanceAiEvalAgentExecutionRequest extends Z.class({
 	/** Project the agent lives in (agent routes are project-scoped). */
 	projectId: z.string().min(1),
 	scenarioHints: z.string().max(2000).optional(),
-	/** Overall run budget. Server default applies when omitted. */
-	timeoutMs: z.number().int().min(30_000).max(900_000).optional(),
+	/**
+	 * Overall run budget. Server default applies when omitted. Shares the
+	 * workflow variant's ceiling: the old 900_000 cap silently truncated the
+	 * larger budget a `complex` case carries.
+	 */
+	timeoutMs: z.number().int().min(30_000).max(3_600_000).optional(),
 }) {}
 
 export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({

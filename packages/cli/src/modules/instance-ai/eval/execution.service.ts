@@ -34,6 +34,7 @@ import {
 	createRunExecutionData,
 	fileTypeFromMimeType,
 	NodeHelpers,
+	TimeoutExecutionCancelledError,
 	UserError,
 	Workflow,
 } from 'n8n-workflow';
@@ -80,6 +81,14 @@ import {
 
 /** Max output items per branch kept in the artifact. The full count lives in `outputCount`. */
 const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
+
+/** A caller's run budget, resolved to a wall-clock deadline at request receipt. */
+interface RunBudget {
+	/** As requested — for the message the caller reads. */
+	totalMs: number;
+	/** Epoch ms. Setup time counts against it, so the run gets what is left. */
+	deadlineAt: number;
+}
 
 // ---------------------------------------------------------------------------
 // Service
@@ -196,6 +205,13 @@ export class EvalExecutionService {
 			options.scenarioHints,
 			interceptionEnabled,
 			vendorLlmRouting,
+			// Anchored at request receipt, not at the run: hint generation and pin-data
+			// generation are LLM calls that take tens of seconds, so a budget measured
+			// from the run would expire well after the caller's own deadline and never
+			// bite.
+			options.timeoutMs === undefined
+				? undefined
+				: { totalMs: options.timeoutMs, deadlineAt: Date.now() + options.timeoutMs },
 		);
 	}
 
@@ -412,6 +428,8 @@ export class EvalExecutionService {
 		scenarioHints?: string,
 		interceptionEnabled = false,
 		vendorLlmRouting?: VendorLlmRouting,
+		/** Caller's budget; unbounded when omitted. See awaitRunWithinBudget. */
+		budget?: RunBudget,
 	): Promise<InstanceAiEvalExecutionResult> {
 		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
 
@@ -544,7 +562,7 @@ export class EvalExecutionService {
 			};
 
 			dbExecutionId = await this.workflowRunner.run(runData);
-			const runResult = await this.activeExecutions.getPostExecutePromise(dbExecutionId);
+			const runResult = await this.awaitRunWithinBudget(dbExecutionId, budget);
 
 			if (!runResult) {
 				return this.buildPartialFailureResult(
@@ -918,6 +936,68 @@ export class EvalExecutionService {
 			executionMode: 'pinned',
 			...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
 		};
+	}
+
+	/**
+	 * Await the execution, but never past the caller's budget — and stop it when
+	 * that budget elapses.
+	 *
+	 * Eval mode skips concurrency reservation (see ActiveExecutions.add), so
+	 * nothing else bounds one of these runs: when the client gives up, the
+	 * execution keeps going indefinitely, burning CPU and writing execution data on
+	 * an instance shared with every other case pinned to it. In run 30432642501 one
+	 * such run held a core for 78 minutes while the client abandoned it twice, and
+	 * the retries piled more of them onto the same lane.
+	 *
+	 * Stopping it also makes the outcome deterministic: the caller gets an in-band
+	 * error naming the budget instead of a bare transport abort.
+	 *
+	 * Omitting the budget keeps the old unbounded behaviour, for callers that
+	 * enforce their own deadline.
+	 */
+	private async awaitRunWithinBudget(
+		executionId: string,
+		budget: RunBudget | undefined,
+	): Promise<IRun | undefined> {
+		const postExecute = this.activeExecutions.getPostExecutePromise(executionId);
+		if (!budget) return await postExecute;
+
+		// Race loser: swallow the cancellation rejection our own timer causes, so
+		// it can't surface as an unhandled rejection after the race settles.
+		postExecute.catch(() => {});
+
+		// Clamped at 0: setup can legitimately consume the whole budget, and then the
+		// run must be stopped rather than granted a fresh one.
+		const remainingMs = Math.max(budget.deadlineAt - Date.now(), 0);
+
+		let deadline: NodeJS.Timeout | undefined;
+		try {
+			return await Promise.race([
+				postExecute,
+				new Promise<never>((_resolve, reject) => {
+					deadline = setTimeout(() => {
+						const seconds = Math.round(budget.totalMs / 1000);
+						this.logger.warn(
+							`[EvalMock] Execution ${executionId} exceeded its ${seconds}s budget — stopping it`,
+						);
+						try {
+							this.activeExecutions.stopExecution(
+								executionId,
+								new TimeoutExecutionCancelledError(executionId),
+							);
+						} catch (error) {
+							// Already gone (finished between the timer firing and this call).
+							this.logger.debug(
+								`[EvalMock] Could not stop execution ${executionId}: ${error instanceof Error ? error.message : String(error)}`,
+							);
+						}
+						reject(new Error(`Execution exceeded its ${seconds}s eval budget and was stopped`));
+					}, remainingMs);
+				}),
+			]);
+		} finally {
+			if (deadline) clearTimeout(deadline);
+		}
 	}
 
 	/**

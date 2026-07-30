@@ -28,6 +28,38 @@ import { z } from 'zod';
 // eval CLI harness — never import into the n8n server or shared runtime code.
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
 
+/**
+ * Floor for requests that pass no budget of their own. Because the dispatcher
+ * above removes undici's timeouts, such a call hangs FOREVER against a lane that
+ * stops answering rather than failing — in run 30432642501 a wedged lane held
+ * three builds for 80 minutes and then ate the run's last 30 minutes inside a
+ * cleanup `deleteWorkflow`, until the job hit its 90-minute cap. Sized for the
+ * slowest legitimate REST call under lane contention (seconds), NOT for the
+ * work a call kicks off: long-running callers (mocked executions, thread
+ * restore) still pass their own, larger budget.
+ */
+const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
+
+/** Bulk creation of seed workflows + data tables; slower than a plain REST call. */
+const RESTORE_THREAD_TIMEOUT_MS = 300_000;
+
+/** How much longer the client waits than the server budget it hands over. */
+const CLIENT_ABORT_MARGIN_MS = 5_000;
+
+/**
+ * Server-side budget for the mocked-execution endpoints, derived from the
+ * caller's own budget so the server gives up just before the client does — the
+ * caller then gets an in-band error naming the real cause instead of a bare
+ * transport abort, and the server never keeps running work nobody awaits.
+ *
+ * Floored at the schema minimum (30s). Deliberately NOT capped at 15 minutes:
+ * that cap used to truncate the larger budget a `complex` case carries, stopping
+ * such a run 7 minutes before its caller would have.
+ */
+function serverBudgetFor(timeoutMs: number): number {
+	return Math.max(timeoutMs - CLIENT_ABORT_MARGIN_MS, 30_000);
+}
+
 // -- Conversation seeding response shapes -------------------------------------
 
 const RestoreThreadEnvelope = z.object({
@@ -670,6 +702,7 @@ export class N8nClient {
 		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
 			method: 'POST',
 			body,
+			timeoutMs: RESTORE_THREAD_TIMEOUT_MS,
 		});
 		return RestoreThreadEnvelope.parse(result).data;
 	}
@@ -789,14 +822,22 @@ export class N8nClient {
 		timeoutMs: number = 120_000,
 		pinNodes?: string[],
 	): Promise<InstanceAiEvalExecutionResult> {
-		const body: { scenarioHints?: string; pinNodes?: string[] } = {};
+		const body: { scenarioHints?: string; pinNodes?: string[]; timeoutMs?: number } = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
+		// Forward the budget so the server stops its own execution instead of
+		// leaving it running: an abandoned eval execution keeps burning CPU and
+		// writing execution data on a lane shared with every other case pinned to
+		// it. The server deadline lands just BEFORE the client's, so the harness
+		// gets an in-band error naming the real cause instead of a bare transport
+		// abort (scenario-execution.ts routes it to the same timeout path).
+		const serverBudgetMs = serverBudgetFor(timeoutMs);
+		body.timeoutMs = serverBudgetMs;
 
 		const result = (await this.fetch(`/rest/instance-ai/eval/execute-with-llm-mock/${workflowId}`, {
 			method: 'POST',
 			body,
-			timeoutMs,
+			timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 		})) as { data: InstanceAiEvalExecutionResult };
 		return result.data;
 	}
@@ -814,11 +855,7 @@ export class N8nClient {
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		const body: { projectId: string; scenarioHints?: string; timeoutMs?: number } = { projectId };
 		if (scenarioHints) body.scenarioHints = scenarioHints;
-		// Forward the budget server-side so the run is aborted rather than
-		// orphaned when the client gives up. The server floor is the schema min
-		// (30s), so the client abort is floored to 5s above it — a smaller
-		// caller value would leave the server running long after the client quit.
-		const serverBudgetMs = Math.min(Math.max(timeoutMs - 5_000, 30_000), 900_000);
+		const serverBudgetMs = serverBudgetFor(timeoutMs);
 		body.timeoutMs = serverBudgetMs;
 
 		const result = (await this.fetch(
@@ -826,7 +863,7 @@ export class N8nClient {
 			{
 				method: 'POST',
 				body,
-				timeoutMs: serverBudgetMs + 5_000,
+				timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 			},
 		)) as { data: InstanceAiEvalAgentExecutionResult };
 		return result.data;
@@ -883,7 +920,7 @@ export class N8nClient {
 			method,
 			headers,
 			body: options.body ? JSON.stringify(options.body) : undefined,
-			...(options.timeoutMs ? { signal: AbortSignal.timeout(options.timeoutMs) } : {}),
+			signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS),
 		});
 
 		if (!res.ok) {

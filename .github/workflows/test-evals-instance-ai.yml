@@ -141,6 +141,14 @@ jobs:
 
       # Host OOMs and disk exhaustion leave no application trace — sample host
       # + container telemetry every 60s and ship it with the results artifact.
+      #
+      # The top-CPU line narrows what container-level stats cannot: when a lane
+      # pins a core (run 30432642501 held one at ~100% for 78 minutes), it shows
+      # whether the burn is a node process or a node-spawned binary like `gm`.
+      # Deliberately `comm=`, not `args=`: this file ships in the results artifact,
+      # and the startup `docker run -e <SECRET>` invocations carry secrets in argv.
+      # Command lines are captured per-container instead (`docker top`, below),
+      # where no process argv holds a secret.
       - name: Start host telemetry sampler
         run: |
           mkdir -p eval-diag
@@ -152,6 +160,7 @@ jobs:
               df -h / | tail -1
               docker stats --no-stream --format "{{.Name}} cpu={{.CPUPerc}} mem={{.MemUsage}}"
               ps -eo rss=,pid=,comm= --sort=-rss | head -5
+              ps -eo pcpu=,pid=,comm= --sort=-pcpu | head -5
               echo
             } >> eval-diag/host-samples.log 2>&1
             sleep 60
@@ -214,12 +223,21 @@ jobs:
             # Bounded and self-healing: a lane that exhausts its capped heap is
             # restarted by docker instead of staying dead; pruning + log caps
             # keep per-lane disk and memory flat over a multi-hour run.
+            #
+            # NODE_OPTIONS also arms Node's diagnostic report on SIGUSR2, which the
+            # log-capture step requests from a lane that is still burning CPU.
+            # Measured caveat: the report is queued on the event loop, so a lane
+            # pinned in a tight JS loop yields nothing — the per-process CPU
+            # snapshot is the signal that always works. Still worth arming, since a
+            # lane that is merely saturated does produce one, with the JS stack and
+            # libuv handle state. Keep the flag and the signal in sync: without
+            # `--report-on-signal`, SIGUSR2's default action would kill the process.
             docker run -d --name "n8n-eval-$((i+1))" \
               "${NETWORK_ARGS[@]}" \
               --memory 2.5g --memory-swap 2.5g \
               --restart on-failure \
               --log-opt max-size=50m --log-opt max-file=2 \
-              -e NODE_OPTIONS=--max-old-space-size=2048 \
+              -e NODE_OPTIONS="--max-old-space-size=2048 --report-on-signal --report-signal=SIGUSR2 --report-directory=/tmp" \
               -e EXECUTIONS_DATA_PRUNE=true \
               -e EXECUTIONS_DATA_MAX_AGE=1 \
               -e E2E_TESTS=true \
@@ -422,6 +440,27 @@ jobs:
             done <<< "$v"
           done
 
+          # A lane still burning a core at the end of the run is wedged, and a
+          # spin leaves no log line at all. Container stats say WHICH lane; only a
+          # per-process snapshot says which process (n8n main thread vs its JS
+          # task-runner child vs a spawned binary) — the evidence run 30432642501
+          # could not produce. Also request a Node diagnostic report; it is queued
+          # on the event loop, so it lands only for a lane that is saturated
+          # rather than pinned. Collected at the end of this step, which gives it
+          # the log dump's worth of time to be written.
+          HOT_LANES=""
+          while read -r name cpu; do
+            [ -n "$name" ] || continue
+            pct="${cpu%\%}"
+            pct="${pct%.*}"
+            [ "${pct:-0}" -ge 70 ] || continue
+            HOT_LANES="$HOT_LANES $name"
+            echo ""
+            echo "=== $name at $cpu — per-process snapshot ==="
+            docker top "$name" -o pid,ppid,pcpu,etime,args 2>&1 | cut -c1-200 || true
+            docker kill -s SIGUSR2 "$name" >/dev/null 2>&1 || true
+          done <<< "$(docker stats --no-stream --format '{{.Name}} {{.CPUPerc}}' 2>/dev/null | grep '^n8n-eval-' || true)"
+
           # Layer 1 — accuracy filter: only surface diagnostic signals.
           # `tail -1000` after the filter so we get the LATEST matching lines
           # (post-eval failure signal), not the earliest startup-time ones.
@@ -450,6 +489,18 @@ jobs:
             echo "=== $name (last 100 lines) ==="
             echo "============================================================"
             docker logs "$c" 2>&1 | tail -100 || true
+          done
+
+          # Ships with the results artifact; carries the JS stack + libuv handles.
+          for name in $HOT_LANES; do
+            docker exec "$name" sh -c 'cat /tmp/report.*.json 2>/dev/null' \
+              > "eval-diag/node-report-$name.json" 2>/dev/null || true
+            if [ -s "eval-diag/node-report-$name.json" ]; then
+              echo "captured Node diagnostic report for $name"
+            else
+              rm -f "eval-diag/node-report-$name.json"
+              echo "no Node diagnostic report from $name (loop never freed up)"
+            fi
           done
 
       - name: Stop n8n containers

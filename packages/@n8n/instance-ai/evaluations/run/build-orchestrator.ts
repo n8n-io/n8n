@@ -37,6 +37,7 @@ import type { executeScenario } from '../harness/scenario-execution';
 import type { ScenarioSeedContext } from '../harness/seed-tables';
 import {
 	findProviderOutage,
+	isRequestAbort,
 	isTransientNetworkError,
 	MAX_PROVIDER_BUILD_ATTEMPTS,
 	providerRetryBackoffMs,
@@ -261,9 +262,21 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 
 	// A build that sat out its timeout against a dead lane reports "Run timed
 	// out", not "fetch failed" — so any failed build also health-probes its lane.
+	//
+	// A request-level abort ("operation was aborted", from the n8n client's
+	// per-request floor) is a transport symptom too: the lane stopped answering a
+	// call that normally takes seconds. It must be told apart from the chat loop's
+	// own budget overrun, which reports "Run timed out after Nms" and stays an
+	// agent verdict — otherwise a wedged lane would spray build_failure rows
+	// instead of retrying elsewhere.
 	async function isTransportFailure(build: BuildResult, lane: LaneState): Promise<boolean> {
 		if (build.success) return false;
-		if (build.error !== undefined && isTransientNetworkError(build.error)) return true;
+		if (
+			build.error !== undefined &&
+			(isTransientNetworkError(build.error) || isRequestAbort(build.error))
+		) {
+			return true;
+		}
 		return !(await laneHealthy(lane));
 	}
 
