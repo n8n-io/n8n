@@ -166,6 +166,26 @@ describe('TaskBrokerWsServer', () => {
 
 			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
 		});
+
+		it('should close every dead connection in a single check', async () => {
+			const deadWs1 = mockWs(WS_OPEN, DEAD);
+			const deadWs2 = mockWs(WS_OPEN, DEAD);
+
+			await runHeartbeatCheck(deadWs1, deadWs2);
+
+			expect(deadWs1.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
+			expect(deadWs2.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
+		});
+
+		it('should keep pinging live connections listed after a dead one', async () => {
+			const liveWs = mockWs();
+
+			await runHeartbeatCheck(mockWs(WS_OPEN, DEAD), liveWs);
+
+			expect(liveWs.ping).toHaveBeenCalled();
+			expect(liveWs.isAlive).toBe(false);
+			expect(liveWs.close).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('sendMessage', () => {

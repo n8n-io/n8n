@@ -55,21 +55,33 @@ export class TaskBrokerWsServer {
 			throw new UserError('Heartbeat interval must be greater than 0');
 		}
 
-		this.heartbeatTimer = setInterval(() => {
-			for (const [runnerId, connection] of this.runnerConnections.entries()) {
-				if (!connection.isAlive) {
-					void this.removeConnection(
-						runnerId,
-						'failed-heartbeat-check',
-						WsStatusCodes.CloseProtocolError,
-					);
-					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
-					return;
-				}
+		this.heartbeatTimer = setInterval(
+			() => this.checkConnectionLiveness(),
+			heartbeatInterval * Time.seconds.toMilliseconds,
+		);
+	}
+
+	private checkConnectionLiveness() {
+		let anyDead = false;
+
+		for (const [runnerId, connection] of this.runnerConnections) {
+			if (connection.isAlive) {
 				connection.isAlive = false;
 				connection.ping();
+			} else {
+				anyDead = true;
+				void this.removeConnection(
+					runnerId,
+					'failed-heartbeat-check',
+					WsStatusCodes.CloseProtocolError,
+					connection,
+				);
 			}
-		}, heartbeatInterval * Time.seconds.toMilliseconds);
+		}
+
+		if (anyDead) {
+			this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
+		}
 	}
 
 	async stop() {
