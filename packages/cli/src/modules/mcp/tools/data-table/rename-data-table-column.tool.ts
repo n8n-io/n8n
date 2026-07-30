@@ -14,10 +14,10 @@ import {
 } from '../schemas';
 
 const inputSchema = {
-	dataTableId: z.string().describe('The ID of the data table containing the column'),
+	dataTableId: z.string(),
 	projectId: dataTableProjectIdSchema,
-	columnId: z.string().describe('The ID of the column to rename'),
-	name: columnNameSchema.describe('The new column name'),
+	columnId: z.string(),
+	name: columnNameSchema,
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -32,7 +32,6 @@ export const createRenameDataTableColumnTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'rename_data_table_column',
 	config: {
-		description: 'Rename a column in a data table.',
 		inputSchema,
 		outputSchema,
 		annotations: {

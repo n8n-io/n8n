@@ -31,7 +31,7 @@ import {
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
-	workflowId: z.string().describe('The ID of the workflow to test'),
+	workflowId: z.string(),
 	pinData: z
 		.record(z.array(z.record(z.unknown())))
 		.describe(

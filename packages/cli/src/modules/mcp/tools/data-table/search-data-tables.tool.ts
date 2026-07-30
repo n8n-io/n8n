@@ -16,7 +16,7 @@ const searchInputSchema = {
 		.string()
 		.optional()
 		.describe('Filter data tables by name (case-insensitive partial match)'),
-	projectId: z.string().optional().describe('Filter by project ID'),
+	projectId: z.string().optional(),
 	limit: createLimitSchema(SEARCH_MAX_RESULTS),
 } satisfies z.ZodRawShape;
 
@@ -32,8 +32,6 @@ export const createSearchDataTablesTool = (
 ): ToolDefinition<typeof searchInputSchema> => ({
 	name: 'search_data_tables',
 	config: {
-		description:
-			'Search for data tables accessible to the current user. Use this to find a data table ID before modifying or adding data to it.',
 		inputSchema: searchInputSchema,
 		outputSchema: searchOutputSchema,
 		annotations: {

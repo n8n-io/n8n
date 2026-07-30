@@ -37,7 +37,7 @@ describe('add_data_table_rows MCP tool', () => {
 
 		expect(tool.name).toBe('add_data_table_rows');
 		expect(tool.config).toBeDefined();
-		expect(typeof tool.config.description).toBe('string');
+		expect(tool.config.description).toBeUndefined();
 		expect(tool.config.inputSchema).toBeDefined();
 		expect(tool.config.outputSchema).toBeDefined();
 		expect(typeof tool.handler).toBe('function');

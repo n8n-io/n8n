@@ -31,9 +31,7 @@ export const workflowMetaSchema = z
 	.custom<WorkflowFEMeta>((_value): _value is WorkflowFEMeta => true)
 	.nullable();
 
-export const dataTableColumnTypeSchema = z
-	.enum(['string', 'number', 'boolean', 'date'])
-	.describe('The data type of the column');
+export const dataTableColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
 export const dataTableColumnSchema = z.object({
 	id: z.string().describe('The unique identifier of the column'),
@@ -53,18 +51,9 @@ export const dataTableSchema = z.object({
 	columns: z.array(dataTableColumnSchema).describe('The columns defined in this data table'),
 });
 
-export const createLimitSchema = (max: number) =>
-	z
-		.number()
-		.int()
-		.positive()
-		.max(max)
-		.optional()
-		.describe(`Limit the number of results (max ${max})`);
+export const createLimitSchema = (max: number) => z.number().int().positive().max(max).optional();
 
-export const dataTableProjectIdSchema = z
-	.string()
-	.describe('The project ID the data table belongs to');
+export const dataTableProjectIdSchema = z.string();
 
 export const columnNameSchema = z
 	.string()

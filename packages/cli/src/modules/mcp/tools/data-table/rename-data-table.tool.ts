@@ -9,9 +9,9 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { dataTableProjectIdSchema, successMessageOutputSchema } from '../schemas';
 
 const inputSchema = {
-	dataTableId: z.string().describe('The ID of the data table to rename'),
+	dataTableId: z.string(),
 	projectId: dataTableProjectIdSchema,
-	name: z.string().min(1).max(128).describe('The new name for the data table'),
+	name: z.string().min(1).max(128),
 } satisfies z.ZodRawShape;
 
 const outputSchema = successMessageOutputSchema;
@@ -23,7 +23,6 @@ export const createRenameDataTableTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'rename_data_table',
 	config: {
-		description: 'Rename an existing data table.',
 		inputSchema,
 		outputSchema,
 		annotations: {

@@ -15,21 +15,10 @@ import { getMcpWorkflow } from './workflow-validation.utils';
 const MAX_RESULTS = 200;
 
 const inputSchema = {
-	workflowId: z.string().optional().describe('Filter executions by workflow ID'),
-	status: z
-		.array(z.enum(ExecutionStatusList))
-		.optional()
-		.describe('Filter by execution status(es)'),
-	startedAfter: z
-		.string()
-		.datetime({ offset: true })
-		.optional()
-		.describe('ISO 8601 timestamp — only return executions that started after this time'),
-	startedBefore: z
-		.string()
-		.datetime({ offset: true })
-		.optional()
-		.describe('ISO 8601 timestamp — only return executions that started before this time'),
+	workflowId: z.string().optional(),
+	status: z.array(z.enum(ExecutionStatusList)).optional(),
+	startedAfter: z.string().datetime({ offset: true }).optional(),
+	startedBefore: z.string().datetime({ offset: true }).optional(),
 	limit: createLimitSchema(MAX_RESULTS),
 	lastId: z
 		.string()
@@ -69,8 +58,6 @@ export const createSearchExecutionsTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'search_workflow_executions',
 	config: {
-		description:
-			'Search for workflow executions with optional filters. Returns execution metadata including status, timing, and workflow ID.',
 		inputSchema,
 		outputSchema,
 		annotations: {

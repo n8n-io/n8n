@@ -9,9 +9,9 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { dataTableProjectIdSchema, successMessageOutputSchema } from '../schemas';
 
 const inputSchema = {
-	dataTableId: z.string().describe('The ID of the data table containing the column'),
+	dataTableId: z.string(),
 	projectId: dataTableProjectIdSchema,
-	columnId: z.string().describe('The ID of the column to delete'),
+	columnId: z.string(),
 } satisfies z.ZodRawShape;
 
 const outputSchema = successMessageOutputSchema;
@@ -23,8 +23,7 @@ export const createDeleteDataTableColumnTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'delete_data_table_column',
 	config: {
-		description:
-			'Delete a column from a data table. This permanently removes the column and all its data.',
+		description: 'Permanently removes the column and all its data.',
 		inputSchema,
 		outputSchema,
 		annotations: {
