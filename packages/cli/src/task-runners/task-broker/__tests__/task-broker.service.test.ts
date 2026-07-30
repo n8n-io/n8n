@@ -1502,6 +1502,36 @@ describe('TaskBroker', () => {
 			expect(vi.getTimerCount()).toBe(1);
 		});
 
+		it('should cancel the task and stop tracking it when the requester fails to acknowledge', async () => {
+			vi.useFakeTimers();
+
+			const runnerCallback = acknowledgingRunnerCallback();
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), runnerCallback);
+			taskBroker.registerRequester('requester1', vi.fn());
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				acceptInProgress: true,
+			};
+			taskBroker.setPendingTaskRequests([request]);
+
+			const acceptPromise = taskBroker.acceptOffer(offerFor('runner1', 'offer1'), request);
+			await vi.advanceTimersByTimeAsync(2100);
+			// resolves instead of leaking the rejection through the void'ed caller
+			await acceptPromise;
+
+			expect(taskBroker.getTasks().size).toBe(0);
+			expect(taskBroker.getRequesterAcceptRejects().size).toBe(0);
+			expect(runnerCallback).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'broker:taskcancel',
+					reason: 'Requester took too long to acknowledge the task',
+				}),
+			);
+		});
+
 		it('should reject an acceptance awaiting acknowledgment when its runner deregisters', async () => {
 			vi.useFakeTimers();
 

@@ -13,6 +13,7 @@ import { nanoid } from 'nanoid';
 
 import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferred.error';
 import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.error';
+import { TaskRequesterAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-requester-accept-timeout.error';
 import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error';
 import { TaskRunnerExecutionTimeoutError } from '@/task-runners/task-broker/errors/task-runner-execution-timeout.error';
 import { TaskRunnerUnreachableError } from '@/task-runners/task-broker/errors/task-runner-unreachable.error';
@@ -707,7 +708,7 @@ export class TaskBroker {
 					});
 
 					requesterAcceptTimer = setTimeout(() => {
-						reject('Requester timed out');
+						reject(new TaskRequesterAcceptTimeoutError(taskId, request.requesterId));
 					}, this.taskRunnersConfig.taskAcceptTimeout * Time.seconds.toMilliseconds);
 				},
 			);
@@ -728,6 +729,12 @@ export class TaskBroker {
 			}
 			if (e instanceof TaskRunnerUnreachableError) {
 				this.logger.warn(e.message);
+				return;
+			}
+			if (e instanceof TaskRequesterAcceptTimeoutError) {
+				this.logger.warn(e.message);
+				this.requesterAcceptRejects.delete(taskId);
+				await this.cancelTask(task.id, 'Requester took too long to acknowledge the task');
 				return;
 			}
 			await this.cancelTask(task.id, 'Unknown reason');
@@ -836,6 +843,10 @@ export class TaskBroker {
 
 	getRunnerAcceptRejects() {
 		return this.runnerAcceptRejects;
+	}
+
+	getRequesterAcceptRejects() {
+		return this.requesterAcceptRejects;
 	}
 
 	setTasks(tasks: Record<string, Task>) {
