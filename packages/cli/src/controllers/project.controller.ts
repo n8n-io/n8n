@@ -31,6 +31,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectRequest } from '@/requests';
+import { ProjectDeletionService } from '@/services/project-deletion.service.ee';
 import {
 	ProjectService,
 	TeamProjectOverQuotaError,
@@ -46,6 +47,7 @@ export class ProjectController {
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly provisioningService: ProvisioningService,
+		private readonly projectDeletionService: ProjectDeletionService,
 	) {}
 
 	@Get('/')
@@ -387,7 +389,7 @@ export class ProjectController {
 		@Query query: DeleteProjectDto,
 		@Param('projectId') projectId: string,
 	) {
-		await this.projectsService.deleteProject(req.user, projectId, {
+		await this.projectDeletionService.deleteProject(req.user, projectId, {
 			migrateToProject: query.transferId,
 		});
 

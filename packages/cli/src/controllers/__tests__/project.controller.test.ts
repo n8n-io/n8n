@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import { ProjectController } from '@/controllers/project.controller';
 import type { EventService } from '@/events/event.service';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import type { ProjectDeletionService } from '@/services/project-deletion.service.ee';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UserManagementMailer } from '@/user-management/email';
 
@@ -16,6 +17,7 @@ describe('ProjectController', () => {
 	const projectRepository = mock<ProjectRepository>();
 	const userManagementMailer = mock<UserManagementMailer>();
 	const provisioningService = mock<ProvisioningService>();
+	const projectDeletionService = mock<ProjectDeletionService>();
 
 	const controller = new ProjectController(
 		projectsService as unknown as ProjectService,
@@ -23,6 +25,7 @@ describe('ProjectController', () => {
 		eventService as unknown as EventService,
 		userManagementMailer as unknown as UserManagementMailer,
 		provisioningService as unknown as ProvisioningService,
+		projectDeletionService as unknown as ProjectDeletionService,
 	);
 
 	const makeRes = () => {
