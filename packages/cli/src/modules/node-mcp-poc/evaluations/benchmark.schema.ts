@@ -52,6 +52,19 @@ export const benchmarkTaskSchema = z
 				executionOutput: jsonRecordSchema.default({}),
 				executionItems: z.array(jsonRecordSchema).optional(),
 				operationOutputs: z.record(z.string(), z.array(jsonRecordSchema)).default({}),
+				resolutionOptions: z
+					.record(
+						z.string(),
+						z.array(
+							z
+								.object({
+									name: z.string(),
+									value: z.union([z.string(), z.number(), z.boolean()]),
+								})
+								.strict(),
+						),
+					)
+					.default({}),
 			})
 			.strict(),
 		source: z

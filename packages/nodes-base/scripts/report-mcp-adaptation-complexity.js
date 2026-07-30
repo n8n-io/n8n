@@ -1,11 +1,22 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const Module = require('node:module');
 
 const { displayParameter } = require('n8n-workflow');
 
 const packageDirectory = path.resolve(__dirname, '..');
-const excludedGroups = new Set(['transform', 'organization', 'schedule', 'trigger']);
+const excludedGroups = new Set(['schedule', 'trigger']);
 const complexityRank = { easy: 0, medium: 1, complex: 2 };
+
+// Mirrors the node-creator "Action in an app" bucket (DEFAULT_SUBCATEGORY = '*')
+// from packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts.
+// A node lands there when none of its codex categories sort it into a whitelisted
+// subcategory (Core Nodes / AI / HITL). Two nodes are force-included regardless.
+const WHITELISTED_CATEGORIES = ['Core Nodes', 'AI', 'HITL'];
+const ACTION_IN_AN_APP_FORCE_INCLUDE = new Set([
+	'n8n-nodes-base.rssFeedRead',
+	'n8n-nodes-base.emailSend',
+]);
 
 function parseOutputDirectory() {
 	const outputArgumentIndex = process.argv.indexOf('--output');
@@ -21,6 +32,86 @@ function parseOutputDirectory() {
 	return path.resolve(process.cwd(), outputDirectory);
 }
 
+function parseRootDirectory() {
+	const idx = process.argv.indexOf('--root');
+	if (idx === -1) return undefined;
+	const root = process.argv[idx + 1];
+	if (!root) throw new Error('The --root argument requires a directory.');
+	return path.resolve(process.cwd(), root);
+}
+
+function parseFallbackNodeModules() {
+	const idx = process.argv.indexOf('--fallback-node-modules');
+	if (idx === -1) return undefined;
+	const dir = process.argv[idx + 1];
+	if (!dir) throw new Error('The --fallback-node-modules argument requires a directory.');
+	return path.resolve(process.cwd(), dir);
+}
+
+// Lets community node classes resolve `n8n-workflow` / `@n8n/*` peers against a
+// built workspace (e.g. the n8n monorepo's hoisted node_modules), since cloned
+// community repos usually have no installed dependencies of their own.
+function setupModuleFallback(fallbackDir) {
+	const original = Module._resolveFilename;
+	Module._resolveFilename = function (request, parent, ...rest) {
+		try {
+			return original.call(this, request, parent, ...rest);
+		} catch (error) {
+			if (
+				request === 'n8n-workflow' ||
+				request.startsWith('n8n-workflow/') ||
+				request.startsWith('@n8n/')
+			) {
+				return original.call(this, path.join(fallbackDir, request), parent, ...rest);
+			}
+			throw error;
+		}
+	};
+}
+
+// Walks a directory tree and collects every package (dir containing a
+// package.json with an `n8n.nodes` array). Stops descending into a directory
+// once it is identified as a package, and skips node_modules / .git / partials.
+function discoverPackages(rootDir) {
+	const packages = [];
+	const stack = [rootDir];
+	while (stack.length) {
+		const dir = stack.pop();
+		let entries;
+		try {
+			entries = fs.readdirSync(dir, { withFileTypes: true });
+		} catch {
+			continue;
+		}
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue;
+			if (
+				entry.name === 'node_modules' ||
+				entry.name === '.git' ||
+				entry.name.startsWith('.partial-')
+			) {
+				continue;
+			}
+			const child = path.join(dir, entry.name);
+			const pkgPath = path.join(child, 'package.json');
+			if (fs.existsSync(pkgPath)) {
+				let pkg;
+				try {
+					pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+				} catch {
+					pkg = null;
+				}
+				if (pkg && pkg.n8n && Array.isArray(pkg.n8n.nodes)) {
+					packages.push({ dir: child, name: pkg.name });
+					continue;
+				}
+			}
+			stack.push(child);
+		}
+	}
+	return packages;
+}
+
 function isPropertyOption(option) {
 	return option !== null && typeof option === 'object' && 'value' in option;
 }
@@ -34,6 +125,30 @@ function getDefaultNode(node) {
 	}
 
 	return defaultNode;
+}
+
+// Loads the codex (.node.json) that sits beside the node class, the same way
+// n8n's directory-loader attaches it at runtime (`.js` + 'on' -> `.json`).
+function getCodex(packageDir, nodePath) {
+	const codexPath = path.join(packageDir, `${nodePath}on`);
+	if (!fs.existsSync(codexPath)) return undefined;
+	return require(codexPath);
+}
+
+// Replicates subcategorizeItems(): a node is in "Action in an app" (the
+// DEFAULT_SUBCATEGORY) when it has no whitelisted category with a defined
+// subcategory list, unless it is one of the force-included node types.
+function isInActionInAnApp(codex, nodeType) {
+	if (ACTION_IN_AN_APP_FORCE_INCLUDE.has(nodeType)) return true;
+
+	const matchedSubcategories = WHITELISTED_CATEGORIES.flatMap((category) => {
+		if (codex?.categories?.includes(category)) {
+			return codex?.subcategories?.[category] ?? [];
+		}
+		return [];
+	});
+
+	return matchedSubcategories.length === 0;
 }
 
 function getDefaultParameters(properties) {
@@ -194,11 +309,11 @@ function inspectOperation(description, operation, version) {
 		complexity = 'complex';
 		reason = 'Uses a resource mapper';
 	} else if (fields.dependent.length > 0) {
-		complexity = 'complex';
+		complexity = 'medium';
 		reason = 'Has a dependency chain between dynamic parameters';
-	} else if (dynamicFieldCount > 1 && fields.loadOptions.length > 0) {
+	} else if (dynamicFieldCount > 2 && fields.loadOptions.length > 0) {
 		complexity = 'complex';
-		reason = 'Uses more than one dynamic field';
+		reason = 'Uses more than two dynamic fields';
 	} else if (dynamicFieldCount > 0) {
 		complexity = 'medium';
 		reason =
@@ -218,8 +333,8 @@ function inspectOperation(description, operation, version) {
 	};
 }
 
-function classifyNode(nodePath) {
-	const absoluteNodePath = path.join(packageDirectory, nodePath);
+function classifyNode(packageDir, packageName, nodePath) {
+	const absoluteNodePath = path.join(packageDir, nodePath);
 	const className = path.parse(nodePath).name.split('.')[0];
 	const nodeModule = require(absoluteNodePath);
 	const NodeClass = nodeModule[className];
@@ -229,7 +344,14 @@ function classifyNode(nodePath) {
 
 	const node = getDefaultNode(new NodeClass());
 	const { description } = node;
-	if (description.group.some((group) => excludedGroups.has(group))) return undefined;
+	if (description.group.some((group) => excludedGroups.has(group))) {
+		return { excluded: 'group' };
+	}
+
+	const nodeType = `${packageName}.${description.name}`;
+	if (!isInActionInAnApp(getCodex(packageDir, nodePath), nodeType)) {
+		return { excluded: 'category' };
+	}
 
 	const { operations, version } = getOperations(description);
 	const classifiedOperations = operations.map((operation) =>
@@ -244,14 +366,17 @@ function classifyNode(nodePath) {
 	);
 
 	return {
-		name: description.name,
-		displayName: description.displayName,
-		type: `n8n-nodes-base.${description.name}`,
-		version,
-		groups: description.group,
-		complexity,
-		operations: classifiedOperations,
-		source: nodePath.replaceAll('\\', '/').replace(/^dist\//, ''),
+		node: {
+			name: description.name,
+			displayName: description.displayName,
+			type: nodeType,
+			package: packageName,
+			version,
+			groups: description.group,
+			complexity,
+			operations: classifiedOperations,
+			source: nodePath.replaceAll('\\', '/').replace(/^dist\//, ''),
+		},
 	};
 }
 
@@ -363,14 +488,14 @@ function renderHtml(report) {
 	</style>
 </head>
 <body>
-	<h1>nodes-base MCP adaptation complexity</h1>
-	<p class="meta">${report.summary.nodes.total} nodes and ${report.summary.operations.total} operations analyzed. Excluded groups: ${report.excludedGroups.join(', ')}.</p>
+	<h1>${report.root ? 'Node' : 'nodes-base'} MCP adaptation complexity</h1>
+	<p class="meta">${report.summary.nodes.total} nodes and ${report.summary.operations.total} operations analyzed. Filtered to the "Action in an app" node-creator bucket. Excluded ${report.excludedByGroupCount} by group (${report.excludedGroups.join(', ')}) and ${report.excludedByCategoryCount} not in "Action in an app".${report.root ? ` Packages: ${report.analyzedPackageCount} analyzed, ${report.skippedPackageCount} skipped (unbuilt), ${report.failureCount} failed.` : ''}</p>
 	<div class="charts">
 		${renderChart('Node distribution', report.summary.nodes)}
 		${renderChart('Operation distribution', report.summary.operations)}
 	</div>
 	<div class="rules">
-		<strong>Rules:</strong> Complex uses a resource mapper, a dynamic dependency chain, or multiple dynamic fields.
+		<strong>Rules:</strong> Complex uses a resource mapper, a dynamic dependency chain, or >2 dynamic fields.
 		Medium uses independent dynamic fields, including multiple independent resource locators. Easy has no dynamic inputs.
 		Node complexity is the highest complexity among its operations.
 	</div>
@@ -381,11 +506,23 @@ function renderHtml(report) {
 }
 
 function renderMarkdown(report) {
+	const multiPackage = Boolean(report.root);
+	const title = report.root
+		? 'Node MCP adaptation complexity'
+		: 'nodes-base MCP adaptation complexity';
 	const lines = [
-		'# nodes-base MCP adaptation complexity',
+		`# ${title}`,
 		'',
 		`Analyzed ${report.summary.nodes.total} nodes and ${report.summary.operations.total} operations.`,
-		`Excluded node groups: ${report.excludedGroups.map((group) => `\`${group}\``).join(', ')}.`,
+		`Filtered to the "Action in an app" node-creator bucket.`,
+		`Excluded ${report.excludedByGroupCount} nodes by group (${report.excludedGroups.map((group) => `\`${group}\``).join(', ')}) and ${report.excludedByCategoryCount} not in "Action in an app".`,
+	];
+	if (report.root) {
+		lines.push(
+			`Packages: ${report.analyzedPackageCount} analyzed, ${report.skippedPackageCount} skipped (unbuilt), ${report.failureCount} failed.`,
+		);
+	}
+	lines.push(
 		'',
 		'## Distribution',
 		'',
@@ -396,14 +533,28 @@ function renderMarkdown(report) {
 		'',
 		'## Nodes',
 		'',
-		'| Node | Complexity | Easy operations | Medium operations | Complex operations | Total operations |',
-		'| --- | --- | ---: | ---: | ---: | ---: |',
-	];
+	);
+
+	if (multiPackage) {
+		lines.push(
+			'| Package | Node | Complexity | Easy operations | Medium operations | Complex operations | Total operations |',
+			'| --- | --- | --- | ---: | ---: | ---: | ---: |',
+		);
+	} else {
+		lines.push(
+			'| Node | Complexity | Easy operations | Medium operations | Complex operations | Total operations |',
+			'| --- | --- | ---: | ---: | ---: | ---: |',
+		);
+	}
 
 	for (const node of report.nodes) {
 		const counts = countByComplexity(node.operations);
+		const nodeCell = `${node.displayName} (\`${node.type}\`)`;
+		const countsCell = `${counts.easy} | ${counts.medium} | ${counts.complex} | ${node.operations.length}`;
 		lines.push(
-			`| ${node.displayName} (\`${node.type}\`) | ${node.complexity} | ${counts.easy} | ${counts.medium} | ${counts.complex} | ${node.operations.length} |`,
+			multiPackage
+				? `| \`${node.package}\` | ${nodeCell} | ${node.complexity} | ${countsCell} |`
+				: `| ${nodeCell} | ${node.complexity} | ${countsCell} |`,
 		);
 	}
 
@@ -412,29 +563,65 @@ function renderMarkdown(report) {
 
 function main() {
 	const outputDirectory = parseOutputDirectory();
-	const packageJson = require(path.join(packageDirectory, 'package.json'));
-	const nodePaths = packageJson.n8n.nodes;
-	if (!fs.existsSync(path.join(packageDirectory, 'dist', 'nodes'))) {
-		throw new Error(
-			'nodes-base must be built before generating the report. Run `pnpm build` first.',
-		);
-	}
+	const rootDir = parseRootDirectory();
+	const fallbackDir = parseFallbackNodeModules();
+	if (fallbackDir) setupModuleFallback(fallbackDir);
+
+	const packages = rootDir
+		? discoverPackages(rootDir)
+		: [{ dir: packageDirectory, name: require(path.join(packageDirectory, 'package.json')).name }];
 
 	const nodes = [];
 	const failures = [];
-	let excludedNodeCount = 0;
+	let excludedByGroupCount = 0;
+	let excludedByCategoryCount = 0;
+	let skippedPackageCount = 0;
+	let analyzedPackageCount = 0;
 
-	for (const nodePath of nodePaths) {
+	for (const { dir, name } of packages) {
+		let pkg;
 		try {
-			const node = classifyNode(nodePath);
-			if (node) nodes.push(node);
-			else excludedNodeCount += 1;
+			pkg = require(path.join(dir, 'package.json'));
 		} catch (error) {
-			failures.push({ nodePath, error: error instanceof Error ? error.message : String(error) });
+			failures.push({
+				nodePath: name,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			continue;
+		}
+		const nodePaths = pkg.n8n?.nodes;
+		if (!Array.isArray(nodePaths)) continue;
+		const stringNodePaths = nodePaths.filter((nodePath) => typeof nodePath === 'string');
+
+		if (!stringNodePaths.some((nodePath) => fs.existsSync(path.join(dir, nodePath)))) {
+			skippedPackageCount += 1;
+			continue;
+		}
+		analyzedPackageCount += 1;
+
+		for (const nodePath of stringNodePaths) {
+			try {
+				const result = classifyNode(dir, name, nodePath);
+				if (result.node) {
+					nodes.push(result.node);
+				} else if (result.excluded === 'group') {
+					excludedByGroupCount += 1;
+				} else if (result.excluded === 'category') {
+					excludedByCategoryCount += 1;
+				}
+			} catch (error) {
+				failures.push({
+					nodePath: `${name}/${nodePath}`,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 	}
 
-	if (failures.length > 0) {
+	// In single-package mode, any failure is a real build/load problem worth
+	// aborting on. In --root mode (many third-party packages), failures are
+	// expected (missing peers, unbuilt nodes) and are reported, not fatal.
+	if (!rootDir && failures.length > 0) {
 		const details = failures.map(({ nodePath, error }) => `- ${nodePath}: ${error}`).join('\n');
 		throw new Error(`Failed to inspect ${failures.length} node(s):\n${details}`);
 	}
@@ -449,13 +636,20 @@ function main() {
 	const operationCounts = countByComplexity(operations);
 	const report = {
 		generatedAt: new Date().toISOString(),
+		root: rootDir,
 		excludedGroups: [...excludedGroups],
-		excludedNodeCount,
+		excludedByGroupCount,
+		excludedByCategoryCount,
+		skippedPackageCount,
+		analyzedPackageCount,
+		failureCount: failures.length,
+		filter: 'Action in an app',
 		summary: {
 			nodes: { ...nodeCounts, total: nodes.length },
 			operations: { ...operationCounts, total: operations.length },
 		},
 		nodes,
+		failures,
 	};
 
 	fs.mkdirSync(outputDirectory, { recursive: true });
@@ -464,7 +658,14 @@ function main() {
 	fs.writeFileSync(path.join(outputDirectory, 'data.json'), `${JSON.stringify(report, null, 2)}\n`);
 
 	console.log(`Analyzed ${nodes.length} nodes and ${operations.length} operations.`);
-	console.log(`Excluded ${excludedNodeCount} nodes by group.`);
+	if (rootDir) {
+		console.log(
+			`Packages: ${analyzedPackageCount} analyzed, ${skippedPackageCount} skipped (unbuilt), ${failures.length} failed.`,
+		);
+	}
+	console.log(
+		`Excluded ${excludedByGroupCount} nodes by group, ${excludedByCategoryCount} nodes not in "Action in an app".`,
+	);
 	console.log(
 		`Nodes: ${nodeCounts.easy} easy, ${nodeCounts.medium} medium, ${nodeCounts.complex} complex.`,
 	);

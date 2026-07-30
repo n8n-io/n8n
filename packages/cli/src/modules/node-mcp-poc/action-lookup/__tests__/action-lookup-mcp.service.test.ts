@@ -57,10 +57,7 @@ describe('ActionLookupMcpService', () => {
 			'Never silently select an option',
 		);
 		expect(registeredDescriptions.get('run_node_action')).toContain(
-			'Do not run a destructive action unless the user explicitly requested or confirmed it',
-		);
-		expect(registeredDescriptions.get('run_node_action')).toContain(
-			'{"actionId":".../sheet.append"',
+			'Fields with acceptsExpression support n8n expressions',
 		);
 	});
 

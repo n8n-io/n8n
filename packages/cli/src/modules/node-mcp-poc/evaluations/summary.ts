@@ -87,7 +87,13 @@ export function summarizeRuns(runs: BenchmarkRun[], tasks: BenchmarkTask[]) {
 		);
 	});
 
-	const flavors = [...new Set(BENCHMARK_VARIANTS.map((variant) => variant.flavor))].map((flavor) =>
+	const flavors = [
+		...new Set(
+			runs
+				.map((run) => getBenchmarkVariant(run.variant)?.flavor)
+				.filter((flavor): flavor is BenchmarkFlavor => flavor !== undefined),
+		),
+	].map((flavor) =>
 		aggregate(
 			flavor,
 			runs.filter((run) => getBenchmarkVariant(run.variant)?.flavor === flavor),

@@ -21,6 +21,41 @@ function fixtureError(message: string) {
 	return { status: 'error' as const, error: message };
 }
 
+function locatorValue(value: unknown) {
+	return isRecord(value) && Object.hasOwn(value, 'value') ? value.value : value;
+}
+
+function notionPropertyValues(parameters: INodeParameters) {
+	const propertiesUi = parameters.propertiesUi;
+	if (!isRecord(propertiesUi)) return [];
+	const propertyValues = Reflect.get(propertiesUi, 'propertyValues');
+	return Array.isArray(propertyValues) ? propertyValues.filter(isRecord) : [];
+}
+
+function notionPropertyKey(parameters: INodeParameters) {
+	const key = notionPropertyValues(parameters)[0]?.key;
+	return typeof key === 'string' ? key : undefined;
+}
+
+function isValidNotionCreate(parameters: INodeParameters) {
+	if (
+		locatorValue(parameters.dataSourceId) !== 'eaa907b8-908c-4b7f-920c-b2beb9144a01' ||
+		parameters.title !== 'Review quarterly budget'
+	) {
+		return false;
+	}
+	const values = notionPropertyValues(parameters);
+	const status = values.find((value) => value.key === 'Status|select');
+	const priority = values.find((value) => value.key === 'Priority|select');
+	const dueDate = values.find((value) => value.key === 'Due date|date');
+	return (
+		status?.selectValue === 'Todo' &&
+		priority?.selectValue === 'High' &&
+		dueDate?.date === '2026-08-15' &&
+		dueDate.range === false
+	);
+}
+
 function isRecentDateQuery(value: unknown) {
 	return (
 		typeof value === 'string' &&
@@ -77,7 +112,10 @@ function currentTask() {
 }
 
 export async function runWithNodeMcpEvalCase<T>(caseId: string | undefined, fn: () => Promise<T>) {
-	if (!caseId || process.env.N8N_NODE_MCP_POC_EVAL_ENABLED !== 'true') return await fn();
+	if (!caseId) return await fn();
+	if (process.env.N8N_NODE_MCP_POC_EVAL_ENABLED !== 'true') {
+		throw new Error('Node MCP evaluation fixtures are disabled; refusing real execution');
+	}
 	if (!benchmarkTasks.some((task) => task.id === caseId)) {
 		throw new Error(`Unknown node MCP evaluation case: ${caseId}`);
 	}
@@ -89,9 +127,26 @@ export function resolveNodeMcpEvalFixture(
 	tool: CompiledOperationTool,
 	path: string,
 	filter?: string,
+	knownValues: INodeParameters = {},
 ): DynamicResolutionResult | undefined {
 	const task = currentTask();
 	if (!task) return undefined;
+	if (toolset.endpoint.binding.nodeType === 'n8n-nodes-base.notion') {
+		const propertyKey = notionPropertyKey(knownValues);
+		const resolutionKey = propertyKey ? `${path}:${propertyKey}` : path;
+		const options =
+			task.fixtures.resolutionOptions[resolutionKey] ?? task.fixtures.resolutionOptions[path];
+		const kind = path === 'dataSourceId' ? 'resourceLocator' : 'options';
+		if (!options) return { kind, appliesTo: path, values: [] };
+		const values = options.filter(
+			(option) => !filter || option.name.toLowerCase().includes(filter.toLowerCase()),
+		);
+		return {
+			kind,
+			appliesTo: path,
+			values,
+		};
+	}
 	if (toolset.endpoint.binding.nodeType === 'n8n-nodes-base.gmail') {
 		if (tool.resource === 'message' && tool.operation === 'getAll' && path === 'filters.labelIds') {
 			return {
@@ -153,6 +208,37 @@ export function executeNodeMcpEvalFixture(
 	if (!task) return undefined;
 	const operationKey = `${tool.resource ?? 'unknown'}.${tool.operation ?? 'execute'}`;
 	const operationOutput = task.fixtures.operationOutputs[operationKey];
+	if (toolset.endpoint.binding.nodeType === 'n8n-nodes-base.notion') {
+		if (task.id === 'search-notion') {
+			const valid =
+				(tool.resource === 'page' &&
+					tool.operation === 'search' &&
+					typeof parameters.text === 'string' &&
+					parameters.text.toLowerCase().includes('company handbook')) ||
+				(tool.resource === 'page' &&
+					tool.operation === 'getMarkdown' &&
+					locatorValue(parameters.pageId) === '3ab4fcc8-bcd0-819c-bcab-f038f40ccb0a');
+			if (!valid || !operationOutput) {
+				return fixtureError(`Evaluation fixture rejected invalid ${operationKey} input`);
+			}
+			return {
+				status: 'success' as const,
+				data: operationOutput.map((item) => ({ json: item })),
+			};
+		}
+		if (
+			task.id === 'create-notion-database-page' &&
+			tool.resource === 'databasePage' &&
+			tool.operation === 'create' &&
+			isValidNotionCreate(parameters)
+		) {
+			return {
+				status: 'success' as const,
+				data: [{ json: { ...task.fixtures.executionOutput, receivedParameters: parameters } }],
+			};
+		}
+		return fixtureError(`Evaluation fixture rejected invalid ${operationKey} input`);
+	}
 	if (operationOutput) {
 		return {
 			status: 'success' as const,
