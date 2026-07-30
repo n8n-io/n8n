@@ -143,8 +143,11 @@ jobs:
       # + container telemetry every 60s and ship it with the results artifact.
       #
       # `docker stats` names a lane burning a core but not the process inside it,
-      # and every n8n process reports `comm=node` — so sample per-lane instead.
-      # Args are safe here (container argv, unlike the host's `docker run -e`).
+      # and `comm` is useless for that (Node reports `MainThread`) — so sample
+      # per-lane. Args are safe here (container argv, unlike `docker run -e`).
+      # Sorted in the shell, not via `ps --sort`: `docker top` has to parse that
+      # output and the runner's ps rejected the flag. Errors are NOT swallowed —
+      # a silent variant shipped broken once (run 30526483810).
       - name: Start host telemetry sampler
         run: |
           mkdir -p eval-diag
@@ -158,8 +161,8 @@ jobs:
               docker stats --no-stream --format "{{.Name}} cpu={{.CPUPerc}} mem={{.MemUsage}}"
               ps -eo rss=,pid=,comm= --sort=-rss | head -5
               for c in $(docker ps --format "{{.Names}}" --filter name=n8n-eval-); do
-                docker top "$c" -o pid,pcpu,args --sort=-pcpu 2>/dev/null |
-                  sed -n "2,3p" | sed "s|^|$c |" | cut -c1-150
+                docker top "$c" -o pid,pcpu,args 2>&1 |
+                  tail -n +2 | sort -k2 -rn | head -2 | sed "s|^|$c |" | cut -c1-150
               done
               echo
             } >> eval-diag/host-samples.log 2>&1
