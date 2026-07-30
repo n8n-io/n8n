@@ -147,9 +147,7 @@ describe('AgentModelCatalogService', () => {
 
 	it('leaves reasoning support unknown for managed models missing from the catalog', async () => {
 		const { service, lookupService } = makeService();
-		lookupService.list.mockResolvedValue([
-			{ name: 'Claude Brand New', value: 'claude-brand-new' },
-		]);
+		lookupService.list.mockResolvedValue([{ name: 'Claude Brand New', value: 'claude-brand-new' }]);
 
 		const result = await service.getProviderModels(
 			user,
