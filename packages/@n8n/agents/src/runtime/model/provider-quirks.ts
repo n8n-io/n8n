@@ -68,7 +68,12 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		relaxStrictJsonSchemaForRawOutput: true,
 		thinkingToProviderOptions: (thinking) => {
 			const cfg = thinking as OpenAIThinkingConfig;
-			return { openai: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
+			return {
+				openai: {
+					reasoningEffort: cfg.reasoningEffort ?? 'medium',
+					reasoningSummary: null,
+				},
+			};
 		},
 	},
 	groq: {

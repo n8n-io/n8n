@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
@@ -81,6 +82,7 @@ describe('PollTriggerJobRegistrar', () => {
 						firstRunAt: NEXT_TEN,
 					},
 				],
+				ScheduledJobMisfirePolicy.Skip,
 			);
 		});
 
@@ -205,6 +207,7 @@ describe('PollTriggerJobRegistrar', () => {
 				POLL_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[],
+				ScheduledJobMisfirePolicy.Skip,
 			);
 		});
 

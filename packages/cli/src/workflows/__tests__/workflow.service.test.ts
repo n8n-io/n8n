@@ -1433,6 +1433,123 @@ describe('WorkflowService', () => {
 		});
 	});
 
+	describe('deactivateWorkflowAsSystem()', () => {
+		let workflowService: WorkflowService;
+		let workflowRepositoryMock: MockProxy<WorkflowRepository>;
+		let workflowPublishHistoryRepositoryMock: MockProxy<WorkflowPublishHistoryRepository>;
+		let globalConfigMock: MockProxy<GlobalConfig>;
+		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
+		let externalHooksMock: MockProxy<ExternalHooks>;
+
+		const WORKFLOW_ID = 'workflow-1';
+		const ACTIVE_VERSION_ID = 'v1';
+
+		function makeWorkflowEntity(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
+			const workflow = new WorkflowEntity();
+			workflow.id = WORKFLOW_ID;
+			workflow.name = 'My workflow';
+			workflow.versionId = 'v2';
+			workflow.activeVersionId = ACTIVE_VERSION_ID;
+			workflow.active = true;
+			workflow.nodes = [];
+			workflow.connections = {};
+			workflow.updatedAt = new Date();
+			Object.assign(workflow, overrides);
+			return workflow;
+		}
+
+		beforeEach(() => {
+			workflowRepositoryMock = mock();
+			workflowPublishHistoryRepositoryMock = mock();
+			globalConfigMock = mock<GlobalConfig>({
+				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+			});
+			activeWorkflowManagerMock = mock();
+			externalHooksMock = mock<ExternalHooks>();
+
+			workflowRepositoryMock.create.mockImplementation(
+				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
+			);
+
+			workflowService = new WorkflowService(
+				mock(), // logger
+				mock(), // sharedWorkflowRepository
+				workflowRepositoryMock, // workflowRepository
+				mock(), // workflowTagMappingRepository
+				mock(), // ownershipService
+				mock(), // tagService
+				mock(), // workflowHistoryService
+				externalHooksMock, // externalHooks
+				activeWorkflowManagerMock, // activeWorkflowManager
+				mock(), // roleService
+				mock(), // projectService
+				mock(), // executionPersistence
+				mock(), // eventService
+				globalConfigMock, // globalConfig
+				mock(), // folderRepository
+				mock(), // workflowFinderService
+				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
+				mock(), // outboxRepository
+				mock(), // workflowValidationService
+				mock(), // nodeTypes
+				mock(), // webhookService
+				mock(), // licenseState
+				mock(), // projectRepository
+				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowHookContextService
+			);
+		});
+
+		test('proceeds with deactivation when the workflow.deactivate hook fails', async () => {
+			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
+			externalHooksMock.run.mockRejectedValue(new Error('Code freeze in effect'));
+
+			await expect(
+				workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID),
+			).resolves.toBeUndefined();
+
+			expect(activeWorkflowManagerMock.remove).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				expect.objectContaining({ active: false, activeVersionId: null }),
+			);
+			expect(workflowPublishHistoryRepositoryMock.addRecord).toHaveBeenCalledWith({
+				workflowId: WORKFLOW_ID,
+				versionId: ACTIVE_VERSION_ID,
+				event: 'deactivated',
+				userId: null,
+			});
+		});
+
+		test('does nothing when the workflow does not exist', async () => {
+			workflowRepositoryMock.findOne.mockResolvedValue(null);
+
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID);
+
+			expect(externalHooksMock.run).not.toHaveBeenCalled();
+			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
+			expect(workflowPublishHistoryRepositoryMock.addRecord).not.toHaveBeenCalled();
+		});
+
+		test('does nothing when the workflow is not published', async () => {
+			workflowRepositoryMock.findOne.mockResolvedValue(
+				makeWorkflowEntity({ active: false, activeVersionId: null }),
+			);
+
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID);
+
+			expect(externalHooksMock.run).not.toHaveBeenCalled();
+			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
+			expect(workflowPublishHistoryRepositoryMock.addRecord).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('delete()', () => {
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;

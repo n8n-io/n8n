@@ -1,7 +1,7 @@
-import type { TelemetrySettings } from 'ai';
+import type { TelemetryOptions } from 'ai';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { buildExperimentalTelemetry } from './telemetry-options';
+import { buildAiSdkTelemetry } from './telemetry-options';
 import { Telemetry } from '../../sdk/telemetry';
 import type { AttributeValue, BuiltProviderTool, BuiltTelemetry, BuiltTool } from '../../types';
 import type { ExecutionOptions } from '../../types/sdk/agent';
@@ -126,7 +126,7 @@ function buildGenAiRootAttributes(
 /**
  * Owns all telemetry concerns for a single agent runtime: resolving the
  * effective telemetry config, mapping it to the AI SDK's
- * `experimental_telemetry` shape, building LangSmith/AI-SDK span attributes,
+ * `telemetry` shape, building LangSmith/AI-SDK span attributes,
  * and wrapping the generate/stream loops and tool calls in active spans.
  *
  * Keeps provider-specific attribute formatting out of the core loop. Holds a
@@ -156,11 +156,11 @@ export class RuntimeTelemetry {
 		await Telemetry.forceFlush(this.resolve(options));
 	}
 
-	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
+	/** Map resolved telemetry to the AI SDK's telemetry shape. */
 	buildTelemetryOptions(options?: ExecutionOptions): {
-		experimental_telemetry?: TelemetrySettings;
+		telemetry?: TelemetryOptions;
 	} {
-		return buildExperimentalTelemetry(this.resolve(options), {
+		return buildAiSdkTelemetry(this.resolve(options), {
 			fallbackFunctionId: this.config.name,
 		});
 	}

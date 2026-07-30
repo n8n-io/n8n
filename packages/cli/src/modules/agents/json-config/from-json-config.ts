@@ -223,9 +223,8 @@ export async function buildFromJson(
 
 	// Config options
 	if (config.config) {
-		if (config.config.thinking) {
-			const { provider, ...rest } = config.config.thinking;
-			agent.thinking(provider, rest);
+		if (config.config.reasoning) {
+			agent.reasoning(config.config.reasoning);
 		}
 		if (config.config.promptCaching) {
 			agent.promptCaching(config.config.promptCaching);

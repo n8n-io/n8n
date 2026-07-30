@@ -9,8 +9,10 @@ export type MessageContent =
 	| ContentToolCall
 	| ContentInvalidToolCall
 	| ContentReasoning
+	| ContentReasoningFile
 	| ContentFile
 	| ContentCitation
+	| ContentCustom
 	| ContentProvider;
 
 export interface ContentMetadata {
@@ -81,6 +83,17 @@ export type ContentFile = ContentMetadata & {
 	 * be returned as binary data.
 	 */
 	data: Uint8Array | ArrayBuffer | Buffer | string;
+};
+
+export type ContentReasoningFile = ContentMetadata & {
+	type: 'reasoning-file';
+	data: ContentFile['data'];
+	mediaType: string;
+};
+
+export type ContentCustom = ContentMetadata & {
+	type: 'custom';
+	kind: `${string}.${string}`;
 };
 
 export type ContentToolCall = ContentMetadata & {

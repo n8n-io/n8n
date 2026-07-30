@@ -233,6 +233,8 @@ import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-Crea
 import { AddAvailableInMcpToAgents1784897791636 } from '../common/1784897791636-AddAvailableInMcpToAgents';
 import { AddIsFirstPartyToOAuthClients1785162364001 } from '../common/1785162364001-AddIsFirstPartyToOAuthClients';
 import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
+import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/1785247194306-CrashStaleEnqueuedExecutions';
+import { AddMisfirePolicyToScheduler1785247194307 } from '../common/1785247194307-AddMisfirePolicyToScheduler';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -471,4 +473,6 @@ export const postgresMigrations: Migration[] = [
 	ChangeInstalledNodeVersionType1785162364000,
 	AddIsFirstPartyToOAuthClients1785162364001,
 	AddAgentFileStorageColumns1785186578138,
+	CrashStaleEnqueuedExecutions1785247194306,
+	AddMisfirePolicyToScheduler1785247194307,
 ];

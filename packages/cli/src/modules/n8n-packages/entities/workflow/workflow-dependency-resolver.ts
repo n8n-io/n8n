@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { WorkflowRequirementsExtractor } from './workflow-requirements.extractor';
+import { extractWorkflowRequirements } from './references/extract-workflow-requirements';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
 export interface WorkflowDependencyResolveRequest {
@@ -13,10 +13,7 @@ export interface WorkflowDependencyResolveRequest {
 
 @Service()
 export class WorkflowDependencyResolver {
-	constructor(
-		private readonly workflowFinder: WorkflowFinderService,
-		private readonly workflowRequirementsExtractor: WorkflowRequirementsExtractor,
-	) {}
+	constructor(private readonly workflowFinder: WorkflowFinderService) {}
 
 	async resolve(
 		request: WorkflowDependencyResolveRequest,
@@ -42,7 +39,7 @@ export class WorkflowDependencyResolver {
 				// But the missing/inaccessible IDs are kept as direct requirements from their parent.
 				if (!workflow) continue;
 
-				const extractedRequirements = this.workflowRequirementsExtractor.extract(workflow);
+				const extractedRequirements = extractWorkflowRequirements(workflow);
 				requirements.push(...extractedRequirements);
 
 				for (const { referencedWorkflowId } of extractedRequirements) {
