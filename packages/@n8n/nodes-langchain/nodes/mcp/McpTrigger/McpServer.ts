@@ -595,7 +595,7 @@ export class McpServer {
 						action,
 					});
 				}
-				if (this.resolveFunctions[callId]) this.resolveFunctions[callId]();
+				this.resolveFunctions[callId]?.();
 				return MessageFormatter.formatCredentialGateElicited(outcomes);
 			} catch (error) {
 				this.logger.warn(
@@ -606,7 +606,7 @@ export class McpServer {
 			}
 		}
 
-		if (this.resolveFunctions[callId]) this.resolveFunctions[callId]();
+		this.resolveFunctions[callId]?.();
 		return MessageFormatter.formatCredentialGate(gateResult);
 	}
 
@@ -676,9 +676,7 @@ export class McpServer {
 
 						// Resolve handlePostMessage so webhook can return and enqueue execution.
 						// The handler continues running asynchronously, waiting for worker response.
-						if (this.resolveFunctions[callId]) {
-							this.resolveFunctions[callId]();
-						}
+						this.resolveFunctions[callId]?.();
 
 						const strategy = this.executionCoordinator.getStrategy() as QueuedExecutionStrategy;
 						const result = await strategy.executeTool(requestedTool, toolArguments, {
