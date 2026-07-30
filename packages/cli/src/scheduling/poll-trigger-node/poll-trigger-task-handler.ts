@@ -87,6 +87,10 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				return report.dispatched();
 			}
 
+			if (await this.workflowRepository.isActive(workflowId)) {
+				await pollFunctions.__commitCursor();
+			}
+
 			this.logger.debug('Poll returned no new data; nothing to hand off', {
 				taskId: task.id,
 				jobId: task.jobId,

@@ -22,6 +22,7 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
+	PollCursor,
 } from 'n8n-workflow';
 import {
 	SubworkflowOperationError,
@@ -40,6 +41,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
@@ -62,6 +64,7 @@ export class WorkflowExecutionService {
 		private readonly executionContextService: ExecutionContextService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly pollCursorService: PollCursorService,
 	) {}
 
 	async runWorkflow(
@@ -106,6 +109,78 @@ export class WorkflowExecutionService {
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+	}
+
+	async runPolledWorkflow(
+		workflowData: IWorkflowBase,
+		node: INode,
+		data: INodeExecutionData[][],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		cursor: PollCursor,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<string> {
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node,
+				data: {
+					main: data,
+				},
+				source: null,
+			},
+		];
+
+		const executionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack,
+			},
+		});
+
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflowData.id,
+		);
+
+		const runData: IWorkflowExecutionDataProcess = {
+			userId: additionalData.userId,
+			executionMode: mode,
+			executionData,
+			workflowData,
+			projectId,
+			projectName,
+		};
+
+		await this.workflowRunner.establishContextForPersistence(runData);
+
+		const payload: CreateExecutionPayload = {
+			data: executionData,
+			mode,
+			finished: false,
+			workflowData,
+			status: 'new',
+			workflowId: workflowData.id,
+			retryOf: runData.retryOf ?? undefined,
+			tracingContext: runData.tracingContext ?? null,
+		};
+
+		const executionId = await this.pollCursorService.commitWithExecution({
+			workflowId: workflowData.id,
+			nodeId: node.id,
+			cursor,
+			payload,
+		});
+
+		await this.pollCursorService.mirrorToStaticData(workflowData.id, node.name, cursor);
+
+		await this.workflowRunner.run(
+			runData,
+			true,
+			undefined,
+			{ executionId, expectedStatus: 'new' },
+			responsePromise,
+		);
+
+		return executionId;
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {

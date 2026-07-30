@@ -107,6 +107,8 @@ export class PollTriggerExecutor {
 
 						if (pollResponse !== null) {
 							pollFunctions.__emit(pollResponse);
+						} else if (!testingTrigger) {
+							await pollFunctions.__commitCursor();
 						}
 
 						span.setStatus({ code: SpanStatus.ok });
