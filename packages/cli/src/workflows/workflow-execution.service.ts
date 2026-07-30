@@ -167,19 +167,30 @@ export class WorkflowExecutionService {
 			tracingContext: runData.tracingContext ?? null,
 		};
 
-		const executionId = await this.pollCursorService.commitWithExecution({
+		const { executionId, previousCursor } = await this.pollCursorService.commitWithExecution({
 			workflowId: workflowData.id,
 			nodeId: node.id,
 			cursor,
 			payload,
 		});
 
-		await this.pollCursorService.mirrorToStaticData(
-			workflowData.id,
-			node.name,
-			cursor,
-			workflow.getStaticData('node', node),
-		);
+		try {
+			await this.pollCursorService.mirrorToStaticData(
+				workflowData.id,
+				node.name,
+				cursor,
+				workflow.getStaticData('node', node),
+				previousCursor,
+			);
+		} catch (error) {
+			this.errorReporter.error(error, { executionId, shouldBeLogged: false });
+			this.logger.error('Failed to mirror the committed poll cursor to workflow static data', {
+				executionId,
+				workflowId: workflowData.id,
+				nodeName: node.name,
+				error,
+			});
+		}
 
 		if (establishContextError) {
 			await this.workflowRunner.registerAndFailExecution(

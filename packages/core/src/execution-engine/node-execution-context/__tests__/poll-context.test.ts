@@ -134,14 +134,35 @@ describe('PollContext', () => {
 			});
 		});
 
-		it('should replace the keys already in the static data with the staged cursor', async () => {
-			const nodeStaticData: IDataObject = { lastTimeChecked: '2026-07-28T10:00:00.000Z' };
+		it('should replace the keys an earlier staged cursor carried', async () => {
+			const nodeStaticData: IDataObject = {};
 			const context = buildContext(nodeStaticData);
 
+			context.setCursor({ lastTimeChecked: '2026-07-28T10:00:00.000Z' });
 			context.setCursor({ lastItemId: 'a' });
 
 			await expect(context.getCursor()).resolves.toEqual({ lastItemId: 'a' });
 			expect(nodeStaticData).toEqual({ lastItemId: 'a' });
+		});
+
+		it('should keep static-data keys no staged cursor carried', () => {
+			const nodeStaticData: IDataObject = { seenIds: ['x'] };
+			const context = buildContext(nodeStaticData);
+
+			context.setCursor({ lastItemId: 'a' });
+
+			expect(nodeStaticData).toEqual({ seenIds: ['x'], lastItemId: 'a' });
+		});
+
+		it('should not persist a mutation of the object getCursor returned', async () => {
+			const nodeStaticData: IDataObject = { lastItemId: 'a' };
+			const context = buildContext(nodeStaticData);
+
+			const cursor = (await context.getCursor()) as IDataObject;
+			cursor.lastItemId = 'mutated';
+
+			expect(nodeStaticData).toEqual({ lastItemId: 'a' });
+			await expect(context.getCursor()).resolves.toEqual({ lastItemId: 'a' });
 		});
 
 		it('should keep a key the staged cursor restates', async () => {

@@ -1,4 +1,3 @@
-
 import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -276,10 +275,19 @@ export class TriggerExecutionContextFactory {
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
-			const stagedCursorStore = new AsyncLocalStorage<{ cursor: PollCursor | null }>();
+			const stagedCursorStore = new AsyncLocalStorage<{
+				cursor: PollCursor | null;
+				closed: boolean;
+			}>();
 
-			const __runPoll = async <T>(poll: () => Promise<T>): Promise<T> =>
-				await stagedCursorStore.run({ cursor: null }, poll);
+			const __runPoll = async <T>(poll: () => Promise<T>): Promise<T> => {
+				const store = { cursor: null, closed: false };
+				try {
+					return await stagedCursorStore.run(store, poll);
+				} finally {
+					store.closed = true;
+				}
+			};
 
 			const takeStagedCursor = (): PollCursor | null => {
 				const staged = stagedCursorStore.getStore();
@@ -348,18 +356,28 @@ export class TriggerExecutionContextFactory {
 				return new PollContext(workflow, node, additionalData, mode, activation, __emit, __emitError);
 			}
 
-			const getCursor = async () =>
-				await this.pollCursorService.readCursor(
+			const getCursor = async () => {
+				const staged = stagedCursorStore.getStore();
+				if (staged?.cursor !== undefined && staged?.cursor !== null) return { ...staged.cursor };
+
+				return await this.pollCursorService.readCursor(
 					workflowData.id,
 					node.id,
 					workflow.getStaticData('node', node),
 				);
+			};
 
 			const setCursor = (cursor: PollCursor) => {
 				const staged = stagedCursorStore.getStore();
 				if (staged === undefined) {
+					throw new UnexpectedError(
+						`Poll node "${node.name}" staged a cursor outside of a poll; __runPoll was not entered`,
+						{ extra: { workflowId: workflowData.id, nodeId: node.id } },
+					);
+				}
+				if (staged.closed) {
 					this.logger.warn(
-						`Poll node "${node.name}" staged a cursor outside of a poll, so the cursor was discarded`,
+						`Poll node "${node.name}" staged a cursor after its poll had already finished, so the cursor was discarded`,
 						{ workflowId: workflowData.id, nodeId: node.id },
 					);
 					return;
