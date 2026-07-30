@@ -152,10 +152,7 @@ export class WaitTracker {
 
 		// Start the execution again
 		try {
-			await this.workflowRunner.run(data, false, false, {
-				executionId,
-				expectedStatus: 'waiting',
-			});
+			await this.workflowRunner.run(data, false, false, executionId);
 		} catch (error) {
 			if (error instanceof ExecutionAlreadyResumingError) {
 				// This execution is already being resumed by another child execution

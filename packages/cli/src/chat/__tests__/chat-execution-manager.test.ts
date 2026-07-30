@@ -65,10 +65,7 @@ describe('ChatExecutionManager', () => {
 
 			await chatExecutionManager.runWorkflow(execution, message);
 
-			expect(workflowRunner.run).toHaveBeenCalledWith(runData, true, true, {
-				executionId: '1',
-				expectedStatus: 'waiting',
-			});
+			expect(workflowRunner.run).toHaveBeenCalledWith(runData, true, true, '1');
 		});
 	});
 

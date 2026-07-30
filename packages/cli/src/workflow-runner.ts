@@ -238,9 +238,16 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
-		existingExecution?: ResumableExecution,
+		existingExecutionId?: string | ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		const existingExecution: ResumableExecution | undefined =
+			existingExecutionId === undefined
+				? undefined
+				: typeof existingExecutionId === 'string'
+					? { executionId: existingExecutionId, expectedStatus: 'waiting' }
+					: existingExecutionId;
+
 		const establishContextError = await this.establishContextBeforePersist(data);
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);

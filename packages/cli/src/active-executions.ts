@@ -64,8 +64,18 @@ export class ActiveExecutions {
 	 */
 	async add(
 		executionData: IWorkflowExecutionDataProcess,
-		existingExecution?: ResumableExecution,
+		existingExecutionId?: string | ResumableExecution,
 	): Promise<string> {
+		// A bare id is a resume of an execution left `waiting` (the only case before
+		// `ResumableExecution` existed); callers reclaiming any other status pass the
+		// object form explicitly.
+		const existingExecution: ResumableExecution | undefined =
+			existingExecutionId === undefined
+				? undefined
+				: typeof existingExecutionId === 'string'
+					? { executionId: existingExecutionId, expectedStatus: 'waiting' }
+					: existingExecutionId;
+
 		let executionStatus: ExecutionStatus = existingExecution ? 'running' : 'new';
 		const mode = executionData.executionMode;
 		const capacityReservation = new ConcurrencyCapacityReservation(this.concurrencyControl);

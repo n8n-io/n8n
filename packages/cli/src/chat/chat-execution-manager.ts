@@ -36,10 +36,12 @@ export class ChatExecutionManager {
 	) {}
 
 	async runWorkflow(execution: IExecutionResponse, message: ChatMessage) {
-		await this.workflowRunner.run(await this.getRunData(execution, message), true, true, {
-			executionId: execution.id,
-			expectedStatus: 'waiting',
-		});
+		await this.workflowRunner.run(
+			await this.getRunData(execution, message),
+			true,
+			true,
+			execution.id,
+		);
 	}
 
 	async cancelExecution(executionId: string) {

@@ -162,7 +162,7 @@ describe('WaitTracker', () => {
 				},
 				false,
 				false,
-				{ executionId: execution.id, expectedStatus: 'waiting' },
+				execution.id,
 			);
 		});
 
@@ -185,7 +185,7 @@ describe('WaitTracker', () => {
 				}),
 				false,
 				false,
-				{ executionId: execution.id, expectedStatus: 'waiting' },
+				execution.id,
 			);
 		});
 
@@ -264,7 +264,7 @@ describe('WaitTracker', () => {
 					},
 					false,
 					false,
-					{ executionId: execution.id, expectedStatus: 'waiting' },
+					execution.id,
 				);
 
 				// ACT 1
@@ -285,7 +285,7 @@ describe('WaitTracker', () => {
 					},
 					false,
 					false,
-					{ executionId: parentExecution.id, expectedStatus: 'waiting' },
+					parentExecution.id,
 				);
 			});
 
@@ -334,7 +334,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					{ executionId: parentExecution.id, expectedStatus: 'waiting' },
+					parentExecution.id,
 				);
 			});
 
@@ -411,10 +411,13 @@ describe('WaitTracker', () => {
 
 				// ASSERT 1
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-				expect(workflowRunner.run).toHaveBeenNthCalledWith(1, expect.any(Object), false, false, {
-					executionId: execution.id,
-					expectedStatus: 'waiting',
-				});
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					1,
+					expect.any(Object),
+					false,
+					false,
+					execution.id,
+				);
 
 				// ACT 2
 				subExecutionPromise.resolve(subworkflowResults);
@@ -451,10 +454,13 @@ describe('WaitTracker', () => {
 
 				// Verify parent was resumed
 				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
-				expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
-					executionId: parentExecution.id,
-					expectedStatus: 'waiting',
-				});
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					2,
+					expect.any(Object),
+					false,
+					false,
+					parentExecution.id,
+				);
 			});
 
 			it('should not resume parent execution if it has already finished', async () => {
@@ -525,7 +531,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					{ executionId: childExecution.id, expectedStatus: 'waiting' },
+					childExecution.id,
 				);
 			});
 
@@ -552,7 +558,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					{ executionId: execution.id, expectedStatus: 'waiting' },
+					execution.id,
 				);
 
 				// ACT 2 - Child execution goes into waiting state
@@ -658,10 +664,13 @@ describe('WaitTracker', () => {
 					// run() is called once for the sub-workflow, then once per parent resume attempt.
 					// The second call is the first parent attempt; all attempts fail, so run() is called 4 times total
 					// (sub-workflow + the 3 exhausted retries) and the final failure is logged rather than lost
-					expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
-						executionId: parentExecution.id,
-						expectedStatus: 'waiting',
-					});
+					expect(workflowRunner.run).toHaveBeenNthCalledWith(
+						2,
+						expect.any(Object),
+						false,
+						false,
+						parentExecution.id,
+					);
 					expect(workflowRunner.run).toHaveBeenCalledTimes(4);
 					expect(logger.error).toHaveBeenCalled();
 				});
@@ -686,10 +695,12 @@ describe('WaitTracker', () => {
 					// Parent ultimately resumed (subworkflow + failed parent resume attempt + successful retry = 3 runs),
 					// and because it recovered, nothing is logged as an error
 					expect(workflowRunner.run).toHaveBeenCalledTimes(3);
-					expect(workflowRunner.run).toHaveBeenLastCalledWith(expect.any(Object), false, false, {
-						executionId: parentExecution.id,
-						expectedStatus: 'waiting',
-					});
+					expect(workflowRunner.run).toHaveBeenLastCalledWith(
+						expect.any(Object),
+						false,
+						false,
+						parentExecution.id,
+					);
 					expect(logger.error).not.toHaveBeenCalled();
 				});
 
