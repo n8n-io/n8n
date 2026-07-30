@@ -1,0 +1,22 @@
+packages/@n8n/db/src/repositories/__tests__/workflow-publish-history.repository.test.ts
+  s_423801ef3184bb::t_f13fb74c0e239e 39-42,48
+  s_423801ef3184bb::t_e0213faf28f290 1-38,43-47,49-78
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_423801ef3184bb::t_32d2f1fe8ffd73 72-94,99,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e783601e248bf8946dab3a6f76f08c3c532b73fd",
+  "prompts": {},
+  "sessions": {
+    "s_423801ef3184bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb394-a8d4-75c1-b5f9-78ce6f3bff47",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
