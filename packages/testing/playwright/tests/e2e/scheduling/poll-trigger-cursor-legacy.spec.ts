@@ -40,6 +40,7 @@ test.describe(
 					timeout: 15_000,
 				})
 				.toEqual({ lastItemId: 1 });
+			expect(await api.getPollerCursor(workflowId, nodeId)).toBeNull();
 
 			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
@@ -50,13 +51,14 @@ test.describe(
 					timeout: 15_000,
 				})
 				.toEqual({ lastItemId: 2 });
+			expect(await api.getPollerCursor(workflowId, nodeId)).toBeNull();
 		});
 
 		test('should restart from the first item when the workflow static data is cleared', async ({
 			api,
 			services,
 		}) => {
-			const { workflowId } = await expectPollTriggerFires(
+			const { workflowId, nodeId } = await expectPollTriggerFires(
 				api,
 				services.proxy,
 				makePollTriggerWorkflow,
@@ -66,6 +68,7 @@ test.describe(
 			await clearStaticDataAndReactivate(api, workflowId);
 
 			await expectNewTriggerExecution(api, workflowId, afterSeedPoll);
+			expect(await api.getPollerCursor(workflowId, nodeId)).toBeNull();
 		});
 	},
 );
