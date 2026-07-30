@@ -556,6 +556,41 @@ describe('EvalExecutionService', () => {
 			}
 		});
 
+		// Hint generation is an LLM call, so it has to come out of the caller's
+		// budget — otherwise the request outlives the deadline it declared.
+		it('charges setup time against the caller budget', async () => {
+			vi.useFakeTimers();
+			try {
+				let rejectRun: (error: Error) => void = () => {};
+				activeExecutions.getPostExecutePromise.mockImplementation(
+					async () =>
+						await new Promise<never>((_resolve, reject) => {
+							rejectRun = reject;
+						}),
+				);
+				activeExecutions.stopExecution.mockImplementation((_id, cancellationError) => {
+					rejectRun(cancellationError);
+				});
+				// Setup burns 25s of the 30s budget. The clock moves without running
+				// timers — advancing them here would re-enter the timer queue the test
+				// drives below.
+				generateMockHintsMock.mockImplementation(async () => {
+					vi.setSystemTime(Date.now() + 25_000);
+					return makeEmptyHints();
+				});
+
+				const pending = service.executeWithLlmMock('wf-1', makeUser(), { timeoutMs: 30_000 });
+				// Only the 5s left after setup, not another full 30s.
+				await vi.advanceTimersByTimeAsync(5_001);
+				const result = await pending;
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalled();
+				expect(result.errors).toEqual([expect.stringContaining('30s eval budget')]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('keeps waiting indefinitely when the caller sends no budget', async () => {
 			await service.executeWithLlmMock('wf-1', makeUser());
 

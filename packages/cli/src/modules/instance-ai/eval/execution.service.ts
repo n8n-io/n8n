@@ -118,6 +118,13 @@ export class EvalExecutionService {
 		user: User,
 		options: InstanceAiEvalExecutionRequest = {},
 	): Promise<InstanceAiEvalExecutionResult> {
+		// Anchored at receipt, before any setup: setup is LLM calls, so a budget
+		// anchored later would expire after the caller's own deadline.
+		const budget: RunBudget | undefined =
+			options.timeoutMs === undefined
+				? undefined
+				: { totalMs: options.timeoutMs, deadlineAt: Date.now() + options.timeoutMs };
+
 		// Eval routes through WorkflowRunner with a configureAdditionalData closure
 		// that doesn't survive queue serialization. Refuse upfront so vendor calls
 		// can never leak to real providers from a worker that never wires the mock.
@@ -204,11 +211,7 @@ export class EvalExecutionService {
 			options.scenarioHints,
 			interceptionEnabled,
 			vendorLlmRouting,
-			// Anchored at receipt: setup is LLM calls, so a run-anchored budget would
-			// expire after the caller's own deadline.
-			options.timeoutMs === undefined
-				? undefined
-				: { totalMs: options.timeoutMs, deadlineAt: Date.now() + options.timeoutMs },
+			budget,
 		);
 	}
 

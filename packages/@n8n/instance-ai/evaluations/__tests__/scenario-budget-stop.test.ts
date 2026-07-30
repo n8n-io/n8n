@@ -1,7 +1,11 @@
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type {
+	InstanceAiEvalAgentExecutionResult,
+	InstanceAiEvalExecutionResult,
+} from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import type { N8nClient } from '../clients/n8n-client';
+import { executeAgentScenario } from '../harness/agent-execution';
 import type { EvalLogger } from '../harness/logger';
 import { executeScenario } from '../harness/scenario-execution';
 import type { ExecutionScenario } from '../types';
@@ -34,6 +38,17 @@ function execResult(errors: string[]): InstanceAiEvalExecutionResult {
 	} as InstanceAiEvalExecutionResult;
 }
 
+function agentResult(errors: string[]): InstanceAiEvalAgentExecutionResult {
+	return {
+		runId: 'run-1',
+		success: false,
+		errors,
+		finalText: '',
+		toolCalls: [],
+		modelTurns: [],
+	} as unknown as InstanceAiEvalAgentExecutionResult;
+}
+
 describe('server-side budget stop', () => {
 	it('throws onto the timeout path instead of returning a judgeable failure', async () => {
 		const client = mock<N8nClient>();
@@ -56,6 +71,35 @@ describe('server-side budget stop', () => {
 		const failure = await executeScenario(client, 'wf-1', scenario, [], silentLogger).catch(
 			(error: unknown) => error,
 		);
+
+		expect(String(failure)).not.toMatch(/eval budget|operation was aborted/i);
+	});
+
+	// The agent path forwards the same server budget, so it needs the same guard.
+	it('throws onto the timeout path for a stopped agent run', async () => {
+		const client = mock<N8nClient>();
+		client.getPersonalProjectId.mockResolvedValue('proj-1');
+		client.executeAgentWithLlmMock.mockResolvedValue(
+			agentResult(['Execution exceeded its 895s eval budget and was stopped']),
+		);
+
+		await expect(
+			executeAgentScenario(client, 'agent-1', scenario, 'context', silentLogger),
+		).rejects.toThrow(/operation was aborted due to timeout/i);
+	});
+
+	it('leaves an ordinary agent failure to the judge', async () => {
+		const client = mock<N8nClient>();
+		client.getPersonalProjectId.mockResolvedValue('proj-1');
+		client.executeAgentWithLlmMock.mockResolvedValue(agentResult(['Tool call returned a 500']));
+
+		const failure = await executeAgentScenario(
+			client,
+			'agent-1',
+			scenario,
+			'context',
+			silentLogger,
+		).catch((error: unknown) => error);
 
 		expect(String(failure)).not.toMatch(/eval budget|operation was aborted/i);
 	});
