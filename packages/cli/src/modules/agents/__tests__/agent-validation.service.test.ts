@@ -176,7 +176,7 @@ describe('AgentValidationService — structured issues', () => {
 		);
 
 		// Gateway serves the model's provider → the managed credential is valid.
-		aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('openAiApi');
+		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue('openAiApi');
 		const served = await service.validateAgentConfiguration(
 			agentId,
 			projectId,
@@ -186,8 +186,8 @@ describe('AgentValidationService — structured issues', () => {
 			expect.arrayContaining([expect.objectContaining({ path: 'credential' })]),
 		);
 
-		// Gateway does not serve the provider → incompatible_credential.
-		aiGatewayService.getCredentialTypeForProvider.mockResolvedValue(undefined);
+		// Cached config present but does not serve the provider → incompatible_credential.
+		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(null);
 		const unserved = await service.validateAgentConfiguration(
 			agentId,
 			projectId,
@@ -200,15 +200,14 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('flags the managed tag as incompatible (not throws) when the gateway config lookup fails', async () => {
+	it('does not flag the managed tag when gateway support cannot be determined (no cached config)', async () => {
 		const { service, agentRepository, aiGatewayService } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({ ...runnableConfig, credential: AI_GATEWAY_MANAGED_TAG }),
 		);
-		// Licensed but the gateway config is temporarily unavailable → the lookup rejects.
-		aiGatewayService.getCredentialTypeForProvider.mockRejectedValue(
-			new Error('config fetch throttled'),
-		);
+		// No cached config (e.g. cold start or a throttled/failed fetch) → support is
+		// unknown. The static validator must fail open rather than block a working agent.
+		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(undefined);
 
 		const result = await service.validateAgentConfiguration(
 			agentId,
@@ -216,10 +215,8 @@ describe('AgentValidationService — structured issues', () => {
 			makeCredentialProvider([]),
 		);
 
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ code: 'incompatible_credential', path: 'credential' }),
-			]),
+		expect(result.issues).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ path: 'credential' })]),
 		);
 	});
 

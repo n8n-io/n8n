@@ -917,4 +917,52 @@ describe('AiGatewayService', () => {
 			expect(requestMock).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('getCredentialTypeForProviderCached()', () => {
+		const MULTI_PROVIDER_CONFIG = {
+			nodes: [],
+			credentialTypes: ['openAiApi', 'anthropicApi'],
+			providerConfig: {
+				openAiApi: { gatewayPath: '/v1/gateway/openai/v1', urlField: 'url', apiKeyField: 'apiKey' },
+				anthropicApi: {
+					gatewayPath: '/v1/gateway/anthropic',
+					urlField: 'url',
+					apiKeyField: 'apiKey',
+				},
+			},
+		};
+
+		it('returns undefined (unknown) without fetching when no config is cached', async () => {
+			const service = makeService();
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBeUndefined();
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns the credential type from the cached config without fetching', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+			// Warm the cache once.
+			await service.getGatewayConfig();
+			requestMock.mockClear();
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBe('openAiApi');
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns null (definitive no) when the cached config does not serve the provider', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+			await service.getGatewayConfig();
+
+			expect(service.getCredentialTypeForProviderCached('xai')).toBeNull();
+		});
+
+		it('returns null (definitive no) when n8n Connect is unlicensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBeNull();
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+	});
 });

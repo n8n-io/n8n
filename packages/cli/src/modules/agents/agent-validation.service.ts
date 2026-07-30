@@ -83,15 +83,18 @@ export class AgentValidationService {
 		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
-	/** Whether n8n Connect (AI Gateway) can serve the model's provider. */
-	private async isAiGatewayModelSupported(model: string): Promise<boolean> {
+	/**
+	 * Whether n8n Connect (AI Gateway) can serve the model's provider, using only
+	 * the cached gateway config — this static validator must not perform a network
+	 * fetch. Returns `undefined` when support can't be determined (no cached
+	 * config), so the caller can tell "gateway says no" from "could not ask".
+	 */
+	private isAiGatewayModelSupported(model: string): boolean | undefined {
 		const provider = getProviderPrefix(model);
 		if (!provider) return false;
-		try {
-			return (await this.aiGatewayService.getCredentialTypeForProvider(provider)) !== undefined;
-		} catch {
-			return false;
-		}
+		const credentialType = this.aiGatewayService.getCredentialTypeForProviderCached(provider);
+		if (credentialType === undefined) return undefined;
+		return credentialType !== null;
 	}
 
 	/**
@@ -356,7 +359,11 @@ export class AgentValidationService {
 		// valid as long as the gateway can serve the selected model's provider.
 		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
 			const model = config.model?.trim();
-			if (!model || !(await this.isAiGatewayModelSupported(model))) {
+			// Only flag a definitive "gateway does not serve this provider". When
+			// support can't be determined (no cached gateway config), don't fail
+			// closed — a transient/cold config must not make a working managed agent
+			// look broken and block Publish / chat runs.
+			if (!model || this.isAiGatewayModelSupported(model) === false) {
 				issues.push(agentIssue('incompatible_credential', 'credential'));
 			}
 			return;
