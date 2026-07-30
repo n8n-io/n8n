@@ -8,6 +8,7 @@ import type { CredentialBindingRequest } from '../entities/credential/credential
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
 import type { TagImportRequest } from '../entities/tag/tag.types';
+import { variableConflictPolicyUsesPackageValue } from '../entities/variable/variable-conflict-policy';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
@@ -68,7 +69,8 @@ export class ProjectPackageImporter {
 		const projectPlan = await this.projectImporter.plan(request.user, projects);
 		const bundledVariables =
 			(manifest.requirements?.variables?.length ?? 0) > 0 &&
-			variableMissingModeUsesPackageValue(request.variableMissingMode)
+			(variableMissingModeUsesPackageValue(request.variableMissingMode) ||
+				variableConflictPolicyUsesPackageValue(request.variableConflictPolicy))
 				? await this.packageParser.getVariables(reader)
 				: undefined;
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
@@ -145,6 +147,7 @@ export class ProjectPackageImporter {
 		const variablesCreated: string[] = [];
 		const variablesStubbed: string[] = [];
 		const variablesSkipped: string[] = [];
+		const variablesUpdated: string[] = [];
 		const tagSummaries: ImportTagSummary[] = [];
 		const scopes: PackageImportScope[] = [];
 
@@ -161,6 +164,7 @@ export class ProjectPackageImporter {
 			variablesCreated.push(...content.variableResult.created);
 			variablesStubbed.push(...content.variableResult.stubbed);
 			variablesSkipped.push(...content.variableResult.skippedExisting);
+			variablesUpdated.push(...content.variableResult.updated);
 			tagSummaries.push(toTagSummary(content.tagPlan));
 			scopes.push({
 				context: plan.input.context,
@@ -187,6 +191,7 @@ export class ProjectPackageImporter {
 				created: variablesCreated,
 				stubbed: variablesStubbed,
 				skipped: variablesSkipped,
+				updated: variablesUpdated,
 			}),
 			tags: unionTagSummaries(tagSummaries),
 		});
@@ -233,6 +238,7 @@ export class ProjectPackageImporter {
 				bundledVariables,
 			}),
 			missingMode: request.variableMissingMode,
+			conflictPolicy: request.variableConflictPolicy,
 		};
 
 		// Untrimmed on purpose: the tag importer scopes by this project's workflows' own

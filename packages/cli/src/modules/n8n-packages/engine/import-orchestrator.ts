@@ -58,7 +58,7 @@ import type {
 } from '../n8n-packages.types';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
 import { toImportBlockedError } from './import-blocked.error';
-import { assertVariableCreationAllowed } from './import-gates';
+import { assertVariableCreationAllowed, assertVariableUpdateAllowed } from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -122,8 +122,8 @@ export class ImportOrchestrator {
 	) {}
 
 	/**
-	 * Gates variable creation in instance-to-project order so the broadest cause wins: licence and API
-	 * key scope, then each scope's create permission, then the quota. An unlicensed instance also reports
+	 * Gates variable writes in instance-to-project order so the broadest cause wins: licence and API
+	 * key scope, then each scope's write permission, then the quota. An unlicensed instance also reports
 	 * a zero quota, which would otherwise surface as a limit issue instead of the real cause.
 	 */
 	async assertNotBlocked(
@@ -131,20 +131,30 @@ export class ImportOrchestrator {
 		options: { apiKeyScopes: string[] | undefined },
 	): Promise<void> {
 		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
+		const overwrites = plans.flatMap((plan) => plan.variablePlan.overwrites);
 
 		assertVariableCreationAllowed({
 			licenseState: this.licenseState,
 			apiKeyScopes: options.apiKeyScopes,
 			hasCreations: creations.length > 0,
 		});
+		assertVariableUpdateAllowed({
+			licenseState: this.licenseState,
+			apiKeyScopes: options.apiKeyScopes,
+			hasOverwrites: overwrites.length > 0,
+		});
 
 		for (const { input, variablePlan } of plans) {
-			if (variablePlan.creations.length === 0) continue;
-			await this.variableImporter.assertCanCreate(
-				input.context,
-				variablePlan.creations,
-				input.projectPendingCreation ?? false,
-			);
+			if (variablePlan.creations.length > 0) {
+				await this.variableImporter.assertCanCreate(
+					input.context,
+					variablePlan.creations,
+					input.projectPendingCreation ?? false,
+				);
+			}
+			if (variablePlan.overwrites.length > 0) {
+				await this.variableImporter.assertCanUpdate(input.context, variablePlan.overwrites);
+			}
 		}
 
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
@@ -292,6 +302,11 @@ export class ImportOrchestrator {
 			}),
 		);
 
+		// Deliberately not with the creations above: an overwrite is the only step that rewrites
+		// pre-existing data, and nothing here reads a variable's value, so it goes after the writes
+		// that can still fail.
+		const updated = await this.variableImporter.applyOverwrites(context, variablePlan);
+
 		return {
 			workflowOutcomes: outcomes.map((outcome) =>
 				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
@@ -301,7 +316,7 @@ export class ImportOrchestrator {
 			credentialResult,
 			dataTablePlan,
 			variablePlan,
-			variableResult,
+			variableResult: { ...variableResult, updated },
 			tagPlan,
 		};
 	}
@@ -352,6 +367,9 @@ export class ImportOrchestrator {
 			...this.variableImporter
 				.blockingFailures(variableRequest, variablePlan)
 				.map((failure): BlockingIssue => ({ type: 'variable-unresolved', ...failure })),
+			...this.variableImporter
+				.blockingConflicts(variableRequest, variablePlan)
+				.map((conflict): BlockingIssue => ({ type: 'variable-conflict', ...conflict })),
 			...missingNodeTypeBlockingFailures(missingNodeTypeMode, missingNodeTypes).map(
 				({ type, typeVersion, usedByWorkflows }): BlockingIssue => ({
 					type: 'missing-node-type',

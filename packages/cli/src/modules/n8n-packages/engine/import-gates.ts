@@ -36,6 +36,23 @@ export function assertVariableCreationAllowed(options: {
 	assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
 }
 
+/** Same shape as the creation gate: only an import that would rewrite a value needs the licence and scope. */
+export function assertVariableUpdateAllowed(options: {
+	licenseState: LicenseState;
+	apiKeyScopes: string[] | undefined;
+	hasOverwrites: boolean;
+}): void {
+	const { licenseState, apiKeyScopes, hasOverwrites } = options;
+	if (!hasOverwrites) return;
+
+	if (!licenseState.isVariablesLicensed()) {
+		throw new ForbiddenError(
+			'Your license does not allow variables. Importing a package that overwrites variables requires a license that supports variables.',
+		);
+	}
+	assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:update']);
+}
+
 /**
  * Plan-derived, unlike the pre-plan data-table gate: a tag must
  * never block an import that would not write it (skipped consumers, disabled

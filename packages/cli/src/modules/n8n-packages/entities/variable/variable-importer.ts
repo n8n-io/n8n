@@ -8,6 +8,11 @@ import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-re
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
+	variableConflictBlockingFailures,
+	variableConflictPolicyOverwrites,
+	variableConflictPolicyUsesPackageValue,
+} from './variable-conflict-policy';
+import {
 	variableBlockingFailures,
 	variableMissingModeCreates,
 	variableMissingModeUsesPackageValue,
@@ -16,14 +21,17 @@ import {
 	computeVariableLimitFailure,
 	createFailure,
 	dedupeCreationsByDestination,
+	dedupeOverwritesByVariableId,
 	destinationKey,
 } from './variable.types';
 import type {
 	VariableApplyResult,
+	VariableConflict,
 	VariableCreation,
 	VariableImportPlan,
 	VariableImportRequest,
 	VariableLimitFailure,
+	VariableOverwrite,
 	VariableResolutionFailure,
 } from './variable.types';
 import type { ImportContext } from '../../n8n-packages.types';
@@ -35,7 +43,9 @@ export class VariableImporter {
 	/** Resolves requirements against the target project then global, mirroring runtime `$vars` precedence. */
 	async plan(context: ImportContext, request: VariableImportRequest): Promise<VariableImportPlan> {
 		const requirements = request.requirements ?? [];
-		if (requirements.length === 0) return { matched: [], missing: [], creations: [] };
+		if (requirements.length === 0) {
+			return { matched: [], missing: [], creations: [], conflicts: [], overwrites: [] };
+		}
 
 		const allVariables = await this.variablesService.getAllCached();
 		const variablesByKey = new Map<string, typeof allVariables>();
@@ -48,8 +58,12 @@ export class VariableImporter {
 		const matched: string[] = [];
 		const missing: VariableResolutionFailure[] = [];
 		const creations: VariableCreation[] = [];
+		const conflicts: VariableConflict[] = [];
+		const overwrites: VariableOverwrite[] = [];
 		const createsMissing = variableMissingModeCreates(request.missingMode);
 		const usesPackageValue = variableMissingModeUsesPackageValue(request.missingMode);
+		const comparesValues = variableConflictPolicyUsesPackageValue(request.conflictPolicy);
+		const overwritesConflicts = variableConflictPolicyOverwrites(request.conflictPolicy);
 
 		for (const requirement of requirements) {
 			const picked = pickVariableForProject(
@@ -59,6 +73,26 @@ export class VariableImporter {
 			);
 			if (picked) {
 				matched.push(requirement.name);
+
+				const packageValue = requirement.packageValue;
+				if (!comparesValues || packageValue === undefined || packageValue === picked.value) {
+					continue;
+				}
+
+				const scope = picked.project ? { projectId: picked.project.id } : {};
+				conflicts.push({
+					name: requirement.name,
+					...scope,
+					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
+				});
+				if (overwritesConflicts) {
+					overwrites.push({
+						variableId: picked.id,
+						name: requirement.name,
+						...scope,
+						value: packageValue,
+					});
+				}
 				continue;
 			}
 			missing.push(createFailure(requirement));
@@ -73,7 +107,7 @@ export class VariableImporter {
 			}
 		}
 
-		return { matched, missing, creations };
+		return { matched, missing, creations, conflicts, overwrites };
 	}
 
 	/** Deduplicates by destination first: one global variable planned by several scopes is one new row. */
@@ -91,6 +125,10 @@ export class VariableImporter {
 		plan: VariableImportPlan,
 	): VariableResolutionFailure[] {
 		return variableBlockingFailures(request.missingMode, plan);
+	}
+
+	blockingConflicts(request: VariableImportRequest, plan: VariableImportPlan): VariableConflict[] {
+		return variableConflictBlockingFailures(request.conflictPolicy, plan);
 	}
 
 	/**
@@ -140,7 +178,22 @@ export class VariableImporter {
 			created: [...new Set(created)],
 			stubbed: [...new Set(stubbed)],
 			skippedExisting: [...new Set(skippedExisting)],
+			updated: [],
 		};
+	}
+
+	/** Replaces each matched variable's value with the package's, leaving its key, type, and scope alone. */
+	async applyOverwrites(context: ImportContext, plan: VariableImportPlan): Promise<string[]> {
+		const updated: string[] = [];
+
+		for (const overwrite of dedupeOverwritesByVariableId(plan.overwrites)) {
+			await this.variablesService.update(context.user, overwrite.variableId, {
+				value: overwrite.value,
+			});
+			updated.push(overwrite.name);
+		}
+
+		return updated;
 	}
 
 	private async variableExistsAtDestination(creation: VariableCreation): Promise<boolean> {
@@ -172,6 +225,28 @@ export class VariableImporter {
 			});
 			if (!allowed) {
 				throw new ForbiddenError('You are not allowed to create variables in this project');
+			}
+		}
+	}
+
+	/**
+	 * No `projectPendingCreation` counterpart to `assertCanCreate`: an overwrite targets a row that
+	 * already exists, which a project this import is about to create cannot have.
+	 */
+	async assertCanUpdate(context: ImportContext, overwrites: VariableOverwrite[]): Promise<void> {
+		const needsGlobal = overwrites.some((overwrite) => !overwrite.projectId);
+		const needsProject = overwrites.some((overwrite) => overwrite.projectId);
+
+		if (needsGlobal && !hasGlobalScope(context.user, 'variable:update')) {
+			throw new ForbiddenError('You are not allowed to update global variables');
+		}
+
+		if (needsProject) {
+			const allowed = await userHasScopes(context.user, ['projectVariable:update'], false, {
+				projectId: context.projectId,
+			});
+			if (!allowed) {
+				throw new ForbiddenError('You are not allowed to update variables in this project');
 			}
 		}
 	}

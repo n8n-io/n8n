@@ -225,6 +225,29 @@ post:
                 creates a variable requires a license that permits variables and, for
                 API key callers, the `variable:create` scope; a package whose
                 variables all already resolve creates nothing and needs neither.
+            variableConflictPolicy:
+              type: string
+              enum:
+                - keep-existing
+                - overwrite
+                - fail
+              default: keep-existing
+              description: >
+                What to do when a referenced variable resolves in the target
+                project or global scope but the package bundles a *different*
+                value for it. `keep-existing` (default) leaves the target value
+                untouched and reports the name under `variables.matched`.
+                `overwrite` silently replaces the value of the existing variable
+                at whichever scope it was found — the target project or the
+                global scope, so a global variable other projects also read can
+                be rewritten by this import — and reports the name under
+                `variables.updated`; it needs a license that permits variables,
+                the `variable:update` / `projectVariable:update` permission on
+                that scope, and, for API key callers, the `variable:update`
+                scope. `fail` rejects the import with a 409 instead. A package
+                exported without variable values bundles nothing to compare, so
+                every policy leaves resolved variables alone; so does a bundled
+                value identical to the target's.
             variableParentPolicy:
               type: string
               enum:
@@ -493,6 +516,7 @@ post:
                   - missing
                   - created
                   - stubbed
+                  - updated
                 properties:
                   matched:
                     type: array
@@ -500,7 +524,9 @@ post:
                       type: string
                     description: >
                       Variable names that resolved to an existing variable
-                      (importing project's scope first, then global).
+                      (importing project's scope first, then global) and were
+                      left untouched. A resolved variable this import rewrote is
+                      listed under `updated` instead.
                   missing:
                     type: array
                     items:
@@ -526,6 +552,14 @@ post:
                       Variable names created with an empty value by this import under
                       `variableMissingMode=create-stub`, or because `create-with-value`
                       had no exported value. Empty for other outcomes.
+                  updated:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Variable names whose existing value this import replaced with
+                      the package value under `variableConflictPolicy=overwrite`.
+                      Empty for other policies.
               tags:
                 type: object
                 description: >
@@ -600,8 +634,10 @@ post:
       description: >
         Import blocked by at least one conflict among the issues — a workflow
         source-id conflict, a folder conflict (id under a different parent, id
-        owned by another project, or a `fail`-policy match), or a tag conflict
-        (rename drift or name collision).
+        owned by another project, or a `fail`-policy match), a tag conflict
+        (rename drift or name collision), or a variable whose bundled value
+        differs from the resolved target's under
+        `variableConflictPolicy=fail`.
       content:
         application/json:
           schema:

@@ -13,6 +13,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
+import { variableConflictPolicyUsesPackageValue } from '../entities/variable/variable-conflict-policy';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
@@ -94,7 +95,8 @@ export class WorkflowPackageImporter {
 		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
 		const bundledVariables =
 			(variableRequirements?.length ?? 0) > 0 &&
-			variableMissingModeUsesPackageValue(request.variableMissingMode)
+			(variableMissingModeUsesPackageValue(request.variableMissingMode) ||
+				variableConflictPolicyUsesPackageValue(request.variableConflictPolicy))
 				? await this.packageParser.getVariables(reader)
 				: undefined;
 		const variableRequest: VariableImportRequest = {
@@ -105,6 +107,7 @@ export class WorkflowPackageImporter {
 				bundledVariables,
 			}),
 			missingMode: request.variableMissingMode,
+			conflictPolicy: request.variableConflictPolicy,
 		};
 
 		const tagRequest: TagImportRequest = {

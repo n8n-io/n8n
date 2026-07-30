@@ -73,6 +73,7 @@ export function emitPackageImportedEvent(
 		created: scopes.flatMap(({ imported }) => imported.variableResult.created),
 		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
 		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
+		updated: scopes.flatMap(({ imported }) => imported.variableResult.updated),
 	});
 	// Rows, not reconciled names: a name created in two projects is two variables, and every sibling
 	// count reports entities the same way.
@@ -105,6 +106,7 @@ export function emitPackageImportedEvent(
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 			variableMissingMode: request.variableMissingMode,
+			variableConflictPolicy: request.variableConflictPolicy,
 			// An omitted policy places variables in the project, so report what the import did.
 			variableParentPolicy: request.variableParentPolicy ?? VariableParentPolicy.Project,
 			tagMissingMode: request.tagMissingMode,
@@ -138,6 +140,7 @@ export function emitPackageImportedEvent(
 				missing: variableSummary.missing.length,
 				created: countCreatedRows(({ variableResult }) => variableResult.created),
 				stubbed: countCreatedRows(({ variableResult }) => variableResult.stubbed),
+				updated: countCreatedRows(({ variableResult }) => variableResult.updated),
 				requirements: variableRequirements,
 			},
 			tags: {
