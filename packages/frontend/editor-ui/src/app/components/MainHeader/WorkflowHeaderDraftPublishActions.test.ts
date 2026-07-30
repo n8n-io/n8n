@@ -1234,7 +1234,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { pill, getByTestId, findByRole } = await renderWithBanner();
 
-			expect(pill).toHaveTextContent('Review needs updating');
+			expect(pill).toHaveTextContent('Update review');
 			expect(pill.compareDocumentPosition(getByTestId('workflow-open-publish-modal-button'))).toBe(
 				Node.DOCUMENT_POSITION_FOLLOWING,
 			);

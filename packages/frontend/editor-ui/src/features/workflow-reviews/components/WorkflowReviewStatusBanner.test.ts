@@ -65,9 +65,9 @@ describe('WorkflowReviewStatusBanner', () => {
 			{
 				name: 'pending review pinned to an older version',
 				props: { review: review(), savedVersionId: 'newer-version' },
-				pill: 'Review needs updating',
-				title: 'Review needs updating',
-				body: "The review doesn't include your latest workflow changes.",
+				pill: 'Update review',
+				title: 'Update review',
+				body: 'This workflow has an open review that does not include your latest changes.',
 				support: 'Submit the latest version to update the review.',
 				secondaryAction: 'workflow-review-submit-changes-button',
 				secondaryEnabled: true,
