@@ -116,6 +116,49 @@ export class WebhookService {
 	}
 
 	/**
+	 * Find every dynamic webhook row (all HTTP methods) of the trigger a path
+	 * resolves to, e.g. `<uuid>/user/:id/posts`. The path may be templated
+	 * (`<uuid>/user/:id/posts`) or concrete (`<uuid>/user/42/posts`) — both match
+	 * the same template, because the routing matcher compares only static segments.
+	 * Used by the OAuth resolver, which (unlike {@link findDynamicWebhook}) needs
+	 * every method to derive the trigger's method-set, and the templated path — not
+	 * the concrete one — as the canonical resource identity. Selection mirrors
+	 * {@link findDynamicWebhook} so "which resource" equals "which trigger fires".
+	 */
+	async findDynamicWebhooksByPath(path: string): Promise<WebhookEntity[]> {
+		const [uuidSegment, ...otherSegments] = path.split('/');
+
+		const candidates = await this.webhookRepository.findDynamicWebhooksByWebhookId(
+			uuidSegment,
+			otherSegments.length,
+		);
+
+		if (candidates.length === 0) return [];
+
+		const requestSegments = new Set(otherSegments);
+
+		const { winner } = candidates.reduce<{ winner: string | null; maxMatches: number }>(
+			(acc, dw) => {
+				const allStaticSegmentsMatch = dw.staticSegments.every((s) => requestSegments.has(s));
+
+				if (allStaticSegmentsMatch && dw.staticSegments.length > acc.maxMatches) {
+					acc.maxMatches = dw.staticSegments.length;
+					acc.winner = dw.webhookPath;
+				} else if (dw.staticSegments.length === 0 && acc.winner === null) {
+					acc.winner = dw.webhookPath; // edge case: path is `:var`, matches anything
+				}
+				return acc;
+			},
+			{ winner: null, maxMatches: 0 },
+		);
+
+		if (winner === null) return [];
+
+		// The winning template's rows are one trigger (shared webhookId), one row per method.
+		return candidates.filter((dw) => dw.webhookPath === winner);
+	}
+
+	/**
 	 * Find a matching webhook with one or more dynamic path segments, e.g. `<uuid>/user/:id/posts`.
 	 * It is mandatory for dynamic webhooks to have `<uuid>/` at the base.
 	 */

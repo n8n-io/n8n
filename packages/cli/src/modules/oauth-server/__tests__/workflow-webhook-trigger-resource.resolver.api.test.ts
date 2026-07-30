@@ -307,23 +307,105 @@ describe('protected resource metadata for webhook triggers', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should not resolve a dynamic webhook path', async () => {
-		const node = webhookNode();
-		const workflow = await createWorkflowWithHistory({ active: true, nodes: [node] }, owner);
-		await setActiveVersion(workflow.id, workflow.versionId);
-		const webhookId = randomUUID();
-		await Container.get(WebhookRepository).insert({
-			workflowId: workflow.id,
-			webhookPath: ':param',
-			method: 'POST',
-			node: node.name,
-			webhookId,
-			pathLength: 1,
+	describe('dynamic webhooks', () => {
+		/** Active workflow with a dynamic trigger registered at `<webhookId>/<template>`. */
+		const createPublishedDynamicWebhookWorkflow = async (
+			webhookId: string,
+			template: string,
+			node: INode,
+			{ methods = ['POST'] as IHttpRequestMethods[] } = {},
+		) => {
+			const workflow = await createWorkflowWithHistory({ active: true, nodes: [node] }, owner);
+			await setActiveVersion(workflow.id, workflow.versionId);
+			const pathLength = template.split('/').length;
+			for (const method of methods) {
+				await Container.get(WebhookRepository).insert({
+					workflowId: workflow.id,
+					webhookPath: template,
+					method,
+					node: node.name,
+					webhookId,
+					pathLength,
+				});
+			}
+			return workflow;
+		};
+
+		test('should resolve a concrete request path to the templated resource identity', async () => {
+			const webhookId = randomUUID();
+			await createPublishedDynamicWebhookWorkflow(webhookId, 'user/:id', webhookNode());
+
+			// a concrete instance (`/user/42`) resolves to the template `aud`, so one
+			// token covers every instance of the trigger
+			const response = await testServer.restlessAgent.get(prmPathFor(`${webhookId}/user/42`));
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.resource).toBe(resourceUrlFor(`${webhookId}/user/:id`));
 		});
 
-		const response = await testServer.restlessAgent.get(prmPathFor(`${webhookId}/anything`));
+		test('should resolve the templated request path to the same identity', async () => {
+			const webhookId = randomUUID();
+			await createPublishedDynamicWebhookWorkflow(webhookId, 'user/:id', webhookNode());
 
-		expect(response.statusCode).toBe(404);
+			const response = await testServer.restlessAgent.get(prmPathFor(`${webhookId}/user/:id`));
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.resource).toBe(resourceUrlFor(`${webhookId}/user/:id`));
+		});
+
+		test('should cover a multi-method dynamic trigger with one resource', async () => {
+			const webhookId = randomUUID();
+			await createPublishedDynamicWebhookWorkflow(webhookId, 'user/:id', webhookNode(), {
+				methods: ['GET', 'POST'],
+			});
+
+			const response = await testServer.restlessAgent.get(prmPathFor(`${webhookId}/user/99`));
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.resource).toBe(resourceUrlFor(`${webhookId}/user/:id`, ['GET', 'POST']));
+		});
+
+		test('should not resolve when the concrete path matches no template', async () => {
+			const webhookId = randomUUID();
+			await createPublishedDynamicWebhookWorkflow(webhookId, 'user/:id', webhookNode());
+
+			// wrong segment count -> no template matches
+			const response = await testServer.restlessAgent.get(prmPathFor(`${webhookId}/user/42/extra`));
+
+			expect(response.statusCode).toBe(404);
+		});
+
+		test('should mint a token whose audience is the template and reject another trigger', async () => {
+			// distinct triggers -> distinct templates (the (webhookPath, method) key is
+			// global, so two dynamic triggers can't share a template+method)
+			const webhookIdA = randomUUID();
+			const webhookIdB = randomUUID();
+			await createPublishedDynamicWebhookWorkflow(webhookIdA, 'user/:id', webhookNode());
+			await createPublishedDynamicWebhookWorkflow(webhookIdB, 'order/:id', webhookNode());
+			const tokenService = Container.get(OAuthTokenService);
+			const clientId = await registerOAuthClient();
+
+			const resourceA = resourceUrlFor(`${webhookIdA}/user/:id`);
+			const { accessToken, refreshToken } = tokenService.generateTokenPair(
+				owner.id,
+				clientId,
+				resourceA,
+				[],
+			);
+			await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, []);
+
+			expect(decodeJwtPayload(accessToken).aud).toBe(resourceA);
+
+			// valid for any instance of trigger A (same template `aud`)
+			await expect(tokenService.verifyAccessToken(accessToken, resourceA)).resolves.toMatchObject({
+				clientId,
+			});
+
+			// not replayable against a different dynamic trigger
+			await expect(
+				tokenService.verifyAccessToken(accessToken, resourceUrlFor(`${webhookIdB}/order/:id`)),
+			).rejects.toThrow();
+		});
 	});
 
 	test('should follow the published version, not the draft', async () => {

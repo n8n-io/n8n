@@ -39,6 +39,13 @@ import {
  * `aud` across its methods. Because `(path, method)` is unique, two triggers on a
  * path always have disjoint — hence unequal — method-sets, so the method-set is a
  * unique key among the triggers sharing a path.
+ *
+ * Dynamic webhooks (`<webhookId>/user/:id`) resolve to their templated path as the
+ * canonical identity, so one token covers every concrete instance (`/user/42`,
+ * `/user/99`) — all the same node — while staying scoped to that trigger (the
+ * `webhookId` prefix keeps distinct triggers apart). A concrete request path is
+ * matched to its template with the same matcher the router uses, so the resolved
+ * resource is always the trigger that would actually fire.
  */
 @Service()
 export class WorkflowWebhookTriggerResourceResolver implements ProtectedResourceResolver {
@@ -82,27 +89,37 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 
 		this.logger.debug(`Resolving workflow webhook trigger resource for path: ${path}`);
 
-		// Consider every static webhook registered at this path (a node listening on
-		// multiple methods registers one row per method). Static-only: dynamic
-		// webhooks are never protectable resources.
-		const webhooks = await this.webhookService.findStaticWebhooksByPath(path);
+		// Consider every static webhook registered at this path; if none, fall back to
+		// dynamic webhooks whose templated path matches (e.g. `<uuid>/user/:id`), so
+		// both `/user/:id` and a concrete `/user/42` resolve to the same trigger. A
+		// node listening on several methods registers one row per method.
+		const staticWebhooks = await this.webhookService.findStaticWebhooksByPath(path);
+		const webhooks =
+			staticWebhooks.length > 0
+				? staticWebhooks
+				: await this.webhookService.findDynamicWebhooksByPath(path);
 
 		if (webhooks.length === 0) {
 			this.logger.debug(`No webhook found for path: ${path}`);
 			return undefined;
 		}
 
-		// Group rows back into their triggers, collecting each trigger's method-set.
-		// A node listening on several methods registers one row per method, all
-		// sharing the same (workflow, node) — collapse those so a multi-method
-		// trigger counts as the single trigger it is.
-		const triggers = new Map<string, { workflowId: string; node: string; methods: Set<string> }>();
+		// Group rows back into their triggers, collecting each trigger's method-set and
+		// its canonical resource path — the templated `uniquePath` for dynamic webhooks
+		// (placeholders intact, concrete values discarded), so all instances of one
+		// trigger share a single `aud`. A node listening on several methods registers
+		// one row per method, all sharing the same (workflow, node) — collapse those so
+		// a multi-method trigger counts as the single trigger it is.
+		const triggers = new Map<
+			string,
+			{ workflowId: string; node: string; resourcePath: string; methods: Set<string> }
+		>();
 		for (const webhook of webhooks) {
-			if (webhook.isDynamic) continue;
 			const key = `${webhook.workflowId}::${webhook.node}`;
 			const trigger = triggers.get(key) ?? {
 				workflowId: webhook.workflowId,
 				node: webhook.node,
+				resourcePath: webhook.uniquePath,
 				methods: new Set<string>(),
 			};
 			trigger.methods.add(webhook.method);
@@ -112,9 +129,9 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 		// Resolve each trigger to its resource, keyed by its canonical method-set so
 		// the requested set can pick exactly one (sets are disjoint across triggers).
 		const resolvedByMethodSet = new Map<string, ProtectedResource>();
-		for (const { workflowId, node, methods } of triggers.values()) {
+		for (const { workflowId, node, resourcePath, methods } of triggers.values()) {
 			const methodSet = canonicalMethodSet(methods);
-			const resource = await this.resolveWebhookNode(workflowId, node, path, methodSet);
+			const resource = await this.resolveWebhookNode(workflowId, node, resourcePath, methodSet);
 			if (resource) resolvedByMethodSet.set(methodSet.join(','), resource);
 		}
 
@@ -143,7 +160,7 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 	private async resolveWebhookNode(
 		workflowId: string,
 		nodeName: string,
-		path: string,
+		resourcePath: string,
 		methodSet: string[],
 	): Promise<ProtectedResource | undefined> {
 		const workflow = await this.workflowRepository.findOne({
@@ -170,16 +187,18 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 			!node.disabled &&
 			node.parameters.authentication === 'n8nOAuth2'
 		) {
-			// Identity = path + the trigger's method-set. The path alone can be shared
-			// by disjoint-method triggers, so the `?methods=…` suffix keeps each `aud`
-			// distinct; a single multi-method trigger keeps one `aud` across its methods.
+			// Identity = resource path + the trigger's method-set. The path alone can be
+			// shared by disjoint-method triggers, so the `?methods=…` suffix keeps each
+			// `aud` distinct; a single multi-method trigger keeps one `aud` across its
+			// methods. For dynamic webhooks the path is the template (placeholders intact),
+			// so one `aud` covers every concrete instance of the trigger.
 			const methodsQuery = methodsQueryString(methodSet);
-			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.webhook}/${path}${methodsQuery}`;
+			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.webhook}/${resourcePath}${methodsQuery}`;
 			const requireExecute = node.parameters.requireExecuteAccess !== false;
 			return {
 				// Include the path and method-set: unlike an MCP trigger, a workflow can
 				// hold several webhook nodes, each its own resource with a distinct `aud`.
-				id: `workflow-webhook:${workflow.id}:${path}${methodsQuery}`,
+				id: `workflow-webhook:${workflow.id}:${resourcePath}${methodsQuery}`,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => [resourceUrl],
 				scopes: WEBHOOK_TRIGGER_SCOPES,

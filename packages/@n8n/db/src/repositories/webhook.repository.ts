@@ -25,4 +25,15 @@ export class WebhookRepository extends Repository<WebhookEntity> {
 	async findStaticWebhooksByPath(webhookPath: string) {
 		return await this.findBy({ webhookPath, webhookId: IsNull() });
 	}
+
+	/**
+	 * Retrieve every dynamic webhook (path with `:` segments) sharing a `webhookId`
+	 * and path length, across all HTTP methods. A `webhookId` belongs to a single
+	 * node, so these rows are one trigger's method registrations. Used by the OAuth
+	 * resolver to build a trigger's method-set; segment matching is done by the
+	 * caller, mirroring the routing matcher.
+	 */
+	async findDynamicWebhooksByWebhookId(webhookId: string, pathLength: number) {
+		return await this.findBy({ webhookId, pathLength });
+	}
 }
