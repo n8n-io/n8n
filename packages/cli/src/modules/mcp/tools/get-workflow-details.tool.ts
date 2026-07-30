@@ -134,18 +134,24 @@ export async function getWorkflowDetails(
 
 	const nodes = workflow.nodes ?? [];
 	const connections = workflow.connections ?? {};
-	const activeVersion =
+	// Publishing sets activeVersionId to the draft's versionId and every draft
+	// save regenerates versionId, so equality means the published graph is
+	// byte-identical to the draft — skip repeating it in the response.
+	const activeVersion: WorkflowDetailsResult['workflow']['activeVersion'] =
 		workflow.activeVersionId && workflow.activeVersion
-			? {
-					nodes: (workflow.activeVersion.nodes ?? []).map(
-						({ credentials: _credentials, ...node }) => node,
-					),
-					connections: workflow.activeVersion.connections ?? {},
-					nodeGroups: toNodeGroupSummary(
-						workflow.activeVersion.nodeGroups ?? [],
-						workflow.activeVersion.nodes ?? [],
-					),
-				}
+			? workflow.activeVersionId === workflow.versionId
+				? { sameAsCurrent: true }
+				: {
+						sameAsCurrent: false,
+						nodes: (workflow.activeVersion.nodes ?? []).map(
+							({ credentials: _credentials, ...node }) => node,
+						),
+						connections: workflow.activeVersion.connections ?? {},
+						nodeGroups: toNodeGroupSummary(
+							workflow.activeVersion.nodeGroups ?? [],
+							workflow.activeVersion.nodes ?? [],
+						),
+					}
 			: null;
 
 	const supportedTriggers = Object.keys(SUPPORTED_MCP_TRIGGERS);
