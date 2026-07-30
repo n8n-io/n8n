@@ -60,9 +60,9 @@ export const MissingNodeTypeMode = {
 export const MissingWorkflowDependencyPolicy = {
 	/** Fails the export when a workflow dependency is not included. */
 	Fail: 'fail',
-	/** Reserved for exporting missing workflow dependencies as requirements only. */
+	/** Keeps missing workflow dependencies out of the package, listing them as requirements only. */
 	ReferenceOnly: 'reference-only',
-	/** Reserved for automatically adding missing workflow dependencies to the package. */
+	/** Automatically adds missing workflow dependencies to the package. */
 	IncludeInPackage: 'include-in-package',
 } as const;
 
