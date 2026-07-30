@@ -493,32 +493,45 @@ export class TaskBroker {
 		}
 	}
 
-	private async cancelTask(taskId: Task['id'], reason: string) {
+	/**
+	 * Stops tracking the task and disarms its execution timeout.
+	 * @returns the task that was being tracked, or `undefined` if it was already settled.
+	 * @remarks A task's timeout outlives the task itself unless disarmed, so the two are dropped together.
+	 */
+	private untrackTask(taskId: Task['id']) {
 		const task = this.tasks.get(taskId);
-		if (!task) {
-			return;
-		}
-		this.tasks.delete(taskId);
 
-		await this.messageRunner(task.runnerId, {
-			type: 'broker:taskcancel',
-			taskId,
-			reason,
-		});
+		if (task) {
+			clearTimeout(task.timeout);
+			this.tasks.delete(taskId);
+		}
+
+		return task;
+	}
+
+	private async cancelTask(taskId: Task['id'], reason: string) {
+		const task = this.untrackTask(taskId);
+
+		if (task) {
+			await this.messageRunner(task.runnerId, {
+				type: 'broker:taskcancel',
+				taskId,
+				reason,
+			});
+		}
 	}
 
 	private async failTask(taskId: Task['id'], error: Error) {
-		const task = this.tasks.get(taskId);
-		if (!task) {
-			return;
+		const task = this.untrackTask(taskId);
+
+		if (task) {
+			// TODO: special message type?
+			await this.messageRequester(task.requesterId, {
+				type: 'broker:taskerror',
+				taskId,
+				error,
+			});
 		}
-		this.tasks.delete(taskId);
-		// TODO: special message type?
-		await this.messageRequester(task.requesterId, {
-			type: 'broker:taskerror',
-			taskId,
-			error,
-		});
 	}
 
 	private async getRunnerOrFailTask(taskId: Task['id']): Promise<TaskRunner> {
@@ -587,31 +600,27 @@ export class TaskBroker {
 	}
 
 	async taskDoneHandler(taskId: Task['id'], data: TaskResultData) {
-		const task = this.tasks.get(taskId);
-		if (!task) return;
+		const task = this.untrackTask(taskId);
 
-		clearTimeout(task.timeout);
-
-		await this.requesters.get(task.requesterId)?.({
-			type: 'broker:taskdone',
-			taskId: task.id,
-			data,
-		});
-		this.tasks.delete(task.id);
+		if (task) {
+			await this.requesters.get(task.requesterId)?.({
+				type: 'broker:taskdone',
+				taskId: task.id,
+				data,
+			});
+		}
 	}
 
 	async taskErrorHandler(taskId: Task['id'], error: unknown) {
-		const task = this.tasks.get(taskId);
-		if (!task) return;
+		const task = this.untrackTask(taskId);
 
-		clearTimeout(task.timeout);
-
-		await this.requesters.get(task.requesterId)?.({
-			type: 'broker:taskerror',
-			taskId: task.id,
-			error,
-		});
-		this.tasks.delete(task.id);
+		if (task) {
+			await this.requesters.get(task.requesterId)?.({
+				type: 'broker:taskerror',
+				taskId: task.id,
+				error,
+			});
+		}
 	}
 
 	async acceptOffer(offer: TaskOffer, request: TaskRequest): Promise<void> {

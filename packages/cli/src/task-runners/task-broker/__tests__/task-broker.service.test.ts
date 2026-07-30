@@ -1096,6 +1096,59 @@ describe('TaskBroker', () => {
 			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
 		});
 
+		it('on failing a task, we should clear timeout', async () => {
+			const taskId = 'task1';
+			const runnerId = 'runner1';
+			const requesterId = 'requester1';
+
+			taskBroker.registerRequester(requesterId, vi.fn());
+			taskBroker.setTasks({
+				[taskId]: {
+					id: taskId,
+					runnerId,
+					requesterId,
+					taskType: 'test',
+					timeout: setTimeout(() => {}, config.taskTimeout * Time.seconds.toMilliseconds),
+				},
+			});
+
+			const armedTimers = vi.getTimerCount();
+
+			taskBroker.deregisterRunner(runnerId, new Error('Runner died'));
+			await Promise.resolve();
+
+			expect(vi.getTimerCount()).toBe(armedTimers - 1);
+			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
+		});
+
+		it('on cancelling a task, we should clear timeout', async () => {
+			const taskId = 'task1';
+			const runnerId = 'runner1';
+			const requesterId = 'requester1';
+
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.setTasks({
+				[taskId]: {
+					id: taskId,
+					runnerId,
+					requesterId,
+					taskType: 'test',
+					timeout: setTimeout(() => {}, config.taskTimeout * Time.seconds.toMilliseconds),
+				},
+			});
+
+			const armedTimers = vi.getTimerCount();
+
+			await taskBroker.onRequesterMessage(requesterId, {
+				type: 'requester:taskcancel',
+				taskId,
+				reason: 'Cancelled by requester',
+			});
+
+			expect(vi.getTimerCount()).toBe(armedTimers - 1);
+			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
+		});
+
 		it('[internal mode] on timeout, we should emit `runner:timed-out-during-task` event and send error to requester', async () => {
 			vi.spyOn(global, 'clearTimeout');
 
