@@ -227,6 +227,170 @@ describe('McpServer', () => {
 
 				expect(settled()).toBe(true);
 			});
+
+			it('should settle a queue-mode SSE tool call when the transport acks', async () => {
+				// Queue mode resolves deliberately early so the webhook can enqueue; the
+				// worker owns the isolate from there (#34491).
+				mcpServer.setExecutionStrategy(
+					new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()),
+				);
+				await registerWith('queued-tool', 'sse');
+				const { pending, settled } = postToolCall('queued-tool');
+
+				await flush();
+				await pending;
+
+				expect(settled()).toBe(true);
+			});
+
+			it('should settle when the transport itself fails', async () => {
+				const transport = await registerWith('failing-tool', 'sse');
+				transport.handleRequest.mockRejectedValue(new Error('socket gone'));
+				const { pending, settled } = postToolCall('failing-tool');
+
+				await flush();
+				await pending;
+
+				expect(settled()).toBe(true);
+			});
+
+			// The SDK can reject a malformed tools/call before dispatch, so the handler
+			// never runs and never releases us. Without a backstop that hangs forever,
+			// holding the caller's isolate.
+			it('should settle via the backstop when the tool call is never handled', async () => {
+				vi.useFakeTimers();
+				try {
+					await registerWith('never-handled', 'sse');
+					const { pending, settled } = postToolCall('never-handled');
+
+					await vi.advanceTimersByTimeAsync(1_000);
+					expect(settled()).toBe(false);
+
+					await vi.advanceTimersByTimeAsync(120_000);
+					await pending;
+
+					expect(settled()).toBe(true);
+					expect(mockLogger.warn).toHaveBeenCalledWith(
+						expect.stringContaining('never handled; releasing caller'),
+					);
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+		});
+	});
+
+	describe('releasing the caller on every CallTool exit path', () => {
+		const sessionId = 'release-session';
+		const requestId = 'req-9';
+		const callId = `${sessionId}_${requestId}`;
+
+		type CallToolHandler = (
+			request: { params?: { name?: string; arguments?: Record<string, unknown> } },
+			extra: { sessionId?: string; requestId?: string },
+		) => Promise<unknown>;
+
+		const getCallToolHandler = (
+			server: ReturnType<typeof createMockServer> = createMockServer(),
+		): CallToolHandler => {
+			(mcpServer as unknown as { setupHandlers(s: unknown): void }).setupHandlers(server);
+			const calls = (server.setRequestHandler as unknown as { mock: { calls: unknown[][] } }).mock
+				.calls;
+			// [0] = ListTools handler, [1] = CallTool handler
+			return calls[1][1] as CallToolHandler;
+		};
+
+		const registerCaller = (key = callId) => {
+			const release = vi.fn();
+			(mcpServer as unknown as { resolveFunctions: Record<string, () => void> }).resolveFunctions[
+				key
+			] = release;
+			return release;
+		};
+
+		const registerTools = async (tools: Array<ReturnType<typeof createMockTool>>) =>
+			await (
+				mcpServer as unknown as { sessionManager: SessionManager }
+			).sessionManager.registerSession(
+				sessionId,
+				createMockServer(),
+				createMockTransport(sessionId, 'sse'),
+				tools,
+			);
+
+		const invoke = async (
+			handler: CallToolHandler,
+			request: { params?: { name?: string; arguments?: Record<string, unknown> } } = {
+				params: { name: 'my_tool', arguments: { a: 1 } },
+			},
+			extra: { sessionId?: string; requestId?: string } = { sessionId, requestId },
+		) => await handler(request, extra).catch((error: unknown) => error);
+
+		it('should release after a successful tool call', async () => {
+			await registerTools([createMockTool('my_tool')]);
+			const release = registerCaller();
+
+			await invoke(getCallToolHandler());
+
+			expect(release).toHaveBeenCalledTimes(1);
+		});
+
+		it('should release when the tool invocation throws', async () => {
+			await registerTools([createMockTool('my_tool', { invokeError: new Error('boom') })]);
+			const release = registerCaller();
+
+			await invoke(getCallToolHandler());
+
+			expect(release).toHaveBeenCalledTimes(1);
+		});
+
+		it('should release when the tool is not found', async () => {
+			await registerTools([createMockTool('some_other_tool')]);
+			const release = registerCaller();
+
+			const result = await invoke(getCallToolHandler());
+
+			expect(result).toBeInstanceOf(Error);
+			expect(release).toHaveBeenCalledTimes(1);
+		});
+
+		it('should release when name or arguments are missing', async () => {
+			await registerTools([createMockTool('my_tool')]);
+			const release = registerCaller();
+
+			const result = await invoke(getCallToolHandler(), { params: { name: 'my_tool' } });
+
+			expect(result).toBeInstanceOf(Error);
+			expect(release).toHaveBeenCalledTimes(1);
+		});
+
+		it('should release when the sessionId is missing', async () => {
+			await registerTools([createMockTool('my_tool')]);
+			// callId is derived from what the handler saw, so a caller keyed on the
+			// absent sessionId is what gets released.
+			const release = registerCaller(`undefined_${requestId}`);
+
+			const result = await invoke(getCallToolHandler(), undefined, { requestId });
+
+			expect(result).toBeInstanceOf(Error);
+			expect(release).toHaveBeenCalledTimes(1);
+		});
+
+		it('should release when the credential gate short-circuits execution', async () => {
+			const tool = createMockTool('my_tool');
+			await registerTools([tool]);
+			(mcpServer as unknown as { pendingGateResults: Record<string, unknown> }).pendingGateResults[
+				callId
+			] = {
+				readyToExecute: false,
+				missingCredentials: [{ name: 'My Cred', connectUrl: 'https://example.com/connect' }],
+			};
+			const release = registerCaller();
+
+			await invoke(getCallToolHandler());
+
+			expect(tool.invoke).not.toHaveBeenCalled();
+			expect(release).toHaveBeenCalledTimes(1);
 		});
 	});
 
