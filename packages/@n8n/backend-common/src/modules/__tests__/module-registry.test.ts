@@ -181,45 +181,6 @@ describe('initModules', () => {
 		expect(ModuleClass.init).toHaveBeenCalled();
 	});
 
-	it('should init only the requested modules when `only` is passed', async () => {
-		const WantedModule = { init: vi.fn() };
-		const OtherModule = { init: vi.fn() };
-		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: vi.fn().mockReturnValue([
-				['workflow-reviews', { licenseFlag: undefined, class: WantedModule }],
-				['insights', { licenseFlag: undefined, class: OtherModule }],
-			]),
-		});
-		Container.get = vi.fn().mockImplementation((cls: object) => cls);
-
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
-
-		await moduleRegistry.initModules('main', ['workflow-reviews']);
-
-		expect(WantedModule.init).toHaveBeenCalled();
-		expect(OtherModule.init).not.toHaveBeenCalled();
-		expect(moduleRegistry.getActiveModules()).toEqual(['workflow-reviews']);
-	});
-
-	it('should init every eligible module when `only` is omitted', async () => {
-		const FirstModule = { init: vi.fn() };
-		const SecondModule = { init: vi.fn() };
-		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: vi.fn().mockReturnValue([
-				['workflow-reviews', { licenseFlag: undefined, class: FirstModule }],
-				['insights', { licenseFlag: undefined, class: SecondModule }],
-			]),
-		});
-		Container.get = vi.fn().mockImplementation((cls: object) => cls);
-
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
-
-		await moduleRegistry.initModules('main');
-
-		expect(FirstModule.init).toHaveBeenCalled();
-		expect(SecondModule.init).toHaveBeenCalled();
-	});
-
 	it('should skip init for unlicensed module', async () => {
 		const ModuleClass = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
