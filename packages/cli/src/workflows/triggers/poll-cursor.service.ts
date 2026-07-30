@@ -72,7 +72,10 @@ export class PollCursorService {
 		workflowId: string,
 		nodeName: string,
 		cursor: PollCursor,
+		nodeStaticData: PollCursor,
 	): Promise<void> {
+		this.syncNodeStaticData(nodeStaticData, cursor);
+
 		try {
 			const staticData = await this.workflowStaticDataService.getStaticDataById(workflowId);
 			const updated: IDataObject = { ...staticData, [`node:${nodeName}`]: cursor };

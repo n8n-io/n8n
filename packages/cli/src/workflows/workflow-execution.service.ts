@@ -121,6 +121,7 @@ export class WorkflowExecutionService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		cursor: PollCursor,
+		workflow: Workflow,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		const nodeExecutionStack: IExecuteData[] = [
@@ -173,7 +174,12 @@ export class WorkflowExecutionService {
 			payload,
 		});
 
-		await this.pollCursorService.mirrorToStaticData(workflowData.id, node.name, cursor);
+		await this.pollCursorService.mirrorToStaticData(
+			workflowData.id,
+			node.name,
+			cursor,
+			workflow.getStaticData('node', node),
+		);
 
 		if (establishContextError) {
 			await this.workflowRunner.registerAndFailExecution(

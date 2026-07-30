@@ -825,6 +825,7 @@ describe('TriggerExecutionContextFactory', () => {
 				additionalData,
 				mode,
 				{ lastItemId: 'a' },
+				workflow,
 				undefined,
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
@@ -1050,6 +1051,7 @@ describe('TriggerExecutionContextFactory', () => {
 				additionalData,
 				mode,
 				{ lastItemId: 'first-only' },
+				workflow,
 				undefined,
 			);
 		});
@@ -1097,6 +1099,7 @@ describe('TriggerExecutionContextFactory', () => {
 				additionalData,
 				mode,
 				{ lastItemId: 'b' },
+				workflow,
 				undefined,
 			);
 		});
