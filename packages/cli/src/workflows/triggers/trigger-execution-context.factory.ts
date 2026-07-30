@@ -20,6 +20,7 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	PollCursor,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -35,6 +36,7 @@ import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-tri
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
@@ -73,6 +75,7 @@ export class TriggerExecutionContextFactory {
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly ownershipService: OwnershipService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly pollCursorService: PollCursorService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -271,27 +274,49 @@ export class TriggerExecutionContextFactory {
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
+			let stagedCursor: PollCursor | null = null;
+
+			const takeStagedCursor = (): PollCursor | null => {
+				const cursor = stagedCursor;
+				stagedCursor = null;
+				return cursor;
+			};
+
 			const __emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
-				void this.workflowStaticDataService.saveStaticData(workflow);
+
+				const cursor = takeStagedCursor();
+
+				if (cursor === null) {
+					void this.workflowStaticDataService.saveStaticData(workflow);
+				}
 
 				// TODO(CAT-3202): resolves workflow data via callback so we
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
-				const executePromise = resolveWorkflowData().then(
-					async (freshWorkflowData) =>
-						await this.workflowExecutionService.runWorkflow(
-							freshWorkflowData,
-							node,
-							data,
-							additionalData,
-							mode,
-							responsePromise,
-						),
+				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) =>
+					cursor === null
+						? await this.workflowExecutionService.runWorkflow(
+								freshWorkflowData,
+								node,
+								data,
+								additionalData,
+								mode,
+								responsePromise,
+							)
+						: await this.workflowExecutionService.runPolledWorkflow(
+								freshWorkflowData,
+								node,
+								data,
+								additionalData,
+								mode,
+								cursor,
+								responsePromise,
+							),
 				);
 
 				if (donePromise) this.settleDonePromise(executePromise, donePromise);
@@ -305,7 +330,39 @@ export class TriggerExecutionContextFactory {
 				this.recordTriggerFailure(error, node, workflowData, workflow, mode);
 			};
 
-			return new PollContext(workflow, node, additionalData, mode, activation, __emit, __emitError);
+			if (!this.pollCursorService.enabled) {
+				return new PollContext(workflow, node, additionalData, mode, activation, __emit, __emitError);
+			}
+
+			const getCursor = async () =>
+				await this.pollCursorService.readCursor(
+					workflowData.id,
+					node.id,
+					workflow.getStaticData('node', node),
+				);
+
+			const setCursor = (cursor: PollCursor) => {
+				stagedCursor = { ...(stagedCursor ?? {}), ...cursor };
+			};
+
+			const __commitCursor = async () => {
+				const cursor = takeStagedCursor();
+				if (cursor === null) return;
+				await this.pollCursorService.commitCursorOnly(workflowData.id, node.id, cursor);
+			};
+
+			return new PollContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+				__emit,
+				__emitError,
+				getCursor,
+				setCursor,
+				__commitCursor,
+			);
 		};
 	}
 
