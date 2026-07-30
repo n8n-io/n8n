@@ -1,0 +1,176 @@
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_b546d99301cc3f::t_ab10ab508277e9 365
+  s_b546d99301cc3f::t_936bd3e9661148 354,364,366-368
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_0d3a15c539ca1d::t_a7315b6dea1d11 58-59
+  s_0d3a15c539ca1d::t_5c7ddd85a8828d 219
+  s_0d3a15c539ca1d::t_d81a67e27f4afb 82,103,135,269,292,312
+  s_0d3a15c539ca1d::t_d827be01298d60 118,152,178,200,328
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_4ecfe5017af67b::t_06c6848cc67c6d 2626-2627
+  s_db66da8198a49a::t_83975332ed9a35 2628
+  s_0d3a15c539ca1d::t_1cb8cbdc8b09c8 4053-4064,4066,4068-4070,4072-4073,4076-4078
+  s_f6202044773efc::t_a3a448050ab5fa 4080-4082
+  s_0d3a15c539ca1d::t_a2aeae71081bf6 2600
+  s_db66da8198a49a::t_7b929c57c7c0cb 967
+  s_0d3a15c539ca1d::t_37a45eff0d3d19 4223
+  s_b546d99301cc3f::t_eec914d6238bbd 1165
+  s_0d3a15c539ca1d::t_363f9cb32c4e16 4271,4279
+  s_0d3a15c539ca1d::t_534b9990023f89 5285,5291,5294-5297,5300-5304
+  s_0d3a15c539ca1d::t_025885958ac078 4313
+  s_0d3a15c539ca1d::t_7a26a6758d4b43 975
+  s_f6202044773efc::t_6a830b32e8c3da 5309-5311
+  s_0d3a15c539ca1d::t_75d9d1746876f2 2629
+  s_4ecfe5017af67b::t_3cbf5d205dcbc6 1114
+  s_db66da8198a49a::t_03030031f7be01 4884
+  s_b546d99301cc3f::t_ebaff182e833f6 1101
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_b546d99301cc3f::t_248d44d5bdd725 645-667
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_db66da8198a49a::t_4556080631cdee 648-651,654-660,662-667,686-688
+  s_0d3a15c539ca1d::t_497edfacf0949d 652-653,661,668-685
+  s_db66da8198a49a::t_910bd6ad649b19 887-891
+  s_db66da8198a49a::t_ba64ad29063be4 799-816
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_4ecfe5017af67b::t_883f95fe2098a3 119
+  s_0d3a15c539ca1d::t_bdfb091657d11f 176,178
+  s_0d3a15c539ca1d::t_6a6f1f1b8f35a7 77
+  s_0d3a15c539ca1d::t_884509ce85fc90 118,120
+  s_db66da8198a49a::t_47731d6be73c1d 76
+  s_4ecfe5017af67b::t_ad0266f2027266 177
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_0d3a15c539ca1d::t_8dda516c1e2d9c 813-815
+  s_0d3a15c539ca1d::t_2d5fe2740388c8 816
+  s_4ecfe5017af67b::t_a9765f0dad2671 811-812
+  s_db66da8198a49a::t_06583837ca9853 800
+  s_db66da8198a49a::t_cb6fe6485ae19e 2
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_b546d99301cc3f::t_24cdc6731e503e 524,553-558
+  s_db66da8198a49a::t_e3faf32f0eb6a5 510-523,525-552,559-561
+  s_db66da8198a49a::t_b80e1b2d49fc49 294,472,917,967,1032,1065,1100,1300,1310,1386,1396,1430
+packages/@n8n/agents/src/types/runtime/event.ts
+  s_db66da8198a49a::t_3c9fb85bcc7c07 22
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_db66da8198a49a::t_0a2b42d360e9da 235
+  s_db66da8198a49a::t_6d54a90ccdd119 261-286
+  s_db66da8198a49a::t_6c60e01483e5f0 98-99
+  s_db66da8198a49a::t_3af80e10ac03a2 127
+  s_0d3a15c539ca1d::t_9ce29873713857 229
+  s_db66da8198a49a::t_7eea7b7987335e 24,26
+  s_4ecfe5017af67b::t_d43ab27cd07911 260
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_db66da8198a49a::t_3c815b09e230fe 3295-3313,3316-3317
+  s_0d3a15c539ca1d::t_499567b4d869e6 3314-3315
+  s_0d3a15c539ca1d::t_43819fba18e2ac 656,662-663
+  s_0d3a15c539ca1d::t_b3d4634427b26c 681
+  s_db66da8198a49a::t_2f75eae8f520c6 3444,3448,3465-3466,3474-3475,3477-3481,3501-3502,3506,3508-3509,3512-3517,3525-3526,3528-3529,3532,3534,3542
+  s_db66da8198a49a::t_e83befbdd6a6ef 3428,3430-3432,3434-3439,3441
+  s_db66da8198a49a::t_8cde3bf1c9991e 3379
+  s_0d3a15c539ca1d::t_eac78b33cc44b1 3429,3433,3440
+  s_b546d99301cc3f::t_1fe55d4a64dfb2 3445-3447,3450-3464,3476
+  s_4ecfe5017af67b::t_e0872c5b05d568 3449,3467-3473,3482-3500,3503-3505,3507,3510-3511,3527,3530-3531,3533
+  s_0d3a15c539ca1d::t_858256b880f7aa 3380
+  s_b546d99301cc3f::t_62a6bbfe498541 3518-3524,3535-3541
+  s_0d3a15c539ca1d::t_640421e7d6a563 3318-3358
+  s_db66da8198a49a::t_395ccac552619a 3442-3443
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_b546d99301cc3f::t_6eabb1160ead5c 251-256
+packages/cli/src/modules/instance-ai/__tests__/run-debug-gating.test.ts
+  s_db66da8198a49a::t_dd8b2472ce4790 54
+  s_db66da8198a49a::t_e7e8f8d4cb9576 93
+  s_0d3a15c539ca1d::t_19874158e79a35 67-70
+  s_db66da8198a49a::t_42b916375a462b 21
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_4ecfe5017af67b::t_59c9d68a2f9e2f 293
+  s_4ecfe5017af67b::t_6dd561f5c1a72e 11
+  s_4ecfe5017af67b::t_8352f52db3908c 274
+  s_4ecfe5017af67b::t_0a8f8d63abcc7c 184
+  s_4ecfe5017af67b::t_08fac234fbfcc6 175
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_db66da8198a49a::t_9e4bb99fe75538 66
+  s_0d3a15c539ca1d::t_734c0aadce06d5 498-499,502,504-508
+  s_db66da8198a49a::t_3e95e2adce694e 149
+  s_4ecfe5017af67b::t_53d4fe636b8cbf 494-496
+  s_0d3a15c539ca1d::t_0d7ab4a11988c7 497
+  s_db66da8198a49a::t_4c4cee6525731f 435,437-438
+  s_db66da8198a49a::t_f79ccff10c5ca0 10
+  s_4ecfe5017af67b::t_99e95fa405a793 625-627
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_0d3a15c539ca1d::t_3afd03abe626a8 93
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_0d3a15c539ca1d::t_7631367fb66029 478,480,482-484
+  s_b546d99301cc3f::t_e61beca44c2797 323-333
+  s_b546d99301cc3f::t_3d95a36d4358d7 479
+  s_4ecfe5017af67b::t_924a0cd9b9ce4d 149
+  s_f6202044773efc::t_c071fad03c295f 334-335
+  s_f6202044773efc::t_e7ca8334c09999 477,481
+  s_4ecfe5017af67b::t_0f3189ef5b30b6 66
+  s_4ecfe5017af67b::t_823447f8ea6a84 813-814
+  s_4ecfe5017af67b::t_ba0ca68a731ccd 132
+  s_db66da8198a49a::t_ee511d5c236f79 26
+  s_db66da8198a49a::t_50c1dc86864080 815-816
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_b546d99301cc3f::t_158e1a9a274e2e 455
+packages/@n8n/instance-ai/src/types.ts
+  s_0d3a15c539ca1d::t_601e06ceb30e58 897
+  s_db66da8198a49a::t_5ffa47f5c65b60 896
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_b546d99301cc3f::t_c65165ec1368c3 266-268
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_0d3a15c539ca1d::t_0641e05d835a94 1444-1452
+  s_db66da8198a49a::t_14dbf62080ee79 1433-1437,1439-1440,1442-1443,1453-1455,1457-1458
+  s_0d3a15c539ca1d::t_6657cb39010524 1438,1441,1456
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "5dd3de51a167fbffd07c6bd7e5fa0a108e22f236",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0d3a15c539ca1d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7895dabc-4449-42e4-b6ab-e054ef5a74d5",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_4ecfe5017af67b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "14368acc-a5ee-4b1b-a4ef-b2cbda405ec9",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b546d99301cc3f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5ee68d24-2003-4fd5-9ff6-1b4cc25f1099",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_db66da8198a49a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "45ba3e71-374e-4b9a-9350-1dbc04836783",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f6202044773efc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a6a14117-43d2-45f8-a828-26044fafeab8",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
