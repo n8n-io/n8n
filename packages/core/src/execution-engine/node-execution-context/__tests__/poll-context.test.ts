@@ -146,6 +146,14 @@ describe('PollContext', () => {
 			});
 		});
 
+		it('should still resolve getCursor to null after staging a cursor with no keys', async () => {
+			const context = buildContext({});
+
+			context.setCursor({});
+
+			await expect(context.getCursor()).resolves.toBeNull();
+		});
+
 		it('should leave the static data untouched when __commitCursor is called', async () => {
 			const nodeStaticData: IDataObject = { lastItemId: 'a' };
 			const context = buildContext(nodeStaticData);
