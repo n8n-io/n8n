@@ -67,9 +67,6 @@
                             "color": {
                                 "type": "string"
                             },
-                            "icon": {
-                                "type": "null"
-                            },
                             "text": {
                                 "type": "array",
                                 "items": {
@@ -135,5 +132,5 @@
             }
         }
     },
-    "version": 3
+    "version": 2
 }
