@@ -2238,6 +2238,8 @@ describe('TelemetryEventRelay', () => {
 					dataTableSchemaConflictPolicy: 'keep-existing',
 					variableMissingMode: 'create-stub',
 					variableParentPolicy: 'global',
+					tagMissingMode: 'create',
+					tagConflictPolicy: 'rename',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -2269,6 +2271,13 @@ describe('TelemetryEventRelay', () => {
 						stubbed: 2,
 						requirements: 2,
 					},
+					tags: {
+						matched: 6,
+						created: 7,
+						renamed: 8,
+						skipped: 9,
+						requirements: 10,
+					},
 				},
 			};
 
@@ -2287,6 +2296,8 @@ describe('TelemetryEventRelay', () => {
 				data_table_schema_conflict_policy: 'keep-existing',
 				variable_missing_mode: 'create-stub',
 				variable_parent_policy: 'global',
+				tag_missing_mode: 'create',
+				tag_conflict_policy: 'rename',
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
@@ -2301,6 +2312,11 @@ describe('TelemetryEventRelay', () => {
 				variables_created: 3,
 				variables_stubbed: 2,
 				variables_required: 2,
+				tags_matched: 6,
+				tags_created: 7,
+				tags_renamed: 8,
+				tags_skipped: 9,
+				tags_required: 10,
 			});
 		});
 

@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
+import type { TagResolutionFailure } from './entities/tag/tag.types';
 import type {
 	VariableLimitFailure,
 	VariableResolutionFailure,
@@ -101,6 +102,22 @@ export const VariableParentPolicy = {
 	Project: 'project',
 	Global: 'global',
 } as const;
+
+export const TagMissingMode = {
+	/** Creates absent tags with their package (source) id and name. */
+	Create: 'create',
+	/** Workflows import without their missing tags; dropped tags are listed under `tags.skipped`. */
+	DoNothing: 'do-nothing',
+} as const;
+
+export const TagConflictPolicy = {
+	/** Drops conflicted tags from the import: not created, not renamed, not attached anywhere; listed under `tags.skipped`. */
+	Skip: 'skip',
+	/** Blocks the import when any referenced tag conflicts. */
+	Fail: 'fail',
+	/** Renames a drifted target tag (same id, different name) to the package name; a name held by another tag still fails. */
+	Rename: 'rename',
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
@@ -127,6 +144,10 @@ export type VariableMissingMode = (typeof VariableMissingMode)[keyof typeof Vari
 
 export type VariableParentPolicy = (typeof VariableParentPolicy)[keyof typeof VariableParentPolicy];
 
+export type TagMissingMode = (typeof TagMissingMode)[keyof typeof TagMissingMode];
+
+export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConflictPolicy];
+
 export interface ExportPackageRequest {
 	user: User;
 	workflowIds?: string[];
@@ -149,7 +170,8 @@ export type ImportPackageRequest = {
 	ImportWorkflowProperties &
 	ImportFolderProperties &
 	ImportDataTableProperties &
-	ImportVariableProperties;
+	ImportVariableProperties &
+	ImportTagProperties;
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
@@ -178,6 +200,11 @@ export type ImportVariableProperties = {
 	variableParentPolicy?: VariableParentPolicy;
 };
 
+export type ImportTagProperties = {
+	tagMissingMode: TagMissingMode;
+	tagConflictPolicy: TagConflictPolicy;
+};
+
 /**
  * The actor and resolved destination an import writes into. Threaded through
  * each entity importer so they share one resolved target instead of re-deriving
@@ -194,7 +221,8 @@ export interface ImportContext {
 export type ImportPackageEventOptions = ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportDataTableProperties &
-	ImportVariableProperties;
+	ImportVariableProperties &
+	ImportTagProperties;
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {
@@ -228,6 +256,13 @@ export type ImportPackageEventCounts = {
 		missing: number;
 		created: number;
 		stubbed: number;
+		requirements: number;
+	};
+	tags: {
+		matched: number;
+		created: number;
+		renamed: number;
+		skipped: number;
 		requirements: number;
 	};
 };
@@ -306,6 +341,7 @@ export type BlockingIssue =
 	  }
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
+	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
 	| ({ type: 'variable-limit-exceeded' } & VariableLimitFailure)
 	| {
@@ -382,6 +418,14 @@ export interface ImportVariableSummary {
 	stubbed: string[];
 }
 
+/** Tag names (not ids), grouped by how the import resolved them. */
+export interface ImportTagSummary {
+	matched: string[];
+	created: string[];
+	renamed: string[];
+	skipped: string[];
+}
+
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
@@ -390,4 +434,5 @@ export interface ImportResult {
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
 	variables: ImportVariableSummary;
+	tags: ImportTagSummary;
 }

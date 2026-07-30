@@ -262,6 +262,12 @@ describe('POST /n8n-packages/import', () => {
 				created: [],
 				stubbed: [],
 			},
+			tags: {
+				matched: [],
+				created: [],
+				renamed: [],
+				skipped: [],
+			},
 		});
 
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
@@ -307,6 +313,8 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableSchemaConflictPolicy', 'fail')
 			.field('variableMissingMode', 'create-with-value')
 			.field('variableParentPolicy', 'project')
+			.field('tagMissingMode', 'do-nothing')
+			.field('tagConflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);

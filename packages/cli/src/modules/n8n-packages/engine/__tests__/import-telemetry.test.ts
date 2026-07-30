@@ -47,6 +47,14 @@ const scope = (input: {
 		stubbed?: number;
 		existing?: number;
 	};
+	/** Tag ids per resolution bucket; the same id may recur across scopes. */
+	tags?: {
+		matched?: string[];
+		created?: string[];
+		renamed?: string[];
+		skipped?: string[];
+		requirementIds?: string[];
+	};
 }): PackageImportScope => {
 	const context: ImportContext = {
 		user: mock(),
@@ -63,6 +71,8 @@ const scope = (input: {
 		valuedCount + stubbedCount,
 		valuedCount + stubbedCount + (vars.existing ?? 0),
 	);
+	const tags = input.tags ?? {};
+	const toTagRefs = (ids: string[] = []) => ids.map((id) => ({ id, name: `name-of-${id}` }));
 	const imported: ImportContentResult = {
 		workflowOutcomes: input.outcomes,
 		folderSummaries: [],
@@ -81,6 +91,13 @@ const scope = (input: {
 			stubbed: stubbedVariableNames,
 			skippedExisting: existingVariableNames,
 		},
+		tagPlan: {
+			matched: toTagRefs(tags.matched),
+			creations: toTagRefs(tags.created),
+			renames: (tags.renamed ?? []).map((id) => ({ id, from: 'old', to: `name-of-${id}` })),
+			dropped: toTagRefs(tags.skipped),
+			failures: [],
+		},
 	};
 	return {
 		context,
@@ -98,6 +115,15 @@ const scope = (input: {
 			requirements: vars.requirements === 0 ? undefined : new Array(vars.requirements),
 			missingMode: 'do-nothing',
 		},
+		tagRequest: {
+			requirements: (tags.requirementIds ?? []).map((id) => ({
+				id,
+				name: `name-of-${id}`,
+				usedByWorkflows: ['ignored'],
+			})),
+			missingMode: 'create',
+			conflictPolicy: 'skip',
+		},
 	};
 };
 
@@ -111,6 +137,8 @@ const request = mock<ImportPackageRequest>({
 	variableMissingMode: 'create-stub',
 	variableParentPolicy: 'global',
 	missingNodeTypeMode: 'fail',
+	tagMissingMode: 'create',
+	tagConflictPolicy: 'rename',
 });
 
 const manifest = mock<PackageManifest>({ sourceId: 'src-1', packageFormatVersion: '1' });
@@ -144,6 +172,7 @@ describe('emitPackageImportedEvent', () => {
 					requirements: [requirement('credA')],
 					dataTable: { matched: 1, created: 0, requirements: 1 },
 					variables: { matched: 1, missing: 0, requirements: 1 },
+					tags: { matched: ['T1'], created: ['T2'], requirementIds: ['T1', 'T2'] },
 				}),
 				scope({
 					projectId: 'P2',
@@ -156,6 +185,13 @@ describe('emitPackageImportedEvent', () => {
 					requirements: [requirement('credB')],
 					dataTable: { matched: 0, created: 2, requirements: 2 },
 					variables: { matched: 0, missing: 2, requirements: 2, valued: 1, stubbed: 1 },
+					// T2 recurs from scope 1: tags are global, so it must count once.
+					tags: {
+						created: ['T2'],
+						renamed: ['T3'],
+						skipped: ['T4'],
+						requirementIds: ['T2', 'T3', 'T4'],
+					},
 				}),
 			],
 		});
@@ -178,9 +214,13 @@ describe('emitPackageImportedEvent', () => {
 			dataTables: { matched: 1, created: 2, requirements: 3 },
 			// scope 2's two missing requirements were created, so post-apply missing is 0.
 			variables: { matched: 1, missing: 0, created: 1, stubbed: 1, requirements: 3 },
+			// T2 and its requirement appear in both scopes but count once (unique tag ids).
+			tags: { matched: 1, created: 1, renamed: 1, skipped: 1, requirements: 4 },
 		});
 		expect(payload.packageSourceId).toBe('src-1');
 		expect(payload.options.variableMissingMode).toBe('create-stub');
 		expect(payload.options.variableParentPolicy).toBe('global');
+		expect(payload.options.tagMissingMode).toBe('create');
+		expect(payload.options.tagConflictPolicy).toBe('rename');
 	});
 });
