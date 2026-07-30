@@ -5,6 +5,19 @@ function trimTrailingSlash(url: string): string {
 	return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
+/**
+ * Serialise a trigger's HTTP method-set as the `?methods=…` disambiguator appended
+ * to its resource URL. A webhook path can host several disjoint-method triggers, so
+ * the method-set is part of the resource identity that scopes the token's `aud`.
+ * Upper-cased, de-duplicated and sorted so it matches the server-side canonical form.
+ * Empty/omitted set → no query (e.g. MCP, which is always POST and needs no suffix).
+ */
+function methodsQueryString(methods?: string[]): string {
+	if (!methods || methods.length === 0) return '';
+	const canonical = [...new Set(methods.map((method) => method.toUpperCase()))].sort();
+	return `?methods=${canonical.join(',')}`;
+}
+
 function getBearerToken(headerValue: string | undefined): string | null {
 	if (!headerValue) return null;
 	const split = headerValue.split(' ');
@@ -47,7 +60,7 @@ function sendUnauthorizedResponse(
  */
 export const n8nOAuth2Auth = async (
 	context: IWebhookFunctions,
-	options: { realm: string },
+	options: { realm: string; methods?: string[] },
 ): Promise<
 	| {
 			status: 'ok';
@@ -61,10 +74,13 @@ export const n8nOAuth2Auth = async (
 		throw new UnexpectedError('Webhook URL is not available');
 	}
 
-	const resourceUrl = trimTrailingSlash(webhookUrl);
+	// The method-set is part of the resource identity (see `methodsQueryString`), so it
+	// must be carried on both the token audience (`resourceUrl`) and the metadata URL
+	// advertised in `WWW-Authenticate` (`prmUrl`), keeping mint and verify consistent.
+	const resourceUrl = trimTrailingSlash(webhookUrl) + methodsQueryString(options.methods);
 
 	const u = new URL(resourceUrl);
-	const prmUrl = `${u.origin}/.well-known/oauth-protected-resource${u.pathname}`;
+	const prmUrl = `${u.origin}/.well-known/oauth-protected-resource${u.pathname}${u.search}`;
 
 	const resp = context.getResponseObject();
 	const req = context.getRequestObject();

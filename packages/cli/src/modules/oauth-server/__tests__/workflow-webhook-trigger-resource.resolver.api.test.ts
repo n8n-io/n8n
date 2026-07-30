@@ -27,8 +27,12 @@ let member: User;
 let webhookEndpoint: string;
 
 const webhookBaseUrl = () => Container.get(UrlService).getWebhookBaseUrl().replace(/\/$/, '');
-const resourceUrlFor = (webhookPath: string) =>
-	`${webhookBaseUrl()}/${webhookEndpoint}/${webhookPath}`;
+// A resource is identified by path + the trigger's method-set (see the resolver),
+// so its canonical URL carries a `?methods=…` suffix (upper-cased, sorted).
+const methodsQuery = (methods: IHttpRequestMethods[]) =>
+	`?methods=${[...new Set(methods.map((m) => m.toUpperCase()))].sort().join(',')}`;
+const resourceUrlFor = (webhookPath: string, methods: IHttpRequestMethods[] = ['POST']) =>
+	`${webhookBaseUrl()}/${webhookEndpoint}/${webhookPath}${methodsQuery(methods)}`;
 const prmPathFor = (webhookPath: string) =>
 	`/.well-known/oauth-protected-resource/${webhookEndpoint}/${webhookPath}`;
 
@@ -146,35 +150,66 @@ describe('protected resource metadata for webhook triggers', () => {
 		});
 	});
 
-	test('should resolve a non-POST webhook (method is not part of the resource)', async () => {
+	test('should resolve a non-POST webhook, encoding the method in the resource', async () => {
 		const webhookPath = randomUUID();
 		await createPublishedWebhookWorkflow(webhookPath, webhookNode(), { methods: ['GET'] });
 
 		const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.resource).toBe(resourceUrlFor(webhookPath));
+		expect(response.body.resource).toBe(resourceUrlFor(webhookPath, ['GET']));
 	});
 
-	test('should resolve a webhook registered under multiple methods', async () => {
+	test('should resolve a webhook registered under multiple methods as one resource', async () => {
 		const webhookPath = randomUUID();
 		await createPublishedWebhookWorkflow(webhookPath, webhookNode(), { methods: ['GET', 'POST'] });
 
 		const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.resource).toBe(resourceUrlFor(webhookPath));
+		// one trigger, several methods -> a single resource whose `aud` covers both
+		expect(response.body.resource).toBe(resourceUrlFor(webhookPath, ['GET', 'POST']));
 	});
 
-	test('should not resolve when the path is shared by triggers in different workflows', async () => {
+	test('should resolve disjoint-method triggers on a shared path when disambiguated by ?methods', async () => {
 		// n8n only enforces path uniqueness per (path, method), so two workflows can
-		// register the same path under disjoint methods. The resource URL (path-only)
-		// would then be ambiguous, so the resolver must refuse rather than pick one.
+		// register the same path under disjoint methods. Each is its own trigger, so a
+		// `?methods=…`-qualified request resolves to exactly one, with a distinct `aud`.
+		const webhookPath = randomUUID();
+		await createPublishedWebhookWorkflow(webhookPath, webhookNode(), { methods: ['GET'] });
+		await createPublishedWebhookWorkflow(webhookPath, webhookNode(), { methods: ['POST'] });
+
+		const getResponse = await testServer.restlessAgent.get(
+			`${prmPathFor(webhookPath)}?methods=GET`,
+		);
+		expect(getResponse.statusCode).toBe(200);
+		expect(getResponse.body.resource).toBe(resourceUrlFor(webhookPath, ['GET']));
+
+		const postResponse = await testServer.restlessAgent.get(
+			`${prmPathFor(webhookPath)}?methods=POST`,
+		);
+		expect(postResponse.statusCode).toBe(200);
+		expect(postResponse.body.resource).toBe(resourceUrlFor(webhookPath, ['POST']));
+	});
+
+	test('should refuse a shared path without a ?methods disambiguator', async () => {
+		// Two disjoint-method triggers, no method-set to pick between them: refuse
+		// rather than pick a winner (the caller can retry with `?methods=…`).
 		const webhookPath = randomUUID();
 		await createPublishedWebhookWorkflow(webhookPath, webhookNode(), { methods: ['GET'] });
 		await createPublishedWebhookWorkflow(webhookPath, webhookNode(), { methods: ['POST'] });
 
 		const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should not resolve a shared path when the ?methods set matches no trigger', async () => {
+		const webhookPath = randomUUID();
+		await createPublishedWebhookWorkflow(webhookPath, webhookNode(), { methods: ['GET'] });
+		await createPublishedWebhookWorkflow(webhookPath, webhookNode(), { methods: ['POST'] });
+
+		const response = await testServer.restlessAgent.get(`${prmPathFor(webhookPath)}?methods=PUT`);
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -191,6 +226,7 @@ describe('protected resource metadata for webhook triggers', () => {
 		expect(resource?.getAllowedRedirectUris).toBeUndefined();
 		expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath));
 		expect(resource?.getAudiences()).toEqual([resourceUrlFor(webhookPath)]);
+		expect(resource?.getResourceUrl()).toContain('?methods=POST');
 	});
 
 	test('should expose the workflow name for the consent screen', async () => {
@@ -382,6 +418,40 @@ describe('token audience', () => {
 		// a token minted for webhook A must fail webhook B's audience gate
 		await expect(
 			tokenService.verifyAccessToken(accessToken, resourceUrlFor(pathB)),
+		).rejects.toThrow();
+	});
+
+	test('should scope the audience per method so disjoint-method triggers do not share a token', async () => {
+		// Same path, two triggers (GET vs POST): the method-set makes the audiences
+		// distinct, so a token minted for the GET trigger is rejected at the POST one.
+		const sharedPath = randomUUID();
+		await createPublishedWebhookWorkflow(sharedPath, webhookNode({ name: 'GetHook' }), {
+			methods: ['GET'],
+		});
+		await createPublishedWebhookWorkflow(sharedPath, webhookNode({ name: 'PostHook' }), {
+			methods: ['POST'],
+		});
+		const tokenService = Container.get(OAuthTokenService);
+		const clientId = await registerOAuthClient();
+
+		const getResource = resourceUrlFor(sharedPath, ['GET']);
+		const { accessToken, refreshToken } = tokenService.generateTokenPair(
+			owner.id,
+			clientId,
+			getResource,
+			[],
+		);
+		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, []);
+
+		expect(decodeJwtPayload(accessToken).aud).toBe(getResource);
+
+		await expect(tokenService.verifyAccessToken(accessToken, getResource)).resolves.toMatchObject({
+			clientId,
+		});
+
+		// replaying the GET-scoped token against the POST trigger on the same path must fail
+		await expect(
+			tokenService.verifyAccessToken(accessToken, resourceUrlFor(sharedPath, ['POST'])),
 		).rejects.toThrow();
 	});
 });

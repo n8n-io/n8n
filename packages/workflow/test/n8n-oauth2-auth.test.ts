@@ -43,6 +43,34 @@ describe('n8nOAuth2Auth', () => {
 		expect(result).toEqual({ status: 'ok', token: 'good-token', resource: WEBHOOK_URL });
 	});
 
+	it('encodes the method-set into the resource and the protected-resource metadata URL', async () => {
+		const { context, validateN8nOAuth2Token } = buildContext({
+			authorization: 'Bearer good-token',
+		});
+
+		// unsorted/mixed-case input is canonicalised to sorted, upper-cased `methods`
+		const result = await n8nOAuth2Auth(context, {
+			realm: 'n8n Webhook',
+			methods: ['post', 'GET'],
+		});
+
+		const expectedResource = `${WEBHOOK_URL}?methods=GET,POST`;
+		expect(validateN8nOAuth2Token).toHaveBeenCalledWith('good-token', expectedResource);
+		expect(result).toEqual({ status: 'ok', token: 'good-token', resource: expectedResource });
+	});
+
+	it('advertises the method-qualified metadata URL in WWW-Authenticate', async () => {
+		const { context, response } = buildContext({});
+
+		await n8nOAuth2Auth(context, { realm: 'n8n Webhook', methods: ['GET', 'POST'] });
+
+		expect(response.writeHead).toHaveBeenCalledWith(401, {
+			'WWW-Authenticate': expect.stringContaining(
+				'/.well-known/oauth-protected-resource/webhook/protected-path?methods=GET,POST',
+			),
+		});
+	});
+
 	it('responds 401 without WWW-Authenticate error when no bearer token is present', async () => {
 		const { context, response, validateN8nOAuth2Token } = buildContext({});
 

@@ -245,8 +245,16 @@ export class Webhook extends Node {
 			if (context.getNodeParameter('authentication', 'none') === 'n8nOAuth2') {
 				// Two-step n8n user-auth flow: (1) validate the bearer token and resolve
 				// the caller to an n8n user, then (2) seed the execution context so the
-				// run happens as that user (merging their private credentials).
-				const authResult = await n8nOAuth2Auth(context, { realm: 'n8n Webhook' });
+				// run happens as that user (merging their private credentials). The node's
+				// method-set scopes the resource identity so disjoint-method triggers on a
+				// shared path get distinct token audiences.
+				const configuredMethods = context.getNodeParameter('httpMethod', 'GET') as
+					| string
+					| string[];
+				const authResult = await n8nOAuth2Auth(context, {
+					realm: 'n8n Webhook',
+					methods: Array.isArray(configuredMethods) ? configuredMethods : [configuredMethods],
+				});
 				if (authResult === 'handled') {
 					// Token missing/invalid: the helper already sent the response.
 					return { noWebhookResponse: true };
