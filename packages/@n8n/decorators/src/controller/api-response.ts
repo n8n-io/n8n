@@ -19,7 +19,10 @@ export function ApiResponse(status: SuccessStatus, dto?: ResponseDtoClass): Meth
 			String(handlerName),
 		);
 
+		// Both fields are assigned unconditionally: a route declares one `@ApiResponse`, so if two are
+		// stacked the lower (evaluated-first) one must not leave a DTO behind for a bare
+		// `@ApiResponse(204)` to inherit - that pairs a no-body status with a documented body.
 		routeMetadata.successStatus = status;
-		if (dto !== undefined) routeMetadata.responseDto = dto;
+		routeMetadata.responseDto = dto;
 	};
 }

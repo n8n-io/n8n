@@ -130,6 +130,44 @@ describe('buildDiscoverResponse', () => {
 		});
 	});
 
+	describe('composite scope requirements', () => {
+		// `POST /n8n-packages/export` requires `project:export,workflow:export`. Collapsing that to a
+		// single comma-joined pseudo-scope meant no caller ever matched it, hiding the endpoint from
+		// everyone.
+		it('should include a composite-scope endpoint for a caller holding one of its scopes', async () => {
+			const result = await buildDiscoverResponse(['workflow:export'] as ApiKeyScope[]);
+
+			const allEndpoints = Object.values(result.resources).flatMap((r) => r.endpoints);
+			expect(allEndpoints.some((e) => e.operationId === 'exportPackage')).toBe(true);
+		});
+
+		it('should exclude a composite-scope endpoint for a caller holding none of its scopes', async () => {
+			const result = await buildDiscoverResponse(['tag:list'] as ApiKeyScope[]);
+
+			const allEndpoints = Object.values(result.resources).flatMap((r) => r.endpoints);
+			expect(allEndpoints.some((e) => e.operationId === 'exportPackage')).toBe(false);
+		});
+
+		it('should list one operation per scope in a composite requirement, not a joined pseudo-operation', async () => {
+			const result = await buildDiscoverResponse([
+				'project:export',
+				'workflow:export',
+			] as ApiKeyScope[]);
+
+			expect(result.filters.operation.values).toContain('export');
+			expect(result.filters.operation.values).not.toContain('export,workflow');
+		});
+
+		it('should match a composite-scope endpoint under an operation filter', async () => {
+			const result = await buildDiscoverResponse(['workflow:export'] as ApiKeyScope[], {
+				operation: 'export',
+			});
+
+			const allEndpoints = Object.values(result.resources).flatMap((r) => r.endpoints);
+			expect(allEndpoints.some((e) => e.operationId === 'exportPackage')).toBe(true);
+		});
+	});
+
 	it('should not include workflow endpoints when caller has no workflow scopes', async () => {
 		const result = await buildDiscoverResponse([] as ApiKeyScope[]);
 

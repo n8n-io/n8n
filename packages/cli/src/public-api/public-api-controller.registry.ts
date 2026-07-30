@@ -8,27 +8,14 @@ import { Router as createRouter } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { resolveRouteArgs, resolveSuccessStatus } from '@/public-api/public-api-route-resolver';
+import {
+	apiKeyScopesSatisfy,
+	resolveRouteArgs,
+	resolveSuccessStatus,
+} from '@/public-api/public-api-route-resolver';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
-
-function apiKeyScopesSatisfy(
-	granted: readonly string[] | undefined,
-	requirement: ApiKeyScopeRequirement,
-): boolean {
-	if (!granted) return false;
-
-	if (typeof requirement === 'string') {
-		return granted.includes(requirement);
-	}
-
-	if ('anyOf' in requirement) {
-		return requirement.anyOf.some((scope) => granted.includes(scope));
-	}
-
-	return requirement.allOf.every((scope) => granted.includes(scope));
-}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -69,6 +56,7 @@ export class PublicApiControllerRegistry {
 				controllerClass.name,
 				handlerName,
 				route.successStatus,
+				route.responseDto,
 			);
 
 			const handler = async (req: Request, res: Response) => {

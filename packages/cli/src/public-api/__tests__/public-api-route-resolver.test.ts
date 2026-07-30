@@ -19,9 +19,12 @@ import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
+	apiKeyScopesSatisfy,
 	resolvePublicApiRoutes,
 	resolveRouteArgs,
+	scopeRequirementFromString,
 	scopeRequirementToString,
+	scopesInRequirement,
 } from '../public-api-route-resolver';
 
 class WidgetBodyDto extends Z.class({ id: z.string() }) {}
@@ -212,6 +215,67 @@ describe('public-api-route-resolver', () => {
 		});
 	});
 
+	describe('apiKeyScopesSatisfy', () => {
+		it('requires the exact scope for a plain string requirement', () => {
+			expect(apiKeyScopesSatisfy(['tag:list'], 'tag:list')).toBe(true);
+			expect(apiKeyScopesSatisfy(['tag:read'], 'tag:list')).toBe(false);
+		});
+
+		it('requires only one of an anyOf requirement', () => {
+			const requirement = { anyOf: ['project:export', 'workflow:export'] } as const;
+			expect(apiKeyScopesSatisfy(['workflow:export'], requirement)).toBe(true);
+			expect(apiKeyScopesSatisfy(['tag:list'], requirement)).toBe(false);
+		});
+
+		it('requires all of an allOf requirement', () => {
+			const requirement = { allOf: ['project:create', 'project:update'] } as const;
+			expect(apiKeyScopesSatisfy(['project:create', 'project:update'], requirement)).toBe(true);
+			expect(apiKeyScopesSatisfy(['project:create'], requirement)).toBe(false);
+		});
+
+		it('never satisfies a requirement when no scopes are granted', () => {
+			expect(apiKeyScopesSatisfy(undefined, 'tag:list')).toBe(false);
+			expect(apiKeyScopesSatisfy([], { anyOf: ['tag:list'] })).toBe(false);
+		});
+	});
+
+	describe('scopeRequirementFromString', () => {
+		it('returns a plain scope for a single entry', () => {
+			expect(scopeRequirementFromString('tag:list')).toBe('tag:list');
+		});
+
+		it('reads a comma-joined eov scope string as anyOf', () => {
+			expect(scopeRequirementFromString('project:export,workflow:export')).toEqual({
+				anyOf: ['project:export', 'workflow:export'],
+			});
+		});
+
+		it('tolerates surrounding whitespace', () => {
+			expect(scopeRequirementFromString('project:export, workflow:export')).toEqual({
+				anyOf: ['project:export', 'workflow:export'],
+			});
+		});
+
+		it('round-trips through scopeRequirementToString', () => {
+			const serialized = 'project:export,workflow:export';
+			expect(scopeRequirementToString(scopeRequirementFromString(serialized))).toBe(serialized);
+		});
+	});
+
+	describe('scopesInRequirement', () => {
+		it('enumerates every scope regardless of any/all semantics', () => {
+			expect(scopesInRequirement('tag:list')).toEqual(['tag:list']);
+			expect(scopesInRequirement({ anyOf: ['tag:list', 'tag:read'] })).toEqual([
+				'tag:list',
+				'tag:read',
+			]);
+			expect(scopesInRequirement({ allOf: ['tag:list', 'tag:read'] })).toEqual([
+				'tag:list',
+				'tag:read',
+			]);
+		});
+	});
+
 	describe('resolvePublicApiRoutes', () => {
 		it('joins a basePath with the route root path, dropping the trailing slash', () => {
 			class WidgetsPublicController {
@@ -297,6 +361,26 @@ describe('public-api-route-resolver', () => {
 			expect(route.description).toBe('Create a widget.');
 			expect(route.errorResponses).toEqual([409]);
 			expect(route.successStatus).toBe(201);
+		});
+
+		it('throws for a route pairing a 204 with a response DTO, which sends no body', () => {
+			class WidgetsPublicController {
+				@Get('/')
+				method() {}
+			}
+			// Reachable only by bypassing @ApiResponse's overloads, so set the metadata directly.
+			const route = Container.get(ControllerRegistryMetadata).getRouteMetadata(
+				WidgetsPublicController as Controller,
+				'method',
+			);
+			route.successStatus = 204;
+			route.responseDto = WidgetResponseDto;
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			expect(() => resolvePublicApiRoutes()).toThrow(UnexpectedError);
+			expect(() => resolvePublicApiRoutes()).toThrow(
+				/declares a 204 success status and a response DTO/,
+			);
 		});
 
 		it('throws for a route whose @ApiResponse is missing, rather than assuming a 200', () => {
