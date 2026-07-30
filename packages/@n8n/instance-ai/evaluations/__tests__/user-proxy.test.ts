@@ -6,6 +6,7 @@
 // deterministic shortcuts, repeat detection, and budget enforcement.
 // ---------------------------------------------------------------------------
 
+import type { N8nClient } from '../clients/n8n-client';
 import type { CapturedEvent } from '../types';
 import { UserProxyLlm } from '../utils/user-proxy';
 import type { UserProxyAgent } from '../utils/user-proxy/agent';
@@ -15,6 +16,21 @@ import {
 	type Decision,
 	type ProxyDecisionMode,
 } from '../utils/user-proxy/tools';
+
+/** Minimal fake satisfying only the two N8nClient methods credential creation uses. */
+function fakeCredentialClient(createdId: string): {
+	client: N8nClient;
+	createCredential: ReturnType<typeof vi.fn>;
+	setThreadCredentialAllowlist: ReturnType<typeof vi.fn>;
+} {
+	const createCredential = vi.fn().mockResolvedValue({ id: createdId });
+	const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+	return {
+		client: { createCredential, setThreadCredentialAllowlist } as unknown as N8nClient,
+		createCredential,
+		setThreadCredentialAllowlist,
+	};
+}
 
 // ---------------------------------------------------------------------------
 // FakeAgent — programmable agent for tests
@@ -725,7 +741,42 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("workflows(action='setup'): drops a nodeCredentialsJson entry naming a credential id not in that node/type existingCredentials", async () => {
+	it("workflows(action='setup'): auto-accepts the sole existing credential regardless of the id string given, when there's only one candidate", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			// The model isn't required to echo the real id back correctly when
+			// there's only one candidate — TRUST-349's folded manual behavior
+			// auto-selects the sole existing credential regardless.
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'whatever' } }),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-single-any-id', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toEqual({ 'Post To Slack': { slackApi: 'cred-team' } });
+		}
+	});
+
+	it("workflows(action='setup'): drops a nodeCredentialsJson entry naming a credential id that matches none of several existing candidates", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -750,12 +801,140 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		});
 
 		const response = await proxy.respondToConfirmation(
-			setupWizardEvent('req-sw-bogus-id', [
+			setupWizardEvent('req-sw-bogus-id-ambiguous', [
 				{
 					nodeId: 'n1',
 					nodeName: 'Post To Slack',
 					credentialType: 'slackApi',
-					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+					existingCredentials: [
+						{ id: 'cred-personal', name: 'Personal Slack' },
+						{ id: 'cred-team', name: 'Team Slack' },
+					],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toBeUndefined();
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it("workflows(action='setup'): creates a real credential when the resolved slot has zero existing candidates", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const { client, createCredential, setThreadCredentialAllowlist } =
+			fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: ['cred-old'] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-create', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.any(String),
+			'slackApi',
+			expect.any(Object),
+		);
+		// The allowlist call must include the pre-existing id, not just the new
+		// one — setThreadCredentialAllowlist replaces the whole list.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', [
+			'cred-old',
+			'cred-fresh',
+		]);
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toEqual({ 'Post To Slack': { slackApi: 'cred-fresh' } });
+		}
+	});
+
+	it("workflows(action='setup'): registers a mid-run-created credential id for cleanup when configured", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const { client } = fakeCredentialClient('cred-fresh');
+		const createdCredentialIds = new Set<string>();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: {
+				client,
+				threadId: 'thread-1',
+				allowlistedCredentialIds: [],
+				createdCredentialIds,
+			},
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-create-cleanup', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		expect(createdCredentialIds.has('cred-fresh')).toBe(true);
+	});
+
+	it("workflows(action='setup'): declines a zero-candidate credential slot when no credentialCreation is configured", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const logger = {
+			warn: vi.fn(),
+			info: vi.fn(),
+			verbose: vi.fn(),
+			success: vi.fn(),
+			error: vi.fn(),
+			isVerbose: false,
+		};
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-create-unwired', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
 				},
 			]),
 		);
@@ -982,7 +1161,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("credentials(action='setup'): declines manual selection when the requested type has no existing credential", async () => {
+	it("credentials(action='setup'): declines manual selection when the requested type has no existing credential and no credentialCreation is configured", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
 		const logger = {
@@ -1011,6 +1190,36 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect(response.approved).toBe(false);
 		}
 		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it("credentials(action='setup'): manual creates a real credential when the requested type has zero existing candidates", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
+		const { client, createCredential, setThreadCredentialAllowlist } =
+			fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-create', [{ credentialType: 'slackApi' }]),
+		);
+
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.any(String),
+			'slackApi',
+			expect.any(Object),
+		);
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh']);
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({ slackApi: 'cred-fresh' });
+		}
 	});
 
 	it("credentials(action='setup'): requests automatic setup when the agent picks auto", async () => {

@@ -74,14 +74,16 @@ Rules that trip people up:
 3. **`conversation[0]` is sent to the builder *raw*.** Never put a director note
    in the opening turn — it leaks verbatim into the build prompt. Notes belong
    only in the proxy-driven turns ([1]+).
-4. **The proxy defers credentials by default.** `apply_setup_wizard` still
-   fills only non-credential params, and a standalone credential card
-   (`credentialRequests`) is auto-declined ("I'll set them up later") *unless*
-   a director note governing that exact moment asks the user to engage — see
-   "Engaging the credential-setup card" below (`choose_credential_setup_option`
-   in `utils/user-proxy/tools.ts`). A case that needs a credential present
-   must **declare** it (below) regardless — engaging only *selects* a declared
-   credential, it never creates one on the fly.
+4. **The proxy defers credentials by default.** A credential slot — whether on
+   the standalone credential card (`credentialRequests`) or a workflow
+   setup-wizard card (`setupRequests`, an entry with `credentialType`) — is
+   auto-declined ("I'll set them up later") *unless* a director note governing
+   that exact moment asks the user to engage — see "Engaging the
+   credential-setup card" below. **The workflow setup wizard is the one that
+   actually matters**: live testing found the builder routes credential
+   resolution through it for a normal build, not through the standalone tool
+   (kept, but unverified in practice — see the tool's own doc comment in
+   `utils/user-proxy/tools.ts`).
 
 ### Director-note vocabulary (`[bracketed]` in a `user` turn)
 
@@ -139,16 +141,17 @@ with a pointer to add a template. From
 
 ### Engaging the credential-setup card (TRUST-349)
 
-By default the proxy defers any standalone credential card
-(`credentialRequests`, not the workflow setup wizard) with an empty selection
-— this happens **before the LLM is even called** (`confirmation-payload.ts`'s
-`tryInfrastructureResponse`), so it's the same deterministic behavior for
-every case that doesn't opt in.
+By default the proxy defers any credential slot — standalone card
+(`credentialRequests`) or workflow setup-wizard card (`setupRequests`, a
+`credentialType` entry) — with an empty/no-op response. This happens **before
+the LLM is even called** (`confirmation-payload.ts`'s `tryInfrastructureResponse`
+for the standalone card; `deterministic.ts`'s credential-only-request check for
+the wizard), so it's the same deterministic behavior for every case that
+doesn't opt in.
 
-To make the simulated user engage instead — select an existing credential,
-request automatic setup, or explicitly decline — add a director note that
-names the credential/OAuth/connect vocabulary at the moment the card would
-appear (matched by `hasCredentialEngagementDirection` in `utils/user-proxy/index.ts`):
+To make the simulated user engage instead, add a director note that names the
+credential/OAuth/connect vocabulary at the moment the card would appear
+(matched by `hasCredentialEngagementDirection` in `utils/user-proxy/index.ts`):
 
 ```json
 "conversation": [
@@ -158,17 +161,39 @@ appear (matched by `hasCredentialEngagementDirection` in `utils/user-proxy/index
 ]
 ```
 
-The card only has something to *select* if the type is **declared** — pair
-this with a `credentials: [{ "type": "slackApi" }]` entry so the card's
-`existingCredentials` isn't empty. The four wire shapes this exercises (verified
-against `credentials.tool.ts`'s `handleSetup` state machine):
+**`manual` is one action that covers three cases**, driven entirely by how many
+`existingCredentials` the resolved type's request carries — no separate
+"create" action, the harness decides automatically:
+
+| Existing candidates | What happens | Case setup |
+|---|---|---|
+| Zero | The harness **creates a real credential** (via the same per-type template `credentials/seeder.ts` uses for pre-run seeding) and selects the new id | Don't declare that type in `credentials[]` at all |
+| One | Selected automatically, no disambiguation needed | Declare exactly one: `credentials: [{ "type": "slackApi" }]` |
+| Two or more | The director note must name a specific one by its declared `name`; the proxy echoes it back to disambiguate | Declare 2+ with distinct `name`s, e.g. `credentials: [{ "type": "slackApi", "name": "Personal Slack" }, { "type": "slackApi", "name": "Team Slack" }]` |
+
+See the three example cases: `credential-setup-manual-create.json` (zero),
+`credential-setup-manual-selection.json` (two), `credential-setup-manual-select-many.json`
+(three, proving disambiguation isn't hard-coded to "exactly two").
+
+The wire shapes (verified live against both tools — `credentials.tool.ts`'s
+`handleSetup` state machine and `workflows.tool.ts`'s setup-wizard equivalent):
 
 | Director note asks for… | Proxy action | Resume payload | Tool result |
 |---|---|---|---|
-| Select the existing credential | `choose_credential_setup_option(manual)` | `{kind:'credentialSelection', credentials:{type: id}}` | `{success:true, credentials:{...}}` — assistant should stop asking and proceed |
-| Automatic/browser setup | `choose_credential_setup_option(auto)` | `{kind:'credentialAutoSetup', credentialType}` | `{success:false, needsBrowserSetup:true, ...}` |
-| Explicitly decline | `choose_credential_setup_option(skip)` | `{kind:'approval', approved:false}` | `{success:true, deferred:true}` |
-| (nothing — default) | *(short-circuited, no LLM call)* | `{kind:'credentialSelection', credentials:{}}` | `{success:true, deferred:true}` |
+| Set up now (zero existing) | `manual` → harness creates a credential | `{kind:'credentialSelection', credentials:{type: newId}}` | credential attached; a placeholder-token connection test will genuinely fail — see below |
+| Select a specific one (2+ existing) | `manual` + `existingCredentialId` (standalone) or a matching id in `nodeCredentialsJson` (wizard) | `{kind:'credentialSelection', credentials:{type: id}}` | assistant should stop asking and proceed |
+| Automatic/browser setup | `choose_credential_setup_option(auto)` — standalone tool only | `{kind:'credentialAutoSetup', credentialType}` | `{success:false, needsBrowserSetup:true, ...}` |
+| Explicitly decline | `choose_credential_setup_option(skip)` (standalone) or dismiss the wizard card | `{kind:'approval', approved:false}` | `{success:true, deferred:true}` |
+| (nothing — default) | *(short-circuited, no LLM call)* | empty/no-op | deferred |
+
+**A created or freshly-declared credential uses a placeholder token** unless
+you set the type's `EVAL_*_ACCESS_TOKEN` env var (see "Credential cases"
+above) — the product will genuinely run a connection test against it and
+report a real "Invalid access token" failure. That's expected, not a harness
+bug: phrase `processExpectations` to assert the agent reports the failure
+honestly (doesn't claim success, doesn't go silent), not that the token
+actually works — see the three example cases' `description` fields for the
+calibrated phrasing.
 
 **`auto` is reachable but inert** — the product genuinely rebuilds the agent
 and returns `needsBrowserSetup:true`, but this harness has no Computer Use

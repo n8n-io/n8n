@@ -92,6 +92,13 @@ interface MultiTurnDriverConfig {
 	/** Appended to the FIRST sent message only (pre-seeded-table hint); the
 	 *  recorded turn and the proxy's conversation keep the clean prompt. */
 	openingMessageSuffix?: string;
+	/** Ids already allowlisted for this thread (from pre-run `createDeclaredCredentials`
+	 *  seeding) — wires `UserProxyLlm.credentialCreation` so `manual` can create a
+	 *  real credential when a setup card shows zero existing candidates. Omitted
+	 *  when the credential view isn't pinned (see `credentialViewPinned`), since
+	 *  the allowlist endpoint isn't available in that case either. */
+	allowlistedCredentialIds?: string[];
+	createdCredentialIds?: Set<string>;
 }
 
 async function driveMultiTurnConversation(
@@ -103,6 +110,16 @@ async function driveMultiTurnConversation(
 		conversation: config.conversation,
 		messageBudget: config.messageBudget,
 		logger: config.logger,
+		...(config.allowlistedCredentialIds !== undefined
+			? {
+					credentialCreation: {
+						client: config.client,
+						threadId: config.threadId,
+						allowlistedCredentialIds: config.allowlistedCredentialIds,
+						createdCredentialIds: config.createdCredentialIds,
+					},
+				}
+			: {}),
 	});
 
 	const confirmationStrategy: ConfirmationStrategy = proxy.respondToConfirmation.bind(proxy);
@@ -432,6 +449,15 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				logger,
 				proxyResponses,
 				followUpMessagesOut: followUpMessages,
+				// Only wired when the credential view is actually pinned — the
+				// allowlist endpoint a mid-run creation depends on isn't available
+				// otherwise either (see the catch above).
+				...(credentialViewPinned
+					? {
+							allowlistedCredentialIds: createdCredentials.map((c) => c.id),
+							createdCredentialIds: config.createdCredentialIds,
+						}
+					: {}),
 				// The pre-seeded-table note goes to the agent, but the recorded turn
 				// (and the graded transcript) keeps the clean user prompt.
 				openingMessageSuffix: scenarioSeedTablesNote,

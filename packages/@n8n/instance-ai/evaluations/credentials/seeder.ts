@@ -108,6 +108,47 @@ export interface CreatedCredential {
 }
 
 /**
+ * Create a single credential of the given type. Throws on an unknown type and
+ * on creation failure — callers decide what a failure means for their flow
+ * (declared-credential seeding fails the build; a mid-run "create" decision
+ * falls back to decline, see `user-proxy/tools.ts`).
+ *
+ * `usedNames` de-dupes display names across calls that share it (e.g. every
+ * declared credential in one `createDeclaredCredentials` batch) by appending
+ * `#2`, `#3`, ... — pass a fresh `Map` for an unrelated, independent batch.
+ */
+export async function createOneCredential(
+	client: N8nClient,
+	credentialType: string,
+	name: string | undefined,
+	usedNames: Map<string, number>,
+	options?: { logger?: EvalLogger },
+): Promise<CreatedCredential> {
+	const template = CREDENTIAL_TEMPLATES[credentialType];
+	if (!template) {
+		throw new Error(
+			`No credential template for type "${credentialType}" — add one to evaluations/credentials/seeder.ts`,
+		);
+	}
+
+	const base = name ?? template.defaultName;
+	const count = (usedNames.get(base) ?? 0) + 1;
+	usedNames.set(base, count);
+	const resolvedName = count > 1 ? `${base} #${count}` : base;
+
+	const envToken = template.envVar ? process.env[template.envVar] : undefined;
+	const token = envToken ?? PLACEHOLDER_TOKEN;
+	options?.logger?.verbose(`  Creating credential ${resolvedName} (${credentialType})`);
+	// No retry: a credential POST isn't idempotent, so retrying after a lost response would orphan a duplicate we never capture for cleanup.
+	const { id } = await client.createCredential(
+		resolvedName,
+		credentialType,
+		template.buildData(token),
+	);
+	return { id, name: resolvedName, type: credentialType };
+}
+
+/**
  * Create the credentials a test case declares. Throws on unknown types and on
  * creation failures — declared credentials are load-bearing for the case's
  * expectations, so a partial set must fail the build rather than skew it.
@@ -126,25 +167,9 @@ export async function createDeclaredCredentials(
 	const nameCounts = new Map<string, number>();
 
 	for (const decl of declared) {
-		const template = CREDENTIAL_TEMPLATES[decl.type];
-		if (!template) {
-			throw new Error(
-				`No credential template for type "${decl.type}" — add one to evaluations/credentials/seeder.ts`,
-			);
-		}
-
-		const base = decl.name ?? template.defaultName;
-		const count = (nameCounts.get(base) ?? 0) + 1;
-		nameCounts.set(base, count);
-		const name = count > 1 ? `${base} #${count}` : base;
-
-		const envToken = template.envVar ? process.env[template.envVar] : undefined;
-		const token = envToken ?? PLACEHOLDER_TOKEN;
-		logger?.verbose(`  Creating credential ${name} (${decl.type})`);
-		// No retry: a credential POST isn't idempotent, so retrying after a lost response would orphan a duplicate we never capture for cleanup.
-		const { id } = await client.createCredential(name, decl.type, template.buildData(token));
-		options?.onCreated?.(id);
-		created.push({ id, name, type: decl.type });
+		const cred = await createOneCredential(client, decl.type, decl.name, nameCounts, { logger });
+		options?.onCreated?.(cred.id);
+		created.push(cred);
 	}
 
 	return created;

@@ -65,7 +65,16 @@ const pickResourceDecisionSchema = z.object({
  * (see doc block on `CredentialSetupParseContext` below for the full mapping):
  *  - `manual` → `{kind:'credentialSelection', credentials:{[type]: id}}` — the
  *    resume payload itself is how the assistant learns the credential exists
- *    (tool State 5); no re-check round-trip.
+ *    (tool State 5); no re-check round-trip. `manual` covers all three
+ *    existing-credential counts for the resolved type (ticket TRUST-349):
+ *      - zero  → the harness creates a real credential for it
+ *        (`UserProxyConfig.credentialCreation`) and selects the new id —
+ *        "user fills the New Credential modal". Falls back to decline (with a
+ *        parse-failure log) if credential-creation support isn't wired in.
+ *      - one   → that credential is selected automatically; `existingCredentialId`
+ *        is not needed.
+ *      - many  → `existingCredentialId` is required to disambiguate which one
+ *        the direction names; omitting it declines (ambiguous).
  *  - `auto`   → `{kind:'credentialAutoSetup', credentialType}` — triggers an
  *    agent rebuild server-side and a `needsBrowserSetup:true` tool result
  *    (tool State 4). Reachable for shape-completeness only — the harness has
@@ -81,8 +90,9 @@ const chooseCredentialSetupOptionDecisionSchema = z.object({
 	credentialType: z.string().optional(),
 	/** For `manual` when the card lists more than one existing credential of
 	 *  the resolved type — the `id` of the one to select (from
-	 *  `credentialRequests[].existingCredentials[].id`). Optional when there's
-	 *  only one candidate; required to disambiguate when there are several. */
+	 *  `credentialRequests[].existingCredentials[].id`). Required to
+	 *  disambiguate when there are several; not needed for zero (created) or
+	 *  one (auto-selected) candidates. */
 	existingCredentialId: z.string().optional(),
 });
 
@@ -175,7 +185,7 @@ export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmatio
 
 - answer_questions(answers[]): The agent fired an ask-user confirmation (inputType=questions). Answer every question with a plausible value — stated → implied → invented. Invent rather than skip. Set skipped=true only when the question has no plausible answer of any shape, OR when a [stage direction] in the script tells the user to decline or withhold that value — in that case you MUST set skipped=true with an empty selectedOptions and pick NO option (not even one that looks standard or obvious); picking a value defeats the test.
 
-- apply_setup_wizard(nodeParametersJson, nodeCredentialsJson?): The agent fired a setup-wizard / "configure your workflow" setup card with placeholder parameters and/or credential slots (the event's payload has \`setupRequests\`). \`nodeParametersJson\` decodes to { "<setup node name>": { "<paramName>": <value>, ... }, ... } — fill every non-credential placeholder with a plausible value (stated → implied → invented). Credential slots (a request entry with \`credentialType\`) stay unset by default — omit \`nodeCredentialsJson\` or leave that node/type out of it — UNLESS a stage direction governing this exact card tells the user to engage; then set \`nodeCredentialsJson\` to { "<setup node name>": { "<credentialType>": "<id>" } }, where \`<id>\` is one of that request's \`existingCredentials[].id\` (match the credential the direction names by its \`name\`). This is the ONLY correct way to fill a setup card — do NOT answer it with answer_questions. To deliberately leave a value unset (e.g. a stage direction says the user skips it), dismiss the whole card with approve_or_reject(approved=false) instead of filling it.
+- apply_setup_wizard(nodeParametersJson, nodeCredentialsJson?): The agent fired a setup-wizard / "configure your workflow" setup card with placeholder parameters and/or credential slots (the event's payload has \`setupRequests\`). \`nodeParametersJson\` decodes to { "<setup node name>": { "<paramName>": <value>, ... }, ... } — fill every non-credential placeholder with a plausible value (stated → implied → invented). Credential slots (a request entry with \`credentialType\`) stay unset by default — omit \`nodeCredentialsJson\` or leave that node/type out of it — UNLESS a stage direction governing this exact card tells the user to engage; then set \`nodeCredentialsJson\` to { "<setup node name>": { "<credentialType>": "<id>" } }. What \`<id>\` should be depends on that request's \`existingCredentials\`: zero entries → put any placeholder string, a real credential will be created for you; exactly one → put its \`id\`; two or more → put the \`id\` of the one the direction names (match by its \`name\`). This is the ONLY correct way to fill a setup card — do NOT answer it with answer_questions. To deliberately leave a value unset (e.g. a stage direction says the user skips it), dismiss the whole card with approve_or_reject(approved=false) instead of filling it.
 
 - approve_or_reject(approved, userInput?): A plan-review or free-text confirmation widget is on screen (the event's inputType is plan-review or text). Approve if the plan matches user intent; reject with reason if it diverges. This action only exists as a response to such a widget.
 
@@ -183,7 +193,7 @@ export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmatio
 
 - pick_resource_decision(decision): The agent is asking the user to pick a gateway resource access option. Pick the option the user would choose.
 
-- choose_credential_setup_option(option, credentialType?, existingCredentialId?): The agent opened a standalone credential setup card (the event's payload has \`credentialRequests\`, not \`setupRequests\`). You are only ever shown this action when a stage direction governs this exact moment — outside that, credentials stay deferred automatically and you never see this event. Follow the direction: \`manual\` to select the existing credential the card lists for that type (the user "fills the form" with a credential they already have) — if \`credentialRequests[].existingCredentials\` lists more than one for that type, set \`existingCredentialId\` to the \`id\` of the one the direction names (match by its \`name\`); with only one candidate you can omit it. \`auto\` hands off to automatic browser-based setup (shape-only — the harness cannot actually drive that flow, so only script this in a throwaway local check, never in a case meant for the gated suite). \`skip\` if the direction says to decline. Never pick this action on your own initiative — only in response to a direction that explicitly asks for credential engagement.`;
+- choose_credential_setup_option(option, credentialType?, existingCredentialId?): The agent opened a standalone credential setup card (the event's payload has \`credentialRequests\`, not \`setupRequests\`). You are only ever shown this action when a stage direction governs this exact moment — outside that, credentials stay deferred automatically and you never see this event. Follow the direction: \`manual\` fills the card the way a user filling the form would — check \`credentialRequests[].existingCredentials\` for the resolved type: zero entries → a real credential is created for you automatically, no \`existingCredentialId\` needed; exactly one → it's selected automatically, no \`existingCredentialId\` needed; two or more → set \`existingCredentialId\` to the \`id\` of the one the direction names (match by its \`name\`). \`auto\` hands off to automatic browser-based setup (shape-only — the harness cannot actually drive that flow, so only script this in a throwaway local check, never in a case meant for the gated suite). \`skip\` if the direction says to decline. Never pick this action on your own initiative — only in response to a direction that explicitly asks for credential engagement.`;
 
 export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user's turn. The agent finished its run, no widget is on screen, and the chat input is waiting. The user either types a message or ends the conversation:
 
@@ -195,24 +205,63 @@ export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user
 // Decision → InstanceAiConfirmRequest encoders
 // ---------------------------------------------------------------------------
 
+/** Creates a real credential of the given type for the "manual, zero existing"
+ *  case — see `UserProxyConfig.credentialCreation` in `user-proxy/index.ts`. */
+export type CreateCredentialFn = (credentialType: string) => Promise<{ id: string; name: string }>;
+
+/**
+ * Shared safety net around `createCredential`: missing config and a thrown
+ * creation error (bad type, network failure, ...) both decline-and-log rather
+ * than crash the run — a failed credential creation is no different from any
+ * other unresolvable manual selection from the caller's point of view.
+ */
+async function tryCreateCredential(
+	createCredential: CreateCredentialFn | undefined,
+	credentialType: string,
+	actionLabel: string,
+	onFailure?: (raw: string, error: unknown) => void,
+): Promise<{ id: string; name: string } | undefined> {
+	if (!createCredential) {
+		onFailure?.(
+			actionLabel,
+			new Error(
+				`no existing credential for type "${credentialType}" and no credential-creation support wired in`,
+			),
+		);
+		return undefined;
+	}
+	try {
+		return await createCredential(credentialType);
+	} catch (error) {
+		onFailure?.(actionLabel, error);
+		return undefined;
+	}
+}
+
 /**
  * Encode a confirmation-response action into an InstanceAiConfirmRequest.
  * Returns null for user-turn actions (send_follow_up_message, declare_done),
  * which the caller routes separately.
  */
-export function encodeConfirmationDecision(
+export async function encodeConfirmationDecision(
 	decision: Decision,
 	onParseFailure?: (raw: string, error: unknown) => void,
 	setupContext?: SetupWizardParseContext,
 	credentialSetupContext?: CredentialSetupParseContext,
-): InstanceAiConfirmRequest | null {
+	createCredential?: CreateCredentialFn,
+): Promise<InstanceAiConfirmRequest | null> {
 	switch (decision.action) {
 		case 'answer_questions':
 			return { kind: 'questions', answers: decision.answers };
 
 		case 'apply_setup_wizard': {
 			const nodeCredentials = decision.nodeCredentialsJson
-				? parseNodeCredentialsJson(decision.nodeCredentialsJson, onParseFailure, setupContext)
+				? await parseNodeCredentialsJson(
+						decision.nodeCredentialsJson,
+						onParseFailure,
+						setupContext,
+						createCredential,
+					)
 				: undefined;
 			return {
 				kind: 'setupWorkflowApply',
@@ -250,7 +299,12 @@ export function encodeConfirmationDecision(
 		}
 
 		case 'choose_credential_setup_option':
-			return encodeCredentialSetupDecision(decision, onParseFailure, credentialSetupContext);
+			return await encodeCredentialSetupDecision(
+				decision,
+				onParseFailure,
+				credentialSetupContext,
+				createCredential,
+			);
 
 		case 'send_follow_up_message':
 		case 'declare_done':
@@ -258,11 +312,12 @@ export function encodeConfirmationDecision(
 	}
 }
 
-function encodeCredentialSetupDecision(
+async function encodeCredentialSetupDecision(
 	decision: Extract<Decision, { action: 'choose_credential_setup_option' }>,
 	onParseFailure?: (raw: string, error: unknown) => void,
 	credentialSetupContext?: CredentialSetupParseContext,
-): InstanceAiConfirmRequest {
+	createCredential?: CreateCredentialFn,
+): Promise<InstanceAiConfirmRequest> {
 	if (decision.option === 'skip') return { kind: 'approval', approved: false };
 
 	const request = resolveCredentialRequest(decision.credentialType, credentialSetupContext);
@@ -279,13 +334,47 @@ function encodeCredentialSetupDecision(
 		return { kind: 'credentialAutoSetup', credentialType };
 	}
 
-	// manual
-	const existingId = resolveExistingCredentialId(request, decision.existingCredentialId);
+	// manual — covers all three existing-credential counts for the resolved type.
+	return await resolveManualCredentialSelection(
+		decision,
+		request,
+		onParseFailure,
+		createCredential,
+	);
+}
+
+/**
+ * `manual`'s three-way behavior (TRUST-349): zero existing credentials of the
+ * resolved type → create one for real; exactly one → auto-select it;
+ * several → `existingCredentialId` must disambiguate which one.
+ */
+async function resolveManualCredentialSelection(
+	decision: Extract<Decision, { action: 'choose_credential_setup_option' }>,
+	request: CredentialSetupParseContext['requests'][number] | undefined,
+	onParseFailure?: (raw: string, error: unknown) => void,
+	createCredential?: CreateCredentialFn,
+): Promise<InstanceAiConfirmRequest> {
+	const credentialType = request?.credentialType ?? decision.credentialType;
+
+	if (request && request.existingCredentials.length === 0) {
+		const created = await tryCreateCredential(
+			createCredential,
+			request.credentialType,
+			decision.action,
+			onParseFailure,
+		);
+		if (!created) return { kind: 'approval', approved: false };
+		return { kind: 'credentialSelection', credentials: { [request.credentialType]: created.id } };
+	}
+
+	const existingId = request
+		? resolveExistingCredentialId(request, decision.existingCredentialId)
+		: undefined;
 	if (!request || !existingId) {
 		onParseFailure?.(
 			decision.action,
 			new Error(
-				`manual credential selection: no existing credential found for type "${decision.credentialType ?? ''}"` +
+				`manual credential selection: no existing credential found for type "${credentialType ?? ''}"` +
 					(decision.existingCredentialId ? ` matching id "${decision.existingCredentialId}"` : ''),
 			),
 		);
@@ -295,16 +384,15 @@ function encodeCredentialSetupDecision(
 }
 
 /**
- * Which existing credential to select for `manual`. When the card lists more
- * than one candidate for the resolved type, `existingCredentialId` disambiguates
- * (matched against `existingCredentials[].id`); with a single candidate it's
- * optional and that one is used regardless.
+ * Which existing credential to select for `manual` when at least one exists.
+ * When the card lists more than one candidate for the resolved type,
+ * `existingCredentialId` disambiguates (matched against `existingCredentials[].id`);
+ * with a single candidate it's optional and that one is used regardless.
  */
 function resolveExistingCredentialId(
-	request: CredentialSetupParseContext['requests'][number] | undefined,
+	request: CredentialSetupParseContext['requests'][number],
 	existingCredentialId: string | undefined,
 ): string | undefined {
-	if (!request) return undefined;
 	if (existingCredentialId) {
 		return request.existingCredentials.find((c) => c.id === existingCredentialId)?.id;
 	}
@@ -325,17 +413,22 @@ function resolveCredentialRequest(
 
 /**
  * Parse+validate `nodeCredentialsJson` against the wizard's parse context:
- * every node key must be a known setup node, every credential type must be one
- * that node actually requested, and every id must match one of that
- * (node, type)'s `existingCredentials`. Invalid entries are dropped with a
- * parse-failure log rather than silently sending a bogus/attacker-supplied id
- * through to `assignCredentialToNode`.
+ * every node key must be a known setup node, and every credential type must be
+ * one that node actually requested. Same three-way `manual` behavior as the
+ * standalone tool (TRUST-349): a (node, type) with existing candidates must
+ * name a real one from `existingCredentials` (auto-accepted when there's only
+ * one, regardless of the id string given, since there's nothing else it could
+ * be); zero candidates creates a real credential instead — the model has
+ * nothing to reference there, so any value in that slot signals intent to
+ * engage, not a specific id. Invalid/unresolvable entries are dropped with a
+ * parse-failure log rather than silently sending a bogus id through.
  */
-function parseNodeCredentialsJson(
+async function parseNodeCredentialsJson(
 	json: string,
 	onFailure?: (raw: string, error: unknown) => void,
 	setupContext?: SetupWizardParseContext,
-): Record<string, Record<string, string>> {
+	createCredential?: CreateCredentialFn,
+): Promise<Record<string, Record<string, string>>> {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(json);
@@ -367,10 +460,31 @@ function parseNodeCredentialsJson(
 		}
 		for (const [credentialType, credentialId] of Object.entries(credsByType)) {
 			const request = node.credentialRequests.find((r) => r.credentialType === credentialType);
+			if (!request) {
+				onFailure?.(
+					json,
+					new Error(
+						`nodeCredentialsJson: node "${key}" did not request credential type "${credentialType}"`,
+					),
+				);
+				continue;
+			}
+
+			if (request.existingCredentials.length === 0) {
+				const created = await tryCreateCredential(
+					createCredential,
+					credentialType,
+					'apply_setup_wizard',
+					onFailure,
+				);
+				if (created) (result[node.nodeName] ??= {})[credentialType] = created.id;
+				continue;
+			}
+
 			const match =
-				typeof credentialId === 'string'
-					? request?.existingCredentials.find((c) => c.id === credentialId)
-					: undefined;
+				request.existingCredentials.length === 1
+					? request.existingCredentials[0]
+					: request.existingCredentials.find((c) => c.id === credentialId);
 			if (!match) {
 				onFailure?.(
 					json,

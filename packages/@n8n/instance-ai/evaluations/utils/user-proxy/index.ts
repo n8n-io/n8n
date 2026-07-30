@@ -11,13 +11,34 @@ import {
 	type Decision,
 	type SetupWizardParseContext,
 	type CredentialSetupParseContext,
+	type CreateCredentialFn,
 } from './tools';
+import type { N8nClient } from '../../clients/n8n-client';
+import { createOneCredential } from '../../credentials/seeder';
 import { buildAutoApprovePayload } from '../../harness/chat-loop';
 import type { NextMessageDecision } from '../../harness/chat-loop';
 import type { EvalLogger } from '../../harness/logger';
 import type { CapturedEvent, ConversationTurn } from '../../types';
 import { getEventPayload } from '../confirmation-payload';
 import { getNestedRecord, getString } from '../safe-extract';
+
+/**
+ * Lets `manual` create a real credential (TRUST-349) when a setup card shows
+ * zero existing candidates for the resolved type — "user fills the New
+ * Credential modal". Omit for cases that don't exercise credential-setup
+ * engagement; `manual` then declines with zero candidates instead of crashing.
+ */
+export interface CredentialCreationConfig {
+	client: N8nClient;
+	threadId: string;
+	/** Ids already allowlisted for this thread (from pre-run seeding via
+	 *  `createDeclaredCredentials`) — required because
+	 *  `setThreadCredentialAllowlist` REPLACES the whole list, so a mid-run
+	 *  creation must include these or it clobbers the case's declared set. */
+	allowlistedCredentialIds: string[];
+	/** Run-level registry newly-created ids are added to for end-of-run cleanup. */
+	createdCredentialIds?: Set<string>;
+}
 
 /**
  * What category of response the proxy sent for a confirmation event.
@@ -59,6 +80,9 @@ export interface UserProxyConfig {
 	logger?: EvalLogger;
 	/** Test seam — inject a fake agent. */
 	agent?: UserProxyAgent;
+	/** Wire this in to let `manual` create a real credential when a setup card
+	 *  shows zero existing candidates — see `CredentialCreationConfig`. */
+	credentialCreation?: CredentialCreationConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,12 +108,21 @@ export class UserProxyLlm {
 	private readonly sentScriptUserTurnIndexes = new Set<number>();
 	private readonly decisionStats: ProxyDecisionStats = {};
 
+	private readonly credentialCreation?: CredentialCreationConfig;
+	/** Mutable running copy of `credentialCreation.allowlistedCredentialIds` —
+	 *  grows as `createCredential` mints new ones, since the allowlist endpoint
+	 *  replaces the whole list rather than appending. */
+	private allowlistedCredentialIds: string[];
+	private readonly createdCredentialNameCounts = new Map<string, number>();
+
 	constructor(config: UserProxyConfig) {
 		this.script = config.conversation;
 		this.messageBudget = config.messageBudget ?? DEFAULT_MESSAGE_BUDGET;
 		this.logger = config.logger;
 		this.agent =
 			config.agent ?? createUserProxyAgent({ modelId: config.modelId, logger: config.logger });
+		this.credentialCreation = config.credentialCreation;
+		this.allowlistedCredentialIds = config.credentialCreation?.allowlistedCredentialIds ?? [];
 		// Seed with the opener — the harness has already sent it.
 		const opener = this.script[0];
 		this.actualTranscript = opener ? [{ role: opener.role, text: opener.text }] : [];
@@ -157,7 +190,7 @@ export class UserProxyLlm {
 			return this.rememberResponse(requestId, this.fallbackConfirmationResponse(event));
 		}
 
-		const encoded = encodeConfirmationDecision(
+		const encoded = await encodeConfirmationDecision(
 			decision,
 			(raw, parseError) =>
 				this.logger?.warn(
@@ -165,6 +198,7 @@ export class UserProxyLlm {
 				),
 			extractSetupWizardParseContext(event),
 			extractCredentialSetupContext(event),
+			this.credentialCreation ? this.createCredential : undefined,
 		);
 		if (!encoded) {
 			this.logger?.warn(
@@ -181,6 +215,33 @@ export class UserProxyLlm {
 	private bumpStat(category: ProxyDecisionCategory): void {
 		this.decisionStats[category] = (this.decisionStats[category] ?? 0) + 1;
 	}
+
+	/**
+	 * Creates a real credential for `manual`'s "zero existing candidates"
+	 * case, registers it for cleanup, and updates the thread's allowlist so
+	 * both this and any later turn can see it. Arrow field (not a method) so
+	 * it stays correctly bound when passed as a bare `CreateCredentialFn`.
+	 */
+	private createCredential: CreateCredentialFn = async (credentialType) => {
+		if (!this.credentialCreation) {
+			// encodeConfirmationDecision only receives this function at all when
+			// `this.credentialCreation` is set (see respondToConfirmation) — a
+			// throw here means that invariant broke, not a normal runtime failure.
+			throw new Error('createCredential invoked without a credentialCreation config');
+		}
+		const { client, threadId, createdCredentialIds } = this.credentialCreation;
+		const created = await createOneCredential(
+			client,
+			credentialType,
+			undefined,
+			this.createdCredentialNameCounts,
+			{ logger: this.logger },
+		);
+		createdCredentialIds?.add(created.id);
+		this.allowlistedCredentialIds = [...this.allowlistedCredentialIds, created.id];
+		await client.setThreadCredentialAllowlist(threadId, this.allowlistedCredentialIds);
+		return created;
+	};
 
 	/** Counts of proxy decisions by category. Read after the build completes. */
 	getDecisionStats(): Readonly<ProxyDecisionStats> {
