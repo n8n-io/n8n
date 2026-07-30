@@ -34,6 +34,19 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
 
+export type CreateWorkflowFromCodeToolOptions = {
+	/**
+	 * `102_mcp_canvas_groups` rollout flag: when true, node groups authored in the
+	 * SDK code (`.group(...)`) are persisted on the created workflow. Off by
+	 * default — groups are then dropped at the entity assembly, exactly like
+	 * before groups were supported. Note that with the flag on, invalid groups
+	 * fail the creation: `WorkflowCreationService.createWorkflow` rejects them
+	 * with the same messages the `validate_workflow` tool reports as errors,
+	 * so agents can catch group problems before calling this tool.
+	 */
+	canvasGroupsEnabled?: boolean;
+};
+
 function normalizeWorkflowDescription(description?: string) {
 	if (!description) return { description: undefined, truncated: false };
 	if (description.length <= MAX_WORKFLOW_DESCRIPTION_LENGTH) {
@@ -169,10 +182,11 @@ export const createCreateWorkflowFromCodeTool = (
 	projectRepository: ProjectRepository,
 	dataTableOps: DataTableUserOperations,
 	aiGatewayService: AiGatewayService,
+	options: CreateWorkflowFromCodeToolOptions = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -262,6 +276,8 @@ export const createCreateWorkflowFromCodeTool = (
 				...(workflowDescription ? { description: workflowDescription } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
+				// Flag off: groups keep being dropped here, exactly like before.
+				...(options.canvasGroupsEnabled ? { nodeGroups: workflowJson.nodeGroups ?? [] } : {}),
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
@@ -349,6 +365,11 @@ export const createCreateWorkflowFromCodeTool = (
 				data: {
 					workflowId: savedWorkflow.id,
 					nodeCount: savedWorkflow.nodes.length,
+					// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
+					// flag is off so the payload stays identical across cohorts.
+					...(options.canvasGroupsEnabled
+						? { groupCount: workflowJson.nodeGroups?.length ?? 0 }
+						: {}),
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

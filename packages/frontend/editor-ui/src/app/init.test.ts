@@ -9,7 +9,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -34,6 +34,8 @@ vi.mock('@/features/settings/users/users.store', () => ({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),
 		registerLogoutHook: vi.fn(),
+		registerModalOpeners: vi.fn(),
+		setPermissionsResolvers: vi.fn(),
 		setUserQuota: vi.fn(),
 	}),
 }));
@@ -248,6 +250,9 @@ describe('Init', () => {
 			expect(nodeTranslationSpy).toHaveBeenCalled();
 			expect(versionsSpy).toHaveBeenCalled();
 			expect(usersStore.setUserQuota).toHaveBeenCalled();
+			// Modal openers are provided to the decoupled stores at bootstrap.
+			expect(usersStore.registerModalOpeners).toHaveBeenCalled();
+			expect(versionsStore.registerModalOpeners).toHaveBeenCalled();
 
 			await initializeAuthenticatedFeatures();
 

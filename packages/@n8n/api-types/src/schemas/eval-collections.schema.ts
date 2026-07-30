@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import type { EvaluationMetric } from '../dto/evaluations/evaluation-config.dto';
+import {
+	evaluationMetricSchema,
+	type EvaluationMetric,
+} from '../dto/evaluations/evaluation-config.dto';
 import { Z } from '../zod-class';
 
 // Mirrors the `TestRunStatus` union in `@n8n/db`. Duplicated here so
@@ -51,6 +54,18 @@ export function metricScalesFromConfig(metrics: EvaluationMetric[]): Record<stri
 }
 
 /**
+ * Metric-name → scale map from a run's frozen `evaluationConfigSnapshot` (its
+ * `metrics`). A run's values were produced against that snapshot, so they must
+ * normalize on its scales — not the collection's current config, which may have
+ * changed since. Returns null when the snapshot carries no valid metrics array,
+ * so callers fall back to the live config.
+ */
+export function metricScalesFromSnapshot(snapshot: unknown): Record<string, MetricScale> | null {
+	const parsed = z.object({ metrics: z.array(evaluationMetricSchema) }).safeParse(snapshot);
+	return parsed.success ? metricScalesFromConfig(parsed.data.metrics) : null;
+}
+
+/**
  * Normalize a raw metric value to a [0, 1] score, or null when it isn't a
  * chartable score (reserved operational metric, NaN, or an unknown-scale value
  * outside [0, 1]). `scale` comes from the eval config; when omitted it falls
@@ -81,6 +96,37 @@ export function normalizeMetricScore(
 	}
 
 	return normalized >= 0 && normalized <= 1 ? normalized : null;
+}
+
+/**
+ * Per-metric scores normalized to [0, 1] by scale (via {@link normalizeMetricScore});
+ * operational/unknown-scale values are dropped and booleans coerce to 0/1. The
+ * single definition shared by the FE compare surfaces and the BE insights agent so
+ * they can't disagree on which metrics count or how they're scaled.
+ */
+export function normalizedScores(
+	metrics: Record<string, number | boolean> | null | undefined,
+	scaleByMetric: Record<string, MetricScale> = {},
+): Record<string, number> {
+	const out: Record<string, number> = {};
+	if (!metrics) return out;
+	for (const [key, raw] of Object.entries(metrics)) {
+		const value = typeof raw === 'boolean' ? (raw ? 1 : 0) : raw;
+		if (typeof value !== 'number') continue;
+		const score = normalizeMetricScore(key, value, scaleByMetric[key]);
+		if (score !== null) out[key] = score;
+	}
+	return out;
+}
+
+/** Mean of the normalized score metrics, or null when none qualify. */
+export function averageNormalizedScore(
+	metrics: Record<string, number | boolean> | null | undefined,
+	scaleByMetric: Record<string, MetricScale> = {},
+): number | null {
+	const values = Object.values(normalizedScores(metrics, scaleByMetric));
+	if (values.length === 0) return null;
+	return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 // One version on a create-collection request: reference an existing run to
@@ -149,6 +195,12 @@ export type EvaluationCollectionRunSummary = {
 	completedAt: string | null;
 	avgScore: number | null;
 	metrics: Record<string, number> | null;
+	// Per-run metric-name → scale, from this run's frozen config snapshot, so its
+	// values normalize on the scales they were produced with. Always set on the
+	// collection detail (`toRunSummary` falls back to the collection-wide map);
+	// optional only for leaner responses that omit it, where the FE's name-based
+	// fallback applies.
+	metricScales?: Record<string, MetricScale>;
 };
 
 export type EvaluationCollectionDetail = EvaluationCollectionRecord & {

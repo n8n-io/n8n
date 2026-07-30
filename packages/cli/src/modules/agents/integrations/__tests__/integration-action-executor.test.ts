@@ -366,6 +366,192 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 	});
 
+	it('edits an explicit message in the current Telegram conversation', async () => {
+		const editMessage = vi.fn().mockResolvedValue({
+			id: '123456:1000',
+			threadId: 'telegram:123456',
+			raw: {},
+		});
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ editMessage });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+		const currentMessageContext = {
+			integrationConnectionId: 'telegram:cred-telegram',
+			platform: 'telegram',
+			target: { type: 'thread' as const, threadId: 'telegram:123456' },
+			messageId: '123456:11',
+			interactingUserId: '123456',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			awaitResponse: false,
+			currentMessageContext,
+		});
+
+		expect(chat.getAdapter).toHaveBeenCalledWith('telegram');
+		expect(editMessage).toHaveBeenCalledWith('telegram:123456', '123456:1000', 'Updated status');
+		expect(result).toEqual({
+			ok: true,
+			messageContext: {
+				...currentMessageContext,
+				messageId: '123456:1000',
+				updatedAt: expect.any(String),
+			},
+		});
+	});
+
+	it('returns a structured error when edit_message has no current thread', async () => {
+		const editMessage = vi.fn();
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ editMessage });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: { type: 'channel', channelId: 'telegram:123456' },
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(chat.getAdapter).not.toHaveBeenCalled();
+		expect(editMessage).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'NO_MESSAGE_CONTEXT',
+				message: 'There is no current conversation to edit. Send a message first, then try again.',
+			},
+		});
+	});
+
+	it('returns a structured error when the active adapter cannot edit messages', async () => {
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({});
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: { type: 'thread', threadId: 'telegram:123456' },
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'UNSUPPORTED_ACTION',
+				message: "The telegram integration can't edit messages. Use a supported action instead.",
+			},
+		});
+	});
+
+	it('maps and shortens callbacks when editing a Telegram rich card', async () => {
+		const editMessage = vi.fn().mockResolvedValue({
+			id: '123456:1000',
+			threadId: 'telegram:123456',
+			raw: {},
+		});
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ editMessage });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const shortenCallback = vi.fn(async (_actionId: string, _value: string) => ({
+			id: 'short1234',
+			value: '',
+		}));
+		Object.assign(chatIntegrationService, {
+			getShortenCallback: vi.fn().mockReturnValue(shortenCallback),
+		});
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		Container.set(ChatIntegrationRegistry, registry);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: {
+				messageId: '123456:1000',
+				message: {
+					text: 'Choose the next step',
+					card: {
+						components: [
+							{ type: 'section', text: 'Review the updated status.' },
+							{ type: 'button', label: 'Approve', value: 'approve', style: 'primary' },
+						],
+					},
+				},
+			},
+			awaitResponse: true,
+			runId: 'run-1',
+			toolCallId: 'tool-1',
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: { type: 'thread', threadId: 'telegram:123456' },
+				messageId: '123456:11',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual(expect.objectContaining({ ok: true }));
+		expect(shortenCallback).toHaveBeenCalledWith(
+			'resume:run-1:tool-1:0',
+			JSON.stringify({ type: 'button', value: 'approve' }),
+		);
+		expect(editMessage).toHaveBeenCalledWith(
+			'telegram:123456',
+			'123456:1000',
+			expect.objectContaining({ card: expect.any(Object) }),
+		);
+		expect(mockButton).toHaveBeenLastCalledWith({
+			id: 'short1234',
+			label: 'Approve',
+			style: 'primary',
+			value: '',
+		});
+	});
+
 	it('adds Slack reactions to the current message context', async () => {
 		const slackAdapter = {
 			addReaction: vi.fn().mockResolvedValue(undefined),

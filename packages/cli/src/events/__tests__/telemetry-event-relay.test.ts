@@ -2232,10 +2232,12 @@ describe('TelemetryEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					missingNodeTypeMode: 'fail',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
-					variableMissingPolicy: 'do-nothing',
+					variableMissingMode: 'create-stub',
+					variableParentPolicy: 'global',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -2263,6 +2265,7 @@ describe('TelemetryEventRelay', () => {
 					variables: {
 						matched: 1,
 						missing: 1,
+						created: 3,
 						requirements: 2,
 					},
 				},
@@ -2277,10 +2280,12 @@ describe('TelemetryEventRelay', () => {
 				credential_matching_mode: 'id-only',
 				credential_missing_mode: 'must-preexist',
 				workflow_publishing_policy: 'preserve-published-state',
+				missing_node_type_mode: 'fail',
 				data_table_matching_mode: 'by-id',
 				data_table_missing_mode: 'create',
 				data_table_schema_conflict_policy: 'keep-existing',
-				variable_missing_policy: 'do-nothing',
+				variable_missing_mode: 'create-stub',
+				variable_parent_policy: 'global',
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
@@ -2292,6 +2297,7 @@ describe('TelemetryEventRelay', () => {
 				data_tables_required: 2,
 				variables_matched: 1,
 				variables_missing: 1,
+				variables_created: 3,
 				variables_required: 2,
 			});
 		});
@@ -2307,6 +2313,7 @@ describe('TelemetryEventRelay', () => {
 					credentials: 2,
 					dataTables: 1,
 					variables: 4,
+					tags: 2,
 				},
 			};
 
@@ -2319,6 +2326,7 @@ describe('TelemetryEventRelay', () => {
 				credential_count: 2,
 				data_table_count: 1,
 				variable_count: 4,
+				tag_count: 2,
 			});
 		});
 

@@ -13,8 +13,9 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import type { NotificationHandle } from '@n8n/composables/useToast';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
@@ -258,7 +259,7 @@ async function handleArchiveWorkflow() {
 	uiStore.markStateClean();
 	const archivedWorkflowId = props.id;
 	const archivedWorkflowName = props.name;
-	toast.showToast({
+	const archiveToast = toast.showToast({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
 			interpolate: { workflowName: archivedWorkflowName },
 		}),
@@ -266,7 +267,7 @@ async function handleArchiveWorkflow() {
 		onClick: (event) => {
 			if (event?.target instanceof HTMLAnchorElement) {
 				event.preventDefault();
-				void deleteArchivedWorkflow(archivedWorkflowId, archivedWorkflowName);
+				void deleteArchivedWorkflow(archivedWorkflowId, archivedWorkflowName, archiveToast);
 			}
 		},
 		type: 'success',
@@ -284,7 +285,11 @@ async function handleArchiveWorkflow() {
 	}
 }
 
-async function deleteArchivedWorkflow(id: IWorkflowDb['id'], name: IWorkflowDb['name']) {
+async function deleteArchivedWorkflow(
+	id: IWorkflowDb['id'],
+	name: IWorkflowDb['name'],
+	archiveToast: NotificationHandle,
+) {
 	const deleteConfirmed = await message.confirm(
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
 			interpolate: { workflowName: name },
@@ -311,6 +316,10 @@ async function deleteArchivedWorkflow(id: IWorkflowDb['id'], name: IWorkflowDb['
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
 	}
+
+	// Dismiss the archive toast so its now-stale 'Delete permanently' CTA
+	// disappears immediately instead of lingering until its duration elapses.
+	archiveToast.close();
 
 	toast.showMessage({
 		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {

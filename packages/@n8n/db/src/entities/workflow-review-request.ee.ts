@@ -1,14 +1,18 @@
+import type {
+	WorkflowReviewRequestDecision as WorkflowReviewRequestDecisionType,
+	WorkflowReviewRequestState as WorkflowReviewRequestStateType,
+} from '@n8n/api-types';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
 import { DateTimeColumn, WithTimestampsAndStringId } from './abstract-entity';
 
+export type WorkflowReviewRequestState = WorkflowReviewRequestStateType;
+export type WorkflowReviewRequestDecision = WorkflowReviewRequestDecisionType;
+
 export const WorkflowReviewRequestState = {
 	Open: 'open',
 	Closed: 'closed',
-} as const;
-
-export type WorkflowReviewRequestState =
-	(typeof WorkflowReviewRequestState)[keyof typeof WorkflowReviewRequestState];
+} as const satisfies Record<string, WorkflowReviewRequestStateType>;
 
 export const WorkflowReviewRequestStateList = Object.values(WorkflowReviewRequestState);
 
@@ -16,10 +20,7 @@ export const WorkflowReviewRequestDecision = {
 	Pending: 'pending',
 	ChangesRequested: 'changes_requested',
 	Approved: 'approved',
-} as const;
-
-export type WorkflowReviewRequestDecision =
-	(typeof WorkflowReviewRequestDecision)[keyof typeof WorkflowReviewRequestDecision];
+} as const satisfies Record<string, WorkflowReviewRequestDecisionType>;
 
 export const WorkflowReviewRequestDecisionList = Object.values(WorkflowReviewRequestDecision);
 
@@ -30,10 +31,10 @@ export class WorkflowReviewRequest extends WithTimestampsAndStringId {
 	projectId: string;
 
 	@Column({ type: 'varchar', length: 16 })
-	state: WorkflowReviewRequestState;
+	state: WorkflowReviewRequestStateType;
 
 	@Column({ type: 'varchar', length: 50 })
-	decision: WorkflowReviewRequestDecision;
+	decision: WorkflowReviewRequestDecisionType;
 
 	@Column({ type: 'varchar', length: 255 })
 	title: string;

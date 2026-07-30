@@ -8,7 +8,7 @@ import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 vi.mock('@n8n/design-system', () => ({
 	N8nAiActivityStep: {
-		props: ['label', 'hasContent', 'loading', 'error'],
+		props: ['label', 'hasContent', 'loading', 'error', 'hideErrorCallout'],
 		data: () => ({ isOpen: false }),
 		computed: {
 			labelParts(this: { label: string }): string[] {
@@ -25,13 +25,25 @@ vi.mock('@n8n/design-system', () => ({
 					<span> · </span>
 					<span data-testid="tool-step-summary">{{ part }}</span>
 				</template>
+				<div v-if="error && !hideErrorCallout" data-test-id="tool-step-error">{{ error }}</div>
 				<div v-if="isOpen"><slot /></div>
 			</div>
 		`,
 	},
 	N8nAiActivityStepGroup: {
 		props: ['label', 'size', 'loading'],
-		template: '<div><slot /></div>',
+		template:
+			'<div data-test-id="n8n-ai-activity-step-group" :data-loading="String(loading)"><slot /></div>',
+	},
+	N8nButton: {
+		props: ['size', 'variant'],
+		emits: ['click'],
+		template:
+			'<button type="button" @click.stop="$emit(\'click\')"><slot name="icon" /><slot /></button>',
+	},
+	N8nCallout: {
+		props: ['theme'],
+		template: '<div><slot /><slot name="trailingContent" /></div>',
 	},
 	N8nIcon: {
 		template: '<i :data-icon="icon" />',
@@ -44,9 +56,24 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTooltip: { template: '<div><slot /></div>', props: ['content', 'placement'] },
 }));
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string, opts?: { interpolate?: { name?: string; count?: string } }) => {
+vi.mock('@n8n/i18n', () => {
+	const i18n = {
+		translations: {
+			'agents.chat.toolNames.webSearch': 'Web search',
+			'instanceAi.tools.search_nodes': 'Search nodes',
+			'agents.chat.difficulty.low': 'Low',
+			'agents.chat.difficulty.medium': 'Medium',
+			'agents.chat.difficulty.high': 'High',
+			'agents.chat.writeTodos.status.inProgress': 'In progress',
+			'agents.chat.writeTodos.status.pending': 'Pending',
+			'agents.chat.writeTodos.status.completed': 'Completed',
+			'agents.chat.writeTodos.status.blocked': 'Blocked',
+			'agents.chat.writeTodos.status.cancelled': 'Cancelled',
+			'agents.chat.writeTodos.hint.difficulty': 'Difficulty',
+			'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
+			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
+		} as Record<string, string>,
+		baseText(key: string, opts?: { interpolate?: { name?: string; count?: string } }) {
 			if (key === 'agents.chat.delegate.label' && opts?.interpolate?.name) {
 				return `Sub-agent · ${opts.interpolate.name}`;
 			}
@@ -59,35 +86,70 @@ vi.mock('@n8n/i18n', () => ({
 				return `${opts.interpolate.count} tasks`;
 			}
 			if (key === 'agents.chat.writeTodos.summary.done') return 'done';
-			const statusLabels: Record<string, string> = {
-				'agents.chat.difficulty.low': 'Low',
-				'agents.chat.difficulty.medium': 'Medium',
-				'agents.chat.difficulty.high': 'High',
-				'agents.chat.writeTodos.status.inProgress': 'In progress',
-				'agents.chat.writeTodos.status.pending': 'Pending',
-				'agents.chat.writeTodos.status.completed': 'Completed',
-				'agents.chat.writeTodos.status.blocked': 'Blocked',
-				'agents.chat.writeTodos.status.cancelled': 'Cancelled',
-				'agents.chat.writeTodos.hint.difficulty': 'Difficulty',
-				'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
-				'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
-			};
-			return statusLabels[key] ?? key;
+			return this.translations[key] ?? key;
 		},
-	}),
-}));
+	};
+
+	return { useI18n: () => i18n };
+});
 
 vi.mock('../composables/useSubAgentNames', () => ({
 	useSubAgentNames: () => ({ subAgentNameById: { value: new Map() } }),
 }));
 
-function mountSteps(toolCalls: ToolCall[]) {
+function mountSteps(
+	toolCalls: ToolCall[],
+	extra: { canFixWithAssistant?: boolean; executionId?: string } = {},
+) {
 	return mount(AgentChatToolSteps, {
-		props: { toolCalls, projectId: 'project-1' },
+		props: { toolCalls, projectId: 'project-1', ...extra },
 	});
 }
 
 describe('AgentChatToolSteps', () => {
+	it.each([
+		[TOOL_CALL_STATE.PENDING, 'true'],
+		[TOOL_CALL_STATE.RUNNING, 'true'],
+		[TOOL_CALL_STATE.SUSPENDED, 'false'],
+		[TOOL_CALL_STATE.DONE, 'false'],
+	])('sets grouped tool-call loading for a %s child to %s', (state, expectedLoading) => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-active',
+				state,
+			},
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-done',
+				state: TOOL_CALL_STATE.DONE,
+			},
+		]);
+
+		expect(
+			wrapper.find('[data-test-id="n8n-ai-activity-step-group"]').attributes('data-loading'),
+		).toBe(expectedLoading);
+	});
+
+	it('renders native web search tool calls as expandable', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'openai.web_search',
+				toolCallId: 'tc-web-search',
+				state: TOOL_CALL_STATE.DONE,
+				input: { query: 'n8n agents' },
+				output: { results: [{ title: 'Agents documentation' }] },
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Web search');
+		expect(wrapper.find('button').exists()).toBe(true);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.text()).toContain('n8n agents');
+		expect(wrapper.text()).toContain('Agents documentation');
+	});
+
 	it('makes generic tool steps with output data expandable', async () => {
 		const wrapper = mountSteps([
 			{
@@ -117,6 +179,90 @@ describe('AgentChatToolSteps', () => {
 
 		expect(wrapper.text()).toContain('Search nodes');
 		expect(wrapper.find('button').exists()).toBe(false);
+	});
+
+	it('shows Fix with Assistant only for errored tools when handoff is enabled', async () => {
+		const errored: ToolCall = {
+			tool: 'search_nodes',
+			toolCallId: 'tc-err',
+			state: TOOL_CALL_STATE.ERROR,
+			output: 'Tool failed',
+		};
+
+		const withoutFix = mountSteps([errored]);
+		expect(withoutFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+
+		const withoutExecutionId = mountSteps([errored], { canFixWithAssistant: true });
+		expect(
+			withoutExecutionId.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists(),
+		).toBe(false);
+
+		const doneTool = mountSteps(
+			[{ ...errored, state: TOOL_CALL_STATE.DONE, toolCallId: 'tc-ok' }],
+			{ canFixWithAssistant: true, executionId: 'exec-1' },
+		);
+		expect(doneTool.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+
+		const withFix = mountSteps([errored], {
+			canFixWithAssistant: true,
+			executionId: 'exec-1',
+		});
+		expect(
+			withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(true);
+		await withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+		expect(withFix.emitted('fixWithAssistant')?.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('shows a generic error when the failed tool output is empty', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-err',
+				state: TOOL_CALL_STATE.ERROR,
+				output: {},
+			},
+		]);
+
+		expect(wrapper.find('[data-test-id="tool-step-error"]').text()).toBe(
+			'agents.chat.toolError.generic',
+		);
+		expect(wrapper.text()).not.toContain('{}');
+	});
+
+	it('shows Fix with Assistant outside the tool group when a multi-tool turn has an error', () => {
+		const wrapper = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-ok',
+					state: TOOL_CALL_STATE.DONE,
+					output: { nodes: ['Slack'] },
+				},
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-err',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Tool failed',
+				},
+			],
+			{ canFixWithAssistant: true, executionId: 'exec-1' },
+		);
+
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+
+		const group = wrapper.find('[data-test-id="n8n-ai-activity-step-group"]');
+		expect(group.exists()).toBe(true);
+		expect(group.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists()).toBe(
+			false,
+		);
+		expect(
+			wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(true);
 	});
 
 	it('shows incomplete task count in write_todos summary', async () => {

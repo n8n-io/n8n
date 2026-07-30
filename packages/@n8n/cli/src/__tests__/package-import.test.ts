@@ -1,4 +1,4 @@
-import type { Config } from '@oclif/core';
+import { Config } from '@oclif/core';
 import * as fs from 'node:fs';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
@@ -7,20 +7,26 @@ import PackageImport from '../commands/package/import';
 
 vi.mock('node:fs');
 
+// Tests run with the package directory as cwd (see AGENTS.md), so this is the
+// @n8n/cli package root oclif needs to read the command manifest.
+const packageRoot = process.cwd();
+
 interface ImportFlags {
 	file: string;
-	project?: string;
-	folder?: string;
-	conflictPolicy: string;
+	projectId?: string;
+	folderId?: string;
+	workflowConflictPolicy?: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
+	missingNodeTypeMode?: string;
 	folderConflictPolicy?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
-	variableMissingPolicy?: string;
+	variableMissingMode?: string;
+	variableParentPolicy?: string;
 	bindings?: string;
 }
 
@@ -54,18 +60,20 @@ describe('package import command', () => {
 	it('forwards workflowPublishingPolicy and all sibling options to the import API', async () => {
 		const { command, importPackage } = stubCommand({
 			file: '/tmp/export.n8np',
-			project: 'p-1',
-			folder: 'f-1',
-			conflictPolicy: 'fail',
+			projectId: 'p-1',
+			folderId: 'f-1',
+			workflowConflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
+			missingNodeTypeMode: 'import-anyway',
 			folderConflictPolicy: 'merge',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingPolicy: 'do-nothing',
+			variableMissingMode: 'create-stub',
+			variableParentPolicy: 'global',
 			bindings: '{}',
 		});
 
@@ -82,13 +90,15 @@ describe('package import command', () => {
 			workflowConflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
+			missingNodeTypeMode: 'import-anyway',
 			folderConflictPolicy: 'merge',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingPolicy: 'do-nothing',
+			variableMissingMode: 'create-stub',
+			variableParentPolicy: 'global',
 			bindings: '{}',
 		});
 	});
@@ -103,5 +113,83 @@ describe('package import command', () => {
 			'unpublish-all',
 		]);
 		expect(flag.default).toBeUndefined();
+	});
+
+	// Real oclif parsing exercises the flag default and alias resolution, which
+	// the stubbed `parse` above cannot.
+	describe('workflow-conflict-policy flag resolution (real parse)', () => {
+		async function runWithArgv(argv: string[]) {
+			vi.mocked(fs.existsSync).mockReturnValue(true);
+			vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from([1, 2, 3]));
+
+			const config = await Config.load(packageRoot);
+			const command = new PackageImport(argv, config);
+			const internals = command as unknown as ImportInternals;
+			const importPackage = vi.fn().mockResolvedValue({ imported: true });
+			vi.spyOn(internals, 'getClient').mockReturnValue({
+				importPackage,
+			} as unknown as N8nClient);
+			vi.spyOn(internals, 'output').mockImplementation(() => {});
+
+			await command.run();
+			return importPackage;
+		}
+
+		it('applies the new-version default when the flag is omitted', async () => {
+			const importPackage = await runWithArgv(['--file=/tmp/export.n8np']);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ workflowConflictPolicy: 'new-version' }),
+			);
+		});
+
+		it('resolves the --workflow-conflict-policy flag', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--workflow-conflict-policy=fail',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ workflowConflictPolicy: 'fail' }),
+			);
+		});
+
+		it('resolves the --project-id and --folder-id flags', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project-id=p-1',
+				'--folder-id=f-1',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'p-1', folderId: 'f-1' }),
+			);
+		});
+
+		it('resolves the backward-compatible --project and --folder aliases', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project=p-1',
+				'--folder=f-1',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'p-1', folderId: 'f-1' }),
+			);
+		});
+
+		it('rejects the removed --conflict-policy flag', async () => {
+			const config = await Config.load(packageRoot);
+			const command = new PackageImport(
+				['--file=/tmp/export.n8np', '--conflict-policy=fail'],
+				config,
+			);
+
+			await expect(command.run()).rejects.toThrow(/Nonexistent flag.*conflict-policy/i);
+		});
 	});
 });

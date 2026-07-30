@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import NewAgentView from '../views/NewAgentView.vue';
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
@@ -29,7 +30,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mocks.track }),
 }));
 vi.mock('@/app/composables/useToast', () => ({
@@ -71,11 +72,15 @@ describe('NewAgentView', () => {
 			'agents.new.defaultName',
 		);
 		expect(mocks.upsertProjectAgentsListCache).toHaveBeenCalledWith('project-1', agent);
-		expect(mocks.track).toHaveBeenCalledWith('User created agent', {
+		expect(mocks.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
 			agent_id: 'agent-1',
 			source: 'create_blank',
 		});
-		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1');
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+			sourceContext: { agentId: 'agent-1' },
+		});
 		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 			instanceAiAgentBuilderTarget: {
 				agentId: 'agent-1',

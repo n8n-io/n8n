@@ -9,7 +9,12 @@ import type {
 	UpsertDataTableRowDto,
 	UpdateSecurityPolicyDto,
 	PublicCreateDestination,
+	UpdateOidcConfigurationDto,
+	UpdateOtelSettingsDto,
+	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
+	UpdateLdapConfigurationDto,
+	LdapSyncDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -233,7 +238,13 @@ export declare namespace CredentialRequest {
 	type Create = AuthenticatedRequest<
 		{},
 		{},
-		{ type: string; name: string; data: ICredentialDataDecryptedObject; projectId?: string },
+		{
+			type: string;
+			name: string;
+			data: ICredentialDataDecryptedObject;
+			projectId?: string;
+			isResolvable?: boolean;
+		},
 		{}
 	>;
 
@@ -420,4 +431,34 @@ export declare namespace LogStreamingRequest {
 export declare namespace SsoSamlRequest {
 	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
+}
+
+// ----------------------------------
+//        /settings/otel
+// ----------------------------------
+
+export declare namespace OtelSettingsRequest {
+	type Get = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
+	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
+}
+
+// ----------------------------------
+//        /settings/ldap
+// ----------------------------------
+
+export declare namespace LdapRequest {
+	type GetConfig = AuthenticatedRequest;
+	type UpdateConfig = AuthenticatedRequest<{}, {}, UpdateLdapConfigurationDto>;
+	type GetSync = PaginatedRequest;
+	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
+}
+
+// ----------------------------------
+//        /settings/sso/oidc
+// ----------------------------------
+
+export declare namespace SsoOidcRequest {
+	type Get = AuthenticatedRequest;
+	type Set = AuthenticatedRequest<{}, {}, UpdateOidcConfigurationDto>;
 }

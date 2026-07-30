@@ -58,7 +58,8 @@ const statusBadge = computed(() => {
 			};
 		case 'error':
 			return {
-				theme: 'warning' as const,
+				// `danger` to align with the run-level status pills' error colour.
+				theme: 'danger' as const,
 				label: i18n.baseText('evaluation.collections.card.failed'),
 			};
 		default:

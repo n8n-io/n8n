@@ -1,5 +1,5 @@
 import type { Mocked } from 'vitest';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -162,6 +162,28 @@ describe('AgentConfigService', () => {
 				}),
 			).resolves.toMatchObject({ valid: true });
 		});
+
+		it('returns a human-readable Zod error for an invalid MCP server name', async () => {
+			const { service } = makeService();
+
+			const result = await service.validateConfig({
+				...baseConfig,
+				mcpServers: [
+					{
+						name: '   ',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'none',
+					},
+				],
+			});
+
+			expect(result.valid).toBe(false);
+			if (result.valid) return;
+			expect(result.error).toContain('mcpServers.0.name');
+			expect(result.error).toContain('MCP server name cannot be blank');
+			expect(result.error).not.toContain('"validation": "regex"');
+		});
 	});
 
 	describe('updateConfig', () => {
@@ -228,6 +250,59 @@ describe('AgentConfigService', () => {
 			saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('drops stored optional fields omitted from the payload when clearOmittedOptionalFields is set', async () => {
+			const { service, agentRepository, credentialsService } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					credential: 'stored-cred',
+					memory: { enabled: true, storage: 'n8n' },
+					tools: [{ type: 'custom', id: 'tool-1' }],
+				} as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			mockAccessibleCredentials(credentialsService, ['stored-cred']);
+
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, memory: { enabled: false, storage: 'n8n' } },
+				undefined,
+				{ clearOmittedOptionalFields: true },
+			);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			// Provided fields keep their submitted value; omitted ones are removed
+			// instead of retaining the stored value.
+			expect(saved.schema?.memory).toEqual({ enabled: false, storage: 'n8n' });
+			expect(saved.schema).not.toHaveProperty('credential');
+			expect(saved.schema).not.toHaveProperty('tools');
+			expect(result.config).not.toHaveProperty('credential');
+		});
+
+		it('resolves accessible credentials via the user when one is provided', async () => {
+			const { service, agentRepository, credentialsService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'user-cred', type: 'openAiApi', name: 'user-cred' },
+			] as never);
+			const user = { id: 'user-1' } as never;
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, credential: 'user-cred' },
+				user,
+			);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+				projectId,
+			});
+			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect((saved.schema as AgentJsonConfig).credential).toBe('user-cred');
 		});
 
 		it('rewrites an id-valued workflow tool ref to the workflow name on save', async () => {
@@ -450,6 +525,43 @@ describe('AgentConfigService', () => {
 					fromStop: 12,
 					toStop: 88,
 				},
+			});
+		});
+
+		it('resets an omitted gradient to the schema default when clearOmittedOptionalFields is set', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					personalisation: {
+						icon: 'bot',
+						gradient: {
+							from: '#111111',
+							to: '#222222',
+							angle: 42,
+							fromStop: 12,
+							toStop: 88,
+						},
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					personalisation: { icon: 'mail' },
+				},
+				undefined,
+				{ clearOmittedOptionalFields: true },
+			);
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: DEFAULT_AGENT_PERSONALISATION.gradient,
 			});
 		});
 

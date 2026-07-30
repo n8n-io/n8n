@@ -5,9 +5,14 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 import type { CheckOutcome } from '../binaryChecks/types';
-import { aggregateResults } from '../cli/aggregator';
-import { writeEvalResults } from '../cli/index';
-import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
+import { aggregateResults } from '../run/aggregator';
+import { writeEvalResults } from '../run/persist';
+import type {
+	ExecutionScenario,
+	TranscriptTurn,
+	WorkflowTestCase,
+	WorkflowTestCaseResult,
+} from '../types';
 
 // Pins the `eval-results.json` fields the lang-tracer dispatcher ingests
 // (lang-tracer-dispatcher `src/lib/runner.ts`): it spawns this CLI per case in
@@ -39,11 +44,35 @@ const passingCheck: CheckOutcome = {
 	status: 'pass',
 };
 
+const transcript: TranscriptTurn[] = [
+	{
+		userMessage: 'send me a daily digest',
+		steps: [
+			{ kind: 'agent-text', text: 'Building the digest workflow.' },
+			{
+				kind: 'tool-call',
+				toolName: 'add-nodes',
+				args: { nodeType: 'n8n-nodes-base.scheduleTrigger' },
+				result: { added: true },
+			},
+		],
+	},
+];
+
 function iteration1(): WorkflowTestCaseResult {
 	return {
 		testCase,
 		workflowBuildSuccess: true,
+		transcript,
 		workflowChecks: [passingCheck],
+		workflowJson: {
+			id: 'wf-1',
+			name: 'Digest',
+			active: false,
+			versionId: 'v1',
+			nodes: [],
+			connections: {},
+		},
 		buildExpectationResults: [
 			{ expectation: 'sends a digest', pass: true, reason: 'digest node present' },
 		],
@@ -55,6 +84,7 @@ function iteration2(): WorkflowTestCaseResult {
 	return {
 		testCase,
 		workflowBuildSuccess: true,
+		buildError: 'agent stopped before producing a workflow',
 		buildExpectationResults: [
 			{ expectation: 'sends a digest', pass: false, reason: 'digest node missing' },
 		],
@@ -76,6 +106,7 @@ interface DispatcherView {
 	experimentName?: string;
 	testCases: Array<{
 		buildSuccessCount: number;
+		workflowJson?: { id: string };
 		totalRuns: number;
 		workflowChecksPerRun: Array<Record<string, string> | null>;
 		buildExpectations: Array<{
@@ -88,6 +119,10 @@ interface DispatcherView {
 			pass: boolean;
 			reason: string;
 		}> | null>;
+		buildCostUsdPerRun?: Array<number | null>;
+		buildTurnsPerRun?: Array<number | null>;
+		transcriptPerRun: Array<TranscriptTurn[] | null>;
+		buildErrorPerRun: Array<string | null>;
 		scenarios: Array<{
 			name: string;
 			passCount: number;
@@ -131,6 +166,9 @@ describe('eval-results.json — dispatcher contract', () => {
 		const tc = report.testCases[0];
 		expect(tc.buildSuccessCount).toBe(2);
 		expect(tc.totalRuns).toBe(2);
+		// Produced workflow rides along (first iteration's) — the dispatcher's
+		// Dockerfile patch greps for upstream support of this field and no-ops.
+		expect(tc.workflowJson).toMatchObject({ id: 'wf-1' });
 
 		// Per-iteration build signals. Checks serialize as a name→status map (an
 		// iteration without checks serializes as null, not as a hole).
@@ -145,6 +183,28 @@ describe('eval-results.json — dispatcher contract', () => {
 			[{ expectation: 'sends a digest', pass: true, reason: 'digest node present' }],
 			[{ expectation: 'sends a digest', pass: false, reason: 'digest node missing' }],
 		]);
+		// Spend arrays are `--build-via-mcp`-only — absent when no iteration
+		// recorded `claude` spend, so non-MCP dispatcher output is unchanged.
+		expect(tc).not.toHaveProperty('buildCostUsdPerRun');
+		expect(tc).not.toHaveProperty('buildTurnsPerRun');
+
+		// Per-iteration conversation transcript — one entry per run, null when
+		// the iteration captured none. A present transcript keeps the full
+		// step detail (tool calls with args + results) the dispatcher renders.
+		expect(tc.transcriptPerRun).toHaveLength(2);
+		expect(tc.transcriptPerRun[1]).toBeNull();
+		const turn = tc.transcriptPerRun[0]?.[0];
+		expect(turn?.userMessage).toBe('send me a daily digest');
+		expect(turn?.steps[0]).toEqual({ kind: 'agent-text', text: 'Building the digest workflow.' });
+		expect(turn?.steps[1]).toEqual({
+			kind: 'tool-call',
+			toolName: 'add-nodes',
+			args: { nodeType: 'n8n-nodes-base.scheduleTrigger' },
+			result: { added: true },
+		});
+
+		// Per-iteration build-failure reason — one `string | null` per run.
+		expect(tc.buildErrorPerRun).toEqual([null, 'agent stopped before producing a workflow']);
 
 		// Scenario blocks serialize under the flat `scenarios` key with a flat
 		// `name` — the shape the dispatcher's fallback reader consumes today.
@@ -163,5 +223,29 @@ describe('eval-results.json — dispatcher contract', () => {
 			rootCause: 'mock returned an empty page',
 			execErrors: ['HTTP 500 from the mocked API'],
 		});
+	});
+
+	it('serializes per-iteration `claude` build spend when a run recorded it', () => {
+		const evaluation = aggregateResults(
+			[[{ ...iteration1(), buildCostUsd: 0.31, buildTurns: 5 }], [iteration2()]],
+			2,
+		);
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			evaluation,
+			1234,
+			dir,
+			'exp-dispatcher-contract',
+			undefined,
+			undefined,
+			new Map([[testCase, 'daily-digest']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		const tc = report.testCases[0];
+		expect(tc.buildCostUsdPerRun).toEqual([0.31, null]);
+		expect(tc.buildTurnsPerRun).toEqual([5, null]);
 	});
 });

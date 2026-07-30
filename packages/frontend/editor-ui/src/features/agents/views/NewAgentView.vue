@@ -4,8 +4,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { stashPendingAgentAttachment } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import {
@@ -41,12 +42,16 @@ onMounted(async () => {
 			i18n.baseText('agents.new.defaultName'),
 		);
 		upsertProjectAgentsListCache(projectId, agent);
-		telemetry.track('User created agent', {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
 			agent_id: agent.id,
 			source: 'create_blank',
 		});
 		const threadId = uuidv4();
-		await instanceAiStore.syncThread(threadId, projectId);
+		await instanceAiStore.syncThread(threadId, projectId, {
+			source: 'agent_builder_page',
+			origin: 'internal',
+			sourceContext: { agentId: agent.id },
+		});
 		await instanceAiStore.updateThreadMetadata(threadId, {
 			[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
 				agentId: agent.id,

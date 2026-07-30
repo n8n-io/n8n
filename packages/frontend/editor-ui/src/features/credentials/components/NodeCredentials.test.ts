@@ -33,7 +33,7 @@ const trackMock = vi.hoisted(() => vi.fn());
 const authorizeMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 const n8nCreditsCredentialSelectionEnabled = vi.hoisted(() => ({ value: false }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 
@@ -1355,6 +1355,42 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	describe('credential auto-select', () => {
+		it('should auto-select a credential of the overridden type on mount', () => {
+			const httpNodeNoCreds: INodeUi = { ...httpNode, credentials: {} };
+			ndvStore.activeNode = httpNodeNoCreds;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					node: httpNodeNoCreds,
+					overrideCredType: 'openAiApi',
+					readonly: false,
+					showAll: false,
+					hideIssues: false,
+				},
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+					},
+				},
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				name: string;
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.name).toBe(httpNodeNoCreds.name);
+			expect(payload.properties.credentials['openAiApi']).toEqual({
+				id: 'c8vqdPpPClh4TgIO',
+				name: 'OpenAi account',
+			});
+		});
+	});
+
 	describe('AI Gateway toggle (onAiGatewaySelector)', () => {
 		const googlePalmApiCredType: ICredentialType = {
 			name: 'googlePalmApi',
@@ -2239,7 +2275,9 @@ describe('NodeCredentials', () => {
 			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
 		});
 
-		it('disables the Connect button in readonly (execution view) mode', async () => {
+		it('keeps the Connect button enabled in readonly mode for a user who can connect', async () => {
+			// Connecting your own account is a personal action gated by the connect
+			// scope, not by the node's readonly state (mirrors the credentials list).
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
@@ -2247,10 +2285,10 @@ describe('NodeCredentials', () => {
 				props: { node: notionNode, overrideCredType: 'openAiApi', readonly: true },
 			});
 
-			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
+			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
 		});
 
-		it('disables the Connected actions dropdown in readonly (execution view) mode', async () => {
+		it('keeps the Connected actions dropdown usable in readonly mode', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: true },
 			};
@@ -2261,8 +2299,7 @@ describe('NodeCredentials', () => {
 			const dropdown = screen.getByTestId('node-credential-private-connected-actions');
 			await userEvent.click(dropdown);
 
-			// The connected/disconnect actions menu must not open while readonly
-			expect(screen.queryByText('Disconnect')).not.toBeInTheDocument();
+			expect(screen.getByText('Disconnect')).toBeInTheDocument();
 		});
 
 		it('clicking the Connect button runs the OAuth flow without opening the edit modal', async () => {

@@ -24,7 +24,6 @@ import {
 	AGENT_NODE_TYPE,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-	GOOGLE_GMAIL_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
 	MODAL_CONFIRM,
 	SLACK_NODE_TYPE,
@@ -46,10 +45,6 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
-import {
-	filterGmailHitlParameters,
-	useEnhancedHitlGmailExperiment,
-} from '@/experiments/enhancedHitlGmail';
 import {
 	filterTelegramHitlParameters,
 	useEnhancedHitlTelegramExperiment,
@@ -74,6 +69,7 @@ import {
 	N8nInputLabel,
 	N8nLink,
 	N8nNotice,
+	N8nSectionHeader,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -130,7 +126,6 @@ const i18n = useI18n();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 const { isFeatureEnabled: isEnhancedHitlTelegramEnabled } = useEnhancedHitlTelegramExperiment();
 const { isFeatureEnabled: isEnhancedHitlSlackEnabled } = useEnhancedHitlSlackExperiment();
-const { isFeatureEnabled: isEnhancedHitlGmailEnabled } = useEnhancedHitlGmailExperiment();
 const {
 	dismissCallout,
 	isCalloutDismissed,
@@ -194,6 +189,7 @@ interface ParameterComputedData {
 	dependentParametersValues: string | null;
 	issues: string[];
 	isCalloutVisible: boolean;
+	indentedUnderSection: boolean;
 }
 
 const parameterItems = ref<ParameterComputedData[]>([]);
@@ -209,7 +205,6 @@ throttledWatch(
 		hasChatOrManualChatParent,
 		isEnhancedHitlTelegramEnabled,
 		isEnhancedHitlSlackEnabled,
-		isEnhancedHitlGmailEnabled,
 	],
 	async () => {
 		// Pre-calculate disabled state map
@@ -264,13 +259,6 @@ throttledWatch(
 			!isEnhancedHitlSlackEnabled.value
 		) {
 			filteredParameters = filterSlackHitlParameters(parameters);
-		} else if (
-			node.value &&
-			(node.value.type === GOOGLE_GMAIL_NODE_TYPE ||
-				node.value.type === `${GOOGLE_GMAIL_NODE_TYPE}Tool`) &&
-			!isEnhancedHitlGmailEnabled.value
-		) {
-			filteredParameters = filterGmailHitlParameters(parameters);
 		} else {
 			filteredParameters = parameters;
 		}
@@ -297,9 +285,30 @@ throttledWatch(
 					dependentParametersValues,
 					issues,
 					isCalloutVisible: calloutVisible,
+					indentedUnderSection: false,
 				};
 			}),
 		);
+
+		// Fields following a section header (a `typeOptions.sectionHeader` notice) render
+		// indented beneath it, so the section visually groups its fields. The run ends at
+		// the next section header or the next collection (e.g. the trailing "Options" block).
+		let inSection = false;
+		for (const item of items) {
+			const isSectionHeader =
+				item.parameter.type === 'notice' && item.parameter.typeOptions?.sectionHeader === true;
+			const endsSection =
+				isSectionHeader ||
+				item.parameter.type === 'collection' ||
+				item.parameter.type === 'fixedCollection';
+			item.indentedUnderSection = inSection && !endsSection;
+			if (isSectionHeader) {
+				inSection = true;
+			} else if (endsSection) {
+				inSection = false;
+			}
+		}
+
 		parameterItems.value = items;
 
 		// Get new parameter names
@@ -797,6 +806,7 @@ watch(
 				},
 			]"
 			data-test-id="parameter-item"
+			:data-section-indent="item.indentedUnderSection ? 'true' : undefined"
 		>
 			<slot v-if="indexToShowSlotAt === index" />
 
@@ -818,6 +828,13 @@ watch(
 				v-else-if="item.parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
 				@value-changed="valueChanged"
+			/>
+
+			<N8nSectionHeader
+				v-else-if="item.parameter.type === 'notice' && item.parameter.typeOptions?.sectionHeader"
+				class="parameter-item"
+				:title="i18n.nodeText(activeNode?.type).inputLabelDisplayName(item.parameter, path)"
+				bordered
 			/>
 
 			<N8nNotice
@@ -1150,6 +1167,11 @@ watch(
 <style lang="scss" module>
 .parameterContainer {
 	scroll-margin: var(--spacing--xl);
+}
+
+/* Fields grouped under a section header (e.g. "Advanced Interactivity") are indented. */
+.parameterContainer[data-section-indent='true'] {
+	padding-left: var(--spacing--sm);
 }
 
 .firstParameter {
