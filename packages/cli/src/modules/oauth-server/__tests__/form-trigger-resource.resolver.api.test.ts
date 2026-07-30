@@ -15,9 +15,12 @@ import { randomUUID } from 'node:crypto';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
+
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 
@@ -293,5 +296,85 @@ describe('authorize gate (workflow:execute)', () => {
 		const resource = await resolveResource(webhookPath);
 
 		await expect(resource?.authorize(member)).resolves.toBe(true);
+	});
+
+	test('still requires execute access when the parameter is absent', async () => {
+		// `requireExecuteAccess` defaults to on, so a form whose node never set the
+		// parameter stays gated.
+		const node = formTriggerNode();
+		expect(node.parameters.requireExecuteAccess).toBeUndefined();
+		const webhookPath = randomUUID();
+		await createPublishedFormWorkflow(webhookPath, node);
+
+		const resource = await resolveResource(webhookPath);
+
+		await expect(resource?.authorize(member)).resolves.toBe(false);
+	});
+});
+
+/**
+ * The same check the form's POST handler and dynamic-credential resolution go
+ * through: holding a token for the form resource is not enough — the submitter
+ * must still have `workflow:execute` on the workflow behind it.
+ */
+describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () => {
+	const mintAccessToken = async (userId: string, resourceUrl: string) => {
+		const tokenService = Container.get(OAuthTokenService);
+		// A registered client is needed only to satisfy the token rows' FK.
+		const clientId = `client-${randomUUID()}`;
+		await Container.get(OAuthClientRepository).save({
+			id: clientId,
+			name: 'Form resolver tests',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+		const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl, []);
+		await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId, []);
+		return pair.accessToken;
+	};
+
+	test('refuses a submitter without execute access on the workflow', async () => {
+		const webhookPath = randomUUID();
+		await createPublishedFormWorkflow(webhookPath, formTriggerNode());
+		const token = await mintAccessToken(member.id, resourceUrlFor(webhookPath));
+
+		const result = await Container.get(OAuthTokenService).verifyOAuthAccessToken(
+			token,
+			resourceUrlFor(webhookPath),
+		);
+
+		expect(result.user).toBeNull();
+		expect(result.context?.reason).toBe('insufficient_scope');
+	});
+
+	test('allows a submitter granted execute via a project role', async () => {
+		const webhookPath = randomUUID();
+		const workflow = await createPublishedFormWorkflow(webhookPath, formTriggerNode());
+		await shareWorkflowWithUsers(workflow, [member]);
+		const token = await mintAccessToken(member.id, resourceUrlFor(webhookPath));
+
+		const result = await Container.get(OAuthTokenService).verifyOAuthAccessToken(
+			token,
+			resourceUrlFor(webhookPath),
+		);
+
+		expect(result.user?.id).toBe(member.id);
+	});
+
+	test('allows the same submitter once require-execute is turned off', async () => {
+		const webhookPath = randomUUID();
+		await createPublishedFormWorkflow(
+			webhookPath,
+			formTriggerNode({ requireExecuteAccess: false }),
+		);
+		const token = await mintAccessToken(member.id, resourceUrlFor(webhookPath));
+
+		const result = await Container.get(OAuthTokenService).verifyOAuthAccessToken(
+			token,
+			resourceUrlFor(webhookPath),
+		);
+
+		expect(result.user?.id).toBe(member.id);
 	});
 });

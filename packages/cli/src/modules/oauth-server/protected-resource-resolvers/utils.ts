@@ -8,14 +8,9 @@ export const WORKFLOW_MCP_TRIGGER_SCOPES: string[] = [];
 /** Scopes advertised for per-workflow Form trigger resources. Empty, like MCP triggers. */
 export const FORM_TRIGGER_SCOPES: string[] = [];
 
-/**
- * Form-trigger OAuth2 is opt-in. When the flag is off, `n8nUserAuth` form triggers
- * keep their existing cookie/HMAC auth and must not be exposed as OAuth protected
- * resources, so the resolvers short-circuit.
- */
-export function isFormOAuth2Enabled(): boolean {
-	return process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 === 'true';
-}
+// The flag also gates publish-time validation outside this module, so it lives in
+// `@/constants` and is re-exported here for the resolvers that short-circuit on it.
+export { isFormOAuth2Enabled } from '@/constants/form-trigger';
 
 export function trimTrailingSlash(path: string): string {
 	if (path.endsWith('/')) {
