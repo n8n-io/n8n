@@ -12,7 +12,10 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypes } from '@/node-types';
-import { CredentialsTester } from '@/services/credentials-tester.service';
+import {
+	AUTH_PROBE_ACCEPTED_MESSAGE,
+	CredentialsTester,
+} from '@/services/credentials-tester.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 vi.mock('n8n-core', async (importOriginal) => {
@@ -263,6 +266,9 @@ describe('CredentialsTester', () => {
 			);
 
 			expect(result.status).toBe('OK');
+			// Some services answer 2xx regardless of the credential, so the green
+			// verdict states what happened instead of claiming verification.
+			expect(result.message).toBe(AUTH_PROBE_ACCEPTED_MESSAGE);
 			const nodeTypeArg = (RoutingNode as unknown as Mock).mock.calls[0][1] as INodeType;
 			expect(nodeTypeArg.description.properties[0].routing?.request).toEqual({
 				url: targetUrl,
@@ -284,7 +290,7 @@ describe('CredentialsTester', () => {
 			expect(result.message).toContain('401');
 		});
 
-		it('treats a non-auth error response as the credential being accepted', async () => {
+		it('reports a non-auth error response as unverifiable instead of success', async () => {
 			mockRoutingNodeResult({ reject: httpError(405) });
 
 			const result = await credentialsTester.probeCredentialAuth(
@@ -294,7 +300,9 @@ describe('CredentialsTester', () => {
 				targetUrl,
 			);
 
-			expect(result.status).toBe('OK');
+			expect(result.status).toBe('Error');
+			expect(result.message).toContain('405');
+			expect(result.message).toContain('could not be verified');
 		});
 
 		it('accepts a declared service-specific status code instead of rejecting on it', async () => {
@@ -346,7 +354,7 @@ describe('CredentialsTester', () => {
 			expect(result.message).toContain('401');
 		});
 
-		it('passes a NodeApiError-wrapped non-auth status', async () => {
+		it('reports a NodeApiError-wrapped non-auth status as unverifiable', async () => {
 			mockRoutingNodeResult({ reject: nodeApiError(405) });
 
 			const result = await credentialsTester.probeCredentialAuth(
@@ -356,7 +364,8 @@ describe('CredentialsTester', () => {
 				targetUrl,
 			);
 
-			expect(result.status).toBe('OK');
+			expect(result.status).toBe('Error');
+			expect(result.message).toContain('405');
 		});
 
 		it('accepts a declared code on the NodeApiError shape too', async () => {
@@ -373,7 +382,7 @@ describe('CredentialsTester', () => {
 			expect(result.status).toBe('OK');
 		});
 
-		it('treats an unreachable service as inconclusive rather than a failure', async () => {
+		it('reports an unreachable service as unverifiable rather than success', async () => {
 			const error = new Error('connect ECONNREFUSED');
 			(error as Error & { cause: unknown }).cause = { code: 'ECONNREFUSED' };
 			mockRoutingNodeResult({ reject: error });
@@ -385,7 +394,7 @@ describe('CredentialsTester', () => {
 				targetUrl,
 			);
 
-			expect(result.status).toBe('OK');
+			expect(result.status).toBe('Error');
 			expect(result.message).toContain('Could not reach');
 		});
 	});
