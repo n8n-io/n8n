@@ -37,10 +37,18 @@ test.describe(
 				{ itemsAfterSeedPoll: [{ id: 1 }, { id: 2 }] },
 			);
 
+			await expect
+				.poll(async () => await api.getPollerCursor(workflowId, nodeId), { timeout: 15_000 })
+				.toEqual({ lastItemId: 1 });
+
 			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 
 			await expectNewTriggerExecution(api, workflowId, afterSeedPoll);
+
+			await expect
+				.poll(async () => await api.getPollerCursor(workflowId, nodeId), { timeout: 15_000 })
+				.toEqual({ lastItemId: 2 });
 		});
 
 		test('should not re-emit an item the committed cursor already covers', async ({
@@ -63,7 +71,7 @@ test.describe(
 			api,
 			services,
 		}) => {
-			const { workflowId } = await expectPollTriggerFires(
+			const { workflowId, nodeId } = await expectPollTriggerFires(
 				api,
 				services.proxy,
 				makePollTriggerWorkflow,
@@ -74,6 +82,7 @@ test.describe(
 
 			await expectNoNewTriggerExecution(api, workflowId, afterSeedPoll);
 			expect(await readNodeStaticData(api, workflowId, POLL_TRIGGER_NODE_NAME)).toBeNull();
+			expect(await api.getPollerCursor(workflowId, nodeId)).toEqual({ lastItemId: 1 });
 		});
 	},
 );
