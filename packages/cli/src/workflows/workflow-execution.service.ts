@@ -150,7 +150,7 @@ export class WorkflowExecutionService {
 			projectName,
 		};
 
-		await this.workflowRunner.establishContextForPersistence(runData);
+		const establishContextError = await this.workflowRunner.establishContextForPersistence(runData);
 
 		const payload: CreateExecutionPayload = {
 			data: executionData,
@@ -171,6 +171,17 @@ export class WorkflowExecutionService {
 		});
 
 		await this.pollCursorService.mirrorToStaticData(workflowData.id, node.name, cursor);
+
+		if (establishContextError) {
+			await this.workflowRunner.registerAndFailExecution(
+				runData,
+				establishContextError,
+				{ executionId, expectedStatus: 'new' },
+				responsePromise,
+			);
+
+			return executionId;
+		}
 
 		await this.workflowRunner.run(
 			runData,
