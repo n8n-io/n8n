@@ -34,6 +34,14 @@ describe('getMcpInstructions', () => {
 		expect(instructions).not.toContain('n8n credits');
 	});
 
+	test('warns that SDK code is a restricted subset and points at the language section', () => {
+		const instructions = getMcpInstructions({ isBuilderEnabled: true });
+
+		expect(instructions).toContain('restricted subset of TypeScript');
+		expect(instructions).toContain('NOT arbitrary JavaScript');
+		expect(instructions).toContain('"language"');
+	});
+
 	describe('node groups pointer', () => {
 		describe('when canvasGroupsEnabled is true', () => {
 			test('points the client to the groups reference', () => {

@@ -14,6 +14,7 @@ import {
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
 	NODE_GROUPS_REFERENCE,
+	buildSdkLanguageReference,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
 // NOTE: CODING_GUIDELINES and DESIGN_GUIDANCE are MCP-only constants defined
@@ -58,6 +59,7 @@ export type SdkReferenceSection =
 	| 'import'
 	| 'guidelines'
 	| 'design'
+	| 'language'
 	| 'groups'
 	| 'all';
 
@@ -75,7 +77,7 @@ const DESIGN_GUIDANCE_SECTION = `## Design Guidance\n\n${DESIGN_GUIDANCE}`;
 // shared verbatim with Instance AI, so it is served as-is (no extra wrapper).
 const GROUPS_SECTION = NODE_GROUPS_REFERENCE;
 
-const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
+const SECTIONS: Record<Exclude<SdkReferenceSection, 'all' | 'language'>, string> = {
 	import: SDK_IMPORT_SECTION,
 	patterns: WORKFLOW_PATTERNS_SECTION,
 	patterns_detailed: WORKFLOW_PATTERNS_DETAILED_SECTION,
@@ -86,6 +88,11 @@ const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
 	design: DESIGN_GUIDANCE_SECTION,
 	groups: GROUPS_SECTION,
 };
+
+// The language reference embeds the node-groups docs, which are feature-flag
+// gated here, so it is rendered per-request rather than stored in SECTIONS.
+const getLanguageSection = (includeGroups: boolean): string =>
+	buildSdkLanguageReference({ includeGroups });
 
 /**
  * Get the full SDK reference content or a filtered section.
@@ -106,6 +113,10 @@ export function getSdkReferenceContent(
 		return includeGroups ? SECTIONS.groups : '';
 	}
 
+	if (section === 'language') {
+		return getLanguageSection(includeGroups);
+	}
+
 	if (section && section !== 'all' && section in SECTIONS) {
 		return SECTIONS[section];
 	}
@@ -114,6 +125,10 @@ export function getSdkReferenceContent(
 		'# n8n Workflow SDK Reference',
 		'',
 		SECTIONS.import,
+		'',
+		// Groups docs are appended as their own section below (flag-gated), so
+		// the embedded copy is always omitted here to avoid duplication.
+		getLanguageSection(false),
 		'',
 		SECTIONS.patterns,
 		'',
