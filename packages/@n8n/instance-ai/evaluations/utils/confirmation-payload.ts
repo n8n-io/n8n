@@ -20,7 +20,7 @@ export function tryInfrastructureResponse(
 ): InstanceAiConfirmRequest | undefined {
 	const payload = getNestedRecord(event.data, 'payload') ?? {};
 
-	// Web search shares domain access's approval shape; `allow_all` grants it for the thread.
+	// Web search reuses domain access's approval shape.
 	if (getNestedRecord(payload, 'domainAccess') || getNestedRecord(payload, 'webSearch')) {
 		return { kind: 'domainAccessApprove', domainAccessAction: 'allow_all' };
 	}

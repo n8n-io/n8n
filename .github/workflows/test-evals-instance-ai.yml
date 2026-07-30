@@ -164,7 +164,6 @@ jobs:
       - name: Start n8n containers
         env:
           EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
-          # Unset = the builder's web-search action silently returns zero results.
           EVALS_BRAVE_SEARCH_KEY: ${{ secrets.EVALS_BRAVE_SEARCH_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}

@@ -3,7 +3,7 @@ import type { WebSearchOptions, WebSearchResponse } from './types';
 const BRAVE_SEARCH_PATH = '/res/v1/web/search';
 const BRAVE_SEARCH_URL = `https://api.search.brave.com${BRAVE_SEARCH_PATH}`;
 
-/** Brave rate-limits per second, so concurrent searches trip 429 rather than failing outright. */
+/** Brave rate-limits per second — retry so a burst of searches doesn't fail the caller. */
 const MAX_ATTEMPTS = 3;
 const RETRY_BASE_MS = 250;
 
