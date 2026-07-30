@@ -800,6 +800,24 @@ describe('integration tools', () => {
 		expect(tool.description).toContain('add_reaction: input.emoji is required');
 	});
 
+	it('action tool schema accepts no-input actions without an input object', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
+				actions: ['respond', 'do_not_respond'],
+			}))[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(schema.safeParse({ action: 'do_not_respond' }).success).toBe(true);
+		expect(schema.safeParse({ action: 'do_not_respond', input: {} }).success).toBe(true);
+		expect(schema.safeParse({ actions: [{ action: 'do_not_respond' }] }).success).toBe(true);
+		// Actions with required input still fail without it — at their own schema.
+		expect(schema.safeParse({ action: 'respond' }).success).toBe(false);
+		expect(schema.safeParse({}).success).toBe(false);
+	});
+
 	it('action tool schema accepts Linear issue and comment actions', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([linear], 'agent-1', () => ({

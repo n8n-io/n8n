@@ -21,6 +21,7 @@ import { buildSuspendCardPayload, isApprovalSuspendPayload } from './agent-chat-
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
+import type { ReplyExpectation } from './integration-tools';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 import { type InternalThread, toInternalThreadId } from './types';
@@ -267,6 +268,12 @@ export class AgentChatBridge {
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
 		const statusRetry = new AbortController();
+		const replyExpectation =
+			this.integrationImpl?.getReplyExpectation?.({
+				message,
+				isNewMention,
+				platformAgentContext,
+			}) ?? 'required';
 		// Platform status hooks, the lazy `message.subject` fetch, and any
 		// thread-history fetch are all remote round-trips on independent
 		// resources — run them concurrently.
@@ -277,6 +284,7 @@ export class AgentChatBridge {
 				platformAgentContext,
 				statusRetry,
 				isNewMention,
+				replyExpectation,
 			),
 			this.messageContextBridge.resolveSubject(message),
 		]);
@@ -287,6 +295,7 @@ export class AgentChatBridge {
 				interactingUserId: message.author.userId,
 				...bridgeExecutionContext.platformAgentContext,
 				subject,
+				replyExpectation,
 			});
 			// threadId.id is agent-prefixed for observation storage; resourceId keeps
 			// the platform user identity so episodic recall works across threads for
@@ -327,6 +336,7 @@ export class AgentChatBridge {
 		platformAgentContext: PlatformAgentContext,
 		statusRetry: AbortController,
 		isNewMention: boolean,
+		replyExpectation: ReplyExpectation,
 	): Promise<BridgeExecutionContext> {
 		return (
 			(await this.integrationImpl?.createBridgeExecutionContext?.({
@@ -337,6 +347,7 @@ export class AgentChatBridge {
 				agentId: this.agentId,
 				statusRetry,
 				isNewMention,
+				replyExpectation,
 			})) ?? { platformAgentContext }
 		);
 	}

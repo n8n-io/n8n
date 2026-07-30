@@ -21,6 +21,14 @@ export type IntegrationMessageTarget =
 			threadId?: string;
 	  };
 
+/**
+ * Whether the latest inbound message expects a reply. Direct messages and
+ * direct mentions are 'required'; follow-up messages in subscribed group
+ * threads are 'optional' — only then may the agent end a turn silently via
+ * the `do_not_respond` action.
+ */
+export type ReplyExpectation = 'required' | 'optional';
+
 export interface IntegrationMessageContext {
 	integrationConnectionId: string;
 	platform: string;
@@ -29,6 +37,7 @@ export interface IntegrationMessageContext {
 	interactingUserId?: string;
 	agentUserId?: string;
 	subject?: IntegrationMessageSubject;
+	replyExpectation?: ReplyExpectation;
 	updatedAt: string;
 }
 
@@ -78,6 +87,7 @@ export type IntegrationContextQuery =
 
 export type IntegrationAction =
 	| 'respond'
+	| 'do_not_respond'
 	| 'send_dm'
 	| 'send_channel_message'
 	| 'edit_message'

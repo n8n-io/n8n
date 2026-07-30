@@ -812,6 +812,79 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
 		});
 
+		it('does not set a thinking status for subscribed channel messages where the reply is optional', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus, botUserId: 'U_BOT' });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			await handlers.subscribed!(thread, {
+				text: 'chatter between colleagues',
+				raw: {
+					channel: 'C123',
+					channel_type: 'channel',
+					thread_ts: '1779466577.518139',
+					ts: '1779466588.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
+			expect(thread.startTyping).not.toHaveBeenCalled();
+			expect(setAssistantStatus).not.toHaveBeenCalled();
+		});
+
+		it('clears the thread typing status when the turn ends without a response', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			// A silent turn: the agent finishes without any text or post, so
+			// Slack's post-triggered auto-clear never happens.
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					channel: 'C123',
+					channel_type: 'channel',
+					thread_ts: '1779466577.518139',
+					ts: '1779466588.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(setAssistantStatus).toHaveBeenCalledWith('C123', '1779466577.518139', '');
+		});
+
 		it('clears assistant status before responding to top-level Slack channel mentions', async () => {
 			const { bot, handlers } = makeBot();
 			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
@@ -1183,6 +1256,73 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
+		it('stores the platform reply expectation for subscribed Slack channel messages', async () => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
+			const thread = makeThread();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: 'message-2',
+				text: 'chatter between colleagues',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { channel: 'C123', channel_type: 'channel' },
+			});
+
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:thread-1',
+				'u1',
+				expect.objectContaining({ replyExpectation: 'optional' }),
+			);
+		});
+
+		it('defaults the reply expectation to required for platforms without a reply policy', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: 'message-2',
+				text: 'follow-up',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:thread-1',
+				'u1',
+				expect.objectContaining({ replyExpectation: 'required' }),
+			);
+		});
+
 		it('stores a sanitized message subject from the inbound message', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -1298,6 +1438,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						id: 'ENG-123',
 						title: 'Fix signup',
 					},
+					replyExpectation: 'required',
 				}),
 			);
 		});
