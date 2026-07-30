@@ -112,30 +112,26 @@ describe('ExecutionPersistence', () => {
 		describe('caller-supplied operation context', () => {
 			const executionPersistence = createPersistenceService('db');
 
-			it("joins the caller's transaction instead of opening one of its own", async () => {
+			// A caller's context must reach the repository untouched, otherwise the insert
+			// opens a transaction of its own and stops being atomic with the caller's work.
+			it("runs the insert in the caller's context, defaulting to a root context", async () => {
 				const mockTx = createMockTransaction();
 				executionRepository.runInTransaction = createMockRunInTransaction(mockTx);
 				const ctx: OperationContext = { trx: mock<Transaction>() };
 
-				const executionId = await executionPersistence.create(createPayload, ctx);
+				expect(await executionPersistence.create(createPayload, ctx)).toBe('exec-1');
+				expect(await executionPersistence.create(createPayload)).toBe('exec-1');
 
-				expect(executionId).toBe('exec-1');
-				expect(executionRepository.runInTransaction).toHaveBeenCalledWith(
+				expect(executionRepository.runInTransaction).toHaveBeenNthCalledWith(
+					1,
 					ctx,
 					expect.any(Function),
 				);
-				expect(mockTx.insert).toHaveBeenCalledWith(ExecutionEntity, expect.anything());
-			});
-
-			it('opens its own transaction from a root context when given none', async () => {
-				const mockTx = createMockTransaction();
-				executionRepository.runInTransaction = createMockRunInTransaction(mockTx);
-
-				const executionId = await executionPersistence.create(createPayload);
-
-				expect(executionId).toBe('exec-1');
-				expect(executionRepository.runInTransaction).toHaveBeenCalledWith({}, expect.any(Function));
-				expect(mockTx.insert).toHaveBeenCalledWith(ExecutionEntity, expect.anything());
+				expect(executionRepository.runInTransaction).toHaveBeenNthCalledWith(
+					2,
+					{},
+					expect.any(Function),
+				);
 			});
 		});
 
@@ -280,7 +276,7 @@ describe('ExecutionPersistence', () => {
 				);
 			});
 
-			it('should roll back transaction if filesystem write fails', async () => {
+			it('propagates the error when the filesystem write fails', async () => {
 				const mockTx = mock<EntityManager>();
 				mockTx.insert.mockResolvedValue({
 					identifiers: [{ id: 'exec-3' }],
@@ -1062,7 +1058,7 @@ describe('ExecutionPersistence', () => {
 				expect(jsonStore.write).toHaveBeenCalled();
 			});
 
-			it('should roll the transaction back if the fs write fails', async () => {
+			it('propagates the error when the fs write fails', async () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
 				jsonStore.read.mockResolvedValue(existingBundle);

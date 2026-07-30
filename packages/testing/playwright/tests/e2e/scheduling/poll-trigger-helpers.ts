@@ -73,11 +73,14 @@ export async function triggerExecutionIds(
 	);
 }
 
-async function newTriggerExecutionIds(api: ApiHelpers, workflowId: string, known: Set<string>) {
-	const ids = await triggerExecutionIds(api, workflowId);
-	return [...ids].filter((id) => !known.has(id));
+async function newTriggerExecutions(api: ApiHelpers, workflowId: string, known: Set<string>) {
+	const executions = await api.workflows.getExecutions(workflowId, 50);
+	return executions.filter((execution) => execution.mode === 'trigger' && !known.has(execution.id));
 }
 
+// Only an execution whose id is absent from `known` proves a fresh fire;
+// `waitForExecution`'s recency fallback would otherwise re-match the
+// activation-seed execution.
 export async function expectNewTriggerExecution(
 	api: ApiHelpers,
 	workflowId: string,
@@ -85,10 +88,14 @@ export async function expectNewTriggerExecution(
 	timeoutMs = 20_000,
 ): Promise<void> {
 	await expect
-		.poll(async () => (await newTriggerExecutionIds(api, workflowId, known)).length, {
-			timeout: timeoutMs,
-		})
-		.toBeGreaterThan(0);
+		.poll(
+			async () => {
+				const [fresh] = await newTriggerExecutions(api, workflowId, known);
+				return fresh?.status ?? null;
+			},
+			{ timeout: timeoutMs },
+		)
+		.toBe('success');
 }
 
 export async function expectNoNewTriggerExecution(
@@ -98,7 +105,7 @@ export async function expectNoNewTriggerExecution(
 	windowMs = 8_000,
 ): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, windowMs));
-	expect(await newTriggerExecutionIds(api, workflowId, known)).toHaveLength(0);
+	expect(await newTriggerExecutions(api, workflowId, known)).toHaveLength(0);
 }
 
 export async function readNodeStaticData(

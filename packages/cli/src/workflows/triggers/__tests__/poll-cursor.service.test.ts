@@ -85,26 +85,7 @@ describe('PollCursorService', () => {
 			await expect(service.readCursor('wf-1', 'node-1', {})).resolves.toBeNull();
 		});
 
-		it('returns the cursor another process seeded when this one seeded nothing', async () => {
-			const service = buildService();
-			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-the-other-poll' });
-
-			const cursor = await service.readCursor('wf-1', 'node-1', {});
-
-			expect(cursor).toEqual({ lastItemId: 'from-the-other-poll' });
-		});
-
-		it('writes the stored cursor into the static data it was given', async () => {
-			const service = buildService();
-			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-db' });
-			const nodeStaticData = { lastItemId: 'stale' };
-
-			await service.readCursor('wf-1', 'node-1', nodeStaticData);
-
-			expect(nodeStaticData).toEqual({ lastItemId: 'from-db' });
-		});
-
-		it('keeps static-data keys the stored cursor does not carry', async () => {
+		it('writes the stored cursor into the static data it was given, keeping the keys it does not carry', async () => {
 			const service = buildService();
 			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-db' });
 			const nodeStaticData = { lastItemId: 'stale', seenIds: ['x'] };
@@ -210,11 +191,16 @@ describe('PollCursorService', () => {
 			expect(executionPersistence.create).not.toHaveBeenCalled();
 		});
 
-		it('propagates a failing execution insert so the cursor advance rolls back with it', async () => {
+		// The transaction runner is a pass-through here, so these only pin that the failure
+		// reaches the caller and nothing swallows it. The rollback itself is proven in
+		// test/integration/executions/poll-cursor-atomicity.test.ts.
+		it.each([
+			{ title: 'a failing execution insert', error: new Error('insert failed') },
+			{ title: 'a duplicate execution', error: new DuplicateExecutionError('dedup-key') },
+		])('propagates $title to the caller', async ({ error }) => {
 			const service = buildService();
 			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'a' });
-			const insertError = new Error('insert failed');
-			executionPersistence.create.mockRejectedValue(insertError);
+			executionPersistence.create.mockRejectedValue(error);
 
 			await expect(
 				service.commitWithExecution({
@@ -223,23 +209,7 @@ describe('PollCursorService', () => {
 					cursor: { lastItemId: 'b' },
 					payload: payload(),
 				}),
-			).rejects.toBe(insertError);
-		});
-
-		it('propagates a duplicate execution so the cursor advance rolls back with it', async () => {
-			const service = buildService();
-			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'a' });
-			const duplicateError = new DuplicateExecutionError('dedup-key');
-			executionPersistence.create.mockRejectedValue(duplicateError);
-
-			await expect(
-				service.commitWithExecution({
-					workflowId: 'wf-1',
-					nodeId: 'node-1',
-					cursor: { lastItemId: 'b' },
-					payload: payload(),
-				}),
-			).rejects.toBe(duplicateError);
+			).rejects.toBe(error);
 		});
 	});
 
@@ -274,24 +244,15 @@ describe('PollCursorService', () => {
 	});
 
 	describe('mirrorToStaticData', () => {
-		it("writes the cursor under the node's static-data key, keeping the other keys", async () => {
+		it("writes the cursor into the node's static-data entry, dropping only the keys the previous cursor carried", async () => {
 			const service = buildService();
 			workflowStaticDataService.getStaticDataById.mockResolvedValue({
 				'node:Other Poll Node': { lastItemId: 'x' },
-			});
-
-			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {}, {});
-
-			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
-				'node:Other Poll Node': { lastItemId: 'x' },
-				'node:Poll Node': { lastItemId: 'b' },
-			});
-		});
-
-		it("replaces the keys the previous cursor carried in the node's own entry", async () => {
-			const service = buildService();
-			workflowStaticDataService.getStaticDataById.mockResolvedValue({
-				'node:Poll Node': { lastItemId: 'a', lastTimeChecked: '2026-07-28T10:00:00.000Z' },
+				'node:Poll Node': {
+					lastItemId: 'a',
+					lastTimeChecked: '2026-07-28T10:00:00.000Z',
+					seenIds: ['x'],
+				},
 			});
 
 			await service.mirrorToStaticData(
@@ -303,54 +264,54 @@ describe('PollCursorService', () => {
 			);
 
 			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
-				'node:Poll Node': { lastItemId: 'b' },
-			});
-		});
-
-		it("keeps the keys of the node's own entry that no cursor put there", async () => {
-			const service = buildService();
-			workflowStaticDataService.getStaticDataById.mockResolvedValue({
-				'node:Poll Node': { lastItemId: 'a', seenIds: ['x'] },
-			});
-
-			await service.mirrorToStaticData(
-				'wf-1',
-				'Poll Node',
-				{ lastItemId: 'b' },
-				{},
-				{ lastItemId: 'a' },
-			);
-
-			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
+				'node:Other Poll Node': { lastItemId: 'x' },
 				'node:Poll Node': { lastItemId: 'b', seenIds: ['x'] },
 			});
 		});
 
-		it('resolves and reports rather than throwing when the static-data write fails', async () => {
-			const service = buildService();
-			workflowStaticDataService.getStaticDataById.mockResolvedValue({});
-			const writeError = new Error('static data write failed');
-			workflowStaticDataService.saveStaticDataById.mockRejectedValue(writeError);
+		it.each([['not an object'], [['an', 'array']]])(
+			"replaces a node static-data entry holding %s with the cursor's own keys",
+			async (stored) => {
+				const service = buildService();
+				workflowStaticDataService.getStaticDataById.mockResolvedValue({
+					'node:Poll Node': stored,
+				});
 
-			await expect(
-				service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {}, {}),
-			).resolves.toBeUndefined();
+				await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {}, {});
 
-			expect(errorReporter.error).toHaveBeenCalledWith(writeError, expect.anything());
-			expect(logger.error).toHaveBeenCalled();
-		});
+				expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
+					'node:Poll Node': { lastItemId: 'b' },
+				});
+			},
+		);
 
-		it('resolves and reports rather than throwing when the static-data read fails', async () => {
-			const service = buildService();
-			const readError = new Error('static data read failed');
-			workflowStaticDataService.getStaticDataById.mockRejectedValue(readError);
+		it.each([
+			{ failing: 'write', error: new Error('static data write failed') },
+			{ failing: 'read', error: new Error('static data read failed') },
+		])(
+			'resolves and reports rather than throwing when the static-data $failing fails',
+			async ({ failing, error }) => {
+				const service = buildService();
+				if (failing === 'read') {
+					workflowStaticDataService.getStaticDataById.mockRejectedValue(error);
+				} else {
+					workflowStaticDataService.getStaticDataById.mockResolvedValue({});
+					workflowStaticDataService.saveStaticDataById.mockRejectedValue(error);
+				}
 
-			await expect(
-				service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {}, {}),
-			).resolves.toBeUndefined();
+				await expect(
+					service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {}, {}),
+				).resolves.toBeUndefined();
 
-			expect(errorReporter.error).toHaveBeenCalledWith(readError, expect.anything());
-		});
+				expect(errorReporter.error).toHaveBeenCalledWith(error, {
+					extra: { workflowId: 'wf-1', nodeName: 'Poll Node' },
+				});
+				expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Poll Node'), {
+					workflowId: 'wf-1',
+					nodeName: 'Poll Node',
+				});
+			},
+		);
 
 		it('updates the live node static data even when the static-data write fails', async () => {
 			const service = buildService();
@@ -369,26 +330,18 @@ describe('PollCursorService', () => {
 			expect(nodeStaticData).toEqual({ lastItemId: 'b' });
 		});
 
-		it('drops live static-data keys the previous cursor carried and the committed one does not', async () => {
+		it('drops live static-data keys the previous cursor carried and keeps the ones no cursor put there', async () => {
 			const service = buildService();
 			workflowStaticDataService.getStaticDataById.mockResolvedValue({});
-			const nodeStaticData = { lastItemId: 'a', lastTimeChecked: '2026-07-28T10:00:00.000Z' };
+			const nodeStaticData = {
+				lastItemId: 'a',
+				lastTimeChecked: '2026-07-28T10:00:00.000Z',
+				seenIds: ['x'],
+			};
 
 			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, nodeStaticData, {
 				lastItemId: 'a',
 				lastTimeChecked: '2026-07-28T10:00:00.000Z',
-			});
-
-			expect(nodeStaticData).toEqual({ lastItemId: 'b' });
-		});
-
-		it('keeps live static-data keys that no cursor put there', async () => {
-			const service = buildService();
-			workflowStaticDataService.getStaticDataById.mockResolvedValue({});
-			const nodeStaticData = { lastItemId: 'a', seenIds: ['x'] };
-
-			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, nodeStaticData, {
-				lastItemId: 'a',
 			});
 
 			expect(nodeStaticData).toEqual({ lastItemId: 'b', seenIds: ['x'] });
