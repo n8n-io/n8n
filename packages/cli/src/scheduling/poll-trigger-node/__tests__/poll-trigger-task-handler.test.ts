@@ -171,6 +171,31 @@ describe('PollTriggerTaskHandler', () => {
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
+		test('commits the cursor when poll() returns null and the workflow is still active', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(1);
+		});
+
+		test('does not commit the cursor when the workflow was deactivated during an empty poll()', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+			workflowRepository.isActive.mockResolvedValue(false);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		test('leaves the cursor to the emit path when poll() returns new data', async () => {
+			await handler.execute(buildTask(), report);
+
+			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+		});
+
 		test('discards the result and reports no dispatch when the workflow was deactivated during poll()', async () => {
 			workflowRepository.isActive.mockResolvedValue(false);
 
@@ -218,6 +243,26 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
 			expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
 			// Handled, not retried: the occurrence is reported as dispatched.
+			expect(onDispatch).toHaveBeenCalledTimes(1);
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		test('does not commit the cursor when poll() throws', async () => {
+			triggersAndPollers.runPollFunction.mockRejectedValue(new Error('poll source unreachable'));
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+		});
+
+		test('routes a failing cursor commit to the error workflow', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+			const commitError = new Error('poller state write failed');
+			pollFunctions.__commitCursor.mockRejectedValue(commitError);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollFunctions.__emitError).toHaveBeenCalledWith(commitError);
 			expect(onDispatch).toHaveBeenCalledTimes(1);
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});

@@ -63,9 +63,9 @@ describe('TriggerExecutionContextFactory', () => {
 	const nodeTypes = createNodeTypes();
 
 	let factory: TriggerExecutionContextFactory;
-	let logger: Logger;
 	let errorReporter: ErrorReporter;
 	let pollCursorService: MockProxy<PollCursorService>;
+	let scopedLogger: MockProxy<Logger>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -78,8 +78,8 @@ describe('TriggerExecutionContextFactory', () => {
 		);
 
 		scheduleTriggerJobRegistrar.interceptsNode.mockReturnValue(false);
-		logger = mock<Logger>();
-		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) });
+		scopedLogger = mock<Logger>();
+		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 		errorReporter = mock<ErrorReporter>();
 
 		factory = new TriggerExecutionContextFactory(
@@ -316,7 +316,7 @@ describe('TriggerExecutionContextFactory', () => {
 					await flush();
 
 					expect(unhandled).toEqual([]);
-					expect(logger.error).toHaveBeenCalledWith('boom', expect.objectContaining({}));
+					expect(scopedLogger.error).toHaveBeenCalledWith('boom', expect.objectContaining({}));
 					expect(eventService.emit).not.toHaveBeenCalled();
 				});
 
@@ -677,7 +677,7 @@ describe('TriggerExecutionContextFactory', () => {
 					await flush();
 
 					expect(unhandled).toEqual([]);
-					expect(logger.error).toHaveBeenCalledWith('boom', expect.objectContaining({}));
+					expect(scopedLogger.error).toHaveBeenCalledWith('boom', expect.objectContaining({}));
 				});
 
 				test('rejects donePromise instead of leaving it pending', async () => {
@@ -900,6 +900,167 @@ describe('TriggerExecutionContextFactory', () => {
 				{ lastItemId: 'first-only' },
 				undefined,
 			);
+		});
+
+		test("reads the cursor through the service, seeded with the node's static data", async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			workflow.getStaticData.mockReturnValue({ lastItemId: 'from-static-data' });
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			pollCursorService.readCursor.mockResolvedValue({ lastItemId: 'from-db' });
+			const context = buildContext(workflow, node);
+
+			await expect(context.getCursor()).resolves.toEqual({ lastItemId: 'from-db' });
+			expect(pollCursorService.readCursor).toHaveBeenCalledWith('wf-1', 'node-1', {
+				lastItemId: 'from-static-data',
+			});
+		});
+
+		test('resolves getCursor to null when the service has no cursor for the node', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			await expect(context.getCursor()).resolves.toBeNull();
+		});
+
+		test('merges the keys of two cursors staged within one poll', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.setCursor({ lastItemId: 'a' });
+			context.setCursor({ lastTimeChecked: '2026-07-28T10:00:00.000Z' });
+			context.__emit(pollData);
+			await sleep(0);
+
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledWith(
+				expect.anything(),
+				node,
+				pollData,
+				additionalData,
+				mode,
+				{ lastItemId: 'a', lastTimeChecked: '2026-07-28T10:00:00.000Z' },
+				undefined,
+			);
+		});
+
+		test('lets a later stage overwrite the key an earlier one staged', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.setCursor({ lastItemId: 'a' });
+			context.setCursor({ lastItemId: 'b' });
+
+			await context.__commitCursor();
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith('wf-1', 'node-1', {
+				lastItemId: 'b',
+			});
+		});
+
+		test('commits a staged cursor on its own when the poll produced no items', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.setCursor({ lastItemId: 'a' });
+			await context.__commitCursor();
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith('wf-1', 'node-1', {
+				lastItemId: 'a',
+			});
+			expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+			expect(workflowStaticDataService.saveStaticData).not.toHaveBeenCalled();
+		});
+
+		test('commits nothing when the poll staged no cursor', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			await context.__commitCursor();
+
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
+		});
+
+		test('commits nothing on a poll that staged nothing after an earlier poll committed', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.setCursor({ lastItemId: 'a' });
+			await context.__commitCursor();
+			await context.__commitCursor();
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledTimes(1);
+		});
+
+		test('commits nothing after an emit already carried the staged cursor', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.setCursor({ lastItemId: 'a' });
+			context.__emit(pollData);
+			await sleep(0);
+			await context.__commitCursor();
+
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(1);
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
+		});
+
+		test('routes a later emit to runWorkflow when the staged cursor was already committed', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.setCursor({ lastItemId: 'a' });
+			await context.__commitCursor();
+
+			context.__emit(pollData);
+			await sleep(0);
+
+			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+			expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+		});
+
+		test('leaves cursor reads and commits to the static data when the flag is off', async () => {
+			const workflow = buildWorkflow();
+			workflow.getStaticData.mockReturnValue({ lastItemId: 'from-static-data' });
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			await expect(context.getCursor()).resolves.toEqual({ lastItemId: 'from-static-data' });
+			await context.__commitCursor();
+
+			expect(pollCursorService.readCursor).not.toHaveBeenCalled();
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
+		});
+
+		test('logs a failing polled run rather than leaving the rejection unhandled', async () => {
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
+			const runError = new Error('commit failed');
+			workflowExecutionService.runPolledWorkflow.mockRejectedValue(runError);
+			const workflow = buildWorkflow();
+			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			const context = buildContext(workflow, node);
+
+			context.setCursor({ lastItemId: 'a' });
+			context.__emit(pollData);
+			await sleep(0);
+
+			expect(scopedLogger.error).toHaveBeenCalledWith('commit failed', { error: runError });
 		});
 	});
 

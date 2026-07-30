@@ -1,5 +1,6 @@
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	NodeConnectionTypes,
 	type IConnections,
@@ -8,11 +9,13 @@ import {
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
 	type ExecutionError,
+	type IExecuteResponsePromiseData,
 	createRunExecutionData,
 } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { EventService } from '@/events/event.service';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
@@ -227,6 +230,85 @@ describe('WorkflowExecutionService', () => {
 				{ executionId: 'exec-9', expectedStatus: 'new' },
 				undefined,
 			);
+		});
+
+		test('mirrors the committed cursor to the static data of the polled node', async () => {
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+			);
+
+			expect(pollCursorService.mirrorToStaticData).toHaveBeenCalledWith(
+				'wf-1',
+				'Poll Node',
+				cursor,
+			);
+		});
+
+		test('neither mirrors nor starts a run when the commit is rejected as a duplicate', async () => {
+			const duplicateError = new DuplicateExecutionError('dedup-key');
+			pollCursorService.commitWithExecution.mockRejectedValue(duplicateError);
+
+			await expect(
+				workflowExecutionService.runPolledWorkflow(
+					workflow,
+					node,
+					[[{ json: {} }]],
+					additionalData,
+					'trigger',
+					cursor,
+				),
+			).rejects.toBe(duplicateError);
+
+			expect(pollCursorService.mirrorToStaticData).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		test('hands the response promise to the runner', async () => {
+			const responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+			);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.anything(),
+				true,
+				undefined,
+				{ executionId: 'exec-9', expectedStatus: 'new' },
+				responsePromise,
+			);
+		});
+
+		test('commits the poll items as the trigger data of the execution', async () => {
+			const pollItems = [[{ json: { id: 1 } }]];
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+			);
+
+			const [{ payload }] = pollCursorService.commitWithExecution.mock.calls[0];
+			expect(payload.data.executionData?.nodeExecutionStack).toEqual([
+				{ node, data: { main: pollItems }, source: null },
+			]);
+			expect(payload.mode).toBe('trigger');
+			expect(payload.workflowId).toBe('wf-1');
+			expect(payload.finished).toBe(false);
 		});
 	});
 
