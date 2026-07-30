@@ -21,7 +21,7 @@ export type FetchWorkflowReviewInboxParams = {
 /** A decision a reviewer can submit; `pending` is the initial state, never an input. */
 export type WorkflowReviewDecisionInput = Exclude<WorkflowReviewRequestDecision, 'pending'>;
 
-/** Workflow-scoped list used by review-required toggle sync. */
+/** Workflow-scoped list used by the review status sync (toggle + canvas banner). */
 export async function fetchWorkflowReviewRequests(
 	context: IRestApiContext,
 	query: { workflowId: string; state?: WorkflowReviewRequestState; take?: number; skip?: number },

@@ -1,3 +1,5 @@
+import type { WorkflowReviewRequestForWorkflow } from '@n8n/api-types';
+
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createMockEnterpriseSettings, mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -56,6 +58,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 const mockSaveCurrentWorkflow = vi.fn().mockResolvedValue(true);
 const mockUnpublishWorkflowFromHistory = vi.fn().mockResolvedValue(true);
+const mockPublishWorkflow = vi.fn().mockResolvedValue({ success: true });
 const mockShowMessage = vi.fn();
 const mockShowError = vi.fn();
 
@@ -68,6 +71,7 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 vi.mock('@/app/composables/useWorkflowActivate', () => ({
 	useWorkflowActivate: () => ({
 		unpublishWorkflowFromHistory: mockUnpublishWorkflowFromHistory,
+		publishWorkflow: mockPublishWorkflow,
 	}),
 }));
 
@@ -228,6 +232,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
+		mockPublishWorkflow.mockClear();
+		mockPublishWorkflow.mockResolvedValue({ success: true });
 		vi.mocked(createWorkflowReviewRequest).mockResolvedValue({
 			id: 'review-1',
 			state: 'open',
@@ -553,6 +559,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						workflowVersionId: 'version-0',
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T10:00:00.000Z',
+						decisionBy: null,
+						approvedVersionPublicationState: null,
 					},
 				],
 			});
@@ -1149,6 +1157,157 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			await user.keyboard('{Enter}');
 			expect(reviewRequiredStore.isReviewRequired(defaultWorkflowProps.id)).toBe(true);
 			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+		});
+	});
+
+	describe('Review status banner', () => {
+		const seedLatestReview = (overrides: Partial<WorkflowReviewRequestForWorkflow> = {}) => {
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 1,
+				data: [
+					{
+						id: 'req-1',
+						state: 'open',
+						decision: 'pending',
+						// Differs from the saved 'version-1', so the review is out of date
+						workflowVersionId: 'version-0',
+						createdAt: '2026-07-20T10:00:00.000Z',
+						updatedAt: '2026-07-20T10:00:00.000Z',
+						decisionBy: null,
+						approvedVersionPublicationState: null,
+						...overrides,
+					},
+				],
+			});
+		};
+
+		const seedApprovedUnpublishedReview = () =>
+			seedLatestReview({
+				state: 'closed',
+				decision: 'approved',
+				approvedVersionPublicationState: 'not_published',
+			});
+
+		const renderWithBanner = async () => {
+			const result = renderComponent();
+			return { ...result, pill: await result.findByTestId('workflow-review-status-pill') };
+		};
+
+		it.each([
+			{ licensed: false, environmentEnabled: true, instanceEnabled: true },
+			{ licensed: true, environmentEnabled: false, instanceEnabled: true },
+			{ licensed: true, environmentEnabled: true, instanceEnabled: false },
+		])('requests no status and hides the banner when a gate is false', async (gates) => {
+			setWorkflowReviewGates(gates);
+			seedLatestReview();
+			// The suite seeds the store through fetchStatus in beforeEach
+			vi.mocked(fetchWorkflowReviewRequests).mockClear();
+
+			const { queryByTestId } = renderComponent();
+			await waitFor(() => expect(queryByTestId('version-menu-button')).toBeInTheDocument());
+
+			expect(fetchWorkflowReviewRequests).not.toHaveBeenCalled();
+			expect(queryByTestId('workflow-review-status-pill')).not.toBeInTheDocument();
+		});
+
+		it('is hidden for a new workflow', () => {
+			setWorkflowReviewGates();
+			seedLatestReview();
+
+			const { queryByTestId } = renderComponent({
+				props: { ...defaultWorkflowProps, isNewWorkflow: true },
+			});
+
+			expect(queryByTestId('workflow-review-status-pill')).not.toBeInTheDocument();
+		});
+
+		it('sits next to the publish button and opens the update-review dialog', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedLatestReview();
+
+			const { pill, getByTestId, findByRole } = await renderWithBanner();
+
+			expect(pill).toHaveTextContent('Review needs updating');
+			expect(pill.compareDocumentPosition(getByTestId('workflow-open-publish-modal-button'))).toBe(
+				Node.DOCUMENT_POSITION_FOLLOWING,
+			);
+
+			await userEvent.click(pill);
+			await userEvent.click(getByTestId('workflow-review-submit-changes-button'));
+
+			expect(
+				await findByRole('dialog', { name: 'Submit latest changes to existing review' }),
+			).toBeInTheDocument();
+		});
+
+		it.each([
+			{ name: 'the workflow is archived', props: { isArchived: true } },
+			{
+				name: 'the user cannot publish',
+				props: {
+					workflowPermissions: { ...defaultWorkflowProps.workflowPermissions, publish: false },
+				},
+			},
+		])('keeps the status readable but disables writes when $name', async ({ props }) => {
+			setWorkflowReviewGates();
+			seedLatestReview();
+
+			const { findByTestId, getByTestId } = renderComponent({
+				props: { ...defaultWorkflowProps, ...props },
+			});
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-review-open-review-button')).toBeEnabled();
+			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+		});
+
+		it('retries publishing the approved pinned version, then refreshes the status', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedApprovedUnpublishedReview();
+
+			const { pill, getByTestId } = await renderWithBanner();
+			vi.mocked(fetchWorkflowReviewRequests).mockClear();
+
+			await userEvent.click(pill);
+			await userEvent.click(getByTestId('workflow-review-retry-publish-button'));
+
+			// The pinned approved version, not the newer working copy ('version-1')
+			expect(mockPublishWorkflow).toHaveBeenCalledWith(defaultWorkflowProps.id, 'version-0');
+			await waitFor(() => expect(fetchWorkflowReviewRequests).toHaveBeenCalled());
+		});
+
+		it('keeps the banner and skips the refresh when the retry fails', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedApprovedUnpublishedReview();
+			mockPublishWorkflow.mockResolvedValue({ success: false, errorHandled: true });
+
+			const { pill, getByTestId, findByTestId } = await renderWithBanner();
+			vi.mocked(fetchWorkflowReviewRequests).mockClear();
+
+			await userEvent.click(pill);
+			await userEvent.click(getByTestId('workflow-review-retry-publish-button'));
+
+			expect(await findByTestId('workflow-review-status-pill')).toBeInTheDocument();
+			expect(fetchWorkflowReviewRequests).not.toHaveBeenCalled();
+		});
+
+		it('refetches the status when the active version changes, without duplicating the mount fetch', async () => {
+			setWorkflowReviewGates();
+			seedApprovedUnpublishedReview();
+			vi.mocked(fetchWorkflowReviewRequests).mockClear();
+
+			await renderWithBanner();
+			expect(fetchWorkflowReviewRequests).toHaveBeenCalledTimes(1);
+
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-2',
+				activeVersion: createMockActiveVersion('version-2'),
+			});
+
+			await waitFor(() => expect(fetchWorkflowReviewRequests).toHaveBeenCalledTimes(2));
 		});
 	});
 
