@@ -23,7 +23,8 @@ import {
 	type executeAgentScenario,
 } from '../harness/agent-execution';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
-import type { BuildResult } from '../harness/build-workflow';
+import { attributionForExpectation } from '../harness/attribution';
+import { buildFailedOnInfra, type BuildResult } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
@@ -341,10 +342,17 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			isPrebuilt,
 			logger,
 		});
+		// Attributed here, where we still know WHY the build ended: a build that
+		// died on infra produced nothing to judge, so its expectations are unowned
+		// rather than the agent's miss. Both readers of this map (the row outputs
+		// and reshape's side band) then carry the same verdict (TRUST-375).
+		const infraFailed = buildFailedOnInfra(build);
+		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
+			verdicts.map((v) => ({ ...v, attribution: attributionForExpectation(v, infraFailed) }));
 		// Recorded as incomplete rather than dropped, so the case keeps its unit
 		// count and the report says why they weren't graded.
 		if (unjudged.length > 0) {
-			buildExpectationsByKey.set(key, Promise.resolve(unjudged));
+			buildExpectationsByKey.set(key, Promise.resolve(attribute(unjudged)));
 			return;
 		}
 		if (expectations.length === 0) return;
@@ -364,12 +372,14 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						client,
 						logger,
 					}),
-				}))().catch((error: unknown) =>
-				allFailVerdicts(
-					expectations,
-					`judge error: ${error instanceof Error ? error.message : String(error)}`,
-				),
-			),
+				}))()
+				.catch((error: unknown) =>
+					allFailVerdicts(
+						expectations,
+						`judge error: ${error instanceof Error ? error.message : String(error)}`,
+					),
+				)
+				.then(attribute),
 		);
 	}
 

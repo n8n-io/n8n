@@ -90,6 +90,8 @@ function buildChecklistResults(
 				pass: entry.pass,
 				reasoning: entry.reasoning ?? '',
 				strategy: 'llm',
+				// Ambiguous string: the harness stamps the same one when the verifier
+				// returns NOTHING. `attribution` is the meaning-bearing field.
 				failureCategory:
 					entry.failureCategory ?? (!entry.pass ? 'verification_failure' : undefined),
 				rootCause: entry.rootCause ?? undefined,

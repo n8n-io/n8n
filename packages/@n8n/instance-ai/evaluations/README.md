@@ -831,17 +831,44 @@ Rules of thumb:
 - **A seeded case is only worth shipping with `buildExpectations` that detect the misbehaviour recurring** — without them it passes vacuously. Sanity-check by running the case once with the seed removed: it should fail.
 - `seedThread`, `priorConversation` and `conversationSeed` are mutually exclusive; all order strictly before the live turn. `seedThread` provides its own live turn (omit `conversation`); the other two pair with `conversation`.
 
-## Failure categories
+## Failure categories and attribution
 
 When a scenario fails, the verifier categorizes the root cause:
 
 - **builder_issue** — the agent misconfigured a node, chose the wrong node type, or built the wrong structure.
 - **mock_issue** — the LLM mock returned incorrect data (`_evalMockError`, wrong response shape).
 - **framework_issue** — Phase 1 failed (empty trigger content) or the eval framework itself cascaded an error.
-- **verification_failure** — the verifier couldn't produce a valid result.
-- **build_failure** — Instance AI failed to build the workflow or a scenario timed out.
+- **verification_gap** — the verifier didn't have enough information in the artifact to decide.
+
+Harness code stamps three more onto rows the verifier never saw:
+
+- **build_failure** — Instance AI failed to build the workflow.
+- **verification_failure** — the verifier produced no result at all after every attempt (also back-filled onto a failing verdict that arrived without a category).
+- **expectations_failed** — a build-only case whose expectation verdicts failed.
 
 Suite pass rates typically sit between 40–65%; most failures are `builder_issue` on scenarios that require error handling the agent doesn't produce by default.
+
+### `attribution` — the field that carries the meaning
+
+`failureCategory` is a free-form string with three producers, so downstream
+consumers used to re-derive what it meant and drifted (TRUST-375). Every failed
+scenario iteration and build expectation now also carries an **`attribution`**,
+defined once in `harness/attribution.ts` and stored verbatim by LangTracer:
+
+| bucket | means |
+| -- | -- |
+| `builder_issue` | the agent built it wrong, including "runs as built, misses the criteria" |
+| `mock_issue` | the eval mock/fixture layer served data the scenario didn't describe |
+| `framework_issue` | the eval framework failed the test rather than the test failing — no trigger content, seed table missing, provider outage, transport error, budget abort, runner crash |
+| `verification_gap` | we couldn't measure it — verifier returned nothing, judge died, unit ungraded |
+
+Deliberately the same four names the verifier prompt already defines, so ingest
+is an identity map rather than a translation. The harness-code categories fold
+in: `build_failure` and `expectations_failed` → `builder_issue`,
+`verification_failure` → `verification_gap`, and a build that died on seeding,
+transport or a provider outage → `framework_issue`.
+
+`failureCategory` still ships unchanged for readers on the legacy contract.
 
 ### Provider outages are never a builder verdict
 
@@ -863,9 +890,11 @@ A classified outage is:
   queue at ~60× normal speed;
 - reported as `framework_issue`, never `build_failure` (which LangTracer maps
   straight to `builder_issue`);
-- stamped with `PROVIDER_OUTAGE_ROOT_CAUSE` on the row's `rootCause`. LangTracer
-  keys `infra_incomplete` attribution off that exact prefix, so the wording is a
-  cross-repo contract — same arrangement as `BUDGET_TIMEOUT_ROOT_CAUSE`;
+- attributed **`framework_issue`**, and additionally stamped with
+  `PROVIDER_OUTAGE_ROOT_CAUSE` on the row's `rootCause`. LangTracer used to key
+  its infra bucket off that exact prefix; it now reads the attribution directly,
+  so the marker is the fallback for older pinned harness commits — same
+  arrangement as `BUDGET_TIMEOUT_ROOT_CAUSE`;
 - left **ungraded** by the expectation judge: a run that produced no agent output
   has nothing to grade, so its expectations are recorded as `incomplete` rather
   than judged against an empty transcript (`build-expectations/select.ts`).

@@ -185,6 +185,21 @@ export interface BuildResult {
 	providerOutage?: string;
 }
 
+/**
+ * True when the build failed for a reason the agent doesn't own — seeding,
+ * transport or the model provider. Everything downstream that has to attribute
+ * a failure (the scenario row, the ungraded expectations) reads this one
+ * predicate so the three answers can't drift apart (TRUST-375).
+ */
+export function buildFailedOnInfra(build: BuildResult): boolean {
+	if (build.success) return false;
+	return (
+		build.seedingFailed === true ||
+		build.transportFailure === true ||
+		build.providerOutage !== undefined
+	);
+}
+
 export interface BuildWorkflowConfig {
 	client: N8nClient;
 	/** Hand-authored conversation (≥1 turn, first `user`; one user turn →

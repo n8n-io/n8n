@@ -12,6 +12,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import { isTransientExecutionAbort, MAX_EXEC_ATTEMPTS } from './transient-error';
@@ -360,6 +361,7 @@ async function runScenario(
 		`No verification result — verifier exhausted all attempts${attemptErrors.length > 0 ? ` (${attemptErrors.join('; ')})` : ''}`;
 	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
 	const rootCause = result?.rootCause;
+	const attribution = attributionForScenario({ passed, incomplete, failureCategory });
 
 	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
 	const statusLabel = incomplete ? 'INCOMPLETE (excluded from scoring)' : passed ? 'PASS' : 'FAIL';
@@ -378,6 +380,7 @@ async function runScenario(
 		score: passed ? 1 : 0,
 		reasoning,
 		failureCategory,
+		attribution,
 		rootCause,
 		...(incomplete ? { incomplete: true } : {}),
 	};
