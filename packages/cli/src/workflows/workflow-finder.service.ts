@@ -326,7 +326,7 @@ export class WorkflowFinderService {
 			filters = {},
 			offset = 0,
 			limit,
-			includePinnedData = true,
+			includePinnedData = false,
 			includeTags = false,
 			includeProjects = false,
 			includeActiveVersion = false,

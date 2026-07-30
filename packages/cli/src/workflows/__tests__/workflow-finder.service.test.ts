@@ -245,6 +245,18 @@ describe('WorkflowFinderService', () => {
 			expect(second[2].select).not.toHaveProperty('shared');
 		});
 
+		it('omits pinned data unless asked for it', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read'], {});
+			await service.findWorkflowsForUser(user, ['workflow:read'], { includePinnedData: true });
+
+			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
+			assert(first?.[2] && second?.[2]);
+			expect(first[2].select).not.toHaveProperty('pinData');
+			expect(second[2].select).toMatchObject({ pinData: true });
+		});
+
 		it('omits the activeVersion join unless asked for it', async () => {
 			const { service, workflowRepository } = setup();
 
