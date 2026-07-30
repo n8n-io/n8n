@@ -80,10 +80,13 @@ Rules that trip people up:
    auto-declined ("I'll set them up later") *unless* a director note governing
    that exact moment asks the user to engage — see "Engaging the
    credential-setup card" below. **The workflow setup wizard is the one that
-   actually matters**: live testing found the builder routes credential
-   resolution through it for a normal build, not through the standalone tool
-   (kept, but unverified in practice — see the tool's own doc comment in
-   `utils/user-proxy/tools.ts`).
+   matters for a normal build**: live testing found the builder routes
+   credential resolution through it during a workflow build, never through the
+   standalone tool. The standalone tool is real and live-verified too (all
+   three of `manual`/`auto`/`skip`), but only via a standalone credential-connect
+   request with no build attached (e.g. "connect my Slack account now, before I
+   build anything") — see the tool's own doc comment in `utils/user-proxy/tools.ts`
+   for the captured shapes.
 
 ### Director-note vocabulary (`[bracketed]` in a `user` turn)
 

@@ -60,13 +60,24 @@ const pickResourceDecisionSchema = z.object({
  * `allowCredentialEngagement` gate), so `skip` here is for the case where a
  * direction explicitly asks the user to decline rather than the ambient default.
  *
- * Wire shapes, verified against `credentials.tool.ts`'s `handleSetup` state
- * machine and `instance-ai.service.ts`'s `toConfirmationData`/`resumeSuspendedRun`
- * (see doc block on `CredentialSetupParseContext` below for the full mapping):
+ * A normal multi-node workflow BUILD never reaches this tool in practice — live
+ * testing found the builder routes credential resolution through the workflow
+ * setup wizard instead (`applySetupWizardDecisionSchema`'s `nodeCredentialsJson`
+ * below). This tool *is* reached by a standalone credential-connect request with
+ * no build attached (e.g. "connect my Slack account now, before I build
+ * anything") — confirmed live against a real instance, all three outcomes:
+ *
+ * Live-captured suspend (`credentials(action='setup')` call args):
+ * ```json
+ * { "action": "setup", "credentials": [{ "credentialType": "slackApi", "reason": "...", "suggestedName": "Slack account" }] }
+ * ```
+ *
  *  - `manual` → `{kind:'credentialSelection', credentials:{[type]: id}}` — the
  *    resume payload itself is how the assistant learns the credential exists
- *    (tool State 5); no re-check round-trip. `manual` covers all three
- *    existing-credential counts for the resolved type (ticket TRUST-349):
+ *    (tool State 5); no re-check round-trip. Live-captured tool result (one
+ *    existing credential, auto-selected): `{success:true, credentials:{slackApi:"6RMxgEROupdDUnhn"}}`.
+ *    `manual` covers all three existing-credential counts for the resolved
+ *    type (ticket TRUST-349):
  *      - zero  → the harness creates a real credential for it
  *        (`UserProxyConfig.credentialCreation`) and selects the new id —
  *        "user fills the New Credential modal". Falls back to decline (with a
@@ -76,11 +87,15 @@ const pickResourceDecisionSchema = z.object({
  *      - many  → `existingCredentialId` is required to disambiguate which one
  *        the direction names; omitting it declines (ambiguous).
  *  - `auto`   → `{kind:'credentialAutoSetup', credentialType}` — triggers an
- *    agent rebuild server-side and a `needsBrowserSetup:true` tool result
- *    (tool State 4). Reachable for shape-completeness only — the harness has
- *    no Computer Use tools attached, so a case scripting this will stall
- *    afterward. Do not push such a case to the gated CI suite.
+ *    agent rebuild server-side (tool State 4). Live-captured tool result:
+ *    `{success:false, needsBrowserSetup:true, credentialType:"slackApi", docsUrl:"...", requiredFields:[...]}`,
+ *    followed by the assistant loading the `credential-setup-with-computer-use`
+ *    skill as designed. Reachable and its shape is real, but not further
+ *    implemented — the harness has no Computer Use tools attached, so a case
+ *    scripting this will stall afterward. Do not push such a case to the
+ *    gated CI suite.
  *  - `skip`   → `{kind:'approval', approved:false}` — tool State 2 (deferred).
+ *    Live-captured tool result: `{success:true, deferred:true, reason:"User skipped credential setup for now...."}`.
  */
 const chooseCredentialSetupOptionDecisionSchema = z.object({
 	action: z.literal('choose_credential_setup_option'),
