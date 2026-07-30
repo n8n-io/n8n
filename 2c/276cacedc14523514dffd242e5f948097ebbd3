@@ -1,0 +1,33 @@
+packages/@n8n/nodes-langchain/utils/agent-execution/test/processEventStream.test.ts
+  s_310898ca29d655::t_c5b04c9cb6d75b 1-2,18-19,22,26,29
+  s_310898ca29d655::t_ffa7bbf11c9df2 43,79,97
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/ToolsAgentV2.test.ts
+  s_310898ca29d655::t_7e16e0ccb17539 662,669,673
+  s_310898ca29d655::t_5024d20c7e55c8 4,610,614,618,695,699,746,752,754-755,767,772,804,809,814,946,953,988,992,1023,1029,1034
+  s_310898ca29d655::t_39e28c44998f23 732
+  s_310898ca29d655::t_81cbff4360b1ce 725
+packages/@n8n/nodes-langchain/utils/agent-execution/types.ts
+  s_310898ca29d655::t_fc43dab6a734ff 1
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  s_310898ca29d655::t_6485e2fab48a30 10,22,168,191
+  s_310898ca29d655::t_e44ec0cbad3bcd 162
+packages/@n8n/nodes-langchain/utils/agent-execution/processEventStream.ts
+  s_310898ca29d655::t_e44ec0cbad3bcd 61
+  s_310898ca29d655::t_6485e2fab48a30 1,6,38,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2c276cacedc14523514dffd242e5f948097ebbd3",
+  "prompts": {},
+  "sessions": {
+    "s_310898ca29d655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ee3532-6ecf-4a19-98d5-dbaebd013a10",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
