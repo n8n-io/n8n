@@ -234,7 +234,7 @@ describe('WorkflowFinderService', () => {
 		it('selects bare share rows by default and the home project on request', async () => {
 			const { service, workflowRepository } = setup();
 
-			await service.findWorkflowsForUser(user, ['workflow:read'], {});
+			await service.findWorkflowsForUser(user, ['workflow:read']);
 			await service.findWorkflowsForUser(user, ['workflow:read'], { includeProjects: true });
 
 			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
@@ -245,10 +245,20 @@ describe('WorkflowFinderService', () => {
 			expect(second[2].select).not.toHaveProperty('shared');
 		});
 
+		it('sorts by creation order by default', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read']);
+
+			const [, , options] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls[0];
+			assert(options);
+			expect(options.sortBy).toBe('createdAt:asc');
+		});
+
 		it('omits pinned data unless asked for it', async () => {
 			const { service, workflowRepository } = setup();
 
-			await service.findWorkflowsForUser(user, ['workflow:read'], {});
+			await service.findWorkflowsForUser(user, ['workflow:read']);
 			await service.findWorkflowsForUser(user, ['workflow:read'], { includePinnedData: true });
 
 			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
@@ -260,7 +270,7 @@ describe('WorkflowFinderService', () => {
 		it('omits the activeVersion join unless asked for it', async () => {
 			const { service, workflowRepository } = setup();
 
-			await service.findWorkflowsForUser(user, ['workflow:read'], {});
+			await service.findWorkflowsForUser(user, ['workflow:read']);
 			await service.findWorkflowsForUser(user, ['workflow:read'], { includeActiveVersion: true });
 
 			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
@@ -273,7 +283,7 @@ describe('WorkflowFinderService', () => {
 		it('omits pagination when no limit is given', async () => {
 			const { service, workflowRepository } = setup();
 
-			await service.findWorkflowsForUser(user, ['workflow:read'], {});
+			await service.findWorkflowsForUser(user, ['workflow:read']);
 
 			const [, , options] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls[0];
 			assert(options);
