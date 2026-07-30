@@ -102,22 +102,15 @@ describe('applyAgentThinking', () => {
 		},
 	);
 
-	it.each(['baseten/zai-org/GLM-5.2', 'baseten/zai-org/GLM-5.2-Fast'] as const)(
-		'maps medium effort to high reasoning effort for Baseten %s',
-		(modelId) => {
-			const agent = new Agent('test');
-			applyAgentThinking(agent, modelId);
-			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('baseten', {
-				reasoningEffort: 'high',
-			});
-		},
-	);
-
-	it('enables medium reasoning effort for other Baseten models', () => {
+	it.each([
+		'baseten/zai-org/GLM-5.2',
+		'baseten/zai-org/GLM-5.2-Fast',
+		'baseten/deepseek-ai/DeepSeek-V4-Pro',
+	] as const)('enables none reasoning effort for Baseten %s', (modelId) => {
 		const agent = new Agent('test');
-		applyAgentThinking(agent, 'baseten/deepseek-ai/DeepSeek-V4-Pro');
+		applyAgentThinking(agent, modelId);
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('baseten', {
-			reasoningEffort: 'medium',
+			reasoningEffort: 'none',
 		});
 	});
 

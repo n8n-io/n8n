@@ -103,12 +103,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
 	if (provider === 'baseten') {
-		if (isGlm52Model(modelId)) {
-			// GLM 5.2 only accepts none/high/max — map our medium tier to high.
-			agent.thinking('baseten', { reasoningEffort: 'high' });
-			return;
-		}
-		agent.thinking('baseten', { reasoningEffort: 'medium' });
+		agent.thinking('baseten', { reasoningEffort: 'none' });
 		return;
 	}
 

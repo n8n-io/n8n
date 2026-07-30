@@ -207,9 +207,9 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
-	it('baseten: defaults reasoning effort to medium', () => {
+	it('baseten: defaults reasoning effort to none', () => {
 		expect(getProviderQuirks('baseten').thinkingToProviderOptions?.({})).toEqual({
-			baseten: { reasoningEffort: 'medium' },
+			baseten: { reasoningEffort: 'none' },
 		});
 	});
 
