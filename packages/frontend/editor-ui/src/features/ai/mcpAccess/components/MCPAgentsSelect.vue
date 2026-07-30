@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
-import { N8nSelect, N8nOption } from '@n8n/design-system';
+import { N8nSelect, N8nOption, N8nText } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
-import type { WorkflowListItem } from '@/Interface';
-import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
+import type { Agent } from '@/features/agents/agent.types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
+import { sleep } from '@n8n/utils/sleep';
 
 defineProps<{
 	placeholder?: string;
@@ -29,14 +29,19 @@ const isLoading = ref(false);
 const hasFetched = ref(false);
 const isDropdownVisible = ref(false);
 const selectRef = ref<InstanceType<typeof N8nSelect>>();
-const workflowOptions = ref<WorkflowListItem[]>([]);
+const agentOptions = ref<Agent[]>([]);
 let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 const showEmptyState = computed(() => {
-	return !isLoading.value && hasFetched.value && workflowOptions.value.length === 0;
+	return !isLoading.value && hasFetched.value && agentOptions.value.length === 0;
 });
 
-async function searchWorkflows(query?: string) {
+const projectName = (agent: Agent) =>
+	agent.project?.type === 'personal'
+		? i18n.baseText('projects.menu.personal')
+		: (agent.project?.name ?? '');
+
+async function searchAgents(query?: string) {
 	if (loadingTimeoutId) {
 		clearTimeout(loadingTimeoutId);
 		loadingTimeoutId = null;
@@ -44,26 +49,18 @@ async function searchWorkflows(query?: string) {
 	isLoading.value = true;
 	hasFetched.value = false;
 	try {
-		const response = await mcpStore.getMcpEligibleWorkflows({
+		const response = await mcpStore.getMcpEligibleAgents({
 			take: 10,
 			query: query ?? undefined,
 		});
-		workflowOptions.value = response?.data ?? [];
+		agentOptions.value = response?.data ?? [];
 	} catch (e) {
-		toast.showError(e, i18n.baseText('settings.mcp.connectWorkflows.error'));
+		toast.showError(e, i18n.baseText('settings.mcp.connectAgents.error'));
 	} finally {
-		await waitFor(LOADING_INDICATOR_TIMEOUT);
+		await sleep(LOADING_INDICATOR_TIMEOUT);
 		isLoading.value = false;
 		hasFetched.value = true;
 	}
-}
-
-async function waitFor(timeout: number) {
-	await new Promise<void>((resolve) => {
-		setTimeout(() => {
-			resolve();
-		}, timeout);
-	});
 }
 
 function focusOnInput() {
@@ -83,7 +80,7 @@ function onKeydownCapture(event: KeyboardEvent) {
 }
 
 onMounted(async () => {
-	await searchWorkflows();
+	await searchAgents();
 	emit('ready');
 });
 
@@ -97,44 +94,43 @@ defineExpose({
 		<N8nSelect
 			ref="selectRef"
 			v-model="modelValue"
-			data-test-id="mcp-workflows-select"
+			data-test-id="mcp-agents-select"
 			:placeholder="placeholder"
 			:disabled="disabled"
 			:loading="isLoading"
 			:multiple="true"
 			:filterable="true"
 			:remote="true"
-			:remote-method="searchWorkflows"
+			:remote-method="searchAgents"
 			size="medium"
 			:popper-class="{
-				[$style['mcp-workflows-select-loading']]: isLoading,
-				[$style['mcp-workflows-select-empty']]: showEmptyState,
+				[$style['mcp-agents-select-loading']]: isLoading,
+				[$style['mcp-agents-select-empty']]: showEmptyState,
 			}"
 			@visible-change="onVisibleChange"
 		>
 			<N8nOption v-if="showEmptyState" value="" disabled :class="$style['empty-option']">
-				{{ i18n.baseText('settings.mcp.connectWorkflows.emptyState') }}
+				{{ i18n.baseText('settings.mcp.connectAgents.emptyState') }}
 			</N8nOption>
 			<N8nOption
-				v-for="workflow in workflowOptions"
-				:key="workflow.id"
-				:value="workflow.id"
-				:label="workflow.name"
+				v-for="agent in agentOptions"
+				:key="agent.id"
+				:value="agent.id"
+				:label="agent.name"
 			>
-				<WorkflowLocation
-					:workflow-id="workflow.id"
-					:workflow-name="workflow.name"
-					:home-project="workflow.homeProject"
-					:parent-folder="workflow.parentFolder"
-				/>
+				<div :class="$style.option">
+					<N8nText :class="$style.truncate">{{ projectName(agent) }}</N8nText>
+					<span :class="$style.separator">/</span>
+					<N8nText :class="$style.truncate" color="text-dark">{{ agent.name }}</N8nText>
+				</div>
 			</N8nOption>
 		</N8nSelect>
 	</div>
 </template>
 
 <style module lang="scss">
-.mcp-workflows-select-loading,
-.mcp-workflows-select-empty {
+.mcp-agents-select-loading,
+.mcp-agents-select-empty {
 	display: flex;
 	min-height: var(--spacing--5xl);
 	align-items: center;
@@ -144,5 +140,26 @@ defineExpose({
 .empty-option {
 	cursor: default !important;
 	color: var(--color--text) !important;
+}
+
+.option {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+	overflow: hidden;
+}
+
+.separator {
+	user-select: none;
+	color: var(--color--text--tint-1);
+}
+
+.truncate {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 </style>

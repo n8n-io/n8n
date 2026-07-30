@@ -1,22 +1,18 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
-import {
-	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
-	MCP_DOCS_PAGE_URL,
-	ELIGIBLE_WORKFLOWS_DOCS_SECTION,
-} from '@/features/ai/mcpAccess/mcp.constants';
-import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
+import { MCP_CONNECT_AGENTS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
+import MCPAgentsSelect from '@/features/ai/mcpAccess/components/MCPAgentsSelect.vue';
 import { N8nButton, N8nNotice } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
-type SelectRef = InstanceType<typeof MCPWorkflowsSelect>;
+type SelectRef = InstanceType<typeof MCPAgentsSelect>;
 
 const props = defineProps<{
 	data: {
-		onEnableMcpAccess: (workflowIds: string[]) => Promise<void>;
+		onEnableMcpAccess: (agentIds: string[]) => Promise<void>;
 	};
 }>();
 
@@ -24,30 +20,29 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const isSaving = ref(false);
-const selectedWorkflowIds = ref<string[]>([]);
+const selectedAgentIds = ref<string[]>([]);
 const selectRef = ref<SelectRef | null>(null);
 const modalBus = createEventBus();
 const closedByAction = ref(false);
-const docsLink = `${MCP_DOCS_PAGE_URL}#${ELIGIBLE_WORKFLOWS_DOCS_SECTION}`;
 
-const canSave = computed(() => selectedWorkflowIds.value.length > 0);
+const canSave = computed(() => selectedAgentIds.value.length > 0);
 
 const cancel = (close: () => void) => {
 	closedByAction.value = true;
-	telemetry.track('User dismissed mcp workflows dialog');
+	telemetry.track('User dismissed mcp agents dialog');
 	close();
 };
 
 async function save(close: () => void) {
-	if (selectedWorkflowIds.value.length === 0) return;
+	if (selectedAgentIds.value.length === 0) return;
 
 	isSaving.value = true;
 	try {
-		await props.data.onEnableMcpAccess(selectedWorkflowIds.value);
+		await props.data.onEnableMcpAccess(selectedAgentIds.value);
 		closedByAction.value = true;
-		telemetry.track('User selected workflow from list', {
-			workflowIds: selectedWorkflowIds.value,
-			count: selectedWorkflowIds.value.length,
+		telemetry.track('User selected agent from list', {
+			agentIds: selectedAgentIds.value,
+			count: selectedAgentIds.value.length,
 		});
 		close();
 	} finally {
@@ -57,7 +52,7 @@ async function save(close: () => void) {
 
 function onModalClosed() {
 	if (!closedByAction.value) {
-		telemetry.track('User dismissed mcp workflows dialog');
+		telemetry.track('User dismissed mcp agents dialog');
 	}
 }
 
@@ -82,8 +77,8 @@ onBeforeUnmount(() => {
 
 <template>
 	<Modal
-		:name="MCP_CONNECT_WORKFLOWS_MODAL_KEY"
-		:title="i18n.baseText('settings.mcp.connectWorkflows.modalTitle')"
+		:name="MCP_CONNECT_AGENTS_MODAL_KEY"
+		:title="i18n.baseText('settings.mcp.connectAgents.modalTitle')"
 		width="600px"
 		:class="$style.container"
 		:event-bus="modalBus"
@@ -92,17 +87,15 @@ onBeforeUnmount(() => {
 		<template #content>
 			<div :class="$style.content">
 				<N8nNotice
-					data-test-id="mcp-connect-workflows-info-notice"
+					data-test-id="mcp-connect-agents-info-notice"
 					theme="info"
-					:content="
-						i18n.baseText('settings.mcp.connectWorkflows.notice', { interpolate: { docsLink } })
-					"
+					:content="i18n.baseText('settings.mcp.connectAgents.notice')"
 					:class="$style.notice"
 				/>
-				<MCPWorkflowsSelect
+				<MCPAgentsSelect
 					ref="selectRef"
-					v-model="selectedWorkflowIds"
-					:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
+					v-model="selectedAgentIds"
+					:placeholder="i18n.baseText('settings.mcp.connectAgents.input.placeholder')"
 					:disabled="isSaving"
 					@ready="onSelectReady"
 					@confirm="onConfirm"
@@ -115,15 +108,15 @@ onBeforeUnmount(() => {
 					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
 					:disabled="isSaving"
-					data-test-id="mcp-connect-workflows-cancel-button"
+					data-test-id="mcp-connect-agents-cancel-button"
 					@click="cancel(close)"
 				/>
 				<N8nButton
 					variant="solid"
-					:label="i18n.baseText('settings.mcp.connectWorkflows.confirm.label')"
+					:label="i18n.baseText('settings.mcp.connectAgents.confirm.label')"
 					:loading="isSaving"
 					:disabled="!canSave || isSaving"
-					data-test-id="mcp-connect-workflows-save-button"
+					data-test-id="mcp-connect-agents-save-button"
 					@click="save(close)"
 				/>
 			</div>
@@ -144,10 +137,6 @@ onBeforeUnmount(() => {
 
 	.notice {
 		margin: 0;
-
-		a {
-			font-weight: normal;
-		}
 	}
 }
 

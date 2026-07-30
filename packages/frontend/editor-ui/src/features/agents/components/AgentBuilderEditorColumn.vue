@@ -12,6 +12,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
@@ -20,6 +21,7 @@ import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
+import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
@@ -39,6 +41,7 @@ const props = defineProps<{
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
 	canEditAgent: boolean;
+	agentAvailableInMcp?: boolean;
 	executionsDescription: string;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
@@ -46,6 +49,11 @@ const props = defineProps<{
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
+
+const settingsStore = useSettingsStore();
+const isMcpAvailable = computed(
+	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -64,6 +72,7 @@ const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
 	'agent-changed': [];
 }>();
@@ -216,6 +225,18 @@ const i18n = useI18n();
 								embedded
 								data-testid="agent-memory-panel"
 								@update:config="emit('update:config', $event)"
+							/>
+						</N8nCard>
+						<N8nCard
+							v-if="isMcpAvailable"
+							:class="$style.settingsCard"
+							data-testid="agent-settings-card"
+						>
+							<AgentMcpPanel
+								:available-in-mcp="agentAvailableInMcp ?? false"
+								:disabled="childrenDisabled"
+								data-testid="agent-mcp-panel"
+								@toggle-mcp-access="emit('toggle-mcp-access', $event)"
 							/>
 						</N8nCard>
 						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
