@@ -19,7 +19,7 @@ import {
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
 	type ExecutionError,
-	Expression,
+	WorkflowExpression,
 } from 'n8n-workflow';
 import type { Mock, MockedClass, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -1012,8 +1012,10 @@ describe('JobProcessor', () => {
 			let releaseSpy: MockInstance;
 
 			beforeEach(() => {
-				acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
-				releaseSpy = vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue();
+				acquireSpy = vi
+					.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
+					.mockResolvedValue(true);
+				releaseSpy = vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue();
 			});
 
 			afterEach(() => {

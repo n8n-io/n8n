@@ -7,8 +7,6 @@ import type {
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { getConnectedTools } from '@utils/helpers';
-
 import { createMockLogger, createMockRequest, createMockResponse } from './helpers';
 import { McpServer } from '../McpServer';
 import { McpTrigger } from '../McpTrigger.node';
@@ -299,46 +297,6 @@ describe('McpTrigger', () => {
 					],
 				],
 			});
-		});
-
-		it('should run a tool invocation inside its own expression isolate window', async () => {
-			// SSE answers tools/call with 202 and runs the handler detached, so the tool can
-			// invoke after the webhook (and its isolate window) has already returned.
-			const originalInvoke = vi.fn().mockResolvedValue('ok');
-			const tool = { name: 'test-tool', invoke: originalInvoke };
-			(getConnectedTools as Mock).mockResolvedValueOnce([tool]);
-
-			const insideIsolate: boolean[] = [];
-			let isolateHeld = false;
-			mockContext.withExpressionIsolate.mockImplementation(async (fn) => {
-				isolateHeld = true;
-				try {
-					return await fn();
-				} finally {
-					isolateHeld = false;
-				}
-			});
-			originalInvoke.mockImplementation(async () => {
-				insideIsolate.push(isolateHeld);
-				return 'ok';
-			});
-
-			const req = createMockRequest({ method: 'POST', query: { sessionId: 'test-session' } });
-			mockMcpServer.getSessionId.mockReturnValue('test-session');
-			mockContext.getWebhookName.mockReturnValue('default');
-			mockContext.getRequestObject.mockReturnValue(req as never);
-			mockContext.getResponseObject.mockReturnValue(createMockResponse() as never);
-			mockContext.getNode.mockReturnValue(
-				mock<INode>({ typeVersion: 1.1, name: 'MCP Server Trigger' }),
-			);
-
-			await mcpTrigger.webhook(mockContext);
-
-			const [, , passedTools] = mockMcpServer.handlePostMessage.mock.calls[0];
-			await (passedTools as Array<{ invoke: (args: unknown) => Promise<unknown> }>)[0].invoke({});
-
-			expect(insideIsolate).toEqual([true]);
-			expect(originalInvoke).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle Streamable HTTP setup when no session exists', async () => {

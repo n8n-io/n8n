@@ -289,16 +289,6 @@ export class Expression {
 		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
 	}
 
-	/** Runs `fn` inside an isolate window, acquiring one only if this caller doesn't already hold it. */
-	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
-		const acquired = await this.acquireIsolate();
-		try {
-			return await fn();
-		} finally {
-			if (acquired) await this.releaseIsolate();
-		}
-	}
-
 	/**
 	 * Dispose the VM evaluator and release resources.
 	 * Should be called during application shutdown or test teardown.

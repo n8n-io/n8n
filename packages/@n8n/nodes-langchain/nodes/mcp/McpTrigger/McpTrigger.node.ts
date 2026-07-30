@@ -1,4 +1,3 @@
-import type { Tool } from '@langchain/core/tools';
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
 import type {
@@ -17,20 +16,6 @@ import type { CompressionResponse } from './transport';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
-
-/**
- * SSE answers `tools/call` with 202 and runs the handler detached, so a tool can outlive
- * the request's expression-isolate window. Give each invocation its own; a no-op when the
- * caller's window is still open.
- */
-function wrapToolsWithIsolate(context: IWebhookFunctions, tools: Tool[]): Tool[] {
-	for (const tool of tools) {
-		const invoke = tool.invoke.bind(tool);
-		tool.invoke = async (input, config) =>
-			await context.withExpressionIsolate(async () => await invoke(input, config));
-	}
-	return tools;
-}
 
 export class McpTrigger extends Node {
 	description: INodeTypeDescription = {
@@ -219,7 +204,7 @@ export class McpTrigger extends Node {
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
 					: req.path;
 
-			const connectedTools = wrapToolsWithIsolate(context, await getConnectedTools(context, true));
+			const connectedTools = await getConnectedTools(context, true);
 			await mcpServer.handleSetupRequest(req, resp, serverName, postUrl, connectedTools);
 
 			return { noWebhookResponse: true };
@@ -232,10 +217,7 @@ export class McpTrigger extends Node {
 				context.logger.debug('MCP POST request received for existing session');
 
 				if (sessionId) {
-					const connectedTools = wrapToolsWithIsolate(
-						context,
-						await getConnectedTools(context, true),
-					);
+					const connectedTools = await getConnectedTools(context, true);
 
 					// For a tool call, check the triggering user's private-credential status
 					// before executing. Returns undefined (no gate) unless an OAuth2 identity
@@ -273,10 +255,7 @@ export class McpTrigger extends Node {
 						};
 					}
 				} else {
-					const connectedTools = wrapToolsWithIsolate(
-						context,
-						await getConnectedTools(context, true),
-					);
+					const connectedTools = await getConnectedTools(context, true);
 					await mcpServer.handleStreamableHttpSetup(req, resp, serverName, connectedTools);
 				}
 			}

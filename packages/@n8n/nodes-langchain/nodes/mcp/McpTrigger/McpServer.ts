@@ -217,10 +217,19 @@ export class McpServer {
 				this.pendingGateResults[callId] = gateResult;
 			}
 
+			// SSE acks a tools/call with 202 as soon as it dispatches the request, then runs
+			// the handler detached. Settling on that would let the caller (the webhook) return
+			// and release its expression isolate while the tool is still resolving parameters,
+			// so for this case wait for the handler itself and settle early only on failure.
+			const awaitToolHandler =
+				isToolCall && transport.transportType === 'sse' && !this.executionCoordinator.isQueueMode();
+
 			try {
 				await new Promise<void>((resolve) => {
 					this.resolveFunctions[callId] = resolve;
-					void transport.handleRequest(req, resp, message as IncomingMessage).finally(resolve);
+					const handled = transport.handleRequest(req, resp, message as IncomingMessage);
+					if (awaitToolHandler) void handled.catch(() => resolve());
+					else void handled.finally(resolve);
 				});
 			} finally {
 				delete this.resolveFunctions[callId];
@@ -669,6 +678,9 @@ export class McpServer {
 				this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {
 					error: errorObject,
 				});
+				// Callers that wait for this handler rather than for the transport would hang
+				// otherwise. Resolving twice is a no-op.
+				this.resolveFunctions[callId]?.();
 				return MessageFormatter.formatError(errorObject);
 			}
 		});
