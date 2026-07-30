@@ -189,6 +189,60 @@ oneOf:
           type: string
   - type: object
     description: >
+      A tag referenced by the package's workflows that could not be resolved on
+      the target instance. `kind` distinguishes the cause: `rename-drift` (the
+      same-id target tag carries a different name — under `tagConflictPolicy=fail`,
+      or `rename` when the package name is held by another tag), `name-collision`
+      (the id is free but the name belongs to a different tag, under
+      `tagMissingMode=create` with `tagConflictPolicy=fail` or `rename`),
+      `invalid-name` / `invalid-id` (the package tag's name or id cannot be
+      written on this instance), or `permission-denied` (the importing user lacks
+      the global `tag:create` / `tag:update` scope the plan needs).
+    required:
+      - type
+      - kind
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - tag-unresolved
+      kind:
+        type: string
+        enum:
+          - rename-drift
+          - name-collision
+          - invalid-name
+          - invalid-id
+          - permission-denied
+      sourceId:
+        type: string
+        description: Tag id as it appears in the package. Absent for `permission-denied`.
+      name:
+        type: string
+        description: The (trimmed) package tag name. Absent for `permission-denied`.
+      missingScope:
+        type: string
+        enum:
+          - 'tag:create'
+          - 'tag:update'
+        description: 'For `permission-denied`: the global scope the importing user lacks.'
+      existingTagId:
+        type: string
+        description: >
+          Id of the different target tag currently holding the wanted name, when
+          one exists. Absent when two package tags collide with each other rather
+          than with a target tag.
+      existingName:
+        type: string
+        description: 'For `rename-drift`: the current name of the same-id target tag.'
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids (non-skipped) that reference the tag.
+  - type: object
+    description: >
       A variable reference that could not be resolved in the target project or the
       global scope, under `variableMissingMode=must-preexist`.
     required:
