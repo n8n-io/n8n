@@ -140,12 +140,12 @@ describe('ActiveExecutions', () => {
 			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 				FAKE_SECOND_EXECUTION_ID,
 				expect.objectContaining({ id: FAKE_SECOND_EXECUTION_ID, status: 'running' }),
-				{ requireStatus: expectedStatus },
+				{ requireStatus: expectedStatus, stampStartedAt: expectedStatus === 'new' },
 			);
 		},
 	);
 
-	test('Should set startedAt when claiming an enqueued execution', async () => {
+	test('Should request a startedAt stamp when claiming an enqueued execution', async () => {
 		await activeExecutions.add(executionData, {
 			executionId: FAKE_SECOND_EXECUTION_ID,
 			expectedStatus: 'new',
@@ -153,22 +153,23 @@ describe('ActiveExecutions', () => {
 
 		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 			FAKE_SECOND_EXECUTION_ID,
-			expect.objectContaining({ startedAt: expect.any(Date) }),
 			expect.anything(),
+			expect.objectContaining({ stampStartedAt: true }),
 		);
 	});
 
-	test('Should preserve startedAt when resuming a waiting execution', async () => {
+	test('Should not request a startedAt stamp when resuming a waiting execution, preserving the original', async () => {
 		await activeExecutions.add(executionData, {
 			executionId: FAKE_SECOND_EXECUTION_ID,
 			expectedStatus: 'waiting',
 		});
 
-		// `undefined` leaves the column untouched, keeping the original `startedAt`
+		// `stampStartedAt: false` means `startedAt` is stripped from the update entirely,
+		// leaving the column untouched and the original `startedAt` intact.
 		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 			FAKE_SECOND_EXECUTION_ID,
-			expect.objectContaining({ startedAt: undefined }),
 			expect.anything(),
+			expect.objectContaining({ stampStartedAt: false }),
 		);
 	});
 

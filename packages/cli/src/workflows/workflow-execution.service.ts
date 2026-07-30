@@ -12,7 +12,6 @@ import {
 	anyReachableRootHasRunData,
 } from 'n8n-core';
 import type {
-	IDataObject,
 	IExecuteData,
 	IExecuteResponsePromiseData,
 	INode,
@@ -20,6 +19,7 @@ import type {
 	IPinData,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
+	StagedPollCursor,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
@@ -103,21 +103,29 @@ export class WorkflowExecutionService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		workflow: Workflow,
-		stagedCursor: IDataObject | undefined,
+		staged: StagedPollCursor | undefined,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	) {
 		const runData = await this.buildTriggerRunData(workflowData, node, data, additionalData, mode);
 
-		// Masks the trigger items before the commit below writes them. `run` establishes
-		// the context again and the second call is a no-op, but by then the row exists.
-		await this.workflowRunner.establishContextBeforePersist(runData);
+		// Masks the trigger items before the commit below writes them. On failure the
+		// stack is already cleared, so the commit below still persists nothing raw; `run`
+		// establishes the context again and the second call is a no-op.
+		const establishContextError = await this.workflowRunner.establishContextBeforePersist(runData);
 
-		const executionId = await this.pollCursorService.commitPoll(
-			workflow,
-			node,
-			runData,
-			stagedCursor,
-		);
+		const executionId = await this.pollCursorService.commitPoll(workflow, node, runData, staged);
+
+		if (establishContextError) {
+			// The row and cursor are already committed; mark the row failed rather than
+			// letting `run` start it with the empty stack the masking failure left behind.
+			await this.workflowRunner.failExecution(
+				runData,
+				executionId,
+				establishContextError,
+				responsePromise,
+			);
+			return executionId;
+		}
 
 		try {
 			return await this.workflowRunner.run(

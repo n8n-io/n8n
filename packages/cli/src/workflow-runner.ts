@@ -162,7 +162,8 @@ export class WorkflowRunner {
 	 * Persist a failed execution record for an already-registered execution and
 	 * finalize it, so a pre-flight failure surfaces as a normal failed run.
 	 */
-	private async failExecution(
+	/** Mark an already-persisted execution as failed, without ever starting it. */
+	async failExecution(
 		data: IWorkflowExecutionDataProcess,
 		executionId: string,
 		error: ExecutionError & { node?: INode },
@@ -283,6 +284,12 @@ export class WorkflowRunner {
 				? this.executionsConfig.mode === 'queue'
 				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
+		// A restart resumes a `waiting` row's own lifecycle (`workflowExecuteResume`); an
+		// execution enqueued as `new` before a restart, or committed by a poll's own
+		// transaction, is starting for the first time and must fire `workflowExecuteBefore`.
+		const restartExecutionId =
+			existingExecution?.expectedStatus === 'waiting' ? existingExecution.executionId : undefined;
+
 		if (shouldEnqueue) {
 			await this.enqueueExecution(
 				executionId,
@@ -290,10 +297,10 @@ export class WorkflowRunner {
 				data,
 				loadStaticData,
 				realtime,
-				existingExecution?.executionId,
+				restartExecutionId,
 			);
 		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
+			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
