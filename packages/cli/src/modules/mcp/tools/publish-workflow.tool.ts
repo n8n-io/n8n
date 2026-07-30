@@ -1,5 +1,6 @@
 import {
 	type WorkflowPublishBlockedDetails,
+	type WorkflowPublishBlockedReason,
 	workflowPublishBlockedDetailsSchema,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
@@ -15,7 +16,11 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import type {
+	ToolDefinition,
+	UserCalledMCPToolEventPayload,
+	WorkflowNotFoundReason,
+} from '../mcp.types';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
@@ -44,6 +49,15 @@ const outputSchema = {
 	workflowReviewRequestId:
 		workflowPublishBlockedDetailsSchema.shape.workflowReviewRequestId.optional(),
 } satisfies z.ZodRawShape;
+
+/** Only these two failures carry a machine-readable reason; anything else reports just its message. */
+const extractErrorReason = (
+	error: Error,
+): WorkflowPublishBlockedReason | WorkflowNotFoundReason | undefined => {
+	if (error instanceof WorkflowPublishBlockedError) return error.details.reason;
+	if (error instanceof WorkflowAccessError) return error.reason;
+	return undefined;
+};
 
 export const createPublishWorkflowTool = (
 	user: User,
@@ -106,7 +120,6 @@ export const createPublishWorkflowTool = (
 			};
 		} catch (er) {
 			const error = ensureError(er);
-			const isAccessError = error instanceof WorkflowAccessError;
 			const publishBlockedDetails =
 				error instanceof WorkflowPublishBlockedError ? error.details : undefined;
 
@@ -121,7 +134,7 @@ export const createPublishWorkflowTool = (
 			telemetryPayload.results = {
 				success: false,
 				error: error.message,
-				error_reason: publishBlockedDetails?.reason ?? (isAccessError ? error.reason : undefined),
+				error_reason: extractErrorReason(error),
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
