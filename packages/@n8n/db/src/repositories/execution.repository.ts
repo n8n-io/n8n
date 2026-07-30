@@ -169,6 +169,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		super(ExecutionEntity, dataSource.manager);
 	}
 
+	/**
+	 * Runs `fn` in a transaction, joining the one `ctx` already carries rather than
+	 * nesting. The `EntityManager` is handed to the callback so that an existing
+	 * multi-write body can join a caller's transaction without being rewritten.
+	 */
 	async runInTransaction<T>(
 		ctx: OperationContext,
 		fn: (tx: EntityManager) => Promise<T>,

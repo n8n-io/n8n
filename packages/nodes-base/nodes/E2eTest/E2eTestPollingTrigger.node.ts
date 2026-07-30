@@ -69,6 +69,7 @@ export class E2eTestPollingTrigger implements INodeType {
 		const newItems =
 			lastItemId === null ? items : items.filter((item) => Number(item.id) > lastItemId);
 
+		// Staged even when nothing new is emitted below, so the advance still persists.
 		this.setCursor({ lastItemId: highestItemId(items, lastItemId ?? 0) });
 
 		if (newItems.length === 0) return null;
