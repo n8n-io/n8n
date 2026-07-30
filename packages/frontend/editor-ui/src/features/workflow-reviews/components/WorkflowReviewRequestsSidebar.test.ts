@@ -61,7 +61,7 @@ function makeItem(overrides: Partial<WorkflowReviewInboxItem> = {}): WorkflowRev
 }
 
 const baseProps = {
-	activeState: 'open' as const,
+	activeTab: 'open' as const,
 	openCount: 1,
 	closedCount: 0,
 	selectedId: null,
@@ -146,7 +146,7 @@ describe('WorkflowReviewRequestsSidebar', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				...baseProps,
-				activeState: state,
+				activeTab: state,
 				items: [makeItem({ state, decision })],
 			},
 		});

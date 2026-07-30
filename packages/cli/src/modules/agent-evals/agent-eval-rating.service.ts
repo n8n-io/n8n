@@ -17,28 +17,14 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PostHogClient } from '@/posthog';
 
-// The rating body reaches this service straight from a request, so bound it
-// before it lands in a text/JSON column. `finalText` carries the edited answer;
-// the outer cap leaves headroom for the other keys a correction may mirror.
+// The body arrives straight from a request, so bound it before it hits the column.
 const MAX_COMMENT_CHARS = 2_000;
 const MAX_CORRECTION_TEXT_CHARS = 20_000;
 const MAX_CORRECTION_CHARS = 32_000;
 
 /**
- * Records and reads back a human's judgment of an eval result: a 👍/👎 vote, an
- * optional comment, and an optional correction — the edited "should have been"
- * answer. The highest-value signal in the flow, and what a later calibration
- * pass measures a judge against.
- *
- * **Edit capture is rating-scoped.** A correction is stored on the rating row
- * only; it is deliberately *not* written back to the dataset row as that case's
- * expected output, so an edit does not become the reference answer for later
- * runs. The product decision there is still open, so this takes the narrower
- * behavior — calibration reads corrections from these rows.
- *
- * **Ratings are append-only.** A result may hold several (re-voting is history,
- * not an overwrite, so a flipped judgment stays auditable), which is why the
- * run-level read returns the newest rating per result.
+ * A human's 👍/👎 on an eval result, with an optional comment and correction.
+ * Corrections stay on the rating row (never the dataset); ratings are append-only.
  */
 @Service()
 export class AgentEvalRatingService {
@@ -52,12 +38,7 @@ export class AgentEvalRatingService {
 		private readonly postHogClient: PostHogClient,
 	) {}
 
-	/**
-	 * Record a vote (and optional correction) against a result. Authorization is
-	 * enforced here — the project scope *and* the result belonging to that
-	 * project — so no caller can skip it; the REST layer adds its own scope
-	 * decorator on top.
-	 */
+	/** Authorization is enforced here too, so no caller can skip it. */
 	async rateResult(
 		user: User,
 		projectId: string,
@@ -65,17 +46,14 @@ export class AgentEvalRatingService {
 		payload: CreateAgentEvalRatingPayload,
 	): Promise<AgentEvalRating> {
 		await this.assertFeatureEnabled(user);
-		// `agent:execute`, not `agent:update`: a project viewer holds execute (so the
-		// runner lets them test-drive an agent) but not update, and the reviewer of a
-		// result is often not its builder. Matches how the runner gates a run, and how
-		// execution annotations treat a vote as metadata rather than a mutation.
+		// Execute, not update: a project viewer holds execute and can run the eval, and
+		// the reviewer of a result is often not its builder.
 		await this.assertProjectScopes(user, projectId, ['agent:execute']);
 		assertPayloadWithinBounds(payload);
 
 		const result = await this.resolveResultInProject(projectId, resultId);
-		// A pending case has no output to judge, so a vote on it would seed
-		// calibration with a verdict about nothing. Errored and cancelled cases stay
-		// rateable — "it failed" is a legitimate judgment.
+		// A pending case has no output, so the vote would judge nothing. Errored and
+		// cancelled stay rateable — "it failed" is a judgment.
 		if (result.status === 'new' || result.status === 'running') {
 			throw new BadRequestError('This case has not finished running yet.');
 		}
@@ -97,7 +75,7 @@ export class AgentEvalRatingService {
 		return rating;
 	}
 
-	/** Every rating on a single result, newest first — the per-case history. */
+	/** The per-case history, newest first. */
 	async listRatingsForResult(
 		user: User,
 		projectId: string,
@@ -111,10 +89,7 @@ export class AgentEvalRatingService {
 		return await this.ratingRepository.findByResultId(result.id);
 	}
 
-	/**
-	 * The newest rating per result across a run: what the review view renders when
-	 * a reviewed run is reopened, and the corrections available for calibration.
-	 */
+	/** What a reopened run renders, and the corrections calibration reads. */
 	async listLatestRatingsForRun(
 		user: User,
 		projectId: string,
@@ -131,9 +106,8 @@ export class AgentEvalRatingService {
 	// ---- internals ----
 
 	/**
-	 * Gate on the agent-evals rollout flag (honors the env override). Throws
-	 * NotFoundError rather than Forbidden so a flag-off instance looks like an
-	 * unknown feature and leaks no flag state (matching the case-generation gate).
+	 * Not-found rather than forbidden, so a flag-off instance leaks no flag state
+	 * (matching the case-generation gate).
 	 */
 	private async assertFeatureEnabled(user: User): Promise<void> {
 		const flags = await this.postHogClient.getFeatureFlags(user);
@@ -142,10 +116,7 @@ export class AgentEvalRatingService {
 		}
 	}
 
-	/**
-	 * Authorize before touching the eval tables, so a caller without access to the
-	 * project can't probe which result or run ids exist.
-	 */
+	/** Runs before any lookup, so unauthorized callers can't probe for ids. */
 	private async assertProjectScopes(user: User, projectId: string, scopes: Scope[]): Promise<void> {
 		if (!(await userHasScopes(user, scopes, false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to review agent evals in this project.');
@@ -165,9 +136,8 @@ export class AgentEvalRatingService {
 	}
 
 	/**
-	 * Walk run → dataset → agent to confirm the run belongs to `projectId`. A run
-	 * in another project reads as missing rather than forbidden, so its existence
-	 * doesn't leak.
+	 * Walks run → dataset → agent to confirm project ownership. A run elsewhere reads
+	 * as missing, not forbidden, so its existence doesn't leak.
 	 */
 	private async resolveRunInProject(projectId: string, runId: string): Promise<void> {
 		const notFound = () => new NotFoundError(`Agent eval run ${runId} not found.`);
@@ -178,18 +148,13 @@ export class AgentEvalRatingService {
 		const dataset = await this.datasetRepository.findById(run.datasetId);
 		if (!dataset) throw notFound();
 
-		// Existence only — `findByIdAndProjectId` eagerly loads `activeVersion` for the
-		// frontend's publish state, which this path would pull on every rating.
+		// Existence only: `findByIdAndProjectId` would load `activeVersion` per rating.
 		const inProject = await this.agentRepository.existsByIdAndProjectId(dataset.agentId, projectId);
 		if (!inProject) throw notFound();
 	}
 }
 
-/**
- * Bound the untrusted parts of the body. Rejects rather than truncating: a
- * silently clipped gold answer is worse than a failed request, since the whole
- * point of the correction is that it is the answer the user signed off on.
- */
+/** Rejects rather than truncating: a silently clipped gold answer is worse. */
 function assertPayloadWithinBounds(payload: CreateAgentEvalRatingPayload): void {
 	if (payload.comment !== undefined && payload.comment.length > MAX_COMMENT_CHARS) {
 		throw new BadRequestError(`A rating comment cannot exceed ${MAX_COMMENT_CHARS} characters.`);
@@ -198,8 +163,7 @@ function assertPayloadWithinBounds(payload: CreateAgentEvalRatingPayload): void 
 	const { correction } = payload;
 	if (correction === undefined) return;
 
-	// `finalText` mirrors the key the runner writes into a result's output, so the
-	// corrected answer stays diffable against what the agent actually said.
+	// `finalText` mirrors the runner's output key, keeping the two diffable.
 	if ('finalText' in correction) {
 		const finalText = correction.finalText;
 		if (finalText !== null && typeof finalText !== 'string') {

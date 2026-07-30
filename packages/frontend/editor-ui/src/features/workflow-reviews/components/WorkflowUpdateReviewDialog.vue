@@ -32,11 +32,11 @@ const close = () => {
 };
 
 /** The open review may have been closed elsewhere in the meantime — refetch once before giving up. */
-const resolveOpenReviewRequestId = async (): Promise<string | undefined> => {
-	let request = reviewStatusStore.openReviewRequest(props.workflowId);
+const resolveOpenReviewRequestId = async (workflowId: string): Promise<string | undefined> => {
+	let request = reviewStatusStore.openReviewRequest(workflowId);
 	if (!request) {
-		await reviewStatusStore.fetchStatus(props.workflowId);
-		request = reviewStatusStore.openReviewRequest(props.workflowId);
+		await reviewStatusStore.fetchStatus(workflowId);
+		request = reviewStatusStore.openReviewRequest(workflowId);
 	}
 	return request?.id;
 };
@@ -44,9 +44,16 @@ const resolveOpenReviewRequestId = async (): Promise<string | undefined> => {
 const submit = async () => {
 	if (isSubmitting.value) return;
 
+	const workflowId = props.workflowId;
+
 	isSubmitting.value = true;
 	try {
 		const workflowVersionId = await props.flushSave();
+
+		// Navigated away while saving: flushSave reads the version of the workflow
+		// that is open now, so pairing it with the pinned id would mismatch.
+		if (props.workflowId !== workflowId) return;
+
 		if (!workflowVersionId) {
 			toast.showError(
 				new Error(i18n.baseText('workflowReviews.submitForReview.error.save')),
@@ -55,7 +62,7 @@ const submit = async () => {
 			return;
 		}
 
-		const workflowReviewRequestId = await resolveOpenReviewRequestId();
+		const workflowReviewRequestId = await resolveOpenReviewRequestId(workflowId);
 		if (!workflowReviewRequestId) {
 			toast.showError(
 				new Error(i18n.baseText('workflowReviews.updateReview.error.noOpenReview')),
@@ -66,16 +73,16 @@ const submit = async () => {
 		}
 
 		await updateWorkflowReviewRequestVersion(rootStore.restApiContext, workflowReviewRequestId, {
-			workflowId: props.workflowId,
+			workflowId,
 			workflowVersionId,
 		});
 
-		void reviewStatusStore.fetchStatus(props.workflowId);
+		void reviewStatusStore.fetchStatus(workflowId);
 		emit('update:open', false);
 		emit('updated');
 	} catch (error) {
 		// Whatever went wrong (e.g. the review closed concurrently), refetch the review state.
-		void reviewStatusStore.fetchStatus(props.workflowId);
+		void reviewStatusStore.fetchStatus(workflowId);
 		toast.showError(error, i18n.baseText('workflowReviews.updateReview.error.title'));
 	} finally {
 		isSubmitting.value = false;

@@ -18,6 +18,7 @@ import {
 import { prepareVerificationRun } from './verification/prepare-run';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
+import { runScriptedGateVerification } from './verification/scripted-gate-run';
 import { executionNodeErrorSchema } from '../../workflow-loop/workflow-loop-state';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
@@ -157,24 +158,43 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 			const { prepared } = preparedResult;
 
-			const result = await target.domainContext.executionService.run(
-				workflowId,
-				resolvedInput.inputData,
-				{
-					timeout: resolvedInput.timeout,
-					verificationPinData: prepared.verificationPinData,
-					abortSignal: context.abortSignal,
-				},
-			);
-
-			const analysis = analyzeVerificationResult({
-				result,
-				buildOutcome,
-				simulatedNodes: prepared.simulatedNodes,
-				haltedGateNames: prepared.haltedGateNames,
-				stateBefore: target.stateBefore,
-				runId: context.runId,
-			});
+			// A scripted gate replaces the halt with one loop-safe pass per decision;
+			// otherwise run the single standard pass (halted gates pin zero items).
+			const { result, analysis } = prepared.gateScript
+				? await runScriptedGateVerification({
+						script: prepared.gateScript,
+						prepared,
+						executionService: target.domainContext.executionService,
+						workflowId,
+						inputData: resolvedInput.inputData,
+						timeout: resolvedInput.timeout,
+						abortSignal: context.abortSignal,
+						buildOutcome,
+						stateBefore: target.stateBefore,
+						runId: context.runId,
+					})
+				: await (async () => {
+						const runResult = await target.domainContext.executionService.run(
+							workflowId,
+							resolvedInput.inputData,
+							{
+								timeout: resolvedInput.timeout,
+								verificationPinData: prepared.verificationPinData,
+								abortSignal: context.abortSignal,
+							},
+						);
+						return {
+							result: runResult,
+							analysis: analyzeVerificationResult({
+								result: runResult,
+								buildOutcome,
+								simulatedNodes: prepared.simulatedNodes,
+								haltedGateNames: prepared.haltedGateNames,
+								stateBefore: target.stateBefore,
+								runId: context.runId,
+							}),
+						};
+					})();
 			await persistVerificationOutcome({
 				input: resolvedInput,
 				context,

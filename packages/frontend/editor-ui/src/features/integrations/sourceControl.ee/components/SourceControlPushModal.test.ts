@@ -8,7 +8,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { useSourceControlStore } from '../sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { reactive } from 'vue';
@@ -42,9 +42,10 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', async (importOriginal) => {
 	const track = vi.fn();
 	return {
+		...(await importOriginal<typeof import('@n8n/composables/useTelemetry')>()),
 		useTelemetry: () => {
 			return {
 				track,

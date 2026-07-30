@@ -14,9 +14,8 @@ import { DataSource } from '@n8n/typeorm';
 import { Agent } from '@/modules/agents/entities/agent.entity';
 import { createUserShell } from '@test-integration/db/users';
 
-// The newest-per-result reduction in `findLatestByRunId` sits on top of a join
-// across two tables, so it runs against the real driver here — a mocked entity
-// manager would green-light SQL the database rejects.
+// `findLatestByRunId` joins two tables, so it runs against the real driver here:
+// a mocked entity manager would green-light SQL the database rejects.
 
 let owner: User;
 let ratingRepository: AgentEvalRatingRepository;
@@ -51,8 +50,7 @@ async function createRunWithResults(count: number): Promise<AgentEvalResult[]> {
 	);
 }
 
-// Timestamps have millisecond precision, so a short pause guarantees a strictly
-// newer `createdAt` — which is what "latest rating wins" is defined against.
+// Timestamps are millisecond-precision, so a pause guarantees a newer `createdAt`.
 const tick = async () => await new Promise((resolve) => setTimeout(resolve, 10));
 
 beforeAll(async () => {
@@ -67,8 +65,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	// Not truncating `Agent`/`Project`: each test creates its own in a fresh
-	// project, and `Agent` is a module entity absent from testDb's entity union.
+	// `Agent`/`Project` aren't truncated: per-test, and absent from testDb's union.
 	await testDb.truncate(['AgentEvalRating', 'AgentEvalResult', 'AgentEvalRun', 'AgentEvalDataset']);
 });
 

@@ -7,7 +7,12 @@ import { join } from 'path';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { aggregateResults } from '../run/aggregator';
 import { writeEvalResults } from '../run/persist';
-import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
+import type {
+	ExecutionScenario,
+	TranscriptTurn,
+	WorkflowTestCase,
+	WorkflowTestCaseResult,
+} from '../types';
 
 // Pins the `eval-results.json` fields the lang-tracer dispatcher ingests
 // (lang-tracer-dispatcher `src/lib/runner.ts`): it spawns this CLI per case in
@@ -39,10 +44,26 @@ const passingCheck: CheckOutcome = {
 	status: 'pass',
 };
 
+const transcript: TranscriptTurn[] = [
+	{
+		userMessage: 'send me a daily digest',
+		steps: [
+			{ kind: 'agent-text', text: 'Building the digest workflow.' },
+			{
+				kind: 'tool-call',
+				toolName: 'add-nodes',
+				args: { nodeType: 'n8n-nodes-base.scheduleTrigger' },
+				result: { added: true },
+			},
+		],
+	},
+];
+
 function iteration1(): WorkflowTestCaseResult {
 	return {
 		testCase,
 		workflowBuildSuccess: true,
+		transcript,
 		workflowChecks: [passingCheck],
 		workflowJson: {
 			id: 'wf-1',
@@ -63,6 +84,7 @@ function iteration2(): WorkflowTestCaseResult {
 	return {
 		testCase,
 		workflowBuildSuccess: true,
+		buildError: 'agent stopped before producing a workflow',
 		buildExpectationResults: [
 			{ expectation: 'sends a digest', pass: false, reason: 'digest node missing' },
 		],
@@ -99,6 +121,8 @@ interface DispatcherView {
 		}> | null>;
 		buildCostUsdPerRun?: Array<number | null>;
 		buildTurnsPerRun?: Array<number | null>;
+		transcriptPerRun: Array<TranscriptTurn[] | null>;
+		buildErrorPerRun: Array<string | null>;
 		scenarios: Array<{
 			name: string;
 			passCount: number;
@@ -163,6 +187,24 @@ describe('eval-results.json — dispatcher contract', () => {
 		// recorded `claude` spend, so non-MCP dispatcher output is unchanged.
 		expect(tc).not.toHaveProperty('buildCostUsdPerRun');
 		expect(tc).not.toHaveProperty('buildTurnsPerRun');
+
+		// Per-iteration conversation transcript — one entry per run, null when
+		// the iteration captured none. A present transcript keeps the full
+		// step detail (tool calls with args + results) the dispatcher renders.
+		expect(tc.transcriptPerRun).toHaveLength(2);
+		expect(tc.transcriptPerRun[1]).toBeNull();
+		const turn = tc.transcriptPerRun[0]?.[0];
+		expect(turn?.userMessage).toBe('send me a daily digest');
+		expect(turn?.steps[0]).toEqual({ kind: 'agent-text', text: 'Building the digest workflow.' });
+		expect(turn?.steps[1]).toEqual({
+			kind: 'tool-call',
+			toolName: 'add-nodes',
+			args: { nodeType: 'n8n-nodes-base.scheduleTrigger' },
+			result: { added: true },
+		});
+
+		// Per-iteration build-failure reason — one `string | null` per run.
+		expect(tc.buildErrorPerRun).toEqual([null, 'agent stopped before producing a workflow']);
 
 		// Scenario blocks serialize under the flat `scenarios` key with a flat
 		// `name` — the shape the dispatcher's fallback reader consumes today.

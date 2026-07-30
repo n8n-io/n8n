@@ -1,4 +1,8 @@
-import type { ScheduledJobKind, RecurringCronUnit } from '@n8n/constants';
+import type {
+	ScheduledJobKind,
+	RecurringCronUnit,
+	ScheduledJobMisfirePolicy,
+} from '@n8n/constants';
 import type { CronExpression } from 'n8n-workflow';
 
 /**
@@ -83,4 +87,8 @@ export interface ScheduledJob {
 	nextRunAt: Date | null; // the next instant the materializer materializes from.
 	lastFiredAt: Date | null;
 	maxAttempts: number;
+	/** What to do with occurrences that came due while nothing ran them. */
+	misfirePolicy: ScheduledJobMisfirePolicy;
+	/** How late an occurrence may be before {@link misfirePolicy} applies to it. */
+	misfireGraceSeconds: number;
 }

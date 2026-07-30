@@ -11,6 +11,7 @@ interface Props {
 	name: BannerName;
 	theme?: CalloutTheme;
 	customIcon?: IconName;
+	iconTooltip?: string;
 	dismissible?: boolean;
 	dismissPermanently?: boolean;
 }
@@ -24,6 +25,7 @@ const props = withDefaults(defineProps<Props>(), {
 	theme: 'info',
 	dismissible: true,
 	customIcon: undefined,
+	iconTooltip: undefined,
 	dismissPermanently: false,
 });
 
@@ -48,6 +50,7 @@ async function onCloseClick() {
 		:class="$style.callout"
 		:theme="props.theme"
 		:icon="props.customIcon"
+		:icon-tooltip="props.iconTooltip"
 		icon-size="medium"
 		:round-corners="false"
 		:data-test-id="`banners-${props.name}`"

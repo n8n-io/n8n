@@ -5,8 +5,7 @@ import type { JsonObject } from 'n8n-workflow';
 import { AgentEvalRating, AgentEvalResult } from '../entities';
 import type { AgentEvalVote } from '../entities/agent-eval-rating.ee';
 
-// Matches the seeding chunk size: keeps an id lookup under the bound parameter
-// limit when a run has many rated results.
+// Mirrors the seeding chunk size, for the driver's bound parameter limit.
 const ID_LOOKUP_CHUNK_SIZE = 100;
 
 type CreateAgentEvalRatingAttrs = {
@@ -40,19 +39,11 @@ export class AgentEvalRatingRepository extends Repository<AgentEvalRating> {
 	}
 
 	/**
-	 * The newest rating per result across a whole run — the "reopen a reviewed run"
-	 * read, and the corrections a later calibration pass consumes.
-	 *
-	 * Ratings are append-only history (a result can hold several), so the
-	 * newest-per-result reduction happens here rather than in SQL: `DISTINCT ON` is
-	 * Postgres-only, and a correlated `MAX(createdAt)` returns both rows when two
-	 * ratings share a timestamp. Ordering by `id` after `createdAt` keeps the
-	 * winner deterministic in that tie.
+	 * Newest rating per result in a run. Reduced here, not in SQL: `DISTINCT ON` is
+	 * Postgres-only and `MAX(createdAt)` returns both rows on a millisecond tie.
 	 */
 	async findLatestByRunId(runId: string): Promise<AgentEvalRating[]> {
-		// Pass one selects ids only. Loading whole rows here would materialize every
-		// superseded rating — each carrying a `correction` blob — just to discard most
-		// of them, and a run can hold hundreds of results with unbounded history.
+		// Ids only — whole rows would load every superseded `correction` just to drop it.
 		const rows = await this.createQueryBuilder('rating')
 			.select('rating.id', 'id')
 			.addSelect('rating.resultId', 'resultId')
@@ -73,8 +64,7 @@ export class AgentEvalRatingRepository extends Repository<AgentEvalRating> {
 			.map((row) => row.id);
 		if (latestIds.length === 0) return [];
 
-		// Pass two fetches only the winners, chunked to stay under the driver's bound
-		// parameter limit (SQLite in particular), then restored to pass one's order.
+		// Fetch the winners, then restore the id order the query established.
 		const found: AgentEvalRating[] = [];
 		for (let i = 0; i < latestIds.length; i += ID_LOOKUP_CHUNK_SIZE) {
 			const chunk = latestIds.slice(i, i + ID_LOOKUP_CHUNK_SIZE);

@@ -163,13 +163,6 @@ export class AgentChatStreamConsumer {
 						if (delta.trim()) responseState.hasVisibleResponse = true;
 						break;
 					}
-					case 'reasoning-delta': {
-						const { delta } = chunk;
-						await responseLifecycle.startStreamingResponse();
-						textStream.yield?.(`_${delta}_`);
-						if (delta.trim()) responseState.hasVisibleResponse = true;
-						break;
-					}
 					case 'tool-call-suspended': {
 						await responseLifecycle.startDiscreteResponse();
 						const result = await this.options.handleSuspension(chunk, thread);
@@ -199,8 +192,8 @@ export class AgentChatStreamConsumer {
 						}
 						break;
 					default:
-						// Ignore other chunk types (finish, tool-input-*,
-						// start-step, finish-step, etc.)
+						// Ignore non-user-visible chunks (reasoning, finish,
+						// tool-input-*, start-step, finish-step, etc.)
 						break;
 				}
 			}
@@ -292,9 +285,6 @@ export class AgentChatStreamConsumer {
 				switch (chunk.type) {
 					case 'text-delta':
 						buffer += chunk.delta;
-						break;
-					case 'reasoning-delta':
-						buffer += `_${chunk.delta}_`;
 						break;
 					case 'tool-call-suspended': {
 						await flushBuffer();

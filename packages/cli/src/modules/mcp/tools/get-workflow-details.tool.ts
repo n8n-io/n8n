@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import type { INodeTypes } from 'n8n-workflow';
+import { isTriggerNodeType, type INodeTypes } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -149,13 +149,18 @@ export async function getWorkflowDetails(
 			: null;
 
 	const supportedTriggers = Object.keys(SUPPORTED_MCP_TRIGGERS);
-	const triggers = nodes.filter(
-		(node) => supportedTriggers.includes(node.type) && node.disabled !== true,
+	const activeNodes = nodes.filter((node) => node.disabled !== true);
+	const triggers = activeNodes.filter((node) => supportedTriggers.includes(node.type));
+	// Triggers the workflow does have but MCP can't execute directly (e.g. Gmail Trigger),
+	// so the notice can distinguish these from a workflow with no triggers at all.
+	const unsupportedTriggers = activeNodes.filter(
+		(node) => isTriggerNodeType(node.type) && !supportedTriggers.includes(node.type),
 	);
 
 	const triggerNotice = await getTriggerDetails(
 		user,
 		triggers,
+		unsupportedTriggers,
 		baseWebhookUrl,
 		credentialsService,
 		nodeTypes,

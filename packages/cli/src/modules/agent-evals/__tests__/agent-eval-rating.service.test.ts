@@ -23,8 +23,7 @@ import type { PostHogClient } from '@/posthog';
 
 import { AgentEvalRatingService } from '../agent-eval-rating.service';
 
-// Stub the cross-module specifiers the service statically imports so the unit
-// test doesn't pull in the real agents module graph.
+// Stub the statically imported specifiers to keep the agents module graph out.
 vi.mock('@/modules/agents/repositories/agent.repository', () => ({
 	AgentRepository: class AgentRepository {},
 }));
@@ -100,8 +99,7 @@ describe('AgentEvalRatingService', () => {
 			expect(resultRepository.findById).not.toHaveBeenCalled();
 		});
 
-		// A project viewer holds execute but not update, and is exactly the kind of
-		// reviewer this feature is for.
+		// A project viewer holds execute but not update.
 		it('requires agent:execute to rate and agent:read to read', async () => {
 			await service.rateResult(user, PROJECT_ID, 'res-1', { vote: 'up' });
 			expect(vi.mocked(userHasScopes)).toHaveBeenCalledWith(user, ['agent:execute'], false, {
