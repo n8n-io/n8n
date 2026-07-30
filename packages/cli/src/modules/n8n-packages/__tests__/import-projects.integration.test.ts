@@ -34,6 +34,7 @@ import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
+import { importPackageRequest } from './fixtures/import-request';
 import type {
 	FolderConflictPolicy,
 	ImportPackageRequest,
@@ -58,28 +59,15 @@ async function importProjects(
 	apiKeyScopes?: string[],
 	overrides?: Partial<ImportPackageRequest>,
 ) {
-	const request: ImportPackageRequest = {
-		user,
-		packageBuffer,
-		apiKeyScopes,
-		credentialMatchingMode: 'id-only',
-		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: 'new-version',
-		workflowPublishingPolicy: 'preserve-published-state',
-		workflowIdPolicy: 'new',
-		missingNodeTypeMode: 'fail',
-		projectConflictPolicy: 'overwrite',
-		folderConflictPolicy: 'merge',
-		overwriteDeletionPolicy: 'archive',
-		dataTableMatchingMode: 'by-id',
-		dataTableMissingMode: 'create',
-		dataTableSchemaConflictPolicy: 'keep-existing',
-		variableMissingMode: 'do-nothing',
-		tagMissingMode: 'create',
-		tagConflictPolicy: 'skip',
-		...overrides,
-	};
-	return await Container.get(N8nPackagesService).importPackage(request);
+	return await Container.get(N8nPackagesService).importPackage(
+		importPackageRequest({
+			user,
+			packageBuffer,
+			apiKeyScopes,
+			workflowConflictPolicy: 'new-version',
+			...overrides,
+		}),
+	);
 }
 
 const licenseMocker = new LicenseMocker();
