@@ -7,7 +7,9 @@ export type {
 	ContentCitation,
 	ContentText,
 	ContentReasoning,
+	ContentReasoningFile,
 	ContentFile,
+	ContentCustom,
 	ContentToolCall,
 	ContentInvalidToolCall,
 	ContentProvider,
@@ -27,6 +29,7 @@ export type {
 	ThinkingConfigFor,
 	ThinkingConfig,
 } from './sdk/provider';
+export type { ReasoningLevel } from './sdk/reasoning';
 
 export type {
 	AgentResult,
@@ -176,7 +179,12 @@ export type {
 	AgentMiddleware,
 } from './runtime/event';
 
-export type { McpServerConfig, McpToolCallSettledEvent, McpVerifyResult } from './sdk/mcp';
+export type {
+	McpConnectionFailedEvent,
+	McpServerConfig,
+	McpToolCallSettledEvent,
+	McpVerifyResult,
+} from './sdk/mcp';
 
 export type { AgentBuilder } from './sdk/agent-builder';
 

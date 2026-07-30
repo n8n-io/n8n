@@ -10,13 +10,17 @@ import {
 	N8nLoading,
 	N8nTabs,
 	N8nText,
+	N8nUserStack,
+	type UserStackGroups,
 } from '@n8n/design-system';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
 const props = defineProps<{
 	items: WorkflowReviewInboxItem[];
-	activeState: WorkflowReviewRequestState;
+	activeTab: WorkflowReviewRequestState;
 	openCount: number;
 	closedCount: number;
 	selectedId: string | null;
@@ -29,13 +33,24 @@ const props = defineProps<{
 const emit = defineEmits<{
 	select: [id: string];
 	clear: [];
-	'update:activeState': [state: WorkflowReviewRequestState];
+	'update:activeTab': [tab: WorkflowReviewRequestState];
 	loadMore: [];
 }>();
 
 const i18n = useI18n();
+const usersStore = useUsersStore();
 const listRef = ref<HTMLElement | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
+
+const currentUserEmail = computed(() => usersStore.currentUser?.email ?? null);
+
+// Keep the requester first so it occupies a visible avatar slot.
+function userGroups(item: WorkflowReviewInboxItem): UserStackGroups {
+	return {
+		[i18n.baseText('workflowReviews.roles.requester')]: item.requester ? [item.requester] : [],
+		[i18n.baseText('workflowReviews.roles.reviewers')]: item.reviewers,
+	};
+}
 
 const tabOptions = computed(() => [
 	{
@@ -67,7 +82,7 @@ watch(
 );
 
 function onTabChange(value: string | number | boolean) {
-	emit('update:activeState', String(value) as WorkflowReviewRequestState);
+	emit('update:activeTab', String(value) as WorkflowReviewRequestState);
 }
 
 function onListBackgroundClick() {
@@ -86,7 +101,7 @@ function onListBackgroundClick() {
 		</div>
 		<div :class="$style.header">
 			<N8nTabs
-				:model-value="activeState"
+				:model-value="activeTab"
 				:options="tabOptions"
 				data-test-id="workflow-reviews-tabs"
 				@update:model-value="onTabChange"
@@ -108,7 +123,7 @@ function onListBackgroundClick() {
 					size="small"
 					data-test-id="workflow-reviews-empty"
 				>
-					{{ i18n.baseText(`workflowReviews.sidebar.empty.${activeState}`) }}
+					{{ i18n.baseText(`workflowReviews.sidebar.empty.${activeTab}`) }}
 				</N8nText>
 				<N8nCard
 					v-for="item in items"
@@ -123,9 +138,12 @@ function onListBackgroundClick() {
 					@keydown.space.prevent="emit('select', item.id)"
 				>
 					<div :class="$style.cardContent">
-						<N8nText bold tag="h3" :class="$style.cardTitle">
-							{{ item.title }}
-						</N8nText>
+						<div :class="$style.cardHeader">
+							<N8nText bold tag="h3" :class="$style.cardTitle">
+								{{ item.title }}
+							</N8nText>
+							<WorkflowReviewStatusDot :state="item.state" :decision="item.decision" />
+						</div>
 						<div :class="$style.cardMeta">
 							<N8nBadge
 								v-if="item.workflowName"
@@ -139,14 +157,24 @@ function onListBackgroundClick() {
 									<span>{{ item.workflowName }}</span>
 								</span>
 							</N8nBadge>
-							<N8nText
-								size="xsmall"
-								color="text-light"
-								:class="$style.cardMetaTime"
-								data-test-id="workflow-review-request-created-at"
-							>
-								<TimeAgo :date="item.createdAt" />
-							</N8nText>
+							<div :class="$style.cardMetaActions">
+								<N8nUserStack
+									v-if="item.requester || item.reviewers.length > 0"
+									:users="userGroups(item)"
+									:max-avatars="3"
+									:current-user-email="currentUserEmail"
+									size="xsmall"
+									data-test-id="workflow-review-request-users"
+								/>
+								<N8nText
+									size="xsmall"
+									color="text-light"
+									:class="$style.cardMetaTime"
+									data-test-id="workflow-review-request-created-at"
+								>
+									<TimeAgo :date="item.createdAt" />
+								</N8nText>
+							</div>
 						</div>
 					</div>
 				</N8nCard>
@@ -223,11 +251,20 @@ function onListBackgroundClick() {
 	width: 100%;
 }
 
+.cardHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	min-width: 0;
+}
+
 .cardTitle {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	width: 100%;
+	min-width: 0;
 	font-size: var(--font-size--sm);
 }
 
@@ -236,15 +273,21 @@ function onListBackgroundClick() {
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
 	width: 100%;
 	min-width: 0;
 }
 
-.cardMetaTime {
-	flex-shrink: 0;
-	white-space: nowrap;
+.cardMetaActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
 	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.cardMetaTime {
+	white-space: nowrap;
 }
 
 .workflowBadge {
@@ -254,7 +297,7 @@ function onListBackgroundClick() {
 	border-radius: var(--radius);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	color: var(--color--text);
-	max-width: 12rem;
+	max-width: max(65%, 8rem);
 
 	> span {
 		max-width: 100%;
@@ -267,7 +310,7 @@ function onListBackgroundClick() {
 	gap: var(--spacing--3xs);
 	max-width: 100%;
 	min-width: 0;
-	line-height: calc(var(--font-size--sm) + 1px);
+	line-height: calc(var(--font-size--sm) + var(--border-width));
 
 	> span {
 		overflow: hidden;
@@ -282,6 +325,6 @@ function onListBackgroundClick() {
 }
 
 .sentinel {
-	height: 1px;
+	height: var(--border-width);
 }
 </style>

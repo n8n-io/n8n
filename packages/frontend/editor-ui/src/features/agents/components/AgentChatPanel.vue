@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
-import { N8nCallout, N8nIconButton } from '@n8n/design-system';
+import { N8nCallout, N8nIconButton, N8nSendStopButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -11,6 +11,7 @@ import AgentChatMessageList from './AgentChatMessageList.vue';
 import type { AgentJsonConfig } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
+import { TOOL_CALL_STATE } from '../constants';
 
 const props = withDefaults(
 	defineProps<{
@@ -67,14 +68,17 @@ const isPreparingToSend = ref(false);
 const {
 	messages,
 	isStreaming,
+	isCancelling,
 	messagingState,
 	fatalError,
+	warnings,
 	loadHistory,
 	sendMessage,
 	stopGenerating,
 	resume,
 	cancelAndSteer,
 	dismissFatalError,
+	dismissWarning,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
@@ -120,8 +124,22 @@ const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPRO
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value,
 );
-const areConfigurationActionsDisabled = computed(
-	() => isStreaming.value || isPreparingToSend.value || hasOpenInteraction.value,
+const hasOpenSuspension = computed(() =>
+	messages.value.some((message) =>
+		message.toolCalls?.some(
+			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
+		),
+	),
+);
+const showSuspensionStopAlongsideSend = computed(
+	() => hasOpenInteractiveQuestion.value && !isStreaming.value && !isCancelling.value,
+);
+const showStopAsPrimaryAction = computed(
+	() =>
+		isStreaming.value ||
+		isCancelling.value ||
+		hasOpenApproval.value ||
+		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
 );
 
 const chatPlaceholder = computed(() =>
@@ -136,7 +154,15 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (!text || isStreaming.value || isPreparingToSend.value || hasOpenApproval.value) return;
+	if (
+		!text ||
+		isStreaming.value ||
+		isCancelling.value ||
+		isPreparingToSend.value ||
+		hasOpenApproval.value
+	) {
+		return;
+	}
 
 	if (hasOpenInteractiveQuestion.value) {
 		inputText.value = '';
@@ -184,7 +210,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	stopGenerating();
+	if (isStreaming.value) void stopGenerating();
 });
 </script>
 
@@ -211,6 +237,37 @@ onBeforeUnmount(() => {
 			</template>
 		</N8nCallout>
 
+		<div
+			v-for="(warning, index) in warnings"
+			:key="`${warning.code ?? 'mcp'}-${index}`"
+			:class="$style.warningBanner"
+		>
+			<N8nCallout theme="warning" slim :data-test-id="`agent-chat-warning-${index}`">
+				<div :class="$style.warningBannerBody">
+					<span :class="$style.warningBannerTitle">
+						{{ locale.baseText('agents.chat.warning.mcp.title') }}
+					</span>
+					<span :class="$style.warningBannerDetail">{{
+						warning.server
+							? locale.baseText('agents.chat.warning.mcp.detail', {
+									interpolate: { server: warning.server, error: warning.message },
+								})
+							: warning.message
+					}}</span>
+				</div>
+				<template #trailingContent>
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="locale.baseText('agents.chat.warning.dismiss')"
+						:title="locale.baseText('agents.chat.warning.dismiss')"
+						@click="dismissWarning(index)"
+					/>
+				</template>
+			</N8nCallout>
+		</div>
+
 		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" />
 		<AgentChatMessageList
 			v-else
@@ -225,16 +282,22 @@ onBeforeUnmount(() => {
 		/>
 
 		<div :class="$style.inputArea">
-			<slot name="above-input" :disabled="areConfigurationActionsDisabled" />
 			<ChatInputBase
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
-				:is-streaming="messagingState === 'receiving'"
+				:is-streaming="showStopAsPrimaryAction"
 				:can-submit="
-					!hasOpenApproval && !isStreaming && !isPreparingToSend && inputText.trim().length > 0
+					!hasOpenApproval &&
+					!isStreaming &&
+					!isCancelling &&
+					!isPreparingToSend &&
+					inputText.trim().length > 0
 				"
 				:disabled="
-					hasOpenApproval || isPreparingToSend || (isStreaming && messagingState !== 'receiving')
+					hasOpenApproval ||
+					isCancelling ||
+					isPreparingToSend ||
+					(isStreaming && messagingState !== 'receiving')
 				"
 				data-testid="chat-input"
 				@submit="onSubmit"
@@ -242,6 +305,12 @@ onBeforeUnmount(() => {
 			>
 				<template #footer-start>
 					<slot name="footer-start" />
+					<N8nSendStopButton
+						v-if="showSuspensionStopAlongsideSend"
+						streaming
+						stop-button-test-id="agent-chat-suspended-stop-button"
+						@stop="stopGenerating"
+					/>
 				</template>
 			</ChatInputBase>
 		</div>
@@ -294,5 +363,28 @@ onBeforeUnmount(() => {
 .errorBannerDetail {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
+}
+
+.warningBanner {
+	margin: var(--spacing--sm);
+	flex-shrink: 0;
+}
+
+.warningBannerBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	flex: 1;
+	min-width: 0;
+}
+
+.warningBannerTitle {
+	font-weight: var(--font-weight--bold);
+}
+
+.warningBannerDetail {
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+	word-break: break-word;
 }
 </style>

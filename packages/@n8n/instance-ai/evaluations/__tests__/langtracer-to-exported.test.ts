@@ -110,13 +110,34 @@ describe('unsupportedPushReason', () => {
 		expect(unsupportedPushReason(diskCase())).toBeNull();
 	});
 
-	it('flags seedThread, seedFile and priorConversation as unsupported', () => {
+	it('flags seedThread and priorConversation as unsupported', () => {
 		expect(unsupportedPushReason(diskCase({ seedThread: { threadId: 't' } }))).toMatch(
 			/seedThread/,
 		);
-		expect(unsupportedPushReason(diskCase({ seedFile: '/tmp/seed.json' }))).toMatch(/seedFile/);
 		expect(
 			unsupportedPushReason(diskCase({ priorConversation: [{ role: 'user', text: 'earlier' }] })),
 		).toMatch(/priorConversation/);
+	});
+
+	it('flags an inline conversationSeed as unsupported', () => {
+		expect(
+			unsupportedPushReason(
+				diskCase({
+					conversationSeed: {
+						messages: [
+							{
+								id: 'm1',
+								type: 'llm',
+								role: 'user',
+								createdAt: '2026-06-29T09:00:00.000Z',
+								content: [{ type: 'text', text: 'build it' }],
+							},
+						],
+						workflows: [],
+						dataTables: [],
+					},
+				}),
+			),
+		).toMatch(/conversationSeed/);
 	});
 });

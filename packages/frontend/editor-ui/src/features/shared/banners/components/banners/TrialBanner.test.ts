@@ -52,11 +52,11 @@ const renderComponent = createComponentRenderer(TrialBanner, {
 		stubs: {
 			N8nIcon: true,
 			BaseBanner: {
-				template: `<div class="base-banner" data-test-id="trial-banner">
+				template: `<div class="base-banner" data-test-id="trial-banner" :data-icon-tooltip="iconTooltip">
 					<slot name="mainContent" />
 					<slot name="trailingContent" />
 				</div>`,
-				props: ['name', 'theme', 'dismissible', 'customIcon'],
+				props: ['name', 'theme', 'dismissible', 'customIcon', 'iconTooltip'],
 			},
 		},
 	},
@@ -115,6 +115,17 @@ describe('TrialBanner', () => {
 
 		const { container } = renderComponent();
 		expect(container.textContent).not.toContain('25/100');
+	});
+
+	it('should pass the executions quota tooltip for the banner icon', () => {
+		cloudPlanStore.state.data = {
+			bannerConfig: {},
+		} as never;
+
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('trial-banner').getAttribute('data-icon-tooltip')).toBe(
+			"Manual runs from the editor don't count. Only production executions use your quota.",
+		);
 	});
 
 	it('should render CTA button with custom text', () => {

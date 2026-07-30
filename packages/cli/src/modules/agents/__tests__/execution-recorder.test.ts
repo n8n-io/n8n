@@ -89,6 +89,64 @@ describe('ExecutionRecorder', () => {
 	});
 
 	describe('timeline ordering', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('records reasoning with timing without adding it to the assistant response', () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'reasoning-start', id: 'r1' });
+			recorder.record({ type: 'reasoning-delta', id: 'r1', delta: 'Check the inputs. ' });
+			vi.setSystemTime(1_500);
+			recorder.record({ type: 'reasoning-delta', id: 'r1', delta: 'Then answer.' });
+			vi.setSystemTime(2_000);
+			recorder.record({ type: 'reasoning-end', id: 'r1' });
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Done' });
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const record = recorder.getMessageRecord();
+
+			expect(record.timeline).toEqual([
+				{
+					type: 'reasoning',
+					content: 'Check the inputs. Then answer.',
+					timestamp: 1_000,
+					endTime: 2_000,
+				},
+				{ type: 'text', content: 'Done', timestamp: 2_000, endTime: 2_000 },
+			]);
+			expect(record.assistantResponse).toBe('Done');
+		});
+
+		it('keeps partial reasoning when the stream errors', () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'reasoning-start', id: 'r1' });
+			recorder.record({ type: 'reasoning-delta', id: 'r1', delta: 'Partial analysis' });
+			vi.setSystemTime(2_000);
+			recorder.record({ type: 'error', error: new Error('Stream failed') });
+
+			expect(recorder.getMessageRecord()).toEqual(
+				expect.objectContaining({
+					assistantResponse: '',
+					error: 'Stream failed',
+					timeline: [
+						{
+							type: 'reasoning',
+							content: 'Partial analysis',
+							timestamp: 1_000,
+							endTime: 2_000,
+						},
+					],
+				}),
+			);
+		});
+
 		it('captures text → tool call → text in order', () => {
 			const recorder = new ExecutionRecorder();
 

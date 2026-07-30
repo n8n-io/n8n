@@ -4,6 +4,7 @@ import { UnknownModuleError } from './errors/unknown-module.error';
 
 export const MODULE_NAMES = [
 	'agents',
+	'agent-evals',
 	'insights',
 	'external-secrets',
 	'community-packages',

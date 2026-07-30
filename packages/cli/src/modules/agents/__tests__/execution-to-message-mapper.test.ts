@@ -14,6 +14,32 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 }
 
 describe('execution-to-message-mapper', () => {
+	it('maps reasoning timeline events with timing into assistant message content', () => {
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'reasoning',
+						content: 'Check the inputs.',
+						timestamp: 100,
+						endTime: 150,
+					},
+					{ type: 'text', content: 'Done.', timestamp: 151, endTime: 160 },
+				],
+			}),
+		);
+
+		expect(result[1]?.content).toEqual([
+			{
+				type: 'reasoning',
+				text: 'Check the inputs.',
+				startTime: 100,
+				endTime: 150,
+			},
+			{ type: 'text', text: 'Done.' },
+		]);
+	});
+
 	it('maps execution timeline text and tool calls into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({
@@ -110,6 +136,32 @@ describe('execution-to-message-mapper', () => {
 				executionId: 'execution-1',
 			},
 		]);
+	});
+
+	it('includes the execution outcome on assistant messages', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'slow_tool',
+						toolCallId: 'call-1',
+						input: {},
+						output: undefined,
+						startTime: 100,
+						endTime: 0,
+						success: false,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]).toMatchObject({
+			role: 'assistant',
+			executionStatus: 'error',
+		});
 	});
 
 	it('flattens multiple executions into a single message list', () => {

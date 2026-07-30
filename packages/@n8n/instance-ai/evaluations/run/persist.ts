@@ -429,6 +429,11 @@ export function writeEvalResults(
 				passHatK: terminalRate(ea.passHatK),
 			})),
 			threadIds: tc.runs.map((run) => run.threadId ?? null),
+			// Per-iteration conversation transcript + build-failure reason — the
+			// LangTracer dispatcher ingests both (null when an iteration has none).
+			// Transcript content is redacted at capture (transcript-from-events).
+			transcriptPerRun: tc.runs.map((run) => run.transcript ?? null),
+			buildErrorPerRun: tc.runs.map((run) => run.buildError ?? null),
 			// `claude` build spend per iteration (--build-via-mcp only) — the
 			// dedupe-safe source for per-case cost (LangSmith feedback repeats the
 			// value on every row of a case's build).
