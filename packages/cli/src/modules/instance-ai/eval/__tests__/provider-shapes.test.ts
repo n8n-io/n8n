@@ -73,15 +73,31 @@ describe('applyProviderShapeNormalizers', () => {
 			expect(body.created).toBe(123);
 		});
 
-		it('preserves an already-correct b64_json envelope', () => {
+		it('substitutes model-authored b64_json with decodable PNG bytes, preserving siblings', () => {
 			const spec: Spec = {
 				type: 'json',
-				body: { created: 1, data: [{ b64_json: 'AAAA', revised_prompt: 'p' }] },
+				body: { created: 1, data: [{ b64_json: 'iVBORw0KGgo', revised_prompt: 'p' }] },
 			};
 			applyProviderShapeNormalizers(openAiImages, spec);
-			expect(spec.body).toMatchObject({
-				data: [{ b64_json: 'AAAA', revised_prompt: 'p' }],
-			});
+			const body = spec.body as { data: Array<{ b64_json: string; revised_prompt: string }> };
+			expect(body.data[0].revised_prompt).toBe('p');
+			const png = Buffer.from(body.data[0].b64_json, 'base64');
+			// Real decodable canvas, not the old 8-byte truncated header.
+			expect(png.subarray(1, 4).toString()).toBe('PNG');
+			expect(png.readUInt32BE(16)).toBe(512);
+			expect(png.readUInt32BE(20)).toBe(512);
+		});
+
+		it('preserves url entries while adding decodable b64_json alongside', () => {
+			const spec: Spec = {
+				type: 'json',
+				body: { created: 1, data: [{ url: 'https://example.invalid/img.png' }] },
+			};
+			applyProviderShapeNormalizers(openAiImages, spec);
+			const body = spec.body as { data: Array<{ url: string; b64_json: string }> };
+			expect(body.data[0].url).toBe('https://example.invalid/img.png');
+			const png = Buffer.from(body.data[0].b64_json, 'base64');
+			expect(png.subarray(1, 4).toString()).toBe('PNG');
 		});
 	});
 
