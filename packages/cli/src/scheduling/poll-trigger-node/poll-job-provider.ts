@@ -1,9 +1,28 @@
 import { Logger } from '@n8n/backend-common';
+import type { SchedulerConfig } from '@n8n/config';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { NoOpPollJobManager, PollJobManager } from 'n8n-core';
 
 import { PollTriggerJobRegistrar } from './poll-trigger-job-registrar';
+
+/**
+ * Whether the durable scheduler has taken over poll triggers. Both
+ * {@link PollJobProvider} (which registers the job manager) and
+ * `PollCursorService` (which decides whether to read/commit a durable cursor)
+ * must agree on this exactly, or a poll could be scheduled by one engine while
+ * the other believes it owns the cursor.
+ */
+export function isPollSchedulingActive(
+	schedulerConfig: SchedulerConfig,
+	workflowsConfig: WorkflowsConfig,
+): boolean {
+	return (
+		schedulerConfig.enabled &&
+		workflowsConfig.useWorkflowPublicationService &&
+		schedulerConfig.enabledForPollTriggers
+	);
+}
 
 /**
  * Decides, from config, which {@link PollJobManager} implementation activation
@@ -24,9 +43,7 @@ export class PollJobProvider {
 
 	/** Called once at startup, lazily before the first workflow activation. */
 	init(): void {
-		const intercepting =
-			this.globalConfig.scheduler.enabled && this.workflowsConfig.useWorkflowPublicationService;
-		const active = intercepting && this.globalConfig.scheduler.enabledForPollTriggers;
+		const active = isPollSchedulingActive(this.globalConfig.scheduler, this.workflowsConfig);
 
 		if (
 			this.globalConfig.scheduler.enabled &&

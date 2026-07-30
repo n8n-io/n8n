@@ -20,14 +20,7 @@ export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repos
 	 * received from `TransactionRunner.run`; a non-transactional caller passes the root `{}`.
 	 */
 	protected managerFor(ctx: OperationContext): EntityManager {
-		const { trx } = ctx;
-		if (!trx) return this.manager;
-
-		if (!(trx instanceof TypeOrmTransaction)) {
-			throw new UnexpectedError('Transaction was not created by the TypeORM runner');
-		}
-
-		return trx.getEntityManager();
+		return entityManagerFor(ctx, this.manager);
 	}
 }
 
