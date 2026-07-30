@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { effectScope } from 'vue';
@@ -92,6 +92,12 @@ describe('useMcpServerConnect', () => {
 		mcpStore.connect.mockResolvedValue(makeConnection({ id: 'conn-new' }));
 		mcpStore.updateConnection.mockResolvedValue(makeConnection({ id: 'conn-1' }));
 		mockCanQuickConnect.mockReturnValue(false);
+	});
+
+	// Attempts are deduped per server in module scope, so a test that leaves one
+	// pending would hand it to the next test
+	afterEach(async () => {
+		await closeCredentialModal();
 	});
 
 	describe('connectWithCredential', () => {
@@ -279,6 +285,37 @@ describe('useMcpServerConnect', () => {
 				credentialId: 'cred-new',
 			});
 			await expect(connecting).resolves.toBe('conn-new');
+		});
+
+		// Two surfaces connecting one server share the modal, so they must not
+		// both create a connection for it
+		it('shares one attempt when the same server is connected twice', async () => {
+			const { connectServer } = useMcpServerConnect();
+			const first = connectServer(linear);
+			const second = connectServer(linear);
+			await flushPromises();
+
+			emitCredentialCreated('cred-new');
+			await closeCredentialModal();
+
+			expect(mcpStore.connect).toHaveBeenCalledTimes(1);
+			await expect(first).resolves.toBe('conn-new');
+			await expect(second).resolves.toBe('conn-new');
+		});
+
+		it('starts a fresh attempt after the previous one settled', async () => {
+			const { connectServer } = useMcpServerConnect();
+			const cancelled = connectServer(linear);
+			await flushPromises();
+			await closeCredentialModal();
+			await expect(cancelled).resolves.toBeNull();
+
+			const retried = connectServer(linear);
+			await flushPromises();
+			emitCredentialCreated('cred-new');
+			await closeCredentialModal();
+
+			await expect(retried).resolves.toBe('conn-new');
 		});
 
 		// Credential types are per server, so overlapping attempts can't pick up
