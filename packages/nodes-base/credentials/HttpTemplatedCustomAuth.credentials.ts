@@ -19,8 +19,8 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 	displayName = 'Simplified Custom Auth';
 
 	// No documentationUrl on purpose: the generic HTTP Request docs don't cover
-	// this type, and setting one makes the credential modal render a docs banner
-	// alongside the recipe's own "Get it from <service>" link.
+	// this type, and setting one makes the credential modal render a docs
+	// banner — the guided form and the AI Assistant handle setup help instead.
 
 	genericAuth = true;
 
@@ -72,15 +72,19 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			name: 'docsUrl',
 			type: 'string',
 			description:
-				'Page where the user obtains the secret (e.g. the provider\'s API-keys dashboard) — shown as the "Get it from" link on setup surfaces',
+				'Provider page where the user creates/copies the secret (e.g. the API-keys dashboard). Not shown in the form — the AI Assistant help thread points the user there.',
 			default: '',
 		},
 		{
-			displayName: 'Icon URL',
-			name: 'iconUrl',
+			// Machine-readable service identity: the credential type is shared by
+			// every service, so setup surfaces need this to offer a credential only
+			// to nodes calling the same service. The name field stays the human layer.
+			displayName: 'Service Host',
+			name: 'serviceHost',
 			type: 'string',
 			description:
-				"The service's logo or favicon (https), shown on setup surfaces. Falls back to the documentation URL's favicon when empty.",
+				'Host of the API this credential authenticates against (e.g. api.pexels.com). Setup surfaces only offer this credential to nodes calling the same host (subdomains match). Set from the recipe when the credential is created; when empty, the credential is never offered automatically.',
+			placeholder: 'api.pexels.com',
 			default: '',
 		},
 		{
