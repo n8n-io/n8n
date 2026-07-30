@@ -12,7 +12,12 @@ import type {
 	TriggerTime,
 	CronExpression,
 } from 'n8n-workflow';
-import { LoggerProxy, TriggerCloseError, WorkflowActivationError } from 'n8n-workflow';
+import {
+	LoggerProxy,
+	TriggerCloseError,
+	WorkflowActivationError,
+	WorkflowDeactivationError,
+} from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -829,6 +834,60 @@ describe('ActiveWorkflowTriggers', () => {
 
 			expect(triggerResponse.closeFunction).toHaveBeenCalled();
 			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
+		describe('best-effort teardown', () => {
+			const nodeA = mock<INode>({ id: 'trigger-a' });
+			const nodeB = mock<INode>({ id: 'trigger-b' });
+
+			it('attempts every close and keeps only the failed nodes tracked', async () => {
+				const failingResponse = mock<ITriggerResponse>();
+				const healthyResponse = mock<ITriggerResponse>();
+				(failingResponse.closeFunction as Mock).mockRejectedValue(new Error('close failed'));
+				triggersAndPollers.runTriggerFunction
+					.mockResolvedValueOnce(failingResponse)
+					.mockResolvedValueOnce(healthyResponse);
+				await addWorkflow({ triggerNodes: [nodeA, nodeB] });
+
+				await expect(activeWorkflowTriggers.remove(workflowId)).rejects.toThrow(
+					WorkflowDeactivationError,
+				);
+
+				// The failure must not stop the remaining cleanup.
+				expect(healthyResponse.closeFunction).toHaveBeenCalledTimes(1);
+				// The failed node stays tracked: dropping it would hide a possibly
+				// still-live trigger from every later teardown and sweep.
+				expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId)).toEqual(
+					new Set([nodeA.id]),
+				);
+				expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+			});
+
+			it('retries only the still-tracked nodes and converges once the close succeeds', async () => {
+				const flakyResponse = mock<ITriggerResponse>();
+				const healthyResponse = mock<ITriggerResponse>();
+				(flakyResponse.closeFunction as Mock)
+					.mockRejectedValueOnce(new Error('close failed'))
+					.mockResolvedValueOnce(undefined);
+				triggersAndPollers.runTriggerFunction
+					.mockResolvedValueOnce(flakyResponse)
+					.mockResolvedValueOnce(healthyResponse);
+				await addWorkflow({ triggerNodes: [nodeA, nodeB] });
+
+				await expect(activeWorkflowTriggers.remove(workflowId)).rejects.toThrow(
+					WorkflowDeactivationError,
+				);
+				// The healthy trigger was already closed by the first, failing attempt …
+				expect(healthyResponse.closeFunction).toHaveBeenCalledTimes(1);
+
+				const result = await activeWorkflowTriggers.remove(workflowId);
+
+				expect(result).toBe(true);
+				expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
+				// … and must not be closed a second time by the retry.
+				expect(healthyResponse.closeFunction).toHaveBeenCalledTimes(1);
+				expect(flakyResponse.closeFunction).toHaveBeenCalledTimes(2);
+			});
 		});
 	});
 

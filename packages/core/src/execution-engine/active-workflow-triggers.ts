@@ -469,8 +469,24 @@ export class ActiveWorkflowTriggers {
 		}
 
 		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
-		for (const r of triggers?.triggerResponses() ?? []) {
-			await this.closeTrigger(r, workflowId);
+		if (!triggers) return hadRegisteredCrons;
+
+		let lastError: Error | null = null;
+
+		// Best-effort: every close is attempted; a failing close keeps its node
+		// tracked (a possibly still-live trigger must stay visible to later
+		// teardown passes) while the rest of the cleanup proceeds.
+		for (const { nodeId, response } of triggers.closableTriggers()) {
+			try {
+				await this.closeTrigger(response, workflowId);
+				triggers.delete(nodeId);
+			} catch (error) {
+				lastError = ensureError(error);
+			}
+		}
+
+		if (lastError) {
+			throw lastError;
 		}
 
 		this.activeTriggersByWorkflowId.delete(workflowId);
