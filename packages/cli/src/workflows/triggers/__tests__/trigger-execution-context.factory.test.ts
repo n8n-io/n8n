@@ -465,7 +465,7 @@ describe('TriggerExecutionContextFactory', () => {
 					additionalData,
 					mode,
 					workflow,
-					{ lastItemId: 'a' },
+					{ cursor: { lastItemId: 'a' }, version: 0 },
 					undefined,
 				);
 			});
@@ -657,7 +657,7 @@ describe('TriggerExecutionContextFactory', () => {
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
 			const pollCursorService = mock<PollCursorService>({ enabled: true });
-			pollCursorService.readCursor.mockResolvedValue({ lastItemId: 'a' });
+			pollCursorService.readCursor.mockResolvedValue({ cursor: { lastItemId: 'a' }, version: 3 });
 			const durableFactory = createFactory(pollCursorService);
 			const getExecutePollFunctionsSpy = vi
 				.spyOn(durableFactory, 'getExecutePollFunctions')
@@ -672,7 +672,7 @@ describe('TriggerExecutionContextFactory', () => {
 				'trigger',
 				'update',
 				expect.any(Function),
-				{ lastItemId: 'a' },
+				{ cursor: { lastItemId: 'a' }, version: 3 },
 			);
 		});
 

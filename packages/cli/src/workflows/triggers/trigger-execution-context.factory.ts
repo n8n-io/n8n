@@ -12,7 +12,6 @@ import {
 } from 'n8n-core';
 import type {
 	ExecutionError,
-	IDataObject,
 	IExecuteResponsePromiseData,
 	INode,
 	INodeExecutionData,
@@ -20,6 +19,7 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	StagedPollCursor,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -228,7 +228,7 @@ export class TriggerExecutionContextFactory {
 		// service (flag on). Once the feature flag is removed, we'll call the
 		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
-		cursor?: IDataObject,
+		cursor?: StagedPollCursor,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
 			// `__emit` reads the staged cursor off the context, and the context needs `__emit`
@@ -309,7 +309,8 @@ export class TriggerExecutionContextFactory {
 				activation,
 				__emit,
 				__emitError,
-				cursor,
+				cursor?.cursor,
+				cursor?.version,
 			);
 			return held.context;
 		};
@@ -336,17 +337,18 @@ export class TriggerExecutionContextFactory {
 			settings: workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({
-			workflowId: workflowData.id,
-			workflowSettings: workflowData.settings,
-		});
-
 		const resolveWorkflowData = async () =>
 			await this.loadPublishedWorkflowData(workflowData.id, { bypassCache: true });
 
-		const cursor = this.pollCursorService.enabled
-			? await this.pollCursorService.readCursor(workflow, node)
-			: undefined;
+		const [additionalData, cursor] = await Promise.all([
+			WorkflowExecuteAdditionalData.getBase({
+				workflowId: workflowData.id,
+				workflowSettings: workflowData.settings,
+			}),
+			this.pollCursorService.enabled
+				? this.pollCursorService.readCursor(workflow, node)
+				: Promise.resolve(undefined),
+		]);
 
 		const getPollFunctions = this.getExecutePollFunctions(
 			workflowData,

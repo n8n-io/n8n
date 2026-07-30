@@ -100,4 +100,36 @@ describe('PollContext', () => {
 			expect(pollContext.getExecutionContext()).toBeUndefined();
 		});
 	});
+
+	describe('cursor', () => {
+		it('returns undefined from __takeStagedCursor when the node staged nothing', () => {
+			expect(pollContext.getCursor()).toBeUndefined();
+			expect(pollContext.__takeStagedCursor()).toBeUndefined();
+		});
+
+		it('carries the version passed at construction alongside a staged cursor', () => {
+			const versioned = new PollContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+				undefined,
+				undefined,
+				undefined,
+				7,
+			);
+
+			versioned.setCursor({ lastItemId: 'a' });
+
+			expect(versioned.__takeStagedCursor()).toEqual({ cursor: { lastItemId: 'a' }, version: 7 });
+		});
+
+		it('clears the staged cursor once taken, so a later poll cannot re-commit it', () => {
+			pollContext.setCursor({ lastItemId: 'a' });
+
+			expect(pollContext.__takeStagedCursor()).toEqual({ cursor: { lastItemId: 'a' }, version: 0 });
+			expect(pollContext.__takeStagedCursor()).toBeUndefined();
+		});
+	});
 });

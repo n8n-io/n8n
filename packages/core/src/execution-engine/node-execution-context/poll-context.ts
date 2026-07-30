@@ -5,6 +5,7 @@ import type {
 	INode,
 	IPollFunctions,
 	IWorkflowExecuteAdditionalData,
+	StagedPollCursor,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -39,6 +40,7 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		readonly __emit: IPollFunctions['__emit'] = throwOnEmit,
 		readonly __emitError: IPollFunctions['__emitError'] = throwOnEmitError,
 		private readonly cursor?: IDataObject,
+		private readonly cursorVersion?: number,
 	) {
 		super(workflow, node, additionalData, mode);
 
@@ -68,12 +70,14 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 	 *
 	 * Clears it, so a later poll on a context that outlives this one cannot re-commit a
 	 * value it did not stage. A throw leaves the context unread, so a staged cursor never
-	 * reaches the database.
+	 * reaches the database. Carries the version read at poll start, so the caller that
+	 * persists it can condition the write on nothing else having advanced it since.
 	 */
-	__takeStagedCursor(): IDataObject | undefined {
+	__takeStagedCursor(): StagedPollCursor | undefined {
 		const staged = this.stagedCursor;
 		this.stagedCursor = undefined;
-		return staged;
+		if (staged === undefined) return undefined;
+		return { cursor: staged, version: this.cursorVersion ?? 0 };
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {

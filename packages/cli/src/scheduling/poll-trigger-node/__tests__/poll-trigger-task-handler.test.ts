@@ -189,13 +189,17 @@ describe('PollTriggerTaskHandler', () => {
 
 		test('commits a cursor that moved without producing items', async () => {
 			triggersAndPollers.runPollFunction.mockResolvedValue(null);
-			pollFunctions.__takeStagedCursor.mockReturnValue({ lastTimeChecked: 2000 });
+			pollFunctions.__takeStagedCursor.mockReturnValue({
+				cursor: { lastTimeChecked: 2000 },
+				version: 4,
+			});
 			const durableCursorService = mock<PollCursorService>({ enabled: true });
 
 			await createHandler(durableCursorService).execute(buildTask(), report);
 
 			expect(durableCursorService.commitEmptyPoll).toHaveBeenCalledWith(workflow, triggerNode, {
-				lastTimeChecked: 2000,
+				cursor: { lastTimeChecked: 2000 },
+				version: 4,
 			});
 			expect(onDispatch).not.toHaveBeenCalled();
 		});
