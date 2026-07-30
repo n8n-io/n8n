@@ -3,7 +3,12 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
+import {
+	Workflow,
+	type INode,
+	type IWorkflowSettings,
+	type WorkflowGroupViolation,
+} from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -699,12 +704,13 @@ export const createUpdateWorkflowTool = (
 			let nodeGroupsNeedPersisting = result.nodeGroupsChanged;
 
 			if (options.canvasGroupsEnabled) {
-				const violations = dropInvalidNodeGroups(
-					result.workflow,
-					makeGetNodeTypeForGrouping(nodeTypes),
-				);
+				const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
 
-				if (violations.length > 0) {
+				const report = (violations: WorkflowGroupViolation[]) => {
+					if (violations.length === 0) {
+						return;
+					}
+
 					// A violation found here always changes what must be persisted, even if
 					// no group op ran this batch — otherwise the omitted `nodeGroups` key
 					// falls back to preserve-on-omit and the still-invalid stored groups get
@@ -722,7 +728,22 @@ export const createUpdateWorkflowTool = (
 							});
 						}
 					}
+				};
+
+				// Two passes, ordered by blame: an overlap between a new and an existing
+				// group makes the validator flag both. Dropping the batch's own group
+				// first lets the innocent existing one survive the second pass.
+				if (Object.keys(result.groupOperations).length > 0) {
+					report(
+						dropInvalidNodeGroups(
+							result.workflow,
+							getNodeType,
+							(violation) => result.groupOperations[violation.groupId] !== undefined,
+						),
+					);
 				}
+
+				report(dropInvalidNodeGroups(result.workflow, getNodeType));
 			}
 
 			const credentialCheck = await validateCredentialReferences(

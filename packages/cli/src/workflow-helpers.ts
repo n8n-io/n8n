@@ -198,18 +198,20 @@ export function validateWorkflowNodeGroups(
 }
 
 /**
- * Non-fatal counterpart of `validateWorkflowNodeGroups`: drops every group that
- * breaks a rule instead of throwing on the first one, and returns the violations
- * so the caller can report which groups went and why. Mutates `nodeGroups`.
+ * Non-fatal counterpart of `validateWorkflowNodeGroups`: drops every offending
+ * group instead of throwing, returning the violations of those it dropped.
+ * Mutates `nodeGroups`. Groups are cosmetic, so the MCP builder tools drop them
+ * to keep the rest of the change; the save path still throws.
  *
- * Groups are cosmetic, so surfaces that would rather keep the rest of the change
- * (the MCP builder tools) drop the offenders; the save path still throws.
+ * `shouldDrop` filters which violating groups are removed, letting a caller
+ * drop the groups it can blame first and re-check the rest afterwards.
  */
 export function dropInvalidNodeGroups(
 	workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'> & {
 		connections?: IWorkflowBase['connections'];
 	},
 	getNodeType: GetNodeTypeForGrouping | null,
+	shouldDrop: (violation: WorkflowGroupViolation) => boolean = () => true,
 ): WorkflowGroupViolation[] {
 	if (!workflow.nodeGroups?.length) {
 		return [];
@@ -226,10 +228,15 @@ export function dropInvalidNodeGroups(
 		return [];
 	}
 
-	const invalidGroupIds = new Set(result.violations.map((violation) => violation.groupId));
-	workflow.nodeGroups = workflow.nodeGroups.filter((group) => !invalidGroupIds.has(group.id));
+	const dropped = result.violations.filter(shouldDrop);
+	if (dropped.length === 0) {
+		return [];
+	}
 
-	return result.violations;
+	const droppedGroupIds = new Set(dropped.map((violation) => violation.groupId));
+	workflow.nodeGroups = workflow.nodeGroups.filter((group) => !droppedGroupIds.has(group.id));
+
+	return dropped;
 }
 
 /**

@@ -666,6 +666,119 @@ describe('update-workflow MCP tool', () => {
 				]);
 			});
 
+			describe('a submitted group overlapping an existing one', () => {
+				const buildWorkflowWithGroup = () =>
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({ id: 'trigger', name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+							makeNode({ id: 'a', name: 'A', position: [200, 0] }),
+							makeNode({ id: 'b', name: 'B', position: [400, 0] }),
+						],
+						connections: {
+							Trigger: { main: [[{ node: 'A', type: 'main', index: 0 }]] },
+							A: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+						} as IConnections,
+						nodeGroups: [{ id: 'g1', name: 'Existing group', nodeIds: ['a', 'b'] }],
+					});
+
+				test('is skipped without taking the existing group down with it', async () => {
+					// The validator flags both sides of an overlap: the new group for
+					// belonging to multiple groups, the existing one for holding nodes
+					// already grouped. Only the submitted one may go — the operation was
+					// rejected, so its collateral damage must be rejected too.
+					findWorkflowMock.mockResolvedValue(buildWorkflowWithGroup());
+
+					const result = await callHandler(
+						{
+							workflowId: 'wf-1',
+							operations: [
+								{ type: 'addNodeGroup', name: 'Overlapping', nodeNames: ['Trigger', 'A'] },
+							],
+						},
+						createOnTool(),
+					);
+
+					expect(result.isError).toBeUndefined();
+
+					const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+					expect(saved.nodeGroups).toEqual([
+						{ id: 'g1', name: 'Existing group', nodeIds: ['a', 'b'] },
+					]);
+
+					const response = parseResult(result);
+					expect(response.skippedOperations).toEqual([
+						{
+							opIndex: 0,
+							type: 'addNodeGroup',
+							reason: expect.stringContaining('belongs to multiple groups') as string,
+						},
+					]);
+					expect(response.removedGroups).toBeUndefined();
+				});
+
+				test('does not stop the other operations in the same batch from saving', async () => {
+					findWorkflowMock.mockResolvedValue(buildWorkflowWithGroup());
+
+					const result = await callHandler(
+						{
+							workflowId: 'wf-1',
+							operations: [
+								{ type: 'renameNode', oldName: 'B', newName: 'B renamed' },
+								{ type: 'addNodeGroup', name: 'Overlapping', nodeNames: ['Trigger', 'A'] },
+							],
+						},
+						createOnTool(),
+					);
+
+					expect(result.isError).toBeUndefined();
+
+					const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+					expect(saved.nodes.map((n) => n.name)).toContain('B renamed');
+					expect(saved.nodeGroups).toHaveLength(1);
+
+					const response = parseResult(result);
+					expect(response.appliedOperations).toBe(1);
+					expect(response.skippedOperations).toEqual([
+						expect.objectContaining({ opIndex: 1, type: 'addNodeGroup' }),
+					]);
+					expect(response.removedGroups).toBeUndefined();
+				});
+
+				test('drops both when the same setNodeGroups submitted both of them', async () => {
+					// Neither group has priority here: the caller wrote both in one
+					// operation, so both belong in skippedOperations, not removedGroups.
+					findWorkflowMock.mockResolvedValue(buildWorkflowWithGroup());
+
+					const result = await callHandler(
+						{
+							workflowId: 'wf-1',
+							operations: [
+								{
+									type: 'setNodeGroups',
+									nodeGroups: [
+										{ id: 'g1', name: 'First', nodeNames: ['A', 'B'] },
+										{ id: 'g2', name: 'Second', nodeNames: ['A'] },
+									],
+								},
+							],
+						},
+						createOnTool(),
+					);
+
+					expect(result.isError).toBeUndefined();
+
+					const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+					expect(saved.nodeGroups).toEqual([]);
+
+					const response = parseResult(result);
+					expect(response.removedGroups).toBeUndefined();
+					expect(response.skippedOperations).toHaveLength(2);
+				});
+			});
+
 			test('a group that splits an AI sub-node from its Agent is skipped', async () => {
 				findWorkflowMock.mockResolvedValue(
 					Object.assign(new WorkflowEntity(), {
