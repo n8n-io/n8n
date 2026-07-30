@@ -19,7 +19,6 @@ import type {
 	IExecutionContext,
 	INodeExecutionData,
 	IRun,
-	IRunData,
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
@@ -60,13 +59,6 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
-
-/** First item of a node's first run on its main output, if it produced one. */
-function getFirstOutputJson(runData: IRunData, nodeName: string): IDataObject | undefined {
-	const [firstRun] = runData[nodeName] ?? [];
-	const [firstItem] = firstRun?.data?.main?.[0] ?? [];
-	return firstItem?.json;
-}
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -371,17 +363,18 @@ export class JobProcessor {
 				toolResult = await withExpressionIsolate(
 					workflow,
 					async () =>
-						await this.invokeTool(
+						await this.invokeTool({
 							workflow,
 							sourceNodeName,
 							toolArgs,
+							toolInput: job.data.mcpToolInput,
 							additionalData,
-							run.data,
+							runExecutionData: run.data,
 							// The execution context (e.g. the OAuth identity for private credentials)
 							// is established on the main and loaded with the execution here; pass it
 							// through so the tool node can resolve dynamic credentials on the worker.
-							execution.data?.executionData?.runtimeData,
-						),
+							executionContext: execution.data?.executionData?.runtimeData,
+						}),
 				);
 			} catch (error) {
 				this.logger.error('Tool node execution failed for MCP Trigger', {
@@ -519,18 +512,24 @@ export class JobProcessor {
 	 * For tool wrapper nodes without supplyData (e.g. httpRequestTool), calls
 	 * execute directly — mirroring the fallback in get-input-connection-data.ts.
 	 */
-	private async invokeTool(
-		workflow: Workflow,
-		sourceNodeName: string,
-		toolArgs: Record<string, unknown>,
-		additionalData: ReturnType<typeof WorkflowExecuteAdditionalData.getBase> extends Promise<
-			infer T
-		>
-			? T
-			: never,
-		runExecutionData: IRunExecutionData,
-		executionContext?: IExecutionContext,
-	): Promise<unknown> {
+	private async invokeTool({
+		workflow,
+		sourceNodeName,
+		toolArgs,
+		toolInput,
+		additionalData,
+		runExecutionData,
+		executionContext,
+	}: {
+		workflow: Workflow;
+		sourceNodeName: string;
+		toolArgs: Record<string, unknown>;
+		/** The MCP request as node input, built on the main from the request itself. */
+		toolInput?: IDataObject;
+		additionalData: Awaited<ReturnType<typeof WorkflowExecuteAdditionalData.getBase>>;
+		runExecutionData: IRunExecutionData;
+		executionContext?: IExecutionContext;
+	}): Promise<unknown> {
 		const toolNode = workflow.getNode(sourceNodeName);
 		if (!toolNode) {
 			throw new UnexpectedError(`Tool node "${sourceNodeName}" not found in workflow`);
@@ -543,25 +542,15 @@ export class JobProcessor {
 		const validatedToolArgs =
 			typeof toolArgs === 'object' && toolArgs !== null && !Array.isArray(toolArgs) ? toolArgs : {};
 
-		// Parent = the node the tool feeds (the MCP trigger), so the recorded run
-		// data's `source` points back at it, as in direct mode.
-		const [parentNodeName] = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
-		const parentNode = parentNodeName ? (workflow.getNode(parentNodeName) ?? undefined) : undefined;
+		// A tool can feed several MCP triggers, and connection order says nothing about which
+		// one this execution came from - only the trigger that ran has run data. Recording it
+		// as parent points the tool's run data `source` at it, as in direct mode.
+		const { runData } = runExecutionData.resultData;
+		const triggerNames = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
+		const triggerName = triggerNames.find((name) => runData[name]) ?? triggerNames[0];
+		const parentNode = triggerName ? (workflow.getNode(triggerName) ?? undefined) : undefined;
 
-		// The trigger's output (webhook body + headers) is what the tool sees as `$json`
-		// in direct mode, so carry it over here to keep tool input identical.
-		const triggerJson = parentNodeName
-			? getFirstOutputJson(runExecutionData.resultData.runData, parentNodeName)
-			: undefined;
-
-		// Create input data for the tool node with the tool arguments
-		const inputData: INodeExecutionData[][] = [
-			[
-				{
-					json: { ...triggerJson, ...validatedToolArgs } as INodeExecutionData['json'],
-				},
-			],
-		];
+		const inputData: INodeExecutionData[][] = [[{ json: toolInput ?? {} }]];
 
 		// `executionData` must exist for output recording; init it if the run lacks it.
 		runExecutionData.executionData ??= {

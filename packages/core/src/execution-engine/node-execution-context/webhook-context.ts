@@ -29,6 +29,7 @@ import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
+import { requestAsNodeInput } from '../../utils/request-as-node-input';
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
 
@@ -220,17 +221,10 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
 	): Promise<unknown> {
-		// To be able to use expressions like "$json.sessionId" set the
-		// body data the webhook received to what is normally used for
-		// incoming node data.
-		const { httpRequest } = this.additionalData;
+		// To be able to use expressions like "$json.sessionId" set the request
+		// the webhook received to what is normally used for incoming node data.
 		const connectionInputData: INodeExecutionData[] = [
-			{
-				json: {
-					...((httpRequest?.body ?? {}) as IDataObject),
-					headers: httpRequest?.headers ?? {},
-				},
-			},
+			{ json: requestAsNodeInput(this.additionalData.httpRequest) },
 		];
 		const runExecutionData = this.runExecutionData ?? createEmptyRunExecutionData();
 		const executeData: IExecuteData = {

@@ -16,6 +16,7 @@ import {
 	ErrorReporter,
 	establishExecutionContext,
 	ExecutionContextService,
+	requestAsNodeInput,
 	WAITING_TOKEN_QUERY_PARAM,
 } from 'n8n-core';
 import type {
@@ -843,6 +844,9 @@ export async function executeWebhook(
 			if (isMcpToolCall(mcpToolCallValue)) {
 				runData.mcpToolCall = mcpToolCallValue;
 			}
+
+			// The worker has no access to the request, so carry its node input over
+			runData.mcpToolInput = requestAsNodeInput(req);
 
 			// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
 			const mcpListToolsRelayValue =
