@@ -592,6 +592,31 @@ describe('AgentEvalRunnerService', () => {
 			expect(runRepository.markAsError).not.toHaveBeenCalled();
 		});
 
+		it('does not fire instantly when the configured deadline overflows the timer', async () => {
+			vi.useFakeTimers();
+			// Past the 32-bit ms ceiling, where an unclamped delay collapses to 1ms.
+			globalConfig.evaluation.agentEvalsRunTimeoutMinutes = 40_000;
+			seedFor([{ id: 'row-1', question: 'Q1' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			// Park the case on the clock, so an over-eager deadline gets to abort it
+			// before the pool can finish on microtasks alone.
+			let releaseSlot: (() => void) | undefined;
+			concurrencyControl.throttle.mockImplementation(async () => {
+				await new Promise<void>((resolve) => {
+					releaseSlot = resolve;
+				});
+			});
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await vi.advanceTimersByTimeAsync(60_000);
+			releaseSlot?.();
+			await finished;
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
+			expect(runRepository.markAsCompleted).toHaveBeenCalled();
+			expect(runRepository.markAsError).not.toHaveBeenCalled();
+		});
+
 		it('runs without a deadline when the timeout is disabled', async () => {
 			vi.useFakeTimers();
 			globalConfig.evaluation.agentEvalsRunTimeoutMinutes = 0;

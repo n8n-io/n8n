@@ -36,6 +36,9 @@ const MAX_PER_RUN_CONCURRENCY = 10;
 // Each case is a real agent execution, so a run is capped rather than letting a
 // large table launch thousands of model calls. Raise deliberately if needed.
 const MAX_CASES = 500;
+// `setTimeout` holds its delay in a 32-bit int and silently coerces anything
+// larger to 1ms, so a deadline past ~24.8 days must be clamped, not passed on.
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
 
 /** A dataset row resolved into a runnable case via the dataset's column mapping. */
 interface ResolvedCase {
@@ -393,10 +396,13 @@ export class AgentEvalRunnerService {
 		}
 
 		let expired = false;
-		const timer = setTimeout(() => {
-			expired = true;
-			abort.abort();
-		}, deadlineMinutes * 60_000);
+		const timer = setTimeout(
+			() => {
+				expired = true;
+				abort.abort();
+			},
+			Math.min(deadlineMinutes * 60_000, MAX_TIMER_DELAY_MS),
+		);
 		// Never hold the process open for a run that outlived its deadline.
 		timer.unref();
 
