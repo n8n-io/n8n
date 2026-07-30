@@ -103,6 +103,25 @@ describe('TaskBrokerWsServer', () => {
 			expect(server.runnerConnections.get('test-runner')).toBe(newWs);
 		});
 
+		it('should fail the tasks in flight on the replaced connection when the runner reconnects', async () => {
+			const { disconnectAnalyzer, complete } = pendingAnalysis();
+			const taskBroker = mock<TaskBroker>();
+			taskBroker.getInFlightTaskIds.mockReturnValue(['task1', 'task2']);
+			const server = createServer({ taskBroker, disconnectAnalyzer });
+			server.runnerConnections.set('test-runner', mockWs());
+
+			const removal = server.removeConnection('test-runner');
+			await Promise.resolve();
+
+			server.runnerConnections.set('test-runner', mockWs());
+			const disconnectError = new Error('disconnected');
+			complete(disconnectError);
+			await removal;
+
+			expect(taskBroker.deregisterRunner).not.toHaveBeenCalled();
+			expect(taskBroker.failTasks).toHaveBeenCalledWith(['task1', 'task2'], disconnectError);
+		});
+
 		it('should ignore stale close events from replaced connections', async () => {
 			const taskBroker = mock<TaskBroker>();
 			const server = createServer({ taskBroker });

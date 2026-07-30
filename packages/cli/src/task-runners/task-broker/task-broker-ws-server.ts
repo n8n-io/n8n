@@ -183,6 +183,8 @@ export class TaskBrokerWsServer {
 			this.runnerConnections.delete(id);
 			connection.close(code);
 
+			const inFlightTaskIds = this.taskBroker.getInFlightTaskIds(id);
+
 			const disconnectError = await this.disconnectAnalyzer.toDisconnectError({
 				runnerId: id,
 				reason,
@@ -191,7 +193,9 @@ export class TaskBrokerWsServer {
 
 			const hasReconnected = this.runnerConnections.has(id);
 
-			if (!hasReconnected) {
+			if (hasReconnected) {
+				this.taskBroker.failTasks(inFlightTaskIds, disconnectError);
+			} else {
 				this.taskBroker.deregisterRunner(id, disconnectError);
 				this.logger.debug(`Deregistered runner "${id}"`);
 			}
