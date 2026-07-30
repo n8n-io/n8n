@@ -7,7 +7,7 @@ import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk } from '@langchain/core/messages';
+import type { AIMessage, AIMessageChunk } from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import type { StreamEvent } from '@langchain/core/types/stream';
@@ -19,7 +19,7 @@ import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { type ChatModelEndOutput, extractMessageText, loadMemory } from '@utils/agent-execution';
+import { loadMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import {
@@ -159,13 +159,13 @@ async function processEventStream(
 				const chunk = event.data?.chunk as AIMessageChunk;
 				if (chunk?.content) {
 					const pending = pendingChunksByRun.get(event.run_id) ?? [];
-					pending.push(extractMessageText(chunk.content));
+					pending.push(chunk.text);
 					pendingChunksByRun.set(event.run_id, pending);
 				}
 				break;
 			}
 			case 'on_chat_model_end': {
-				const output = event.data?.output as ChatModelEndOutput | undefined;
+				const output = event.data?.output as AIMessage | undefined;
 				const toolCalls = output?.tool_calls ?? [];
 
 				const pending = pendingChunksByRun.get(event.run_id) ?? [];
@@ -188,7 +188,7 @@ async function processEventStream(
 								tool: toolCall.name,
 								toolInput: toolCall.args,
 								log:
-									extractMessageText(output?.content) ||
+									output?.text ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 								messageLog: [output], // Include the full LLM response
 								toolCallId: toolCall.id,

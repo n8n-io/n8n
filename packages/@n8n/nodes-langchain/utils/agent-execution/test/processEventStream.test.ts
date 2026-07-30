@@ -1,3 +1,5 @@
+import type { MessageContent, ToolCall } from '@langchain/core/messages';
+import { AIMessage, AIMessageChunk } from '@langchain/core/messages';
 import type { StreamEvent } from '@langchain/core/types/stream';
 import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -13,24 +15,18 @@ function toStream(events: StreamEvent[]): IterableReadableStream<StreamEvent> {
 	})() as unknown as IterableReadableStream<StreamEvent>;
 }
 
-function textChunk(text: string): StreamEvent {
+// Real message instances, because the code reads `.text` — a getter a plain object lacks
+function streamChunk(content: MessageContent): StreamEvent {
 	return {
 		event: 'on_chat_model_stream',
-		data: { chunk: { content: text } },
+		data: { chunk: new AIMessageChunk({ content }) },
 	} as unknown as StreamEvent;
 }
 
-function blockChunk(blocks: Array<Record<string, unknown>>): StreamEvent {
-	return {
-		event: 'on_chat_model_stream',
-		data: { chunk: { content: blocks } },
-	} as unknown as StreamEvent;
-}
-
-function modelEnd(output: Record<string, unknown>): StreamEvent {
+function modelEnd(fields: { content: MessageContent; tool_calls?: ToolCall[] }): StreamEvent {
 	return {
 		event: 'on_chat_model_end',
-		data: { output },
+		data: { output: new AIMessage(fields) },
 	} as unknown as StreamEvent;
 }
 
@@ -44,7 +40,7 @@ describe('processEventStream', () => {
 	it('streams a plain final answer and returns it as output', async () => {
 		const result = await processEventStream(
 			ctx,
-			toStream([textChunk('All '), textChunk('done!'), modelEnd({ content: 'All done!' })]),
+			toStream([streamChunk('All '), streamChunk('done!'), modelEnd({ content: 'All done!' })]),
 			0,
 		);
 
@@ -80,7 +76,7 @@ describe('processEventStream', () => {
 		const result = await processEventStream(
 			ctx,
 			toStream([
-				blockChunk([
+				streamChunk([
 					{ type: 'text', text: 'Room 1101' },
 					{ type: 'image_url', image_url: { url: 'https://example.com/a.png' } },
 				]),
@@ -98,7 +94,7 @@ describe('processEventStream', () => {
 			const result = await processEventStream(
 				ctx,
 				toStream([
-					blockChunk([{ type: 'text', text: 'Room 1101' }]),
+					streamChunk([{ type: 'text', text: 'Room 1101' }]),
 					modelEnd({
 						content: [
 							{ type: 'text', text: 'Room 1101' },

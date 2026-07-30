@@ -1,6 +1,7 @@
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { AIMessage, AIMessageChunk } from '@langchain/core/messages';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -606,27 +607,15 @@ describe('toolsAgentExecute', () => {
 			const mockStreamEvents = async function* () {
 				yield {
 					event: 'on_chat_model_stream',
-					data: {
-						chunk: {
-							content: 'Hello ',
-						},
-					},
+					data: { chunk: new AIMessageChunk({ content: 'Hello ' }) },
 				};
 				yield {
 					event: 'on_chat_model_stream',
-					data: {
-						chunk: {
-							content: 'world!',
-						},
-					},
+					data: { chunk: new AIMessageChunk({ content: 'world!' }) },
 				};
 				yield {
 					event: 'on_chat_model_end',
-					data: {
-						output: {
-							content: 'Hello world!',
-						},
-					},
+					data: { output: new AIMessage({ content: 'Hello world!' }) },
 				};
 			};
 
@@ -670,32 +659,18 @@ describe('toolsAgentExecute', () => {
 				return defaultValue;
 			});
 
-			// Simulate an AIMessage class instance (has toJSON and direct properties)
-			const fakeAIMessage = {
+			const fakeAIMessage = new AIMessage({
 				content: 'I need to call a tool',
 				tool_calls: [
 					{
 						id: 'call_123',
 						name: 'TestTool',
 						args: { input: 'test data' },
-						type: 'function',
+						type: 'tool_call',
 					},
 				],
-				additional_kwargs: {},
-				response_metadata: {},
 				id: 'msg_abc',
-				toJSON() {
-					return {
-						lc: 1,
-						type: 'constructor',
-						id: ['langchain_core', 'messages', 'AIMessage'],
-						kwargs: {
-							content: this.content,
-							tool_calls: this.tool_calls,
-						},
-					};
-				},
-			};
+			});
 
 			// Mock async generator for streamEvents with tool calls
 			const mockStreamEvents = async function* () {
@@ -717,19 +692,11 @@ describe('toolsAgentExecute', () => {
 				// Final LLM response
 				yield {
 					event: 'on_chat_model_stream',
-					data: {
-						chunk: {
-							content: 'Final response',
-						},
-					},
+					data: { chunk: new AIMessageChunk({ content: 'Final response' }) },
 				};
 				yield {
 					event: 'on_chat_model_end',
-					data: {
-						output: {
-							content: 'Final response',
-						},
-					},
+					data: { output: new AIMessage({ content: 'Final response' }) },
 				};
 			};
 
@@ -755,14 +722,14 @@ describe('toolsAgentExecute', () => {
 			expect(step.action.tool).toBe('TestTool');
 			expect(step.action.toolInput).toEqual({ input: 'test data' });
 			expect(step.action.toolCallId).toBe('call_123');
-			expect(step.action.type).toBe('function');
+			expect(step.action.type).toBe('tool_call');
 			expect(step.action.messageLog).toBeDefined();
 			expect(step.observation).toBe('Tool execution result');
 
 			const messageLogEntry = step.action.messageLog[0];
 			expect(messageLogEntry.content).toBe('I need to call a tool');
 			expect(messageLogEntry.tool_calls).toEqual([
-				{ id: 'call_123', name: 'TestTool', args: { input: 'test data' }, type: 'function' },
+				{ id: 'call_123', name: 'TestTool', args: { input: 'test data' }, type: 'tool_call' },
 			]);
 		});
 
@@ -776,16 +743,16 @@ describe('toolsAgentExecute', () => {
 				yield {
 					event: 'on_chat_model_stream',
 					run_id: 'run-1',
-					data: { chunk: { content: 'Room 1101' } },
+					data: { chunk: new AIMessageChunk({ content: 'Room 1101' }) },
 				};
 				yield {
 					event: 'on_chat_model_end',
 					run_id: 'run-1',
 					data: {
-						output: {
+						output: new AIMessage({
 							content: [{ type: 'text', text: 'Room 1101' }],
-							tool_calls: [{ id: 'call_1', name: 'TestTool', args: {}, type: 'function' }],
-						},
+							tool_calls: [{ id: 'call_1', name: 'TestTool', args: {}, type: 'tool_call' }],
+						}),
 					},
 				};
 				yield {
@@ -797,12 +764,12 @@ describe('toolsAgentExecute', () => {
 				yield {
 					event: 'on_chat_model_stream',
 					run_id: 'run-2',
-					data: { chunk: { content: 'Work order created successfully!' } },
+					data: { chunk: new AIMessageChunk({ content: 'Work order created successfully!' }) },
 				};
 				yield {
 					event: 'on_chat_model_end',
 					run_id: 'run-2',
-					data: { output: { content: 'Work order created successfully!' } },
+					data: { output: new AIMessage({ content: 'Work order created successfully!' }) },
 				};
 			};
 
@@ -834,17 +801,17 @@ describe('toolsAgentExecute', () => {
 				yield {
 					event: 'on_chat_model_stream',
 					run_id: 'failed-run',
-					data: { chunk: { content: 'partial ' } },
+					data: { chunk: new AIMessageChunk({ content: 'partial ' }) },
 				};
 				yield {
 					event: 'on_chat_model_stream',
 					run_id: 'fallback-run',
-					data: { chunk: { content: 'Complete answer' } },
+					data: { chunk: new AIMessageChunk({ content: 'Complete answer' }) },
 				};
 				yield {
 					event: 'on_chat_model_end',
 					run_id: 'fallback-run',
-					data: { output: { content: 'Complete answer' } },
+					data: { output: new AIMessage({ content: 'Complete answer' }) },
 				};
 			};
 
@@ -976,14 +943,14 @@ describe('toolsAgentExecute', () => {
 				yield {
 					event: 'on_chat_model_stream',
 					data: {
-						chunk: {
+						chunk: new AIMessageChunk({
 							content: [
 								{ type: 'text', text: 'Hello ' },
 								{ type: 'thinking', content: 'This is thinking content' },
 								{ type: 'text', text: 'world!' },
 								{ type: 'image', url: 'data:image/png;base64,abc123' },
 							],
-						},
+						}),
 					},
 				};
 				yield {
@@ -1018,15 +985,11 @@ describe('toolsAgentExecute', () => {
 			const mockStreamEvents = async function* () {
 				yield {
 					event: 'on_chat_model_stream',
-					data: {
-						chunk: {
-							content: 'Direct string content',
-						},
-					},
+					data: { chunk: new AIMessageChunk({ content: 'Direct string content' }) },
 				};
 				yield {
 					event: 'on_chat_model_end',
-					data: { output: { content: 'Direct string content' } },
+					data: { output: new AIMessage({ content: 'Direct string content' }) },
 				};
 			};
 
@@ -1057,18 +1020,18 @@ describe('toolsAgentExecute', () => {
 				yield {
 					event: 'on_chat_model_stream',
 					data: {
-						chunk: {
+						chunk: new AIMessageChunk({
 							content: [
 								{ type: 'thinking', content: 'This is thinking content' },
 								{ type: 'image', url: 'data:image/png;base64,abc123' },
 								{ type: 'audio', data: 'audio-data' },
 							],
-						},
+						}),
 					},
 				};
 				yield {
 					event: 'on_chat_model_end',
-					data: { output: { content: '' } },
+					data: { output: new AIMessage({ content: '' }) },
 				};
 			};
 

@@ -1,22 +1,6 @@
-import type { AIMessage, MessageContent } from '@langchain/core/messages';
+import type { AIMessage } from '@langchain/core/messages';
 import type { IDataObject, GenericValue } from 'n8n-workflow';
 import type { ZodType } from 'zod';
-
-/**
- * The `output` of an `on_chat_model_end` stream event, which LangChain types as `any`.
- * Naming the shape is what lets the compiler catch content blocks being used where a
- * string is expected.
- */
-export type ChatModelEndOutput = {
-	content?: MessageContent;
-	tool_calls?: Array<{
-		name: string;
-		args: Record<string, unknown>;
-		id?: string;
-		type?: string;
-	}>;
-	additional_kwargs?: Record<string, unknown>;
-};
 
 /**
  * Represents a tool call request from an LLM.

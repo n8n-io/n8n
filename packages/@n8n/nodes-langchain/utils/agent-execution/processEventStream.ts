@@ -1,10 +1,9 @@
-import type { AIMessageChunk } from '@langchain/core/messages';
+import type { AIMessage, AIMessageChunk } from '@langchain/core/messages';
 import type { StreamEvent } from '@langchain/core/types/stream';
 import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { extractMessageText } from './extractMessageText';
-import type { AgentResult, ChatModelEndOutput, ToolCallRequest } from './types';
+import type { AgentResult, ToolCallRequest } from './types';
 
 /**
  * Processes the event stream from a streaming agent execution.
@@ -36,7 +35,7 @@ export async function processEventStream(
 			case 'on_chat_model_stream':
 				const chunk = event.data?.chunk as AIMessageChunk;
 				if (chunk?.content) {
-					const chunkText = extractMessageText(chunk.content);
+					const chunkText = chunk.text;
 					ctx.sendChunk('item', itemIndex, chunkText);
 
 					agentResult.output += chunkText;
@@ -45,7 +44,7 @@ export async function processEventStream(
 			case 'on_chat_model_end':
 				// Capture full LLM response with tool calls for intermediate steps
 				if (event.data) {
-					const output = event.data.output as ChatModelEndOutput | undefined;
+					const output = event.data.output as AIMessage | undefined;
 
 					// Check if this LLM response contains tool calls
 					if (output?.tool_calls && output.tool_calls.length > 0) {
@@ -59,7 +58,7 @@ export async function processEventStream(
 								toolCallId: toolCall.id || 'unknown',
 								type: toolCall.type || 'tool_call',
 								log:
-									extractMessageText(output.content) ||
+									output.text ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 								messageLog: [output],
 								// Pass additional_kwargs to ALL tool calls so signature is available
