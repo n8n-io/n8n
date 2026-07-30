@@ -141,7 +141,7 @@ export function useAgentToolCatalog() {
 			projectWorkflows.value = await workflowsListStore.searchWorkflows({
 				projectId,
 				triggerNodeTypes: [...SUPPORTED_WORKFLOW_TOOL_TRIGGERS],
-				select: ['id', 'name', 'description', 'isArchived', 'nodes'],
+				select: ['id', 'name', 'description', 'isArchived', 'nodes', 'updatedAt'],
 			});
 		} catch (error) {
 			console.warn('[useAgentToolCatalog] failed to load workflows for project', error);
@@ -151,6 +151,7 @@ export function useAgentToolCatalog() {
 	return {
 		availableToolTypes,
 		availableWorkflows,
+		projectWorkflows,
 		loadWorkflows,
 		resolveToolNodeType,
 	};

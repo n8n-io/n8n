@@ -254,6 +254,9 @@ describe('emit-instance-ai', () => {
 			'validateWorkflow',
 			'getSchemaBaseDirs',
 			'setSchemaBaseDirs',
+			'isInformationalIssue',
+			'partitionValidationIssues',
+			'validateWorkflowBuilder',
 			// Pin-data + schema discovery
 			'discoverOutputSchemaForNode',
 			'discoverSchemasForNode',
