@@ -1,0 +1,58 @@
+packages/cli/src/public-api/v1/handlers/sso-saml/spec/paths/settings.sso.saml.yml
+  s_2138fd2cfb76ec::t_873488da91a169 33-37
+  s_2138fd2cfb76ec::t_1a854453bc7d4f 32
+  s_2138fd2cfb76ec::t_e1113b89eabca2 24,30,41
+packages/cli/src/public-api/v1/handlers/security-policy/spec/schemas/security-policy.update.yml
+  s_2138fd2cfb76ec::t_4d5359259405d2 4-7
+  s_2138fd2cfb76ec::t_f7ed4a90f6e726 3,28-42
+packages/@n8n/api-types/src/dto/saml/saml-preferences.dto.ts
+  s_2138fd2cfb76ec::t_65e987ae4e36de 67-68,71-80,88-89
+  s_2138fd2cfb76ec::t_4834fe119833cd 66,69,81-87,90-92
+packages/cli/src/public-api/v1/handlers/security-policy/spec/paths/security-policy.yml
+  s_2138fd2cfb76ec::t_27e8c0a916bd94 23,29,39
+  s_2138fd2cfb76ec::t_4923e66c397aca 31-37
+packages/@n8n/api-types/src/dto/saml/saml-configuration-response.dto.ts
+  s_2138fd2cfb76ec::t_11319d03da394a 3-4,6-34
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_2138fd2cfb76ec::t_88f7a3e51d88b5 181,187
+packages/cli/test/integration/public-api/security-policy.test.ts
+  s_2138fd2cfb76ec::t_aa8e9a9adb03dd 108-114,120-121,136,160-172,178-183,193-196,198
+  s_2138fd2cfb76ec::t_9b9b4ead88c990 141-159
+  s_2138fd2cfb76ec::t_8861a606006b3c 197
+packages/cli/test/integration/saml/sample-metadata.ts
+  s_2138fd2cfb76ec::t_6b595afe3284cd 12,24-25
+packages/cli/src/public-api/v1/handlers/sso-saml/spec/schemas/saml-configuration.update.yml
+  s_2138fd2cfb76ec::t_4fc4b69849e3bf 3-5,7-9,17-18,25,32-33,49,54-56,59,62,94-96,99-101,134
+  s_2138fd2cfb76ec::t_7a19f9f7efb9f5 136-147
+  s_2138fd2cfb76ec::t_97034154ea15e8 6,10-16,19-21,27-31,111-113,121-123
+packages/cli/src/public-api/v1/handlers/sso-saml/sso-saml.mapper.ts
+  s_2138fd2cfb76ec::t_401111e2370034 1-5,62-64,68-69
+  s_2138fd2cfb76ec::t_004167c1874177 57-59,70
+  s_2138fd2cfb76ec::t_35faf0e511339f 13-19,22-49,54-56,60-61,65-67,71-72
+packages/cli/src/public-api/v1/handlers/sso-saml/spec/schemas/saml-configuration.yml
+  s_2138fd2cfb76ec::t_2798a7e64d3aef 6-8,11-12,16-18,36-42,68,72,106,112,123-125,133-135,146
+packages/cli/test/integration/public-api/sso-saml.test.ts
+  s_2138fd2cfb76ec::t_925428a33e6572 128,134,189-199,205-209,225-229,240-241,249-250,262-263,274-278
+  s_2138fd2cfb76ec::t_051628edfab70a 153-188
+  s_2138fd2cfb76ec::t_e3a56095fc135c 86-89
+packages/cli/src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts
+  s_2138fd2cfb76ec::t_778f4f780dd1bd 9,50
+packages/@n8n/api-types/src/dto/security-settings/security-policy.dto.ts
+  s_2138fd2cfb76ec::t_07299fb0504389 11-14,17-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a863a6fa791741158c7f8453e69987a8b924a49c",
+  "prompts": {},
+  "sessions": {
+    "s_2138fd2cfb76ec": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "02c0a3d3-b542-4d3c-b40c-957149418e2d",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

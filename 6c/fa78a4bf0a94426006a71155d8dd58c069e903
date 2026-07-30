@@ -1,0 +1,37 @@
+packages/@n8n/nodes-langchain/utils/agent-execution/test/processEventStream.test.ts
+  s_310898ca29d655::t_26d0f1175dc697 71
+  s_310898ca29d655::t_010a75797df73f 1-3,5-70,72-153
+  s_310898ca29d655::t_69bf63d748e092 4
+packages/@n8n/nodes-langchain/utils/agent-execution/extractMessageText.ts
+  s_310898ca29d655::t_fe5480f667f2a6 1-26
+packages/@n8n/nodes-langchain/utils/agent-execution/processEventStream.ts
+  s_310898ca29d655::t_81b63135054434 1,6,39,63
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  s_310898ca29d655::t_2e035fcbc0dae0 155
+  s_310898ca29d655::t_be1844292ed369 175
+  s_310898ca29d655::t_b512cc307aa33d 10
+  s_310898ca29d655::t_0d37554531c68e 22
+packages/@n8n/nodes-langchain/utils/agent-execution/index.ts
+  s_310898ca29d655::t_6c4847493bde39 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6cfa78a4bf0a94426006a71155d8dd58c069e903",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_310898ca29d655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ee3532-6ecf-4a19-98d5-dbaebd013a10",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
