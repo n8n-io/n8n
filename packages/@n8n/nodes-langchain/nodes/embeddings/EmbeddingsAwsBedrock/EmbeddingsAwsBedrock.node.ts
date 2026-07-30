@@ -1,5 +1,7 @@
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
-import { assertSupportedAwsRegion } from 'n8n-nodes-base/aws-credentials';
+import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
+import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
+import { resolveBedrockRegion } from '@utils/aws/resolveBedrockRegion';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 import {
 	jsonParse,
@@ -10,9 +12,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
-import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 import { BedrockInvokeModelEmbeddings } from './BedrockInvokeModelEmbeddings';
 import { listModels } from './methods/listModels';
@@ -137,14 +136,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			additionalModelRequestFields?: string;
 		};
 
-		// A model given as a full ARN carries its own region (e.g. a cross-region
-		// inference profile), which overrides the credential's region.
-		let region = credentialRegion;
-		const arnMatch = modelName.match(/^arn:(?:aws|aws-cn|aws-us-gov):bedrock:([a-z0-9-]+):/);
-		if (arnMatch) {
-			assertSupportedAwsRegion(arnMatch[1]);
-			region = arnMatch[1];
-		}
+		const region = resolveBedrockRegion(modelName, credentialRegion);
 
 		const client = createBedrockRuntimeClient({
 			region,
