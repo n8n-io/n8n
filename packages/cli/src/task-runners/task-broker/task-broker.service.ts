@@ -116,6 +116,9 @@ export class TaskBroker {
 		if (this.taskRunnersConfig.taskRequestTimeout <= 0) {
 			throw new UserError('Task request timeout must be greater than 0');
 		}
+		if (this.taskRunnersConfig.taskAcceptTimeout <= 0) {
+			throw new UserError('Task accept timeout must be greater than 0');
+		}
 	}
 
 	private createRequestTimeout(requestId: string): NodeJS.Timeout {

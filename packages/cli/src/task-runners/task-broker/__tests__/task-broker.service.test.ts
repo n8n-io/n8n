@@ -37,6 +37,14 @@ describe('TaskBroker', () => {
 				'Task request timeout must be greater than 0',
 			);
 		});
+
+		it('should reject a non-positive task accept timeout', () => {
+			const config = mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskAcceptTimeout: 0 });
+
+			expect(() => new TaskBroker(mock(), config, mock(), mock())).toThrowError(
+				'Task accept timeout must be greater than 0',
+			);
+		});
 	});
 
 	describe('expireTasks', () => {
