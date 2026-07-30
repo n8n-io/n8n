@@ -113,6 +113,9 @@ export class TaskBroker {
 		if (this.taskRunnersConfig.taskTimeout <= 0) {
 			throw new UserError('Task timeout must be greater than 0');
 		}
+		if (this.taskRunnersConfig.taskRequestTimeout <= 0) {
+			throw new UserError('Task request timeout must be greater than 0');
+		}
 	}
 
 	private createRequestTimeout(requestId: string): NodeJS.Timeout {
@@ -614,10 +617,9 @@ export class TaskBroker {
 					runnerId: offer.runnerId,
 				});
 
-				// TODO: customisable timeout
 				runnerAcceptTimer = setTimeout(() => {
 					reject(new TaskRunnerAcceptTimeoutError(taskId, offer.runnerId));
-				}, 2000);
+				}, this.taskRunnersConfig.taskAcceptTimeout * Time.seconds.toMilliseconds);
 			});
 
 			await this.messageRunner(offer.runnerId, {
@@ -644,6 +646,13 @@ export class TaskBroker {
 				this.logger.warn(e.message);
 				this.runnerAcceptRejects.delete(taskId);
 				this.refreshRequestTimeout(request);
+				// The runner may have created the task before its acknowledgement timed out,
+				// holding one of its concurrency slots until the task's own timeout elapses.
+				await this.messageRunner(offer.runnerId, {
+					type: 'broker:taskcancel',
+					taskId,
+					reason: 'Acknowledgement window elapsed',
+				});
 				// A runner missing the acknowledgement window may be gone without its transport
 				// having reported it yet, so its remaining offers cannot be trusted either.
 				this.discardOffersFrom(offer.runnerId);
@@ -689,10 +698,9 @@ export class TaskBroker {
 						reject,
 					});
 
-					// TODO: customisable timeout
 					requesterAcceptTimer = setTimeout(() => {
 						reject('Requester timed out');
-					}, 2000);
+					}, this.taskRunnersConfig.taskAcceptTimeout * Time.seconds.toMilliseconds);
 				},
 			);
 
