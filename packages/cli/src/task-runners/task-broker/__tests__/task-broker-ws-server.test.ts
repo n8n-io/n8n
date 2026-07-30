@@ -52,6 +52,20 @@ describe('TaskBrokerWsServer', () => {
 
 			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseNormal);
 		});
+
+		it('should ignore stale close events from replaced connections', async () => {
+			const taskBroker = mock<TaskBroker>();
+			const server = createServer({ taskBroker });
+			const staleWs = mockWs();
+			const currentWs = mockWs();
+			server.runnerConnections.set('test-runner', currentWs);
+
+			await server.removeConnection('test-runner', 'unknown', WsStatusCodes.CloseNormal, staleWs);
+
+			expect(currentWs.close).not.toHaveBeenCalled();
+			expect(taskBroker.deregisterRunner).not.toHaveBeenCalled();
+			expect(server.runnerConnections.get('test-runner')).toBe(currentWs);
+		});
 	});
 
 	describe('heartbeat timer', () => {

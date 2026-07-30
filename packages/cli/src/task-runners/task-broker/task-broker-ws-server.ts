@@ -147,7 +147,7 @@ export class TaskBrokerWsServer {
 		connection.once('close', async () => {
 			connection.off('pong', heartbeat);
 			connection.off('message', onMessage);
-			await this.removeConnection(id);
+			await this.removeConnection(id, 'unknown', WsStatusCodes.CloseNormal, connection);
 		});
 
 		connection.on('message', onMessage);
@@ -160,9 +160,12 @@ export class TaskBrokerWsServer {
 		id: TaskRunner['id'],
 		reason: DisconnectReason = 'unknown',
 		code: WsStatusCode = WsStatusCodes.CloseNormal,
+		expectedConnection?: WebSocket,
 	) {
 		const connection = this.runnerConnections.get(id);
-		if (connection) {
+		const isStaleRemoval = expectedConnection !== undefined && connection !== expectedConnection;
+
+		if (connection && !isStaleRemoval) {
 			const disconnectError = await this.disconnectAnalyzer.toDisconnectError({
 				runnerId: id,
 				reason,
@@ -183,9 +186,14 @@ export class TaskBrokerWsServer {
 		await this.drainActiveTasks();
 
 		await Promise.all(
-			Array.from(this.runnerConnections.keys()).map(
-				async (id) =>
-					await this.removeConnection(id, 'shutting-down', WsStatusCodes.CloseGoingAway),
+			Array.from(this.runnerConnections.entries()).map(
+				async ([id, connection]) =>
+					await this.removeConnection(
+						id,
+						'shutting-down',
+						WsStatusCodes.CloseGoingAway,
+						connection,
+					),
 			),
 		);
 	}
