@@ -1,0 +1,49 @@
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_89867a842b5610::t_3a8864b1f7542d 233-235,237-239
+  s_89867a842b5610::t_2372ca7d1f81f8 236
+packages/workflow/test/n8n-oauth2-auth.test.ts
+  s_89867a842b5610::t_7ddcefc38d61f4 46-62,64-73
+  s_89867a842b5610::t_1f38645d66c642 63
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_89867a842b5610::t_b2875810232227 80-106
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-trigger-resource.resolver.api.test.ts
+  s_89867a842b5610::t_98f4e0d2ee1aeb 30-35
+  s_89867a842b5610::t_de2967db2f73f9 213,423-454
+  s_89867a842b5610::t_5c42887ca03b5b 153,160,163,170-171,174,176-197,207-210,216
+  s_89867a842b5610::t_941a9c5922d90b 211-212
+  s_89867a842b5610::t_0e82a8b7b88f48 214-215
+  s_89867a842b5610::t_7502de05bc276d 455-456
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_89867a842b5610::t_eae0416bf34349 248-255
+  s_89867a842b5610::t_eaf57f8e3113e9 256-257
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
+  s_89867a842b5610::t_deda67ab6c806e 71-76,81,85-87,95-99,102-103,106-118,121-126,129-136,140,147
+  s_89867a842b5610::t_4d4cdf93daa189 16,18-19,30-41
+  s_89867a842b5610::t_ee6fca5f2725ca 173-177,180-182
+packages/workflow/src/n8n-oauth2-auth.ts
+  s_89867a842b5610::t_8c02d1bc8c9f33 8-20
+  s_89867a842b5610::t_8d8173369bb061 63,77-80,83
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_89867a842b5610::t_0599b46ea4d0c9 201
+  s_89867a842b5610::t_d58bc16abb4ade 230-233
+  s_89867a842b5610::t_6c94ea42975531 271-278
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/__tests__/utils.test.ts
+  s_89867a842b5610::t_900305fc740922 48-82
+  s_89867a842b5610::t_da1539cdde5ca3 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "6a92d1a819de8740eab6e5cbdb4cb16b482c3b64",
+  "prompts": {},
+  "sessions": {
+    "s_89867a842b5610": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1a94829-8828-44fb-a069-80e494888f0d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
