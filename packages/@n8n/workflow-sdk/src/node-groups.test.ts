@@ -1,3 +1,5 @@
+import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+
 import { generateWorkflowCode } from './codegen';
 import { parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
 import type { WorkflowJSON } from './types/base';
@@ -9,7 +11,7 @@ const WF_ID = 'wf-groups-1';
 
 function buildGroupedWorkflow() {
 	const start = trigger({
-		type: 'n8n-nodes-base.manualTrigger',
+		type: MANUAL_TRIGGER_NODE_TYPE,
 		version: 1,
 		config: { name: 'Start' },
 	});
@@ -47,7 +49,7 @@ describe('SDK node groups', () => {
 
 		it('drops members that do not resolve to a node in the workflow', () => {
 			const start = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
 				version: 1,
 				config: { name: 'Start' },
 			});
@@ -63,12 +65,43 @@ describe('SDK node groups', () => {
 
 		it('omits nodeGroups entirely when no group was declared', () => {
 			const start = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
 				version: 1,
 				config: { name: 'Start' },
 			});
 			const json = workflow(WF_ID, 'wf').add(start).toJSON();
 			expect(json.nodeGroups).toBeUndefined();
+		});
+	});
+
+	describe('group description', () => {
+		function buildDescribedWorkflow(description?: string) {
+			const start = trigger({
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const a = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A' } });
+
+			const builder = workflow(WF_ID, 'wf').add(start).to(a);
+			return description === undefined
+				? builder.group('G', [a])
+				: builder.group('G', [a], { description });
+		}
+
+		it('accepts the options argument without disturbing the group name or members', () => {
+			const json = buildDescribedWorkflow('Pulls the CRM contacts').toJSON();
+
+			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
+			expect(json.nodeGroups).toHaveLength(1);
+			expect(json.nodeGroups![0].name).toBe('G');
+			expect(json.nodeGroups![0].nodeIds).toEqual([idByName.get('A')]);
+		});
+
+		it('leaves the description key off a group declared without options', () => {
+			const json = buildDescribedWorkflow().toJSON();
+
+			expect(json.nodeGroups![0]).not.toHaveProperty('description');
 		});
 	});
 
@@ -87,7 +120,7 @@ describe('SDK node groups', () => {
 
 		it('resolves a grouped auto-renamed duplicate handle to the right node after regeneration', () => {
 			const start = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
 				version: 1,
 				config: { name: 'Start' },
 			});
@@ -210,7 +243,7 @@ describe('SDK node groups', () => {
 	describe('existingGroupIdsByName (toJSON option)', () => {
 		it('reuses an existing group id matched by name and derives one for a new group', () => {
 			const start = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
 				version: 1,
 				config: { name: 'Start' },
 			});
