@@ -1400,6 +1400,30 @@ describe('TaskBroker', () => {
 
 			expect(await timeoutAfterAcceptFailure('offer4')).toBe(previousTimeout);
 		});
+
+		it('should not restart the expiry window when the request already expired', async () => {
+			taskBroker = new TaskBroker(
+				mock<Logger>(),
+				mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskAcceptTimeout: 2 }),
+				mock(),
+				mock(),
+			);
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+
+			// the request expired during acceptance, so it is no longer pending
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				acceptInProgress: true,
+			};
+
+			await expectAcceptTimeout(offerFor('runner1', 'offer1'), request);
+
+			expect(request.timeoutRefreshes).toBeUndefined();
+			expect(request.timeout).toBeUndefined();
+			expect(vi.getTimerCount()).toBe(0);
+		});
 	});
 
 	describe('acceptOffer', () => {

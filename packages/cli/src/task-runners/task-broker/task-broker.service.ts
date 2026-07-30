@@ -128,11 +128,13 @@ export class TaskBroker {
 	 * Restarts the request's expiry window, so a request that lost part of its window
 	 * to a failure the requester is not responsible for gets a full window for the
 	 * next matching attempt. Capped per request, so a runner that keeps offering but
-	 * never acknowledges cannot postpone the expiry indefinitely.
+	 * never acknowledges cannot postpone the expiry indefinitely. No-op for a request
+	 * that is no longer pending, so an already expired request arms no new timer.
 	 */
 	private refreshRequestTimeout(request: TaskRequest) {
+		const isPending = this.pendingTaskRequests.some((r) => r.requestId === request.requestId);
 		const refreshes = request.timeoutRefreshes ?? 0;
-		if (refreshes < MAX_REQUEST_TIMEOUT_REFRESHES) {
+		if (isPending && refreshes < MAX_REQUEST_TIMEOUT_REFRESHES) {
 			request.timeoutRefreshes = refreshes + 1;
 			clearTimeout(request.timeout);
 			request.timeout = this.createRequestTimeout(request.requestId);
