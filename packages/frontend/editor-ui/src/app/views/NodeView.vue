@@ -88,7 +88,6 @@ import type {
 	IWorkflowGroup,
 } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
-import { useNotificationForViews } from '@/app/composables/useNotificationForViews';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { historyBus } from '@/app/models/history';
@@ -97,7 +96,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -175,7 +174,6 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const toast = useToast();
-const { showNotificationForViews } = useNotificationForViews();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({
@@ -1941,10 +1939,6 @@ onMounted(async () => {
 
 	try {
 		initializeRoute();
-
-		// Once view is initialized, pick up all toast notifications
-		// waiting in the store and display them
-		showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
 
 		if (route.query.settings) {
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);

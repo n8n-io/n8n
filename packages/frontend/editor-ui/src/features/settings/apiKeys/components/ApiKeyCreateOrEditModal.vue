@@ -5,7 +5,6 @@ import Modal from '@/app/components/Modal.vue';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { isApiKeyExpired } from '../apiKeys.utils';
 import { computed, onMounted, ref } from 'vue';
-import { storeToRefs } from 'pinia';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -13,7 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useApiKeysStore } from '../apiKeys.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import type { BaseTextKey } from '@n8n/i18n';
 import { DateTime } from 'luxon';
@@ -49,7 +48,7 @@ const uiStore = useUIStore();
 const rootStore = useRootStore();
 const apiKeysStore = useApiKeysStore();
 const { createApiKey, updateApiKey, deleteApiKey, apiKeysById, availableScopes } = apiKeysStore;
-const { currentUser } = storeToRefs(useUsersStore());
+const usersStore = useUsersStore();
 const documentTitle = useDocumentTitle();
 
 const label = ref('');
@@ -129,8 +128,8 @@ const currentApiKey = computed<ApiKey | null>(() =>
 
 const isReadOnly = computed(() => {
 	const apiKey = currentApiKey.value;
-	if (!apiKey?.owner || !currentUser.value) return false;
-	return apiKey.owner.id !== currentUser.value.id;
+	if (!apiKey?.owner || !usersStore.currentUser) return false;
+	return apiKey.owner.id !== usersStore.currentUser.id;
 });
 
 // Copy for "expires on X" / "expired on X" / "never expires", shared by the

@@ -63,7 +63,7 @@ describe('thinkingToProviderOptions', () => {
 
 	it('openai: defaults reasoningEffort to medium', () => {
 		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({})).toEqual({
-			openai: { reasoningEffort: 'medium' },
+			openai: { reasoningEffort: 'medium', reasoningSummary: null },
 		});
 	});
 

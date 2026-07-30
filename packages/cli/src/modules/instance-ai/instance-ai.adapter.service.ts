@@ -1138,6 +1138,12 @@ export class InstanceAiAdapterService {
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
+				// Sever the listed edges on this run's ephemeral copy only — used by
+				// scripted wait-gate verification to keep each pass acyclic.
+				const connections = options?.omitConnections?.length
+					? omitWorkflowConnections(workflow.connections, options.omitConnections)
+					: workflow.connections;
+
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
 				// instance-wide or per-workflow save settings. Manual mode is gated by
@@ -1149,6 +1155,7 @@ export class InstanceAiAdapterService {
 						: ('manual' as WorkflowExecuteMode),
 					workflowData: {
 						...workflow,
+						connections,
 						settings: {
 							...workflow.settings,
 							saveManualExecutions: true,
@@ -3459,6 +3466,25 @@ function findTriggerNode(nodes: INode[]): INode | undefined {
 	if (known) return known;
 
 	return nodes.find((n) => isTriggerNodeType(n.type));
+}
+
+/** Copy of `connections` minus every listed source→target edge (any type). */
+function omitWorkflowConnections(
+	connections: IConnections,
+	omit: Array<{ source: string; target: string }>,
+): IConnections {
+	const omitted = new Set(omit.map((edge) => `${edge.source}→${edge.target}`));
+	const result: IConnections = {};
+	for (const [source, byType] of Object.entries(connections)) {
+		const nextByType: IConnections[string] = {};
+		for (const [type, groups] of Object.entries(byType)) {
+			nextByType[type] = (groups ?? []).map((group) =>
+				group ? group.filter((connection) => !omitted.has(`${source}→${connection.node}`)) : group,
+			);
+		}
+		result[source] = nextByType;
+	}
+	return result;
 }
 
 /** Get the execution mode based on the trigger node type. */
