@@ -7330,7 +7330,7 @@
 	"agents.builder.memory.description": "Session memory is on by default",
 	"agents.builder.memory.settings.title": "Memory settings",
 	"agents.builder.memory.episodicMemory.label": "Episodic Memory",
-	"agents.builder.memory.episodicMemory.hint": "Stores source-backed memories from previous conversations. Requires OpenAI credential.",
+	"agents.builder.memory.episodicMemory.hint": "Stores source-backed memories from previous conversations.",
 	"agents.builder.memory.episodicMemory.credential.label": "OpenAI credential",
 	"agents.builder.memory.episodicMemory.credential.hint": "Used to create embeddings for episodic memory.",
 	"agents.builder.files.title": "Knowledge base",
