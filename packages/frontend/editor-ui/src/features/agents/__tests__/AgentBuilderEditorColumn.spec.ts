@@ -7,8 +7,6 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string) =>
 			({
 				'agents.builder.memory.episodicMemory.label': 'Episodic Memory',
-				'agents.builder.memory.episodicMemory.hint':
-					'Stores source-backed memories from previous conversations. Requires OpenAI credential.',
 				'agents.builder.memory.episodicMemory.changeCredential': 'Change credential',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
 			})[key] ?? key,
@@ -292,9 +290,6 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 
 		expect(wrapper.text()).toContain('Episodic Memory');
-		expect(wrapper.text()).toContain(
-			'Stores source-backed memories from previous conversations. Requires OpenAI credential.',
-		);
 		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-observational-memory-toggle"]').exists()).toBe(false);
 	});
