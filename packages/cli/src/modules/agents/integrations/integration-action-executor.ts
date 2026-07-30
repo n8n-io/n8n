@@ -74,8 +74,6 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	}): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
-		// Platform-independent and side-effect free — resolved before any
-		// chat-instance or credential lookup.
 		if (params.action === 'do_not_respond') {
 			return this.doNotRespond(params);
 		}

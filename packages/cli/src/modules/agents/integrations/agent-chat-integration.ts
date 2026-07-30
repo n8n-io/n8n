@@ -102,9 +102,9 @@ export interface BridgeMessageContextParams {
 	 */
 	isNewMention: boolean;
 	/**
-	 * The turn's reply policy (from `getReplyExpectation`, 'required' when the
-	 * platform has none). Platforms use 'optional' to skip reply-signalling
-	 * side effects like the thinking status.
+	 * The turn's reply policy ('required' when the platform has none).
+	 * Platforms use 'optional' to skip reply-signalling side effects
+	 * like the thinking status and give the agent a `do_not_respond` action.
 	 */
 	replyExpectation: ReplyExpectation;
 }
@@ -312,7 +312,7 @@ export abstract class AgentChatIntegration {
 
 	/**
 	 * Optional per-message reply policy (see `ReplyExpectation`).
-	 * Default (no implementation): 'required' — a reply is always expected.
+	 * Default (no implementation): 'required'.
 	 */
 	getReplyExpectation?(params: {
 		message: Message<unknown>;
