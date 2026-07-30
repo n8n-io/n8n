@@ -77,25 +77,20 @@ setup card pre-fills the credential and the user only pastes their secret —
 instead of facing an empty JSON template they'd have to decode from the
 provider's docs. Before composing the hints, load the
 `credential-recipe-research` skill and execute its lookup procedure — the
-template, `docsUrl` and `testUrl` must come from the provider documentation
-it has you fetch, never from memory:
+template and `testUrl` must come from the provider documentation it has you
+fetch, never from memory:
 
 - `template` — the auth request parts (headers/qs/body) exactly as documented,
   with `{{placeholder}}` markers where the user's values go.
 - `placeholders` — one entry per marker: `name`, user-facing `title`, an
   optional `info` clarifying the value itself — its format or which of the
   provider's tokens it is (e.g. "Starts with tvly-"). Never where to obtain
-  it, and never a URL or domain: the card already renders the `docsUrl` link
-  under the fields. `type` is `password` unless clearly non-secret (at least
-  one placeholder must stay `password`). Add `optional: true` only when the
-  provider documents the value as optional (e.g. an org/region qualifier) —
-  template entries referencing an empty optional placeholder are omitted from
-  the request.
-- `docsUrl` — the dashboard page where a logged-in user CREATES/COPIES the
-  secret (e.g. `https://replicate.com/account/api-tokens`), rendered as the
-  card's "Get it from" link — never the API reference. Found via the
-  `credential-recipe-research` procedure; omit when it finds nothing
-  conclusive.
+  it, and never a URL or domain: the user asks the AI Assistant for that from
+  the credential form. `type` is `password` unless clearly non-secret (at
+  least one placeholder must stay `password`). Add `optional: true` only when
+  the provider documents the value as optional (e.g. an org/region
+  qualifier) — template entries referencing an empty optional placeholder are
+  omitted from the request.
 - `testUrl` — a documented side-effect-free GET that rejects a bad key with
   401/403, used to verify the credential on save and later retests; never one
   of the workflow's own endpoints, never anything billable. Found via the
@@ -105,9 +100,6 @@ it has you fetch, never from memory:
 - `acceptedStatusCodes` — almost always omit; the user can adjust it later on
   the credential if a service's auth answers 401/403 to valid GETs.
 - `suggestedName` — display name for the created credential.
-- `iconUrl` — the service's logo or favicon (https, on the provider's own
-  domain, e.g. `https://replicate.com/favicon.ico`) so the setup card shows
-  the service branding.
 
 Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
 `GET /v1/models` is a documented side-effect-free endpoint:
@@ -130,9 +122,7 @@ Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
           "type": "password"
         }
       ],
-      "docsUrl": "https://fal.ai/dashboard/keys",
-      "testUrl": "https://fal.run/v1/models",
-      "iconUrl": "https://fal.ai/favicon.ico"
+      "testUrl": "https://fal.run/v1/models"
     }
   ]
 }

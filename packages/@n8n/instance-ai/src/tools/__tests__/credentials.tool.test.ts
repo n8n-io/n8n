@@ -762,7 +762,6 @@ describe('credentials tool', () => {
 						type: 'password' as const,
 					},
 				],
-				docsUrl: 'https://fal.ai/dashboard/keys',
 				suggestedName: 'fal.ai API Key',
 				testUrl: 'https://fal.run/v1/models',
 			};
@@ -912,7 +911,7 @@ describe('credentials tool', () => {
 									{
 										name: 'api_key',
 										title: 'Tavily API key',
-										// duplicates the docsUrl link the card renders — and slips
+										// smuggles unverified navigation into the form — and slips
 										// past a scheme-only URL check
 										info: 'Your Tavily API key (starts with tvly-). Get it from app.tavily.com/home.',
 									},

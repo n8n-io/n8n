@@ -60,7 +60,7 @@ export const setupHintField = z
 						.string()
 						.optional()
 						.describe(
-							'Optional one-line clarification of the value itself — its format or which of the provider\'s tokens it is (e.g. "Starts with tvly-"). NEVER where to obtain it: the card renders the docsUrl link for that. No URLs or domains.',
+							'Optional one-line clarification of the value itself — its format or which of the provider\'s tokens it is (e.g. "Starts with tvly-"). NEVER where to obtain it: the user asks the AI Assistant for that. No URLs or domains.',
 						),
 					type: z
 						.enum(['password', 'plain'])
@@ -76,23 +76,11 @@ export const setupHintField = z
 			)
 			.min(1)
 			.describe('One entry per {{marker}} in the template — every marker must be described here.'),
-		docsUrl: z
-			.string()
-			.optional()
-			.describe(
-				'Direct URL of the dashboard page where the user creates/copies the secret (e.g. https://replicate.com/account/api-tokens) — rendered as the "Get it from" link. NOT the API reference documentation.',
-			),
 		suggestedName: z
 			.string()
 			.optional()
 			.describe(
 				'Display name for the created credential, also used as the setup card title ("Set up {suggestedName}"). Name it after the service, user-facing — e.g. "fal.ai API Key", not the generic type name.',
-			),
-		iconUrl: z
-			.string()
-			.optional()
-			.describe(
-				"Absolute https URL of the service's logo or favicon, hosted on the provider's own domain (e.g. https://replicate.com/favicon.ico) — shown on the setup card so the credential reads as that service.",
 			),
 		testUrl: z
 			.string()
@@ -125,9 +113,9 @@ export const TEMPLATABLE_PLAIN_AUTH_TYPES = new Set([
 
 const TEMPLATE_MARKER_REGEX = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
-// Navigation belongs in docsUrl — the card renders it as the "Get your token
-// at {host}" link, so an info that names a URL or domain duplicates the line
-// right above it. Schemeless domains ("app.tavily.com/home") are the common
+// Recipes carry no links: the user asks the AI Assistant where to get the
+// value, so an info that names a URL or domain smuggles unverified navigation
+// into the form. Schemeless domains ("app.tavily.com/home") are the common
 // leak past a scheme-only check, so also catch domain-shaped tokens on the
 // TLDs API providers actually use. A heuristic, but a false positive only
 // costs the model one retriable correction.
@@ -186,7 +174,7 @@ export function findSetupHintProblems(
 	for (const placeholder of hint.placeholders) {
 		if (INFO_LINK_REGEX.test(placeholder.info ?? '')) {
 			problems.push(
-				`placeholder "${placeholder.name}" mentions a URL or domain in its info — the card already renders the docsUrl link; keep info to the value itself (its format, or which of the provider's tokens it is)`,
+				`placeholder "${placeholder.name}" mentions a URL or domain in its info — keep info to the value itself (its format, or which of the provider's tokens it is); the user asks the AI Assistant where to get it`,
 			);
 		}
 	}
@@ -207,11 +195,6 @@ export function findSetupHintProblems(
 	for (const name of defined) {
 		if (!markers.has(name)) problems.push(`placeholder "${name}" is never used in the template`);
 	}
-	// docsUrl quality (dashboard vs docs page) is deliberately NOT validated:
-	// where a service keeps its key page is research the model must do — the
-	// schema description states the contract, and any URL-shape heuristic here
-	// is a frozen guess with real false positives (developer portals and
-	// logged-in docs pages ARE the key source for some providers).
 	const normalizedTestUrl = normalizeUrlForComparison(hint.testUrl);
 	if (normalizedTestUrl) {
 		const collision = (options.nodeUrls ?? [])

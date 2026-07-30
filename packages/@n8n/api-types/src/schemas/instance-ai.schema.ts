@@ -292,7 +292,7 @@ export const credentialPlaceholderDefSchema = z.object({
 	/** Input label shown to the user (e.g. "API key"). */
 	title: z.string(),
 	/** One-line clarification of the value itself (format, which token) —
-	 *  never where to obtain it; that's `docsUrl`'s job. */
+	 *  never where to obtain it; the AI help thread owns navigation. */
 	info: z.string().optional(),
 	/** Defaults to `password` (masked input). */
 	type: z.enum(['password', 'plain']).optional(),
@@ -314,10 +314,6 @@ export const credentialSetupHintSchema = z.object({
 		body: z.record(z.unknown()).optional(),
 	}),
 	placeholders: z.array(credentialPlaceholderDefSchema).min(1),
-	/** Where the user obtains the secret (e.g. the provider's API-keys page). */
-	docsUrl: z.string().optional(),
-	/** The service's logo/favicon URL, shown on the setup card. */
-	iconUrl: z.string().optional(),
 	suggestedName: z.string().optional(),
 	/** GET endpoint the created credential is auth-probed against. */
 	testUrl: z.string().optional(),

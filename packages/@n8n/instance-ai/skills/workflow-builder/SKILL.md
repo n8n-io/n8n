@@ -321,11 +321,11 @@ decision after testing.
      `httpBearerAuth`: template it as
      `{"headers":{"Authorization":"Bearer {{api_key}}"}}`. Set the HTTP
      Request node's `genericAuthType` to `httpTemplatedCustomAuth`, and note
-     the provider's documented auth scheme (header format, docs URL, a cheap
+     the provider's documented auth scheme (header format, a cheap
      authenticated GET endpoint) while you have the docs open: the setup call
      needs them for the `credentialHints` recipe (see the post-build-flow
      skill). Before that setup call, load the `credential-recipe-research`
-     skill and execute its lookup procedure — the recipe's docsUrl and
+     skill and execute its lookup procedure — the recipe's template and
      testUrl must come from pages fetched there, never from memory. Setup
      rejects new plain generic credentials on HTTP Request nodes, so picking
      Bearer/Header/Query/Custom Auth here means rebuilding — unless the user

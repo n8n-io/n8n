@@ -270,7 +270,7 @@ describe('redactSecrets — credential setup hints', () => {
 				{
 					template: { headers: { Authorization: 'Key {{api_key}}' } },
 					placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
-					docsUrl: 'https://fal.ai/dashboard/keys',
+					testUrl: 'https://fal.run/v1/models',
 				},
 			],
 		};
