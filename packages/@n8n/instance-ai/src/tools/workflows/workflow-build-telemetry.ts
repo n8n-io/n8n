@@ -57,3 +57,29 @@ export function trackWorkflowSourceBuild(
 			: {}),
 	});
 }
+
+/**
+ * Emitted once per successful build whose plan halts wait gates, so we learn
+ * how often scripted verification applies and whether multi-gate loop shapes
+ * (currently always halt-fallback) occur in the wild.
+ */
+export function trackWaitGateVerificationPlan(
+	context: InstanceAiContext,
+	input: {
+		haltedGateCount: number;
+		scriptedGateCount: number;
+		savedWorkflowId: string;
+	},
+): void {
+	if (input.haltedGateCount === 0) return;
+	const buildContext = context.workflowBuildContext;
+	context.trackTelemetry?.('instance_ai_wait_gate_verification_plan', {
+		halted_gate_count: input.haltedGateCount,
+		scripted_gate_count: input.scriptedGateCount,
+		multi_gate: input.haltedGateCount >= 2,
+		scripted: input.scriptedGateCount > 0,
+		workflow_id: input.savedWorkflowId,
+		thread_id: context.threadId ?? buildContext?.threadId ?? 'unknown',
+		run_id: buildContext?.runId ?? context.runId ?? 'unknown',
+	});
+}
