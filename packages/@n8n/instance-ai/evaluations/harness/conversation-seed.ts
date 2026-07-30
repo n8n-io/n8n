@@ -184,11 +184,43 @@ export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
 }
 
 // ---------------------------------------------------------------------------
-// Workflow id remapping
+// Workflow id + name remapping
 // ---------------------------------------------------------------------------
 
-/** Give every seeded workflow a fresh id, rewriting all references across the
- *  seed — so parallel iterations don't share (and clobber) one workflow row. */
+/** Marks a workflow as created by a seed restore, and makes its name unique per
+ *  restore. Load-bearing twice over: a leftover copy from an earlier
+ *  run can no longer be mistaken for this run's workflow by name, and the suffix
+ *  identifies seed artifacts precisely — so the pre-restore eviction can only ever
+ *  delete one of ours, never a real workflow and never one the agent built. Same
+ *  shape the server already uses for seeded data tables. */
+const seedNameSuffix = (token: string) => ` [seed ${token}]`;
+
+/** Matches a name this module produced, capturing the original base name. */
+export const SEED_WORKFLOW_NAME_RE = /^(.*) \[seed [0-9a-f]{8}\]$/;
+
+/** n8n's workflow-name column bound. */
+const MAX_WORKFLOW_NAME = 128;
+
+/** Rewrite every string inside a parsed value, leaving structure untouched. */
+function mapStrings(value: unknown, fn: (s: string) => string): unknown {
+	if (typeof value === 'string') return fn(value);
+	if (Array.isArray(value)) return value.map((v) => mapStrings(v, fn));
+	if (isRecord(value)) {
+		return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, mapStrings(v, fn)]));
+	}
+	return value;
+}
+
+/**
+ * Give every seeded workflow a fresh id AND a per-restore unique name, rewriting
+ * all references across the seed — so parallel iterations don't share (and
+ * clobber) one workflow row, and a leftover copy can't be grounded on by name.
+ *
+ * The name rewrite is applied to `messages` ONLY, never inside `workflows[].nodes`.
+ * Workflow names are short and human ("Batch loop"), so a blanket replace could hit
+ * a node that happens to share the name and silently alter the restored graph —
+ * which is exactly the "structural skeleton unchanged" guard a seeded case relies on.
+ */
 export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 	if (seed.workflows.length === 0) return seed;
 
@@ -210,9 +242,36 @@ export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 	}
 
 	const remapped = ConversationSeedSchema.parse(jsonParse(serialized));
+
+	// n8n itself allows duplicate workflow names, so a scrubbed real seed could
+	// legitimately carry two. This harness can't take them: the rename below rewrites
+	// mentions by matching the name text, so both workflows' mentions would collapse
+	// onto the first one's new name and the history would point at the wrong workflow.
+	// Refuse rather than mangle — a limit of the rewrite, not an n8n rule.
+	const names = remapped.workflows.map((workflow) => workflow.name);
+	const duplicate = names.find((name, index) => names.indexOf(name) !== index);
+	if (duplicate !== undefined) {
+		throw new Error(
+			`Seed declares two workflows named "${duplicate}". The harness rewrites seed workflow ` +
+				'names to keep concurrent runs apart, and it cannot tell which mention in the history ' +
+				'means which workflow — give them distinct names in the fixture',
+		);
+	}
+
+	// Uniquify names after the id pass, so the rename can't perturb id matching.
+	let messages = remapped.messages;
+	const workflows = remapped.workflows.map((workflow) => {
+		const suffix = seedNameSuffix(randomUUID().slice(0, 8));
+		const name = `${workflow.name.slice(0, MAX_WORKFLOW_NAME - suffix.length)}${suffix}`;
+		// Any mention in the seeded history follows the workflow, so the agent's own
+		// record of what it built still matches what is on the instance.
+		messages = mapStrings(messages, (s) => s.replaceAll(workflow.name, name)) as SeedMessage[];
+		return { ...workflow, name };
+	});
+
 	// Data table ids are remapped server-side on restore (id is generated, not
 	// pinnable), so carry them through untouched here.
-	return { ...remapped, source: seed.source, dataTables: seed.dataTables };
+	return { ...remapped, messages, workflows, source: seed.source, dataTables: seed.dataTables };
 }
 
 // Transcript prefix — seeded history rendered for the judge/checks. Turns carry

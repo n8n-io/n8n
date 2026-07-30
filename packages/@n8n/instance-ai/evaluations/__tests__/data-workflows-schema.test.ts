@@ -215,7 +215,7 @@ describe('EvalTestCaseSchema', () => {
 	it('rejects a near-miss shorthand rather than expanding it into a droppable message', () => {
 		// `text: 123` is not shorthand, so it falls through to the envelope schema —
 		// which fails loudly. Expanding it would produce a text block the transcript
-		// builder silently skips (the failure TRUST-357 exists to prevent).
+		// builder silently skips — the exact failure envelope validation prevents.
 		expect(() =>
 			EvalTestCaseSchema.parse({
 				...validFixture(),

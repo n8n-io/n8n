@@ -61,13 +61,18 @@ function inlineSeed(): ConversationSeed {
 	};
 }
 
-function makeClient(restoreThread: ReturnType<typeof vi.fn>): N8nClient {
+function makeClient(
+	restoreThread: ReturnType<typeof vi.fn>,
+	overrides: Partial<Record<'listWorkflows' | 'deleteWorkflow', ReturnType<typeof vi.fn>>> = {},
+): N8nClient {
 	return {
 		getPersonalProjectId: vi.fn().mockResolvedValue('project-1'),
 		ensureThread: vi.fn().mockResolvedValue(undefined),
 		setThreadCredentialAllowlist: vi.fn().mockResolvedValue(undefined),
 		sendMessage: vi.fn().mockResolvedValue(undefined),
 		getThreadMessages: vi.fn().mockResolvedValue({ messages: [] }),
+		listWorkflows: overrides.listWorkflows ?? vi.fn().mockResolvedValue([]),
+		deleteWorkflow: overrides.deleteWorkflow ?? vi.fn().mockResolvedValue(undefined),
 		restoreThread,
 	} as unknown as N8nClient;
 }
@@ -120,6 +125,74 @@ describe('buildWorkflow with an inline seed', () => {
 
 		expect(build.success).toBe(false);
 		expect(build.seedingFailed).toBe(true);
+	});
+
+	// A leftover copy sharing the seed's name is a workflow the agent can
+	// rationally ground on instead of its own, which grades a different artifact than
+	// the agent edited — false greens as readily as false reds.
+	it('evicts a leftover seed workflow with the same base name before restoring', async () => {
+		const deleteWorkflow = vi.fn().mockResolvedValue(undefined);
+		const listWorkflows = vi.fn().mockResolvedValue([
+			{ id: 'leftover-1', name: 'Batch loop [seed aaaaaaaa]' },
+			{ id: 'leftover-2', name: 'Batch loop [seed bbbbbbbb]' },
+		]);
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+
+		await buildWorkflow({
+			client: makeClient(restoreThread, { listWorkflows, deleteWorkflow }),
+			...baseConfig,
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		expect(deleteWorkflow.mock.calls.map((call) => String(call[0]))).toEqual([
+			'leftover-1',
+			'leftover-2',
+		]);
+		// Eviction happens BEFORE the restore, or it would delete this run's own copy.
+		expect(deleteWorkflow.mock.invocationCallOrder[0]).toBeLessThan(
+			restoreThread.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('never touches a workflow without the seed suffix', async () => {
+		// The suffix is minted only by the remap, so a real workflow — and anything the
+		// agent itself built — is out of reach even when the name matches.
+		const deleteWorkflow = vi.fn().mockResolvedValue(undefined);
+		const listWorkflows = vi.fn().mockResolvedValue([
+			{ id: 'real-1', name: 'Batch loop' },
+			{ id: 'agent-built', name: 'Batch loop (copy)' },
+			{ id: 'other-seed', name: 'Something else [seed cccccccc]' },
+		]);
+
+		await buildWorkflow({
+			client: makeClient(
+				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [] }),
+				{ listWorkflows, deleteWorkflow },
+			),
+			...baseConfig,
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		expect(deleteWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('still builds when eviction fails — it is best-effort, not a gate', async () => {
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+
+		const build = await buildWorkflow({
+			client: makeClient(restoreThread, {
+				listWorkflows: vi.fn().mockRejectedValue(new Error('list exploded')),
+			}),
+			...baseConfig,
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		expect(build.success).toBe(true);
+		expect(restoreThread).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not restore anything for a case with no seed', async () => {

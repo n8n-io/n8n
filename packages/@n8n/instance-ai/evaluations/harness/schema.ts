@@ -53,8 +53,8 @@ const inlineSeedMessagesSchema = z.preprocess(
  * exclusive by construction instead of by a refine, and `mode` carries a real
  * either/or: is the seed in the case, or fetched at run time?
  *
- * The literals match lang-tracer's `metadata.seed` verbatim (TRUST-358);
- * diverging rebuilds the old→new translation layer this union exists to delete.
+ * The literals match lang-tracer's `metadata.seed` verbatim; diverging rebuilds
+ * the old→new translation layer this union exists to delete.
  * `replay` names an action next to `inline`'s location — an asymmetry we take
  * knowingly, because renaming it would break an LT HTTP body contract.
  */

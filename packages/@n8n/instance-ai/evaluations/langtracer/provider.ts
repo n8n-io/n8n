@@ -25,7 +25,7 @@ export interface LangTracerLoadOptions {
  * the RAW export body because `normalizeExportedCase` whitelists to the schema's
  * keys: a removed key is STRIPPED, so a hosted case still carrying one would run
  * UNSEEDED rather than fail — silently grading a seeded case as if it were a
- * build-from-scratch. Every removal needs an entry here (#35074 added the first).
+ * build-from-scratch. Every removal needs an entry here.
  */
 const REMOVED_SEED_KEYS: Record<string, string> = {
 	seedFile: 'carry the seed in the case body as `seed: { mode: "inline", … }`',

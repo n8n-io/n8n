@@ -2,6 +2,7 @@ import {
 	ConversationSeedSchema,
 	expandSeedMessageShorthand,
 	remapSeedWorkflowIds,
+	SEED_WORKFLOW_NAME_RE,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from '../harness/conversation-seed';
@@ -227,6 +228,57 @@ describe('remapSeedWorkflowIds', () => {
 			dataTables: [],
 		};
 		expect(remapSeedWorkflowIds(seed)).toBe(seed);
+	});
+
+	it('uniquifies the workflow NAME too, and follows it through the messages', () => {
+		// A leftover copy sharing the name is a candidate the agent can ground on
+		// instead. The seeded history has to move with the rename, or the agent's own
+		// record of what it built stops matching the instance.
+		const seed = makeSeed();
+		seed.messages.push({
+			id: 'm-name',
+			type: 'llm',
+			role: 'user',
+			createdAt: '2026-06-29T09:00:02.000Z',
+			content: [{ type: 'text', text: 'The Wait node in workflow Digest failed' }],
+		});
+		seed.workflows[0].name = 'Digest';
+
+		const remapped = remapSeedWorkflowIds(seed);
+		const newName = remapped.workflows[0].name;
+
+		expect(newName).toMatch(/^Digest \[seed [0-9a-f]{8}\]$/);
+		expect(SEED_WORKFLOW_NAME_RE.exec(newName)?.[1]).toBe('Digest');
+		const mention = remapped.messages.find((m) => m.id === 'm-name');
+		expect(JSON.stringify(mention)).toContain(`workflow ${newName} failed`);
+	});
+
+	it('does NOT rename a node that happens to share the workflow name', () => {
+		// A blanket replace would rewrite the node too, silently altering the restored
+		// graph — the "structural skeleton unchanged" guard a seeded case relies on.
+		const seed = makeSeed();
+		seed.workflows[0].name = 'Digest';
+		seed.workflows[0].nodes = [{ name: 'Digest', type: 'n8n-nodes-base.set' }];
+
+		const remapped = remapSeedWorkflowIds(seed);
+
+		expect(remapped.workflows[0].name).not.toBe('Digest');
+		expect(remapped.workflows[0].nodes).toEqual([{ name: 'Digest', type: 'n8n-nodes-base.set' }]);
+	});
+
+	it('refuses a seed declaring two workflows with the same name', () => {
+		// The rename would point every mention at the first one; and the agent could
+		// not have told them apart either, so the seed is ambiguous as authored.
+		const seed = makeSeed();
+		seed.workflows.push({ ...seed.workflows[0], id: 'ZzZzZz9876543210' });
+
+		expect(() => remapSeedWorkflowIds(seed)).toThrow(/two workflows named/);
+	});
+
+	it('generates a distinct NAME per call, so two iterations never share one', () => {
+		expect(remapSeedWorkflowIds(makeSeed()).workflows[0].name).not.toBe(
+			remapSeedWorkflowIds(makeSeed()).workflows[0].name,
+		);
 	});
 
 	it('generates distinct ids per call so parallel iterations never collide', () => {
