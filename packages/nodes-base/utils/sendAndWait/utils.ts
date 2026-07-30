@@ -7,21 +7,16 @@ import type {
 	INodeProperties,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import {
-	NodeOperationError,
-	SEND_AND_WAIT_OPERATION,
-	tryToParseJsonToFormFields,
-	updateDisplayOptions,
-} from 'n8n-workflow';
+import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
 
 import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
 import {
 	parseFormFields,
+	parseJsonFormFields,
 	prepareFormData,
 	prepareFormFields,
 	prepareFormReturnItem,
-	resolveRawData,
 } from '../../nodes/Form/utils/utils';
 import { escapeHtml } from '../utilities';
 import { limitWaitTimeOption } from './descriptions';
@@ -504,21 +499,15 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 // by then. Parse it here, exactly as the webhook will, so a form that cannot be built fails
 // the node instead of sending a message with a link that can never render.
 function validateCustomFormFields(context: IExecuteFunctions) {
-	// The 'fields' branch has no parse step, only html expression resolution
-	if (context.getNodeParameter('defineForm', 0, 'fields') !== 'json') return;
+	const defineForm = context.getNodeParameter('defineForm', 0, 'fields') as 'fields' | 'json';
+	// The 'fields' branch has nothing that needs to be validated
+	if (defineForm !== 'json') return;
 
-	try {
-		const jsonOutput = context.getNodeParameter('jsonOutput', 0, '', {
+	const getJsonOutput = () =>
+		context.getNodeParameter('jsonOutput', 0, '', {
 			rawExpressions: true,
 		}) as string;
-
-		tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
-	} catch (error) {
-		throw new NodeOperationError(context.getNode(), error.message, {
-			description: error.message,
-			itemIndex: 0,
-		});
-	}
+	parseJsonFormFields(context, getJsonOutput);
 }
 
 export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitConfig {
