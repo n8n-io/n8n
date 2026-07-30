@@ -21,6 +21,7 @@ export type FindWorkflowsForUserOptions = {
 	includePinnedData?: boolean;
 	includeTags?: boolean;
 	includeProjects?: boolean;
+	includeActiveVersion?: boolean;
 };
 
 @Service()
@@ -328,6 +329,7 @@ export class WorkflowFinderService {
 			includePinnedData = true,
 			includeTags = false,
 			includeProjects = false,
+			includeActiveVersion = false,
 		} = options;
 		const { name, active, tagNames, folderId, projectId } = filters;
 
@@ -356,10 +358,10 @@ export class WorkflowFinderService {
 			meta: true,
 			versionId: true,
 			triggerCount: true,
-			activeVersion: true,
 			// ListQuery select keys: `ownedBy` = share rows + project relation (nested);
 			// `shared` = share rows only without project relation.
 			...(includeProjects ? { ownedBy: true } : { shared: true }),
+			...(includeActiveVersion && { activeVersion: true }),
 			...(includePinnedData && { pinData: true }),
 			...(includeTags && { tags: true }),
 		};

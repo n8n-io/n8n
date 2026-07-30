@@ -263,6 +263,7 @@ const workflowHandlers: WorkflowHandlers = {
 					limit,
 					includePinnedData: !excludePinnedData,
 					includeTags: areWorkflowTagsEnabled(),
+					includeActiveVersion: true,
 				},
 			);
 

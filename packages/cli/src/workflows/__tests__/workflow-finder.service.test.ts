@@ -208,6 +208,7 @@ describe('WorkflowFinderService', () => {
 				limit: 5,
 				includePinnedData: false,
 				includeTags: true,
+				includeActiveVersion: true,
 			});
 
 			expect(workflowRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
@@ -242,6 +243,19 @@ describe('WorkflowFinderService', () => {
 			expect(first[2].select).not.toHaveProperty('ownedBy');
 			expect(second[2].select).toMatchObject({ ownedBy: true });
 			expect(second[2].select).not.toHaveProperty('shared');
+		});
+
+		it('omits the activeVersion join unless asked for it', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read'], {});
+			await service.findWorkflowsForUser(user, ['workflow:read'], { includeActiveVersion: true });
+
+			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
+			assert(first?.[2] && second?.[2]);
+			// Callers that never read it shouldn't pay for its nodes/connections.
+			expect(first[2].select).not.toHaveProperty('activeVersion');
+			expect(second[2].select).toMatchObject({ activeVersion: true });
 		});
 
 		it('omits pagination when no limit is given', async () => {
