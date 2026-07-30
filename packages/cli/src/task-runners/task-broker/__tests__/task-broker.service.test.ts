@@ -1532,6 +1532,41 @@ describe('TaskBroker', () => {
 			);
 		});
 
+		it('should stop restarting the expiry window after repeated deferrals', async () => {
+			vi.useFakeTimers();
+
+			const deferringRunnerCallback = vi.fn((message: BrokerMessage.ToRunner.All) => {
+				if (message.type === 'broker:taskofferaccept') {
+					taskBroker.handleRunnerDeferred(message.taskId);
+				}
+			});
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), deferringRunnerCallback);
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				acceptInProgress: true,
+			};
+			taskBroker.setPendingTaskRequests([request]);
+
+			const deferOnce = async (offerId: string) => {
+				await taskBroker.acceptOffer(offerFor('runner1', offerId), request);
+				return request.timeout;
+			};
+
+			let previousTimeout = await deferOnce('offer1');
+			expect(previousTimeout).toBeDefined();
+
+			for (const offerId of ['offer2', 'offer3']) {
+				const refreshedTimeout = await deferOnce(offerId);
+				expect(refreshedTimeout).not.toBe(previousTimeout);
+				previousTimeout = refreshedTimeout;
+			}
+
+			expect(await deferOnce('offer4')).toBe(previousTimeout);
+		});
+
 		it('should reject an acceptance awaiting acknowledgment when its runner deregisters', async () => {
 			vi.useFakeTimers();
 

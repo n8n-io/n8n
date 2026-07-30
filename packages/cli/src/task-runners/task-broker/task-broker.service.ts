@@ -647,8 +647,7 @@ export class TaskBroker {
 			}
 			if (e instanceof TaskDeferredError) {
 				this.logger.debug(`Task (${taskId}) deferred until runner is ready`);
-				clearTimeout(request.timeout);
-				request.timeout = this.createRequestTimeout(request.requestId);
+				this.refreshRequestTimeout(request);
 				return;
 			}
 			if (e instanceof TaskRunnerAcceptTimeoutError) {
