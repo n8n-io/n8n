@@ -176,7 +176,7 @@ describe('assertRelayableSize', () => {
 				error = e as WebhookResponseTooLargeError;
 			}
 
-			expect(error?.message).toContain('over 2 MiB');
+			expect(error?.message).toContain('limit is 2 MiB');
 			expect(error?.description).toContain('N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX');
 		});
 	});

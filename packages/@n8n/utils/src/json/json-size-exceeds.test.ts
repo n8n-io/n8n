@@ -55,6 +55,12 @@ const AWKWARD_STRINGS = [
 	'k'.repeat(40),
 ];
 
+/**
+ * A value serialization replaces with a fixed result. The replacement is captured
+ * rather than computed on call, so that the value has one serialization.
+ */
+const selfSerializing = (replacement: unknown) => ({ toJSON: () => replacement });
+
 const randomLeaf = (random: () => number): unknown =>
 	pick<unknown>(random, [
 		pick(random, AWKWARD_STRINGS),
@@ -70,9 +76,9 @@ const randomLeaf = (random: () => number): unknown =>
 		Buffer.from([0, 7, 128, 255].slice(0, 1 + Math.floor(random() * 4))),
 		new Uint8Array([1, 2, 255]),
 		new Float64Array([1.5, -1e-7]),
-		{ toJSON: () => pick(random, AWKWARD_STRINGS) },
-		{ toJSON: () => ({ replaced: [1, 2] }) },
-		{ toJSON: () => undefined },
+		selfSerializing(pick(random, AWKWARD_STRINGS)),
+		selfSerializing({ replaced: [1, 2] }),
+		selfSerializing(undefined),
 	]);
 
 const randomValue = (random: () => number, depth: number): unknown => {
@@ -190,6 +196,8 @@ describe('jsonSizeExceeds', () => {
 			['a Date', { at: new Date('2026-07-27T10:00:00.000Z') }, 1],
 			['a value serializing itself', { at: { toJSON: () => 'replaced' } }, 1],
 			['integers of every length', { small: 7, big: 1234567890, negative: -42 }, 1],
+			['non-integer numbers', { price: 1.5, ratio: -0.25, tiny: 5e-324 }, 1],
+			['a number in exponential notation', { big: 1e21 }, 1],
 		])('holds for %s', (_label, value, containers) => {
 			expect(measuredSize(value)).toBe(realSize(value) + containers);
 		});

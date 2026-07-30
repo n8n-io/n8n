@@ -35,9 +35,6 @@ const TRUE_SIZE = 4;
 const FALSE_SIZE = 5;
 const SIGN_SIZE = 1;
 
-/** Longest a finite number serializes to, as in `-0.0000075911789601505095`. */
-const MAX_NUMBER_SIZE = 25;
-
 /** Magnitude from which a number serializes in exponential notation. */
 const EXPONENTIAL_NOTATION_THRESHOLD = 1e21;
 
@@ -46,6 +43,12 @@ const BUFFER_ENVELOPE_SIZE = 27;
 
 /** Longest a byte serializes to inside that envelope, as in `255,`. */
 const MAX_BUFFER_BYTE_SIZE = 4;
+
+/**
+ * Widest a number can serialize to, as in `-0.0000075911789601505095`. Bounds the
+ * elements of a binary view, which are counted without being visited.
+ */
+const MAX_NUMBER_SIZE = 25;
 
 const SHORT_ESCAPE_SIZE = 2; // `\n`, `\"`, `\\`
 const UNICODE_ESCAPE_SIZE = 6; // `\u001f`, and a lone surrogate
@@ -74,8 +77,8 @@ const ROOT_KEY = '';
  * Tells whether a value exceeds a JSON size limit, without serializing it.
  *
  * The measure is an upper bound, so a value is never reported as fitting a size
- * it does not fit. It overshoots by one byte per non-empty container, and treats
- * every number that is not an integer as the longest a number can be.
+ * it does not fit. It overshoots by one byte per non-empty container, and counts
+ * binary data at the widest its bytes can serialize to.
  *
  * @param value Value to measure as if it were passed to `JSON.stringify`.
  * @param maxBytes Limit the serialization must stay within.
@@ -133,7 +136,7 @@ function advanceEntries(walk: Walk, frame: EntriesFrame): void {
 /** Adds an entry, unless serialization drops it along with its key. */
 function addEntry(walk: Walk, key: string, value: unknown): void {
 	if (!isDroppedFromObjects(value)) {
-		walk.size += COMMA_SIZE + COLON_SIZE + maxStringSize(key, remaining(walk));
+		walk.size += COMMA_SIZE + COLON_SIZE + stringSize(key, remaining(walk));
 		addValue(walk, value);
 	}
 }
@@ -146,7 +149,7 @@ function addValue(walk: Walk, value: unknown): void {
 	if (isContainer(value)) {
 		open(walk, value);
 	} else {
-		walk.size += maxLeafSize(value, remaining(walk));
+		walk.size += leafSize(value, remaining(walk));
 	}
 }
 
@@ -222,13 +225,13 @@ function maxIndexedViewSize(view: IndexedView): number {
 	return EMPTY_CONTAINER_SIZE + view.length * maxEntrySize;
 }
 
-/** Bytes a value with no members occupies serialized, at most. */
-function maxLeafSize(value: unknown, budget: number): number {
+/** Bytes a value with no members occupies serialized. */
+function leafSize(value: unknown, budget: number): number {
 	switch (typeof value) {
 		case 'string':
-			return maxStringSize(value, budget);
+			return stringSize(value, budget);
 		case 'number':
-			return maxNumberSize(value);
+			return numberSize(value);
 		case 'boolean':
 			return value ? TRUE_SIZE : FALSE_SIZE;
 		default:
@@ -237,7 +240,7 @@ function maxLeafSize(value: unknown, budget: number): number {
 }
 
 /** Bytes a string occupies serialized, escapes and quotes included. */
-function maxStringSize(value: string, budget: number): number {
+function stringSize(value: string, budget: number): number {
 	return QUOTES_SIZE + escapedContentSize(value, budget - QUOTES_SIZE);
 }
 
@@ -254,7 +257,7 @@ function escapedContentSize(value: string, budget: number): number {
 		const code = value.charCodeAt(index);
 		const paired = isHighSurrogate(code) && isLowSurrogate(value.charCodeAt(index + 1));
 
-		size += paired ? SURROGATE_PAIR_SIZE : maxCodeUnitSize(code);
+		size += paired ? SURROGATE_PAIR_SIZE : codeUnitSize(code);
 		index += paired ? 2 : 1;
 	}
 
@@ -262,7 +265,7 @@ function escapedContentSize(value: string, budget: number): number {
 }
 
 /** Bytes a single code unit occupies, escaped and encoded as serialization would. */
-function maxCodeUnitSize(code: number): number {
+function codeUnitSize(code: number): number {
 	if (code === QUOTE || code === BACKSLASH) {
 		return SHORT_ESCAPE_SIZE;
 	}
@@ -283,19 +286,20 @@ function maxCodeUnitSize(code: number): number {
 	return isSurrogate(code) ? UNICODE_ESCAPE_SIZE : THREE_BYTE_SIZE;
 }
 
-/** Bytes a number occupies serialized, at most. */
-function maxNumberSize(value: number): number {
+/** Bytes a number occupies serialized. */
+function numberSize(value: number): number {
 	if (!Number.isFinite(value)) {
 		return NULL_SIZE;
 	}
 
 	const magnitude = Math.abs(value);
-	const sign = value < 0 ? SIGN_SIZE : 0;
+	const isPlainInteger = Number.isInteger(value) && magnitude < EXPONENTIAL_NOTATION_THRESHOLD;
 
-	// Only an integer below the threshold has a length its magnitude gives away.
-	return Number.isInteger(value) && magnitude < EXPONENTIAL_NOTATION_THRESHOLD
-		? sign + decimalDigits(magnitude)
-		: MAX_NUMBER_SIZE;
+	// A plain integer has a length its magnitude gives away. Any other number has
+	// to be formatted to be measured, and nothing shorter would be exact.
+	return isPlainInteger
+		? (value < 0 ? SIGN_SIZE : 0) + decimalDigits(magnitude)
+		: String(value).length;
 }
 
 /** Digits the integer part of a magnitude is written with. */
