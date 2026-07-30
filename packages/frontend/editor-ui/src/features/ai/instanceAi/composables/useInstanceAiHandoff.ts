@@ -26,11 +26,26 @@ function existingCredentialNote(credential: InstanceAiCredentialContext): string
 }
 
 /**
+ * A recipe-created (Simplified Custom Auth) credential arrives pre-filled —
+ * the user only pastes the guided-form values. The question asks where to
+ * find them and pins the scope so the thread doesn't hand out setup
+ * instructions for a template the user must not touch.
+ */
+function templatedValuesQuestion(credential: InstanceAiCredentialContext): string {
+	const titles = (credential.placeholderTitles ?? []).map((title) => `"${title}"`).join(', ');
+	const plural = (credential.placeholderTitles?.length ?? 0) > 1;
+	return `I'm setting up the "${credential.displayName}" credential. The form is already pre-filled from a recipe — I only need to paste ${plural ? 'values for' : 'a value for'} ${titles}. Tell me step by step where to get ${plural ? 'these values' : 'this value'}; don't suggest changing the template or any other field.${existingCredentialNote(credential)}`;
+}
+
+/**
  * Opening question for a new-tab credential hand-off (credentials list, editor):
  * the new thread carries no workflow, so it names the credential setup modal as
  * the user's context. The node isn't carried into the new tab, so it isn't named.
  */
 export function buildInstanceAiCredentialQuestion(credential: InstanceAiCredentialContext): string {
+	if (credential.placeholderTitles?.length) {
+		return `${templatedValuesQuestion(credential)} I'm looking at the credential setup modal.`;
+	}
 	return `How do I set up the credentials for ${credential.displayName}?${existingCredentialNote(credential)} I'm looking at the credential setup modal.`;
 }
 
@@ -43,6 +58,9 @@ export function buildInstanceAiArtifactCredentialQuestion(
 	credential: InstanceAiCredentialContext,
 ): string {
 	const node = credential.nodeName ? ` It's for the "${credential.nodeName}" node.` : '';
+	if (credential.placeholderTitles?.length) {
+		return `${templatedValuesQuestion(credential)}${node}`;
+	}
 	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}`;
 }
 

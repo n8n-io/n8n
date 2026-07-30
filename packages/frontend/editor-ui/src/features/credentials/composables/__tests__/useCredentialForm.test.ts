@@ -83,7 +83,6 @@ const templatedCustomAuth: ICredentialType = {
 		{ displayName: 'Placeholders', name: 'placeholderDefs', type: 'json', default: '' },
 		{ displayName: 'Placeholder Values', name: 'placeholderValues', type: 'json', default: '' },
 		{ displayName: 'Test URL', name: 'testUrl', type: 'string', default: '' },
-		{ displayName: 'Documentation URL', name: 'docsUrl', type: 'string', default: '' },
 	],
 };
 
@@ -100,7 +99,6 @@ const falSetupHint = {
 	placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
 	suggestedName: 'fal.ai API Key',
 	testUrl: 'https://fal.run/v1/models',
-	docsUrl: 'https://fal.ai/dashboard/keys',
 	serviceHost: 'fal.run',
 };
 
@@ -203,7 +201,6 @@ describe('useCredentialForm', () => {
 				template: JSON.stringify(falSetupHint.template, null, 2),
 				placeholderDefs: JSON.stringify(falSetupHint.placeholders, null, 2),
 				testUrl: falSetupHint.testUrl,
-				docsUrl: falSetupHint.docsUrl,
 				serviceHost: falSetupHint.serviceHost,
 			});
 			// A filled template + persisted test URL makes the credential probeable.

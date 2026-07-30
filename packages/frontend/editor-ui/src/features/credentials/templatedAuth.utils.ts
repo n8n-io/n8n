@@ -127,37 +127,33 @@ export function composeCredentialNameWithUser(
 
 /**
  * Human service identity for labels: the recipe's suggested credential name
- * ("fal.ai API Key"), else the docs page's host ("fal.ai").
+ * ("fal.ai API Key").
  */
 export function deriveServiceName(
-	setupHint: { suggestedName?: string; docsUrl?: string } | undefined,
+	setupHint: { suggestedName?: string } | undefined,
 ): string | undefined {
-	const suggested = setupHint?.suggestedName?.trim();
-	if (suggested) return suggested;
-	const docsUrl = setupHint?.docsUrl;
-	if (typeof docsUrl === 'string' && /^https?:\/\//.test(docsUrl)) {
-		try {
-			return new URL(docsUrl).host;
-		} catch {
-			return undefined;
-		}
-	}
-	return undefined;
+	return setupHint?.suggestedName?.trim() || undefined;
+}
+
+/** Fallback input label for a marker without a def: `api_key` → "Api key". */
+export function humanizeMarkerName(name: string): string {
+	const spaced = name.replace(/_/g, ' ').trim();
+	return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 /**
- * Best-effort service icon: an explicit https icon URL wins; otherwise derive
- * the favicon of the docs page's host. Consumers must fall back to the generic
- * credential icon when the image fails to load.
+ * The guided form's input labels, one per template marker — what the user
+ * actually pastes into a recipe-created credential.
  */
-export function deriveServiceIconUrl(iconUrl: unknown, docsUrl: unknown): string | undefined {
-	if (typeof iconUrl === 'string' && /^https:\/\//.test(iconUrl)) return iconUrl;
-	if (typeof docsUrl === 'string' && /^https:\/\//.test(docsUrl)) {
-		try {
-			return `${new URL(docsUrl).origin}/favicon.ico`;
-		} catch {
-			return undefined;
-		}
-	}
-	return undefined;
+export function listPlaceholderTitles(credentialData: {
+	template?: unknown;
+	placeholderDefs?: unknown;
+}): string[] {
+	const template = parseTemplatedAuthField<unknown>(credentialData.template, {});
+	const defsByName = new Map(
+		parsePlaceholderDefs(credentialData.placeholderDefs).map((def) => [def.name, def]),
+	);
+	return extractTemplateMarkers(template).map(
+		(marker) => defsByName.get(marker)?.title || humanizeMarkerName(marker),
+	);
 }

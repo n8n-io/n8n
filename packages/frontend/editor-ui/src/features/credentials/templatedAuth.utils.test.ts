@@ -1,7 +1,6 @@
 import {
 	cleanPlaceholderValue,
 	composeCredentialNameWithUser,
-	deriveServiceIconUrl,
 	deriveServiceName,
 	extractTemplateMarkers,
 	markerPrefix,
@@ -104,40 +103,13 @@ describe('templatedAuth.utils', () => {
 	});
 
 	describe('deriveServiceName', () => {
-		it('prefers the recipe suggested name', () => {
-			expect(
-				deriveServiceName({ suggestedName: 'fal.ai API Key', docsUrl: 'https://fal.ai/docs' }),
-			).toBe('fal.ai API Key');
-		});
-
-		it('falls back to the docs host', () => {
-			expect(deriveServiceName({ docsUrl: 'https://replicate.com/account/api-tokens' })).toBe(
-				'replicate.com',
-			);
+		it('uses the recipe suggested name', () => {
+			expect(deriveServiceName({ suggestedName: 'fal.ai API Key' })).toBe('fal.ai API Key');
 		});
 
 		it('returns undefined without a usable source', () => {
-			expect(deriveServiceName({ docsUrl: 'not a url' })).toBeUndefined();
+			expect(deriveServiceName({ suggestedName: '   ' })).toBeUndefined();
 			expect(deriveServiceName(undefined)).toBeUndefined();
-		});
-	});
-
-	describe('deriveServiceIconUrl', () => {
-		it('prefers an explicit https icon URL', () => {
-			expect(deriveServiceIconUrl('https://fal.ai/logo.png', 'https://fal.ai/docs')).toBe(
-				'https://fal.ai/logo.png',
-			);
-		});
-
-		it('derives the docs-page favicon when no icon is given', () => {
-			expect(deriveServiceIconUrl(undefined, 'https://replicate.com/account/api-tokens')).toBe(
-				'https://replicate.com/favicon.ico',
-			);
-		});
-
-		it('rejects non-https values', () => {
-			expect(deriveServiceIconUrl('http://x.com/a.png', 'not a url')).toBeUndefined();
-			expect(deriveServiceIconUrl(undefined, undefined)).toBeUndefined();
 		});
 	});
 });

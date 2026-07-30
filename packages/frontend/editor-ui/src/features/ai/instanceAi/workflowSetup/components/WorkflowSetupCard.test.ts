@@ -144,7 +144,6 @@ describe('WorkflowSetupCard', () => {
 				placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
 				// "API" must survive — hint names skip the type-name keyword filter.
 				suggestedName: 'fal.ai API Key',
-				iconUrl: 'https://fal.ai/favicon.ico',
 			},
 		});
 		workflowSetupContext.current = makeContext(section);
@@ -155,29 +154,7 @@ describe('WorkflowSetupCard', () => {
 
 		expect(getByText('Set up fal.ai API Key')).toBeInTheDocument();
 		expect(queryByText('Set up Header Auth')).not.toBeInTheDocument();
-		expect(getByTestId('credential-hint-icon')).toHaveAttribute(
-			'src',
-			'https://fal.ai/favicon.ico',
-		);
-	});
-
-	it('derives the docs-page favicon when the hint has no icon URL', () => {
-		const section = makeWorkflowSetupSection({
-			credentialType: 'httpTemplatedCustomAuth',
-			setupHint: {
-				template: { headers: { Authorization: 'Key {{api_key}}' } },
-				placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
-				docsUrl: 'https://fal.ai/dashboard/keys',
-			},
-		});
-		workflowSetupContext.current = makeContext(section);
-
-		const { getByTestId } = renderComponent({ props: { section } });
-
-		expect(getByTestId('credential-hint-icon')).toHaveAttribute(
-			'src',
-			'https://fal.ai/favicon.ico',
-		);
+		expect(getByTestId('credential-icon')).toBeInTheDocument();
 	});
 
 	it('shows the credential app name when the section only needs credentials', () => {

@@ -34,7 +34,11 @@ const nodeCredentialsMock = vi.hoisted(() => ({
 	lastFieldLabel: undefined as string | undefined,
 	lastSetupHint: undefined as unknown,
 	lastCredentialHelp: undefined as
-		| ((credential: { credentialType: string; displayName: string }) => Promise<boolean>)
+		| ((credential: {
+				credentialType: string;
+				displayName: string;
+				placeholderTitles?: string[];
+		  }) => Promise<boolean>)
 		| undefined,
 }));
 const instanceAiHandoffMock = vi.hoisted(() => ({
@@ -76,7 +80,11 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 				nodeCredentialsMock.lastFieldLabel = props.credentialsFieldLabel as string | undefined;
 				nodeCredentialsMock.lastSetupHint = props.credentialSetupHint;
 				nodeCredentialsMock.lastCredentialHelp = props.instanceAiCredentialHelp as
-					| ((credential: { credentialType: string; displayName: string }) => Promise<boolean>)
+					| ((credential: {
+							credentialType: string;
+							displayName: string;
+							placeholderTitles?: string[];
+					  }) => Promise<boolean>)
 					| undefined;
 				return () => h('div', { 'data-test-id': 'node-credentials' }, slots['label-postfix']?.());
 			},
@@ -377,17 +385,19 @@ describe('WorkflowSetupSectionBody', () => {
 		const help = nodeCredentialsMock.lastCredentialHelp;
 		expect(help).toBeTypeOf('function');
 
-		// The modal reports the generic type name; the recipe's service name replaces it.
+		// The modal reports the generic type name; the recipe's service name replaces
+		// it, and the pre-filled form's labels turn the question into paste guidance.
 		const shouldCloseModal = await help!({
 			credentialType: 'httpTemplatedCustomAuth',
 			displayName: 'Simplified Custom Auth',
+			placeholderTitles: ['fal.ai API key'],
 		});
 
 		// New tab → the credential modal stays open.
 		expect(shouldCloseModal).toBe(false);
 		expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
 			'project-1',
-			expect.stringContaining('fal.ai API Key'),
+			expect.stringContaining('pre-filled from a recipe'),
 			{ source: 'credential_edit', origin: 'internal' },
 			undefined,
 			undefined,
@@ -399,6 +409,10 @@ describe('WorkflowSetupSectionBody', () => {
 				}),
 			}),
 		);
+		const question = instanceAiHandoffMock.startThread.mock.calls[0][1] as string;
+		expect(question).toContain('"fal.ai API Key"');
+		expect(question).toContain('"fal.ai API key"');
+		expect(question).toContain("don't suggest changing the template");
 	});
 
 	it('keeps the modal display name in the help thread when the section has no recipe', async () => {

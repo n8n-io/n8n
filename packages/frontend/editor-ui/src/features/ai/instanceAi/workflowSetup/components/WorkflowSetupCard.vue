@@ -1,11 +1,10 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { deriveServiceIconUrl } from '@/features/credentials/templatedAuth.utils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
@@ -53,30 +52,13 @@ const displayName = computed(() => {
 		);
 	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name } });
 });
-
-/** Service logo: explicit https icon, else the docs page's favicon; hidden
- *  again (generic icon fallback) if the image fails to load. */
-const iconFailed = ref(false);
-const hintIconUrl = computed(() =>
-	iconFailed.value
-		? undefined
-		: deriveServiceIconUrl(props.section.setupHint?.iconUrl, props.section.setupHint?.docsUrl),
-);
 </script>
 
 <template>
 	<div :class="$style.card" data-test-id="instance-ai-workflow-setup-card">
 		<header :class="$style.header">
-			<img
-				v-if="isCredentialOnlySection && hintIconUrl"
-				:src="hintIconUrl"
-				:alt="displayName"
-				:class="$style.serviceIcon"
-				data-test-id="credential-hint-icon"
-				@error="iconFailed = true"
-			/>
 			<CredentialIcon
-				v-else-if="isCredentialOnlySection"
+				v-if="isCredentialOnlySection"
 				:credential-type-name="credentialType ?? null"
 				:size="16"
 			/>
@@ -115,13 +97,6 @@ const hintIconUrl = computed(() =>
 </template>
 
 <style lang="scss" module>
-.serviceIcon {
-	width: 16px;
-	height: 16px;
-	border-radius: var(--radius--sm);
-	object-fit: contain;
-}
-
 .card {
 	display: flex;
 	flex-direction: column;

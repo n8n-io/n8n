@@ -1121,6 +1121,32 @@ describe('CredentialConfig', () => {
 			expect(screen.queryByTestId('templated-auth-value-input')).not.toBeInTheDocument();
 		});
 
+		it('hands the AI help handler the guided-form labels of a pre-filled credential', async () => {
+			const helpSpy = vi.fn().mockResolvedValue(false);
+			renderComponent({
+				props: {
+					...templatedProps,
+					credentialProperties: [
+						{ displayName: 'Template', name: 'template', type: 'json', default: '' },
+					],
+					instanceAiCredentialHelp: helpSpy,
+				},
+			});
+
+			const button = screen
+				.getByTestId('credential-edit-instance-ai-help-button')
+				.querySelector('button');
+			await userEvent.click(button!);
+
+			// no defs stored → the humanized marker name stands in as the label
+			expect(helpSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					credentialType: 'httpTemplatedCustomAuth',
+					placeholderTitles: ['Api key'],
+				}),
+			);
+		});
+
 		it('renders the raw field set for other credential types', () => {
 			renderComponent({
 				props: {

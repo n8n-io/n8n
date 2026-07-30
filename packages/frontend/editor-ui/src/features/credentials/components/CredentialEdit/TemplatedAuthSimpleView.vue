@@ -4,6 +4,7 @@ import ParameterInputExpanded from '@/features/ndv/parameters/components/Paramet
 import {
 	cleanPlaceholderValue,
 	extractTemplateMarkers,
+	humanizeMarkerName,
 	parsePlaceholderDefs,
 	parsePlaceholderValues,
 	parseTemplatedAuthField,
@@ -18,7 +19,6 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
-	N8nLink,
 	N8nRadioButtons,
 	N8nSwitch,
 	N8nText,
@@ -38,11 +38,11 @@ import { computed, ref, watch } from 'vue';
  * - Guided form (default): one real parameter input per template `{{marker}}`
  *   (same component as native credential fields, so masking, expressions and
  *   secrets/variables references behave identically), labeled from the stored
- *   placeholder defs, with the docs link under the first field. An untouched
- *   input keeps the stored (redacted) value — the `***` sentinels merge back
- *   to the real secrets server-side on save; typing replaces it.
+ *   placeholder defs. An untouched input keeps the stored (redacted) value —
+ *   the `***` sentinels merge back to the real secrets server-side on save;
+ *   typing replaces it.
  * - Edit setup: the machinery behind the form — auth template, one definition
- *   card per placeholder, test URL, accepted status codes, documentation URL.
+ *   card per placeholder, test URL, accepted status codes.
  */
 const props = defineProps<{
 	credentialData: ICredentialDataDecryptedObject;
@@ -99,11 +99,6 @@ function setEditing(value: boolean) {
 // merges back to the stored secret server-side on save.
 const editedValues = ref<Record<string, string>>({ ...savedValues.value });
 
-function humanize(name: string): string {
-	const spaced = name.replace(/_/g, ' ').trim();
-	return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
 function isRequired(name: string): boolean {
 	return defsByName.value.get(name)?.optional !== true;
 }
@@ -115,7 +110,7 @@ const placeholderProperties = computed<INodeProperties[]>(() =>
 	markers.value.map((name) => {
 		const def = defsByName.value.get(name);
 		return {
-			displayName: def?.title || humanize(name),
+			displayName: def?.title || humanizeMarkerName(name),
 			name,
 			type: 'string',
 			default: '',
@@ -153,29 +148,6 @@ function onParameterUpdate(update: IUpdateInformation) {
 	emit('update', { name: 'placeholderValues', value: JSON.stringify(composed, null, 2) });
 }
 
-const docsUrl = computed(() => {
-	const url = props.credentialData.docsUrl;
-	return typeof url === 'string' && /^https?:\/\//.test(url) ? url : undefined;
-});
-
-const docsHost = computed(() => {
-	if (!docsUrl.value) return undefined;
-	try {
-		return new URL(docsUrl.value).host;
-	} catch {
-		return undefined;
-	}
-});
-
-const docsLinkText = computed(() =>
-	i18n.baseText(
-		markers.value.length > 1
-			? 'credentialEdit.templatedAuth.docsLink.keys'
-			: 'credentialEdit.templatedAuth.docsLink.token',
-		{ interpolate: { host: docsHost.value ?? docsUrl.value ?? '' } },
-	),
-);
-
 // ── Edit setup ──────────────────────────────────────────────────────────────
 
 function chipLabel(name: string): string {
@@ -211,10 +183,6 @@ const testUrlText = computed(() =>
 	typeof props.credentialData.testUrl === 'string' ? props.credentialData.testUrl : '',
 );
 
-const docsUrlText = computed(() =>
-	typeof props.credentialData.docsUrl === 'string' ? props.credentialData.docsUrl : '',
-);
-
 // Local buffer: the stored value is a JSON array, so echoing the parsed value
 // back into the input would eat separators as the user types them.
 const codesText = ref(
@@ -243,7 +211,7 @@ const typeOptions = computed(() => [
 			<template v-if="markers.length">
 				<!-- form-per-input matches CredentialInputs: breaks up inputs and prevents Chrome autofill -->
 				<form
-					v-for="(parameter, index) in placeholderProperties"
+					v-for="parameter in placeholderProperties"
 					:key="parameter.name"
 					:class="$style.field"
 					autocomplete="off"
@@ -259,12 +227,6 @@ const typeOptions = computed(() => [
 						event-source="credentials"
 						@update="onParameterUpdate"
 					/>
-					<div v-if="index === 0 && docsUrl" :class="$style.helpRow">
-						<N8nLink :to="docsUrl" new-window size="small" data-test-id="templated-auth-docs-link">
-							{{ docsLinkText }}
-							<N8nIcon icon="external-link" size="xsmall" />
-						</N8nLink>
-					</div>
 				</form>
 			</template>
 			<div v-else :class="$style.empty" data-test-id="templated-auth-empty">
@@ -353,7 +315,7 @@ const typeOptions = computed(() => [
 									<N8nInput
 										size="small"
 										:model-value="defFor(name).title"
-										:placeholder="humanize(name)"
+										:placeholder="humanizeMarkerName(name)"
 										@update:model-value="setDefField(name, { title: $event })"
 									/>
 								</N8nInputLabel>
@@ -424,24 +386,6 @@ const typeOptions = computed(() => [
 					/>
 				</N8nInputLabel>
 			</div>
-
-			<div :class="$style.section">
-				<N8nInputLabel
-					:label="i18n.baseText('credentialEdit.templatedAuth.docsUrl')"
-					:tooltip-text="i18n.baseText('credentialEdit.templatedAuth.docsUrl.tooltip')"
-					:bold="false"
-					size="medium"
-				>
-					<N8nInput
-						size="small"
-						:model-value="docsUrlText"
-						:placeholder="i18n.baseText('credentialEdit.templatedAuth.docsUrl.placeholder')"
-						:class="$style.mono"
-						data-test-id="templated-auth-docs-url-input"
-						@update:model-value="emitSetupUpdate('docsUrl', $event)"
-					/>
-				</N8nInputLabel>
-			</div>
 		</template>
 	</div>
 </template>
@@ -456,14 +400,6 @@ const typeOptions = computed(() => [
 .field {
 	display: flex;
 	flex-direction: column;
-}
-
-.helpRow {
-	margin-top: var(--spacing--3xs);
-
-	svg {
-		vertical-align: baseline;
-	}
 }
 
 .empty {

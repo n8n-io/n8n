@@ -18,6 +18,11 @@ export interface InstanceAiCredentialContext {
 	/** The existing credential's id, when one is already selected (vs. creating a
 	 *  new one) — lets the agent act on it directly instead of guessing. */
 	id?: string;
+	/** Guided-form input labels of a recipe-created (Simplified Custom Auth)
+	 *  credential. Present when the form is pre-filled and the user only pastes
+	 *  these values — the help thread then asks where to find them instead of
+	 *  how to configure the credential. */
+	placeholderTitles?: string[];
 	/** n8n docs URL for this credential type, when available in the modal. */
 	documentationUrl?: string;
 	/** OAuth redirect/callback URL shown in the modal, when this is an OAuth credential. */

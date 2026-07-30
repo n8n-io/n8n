@@ -183,18 +183,4 @@ describe('TemplatedAuthSimpleView', () => {
 			expect(JSON.parse(last.value)).toEqual({ api_key: 'new-secret' });
 		});
 	});
-
-	it('renders the docs link when the credential stores a documentation URL', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
-			props: {
-				credentialData: credentialData({ docsUrl: 'https://replicate.com/account/api-tokens' }),
-			},
-		});
-
-		expect(getByTestId('templated-auth-docs-link')).toBeInTheDocument();
-		expect(
-			queryByTestId('templated-auth-docs-link')?.closest('a')?.getAttribute('href') ??
-				getByTestId('templated-auth-docs-link').getAttribute('href'),
-		).toContain('replicate.com/account/api-tokens');
-	});
 });

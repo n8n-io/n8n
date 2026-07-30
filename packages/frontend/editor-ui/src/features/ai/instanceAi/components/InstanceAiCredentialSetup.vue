@@ -6,10 +6,7 @@ import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/ins
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import {
-	deriveServiceIconUrl,
-	deriveServiceName,
-} from '@/features/credentials/templatedAuth.utils';
+import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
@@ -314,21 +311,6 @@ const instanceAiCredentialHelpFactory = useInstanceAiCredentialHelp({
 });
 const instanceAiCredentialHelp = computed(() => instanceAiCredentialHelpFactory());
 
-/** Service logo: explicit https icon, else the docs page's favicon; hidden
- *  again (generic icon fallback) if the image fails to load. */
-const iconFailed = ref(false);
-const hintIconUrl = computed(() =>
-	iconFailed.value
-		? undefined
-		: deriveServiceIconUrl(
-				currentRequest.value?.setupHint?.iconUrl,
-				currentRequest.value?.setupHint?.docsUrl,
-			),
-);
-watch(currentStepIndex, () => {
-	iconFailed.value = false;
-});
-
 /** Create flow: the regular credential modal, pre-filled from the recipe when
  *  the request carries a Templated Custom Auth setup hint. */
 function openCreateCredential() {
@@ -589,15 +571,7 @@ async function handleSetupAutomatically() {
 			<div v-if="currentRequest" data-test-id="instance-ai-credential-card" :class="$style.card">
 				<!-- Header -->
 				<header :class="$style.header">
-					<img
-						v-if="hintIconUrl"
-						:src="hintIconUrl"
-						:alt="getDisplayName(currentRequest)"
-						:class="$style.serviceIcon"
-						data-test-id="credential-hint-icon"
-						@error="iconFailed = true"
-					/>
-					<CredentialIcon v-else :credential-type-name="currentRequest.credentialType" :size="16" />
+					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
 					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 						{{ getDisplayName(currentRequest) }}
 					</N8nText>
@@ -740,13 +714,6 @@ async function handleSetupAutomatically() {
 </template>
 
 <style lang="scss" module>
-.serviceIcon {
-	width: 16px;
-	height: 16px;
-	border-radius: var(--radius--sm);
-	object-fit: contain;
-}
-
 .card {
 	width: 100%;
 	display: flex;

@@ -686,6 +686,7 @@ export interface NewCredentialsModal extends ModalState {
 		nodeName?: string;
 		nodeType?: string;
 		id?: string;
+		placeholderTitles?: string[];
 		documentationUrl?: string;
 		oauthRedirectUrl?: string;
 	}) => Promise<boolean>;
