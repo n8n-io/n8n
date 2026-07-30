@@ -281,6 +281,7 @@ describe('McpTrigger', () => {
 			mockContext.getRequestObject.mockReturnValue(req as never);
 			mockContext.getResponseObject.mockReturnValue(resp as never);
 			mockContext.getNode.mockReturnValue(node);
+			mockContext.getHeaderData.mockReturnValue({ 'x-user-id': 'user-1' });
 
 			const result = await mcpTrigger.webhook(mockContext);
 
@@ -292,11 +293,19 @@ describe('McpTrigger', () => {
 							json: {
 								mcpToolCall: { toolName: 'test-tool', arguments: { arg1: 'value1' } },
 								mcpMessageId: 'msg-123',
+								headers: { 'x-user-id': 'user-1' },
 							},
 						},
 					],
 				],
 			});
+		});
+
+		it('should declare authorization and cookie headers as sensitive output fields', () => {
+			expect(mcpTrigger.description.sensitiveOutputFields).toEqual([
+				'headers.authorization',
+				'headers.cookie',
+			]);
 		});
 
 		it('should handle Streamable HTTP setup when no session exists', async () => {

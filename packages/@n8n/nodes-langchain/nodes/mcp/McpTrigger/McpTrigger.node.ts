@@ -66,6 +66,7 @@ export class McpTrigger extends Node {
 			},
 		],
 		outputs: [],
+		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -234,6 +235,7 @@ export class McpTrigger extends Node {
 						const workflowData = {
 							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
 							...(messageId && { mcpMessageId: messageId }),
+							headers: context.getHeaderData(),
 						};
 						return {
 							noWebhookResponse: true,

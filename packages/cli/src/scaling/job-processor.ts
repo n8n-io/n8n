@@ -535,11 +535,20 @@ export class JobProcessor {
 		const validatedToolArgs =
 			typeof toolArgs === 'object' && toolArgs !== null && !Array.isArray(toolArgs) ? toolArgs : {};
 
+		// Parent = the node the tool feeds (the MCP trigger), so the recorded run
+		// data's `source` points back at it, as in direct mode.
+		const [parentNodeName] = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
+		const parentNode = parentNodeName ? (workflow.getNode(parentNodeName) ?? undefined) : undefined;
+
+		const triggerJson = parentNodeName
+			? runExecutionData.resultData?.runData?.[parentNodeName]?.[0]?.data?.main?.[0]?.[0]?.json
+			: undefined;
+
 		// Create input data for the tool node with the tool arguments
 		const inputData: INodeExecutionData[][] = [
 			[
 				{
-					json: validatedToolArgs as INodeExecutionData['json'],
+					json: { ...triggerJson, ...validatedToolArgs } as INodeExecutionData['json'],
 				},
 			],
 		];
@@ -566,11 +575,6 @@ export class JobProcessor {
 		};
 
 		const closeFunctions: CloseFunction[] = [];
-
-		// Parent = the node the tool feeds (the MCP trigger), so the recorded run
-		// data's `source` points back at it, as in direct mode.
-		const [parentNodeName] = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
-		const parentNode = parentNodeName ? (workflow.getNode(parentNodeName) ?? undefined) : undefined;
 
 		// Create SupplyDataContext for the tool node
 		const context = new SupplyDataContext(

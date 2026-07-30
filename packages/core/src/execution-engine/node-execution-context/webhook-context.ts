@@ -223,9 +223,14 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		// To be able to use expressions like "$json.sessionId" set the
 		// body data the webhook received to what is normally used for
 		// incoming node data.
+		const { httpRequest } = this.additionalData;
 		const connectionInputData: INodeExecutionData[] = [
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			{ json: this.additionalData.httpRequest?.body || {} },
+			{
+				json: {
+					...((httpRequest?.body ?? {}) as IDataObject),
+					headers: httpRequest?.headers ?? {},
+				},
+			},
 		];
 		const runExecutionData = this.runExecutionData ?? createEmptyRunExecutionData();
 		const executeData: IExecuteData = {

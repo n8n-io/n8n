@@ -24,6 +24,8 @@ import type {
 	IRunExecutionData,
 	IExecuteData,
 } from 'n8n-workflow';
+
+import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import {
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
@@ -610,6 +612,33 @@ describe('prepareExecutionData', () => {
 		);
 
 		expect(runExecutionData.manualData).toBeUndefined();
+	});
+
+	test('should merge the webhook output into the seeded stack for an MCP trigger', () => {
+		const mcpNode = mock<INode>({ name: 'MCP Server Trigger', type: MCP_TRIGGER_NODE_TYPE });
+		const seededRunExecutionData = {
+			version: 1,
+			startData: {},
+			resultData: { runData: {} },
+			executionData: {
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack: [{ node: mcpNode, data: { main: [] }, source: null }],
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		} as unknown as IRunExecutionData;
+
+		const { runExecutionData } = prepareExecutionData(
+			'trigger',
+			mcpNode,
+			{ workflowData: [[{ json: { headers: { 'x-user-id': 'user-42' } } }]] },
+			seededRunExecutionData,
+		);
+
+		expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json).toEqual({
+			headers: { 'x-user-id': 'user-42' },
+		});
 	});
 
 	describe('MICROSOFT_AGENT365_TRIGGER_NODE_TYPE merge condition', () => {

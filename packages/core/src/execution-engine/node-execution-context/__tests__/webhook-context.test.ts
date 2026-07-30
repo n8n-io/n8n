@@ -12,9 +12,13 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowExpression,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { getInputConnectionData } from '../utils/get-input-connection-data';
 import { WebhookContext } from '../webhook-context';
+
+vi.mock('../utils/get-input-connection-data');
 
 describe('WebhookContext', () => {
 	const testCredentialType = 'testCredential';
@@ -234,6 +238,45 @@ describe('WebhookContext', () => {
 		it('should ignore isTest for non-form/non-mcp webhooks (production base)', () => {
 			const context = buildUrlContext(undefined, true);
 			expect(context.getNodeWebhookUrl('default')).toContain('prod-webhook');
+		});
+	});
+
+	describe('getInputConnectionData', () => {
+		const createContext = (httpRequest: IWorkflowExecuteAdditionalData['httpRequest']) => {
+			const contextAdditionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+			contextAdditionalData.httpRequest = httpRequest;
+			return new WebhookContext(workflow, node, contextAdditionalData, mode, webhookData, [], null);
+		};
+
+		const inputPassedToSubNodes = () => vi.mocked(getInputConnectionData).mock.calls[0][3];
+
+		it('should expose the request body and headers to sub-nodes', async () => {
+			const context = createContext(additionalData.httpRequest);
+
+			await context.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+
+			expect(inputPassedToSubNodes()).toEqual([
+				{ json: { test: 'body', headers: { test: 'header' } } },
+			]);
+		});
+
+		it('should not let the request body shadow the headers', async () => {
+			const context = createContext({
+				body: { headers: { 'x-user-id': 'spoofed' } },
+				headers: { 'x-user-id': 'real' },
+			} as unknown as Request);
+
+			await context.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+
+			expect(inputPassedToSubNodes()).toEqual([{ json: { headers: { 'x-user-id': 'real' } } }]);
+		});
+
+		it('should not fail when there is no HTTP request', async () => {
+			const context = createContext(undefined);
+
+			await context.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+
+			expect(inputPassedToSubNodes()).toEqual([{ json: { headers: {} } }]);
 		});
 	});
 
