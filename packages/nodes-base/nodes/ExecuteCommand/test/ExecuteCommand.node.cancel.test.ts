@@ -93,6 +93,42 @@ describe('ExecuteCommand cancellation', () => {
 		}
 	});
 
+	it('spawns child process with detached: false on Windows to prevent empty stdout', async () => {
+		const originalPlatform = process.platform;
+		Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+		try {
+			const promise = node.execute.call(createContext());
+			await Promise.resolve();
+			child.emit('close', 0);
+			await promise;
+
+			expect(mockedSpawn).toHaveBeenCalledWith(
+				'test-command',
+				expect.objectContaining({ detached: false }),
+			);
+		} finally {
+			Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+		}
+	});
+
+	it('spawns child process with detached: true on POSIX for process-group killing', async () => {
+		const originalPlatform = process.platform;
+		Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+		try {
+			const promise = node.execute.call(createContext());
+			await Promise.resolve();
+			child.emit('close', 0);
+			await promise;
+
+			expect(mockedSpawn).toHaveBeenCalledWith(
+				'test-command',
+				expect.objectContaining({ detached: true }),
+			);
+		} finally {
+			Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+		}
+	});
+
 	it('falls back to killing the child directly when the group signal fails', async () => {
 		killSpy.mockImplementation(() => {
 			throw new Error('ESRCH');
