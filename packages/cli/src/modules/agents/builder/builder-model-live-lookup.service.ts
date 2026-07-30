@@ -78,7 +78,7 @@ export class BuilderModelLiveLookupService {
 	): Promise<Array<{ name: string; value: string }>> {
 		const credentialType = await this.aiGatewayService.getCredentialTypeForProvider(provider);
 		if (!credentialType) {
-			throw new Error(`n8n Connect does not support the "${provider}" model provider`);
+			throw new Error(`n8n credits does not support the "${provider}" model provider`);
 		}
 		const raw = await this.aiGatewayService.getSyntheticCredential({
 			credentialType,

@@ -11,8 +11,8 @@ import {
 	type LlmProviderDefault,
 } from '../../llm-provider-defaults';
 
-/** User-facing name written for an n8n Connect (AI Gateway) managed model credential. */
-const N8N_CONNECT_CREDENTIAL_NAME = 'n8n Connect';
+/** User-facing name written for an n8n credits (AI Gateway managed) model credential. */
+const N8N_CONNECT_CREDENTIAL_NAME = 'n8n credits';
 
 export interface ModelLookup {
 	list(
@@ -185,7 +185,10 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'change on an existing agent, ask immediately and keep the current model and credential until the new one resolves. ' +
 				'When no matching credential exists and the user is eligible for free OpenAI credits, the tool ' +
 				'claims them automatically and resolves to openai/gpt-5-mini — the result carries ' +
-				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When multiple ' +
+				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When the ' +
+				'provider has no own credential but n8n credits (the managed option) serves it, the tool ' +
+				'resolves to the managed credential — the result credentialName is "n8n credits"; persist it ' +
+				'like any credential and tell the user the model runs on n8n credits. When multiple ' +
 				'providers each have one credential, the tool auto-picks the recommended provider — the result ' +
 				'carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it. ' +
 				'When the user picks between multiple credentials of one provider, pass the picked credentialId ' +

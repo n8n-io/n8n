@@ -585,7 +585,7 @@ describe('resolve_llm tool', () => {
 				provider: 'anthropic',
 				model: 'claude-sonnet-4-6',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
-				credentialName: 'n8n Connect',
+				credentialName: 'n8n credits',
 			});
 			expect(modelLookup.list).toHaveBeenCalledWith(
 				AI_GATEWAY_MANAGED_TAG,
@@ -700,13 +700,13 @@ describe('resolve_llm tool', () => {
 			// n8n Connect options appended for supported providers without an own key (openai, google).
 			expect(creds).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n Connect',
+				name: 'n8n credits',
 				type: 'openAiApi',
 				provider: 'openai',
 			});
 			expect(creds).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n Connect',
+				name: 'n8n credits',
 				type: 'googlePalmApi',
 				provider: 'google',
 			});
@@ -759,7 +759,7 @@ describe('resolve_llm tool', () => {
 				provider: 'google',
 				model: 'gemini-2.5-pro',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
-				credentialName: 'n8n Connect',
+				credentialName: 'n8n credits',
 			});
 			expect(modelLookup.list).toHaveBeenCalledWith(
 				AI_GATEWAY_MANAGED_TAG,
@@ -786,13 +786,13 @@ describe('resolve_llm tool', () => {
 			};
 			expect(credentials).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n Connect',
+				name: 'n8n credits',
 				type: 'openAiApi',
 				provider: 'openai',
 			});
 			expect(credentials).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n Connect',
+				name: 'n8n credits',
 				type: 'googlePalmApi',
 				provider: 'google',
 			});
