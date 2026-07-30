@@ -36,6 +36,7 @@ const renderComponent = createComponentRenderer(WorkflowReviewStatusBanner, {
 		savedVersionId: PINNED_VERSION,
 		canSubmitChanges: true,
 		canRetryPublish: true,
+		canOpenReview: true,
 	},
 });
 
@@ -59,7 +60,8 @@ describe('WorkflowReviewStatusBanner', () => {
 				title: 'Waiting for review',
 				body: `Version ${PINNED_LABEL} is waiting for review.`,
 				support: 'You can keep editing while the review is open.',
-				secondaryAction: 'workflow-review-submit-changes-button',
+				// The review already covers the saved version, so no action is offered
+				secondaryAction: null,
 				secondaryEnabled: false,
 			},
 			{
@@ -134,7 +136,7 @@ describe('WorkflowReviewStatusBanner', () => {
 		])(
 			'renders $name',
 			async ({ props, pill, title, body, support, secondaryAction, secondaryEnabled }) => {
-				const { getByTestId } = await openPopover(props);
+				const { getByTestId, queryByTestId } = await openPopover(props);
 
 				expect(getByTestId('workflow-review-status-pill')).toHaveTextContent(pill);
 
@@ -144,6 +146,12 @@ describe('WorkflowReviewStatusBanner', () => {
 				expect(popover.getByText(body)).toBeInTheDocument();
 				expect(popover.getByText(support)).toBeInTheDocument();
 				expect(getByTestId('workflow-review-open-review-button')).toBeEnabled();
+
+				if (secondaryAction === null) {
+					expect(queryByTestId('workflow-review-submit-changes-button')).not.toBeInTheDocument();
+					expect(queryByTestId('workflow-review-retry-publish-button')).not.toBeInTheDocument();
+					return;
+				}
 
 				const secondary = getByTestId(secondaryAction);
 				if (secondaryEnabled) {
@@ -217,9 +225,32 @@ describe('WorkflowReviewStatusBanner', () => {
 		});
 
 		it('treats an unknown saved version as in sync', async () => {
-			const { getByTestId } = await openPopover({ savedVersionId: undefined });
+			const { queryByTestId } = await openPopover({ savedVersionId: undefined });
 
-			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+			expect(queryByTestId('workflow-review-submit-changes-button')).not.toBeInTheDocument();
+		});
+
+		// R2 (P3): the changes-requested copy tells the author to submit, so the
+		// disabled button has to say what unblocks it — see LIGO-607_review.md
+		it('explains why Submit changes is disabled while in sync', async () => {
+			const { getByTestId, findByText } = await openPopover({
+				review: review({ decision: 'changes_requested', decisionBy: actor }),
+				savedVersionId: PINNED_VERSION,
+			});
+
+			await userEvent.hover(getByTestId('workflow-review-submit-changes-button'));
+
+			expect(
+				await findByText('Save your changes first to submit them to this review.'),
+			).toBeInTheDocument();
+		});
+
+		// R3 (P3): the detail route 404s without publish rights — see LIGO-607_review.md
+		it('hides Open review when the detail route is unreachable', async () => {
+			const { queryByTestId, getByTestId } = await openPopover({ canOpenReview: false });
+
+			expect(queryByTestId('workflow-review-open-review-button')).not.toBeInTheDocument();
+			expect(getByTestId('workflow-review-status-popover')).toBeInTheDocument();
 		});
 
 		it('emits retry-publish for an approved version that was never published', async () => {

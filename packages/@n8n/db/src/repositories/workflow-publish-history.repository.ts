@@ -1,6 +1,6 @@
 import type { WorkflowReviewApprovedPublicationState } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 
 import { WorkflowHistory, WorkflowPublishHistory } from '../entities';
@@ -55,39 +55,65 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			return 'unknown';
 		}
 
-		const version = await this.manager.findOne(WorkflowHistory, {
-			where: { workflowId, versionId },
-			select: ['createdAt'],
-		});
-		// Pruned history: no creation time to order against, so stay silent (LIGO-879)
-		if (!version) {
-			return 'unknown';
+		const states = await this.getVersionPublicationStates(workflowId, [versionId]);
+		return states.get(versionId) ?? 'unknown';
+	}
+
+	async getVersionPublicationStates(
+		workflowId: string,
+		versionIds: string[],
+	): Promise<Map<string, WorkflowReviewApprovedPublicationState>> {
+		const states = new Map<string, WorkflowReviewApprovedPublicationState>();
+		const requested = [...new Set(versionIds)];
+		if (requested.length === 0) {
+			return states;
 		}
 
-		// Covered by the (workflowId, versionId) index
-		const activated = await this.manager.findOne(WorkflowPublishHistory, {
-			where: { workflowId, versionId, event: 'activated' },
-			select: ['id'],
+		const versions = await this.manager.find(WorkflowHistory, {
+			where: { workflowId, versionId: In(requested) },
+			select: ['versionId', 'createdAt'],
 		});
-		if (activated) {
-			return 'published';
+		const createdAtByVersionId = new Map(
+			versions.map((version) => [version.versionId, version.createdAt]),
+		);
+
+		// One pass over the workflow's publishes (bounded by how often it was
+		// published) answers both "was this version live" and "was a newer one".
+		// Covered by the (workflowId, versionId) index.
+		const activated = await this.manager.find(WorkflowPublishHistory, {
+			where: { workflowId, event: 'activated' },
+			select: ['versionId'],
+		});
+		const activatedVersionIds = activated
+			.map((record) => record.versionId)
+			.filter((id): id is string => id !== null);
+
+		// Pruned publishes (`versionId` nulled) drop out here, as they always have
+		const newestActivated = activatedVersionIds.length
+			? await this.manager.findOne(WorkflowHistory, {
+					where: { workflowId, versionId: In(activatedVersionIds) },
+					order: { createdAt: 'DESC' },
+					select: ['createdAt'],
+				})
+			: null;
+		const activatedVersionIdSet = new Set(activatedVersionIds);
+
+		for (const versionId of requested) {
+			const createdAt = createdAtByVersionId.get(versionId);
+			// Pruned history: no creation time to order against, so stay silent (LIGO-879)
+			if (!createdAt) {
+				states.set(versionId, 'unknown');
+			} else if (activatedVersionIdSet.has(versionId)) {
+				states.set(versionId, 'published');
+			} else if (newestActivated && newestActivated.createdAt > createdAt) {
+				// "Later version" is workflow-history creation order, never UUID comparison
+				states.set(versionId, 'superseded');
+			} else {
+				states.set(versionId, 'not_published');
+			}
 		}
 
-		const laterActivated = await this.manager
-			.createQueryBuilder(WorkflowPublishHistory, 'publish')
-			.innerJoin(
-				WorkflowHistory,
-				'publishedVersion',
-				'publishedVersion.versionId = publish.versionId AND publishedVersion.workflowId = publish.workflowId',
-			)
-			.select('publish.id', 'id')
-			.where('publish.workflowId = :workflowId', { workflowId })
-			.andWhere('publish.event = :event', { event: 'activated' })
-			.andWhere('publishedVersion.createdAt > :createdAt', { createdAt: version.createdAt })
-			.limit(1)
-			.getRawOne();
-
-		return laterActivated ? 'superseded' : 'not_published';
+		return states;
 	}
 
 	async findActivatedByUserId(workflowId: string): Promise<string | undefined> {

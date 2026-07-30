@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WorkflowReviewRequestForWorkflow } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nPopover, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nPopover, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
@@ -19,7 +19,7 @@ type BannerStatus = {
 	body: string;
 	support: string;
 	tone: BannerTone;
-	action: BannerAction;
+	action: BannerAction | null;
 };
 
 const props = defineProps<{
@@ -29,6 +29,10 @@ const props = defineProps<{
 	savedVersionId?: string;
 	/** Whether the user may push the latest version into the open review. */
 	canSubmitChanges: boolean;
+	/**
+	 * Whether the user may open the review detail.
+	 */
+	canOpenReview: boolean;
 	/** Whether the user may publish the approved pinned version. */
 	canRetryPublish: boolean;
 	/** A retry publish is in flight. */
@@ -112,7 +116,8 @@ const status = computed<BannerStatus | null>(() => {
 			support: i18n.baseText('workflowReviews.editorBanner.pending.support'),
 			// Nothing is wrong and nothing is expected of the author yet
 			tone: 'info',
-			action: 'submit-changes',
+			// The review already covers the saved version, so there is nothing to submit
+			action: null,
 		};
 	}
 
@@ -140,7 +145,20 @@ const status = computed<BannerStatus | null>(() => {
 /** Nothing to submit while the review already covers the saved version. */
 const isSubmitChangesEnabled = computed(() => props.canSubmitChanges && hasDivergentVersion.value);
 
+/**
+ * Changes-requested keeps its Submit changes button even in sync, so say why it is
+ * disabled — the support copy tells the author to submit. R2 (P3), see LIGO-607_review.md.
+ */
+const submitChangesHint = computed(() =>
+	props.canSubmitChanges && !hasDivergentVersion.value
+		? i18n.baseText('workflowReviews.editorBanner.submitChanges.savedVersionHint')
+		: '',
+);
+
 const isRetryPublishEnabled = computed(() => props.canRetryPublish && !props.isPublishing);
+
+/** A popover with no action left is still worth showing for its copy. */
+const hasActions = computed(() => props.canOpenReview || !!status.value?.action);
 
 /** Acting on the review always dismisses the popover first. */
 const onOpenReview = () => {
@@ -183,8 +201,9 @@ const onRetryPublish = () => {
 				<N8nHeading tag="h3" size="small" bold>{{ status.title }}</N8nHeading>
 				<N8nText tag="p" size="small">{{ status.body }}</N8nText>
 				<N8nText tag="p" size="small">{{ status.support }}</N8nText>
-				<div :class="$style.actions">
+				<div v-if="hasActions" :class="$style.actions">
 					<N8nButton
+						v-if="canOpenReview"
 						variant="outline"
 						size="small"
 						data-test-id="workflow-review-open-review-button"
@@ -192,17 +211,23 @@ const onRetryPublish = () => {
 					>
 						{{ i18n.baseText('workflowReviews.editorBanner.openReview') }}
 					</N8nButton>
-					<N8nButton
+					<N8nTooltip
 						v-if="status.action === 'submit-changes'"
-						size="small"
-						:disabled="!isSubmitChangesEnabled"
-						data-test-id="workflow-review-submit-changes-button"
-						@click="onSubmitChanges"
+						:disabled="!submitChangesHint"
+						:content="submitChangesHint"
+						:show-after="300"
 					>
-						{{ i18n.baseText('workflowReviews.editorBanner.submitChanges') }}
-					</N8nButton>
+						<N8nButton
+							size="small"
+							:disabled="!isSubmitChangesEnabled"
+							data-test-id="workflow-review-submit-changes-button"
+							@click="onSubmitChanges"
+						>
+							{{ i18n.baseText('workflowReviews.editorBanner.submitChanges') }}
+						</N8nButton>
+					</N8nTooltip>
 					<N8nButton
-						v-else
+						v-else-if="status.action === 'retry-publish'"
 						size="small"
 						:loading="isPublishing"
 						:disabled="!isRetryPublishEnabled"

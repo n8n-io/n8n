@@ -4554,6 +4554,7 @@
 	"workflowReviews.submitted.toast": "Workflow version submitted for review successfully",
 	"workflowReviews.editorBanner.openReview": "Open review",
 	"workflowReviews.editorBanner.submitChanges": "Submit changes",
+	"workflowReviews.editorBanner.submitChanges.savedVersionHint": "Save your changes first to submit them to this review.",
 	"workflowReviews.editorBanner.retryPublish": "Retry publish",
 	"workflowReviews.editorBanner.pending.pill": "Waiting for review",
 	"workflowReviews.editorBanner.pending.title": "Waiting for review",

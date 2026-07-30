@@ -32,7 +32,7 @@ export type FindManyForInboxOptions = {
  * Projection for the workflow-scoped list: the request fields the use case
  * needs plus the version pinned for the workflow the query was scoped to.
  */
-export type WorkflowReviewRequestForWorkflow = Pick<
+export type WorkflowReviewRequestForWorkflowRow = Pick<
 	WorkflowReviewRequest,
 	'id' | 'state' | 'decision' | 'updatedById' | 'createdAt' | 'updatedAt'
 > & {
@@ -103,7 +103,7 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 	async findRequestsForWorkflow(
 		workflowId: string,
 		options: { state?: WorkflowReviewRequestState; skip?: number; take?: number } = {},
-	): Promise<[WorkflowReviewRequestForWorkflow[], number]> {
+	): Promise<[WorkflowReviewRequestForWorkflowRow[], number]> {
 		const qb = this.manager
 			.createQueryBuilder(WorkflowReviewRequest, 'request')
 			.innerJoin(

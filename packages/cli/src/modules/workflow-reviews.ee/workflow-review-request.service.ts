@@ -25,7 +25,7 @@ import {
 	WorkflowReviewRequestWorkflowRepository,
 	type User,
 	type WorkflowReviewRequest,
-	type WorkflowReviewRequestForWorkflow as WorkflowReviewRequestForWorkflowRow,
+	type WorkflowReviewRequestForWorkflowRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -109,36 +109,32 @@ export class WorkflowReviewRequestService {
 
 		return {
 			count,
-			data: await Promise.all(
-				requests.map(async (request) => await this.toWorkflowScopedItem(query.workflowId, request)),
-			),
+			data: await this.toWorkflowScopedItems(query.workflowId, requests),
 		};
 	}
 
-	/**
-	 * The canvas reads this list to render its review banner, so each item carries
-	 * the two derived fields that banner needs. Both are resolved only for the
-	 * decision that uses them — no requester/reviewer hydration happens here.
-	 */
-	private async toWorkflowScopedItem(
+	private async toWorkflowScopedItems(
 		workflowId: string,
-		request: WorkflowReviewRequestForWorkflowRow,
-	): Promise<WorkflowReviewRequestForWorkflow> {
-		const [decisionBy, approvedVersionPublicationState] = await Promise.all([
-			this.resolveDecisionActor(request),
-			this.resolveApprovedPublicationState(workflowId, request),
+		requests: WorkflowReviewRequestForWorkflowRow[],
+	): Promise<WorkflowReviewRequestForWorkflow[]> {
+		const [decisionActors, publicationStates] = await Promise.all([
+			this.resolveDecisionActors(requests),
+			this.resolveApprovedPublicationStates(workflowId, requests),
 		]);
 
-		return {
+		return requests.map((request) => ({
 			id: request.id,
 			state: request.state,
 			decision: request.decision,
 			workflowVersionId: request.workflowVersionId,
 			createdAt: request.createdAt.toISOString(),
 			updatedAt: request.updatedAt.toISOString(),
-			decisionBy,
-			approvedVersionPublicationState,
-		};
+			decisionBy: this.pickDecisionActor(request, decisionActors),
+			approvedVersionPublicationState: this.pickApprovedPublicationState(
+				request,
+				publicationStates,
+			),
+		}));
 	}
 
 	/**
@@ -147,29 +143,74 @@ export class WorkflowReviewRequestService {
 	 * decision has no actor to name: `pending` may just be a version re-pin, and
 	 * approval is not surfaced with an actor.
 	 */
-	private async resolveDecisionActor(
+	private async resolveDecisionActors(
+		requests: WorkflowReviewRequestForWorkflowRow[],
+	): Promise<Map<string, WorkflowReviewEligibleReviewer>> {
+		const actorIds = [
+			...new Set(
+				requests.flatMap((request) =>
+					request.decision === 'changes_requested' && request.updatedById
+						? [request.updatedById]
+						: [],
+				),
+			),
+		];
+		if (actorIds.length === 0) {
+			return new Map();
+		}
+
+		const actors = await this.userRepository.findManyByIds(actorIds);
+		return new Map(actors.map((actor) => [actor.id, toEligibleReviewer(actor)]));
+	}
+
+	private pickDecisionActor(
 		request: WorkflowReviewRequestForWorkflowRow,
-	): Promise<WorkflowReviewEligibleReviewer | null> {
+		actors: Map<string, WorkflowReviewEligibleReviewer>,
+	): WorkflowReviewEligibleReviewer | null {
 		if (request.decision !== 'changes_requested' || !request.updatedById) {
 			return null;
 		}
 
-		const [actor] = await this.userRepository.findManyByIds([request.updatedById]);
-		return actor ? toEligibleReviewer(actor) : null;
+		return actors.get(request.updatedById) ?? null;
 	}
 
-	private async resolveApprovedPublicationState(
+	private async resolveApprovedPublicationStates(
 		workflowId: string,
+		requests: WorkflowReviewRequestForWorkflowRow[],
+	): Promise<Map<string, WorkflowReviewApprovedPublicationState>> {
+		const versionIds = [
+			...new Set(
+				requests.flatMap((request) =>
+					request.decision === 'approved' && request.workflowVersionId
+						? [request.workflowVersionId]
+						: [],
+				),
+			),
+		];
+		if (versionIds.length === 0) {
+			return new Map();
+		}
+
+		return await this.workflowPublishHistoryRepository.getVersionPublicationStates(
+			workflowId,
+			versionIds,
+		);
+	}
+
+	private pickApprovedPublicationState(
 		request: WorkflowReviewRequestForWorkflowRow,
-	): Promise<WorkflowReviewApprovedPublicationState | null> {
+		states: Map<string, WorkflowReviewApprovedPublicationState>,
+	): WorkflowReviewApprovedPublicationState | null {
 		if (request.decision !== 'approved') {
 			return null;
 		}
 
-		return await this.workflowPublishHistoryRepository.getVersionPublicationState(
-			workflowId,
-			request.workflowVersionId,
-		);
+		// A pruned pin has no version to reason about, so it stays 'unknown'
+		if (!request.workflowVersionId) {
+			return 'unknown';
+		}
+
+		return states.get(request.workflowVersionId) ?? 'unknown';
 	}
 
 	async getEligibleReviewers(

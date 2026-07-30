@@ -1248,25 +1248,39 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it.each([
-			{ name: 'the workflow is archived', props: { isArchived: true } },
+			{
+				name: 'the workflow is archived',
+				props: { isArchived: true },
+				// Publish rights survive archiving, so the review is still reachable
+				canOpenReview: true,
+			},
 			{
 				name: 'the user cannot publish',
 				props: {
 					workflowPermissions: { ...defaultWorkflowProps.workflowPermissions, publish: false },
 				},
+				// the detail route would 404
+				canOpenReview: false,
 			},
-		])('keeps the status readable but disables writes when $name', async ({ props }) => {
-			setWorkflowReviewGates();
-			seedLatestReview();
+		])(
+			'keeps the status readable but disables writes when $name',
+			async ({ props, canOpenReview }) => {
+				setWorkflowReviewGates();
+				seedLatestReview();
 
-			const { findByTestId, getByTestId } = renderComponent({
-				props: { ...defaultWorkflowProps, ...props },
-			});
-			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+				const { findByTestId, getByTestId, queryByTestId } = renderComponent({
+					props: { ...defaultWorkflowProps, ...props },
+				});
+				await userEvent.click(await findByTestId('workflow-review-status-pill'));
 
-			expect(getByTestId('workflow-review-open-review-button')).toBeEnabled();
-			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
-		});
+				if (canOpenReview) {
+					expect(getByTestId('workflow-review-open-review-button')).toBeEnabled();
+				} else {
+					expect(queryByTestId('workflow-review-open-review-button')).not.toBeInTheDocument();
+				}
+				expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+			},
+		);
 
 		it.each([
 			{

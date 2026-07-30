@@ -231,6 +231,8 @@ const canActOnReview = computed(
 	() => !!hasPublishPermission.value && !collaborationReadOnly.value && !props.isArchived,
 );
 
+const canOpenReview = computed(() => !!hasPublishPermission.value);
+
 /**
  * Cancel autosave if scheduled or wait for it to finish if in progress
  * Save immediately if autosave idle or cancelled
@@ -777,6 +779,7 @@ defineExpose({
 				:saved-version-id="savedVersionId"
 				:can-submit-changes="canActOnReview"
 				:can-retry-publish="canActOnReview"
+				:can-open-review="canOpenReview"
 				:is-publishing="isRetryingPublish"
 				@open-review="onOpenReviewFromBanner"
 				@submit-changes="showUpdateReviewDialog = true"

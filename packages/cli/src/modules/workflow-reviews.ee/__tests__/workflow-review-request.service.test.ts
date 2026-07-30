@@ -16,7 +16,7 @@ import type {
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
-	WorkflowReviewRequestForWorkflow,
+	WorkflowReviewRequestForWorkflowRow,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
@@ -417,8 +417,8 @@ describe('WorkflowReviewRequestService', () => {
 		});
 
 		const latestReviewRow = (
-			overrides: Partial<WorkflowReviewRequestForWorkflow> = {},
-		): WorkflowReviewRequestForWorkflow => ({
+			overrides: Partial<WorkflowReviewRequestForWorkflowRow> = {},
+		): WorkflowReviewRequestForWorkflowRow => ({
 			id: 'req-1',
 			state: 'open',
 			decision: 'pending',
@@ -429,7 +429,7 @@ describe('WorkflowReviewRequestService', () => {
 			...overrides,
 		});
 
-		const mockLatestReview = (overrides: Partial<WorkflowReviewRequestForWorkflow> = {}) => {
+		const mockLatestReview = (overrides: Partial<WorkflowReviewRequestForWorkflowRow> = {}) => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 			requestRepository.findRequestsForWorkflow.mockResolvedValue([
 				[latestReviewRow(overrides)],
@@ -489,7 +489,7 @@ describe('WorkflowReviewRequestService', () => {
 					approvedVersionPublicationState: null,
 				},
 			]);
-			expect(publishHistoryRepository.getVersionPublicationState).not.toHaveBeenCalled();
+			expect(publishHistoryRepository.getVersionPublicationStates).not.toHaveBeenCalled();
 		});
 
 		it('falls back to no actor when the deciding user was deleted', async () => {
@@ -512,14 +512,16 @@ describe('WorkflowReviewRequestService', () => {
 
 		it('derives the publication state of an approved review only', async () => {
 			mockLatestReview({ state: 'closed', decision: 'approved' });
-			publishHistoryRepository.getVersionPublicationState.mockResolvedValue('not_published');
+			publishHistoryRepository.getVersionPublicationStates.mockResolvedValue(
+				new Map([['ver-1', 'not_published']]),
+			);
 
 			const { data } = await service.list(user, query);
 
-			expect(publishHistoryRepository.getVersionPublicationState).toHaveBeenCalledWith(
-				'wf-1',
+			// Batched across rows so the list cannot become an N+1
+			expect(publishHistoryRepository.getVersionPublicationStates).toHaveBeenCalledWith('wf-1', [
 				'ver-1',
-			);
+			]);
 			expect(data[0]).toMatchObject({
 				decisionBy: null,
 				approvedVersionPublicationState: 'not_published',
@@ -533,11 +535,67 @@ describe('WorkflowReviewRequestService', () => {
 			const { data } = await service.list(user, query);
 
 			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
-			expect(publishHistoryRepository.getVersionPublicationState).not.toHaveBeenCalled();
+			expect(publishHistoryRepository.getVersionPublicationStates).not.toHaveBeenCalled();
 			expect(data[0]).toMatchObject({
 				decisionBy: null,
 				approvedVersionPublicationState: null,
 			});
+		});
+
+		// R1 (P3): enriching row by row made this list an N+1 — see LIGO-607_review.md
+		it('enriches many rows with one lookup per derived field', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
+			requestRepository.findRequestsForWorkflow.mockResolvedValue([
+				[
+					latestReviewRow({ id: 'req-1', decision: 'changes_requested', updatedById: 'user-2' }),
+					latestReviewRow({ id: 'req-2', decision: 'changes_requested', updatedById: 'user-3' }),
+					latestReviewRow({
+						id: 'req-3',
+						state: 'closed',
+						decision: 'approved',
+						workflowVersionId: 'ver-3',
+					}),
+					latestReviewRow({
+						id: 'req-4',
+						state: 'closed',
+						decision: 'approved',
+						workflowVersionId: 'ver-4',
+					}),
+				],
+				4,
+			]);
+			userRepository.findManyByIds.mockResolvedValue([
+				reviewer,
+				loadedUser({ id: 'user-3', email: 'other@example.com' }),
+			]);
+			publishHistoryRepository.getVersionPublicationStates.mockResolvedValue(
+				new Map([
+					['ver-3', 'not_published'],
+					['ver-4', 'superseded'],
+				]),
+			);
+
+			const { data } = await service.list(user, query);
+
+			expect(userRepository.findManyByIds).toHaveBeenCalledTimes(1);
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith(['user-2', 'user-3']);
+			expect(publishHistoryRepository.getVersionPublicationStates).toHaveBeenCalledTimes(1);
+			expect(publishHistoryRepository.getVersionPublicationStates).toHaveBeenCalledWith('wf-1', [
+				'ver-3',
+				'ver-4',
+			]);
+			expect(data.map((item) => item.decisionBy?.email ?? null)).toEqual([
+				'reviewer@example.com',
+				'other@example.com',
+				null,
+				null,
+			]);
+			expect(data.map((item) => item.approvedVersionPublicationState)).toEqual([
+				null,
+				null,
+				'not_published',
+				'superseded',
+			]);
 		});
 	});
 });
