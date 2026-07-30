@@ -805,7 +805,7 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 
 		test('routes a staged cursor to runPolledWorkflow and skips saveStaticData when the flag is on', async () => {
-			pollCursorService.enabled = true;
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
 			const workflow = buildWorkflow();
 			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
 			const context = buildContext(workflow, node);
@@ -828,7 +828,7 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 
 		test('falls through to runWorkflow when the flag is on but nothing was staged', async () => {
-			pollCursorService.enabled = true;
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
 			const workflow = buildWorkflow();
 			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
 			const context = buildContext(workflow, node);
@@ -841,7 +841,7 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 
 		test('does not re-commit on a later tick a cursor staged on an earlier one', async () => {
-			pollCursorService.enabled = true;
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
 			const workflow = buildWorkflow();
 			const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
 			const context = buildContext(workflow, node);
@@ -858,7 +858,7 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 
 		test('keeps the staged cursors of two poll nodes built from one factory apart', async () => {
-			pollCursorService.enabled = true;
+			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(true);
 			const workflow = buildWorkflow();
 			const firstNode = mock<INode>({ id: 'node-1', name: 'First Poll Node' });
 			const secondNode = mock<INode>({ id: 'node-2', name: 'Second Poll Node' });

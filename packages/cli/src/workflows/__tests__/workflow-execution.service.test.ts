@@ -592,6 +592,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
+				pollCursorService,
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -664,6 +665,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
+				pollCursorService,
 			);
 
 			const result = await service.executeManually(workflowData, runPayload, user);
@@ -835,6 +837,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
+				pollCursorService,
 			);
 		});
 
@@ -991,6 +994,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
+				pollCursorService,
 			);
 
 			await service.executeErrorWorkflow(
@@ -1134,6 +1138,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
+				pollCursorService,
 			);
 
 			await service.executeErrorWorkflow(
@@ -1238,6 +1243,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				workflowsConfig,
 				workflowPublishedDataService,
+				pollCursorService,
 			);
 
 			await service.executeErrorWorkflow(
@@ -1291,6 +1297,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				workflowsConfig,
 				workflowPublishedDataService,
+				pollCursorService,
 			);
 
 			await service.executeErrorWorkflow(
@@ -1331,6 +1338,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				pollCursorService,
 			);
 
 			const user = mock<User>({ id: 'user-id' });
