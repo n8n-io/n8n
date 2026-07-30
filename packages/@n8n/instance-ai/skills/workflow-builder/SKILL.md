@@ -457,8 +457,10 @@ never from `$now.weekday == N`, which silently no-ops on other days.
   such as `as const`.
 - Use string values directly for discriminator fields like `resource` and
   `operation`, for example `resource: 'message'`.
-- When editing a pre-loaded workflow, remove `position` arrays from node
-  configs; they are auto-calculated.
+- When editing a pre-loaded workflow, remove every `position` array — from node
+  configs and from `sticky()` options alike. Positions are auto-calculated, and
+  the saved workflow's own layout is restored on save, so nothing you drop here
+  is lost. Leaving some in place is worse than dropping all of them.
 - Use `placeholder('hint')` directly as the parameter value. Do not wrap
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
