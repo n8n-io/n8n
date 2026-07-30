@@ -155,8 +155,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	/**
 	 * End the turn without posting anything. Allowed only when the latest
-	 * inbound message marked the reply as optional (a follow-up in a subscribed
-	 * group thread); DMs and direct mentions always expect a reply.
+	 * inbound message marked the reply as optional.
 	 */
 	private doNotRespond(params: ExecuteParams): IntegrationActionResult {
 		if (params.currentMessageContext?.replyExpectation !== 'optional') {

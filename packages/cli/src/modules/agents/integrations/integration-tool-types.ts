@@ -22,10 +22,10 @@ export type IntegrationMessageTarget =
 	  };
 
 /**
- * Whether the latest inbound message expects a reply. Direct messages and
- * direct mentions are 'required'; follow-up messages in subscribed group
- * threads are 'optional' — only then may the agent end a turn silently via
- * the `do_not_respond` action.
+ * Whether the latest inbound message expects a reply. Only when 'optional'
+ * may the agent end the turn silently via the `do_not_respond` action.
+ * Each platform decides which messages are 'optional' (see
+ * `AgentChatIntegration.getReplyExpectation`).
  */
 export type ReplyExpectation = 'required' | 'optional';
 
