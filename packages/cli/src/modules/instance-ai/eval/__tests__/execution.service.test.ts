@@ -526,12 +526,21 @@ describe('EvalExecutionService', () => {
 		});
 
 		// Nothing else stops a run the client abandoned — eval mode skips reservation.
+		// Stopping rejects the promise the service awaits (as ActiveExecutions does),
+		// so this also pins that the budget is reported and not that rejection.
 		it('stops the execution and reports it when the run outlives the caller budget', async () => {
 			vi.useFakeTimers();
 			try {
+				let rejectRun: (error: Error) => void = () => {};
 				activeExecutions.getPostExecutePromise.mockImplementation(
-					async () => await new Promise<never>(() => {}),
+					async () =>
+						await new Promise<never>((_resolve, reject) => {
+							rejectRun = reject;
+						}),
 				);
+				activeExecutions.stopExecution.mockImplementation((_id, cancellationError) => {
+					rejectRun(cancellationError);
+				});
 
 				const pending = service.executeWithLlmMock('wf-1', makeUser(), { timeoutMs: 30_000 });
 				await vi.advanceTimersByTimeAsync(30_001);

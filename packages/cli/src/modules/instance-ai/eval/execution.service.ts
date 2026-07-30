@@ -956,6 +956,15 @@ export class EvalExecutionService {
 		// Clamped at 0: setup can legitimately consume the whole budget, and then the
 		// run must be stopped rather than granted a fresh one.
 		const remainingMs = Math.max(budget.deadlineAt - Date.now(), 0);
+		const seconds = Math.round(budget.totalMs / 1000);
+		const budgetError = () =>
+			new Error(`Execution exceeded its ${seconds}s eval budget and was stopped`);
+
+		// `stopExecution` rejects the very promise being raced, and that rejection
+		// settles the race first — so the outcome is reported off this flag rather
+		// than off whichever arm won, otherwise the caller sees a bare "execution
+		// cancelled" and cannot tell a budget stop from any other cancellation.
+		let stoppedForBudget = false;
 
 		let deadline: NodeJS.Timeout | undefined;
 		try {
@@ -963,7 +972,7 @@ export class EvalExecutionService {
 				postExecute,
 				new Promise<never>((_resolve, reject) => {
 					deadline = setTimeout(() => {
-						const seconds = Math.round(budget.totalMs / 1000);
+						stoppedForBudget = true;
 						this.logger.warn(
 							`[EvalMock] Execution ${executionId} exceeded its ${seconds}s budget — stopping it`,
 						);
@@ -978,10 +987,12 @@ export class EvalExecutionService {
 								`[EvalMock] Could not stop execution ${executionId}: ${error instanceof Error ? error.message : String(error)}`,
 							);
 						}
-						reject(new Error(`Execution exceeded its ${seconds}s eval budget and was stopped`));
+						reject(budgetError());
 					}, remainingMs);
 				}),
 			]);
+		} catch (error) {
+			throw stoppedForBudget ? budgetError() : error;
 		} finally {
 			if (deadline) clearTimeout(deadline);
 		}
