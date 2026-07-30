@@ -421,7 +421,7 @@ const requirements: TestRequirements = {
 };
 ```
 
-**Reference:** `config/TestRequirements.ts` for full interface definition.
+**Reference:** `Types.ts` for full interface definition.
 
 ## Shard Rebalancing
 
