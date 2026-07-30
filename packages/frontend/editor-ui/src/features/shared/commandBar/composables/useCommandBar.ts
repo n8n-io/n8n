@@ -20,7 +20,7 @@ import type { CommandGroup } from '../types';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	CHAT_CONVERSATION_VIEW,
 	CHAT_PERSONAL_AGENTS_VIEW,

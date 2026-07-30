@@ -315,6 +315,7 @@ export class CredentialsController {
 			{
 				deleteUserEntries: isTogglingToStatic || sharedFieldsChanged,
 				instanceCredential: credential.usageScope === 'instance' ? credential : undefined,
+				user: req.user,
 			},
 		);
 

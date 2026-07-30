@@ -2,7 +2,7 @@
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { onUnmounted, ref } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { type WorkflowPreviewSuggestion } from '../suggestions';
 

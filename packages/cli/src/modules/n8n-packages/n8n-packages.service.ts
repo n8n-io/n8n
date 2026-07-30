@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -15,6 +16,7 @@ import { FolderExporter } from './entities/folder/folder.exporter';
 import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
+import { TagExporter } from './entities/tag/tag.exporter';
 import { VariableExporter } from './entities/variable/variable.exporter';
 import { collectNodeTypeUsage } from './entities/workflow/node-type-usage';
 import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
@@ -54,6 +56,8 @@ export class N8nPackagesService {
 		private readonly credentialExporter: CredentialExporter,
 		private readonly dataTableExporter: DataTableExporter,
 		private readonly variableExporter: VariableExporter,
+		private readonly tagExporter: TagExporter,
+		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageParser: N8nPackageParser,
 		private readonly packageImportConfig: PackageImportConfig,
@@ -79,6 +83,7 @@ export class N8nPackagesService {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
+		const includeTags = (request.includeTags ?? true) && !this.globalConfig.tags.disabled;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -86,6 +91,7 @@ export class N8nPackagesService {
 						user: request.user,
 						folderIds,
 						writer,
+						includeTags,
 					})
 				: undefined;
 
@@ -100,6 +106,7 @@ export class N8nPackagesService {
 						user: request.user,
 						workflowIds: workflowsForExport,
 						writer,
+						includeTags,
 					})
 				: undefined;
 
@@ -109,6 +116,7 @@ export class N8nPackagesService {
 						user: request.user,
 						projectIds,
 						writer,
+						includeTags,
 					})
 				: undefined;
 
@@ -137,6 +145,7 @@ export class N8nPackagesService {
 				topLevelWorkflowIds: workflowExportResult?.entries.map(({ id }) => id) ?? [],
 				folderWorkflowIds: folderExportResult?.workflowEntries.map(({ id }) => id) ?? [],
 				projectWorkflowIds: projectExportResult?.workflowEntries.map(({ id }) => id) ?? [],
+				includeTags,
 			});
 
 			autoIncludedExportResult = this.autoIncludedWorkflowExporter.export({
@@ -145,6 +154,7 @@ export class N8nPackagesService {
 				existingWorkflowEntries: allWorkflowsBeforeAutoInclude,
 				existingFolderEntries: allFoldersBeforeAutoInclude,
 				existingProjectEntries: allProjectsBeforeAutoInclude,
+				includeTags,
 				projectTargetsById: projectExportResult?.projectTargetsById,
 			});
 		}
@@ -219,11 +229,17 @@ export class N8nPackagesService {
 			projectTargetsById,
 		});
 
+		const tagExportResult = this.tagExporter.export({
+			usages: requirements.tags,
+			writer,
+		});
+
 		const manifestRequirements = this.buildManifestRequirements({
 			credentials: credentialExportResult.requirements,
 			dataTables: dataTableExportResult.requirements,
 			workflows: workflowRequirementExportResult.requirements,
 			variables: variableExportResult.requirements,
+			tags: tagExportResult.requirements,
 			nodeTypes: collectNodeTypeUsage(requirements.nodeTypes),
 		});
 
@@ -241,6 +257,7 @@ export class N8nPackagesService {
 			...(variableExportResult.entries.length > 0
 				? { variables: variableExportResult.entries }
 				: {}),
+			...(tagExportResult.entries.length > 0 ? { tags: tagExportResult.entries } : {}),
 			...(manifestRequirements ? { requirements: manifestRequirements } : {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
@@ -257,6 +274,7 @@ export class N8nPackagesService {
 			credentials: credentialExportResult.entries.length,
 			dataTables: dataTableExportResult.entries.length,
 			variables: variableExportResult.entries.length,
+			tags: tagExportResult.entries.length,
 		};
 
 		this.eventService.emit('n8n-package-exported', {
@@ -306,15 +324,17 @@ export class N8nPackagesService {
 		dataTables: PackageRequirements['dataTables'];
 		workflows: PackageRequirements['workflows'];
 		variables: PackageRequirements['variables'];
+		tags: PackageRequirements['tags'];
 		nodeTypes: PackageRequirements['nodeTypes'];
 	}): PackageRequirements | undefined {
-		const { credentials, dataTables, workflows, variables, nodeTypes } = input;
+		const { credentials, dataTables, workflows, variables, tags, nodeTypes } = input;
 
 		const requirements: PackageRequirements = {
 			...(credentials?.length ? { credentials } : {}),
 			...(dataTables?.length ? { dataTables } : {}),
 			...(workflows?.length ? { workflows } : {}),
 			...(variables?.length ? { variables } : {}),
+			...(tags?.length ? { tags } : {}),
 			...(nodeTypes?.length ? { nodeTypes } : {}),
 		};
 		return Object.keys(requirements).length > 0 ? requirements : undefined;

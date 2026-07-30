@@ -29,6 +29,24 @@ describe('Test Webhook Node', () => {
 				},
 			});
 		});
+
+		it('disallows expressions on the authentication selector so raw and resolved values cannot diverge', () => {
+			const node = new Webhook();
+			const authParam = node.description.properties.find(
+				(property) => property.name === 'authentication',
+			);
+
+			expect(authParam?.noDataExpression).toBe(true);
+		});
+
+		it('exposes the n8nOAuth2 authentication option', () => {
+			const node = new Webhook();
+			const authParam = node.description.properties.find(
+				(property) => property.name === 'authentication',
+			);
+
+			expect(authParam?.options).toContainEqual(expect.objectContaining({ value: 'n8nOAuth2' }));
+		});
 	});
 
 	describe('handleFormData', () => {
@@ -151,6 +169,105 @@ describe('Test Webhook Node', () => {
 			expect(result).toEqual({
 				workflowData: expect.any(Array),
 			});
+		});
+	});
+
+	describe('n8n User Auth (OAuth2) authentication', () => {
+		const node = new Webhook();
+		let context: ReturnType<typeof mock<IWebhookFunctions>>;
+		let req: ReturnType<typeof mock<Request>>;
+		let res: ReturnType<typeof mock<Response>>;
+
+		const WEBHOOK_URL = 'https://n8n.test/webhook/abc';
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			context = mock<IWebhookFunctions>({ nodeHelpers: mock(), logger: mock() });
+			req = mock<Request>();
+			res = mock<Response>();
+			context.getRequestObject.mockReturnValue(req);
+			context.getResponseObject.mockReturnValue(res);
+			context.getChildNodes.mockReturnValue([]);
+			context.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2.1,
+				name: 'Webhook',
+			} as any);
+			context.getNodeWebhookUrl.calledWith('default').mockReturnValue(WEBHOOK_URL);
+			context.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return {};
+				if (paramName === 'responseMode') return 'onReceived';
+				if (paramName === 'authentication') return 'n8nOAuth2';
+				return undefined;
+			});
+			req.headers = {};
+			req.params = {};
+			req.query = {};
+			req.method = 'GET';
+			req.body = { hello: 'world' };
+			Object.defineProperty(req, 'ips', { value: [], configurable: true });
+			Object.defineProperty(req, 'ip', { value: '127.0.0.1', configurable: true });
+			res.writeHead.mockImplementation(() => res);
+			res.end.mockImplementation(() => res);
+		});
+
+		it('rejects a request with no bearer token and does not establish identity', async () => {
+			const result = await node.webhook(context);
+
+			expect(res.writeHead).toHaveBeenCalledWith(401, expect.any(Object));
+			expect(context.validateN8nOAuth2Token).not.toHaveBeenCalled();
+			expect(context.establishTriggerIdentity).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('rejects an invalid token with 401 and does not establish identity', async () => {
+			req.headers.authorization = 'Bearer bad-token';
+			context.validateN8nOAuth2Token.mockResolvedValue({ valid: false, reason: 'invalid_token' });
+
+			const result = await node.webhook(context);
+
+			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith('bad-token', WEBHOOK_URL);
+			expect(res.writeHead).toHaveBeenCalledWith(
+				401,
+				expect.objectContaining({
+					'WWW-Authenticate': expect.stringContaining('error="invalid_token"'),
+				}),
+			);
+			expect(context.establishTriggerIdentity).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('rejects insufficient scope with 403', async () => {
+			req.headers.authorization = 'Bearer scoped-token';
+			context.validateN8nOAuth2Token.mockResolvedValue({
+				valid: false,
+				reason: 'insufficient_scope',
+			});
+
+			await node.webhook(context);
+
+			expect(res.writeHead).toHaveBeenCalledWith(
+				403,
+				expect.objectContaining({
+					'WWW-Authenticate': expect.stringContaining('error="insufficient_scope"'),
+				}),
+			);
+			expect(context.establishTriggerIdentity).not.toHaveBeenCalled();
+		});
+
+		it('establishes the trigger identity for a valid token and runs the workflow', async () => {
+			req.headers.authorization = 'Bearer good-token';
+			context.validateN8nOAuth2Token.mockResolvedValue({
+				valid: true,
+				user: { id: 'user-1', email: 'a@b.c', firstName: 'A', lastName: 'B' },
+			});
+
+			const result = await node.webhook(context);
+
+			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith('good-token', WEBHOOK_URL);
+			expect(context.establishTriggerIdentity).toHaveBeenCalledWith('good-token', WEBHOOK_URL);
+			expect(result.workflowData).toBeDefined();
+			expect(result.workflowData?.[0][0].json.body).toEqual({ hello: 'world' });
 		});
 	});
 

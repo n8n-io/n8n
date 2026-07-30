@@ -151,7 +151,7 @@ describe('processError', () => {
 		);
 		await Container.get(ActiveExecutions).add(
 			{ executionMode: 'webhook', workflowData: workflow },
-			execution.id,
+			{ executionId: execution.id, expectedStatus: 'waiting' },
 		);
 		globalConfig.executions.mode = 'regular';
 		await runner.processError(
@@ -237,6 +237,37 @@ describe('run', () => {
 
 		// ASSERT
 		expect(recreateNodeExecutionStackSpy).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ existingExecution: undefined },
+		{ existingExecution: { executionId: '42', expectedStatus: 'waiting' as const } },
+		{ existingExecution: { executionId: '42', expectedStatus: 'new' as const } },
+	])('forwards $existingExecution to activeExecutions.add', async ({ existingExecution }) => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
+			new PCancelable(() => mock<IRun>()),
+		);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			triggerToStartFrom: undefined,
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			startNodes: undefined,
+			destinationNode: undefined,
+			runData: undefined,
+		});
+
+		// ACT
+		await runner.run(data, undefined, false, existingExecution);
+
+		// ASSERT
+		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
 	});
 
 	it('run partial execution with additional data', async () => {
