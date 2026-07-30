@@ -27,10 +27,8 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useRouter } from 'vue-router';
 
-import { getWorkflow } from '@/app/api/workflows';
 import { VIEWS } from '@/app/constants';
 import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
 import type { WorkflowToolRef } from '../types';
@@ -47,7 +45,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const rootStore = useRootStore();
 const router = useRouter();
 const { availableWorkflows, projectWorkflows, loadWorkflows } = useAgentToolCatalog();
 
@@ -181,27 +178,17 @@ function handleModeSwitch(next: 'list' | 'id') {
 
 /**
  * An id can't be stored — the backend resolves `workflow` by name — so a pasted
- * id is translated once, here. Ids already covered by the project fetch resolve
- * without a round trip; anything else is looked up. A workflow outside this
- * project resolves to a name the backend won't find, which `isMissing` then
- * reports.
+ * id is translated to one here. Only the ids the list mode offers are accepted:
+ * anything else is outside this project or unusable as a tool, and would leave
+ * the agent with a target its project-scoped name lookup can never resolve.
  */
-async function handleEnterWorkflowId(id: string) {
+function handleEnterWorkflowId(id: string) {
 	const trimmed = id.trim();
 	if (!trimmed) return;
-	isIdUnresolvable.value = false;
 
-	const known = projectWorkflows.value.find((candidate) => candidate.id === trimmed);
-	if (known) {
-		applyTarget(known.name);
-		return;
-	}
-
-	try {
-		applyTarget((await getWorkflow(rootStore.restApiContext, trimmed)).name);
-	} catch {
-		isIdUnresolvable.value = true;
-	}
+	const known = availableWorkflows.value.find((candidate) => candidate.id === trimmed);
+	isIdUnresolvable.value = !known;
+	if (known) applyTarget(known.name);
 }
 
 defineExpose({

@@ -7263,7 +7263,7 @@
 	"agents.toolConfig.workflow.target.unavailable": "Workflow \"{name}\" isn't available in this project. It may have been deleted or renamed, or it can't be used as an agent tool.",
 	"agents.toolConfig.workflow.target.placeholder": "Select a workflow",
 	"agents.toolConfig.workflow.target.duplicateName": "More than one workflow in this project is called \"{name}\". The agent may call either one.",
-	"agents.toolConfig.workflow.target.idNotFound": "No workflow found with this ID.",
+	"agents.toolConfig.workflow.target.idNotFound": "No workflow with this ID can be used here. It has to be in this project and start with a supported trigger.",
 	"agents.toolConfig.workflow.target.open": "Open workflow in a new tab",
 	"agents.toolConfig.save": "Save",
 	"agents.toolConfig.cancel": "Cancel",

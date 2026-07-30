@@ -21,11 +21,6 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-const getWorkflowMock = vi.fn();
-vi.mock('@/app/api/workflows', () => ({
-	getWorkflow: async (...args: unknown[]) => await getWorkflowMock(...args),
-}));
-
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		baseText: (key: string) => key,
@@ -233,60 +228,42 @@ describe('WorkflowToolConfigContent', () => {
 	});
 
 	describe('By ID mode', () => {
-		async function switchToIdMode(rendered: ReturnType<typeof renderComponent>) {
-			await rendered.findByTestId('workflow-option-Invoice Sender');
+		async function enterId(rendered: ReturnType<typeof renderComponent>, id: string) {
 			await fireEvent.click(rendered.getByTestId('workflow-option-id'));
+			await fireEvent.update(rendered.getByTestId('agent-workflow-tool-target-id'), id);
+			await fireEvent.blur(rendered.getByTestId('agent-workflow-tool-target-id'));
 		}
 
-		it('resolves an id already covered by the project fetch without a request', async () => {
+		it('resolves the id of a selectable workflow to its name', async () => {
 			setProjectWorkflows([
 				workflow('Notify Sales', { id: 'wf-1' }),
 				workflow('Invoice Sender', { id: 'wf-2' }),
 			]);
 
-			const rendered = renderComponent({
-				props: { initialRef: createRef({ workflow: 'Notify Sales', name: 'Notify Sales' }) },
-			});
+			const rendered = renderComponent({ props: { initialRef: createRef() } });
 			await rendered.findByTestId('workflow-option-wf-2');
-			await fireEvent.click(rendered.getByTestId('workflow-option-id'));
-
-			await fireEvent.update(rendered.getByTestId('agent-workflow-tool-target-id'), 'wf-2');
-			await fireEvent.blur(rendered.getByTestId('agent-workflow-tool-target-id'));
+			await enterId(rendered, 'wf-2');
 
 			await waitFor(() => {
 				expect(lastEmit(rendered.emitted, 'update:node-name')).toBe('Invoice Sender');
 			});
-			expect(getWorkflowMock).not.toHaveBeenCalled();
 		});
 
-		it('looks up an unknown id and stores the fetched name', async () => {
-			getWorkflowMock.mockResolvedValue({ id: 'wf-elsewhere', name: 'Archived Report' });
+		it('rejects the id of a workflow the agent could not call and keeps the target', async () => {
+			setProjectWorkflows([
+				workflow('Notify Sales', { id: 'wf-1' }),
+				workflow('Archived Report', { id: 'wf-archived', isArchived: true }),
+			]);
 
 			const rendered = renderComponent({ props: { initialRef: createRef() } });
-			await switchToIdMode(rendered);
-
-			await fireEvent.update(rendered.getByTestId('agent-workflow-tool-target-id'), 'wf-elsewhere');
-			await fireEvent.blur(rendered.getByTestId('agent-workflow-tool-target-id'));
-
-			await waitFor(() => {
-				expect(lastEmit(rendered.emitted, 'update:node-name')).toBe('Archived Report');
-			});
-			expect(getWorkflowMock).toHaveBeenCalledWith(expect.anything(), 'wf-elsewhere');
-		});
-
-		it('flags an id that cannot be resolved and leaves the target alone', async () => {
-			getWorkflowMock.mockRejectedValue(new Error('not found'));
-
-			const rendered = renderComponent({ props: { initialRef: createRef() } });
-			await switchToIdMode(rendered);
-
-			await fireEvent.update(rendered.getByTestId('agent-workflow-tool-target-id'), 'nope');
-			await fireEvent.blur(rendered.getByTestId('agent-workflow-tool-target-id'));
+			await rendered.findByTestId('workflow-option-wf-1');
+			await enterId(rendered, 'wf-archived');
 
 			expect(
 				await rendered.findByTestId('agent-workflow-tool-target-id-unresolvable'),
 			).toBeTruthy();
 			expect(lastEmit(rendered.emitted, 'update:node-name')).toBe('Notify Sales');
+			expect(lastEmit(rendered.emitted, 'update:valid')).toBe(true);
 		});
 	});
 
