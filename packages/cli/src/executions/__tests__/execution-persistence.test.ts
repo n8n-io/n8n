@@ -81,7 +81,7 @@ describe('ExecutionPersistence', () => {
 			.fn()
 			.mockImplementation(
 				async <T>(_ctx: OperationContext, cb: (em: EntityManager) => Promise<T>) => await cb(tx),
-			);
+			) as unknown as typeof executionRepository.runInTransaction;
 
 	const createPersistenceService = (
 		modeTag: 'db' | 'fs' | 's3' | 'az',
@@ -309,7 +309,7 @@ describe('ExecutionPersistence', () => {
 
 			it('converts unique-violation into DuplicateExecutionError when payload has a deduplicationKey', async () => {
 				const uniqueViolation = makeUniqueViolationError();
-				executionRepository.runInTransaction = vi.fn().mockRejectedValue(uniqueViolation);
+				executionRepository.runInTransaction.mockRejectedValue(uniqueViolation);
 
 				const payloadWithKey: CreateExecutionPayload = {
 					...createPayload,
@@ -327,7 +327,7 @@ describe('ExecutionPersistence', () => {
 
 			it('rethrows original unique-violation when payload has no deduplicationKey', async () => {
 				const uniqueViolation = makeUniqueViolationError();
-				executionRepository.runInTransaction = vi.fn().mockRejectedValue(uniqueViolation);
+				executionRepository.runInTransaction.mockRejectedValue(uniqueViolation);
 
 				await expect(executionPersistence.create(createPayload)).rejects.toBe(uniqueViolation);
 			});
@@ -338,7 +338,7 @@ describe('ExecutionPersistence', () => {
 					[],
 					Object.assign(new Error('not null'), { code: '23502' }),
 				);
-				executionRepository.runInTransaction = vi.fn().mockRejectedValue(otherError);
+				executionRepository.runInTransaction.mockRejectedValue(otherError);
 
 				const payloadWithKey: CreateExecutionPayload = {
 					...createPayload,
@@ -352,7 +352,7 @@ describe('ExecutionPersistence', () => {
 				const otherUniqueViolation = makeUniqueViolationError(
 					'duplicate key value violates unique constraint on someOtherColumn',
 				);
-				executionRepository.runInTransaction = vi.fn().mockRejectedValue(otherUniqueViolation);
+				executionRepository.runInTransaction.mockRejectedValue(otherUniqueViolation);
 
 				const payloadWithKey: CreateExecutionPayload = {
 					...createPayload,
@@ -384,7 +384,7 @@ describe('ExecutionPersistence', () => {
 						[],
 						Object.assign(new Error(message), { code }),
 					);
-					executionRepository.runInTransaction = vi.fn().mockRejectedValue(sqliteError);
+					executionRepository.runInTransaction.mockRejectedValue(sqliteError);
 
 					const payloadWithKey: CreateExecutionPayload = {
 						...createPayload,
@@ -2370,7 +2370,7 @@ describe('ExecutionPersistence', () => {
 		it(`writes to the ${loc} location on create with \`storedAt: ${loc}\``, async () => {
 			const executionPersistence = createPersistenceService(loc);
 			const mockTx = createMockTransaction();
-			executionRepository.manager.transaction = createMockTx(mockTx);
+			executionRepository.runInTransaction = createMockRunInTransaction(mockTx);
 
 			const executionId = await executionPersistence.create(createPayload);
 

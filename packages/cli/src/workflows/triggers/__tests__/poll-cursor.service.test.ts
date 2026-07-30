@@ -50,7 +50,7 @@ describe('PollCursorService', () => {
 		}) as CreateExecutionPayload;
 
 	beforeEach(() => {
-		vi.clearAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('enabled', () => {
