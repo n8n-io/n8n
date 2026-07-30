@@ -1,23 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "npmVersion": {
-                    "type": "string"
-                },
-                "packageName": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
         "createdAt": {
             "type": "string"
         },
@@ -34,5 +17,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 5
 }
