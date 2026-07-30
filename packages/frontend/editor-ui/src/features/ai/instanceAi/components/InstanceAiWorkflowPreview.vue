@@ -133,9 +133,11 @@ const isAgentEditingThisWorkflow = computed(() => {
 // standalone AI helpers (`false`), forces the canvas read-only while a
 // workflow-builder agent is mutating this workflow, and suppresses workflow
 // execution result toasts (success + error) — the agent surfaces run outcomes
-// in the thread UI, so the canvas would only duplicate them. NodeView derives
-// its read-only state from these via useEditorContext(); usePushConnection
-// reads the toast flags to gate execution result notifications.
+// in the thread UI, so the canvas would only duplicate them. The execute button
+// demotes to a secondary action — the conversation is the primary surface here.
+// NodeView derives its read-only state from these via useEditorContext();
+// usePushConnection reads the toast flags to gate execution result
+// notifications.
 const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	aiAssistant: false,
 	aiBuilder: false,
@@ -143,6 +145,7 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	readOnly: isAgentEditingThisWorkflow.value,
 	executionSuccessToasts: false,
 	executionErrorToasts: false,
+	executionButtonType: 'secondary',
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
 

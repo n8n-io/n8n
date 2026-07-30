@@ -13,7 +13,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
@@ -102,6 +102,8 @@ const EvaluationsListSwitcher = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsListSwitcher.vue');
 const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
+const CompareCollectionView = async () =>
+	await import('@/features/ai/evaluation.ee/views/CompareCollectionView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
@@ -398,6 +400,12 @@ export const routes: RouteRecordRaw[] = [
 				component: TestRunDetailView,
 				props: true,
 			},
+			{
+				path: 'collections/:collectionId/compare',
+				name: VIEWS.EVALUATION_COLLECTION_COMPARE,
+				component: CompareCollectionView,
+				props: true,
+			},
 		],
 	},
 	{
@@ -545,6 +553,8 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.OAUTH_CONSENT,
 		component: OAuthConsentView,
 		meta: {
+			// Standalone authorization screen, rendered without the app sidebar.
+			layout: 'auth',
 			middleware: ['authenticated'],
 		},
 	},

@@ -37,6 +37,6 @@ withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 }
 
 .label {
-	flex-shrink: 0;
+	min-width: 0;
 }
 </style>

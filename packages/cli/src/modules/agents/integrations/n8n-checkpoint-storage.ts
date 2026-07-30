@@ -102,6 +102,19 @@ export class N8NCheckpointStorage {
 		);
 	}
 
+	async cancelSuspended(
+		key: string,
+		state: SerializableAgentState,
+		agentId: string,
+	): Promise<boolean> {
+		if (state.status !== 'suspended') return false;
+		return await this.agentCheckpointRepository.cancelSuspended(
+			key,
+			agentId,
+			JSON.stringify(state),
+		);
+	}
+
 	async getStatus(key: string): Promise<CheckpointStatus> {
 		const checkpoint = await this.agentCheckpointRepository.findOneBy({ runId: key });
 		if (!checkpoint) return { status: 'not-found' };
@@ -109,8 +122,11 @@ export class N8NCheckpointStorage {
 		return { status: 'active', checkpoint: jsonParse<SerializableAgentState>(checkpoint.state) };
 	}
 
-	async delete(key: string): Promise<void> {
-		await this.agentCheckpointRepository.update({ runId: key }, { expired: true, state: null });
+	async delete(key: string, agentId?: string): Promise<void> {
+		await this.agentCheckpointRepository.update(
+			{ runId: key, ...(agentId !== undefined ? { agentId } : {}) },
+			{ expired: true, state: null },
+		);
 	}
 
 	@OnLeaderTakeover()

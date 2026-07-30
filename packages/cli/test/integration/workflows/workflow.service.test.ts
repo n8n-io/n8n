@@ -31,6 +31,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -69,7 +70,6 @@ beforeAll(async () => {
 		Container.get(SharedWorkflowRepository),
 		workflowRepository,
 		mock(),
-		mock(),
 		Container.get(OwnershipService), // ownershipService
 		mock(),
 		workflowHistoryService,
@@ -77,7 +77,7 @@ beforeAll(async () => {
 		activeWorkflowManager,
 		Container.get(RoleService), // roleService
 		Container.get(ProjectService), // projectService
-		mock(), // executionRepository
+		mock(), // executionPersistence
 		mock(), // eventService
 		globalConfig,
 		mock(),
@@ -91,6 +91,10 @@ beforeAll(async () => {
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
 		mock(), // workflowPublicationNotifier
+		mock(), // scheduleTriggerJobRegistrar
+		mock(), // pollTriggerJobRegistrar
+		workflowPublishedVersionRepository,
+		Container.get(WorkflowHookContextService), // workflowHookContextService
 	);
 });
 
@@ -631,6 +635,56 @@ describe('workflow publication outbox', () => {
 				where: { workflowId: workflow.id },
 			});
 			expect(publishedVersionAfter).not.toBeNull();
+		});
+
+		test('should reject deletion while the published-version mapping still exists', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+			// Simulate the outbox consumer having advanced the published version.
+			await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+			await workflowService.archive(owner, workflow.id);
+
+			// Mapping removal is deferred to the consumer, so deleting now must be
+			// rejected gracefully instead of failing on the mapping's RESTRICT FK.
+			await expect(workflowService.delete(owner, workflow.id)).rejects.toThrowError(
+				'Workflow is still being unpublished. Please try again in a few moments.',
+			);
+
+			const notDeleted = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(notDeleted).not.toBeNull();
+		});
+
+		test('should delete a previously published workflow once the unpublish has drained', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+			await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+			await workflowService.archive(owner, workflow.id);
+			// Simulate the outbox consumer having completed the unpublish.
+			await workflowPublishedVersionRepository.removePublishedVersion(workflow.id);
+
+			await workflowService.delete(owner, workflow.id);
+
+			const deleted = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(deleted).toBeNull();
+		});
+
+		test('should reject deletion of a published workflow', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			await expect(workflowService.delete(owner, workflow.id, true)).rejects.toThrowError(
+				'Cannot delete a published workflow. Unpublish it before deleting.',
+			);
 		});
 	});
 

@@ -561,6 +561,85 @@ describe('SourceControlService', () => {
 			// ASSERT
 			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
 		});
+
+		it('imports data tables before deleting them', async () => {
+			// ARRANGE — a reconciled collision emits a single "modified" entry (no
+			// "deleted" for the old id), so ordering is defense in depth: should a
+			// "deleted" entry ever coincide with an adoption again, import must run
+			// first so the delete no-ops instead of dropping local rows.
+			const user = mock<User>();
+			const statuses = [
+				mock<SourceControlledFile>({
+					status: 'modified',
+					location: 'remote',
+					type: 'datatable',
+					conflict: false,
+					id: 'dtNew',
+				}),
+				mock<SourceControlledFile>({
+					status: 'deleted',
+					location: 'remote',
+					type: 'datatable',
+					conflict: false,
+					id: 'dtOld',
+				}),
+			];
+			mockStatusService.getStatus.mockResolvedValueOnce(statuses);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			const callOrder: string[] = [];
+			sourceControlImportService.importDataTablesFromWorkFolder.mockImplementation(async () => {
+				callOrder.push('import');
+				return { imported: [], reconciliationFailures: [] };
+			});
+			sourceControlImportService.deleteDataTablesNotInWorkFolder.mockImplementation(async () => {
+				callOrder.push('delete');
+			});
+
+			// ACT
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			// ASSERT
+			expect(sourceControlImportService.importDataTablesFromWorkFolder).toHaveBeenCalledWith(
+				[statuses[0]],
+				user.id,
+			);
+			expect(sourceControlImportService.deleteDataTablesNotInWorkFolder).toHaveBeenCalledWith([
+				statuses[1],
+			]);
+			expect(callOrder).toEqual(['import', 'delete']);
+		});
+
+		it('surfaces data table conflicts discovered at import time on the pull result', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			const statuses = [
+				mock<SourceControlledFile>({
+					status: 'modified',
+					location: 'remote',
+					type: 'datatable',
+					conflict: false,
+					id: 'dtNew',
+				}),
+			];
+			mockStatusService.getStatus.mockResolvedValueOnce(statuses);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+			sourceControlImportService.importDataTablesFromWorkFolder.mockResolvedValue({
+				imported: [],
+				reconciliationFailures: [{ id: 'dtNew', name: 'Test Table' }],
+			});
+
+			// ACT
+			const result = await sourceControlService.pullWorkfolder(user, {
+				force: true,
+				autoPublish: 'none',
+			});
+
+			// ASSERT
+			expect(result.statusCode).toBe(200);
+			const dataTableEntry = result.statusResult.find((f) => f.id === 'dtNew');
+			expect(dataTableEntry?.conflict).toBe(true);
+		});
 	});
 
 	describe('getStatus', () => {

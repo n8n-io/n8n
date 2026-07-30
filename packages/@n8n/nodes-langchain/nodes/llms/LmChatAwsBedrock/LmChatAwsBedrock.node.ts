@@ -1,21 +1,13 @@
-import type {
-	BedrockRuntimeClientConfig,
-	GuardrailTrace,
-	PerformanceConfigLatency,
-} from '@aws-sdk/client-bedrock-runtime';
-import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
+import type { GuardrailTrace, PerformanceConfigLatency } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse, type ChatBedrockConverseInput } from '@langchain/aws';
 import {
-	getNodeProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { DocumentType } from '@smithy/types';
-import { assertSupportedAwsRegion, getAwsDomain } from 'n8n-nodes-base/aws-credentials';
+import { assertSupportedAwsRegion } from 'n8n-nodes-base/aws-credentials';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
-
 import {
 	jsonParse,
 	NodeConnectionTypes,
@@ -26,7 +18,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
+
+import { listModels } from './methods/listModels';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,7 +30,7 @@ export class LmChatAwsBedrock implements INodeType {
 		name: 'lmChatAwsBedrock',
 		icon: 'file:bedrock.svg',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Language Model AWS Bedrock',
 		defaults: {
 			name: 'AWS Bedrock Chat Model',
@@ -71,9 +66,10 @@ export class LmChatAwsBedrock implements INodeType {
 				displayName: 'Model Source',
 				name: 'modelSource',
 				type: 'options',
+				// From 1.2 the Model dropdown lists on-demand models and inference profiles together
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.1 } }],
+						'@version': [{ _cnd: { eq: 1.1 } }],
 					},
 				},
 				options: [
@@ -100,6 +96,9 @@ export class LmChatAwsBedrock implements INodeType {
 				description:
 					'The model which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html">Learn more</a>.',
 				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.2 } }],
+					},
 					hide: {
 						modelSource: ['inferenceProfile'],
 					},
@@ -160,6 +159,7 @@ export class LmChatAwsBedrock implements INodeType {
 					'The inference profile which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-use.html">Learn more</a>.',
 				displayOptions: {
 					show: {
+						'@version': [{ _cnd: { lt: 1.2 } }],
 						modelSource: ['inferenceProfile'],
 					},
 				},
@@ -212,6 +212,37 @@ export class LmChatAwsBedrock implements INodeType {
 				},
 			},
 			{
+				// Keeps the same field naming as the pre-1.2 pickers
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				allowArbitraryValues: true, // Hide issues when model name is specified in the expression and does not match any of the options
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+				description:
+					'The model or inference profile which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html">Learn more</a>.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+				typeOptions: {
+					loadOptionsDependsOn: ['authentication'],
+					loadOptionsMethod: 'listModels',
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				default: '',
+				builderHint: {
+					propertyHint:
+						'Prefer the newest Claude Sonnet model (claude-sonnet-4-6 family). The newest models only work through their inference profile ID, which starts with a region prefix (e.g. "eu.anthropic.claude-sonnet-4-6..."). Avoid claude-sonnet-4-5, claude-3.x, and older non-Claude models unless the user asks for them.',
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				placeholder: 'Add Option',
@@ -249,6 +280,14 @@ export class LmChatAwsBedrock implements INodeType {
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt when a request fails',
+						type: 'number',
+					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						default: 60000,
+						description:
+							'Maximum amount of time a request is allowed to take in milliseconds. Increase this for long generations; set to 0 to disable.',
 						type: 'number',
 					},
 					{
@@ -294,8 +333,9 @@ export class LmChatAwsBedrock implements INodeType {
 										displayName: 'Guardrail Version',
 										name: 'guardrailVersion',
 										type: 'string',
-										default: '',
-										description: 'The version of the guardrail to apply',
+										default: 'DRAFT',
+										description:
+											'The version of the guardrail to apply, e.g. "1". Defaults to the working draft ("DRAFT").',
 									},
 									{
 										displayName: 'Trace',
@@ -318,14 +358,25 @@ export class LmChatAwsBedrock implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			listModels,
+		},
+	};
+
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const { region: credentialRegion, credentials } = await resolveAwsCredentials(this, itemIndex);
+		const {
+			region: credentialRegion,
+			credentials,
+			bedrockRuntimeEndpoint,
+		} = await resolveAwsCredentials(this, itemIndex);
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature?: number;
 			maxTokensToSample?: number;
 			topP?: number;
 			maxRetries?: number;
+			timeout?: number;
 			additionalModelRequestFields?: string;
 			latency?: PerformanceConfigLatency;
 			guardrail?: {
@@ -349,24 +400,13 @@ export class LmChatAwsBedrock implements INodeType {
 			region = arnRegion;
 		}
 
-		// We set-up client manually to pass httpAgent and httpsAgent.
-		// getAwsDomain keeps China (amazonaws.com.cn) / GovCloud endpoints correct.
-		const bedrockEndpoint = `https://bedrock-runtime.${region}.${getAwsDomain(region)}`;
-		const proxyAgent = getNodeProxyAgent(bedrockEndpoint);
-		const clientConfig: BedrockRuntimeClientConfig = {
+		const client = createBedrockRuntimeClient({
 			region,
 			credentials,
-		};
-
-		if (proxyAgent) {
-			clientConfig.requestHandler = new NodeHttpHandler({
-				httpAgent: proxyAgent,
-				httpsAgent: proxyAgent,
-			});
-		}
-
-		// Pass the pre-configured client to avoid credential resolution proxy issues
-		const client = new BedrockRuntimeClient(clientConfig);
+			bedrockRuntimeEndpoint,
+			maxRetries: options.maxRetries,
+			timeout: options.timeout,
+		});
 
 		// Forward only user-set options; unset ones are omitted so model defaults are preserved.
 		const modelConfig: ChatBedrockConverseInput = {
@@ -380,14 +420,16 @@ export class LmChatAwsBedrock implements INodeType {
 		if (options.temperature !== undefined) modelConfig.temperature = options.temperature;
 		if (options.maxTokensToSample !== undefined) modelConfig.maxTokens = options.maxTokensToSample;
 		if (options.topP !== undefined) modelConfig.topP = options.topP;
-		if (options.maxRetries !== undefined) modelConfig.maxRetries = options.maxRetries;
 		if (options.latency !== undefined) modelConfig.performanceConfig = { latency: options.latency };
 
 		const guardrail = options.guardrail?.values;
 		if (guardrail?.guardrailIdentifier) {
 			modelConfig.guardrailConfig = {
 				guardrailIdentifier: guardrail.guardrailIdentifier,
-				...(guardrail.guardrailVersion ? { guardrailVersion: guardrail.guardrailVersion } : {}),
+				// AWS requires a version whenever guardrailConfig is sent. The field may be blank,
+				// whitespace (e.g. from an expression), or absent (collection defaults only
+				// materialize on add); fall back to the working draft.
+				guardrailVersion: guardrail.guardrailVersion?.trim() || 'DRAFT',
 				...(guardrail.trace ? { trace: guardrail.trace } : {}),
 			};
 		}

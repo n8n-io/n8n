@@ -365,6 +365,59 @@ describe('runEpisodicMemoryIndexer', () => {
 		).resolves.toEqual({ status: 'skipped', reason: 'no-observations' });
 	});
 
+	it('does not persist secret values in entry content or evidence', async () => {
+		const memory = new InMemoryMemory();
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'critical',
+				text: 'User provided the Slack bot token xoxb-1234567890-abcdefghij for the integration.',
+				createdAt: new Date('2026-05-12T10:00:00.000Z'),
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content:
+							'User provided the Slack bot token xoxb-1234567890-abcdefghij for the integration.',
+						sources: [
+							{
+								observationId: observation.id,
+								evidence: 'User provided the Slack bot token xoxb-1234567890-abcdefghij',
+							},
+						],
+					},
+				],
+			});
+
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+			now: new Date('2026-05-12T10:01:00.000Z'),
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 1, observationsIndexed: 1 });
+		const [stored] = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1' },
+			'Slack bot token integration',
+			{ queryEmbedding: [1, 0] },
+		);
+		expect(stored.content).toContain('[REDACTED]');
+		expect(stored.content).not.toContain('xoxb-1234567890-abcdefghij');
+
+		const sources = Reflect.get(memory, 'episodicMemorySources') as Array<{
+			observationId: string;
+			evidenceText: string;
+		}>;
+		const source = sources.find((s) => s.observationId === observation.id);
+		expect(source?.evidenceText).toContain('[REDACTED]');
+		expect(source?.evidenceText).not.toContain('xoxb-1234567890-abcdefghij');
+	});
+
 	it('does not leave searchable entries behind when source persistence fails', async () => {
 		const memory = new InMemoryMemory();
 		const [observation] = await memory.appendObservationLogEntries([

@@ -1,6 +1,5 @@
 import type { Mock } from 'vitest';
 import type { TagEntity, TagRepository } from '@n8n/db';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { FindOperator, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 

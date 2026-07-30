@@ -1,6 +1,6 @@
 {
   "name": "@n8n/errors",
-  "version": "0.11.0",
+  "version": "0.13.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -23,7 +23,8 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@sentry/node": "catalog:sentry"
+    "@sentry/node": "catalog:sentry",
+    "typescript": "catalog:typescript"
   },
   "dependencies": {
     "callsites": "catalog:"

@@ -8,12 +8,14 @@ import {
 	type INode,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
 import { TagService } from '@/services/tag.service';
@@ -26,10 +28,12 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
 const mockAutoPopulateNodeCredentials = vi.fn();
+const mockTrackAutoassignOutcomes = vi.fn();
 vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
 		mockAutoPopulateNodeCredentials(...args) as unknown,
 	stripNullCredentialStubs: vi.fn(),
+	trackAutoassignOutcomes: (...args: unknown[]) => mockTrackAutoassignOutcomes(...args) as unknown,
 }));
 
 const mockValidateJSON = vi.fn().mockReturnValue([]);
@@ -43,6 +47,10 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 			validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
 		};
 	}),
+	// Real key logic (code|nodeName|parameterPath), inlined because the module
+	// is fully mocked; the pre-existing annotation tests depend on it.
+	getWarningKey: (warning: { code: string; nodeName?: string; parameterPath?: string }) =>
+		`${warning.code}|${warning.nodeName ?? ''}|${warning.parameterPath ?? ''}`,
 }));
 
 const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
@@ -145,7 +153,11 @@ describe('update-workflow MCP tool', () => {
 			ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
 			broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
 		});
-		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
+		mockAutoPopulateNodeCredentials.mockResolvedValue({
+			assignments: [],
+			skippedHttpNodes: [],
+			outcomes: [],
+		});
 		mockValidateJSON.mockReturnValue([]);
 
 		dataTableOps = {
@@ -174,7 +186,10 @@ describe('update-workflow MCP tool', () => {
 		});
 	});
 
-	const createTool = () =>
+	const aiGatewayService = mock<AiGatewayService>();
+	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
+
+	const createTool = (options?: { canvasGroupsEnabled?: boolean }) =>
 		createUpdateWorkflowTool(
 			user,
 			workflowFinderService,
@@ -190,6 +205,8 @@ describe('update-workflow MCP tool', () => {
 			globalConfig,
 			subworkflowPolicyChecker,
 			workflowPublishedDataService,
+			aiGatewayService,
+			options,
 		);
 
 	const callHandler = async (
@@ -323,6 +340,137 @@ describe('update-workflow MCP tool', () => {
 					versionDescription: 'Updated nodes: B',
 				}),
 			);
+		});
+	});
+
+	describe('node group operations', () => {
+		const buildPublishedInputSchema = (tool: ReturnType<typeof createTool>) =>
+			z.object(tool.config.inputSchema as z.ZodRawShape);
+
+		const addGroupInput = {
+			workflowId: 'wf-1',
+			operations: [{ type: 'addNodeGroup', name: 'Group', nodeNames: ['A', 'B'] }],
+		};
+
+		test('published schema rejects gated group ops when the flag is off', () => {
+			const parsed = buildPublishedInputSchema(createTool()).safeParse(addGroupInput);
+			expect(parsed.success).toBe(false);
+		});
+
+		test('published schema accepts gated group ops when the flag is on', () => {
+			const parsed = buildPublishedInputSchema(createTool({ canvasGroupsEnabled: true })).safeParse(
+				addGroupInput,
+			);
+			expect(parsed.success).toBe(true);
+		});
+
+		test('handler rejects gated group ops when the flag is off', async () => {
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'addNodeGroup', name: 'Group', nodeNames: ['A'] }],
+			});
+
+			expect(result.isError).toBe(true);
+			const response = parseResult(result);
+			expect(response.error).toContain('not available on this instance');
+			expect(updateMock).not.toHaveBeenCalled();
+		});
+
+		test('setNodeGroups works with the flag off', async () => {
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{
+						type: 'setNodeGroups',
+						nodeGroups: [{ id: 'g1', name: 'Group', nodeNames: ['A', 'B'] }],
+					},
+				],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }]);
+		});
+
+		test('applies addNodeGroup end-to-end when the flag is on', async () => {
+			const result = await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [{ type: 'addNodeGroup', id: 'g1', name: 'Group', nodeNames: ['A', 'B'] }],
+				},
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }]);
+		});
+
+		test('applies updateNodeGroup and removeNodeGroup against existing groups when the flag is on', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [
+						{ id: 'g1', name: 'First', nodeIds: ['a'] },
+						{ id: 'g2', name: 'Second', nodeIds: ['b'] },
+					],
+				}),
+			);
+
+			const result = await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'updateNodeGroup',
+							groupName: 'First',
+							newName: 'Renamed',
+							description: 'Ingest step',
+						},
+						{ type: 'removeNodeGroup', groupName: 'Second' },
+					],
+				},
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toEqual([
+				{ id: 'g1', name: 'Renamed', nodeIds: ['a'], description: 'Ingest step' },
+			]);
+		});
+
+		test('removeNode prunes the node from groups and persists them, regardless of the flag', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+				}),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'removeNode', nodeName: 'B' }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a'] }]);
+		});
+
+		test('does not attach nodeGroups when no operation touches groups', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'] }],
+				}),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setNodePosition', nodeName: 'A', position: [50, 50] }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect('nodeGroups' in saved).toBe(false);
 		});
 	});
 
@@ -842,6 +990,7 @@ describe('update-workflow MCP tool', () => {
 					globalConfig,
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
+					aiGatewayService,
 				);
 				findWorkflowMock.mockImplementation(async (id: string) =>
 					id === 'wf-1'
@@ -849,12 +998,12 @@ describe('update-workflow MCP tool', () => {
 						: null,
 				);
 
-				const result = await tool.handler(
+				const result = await callHandler(
 					{
 						workflowId: 'wf-1',
 						operations: [{ type: 'setWorkflowSettings', settings: { timezone: 'UTC' } }],
 					},
-					{} as never,
+					tool,
 				);
 
 				expect(result.isError).toBeUndefined();
@@ -974,10 +1123,25 @@ describe('update-workflow MCP tool', () => {
 
 		test('reports auto-assigned credentials in the response', async () => {
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
-				assignments: [{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi' }],
+				assignments: [
+					{
+						nodeName: 'C',
+						credentialName: 'My Slack',
+						credentialType: 'slackApi',
+						source: 'user',
+					},
+					{
+						nodeName: 'D',
+						credentialName: 'n8n credits',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+					},
+				],
 				skippedHttpNodes: [],
+				outcomes: [],
 			});
 
+			const tool = createTool();
 			const result = await callHandler({
 				workflowId: 'wf-1',
 				operations: [
@@ -990,14 +1154,92 @@ describe('update-workflow MCP tool', () => {
 
 			const response = parseResult(result);
 			expect(response.autoAssignedCredentials).toEqual([
-				{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi' },
+				{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi', source: 'user' },
+				{
+					nodeName: 'D',
+					credentialName: 'n8n credits',
+					credentialType: 'openAiApi',
+					source: 'aiGateway',
+				},
 			]);
+
+			// The `source` field must be declared in the item schema; validate items
+			// strictly so a returned key missing from the schema fails the test
+			// (MCP publishes the schema with additionalProperties: false).
+			const itemsField = (
+				tool.config.outputSchema as {
+					autoAssignedCredentials: z.ZodOptional<z.ZodArray<z.ZodObject<z.ZodRawShape>>>;
+				}
+			).autoAssignedCredentials.unwrap();
+			expect(() =>
+				z.array(itemsField.element.strict()).parse(response.autoAssignedCredentials),
+			).not.toThrow();
+		});
+
+		test('tracks auto-assign outcomes with the persisted workflow id after update', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [],
+				skippedHttpNodes: [],
+				outcomes: [
+					{
+						nodeName: 'C',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+						hadUserCredential: false,
+						aiGatewayAvailable: true,
+					},
+				],
+			});
+
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.slack', typeVersion: 1 } },
+				],
+			});
+
+			expect(mockTrackAutoassignOutcomes).toHaveBeenCalledTimes(1);
+			const trackArgs = mockTrackAutoassignOutcomes.mock.calls[0];
+			expect(trackArgs[2]).toBe('update_workflow');
+			expect(trackArgs[5]).toBe('wf-1');
+			// Tracking runs only after the update persists.
+			expect(updateMock.mock.invocationCallOrder[0]).toBeLessThan(
+				mockTrackAutoassignOutcomes.mock.invocationCallOrder[0],
+			);
+		});
+
+		test('does not track auto-assign outcomes when the update fails to persist', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [],
+				skippedHttpNodes: [],
+				outcomes: [
+					{
+						nodeName: 'C',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+						hadUserCredential: false,
+						aiGatewayAvailable: true,
+					},
+				],
+			});
+			updateMock.mockRejectedValueOnce(new Error('update failed'));
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.slack', typeVersion: 1 } },
+				],
+			});
+
+			expect(result.isError).toBe(true);
+			expect(mockTrackAutoassignOutcomes).not.toHaveBeenCalled();
 		});
 
 		test('reports skipped HTTP nodes in the note', async () => {
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
 				assignments: [],
 				skippedHttpNodes: ['HTTP Request'],
+				outcomes: [],
 			});
 
 			const result = await callHandler({
@@ -1177,10 +1419,14 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			test('surfaces validation warnings in the response', async () => {
-				mockValidateJSON.mockReturnValue([
-					{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
-					{ code: 'JSON_WARN', message: 'parameter missing' },
-				]);
+				// Post-apply pass finds warnings; pre-update pass is clean, so nothing
+				// is annotated as pre-existing.
+				mockValidateJSON
+					.mockReturnValueOnce([
+						{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
+						{ code: 'JSON_WARN', message: 'parameter missing' },
+					])
+					.mockReturnValueOnce([]);
 
 				const result = await callHandler({
 					workflowId: 'wf-1',
@@ -1195,6 +1441,77 @@ describe('update-workflow MCP tool', () => {
 					{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
 					{ code: 'JSON_WARN', message: 'parameter missing' },
 				]);
+			});
+
+			test('annotates warnings that already existed before the update as pre-existing', async () => {
+				const carriedOver = {
+					code: 'JSON_WARN',
+					message: 'Missing discriminator "parameters.operation".',
+					nodeName: 'Google Drive',
+				};
+				mockValidateJSON
+					.mockReturnValueOnce([
+						carriedOver,
+						{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
+					])
+					.mockReturnValueOnce([carriedOver]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				const response = parseResult(result);
+				expect(response.validationWarnings).toEqual([
+					{
+						code: 'JSON_WARN',
+						message: '[pre-existing] Missing discriminator "parameters.operation".',
+						nodeName: 'Google Drive',
+						preExisting: true,
+					},
+					{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
+				]);
+
+				// The pre-update pass validated the workflow as loaded, before ops.
+				expect(mockValidateJSON).toHaveBeenCalledTimes(2);
+				const preJson = mockValidateJSON.mock.calls[1][0] as { name: string; nodes: INode[] };
+				expect(preJson.name).toBe('Existing');
+			});
+
+			test('matches pre-existing warnings by location, not message content', async () => {
+				mockValidateJSON
+					.mockReturnValueOnce([{ code: 'JSON_WARN', message: 'reworded message', nodeName: 'B' }])
+					.mockReturnValueOnce([{ code: 'JSON_WARN', message: 'original message', nodeName: 'B' }]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				const response = parseResult(result);
+				expect(response.validationWarnings).toEqual([
+					{
+						code: 'JSON_WARN',
+						message: '[pre-existing] reworded message',
+						nodeName: 'B',
+						preExisting: true,
+					},
+				]);
+			});
+
+			test('skips the pre-update validation pass when the post-apply pass is clean', async () => {
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				expect(mockValidateJSON).toHaveBeenCalledTimes(1);
 			});
 
 			test('does not block save when validation produces warnings', async () => {
@@ -2020,6 +2337,7 @@ describe('update-workflow MCP tool', () => {
 					globalConfig,
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
+					aiGatewayService,
 				);
 
 				await callHandler(
@@ -2056,6 +2374,7 @@ describe('update-workflow MCP tool', () => {
 					globalConfig,
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
+					aiGatewayService,
 				);
 
 				const result = await callHandler(

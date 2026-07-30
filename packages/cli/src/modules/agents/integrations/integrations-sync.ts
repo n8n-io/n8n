@@ -23,7 +23,7 @@ export async function syncAgentIntegrations(
 ): Promise<void> {
 	try {
 		// eslint-disable-next-line import-x/no-cycle
-		const { ChatIntegrationService } = await import('./chat-integration.service');
+		const { ChatIntegrationService } = await import('./chat-integration.service.js');
 		await Container.get(ChatIntegrationService).syncToConfig(agent, previous, next);
 	} catch (error) {
 		logger.warn('Failed to sync chat integrations', {

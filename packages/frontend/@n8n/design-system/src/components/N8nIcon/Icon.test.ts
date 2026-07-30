@@ -2,7 +2,7 @@ import { render, waitFor } from '@testing-library/vue';
 import { vi } from 'vitest';
 
 import Icon from './Icon.vue';
-import { deprecatedIconSet, type IconName } from './icons';
+import { deprecatedIconSet, isSupportedIconName, type IconName } from './icons';
 import { IconBodyLoaderKey } from '../../composables/useIconBodyLoader';
 
 const loaderStub = vi.fn(async (iconName: string) =>
@@ -83,5 +83,19 @@ describe('Icon', () => {
 			'<path',
 		);
 		expect(loaderStub).toHaveBeenCalledWith('app-window-mac');
+	});
+});
+
+describe('isSupportedIconName', () => {
+	it('returns true for supported icon names', () => {
+		expect(isSupportedIconName('check')).toBe(true);
+		expect(isSupportedIconName(Object.keys(deprecatedIconSet)[0])).toBe(true);
+		expect(isSupportedIconName('node:ftp')).toBe(true);
+	});
+
+	it('returns false for unsupported icon names', () => {
+		expect(isSupportedIconName()).toBe(false);
+		expect(isSupportedIconName('not-a-real-icon')).toBe(false);
+		expect(isSupportedIconName('node:not-a-real-node-icon')).toBe(false);
 	});
 });

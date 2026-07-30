@@ -11,6 +11,7 @@ export * from './data-table.types';
 export * from './execution-context';
 export * from './execution-context-establishment-hooks';
 export * from './redaction-channels';
+export * from './dynamic-credentials-helpers';
 export * from './global-state';
 export * from './interfaces';
 export * from './sub-workflow-output';
@@ -27,6 +28,7 @@ export * from './node-grouping-validation';
 export * from './mcp-helpers';
 export * from './tool-helpers';
 export * from './trigger-identity';
+export * from './n8n-oauth2-auth';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './highlighted-data';
@@ -51,7 +53,6 @@ export {
 	jsonStringify,
 	replaceCircularReferences,
 	sleep,
-	sleepWithAbort,
 	fileTypeFromMimeType,
 	assert,
 	removeCircularRefs,

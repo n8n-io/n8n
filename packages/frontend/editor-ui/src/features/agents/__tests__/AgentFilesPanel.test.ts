@@ -17,13 +17,6 @@ vi.mock('@n8n/i18n', () => ({
 			if (key === 'agents.builder.files.size.megabytes') {
 				return `${options?.interpolate?.megabytes} MB`;
 			}
-			if (key === 'agents.builder.files.summary.empty') {
-				return 'No files';
-			}
-			if (key === 'agents.builder.files.summary.count') {
-				const count = Number(options?.interpolate?.count ?? 0);
-				return `${count} ${count === 1 ? 'file' : 'files'}`;
-			}
 			return key;
 		},
 	}),
@@ -41,7 +34,6 @@ function mountPanel(props: Partial<InstanceType<typeof AgentFilesPanel>['$props'
 	return mount(AgentFilesPanel, {
 		props: {
 			files: [] as AgentFileDto[],
-			isPublished: true,
 			...props,
 		},
 		global: {
@@ -64,38 +56,26 @@ const file: AgentFileDto = {
 };
 
 describe('AgentFilesPanel', () => {
-	it('disables the upload button with the publish-required tooltip when unpublished', () => {
-		const wrapper = mountPanel({ isPublished: false });
-
-		const uploadButton = wrapper.find('[data-testid="agent-files-upload"]');
-		expect(uploadButton.attributes('disabled')).toBeDefined();
-		expect(uploadButton.attributes('aria-label')).toBe('agents.builder.files.publishRequired');
-	});
-
-	it('enables the upload button with the normal upload tooltip when published', () => {
-		const wrapper = mountPanel({ isPublished: true });
+	it('enables the upload button with the normal upload tooltip', () => {
+		const wrapper = mountPanel();
 
 		const uploadButton = wrapper.find('[data-testid="agent-files-upload"]');
 		expect(uploadButton.attributes('disabled')).toBeUndefined();
 		expect(uploadButton.attributes('aria-label')).toBe('agents.builder.files.addFile');
 	});
 
-	it('shows the publish hint in the empty state when unpublished', () => {
-		const wrapper = mountPanel({ isPublished: false, files: [] });
-
-		expect(wrapper.text()).toContain('agents.builder.files.publishRequired');
-	});
-
-	it('shows the normal empty-state message when published', () => {
-		const wrapper = mountPanel({ isPublished: true, files: [] });
+	it('shows the normal empty-state message', () => {
+		const wrapper = mountPanel({ files: [] });
 
 		expect(wrapper.text()).toContain('agents.builder.files.empty');
 	});
 
-	it('balances the toolbar with a file count and icon-only add action', () => {
+	it('shows the knowledge base title with a tooltip and icon-only add action', () => {
 		const wrapper = mountPanel({ files: [file] });
 
-		expect(wrapper.find('[data-testid="agent-files-count"]').text()).toBe('1 file');
+		expect(wrapper.find('[data-testid="agent-files-title"]').text()).toContain(
+			'agents.builder.files.title',
+		);
 
 		const uploadButton = wrapper.findComponent({ name: 'N8nButton' });
 		expect(uploadButton.props('variant')).toBe('ghost');

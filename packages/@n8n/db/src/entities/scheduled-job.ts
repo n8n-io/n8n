@@ -1,4 +1,4 @@
-import type { ScheduledJobKind } from '@n8n/constants';
+import type { ScheduledJobKind, RecurringCronUnit } from '@n8n/constants';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
@@ -77,7 +77,7 @@ export class ScheduledJob extends WithTimestamps {
 
 	/**
 	 * Cron expression driving recurrence.
-	 * Set only when {@link kind} is `cron`.
+	 * Set when {@link kind} is `cron` or `recurring_cron`.
 	 */
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	cronExpression: string | null;
@@ -102,6 +102,21 @@ export class ScheduledJob extends WithTimestamps {
 	 */
 	@DateTimeColumn({ nullable: true })
 	fireAt: Date | null;
+
+	/**
+	 * Calendar period the every-Nth-period recurrence gate counts in.
+	 * Set only when {@link kind} is `recurring_cron`.
+	 */
+	@Column({ type: 'varchar', length: 16, nullable: true })
+	recurrenceUnit: RecurringCronUnit | null;
+
+	/**
+	 * How many periods between fires, e.g. 3 for "every 3 weeks".
+	 * At least 2: a stride of 1 keeps every fire, which is just a plain `cron`.
+	 * Set only when {@link kind} is `recurring_cron`.
+	 */
+	@Column({ type: 'int', nullable: true })
+	recurrenceSize: number | null;
 
 	@Column({ default: true })
 	enabled: boolean;

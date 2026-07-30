@@ -185,12 +185,12 @@ test.describe(
 
 				await expect(subn8n.workflows.cards.getWorkflows()).toHaveCount(2);
 
-				await expect(subn8n.page.getByRole('heading', { name: 'My Sub-Workflow' })).toBeVisible();
+				await expect(subn8n.workflows.cards.getWorkflow('My Sub-Workflow')).toBeVisible();
 
 				await subn8n.navigate.toCredentials();
 
 				await expect(subn8n.credentials.cards.getCredentials()).toHaveCount(1);
-				await expect(subn8n.page.getByRole('heading', { name: 'Notion account' })).toBeVisible();
+				await expect(subn8n.credentials.cards.getCredential('Notion account')).toBeVisible();
 			});
 
 			test('should create credential from workflow in the correct project after editor page refresh @auth:owner', async ({

@@ -1,5 +1,6 @@
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
-import { planPush } from '../langtracer/push';
+import { planPush, toUpdatePatch } from '../langtracer/push';
+import type { LangTracerCreateCaseBody } from '../langtracer/to-exported';
 
 function item(fileSlug: string, overrides: Record<string, unknown> = {}): WorkflowTestCaseWithFile {
 	return {
@@ -61,7 +62,7 @@ describe('planPush', () => {
 		expect(plan.toCreate).toEqual([]);
 	});
 
-	it('treats a scenario-only difference as unchanged so re-runs converge', () => {
+	it('treats a scenario-only difference as an update (PATCH reconciles scenarios by name)', () => {
 		const plan = planPush(
 			[
 				item('c', {
@@ -79,15 +80,72 @@ describe('planPush', () => {
 			},
 			{ c: 5 },
 		);
+		expect(plan.toUpdate).toHaveLength(1);
+		expect(plan.toUpdate[0].id).toBe(5);
+		expect(plan.unchanged).toEqual([]);
+	});
+
+	it('treats removed scenarios as an update (disk case went process/outcome-only)', () => {
+		const plan = planPush(
+			[item('c')],
+			{
+				'c.json': body({
+					executionScenarios: [{ name: 'a', dataSetup: 's', successCriteria: 'ok' }],
+				}),
+			},
+			{ c: 5 },
+		);
+		expect(plan.toUpdate).toHaveLength(1);
+		expect(plan.unchanged).toEqual([]);
+	});
+
+	it('treats identical scenarios as unchanged so re-pushes converge', () => {
+		const scenarios = [{ name: 'a', description: 'd', dataSetup: 's', successCriteria: 'ok' }];
+		const plan = planPush(
+			[item('c', { executionScenarios: scenarios })],
+			{ 'c.json': body({ executionScenarios: scenarios }) },
+			{ c: 5 },
+		);
 		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
 		expect(plan.toUpdate).toEqual([]);
 	});
 
-	it('ignores tags and datasets differences (the suite export does not round-trip them)', () => {
+	it('ignores tags differences (the suite export returns them empty)', () => {
 		const plan = planPush(
-			[item('c', { tags: ['build', 'ai'], datasets: ['full'] })],
-			// export comes back with empty tags and null datasets — must not count as a change
-			{ 'c.json': body({ tags: [], datasets: null }) },
+			[item('c', { tags: ['build', 'ai'] })],
+			{ 'c.json': body({ tags: [] }) },
+			{ c: 5 },
+		);
+		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
+		expect(plan.toUpdate).toEqual([]);
+	});
+
+	it('treats a datasets difference as an update so tier edits re-sync', () => {
+		const plan = planPush(
+			[item('c', { datasets: ['mcp', 'pr', 'full'] })],
+			// the stored case lost its tiers (exported as null) — the push must restore them
+			{ 'c.json': body({ datasets: null }) },
+			{ c: 5 },
+		);
+		expect(plan.toUpdate).toHaveLength(1);
+		expect(plan.toUpdate[0].id).toBe(5);
+		expect(plan.unchanged).toEqual([]);
+	});
+
+	it('treats the default datasets as unchanged whether the export nulls or omits it', () => {
+		const omitted = body();
+		delete omitted.datasets;
+		for (const exported of [body({ datasets: null }), omitted]) {
+			const plan = planPush([item('c', { datasets: ['full'] })], { 'c.json': exported }, { c: 5 });
+			expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
+			expect(plan.toUpdate).toEqual([]);
+		}
+	});
+
+	it('ignores datasets ordering', () => {
+		const plan = planPush(
+			[item('c', { datasets: ['pr', 'full', 'mcp'] })],
+			{ 'c.json': body({ datasets: ['mcp', 'pr', 'full'] }) },
 			{ c: 5 },
 		);
 		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
@@ -133,5 +191,40 @@ describe('planPush', () => {
 		);
 		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
 		expect(plan.toUpdate).toEqual([]);
+	});
+});
+
+describe('toUpdatePatch', () => {
+	function createBody(overrides: Partial<LangTracerCreateCaseBody> = {}): LangTracerCreateCaseBody {
+		return {
+			name: 'c',
+			setKind: 'regression',
+			synthetic: true,
+			suiteId: 7,
+			evalComplexity: 'simple',
+			evalTags: ['build'],
+			...overrides,
+		};
+	}
+
+	it('drops the create-only fields', () => {
+		const patch = toUpdatePatch(createBody());
+		expect(patch).not.toHaveProperty('suiteId');
+		expect(patch).not.toHaveProperty('synthetic');
+		expect(patch.name).toBe('c');
+	});
+
+	it('sends an explicit empty scenarios list when the case has none, so a PATCH deletes stale rows', () => {
+		// A case converted to process/outcome-only has no scenarios key; a partial
+		// PATCH without it would leave the server's old scenario rows in place and
+		// every later push would re-detect the same drift.
+		const patch = toUpdatePatch(createBody());
+		expect(patch.scenarios).toEqual([]);
+	});
+
+	it('keeps the mapped scenarios when the case has them', () => {
+		const scenarios = [{ name: 'a', successCriteria: 'ok' }];
+		const patch = toUpdatePatch(createBody({ scenarios }));
+		expect(patch.scenarios).toEqual(scenarios);
 	});
 });

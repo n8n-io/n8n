@@ -1,33 +1,44 @@
-import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
+import {
+	createCreateWorkflowFromCodeTool,
+	type CreateWorkflowFromCodeToolOptions,
+} from '../tools/workflow-builder/create-workflow-from-code.tool';
 
 // Mocks referenced inside vi.mock factories must come from vi.hoisted, otherwise the
 // factory (hoisted above these declarations) silently loads the real module.
-const { mockAutoPopulateNodeCredentials, mockParseAndValidate, mockStripImportStatements } =
-	vi.hoisted(() => ({
-		mockAutoPopulateNodeCredentials: vi.fn(),
-		mockParseAndValidate: vi.fn(),
-		mockStripImportStatements: vi.fn((code: string) => code),
-	}));
+const {
+	mockAutoPopulateNodeCredentials,
+	mockTrackAutoassignOutcomes,
+	mockParseAndValidate,
+	mockStripImportStatements,
+} = vi.hoisted(() => ({
+	mockAutoPopulateNodeCredentials: vi.fn(),
+	mockTrackAutoassignOutcomes: vi.fn(),
+	mockParseAndValidate: vi.fn(),
+	mockStripImportStatements: vi.fn((code: string) => code),
+}));
 
 // Mock credentials auto-assign
 vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
 		mockAutoPopulateNodeCredentials(...args) as unknown,
 	stripNullCredentialStubs: vi.fn(),
+	trackAutoassignOutcomes: (...args: unknown[]) => mockTrackAutoassignOutcomes(...args) as unknown,
 }));
 
 // Mock dynamic imports
@@ -123,7 +134,11 @@ describe('create-workflow-from-code MCP tool', () => {
 
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
 		mockStripImportStatements.mockImplementation((code: string) => code);
-		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
+		mockAutoPopulateNodeCredentials.mockResolvedValue({
+			assignments: [],
+			skippedHttpNodes: [],
+			outcomes: [],
+		});
 
 		dataTableOps = {
 			getManyAndCount: vi.fn().mockResolvedValue({ data: [], count: 0 }),
@@ -152,7 +167,10 @@ describe('create-workflow-from-code MCP tool', () => {
 		findWorkflowForUser: vi.fn().mockResolvedValue(null),
 	});
 
-	const createTool = () =>
+	const aiGatewayService = mock<AiGatewayService>();
+	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
+
+	const createTool = (options?: CreateWorkflowFromCodeToolOptions) =>
 		createCreateWorkflowFromCodeTool(
 			user,
 			workflowCreationService,
@@ -163,6 +181,8 @@ describe('create-workflow-from-code MCP tool', () => {
 			credentialsService,
 			projectRepository,
 			dataTableOps as never,
+			aiGatewayService,
+			options,
 		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)
@@ -786,6 +806,37 @@ describe('create-workflow-from-code MCP tool', () => {
 			});
 		});
 
+		test('tracks auto-assign outcomes with the persisted workflow id after save', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [],
+				skippedHttpNodes: [],
+				outcomes: [
+					{
+						nodeName: 'OpenAI',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+						hadUserCredential: false,
+						aiGatewayAvailable: true,
+					},
+				],
+			});
+
+			await callHandler({ code: 'const wf = ...' });
+
+			expect(mockTrackAutoassignOutcomes).toHaveBeenCalledTimes(1);
+			const trackArgs = mockTrackAutoassignOutcomes.mock.calls[0];
+			expect(trackArgs[2]).toBe('create_workflow_from_code');
+			expect(trackArgs[5]).toBe('wf-saved-1');
+		});
+
+		test('does not track auto-assign outcomes when the save fails', async () => {
+			createWorkflowMock.mockRejectedValueOnce(new Error('save failed'));
+
+			await callHandler({ code: 'const wf = ...' });
+
+			expect(mockTrackAutoassignOutcomes).not.toHaveBeenCalled();
+		});
+
 		test('refuses to save when an agent is wired as a tool to another agent', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: {
@@ -832,9 +883,21 @@ describe('create-workflow-from-code MCP tool', () => {
 			// so any field returned by the handler but missing from the schema breaks strict clients.
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
 				assignments: [
-					{ nodeName: 'Webhook', credentialName: 'My Cred', credentialType: 'webhookAuth' },
+					{
+						nodeName: 'Webhook',
+						credentialName: 'My Cred',
+						credentialType: 'webhookAuth',
+						source: 'user',
+					},
+					{
+						nodeName: 'OpenAI',
+						credentialName: 'n8n credits',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+					},
 				],
 				skippedHttpNodes: [],
+				outcomes: [],
 			});
 
 			const tool = createTool();
@@ -884,6 +947,88 @@ describe('create-workflow-from-code MCP tool', () => {
 			// so strict clients no longer reject it with -32602.
 			const strictSchema = z.object(tool.config.outputSchema as z.ZodRawShape).strict();
 			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
+		});
+	});
+
+	describe('canvas groups (102_mcp_canvas_groups)', () => {
+		const nodeGroups = [{ id: 'g1', name: 'Ingestion', nodeIds: ['node-1', 'node-2'] }];
+
+		/** results.data of the last tracked telemetry event */
+		const trackedData = () => {
+			const payload = vi.mocked(telemetry.track).mock.calls.at(-1)?.[1] as {
+				results?: { data?: Record<string, unknown> };
+			};
+			return payload.results?.data;
+		};
+
+		test('flag off: groups from the code are dropped and telemetry is unchanged', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: { ...mockWorkflowJson, nodeGroups },
+				warnings: [],
+			});
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(parseResult(result).workflowId).toBe('wf-saved-1');
+			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			expect(passedWorkflow).not.toHaveProperty('nodeGroups');
+			// Telemetry payload is byte-identical to the pre-flag shape.
+			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2 });
+		});
+
+		test('flag on: groups from the code are persisted on the created workflow', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: { ...mockWorkflowJson, nodeGroups },
+				warnings: [],
+			});
+
+			const result = await callHandler(
+				{ code: 'const wf = ...' },
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(parseResult(result).workflowId).toBe('wf-saved-1');
+			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			expect(passedWorkflow.nodeGroups).toEqual(nodeGroups);
+			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2, groupCount: 1 });
+		});
+
+		test('flag on: code without groups persists an empty group list', async () => {
+			mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
+
+			await callHandler({ code: 'const wf = ...' }, createTool({ canvasGroupsEnabled: true }));
+
+			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			expect(passedWorkflow.nodeGroups).toEqual([]);
+			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2, groupCount: 0 });
+		});
+
+		test('flag on: invalid groups fail the creation with the save-path message', async () => {
+			// The save path rejects invalid groups (`validateWorkflowNodeGroups`);
+			// the tool intentionally lets that error fail the call so no workflow
+			// is silently created without the authored groups.
+			const saveError = new Error(
+				'Node group "Ingestion" (g1) cannot contain trigger nodes: Webhook.',
+			);
+			mockParseAndValidate.mockResolvedValue({
+				workflow: { ...mockWorkflowJson, nodeGroups },
+				warnings: [],
+			});
+			createWorkflowMock.mockRejectedValue(saveError);
+
+			const result = await callHandler(
+				{ code: 'const wf = ...' },
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(parseResult(result).error).toBe(saveError.message);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({
+					results: expect.objectContaining({ success: false, error: saveError.message }),
+				}),
+			);
 		});
 	});
 });

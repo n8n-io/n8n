@@ -1,17 +1,46 @@
 import { ScheduledTaskStatus } from '@n8n/constants';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { mock } from 'vitest-mock-extended';
 
+import { SCHEDULER_ATTRIBUTES, SCHEDULER_FIRE_OUTCOME } from '../../observability/attributes';
+import type { SchedulerMetrics } from '../../observability/metrics';
+import { SpanStatus, type Span, type Tracer } from '../../observability/tracer';
 import { InvalidLifecycleOptionsError } from '../errors';
-import { createScheduler } from '../factory';
-import type { SchedulerDeps, SchedulerTaskStore } from '../factory';
+import { DEFAULT_EXECUTOR_OPTIONS } from '../executor';
+import { createScheduler, DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS } from '../factory';
+import type { SchedulerDeps, SchedulerEvent, SchedulerTaskStore } from '../factory';
+import { DEFAULT_LIFECYCLE_OPTIONS, PASS_TIMED_OUT, pollLookaheadSeconds } from '../lifecycle';
+import { DEFAULT_MATERIALIZER_OPTIONS } from '../materializer';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
+import type { ExpiredLeaseRow } from '../reaper';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
 import type { ClaimedTask, ScheduledJob } from '../types';
+
+/**
+ * A shared span (each tracing test drives a single pass, so one span suffices)
+ * behind a tracer that honours the port's contract: a throw from `run` marks the
+ * span errored and propagates, exactly as the concrete (Sentry) tracer does. This
+ * matters for the materializer, whose abort path throws rather than returning.
+ */
+const makeTracer = () => {
+	const span: Span = { setAttribute: vi.fn(), setStatus: vi.fn() };
+	const tracer = mock<Tracer>();
+	tracer.startSpan.mockImplementation(async (_options, run) => {
+		try {
+			return await run(span);
+		} catch (error) {
+			span.setStatus({ code: SpanStatus.error, message: ensureError(error).message });
+			throw error;
+		}
+	});
+	return { span, tracer };
+};
 
 /** Compose a scheduler over mocks, with non-default retention windows. */
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	const taskStore = mock<SchedulerTaskStore>();
-	const onEvent = vi.fn();
+	taskStore.markDispatched.mockResolvedValue(1);
+	const onEvent = vi.fn<(event: SchedulerEvent) => void>();
 	const materializerTransaction: RunInTransaction = vi.fn();
 	const scheduler = createScheduler({
 		hostId: 'main-test',
@@ -154,6 +183,52 @@ describe('createScheduler executor config', () => {
 	});
 });
 
+// The lookahead createScheduler derives for the materializer: the poll's own
+// worst-case tick gap plus the executor's lookahead (defaults: 10s·1.2 + 5s = 17s).
+const DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS =
+	pollLookaheadSeconds(
+		DEFAULT_LIFECYCLE_OPTIONS.materializerIntervalSeconds,
+		DEFAULT_LIFECYCLE_OPTIONS.jitterRatio,
+	) + DEFAULT_EXECUTOR_OPTIONS.lookaheadSeconds;
+
+const MATERIALIZER_WINDOW_WARNING =
+	'Scheduler materializer lookahead exceeds the window; jobs may be reclaimed with nothing to plan';
+
+describe('createScheduler materializer config', () => {
+	it('emits a warn event at composition when the derived lookahead exceeds the window', () => {
+		// A window shorter than the derived lookahead: materialization degrades to
+		// reclaiming a job every poll with nothing new to plan.
+		const { onEvent } = makeScheduler({ materializer: { windowSeconds: 5 } });
+
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'warn',
+			message: MATERIALIZER_WINDOW_WARNING,
+			context: { lookaheadSeconds: DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS, windowSeconds: 5 },
+		});
+	});
+
+	it('stays silent at the boundary where the window exactly equals the lookahead', () => {
+		// A job claimed at `now + lookahead == windowEnd` still records its own
+		// occurrence, so equality is not yet degenerate: warn only past the window.
+		const { onEvent } = makeScheduler({
+			materializer: { windowSeconds: DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS },
+		});
+
+		expect(onEvent).not.toHaveBeenCalledWith(
+			expect.objectContaining({ message: MATERIALIZER_WINDOW_WARNING }),
+		);
+	});
+
+	it('stays silent when the window comfortably covers the lookahead', () => {
+		// The default 60s window against the ~17s derived lookahead: no warning.
+		const { onEvent } = makeScheduler();
+
+		expect(onEvent).not.toHaveBeenCalledWith(
+			expect.objectContaining({ message: MATERIALIZER_WINDOW_WARNING }),
+		);
+	});
+});
+
 /** A task claimed for this host whose `runAt` has passed, so it fires on the next tick. */
 const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	id: '1',
@@ -166,6 +241,13 @@ const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	attempts: 0,
 	maxAttempts: 3,
 	leaseEpoch: 1,
+	...overrides,
+});
+
+/** An expired-lease row for the reaper; pre-dispatch (`dispatchedAt` null) by default. */
+const expiredRow = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow => ({
+	...claimedTask(),
+	dispatchedAt: null,
 	...overrides,
 });
 
@@ -207,7 +289,7 @@ describe('createScheduler execute', () => {
 			id: '1',
 			claimedEpoch: 1,
 		});
-		expect(taskStore.markStarted).not.toHaveBeenCalled();
+		expect(taskStore.beginDispatch).not.toHaveBeenCalled();
 	});
 
 	it('routes a mid-fire failure to an error event and leaves the row to the reaper', async () => {
@@ -215,7 +297,7 @@ describe('createScheduler execute', () => {
 		scheduler.registerTaskHandler('test-task', { execute: vi.fn() });
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
 		// The outcome write fails outside the handler-failure path.
-		taskStore.markStarted.mockRejectedValue(new Error('db down'));
+		taskStore.beginDispatch.mockRejectedValue(new Error('db down'));
 
 		await scheduler.execute();
 
@@ -258,6 +340,8 @@ describe('createScheduler materialize', () => {
 			timezone: null,
 			intervalSeconds: null,
 			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
@@ -267,13 +351,13 @@ describe('createScheduler materialize', () => {
 			now: new Date('2026-01-01T00:00:00.000Z'),
 			jobs: [corrupt],
 		});
-		tx.recordOccurrences.mockResolvedValue(0);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 0, created: [] });
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
 		const { scheduler, onEvent } = makeScheduler({ materializerTransaction });
 
 		const summary = await scheduler.materialize();
 
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 0, deferredJobs: 1 });
+		expect(summary).toEqual({ claimedJobs: 1, occurrences: 0, created: [], deferredJobs: 1 });
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
 			message: 'Scheduler could not plan a job schedule; deferred for retry',
@@ -291,6 +375,8 @@ describe('createScheduler materialize', () => {
 			timezone: null,
 			intervalSeconds: 10,
 			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
@@ -301,7 +387,7 @@ describe('createScheduler materialize', () => {
 			jobs: [due],
 		});
 		// The one planned occurrence already exists (recorded by a concurrent pass).
-		tx.recordOccurrences.mockResolvedValue(0);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 0, created: [] });
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
 		// windowSeconds: 0 keeps the plan to the single due fire.
 		const { scheduler, onEvent } = makeScheduler({
@@ -316,6 +402,27 @@ describe('createScheduler materialize', () => {
 			message: 'Scheduler materializer skipped occurrences that were already recorded',
 			context: { planned: 1, recorded: 0 },
 		});
+	});
+
+	it('claims jobs ahead of due by the materializer tick gap plus the executor lookahead', async () => {
+		// Regression guard for window-boundary dispatch lag: the materializer polls on a
+		// fixed, jittered tick, so claiming strictly at `nextRunAt <= now` would notice a
+		// boundary job a whole tick late. createScheduler must derive the claim lookahead,
+		// wide enough that the recorded row also reaches the executor before it fires, not
+		// leave it 0.
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue(undefined);
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { scheduler } = makeScheduler({ materializerTransaction });
+
+		await scheduler.materialize();
+
+		const expectedLookaheadMs = DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS * 1000;
+		expect(expectedLookaheadMs).toBeGreaterThan(0);
+		expect(tx.claimDueJobs).toHaveBeenCalledWith(
+			DEFAULT_MATERIALIZER_OPTIONS.batchSize,
+			expectedLookaheadMs,
+		);
 	});
 });
 
@@ -467,6 +574,149 @@ describe('createScheduler lifecycle', () => {
 
 		// The loops are one-shot; a restart claim over dead loops would be a lie.
 		expect(onEvent).not.toHaveBeenCalled();
+	});
+});
+
+describe('createScheduler clock skew', () => {
+	const CLOCK_DIFFERENCE_WARNING =
+		'Scheduler detected a clock difference between this instance and the clock it coordinates on; scheduled tasks may fire slightly early or late. Synchronise this instance clock (e.g. via NTP).';
+
+	/** The events the sink received, filtered by level. */
+	const eventsAt = (
+		onEvent: ReturnType<typeof makeScheduler>['onEvent'],
+		level: SchedulerEvent['level'],
+	) => onEvent.mock.calls.map((call) => call[0]).filter((event) => event.level === level);
+
+	it('warns through the event sink when the instance and coordination clocks differ', async () => {
+		// The coordination clock reads 5s ahead of the instance, far past the threshold.
+		const now = vi.fn<() => Promise<Date>>().mockResolvedValue(new Date(Date.now() + 5_000));
+		const { scheduler, onEvent } = makeScheduler({ now });
+
+		scheduler.start();
+
+		// The check is detached from start; wait for it to report.
+		await vi.waitFor(() => {
+			expect(onEvent).toHaveBeenCalledWith(
+				expect.objectContaining({ level: 'warn', message: CLOCK_DIFFERENCE_WARNING }),
+			);
+		});
+		expect(now).toHaveBeenCalledTimes(1);
+		const [warning] = eventsAt(onEvent, 'warn');
+		expect(typeof warning.context.offsetMs).toBe('number');
+		expect(typeof warning.context.roundTripMs).toBe('number');
+
+		await scheduler.stop();
+	});
+
+	it('stays silent when the clocks are in sync', async () => {
+		const now = vi.fn<() => Promise<Date>>().mockResolvedValue(new Date());
+		const { scheduler, onEvent } = makeScheduler({ now });
+
+		scheduler.start();
+		await vi.waitFor(() => expect(now).toHaveBeenCalledTimes(1));
+
+		expect(eventsAt(onEvent, 'warn')).toHaveLength(0);
+
+		await scheduler.stop();
+	});
+
+	it('reports a failed clock read at debug and never breaks start', async () => {
+		const now = vi.fn<() => Promise<Date>>().mockRejectedValue(new Error('clock unavailable'));
+		const { scheduler, onEvent } = makeScheduler({ now });
+
+		scheduler.start();
+
+		await vi.waitFor(() => {
+			expect(onEvent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'debug',
+					message: 'Scheduler could not check the clock difference',
+					context: { error: 'clock unavailable' },
+				}),
+			);
+		});
+
+		await scheduler.stop();
+	});
+
+	it('honours a custom warn threshold', async () => {
+		// A 5s offset would warn at the default threshold; a 10s threshold silences it.
+		const now = vi.fn<() => Promise<Date>>().mockResolvedValue(new Date(Date.now() + 5_000));
+		const { scheduler, onEvent } = makeScheduler({ now, clockSkew: { warnThresholdMs: 10_000 } });
+
+		scheduler.start();
+		await vi.waitFor(() => expect(now).toHaveBeenCalledTimes(1));
+
+		expect(eventsAt(onEvent, 'warn')).toHaveLength(0);
+
+		await scheduler.stop();
+	});
+
+	it('skips the check when no clock reader is supplied', async () => {
+		const { scheduler, onEvent } = makeScheduler();
+
+		scheduler.start();
+		// Let any detached work run.
+		await Promise.resolve();
+
+		expect(eventsAt(onEvent, 'warn')).toHaveLength(0);
+
+		await scheduler.stop();
+	});
+});
+
+describe('createScheduler late dispatch', () => {
+	it('warns when a task fires well past its scheduled time', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler();
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		// A long-past runAt makes the dispatch lag far exceed the default threshold.
+		taskStore.claimDueTasks.mockResolvedValue([
+			claimedTask({ runAt: new Date('2020-01-01T00:00:00.000Z') }),
+		]);
+		taskStore.markDispatched.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The fire is detached from the claim: wait for the timer to deliver it.
+		await vi.waitFor(() => {
+			expect(onEvent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'warn',
+					message: 'Scheduler fired a task later than its scheduled time',
+				}),
+			);
+		});
+		const warned = onEvent.mock.calls
+			.map(([event]) => event)
+			.find((event) => event.message === 'Scheduler fired a task later than its scheduled time');
+		expect(warned?.context?.taskType).toBe('test-task');
+		expect(warned?.context?.lagSeconds).toBeGreaterThan(
+			DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS,
+		);
+		expect(Number.isInteger(warned?.context?.lagSeconds)).toBe(true);
+	});
+
+	it('stays silent within the configured lag threshold', async () => {
+		// A threshold no real lag can reach: even a long-past runAt is not reported.
+		const { scheduler, taskStore, onEvent } = makeScheduler({
+			dispatchLagWarnThresholdSeconds: Number.MAX_SAFE_INTEGER,
+		});
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		taskStore.claimDueTasks.mockResolvedValue([
+			claimedTask({ runAt: new Date('2020-01-01T00:00:00.000Z') }),
+		]);
+		taskStore.markDispatched.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => expect(taskStore.completeTask).toHaveBeenCalledTimes(1));
+		expect(onEvent).not.toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Scheduler fired a task later than its scheduled time',
+			}),
+		);
 	});
 });
 
@@ -631,7 +881,7 @@ describe('createScheduler pass timeout and overlap', () => {
 			id: '1',
 			claimedEpoch: 1,
 		});
-		expect(taskStore.markStarted).not.toHaveBeenCalled();
+		expect(taskStore.beginDispatch).not.toHaveBeenCalled();
 
 		await scheduler.stop();
 	});
@@ -729,7 +979,7 @@ describe('createScheduler reap', () => {
 	it('routes a row recovery failure to an error event and finishes the sweep', async () => {
 		const { scheduler, taskStore, onEvent } = makeScheduler();
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
+			expiredRow({ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
 		taskStore.reclaimExpired.mockRejectedValue(new Error('deadlock'));
 
@@ -746,7 +996,7 @@ describe('createScheduler reap', () => {
 	it('routes a dead-lettered task to a warn event carrying the task identity', async () => {
 		const { scheduler, taskStore, onEvent } = makeScheduler();
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+			expiredRow({ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
 		taskStore.deadLetterExpired.mockResolvedValue(1);
 
@@ -758,5 +1008,489 @@ describe('createScheduler reap', () => {
 			message: 'Scheduler dead-lettered a task; its last attempt lost its lease',
 			context: { taskId: '7', attempts: 3, maxAttempts: 3 },
 		});
+	});
+});
+
+describe('createScheduler tracing', () => {
+	it('opens a materialize span carrying the summary counts, with ok status', async () => {
+		const due: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'interval',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: 10,
+			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({ now: new Date('2026-01-01T00:00:00.000Z'), jobs: [due] });
+		// Distinct counts (claimed 1, occurrences 2, deferred 0) so that recording a
+		// count under the wrong attribute key cannot slip past these assertions.
+		tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({
+			materializerTransaction,
+			materializer: { windowSeconds: 0 },
+			tracer,
+		});
+
+		const summary = await scheduler.materialize();
+
+		expect(summary).toEqual({ claimedJobs: 1, occurrences: 2, created: [], deferredJobs: 0 });
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler materialize', op: 'scheduler.materialize' }),
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.claimedJobs, 1);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.occurrences, 2);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.deferredJobs, 0);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('emits one creation span per newly recorded row', async () => {
+		const due: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'interval',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: 10,
+			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({ now: new Date('2026-01-01T00:00:00.000Z'), jobs: [due] });
+		tx.recordOccurrences.mockResolvedValue({
+			recorded: 1,
+			created: [{ id: '99', jobId: 7, taskType: 'test-task' }],
+		});
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { tracer } = makeTracer();
+		const { scheduler } = makeScheduler({
+			materializerTransaction,
+			materializer: { windowSeconds: 0 },
+			tracer,
+		});
+
+		await scheduler.materialize();
+
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'Scheduler task created',
+				op: 'scheduler.task.create',
+				attributes: {
+					[SCHEDULER_ATTRIBUTES.taskId]: '99',
+					[SCHEDULER_ATTRIBUTES.jobId]: 7,
+					[SCHEDULER_ATTRIBUTES.taskType]: 'test-task',
+				},
+			}),
+			expect.any(Function),
+		);
+	});
+
+	it('opens a claim span carrying the claimed count and host, with ok status', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn() });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+
+		const tasks = await scheduler.execute();
+
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'Scheduler claim',
+				op: 'scheduler.claim',
+				attributes: { [SCHEDULER_ATTRIBUTES.host]: 'main-test' },
+			}),
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.claimedCount, tasks.length);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('wraps a detached fire in a fire span with a nested handoff span around the handler', async () => {
+		// A span per `op`, so the claim, fire and handoff spans record to separate
+		// spies and their statuses can be told apart.
+		const spans = new Map<string, Span>();
+		const spanFor = (op: string): Span => {
+			let span = spans.get(op);
+			if (span === undefined) {
+				span = { setAttribute: vi.fn(), setStatus: vi.fn() };
+				spans.set(op, span);
+			}
+			return span;
+		};
+		const tracer = mock<Tracer>();
+		tracer.startSpan.mockImplementation(async (options, run) => {
+			const span = spanFor(options.op ?? options.name);
+			try {
+				return await run(span);
+			} catch (error) {
+				span.setStatus({ code: SpanStatus.error, message: ensureError(error).message });
+				throw error;
+			}
+		});
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.beginDispatch.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The fire is detached from the claim: wait for the timer to deliver it.
+		await vi.waitFor(() => {
+			expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		});
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler fire', op: 'scheduler.fire' }),
+			expect.any(Function),
+		);
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.completed,
+		);
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler handoff', op: 'scheduler.handoff' }),
+			expect.any(Function),
+		);
+		expect(spanFor('scheduler.handoff').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('opens a reap span carrying the reclaimed and dead-lettered counts, with ok status', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		// Distinct counts (reclaimed 2, dead-lettered 1) so recording a count under
+		// the wrong attribute key cannot slip past these assertions: two leases with
+		// attempts left are reclaimed, one out of attempts is dead-lettered.
+		taskStore.findExpiredLeases.mockResolvedValue([
+			expiredRow({ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
+			expiredRow({ id: '8', attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
+			expiredRow({ id: '9', attempts: 2, maxAttempts: 3, leaseEpoch: 1 }),
+		]);
+		taskStore.reclaimExpired.mockResolvedValue(1);
+		taskStore.deadLetterExpired.mockResolvedValue(1);
+
+		const result = await scheduler.reap();
+
+		expect(result).toEqual({ reclaimed: 2, deadLettered: 1 });
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler reap', op: 'scheduler.reap' }),
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.reclaimed, 2);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.deadLettered, 1);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('opens a retention span carrying the deleted count and drained flag, with ok status', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		const summary = await scheduler.prune();
+
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler retention', op: 'scheduler.retention' }),
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.retentionDeleted,
+			summary.deleted,
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.retentionDrained,
+			summary.drained,
+		);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the claim span when the executor pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.claimDueTasks.mockResolvedValue([]);
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		await scheduler.execute(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'Scheduler pass timed out',
+		});
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the reap span when the reaper pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.findExpiredLeases.mockResolvedValue([]);
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		await scheduler.reap(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'Scheduler pass timed out',
+		});
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the retention span when the retention pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({ tracer });
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		await scheduler.prune(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'Scheduler pass timed out',
+		});
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the materialize span when the materializer pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({ tracer });
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		// The materializer aborts by throwing (throwIfAborted); a timeout is a real
+		// fault, so the pass boundary lets it propagate and the tracer errors the
+		// span, rather than settlePassSpan closing it.
+		await expect(scheduler.materialize(controller.signal)).rejects.toBeDefined();
+
+		expect(span.setStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records ok on the materialize span when aborted by a graceful stop, not a timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({ tracer });
+		// A graceful stop aborts with the default reason, not PASS_TIMED_OUT.
+		const controller = new AbortController();
+		controller.abort();
+
+		// Unlike the timeout case, the materializer's throw-to-roll-back is caught
+		// at the pass boundary and reported as a no-op summary, not rethrown.
+		const summary = await scheduler.materialize(controller.signal);
+
+		expect(summary).toEqual({ claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 });
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(span.setStatus).not.toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+	});
+
+	it('still errors the materialize span when a real failure races a graceful stop', async () => {
+		const { span, tracer } = makeTracer();
+		const controller = new AbortController();
+		const dbError = new Error('connection reset');
+		// Simulates a shutdown (aborts the signal) landing at the same instant as
+		// an unrelated transaction failure — the signal is aborted, but this
+		// error is not `signal.reason`, so it must not be read as the abort.
+		const materializerTransaction: RunInTransaction = () => {
+			controller.abort();
+			throw dbError;
+		};
+		const { scheduler } = makeScheduler({ tracer, materializerTransaction });
+
+		await expect(scheduler.materialize(controller.signal)).rejects.toBe(dbError);
+
+		expect(span.setStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records ok on a pass drained by a graceful stop, not a timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.claimDueTasks.mockResolvedValue([]);
+		// A graceful stop aborts with the default reason, not PASS_TIMED_OUT.
+		const controller = new AbortController();
+		controller.abort();
+
+		await scheduler.execute(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(span.setStatus).not.toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+	});
+});
+
+describe('createScheduler metrics', () => {
+	it('records the materialization outcome from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const corrupt: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'cron',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: null,
+			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({
+			now: new Date('2026-01-01T00:00:00.000Z'),
+			jobs: [corrupt],
+		});
+		tx.recordOccurrences.mockResolvedValue({ recorded: 0, created: [] });
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { scheduler } = makeScheduler({ materializerTransaction, metrics });
+
+		await scheduler.materialize();
+
+		// One corrupt job deferred, no occurrences recorded.
+		expect(metrics.recordMaterialized).toHaveBeenCalledWith(0, 1);
+	});
+
+	it('records the reaper outcome from the sweep result', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.findExpiredLeases.mockResolvedValue([
+			expiredRow({ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 }),
+		]);
+		taskStore.deadLetterExpired.mockResolvedValue(1);
+
+		await scheduler.reap();
+
+		expect(metrics.recordReaped).toHaveBeenCalledWith(0, 1);
+	});
+
+	it('records the retention outcome from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		await scheduler.prune();
+
+		expect(metrics.recordPruned).toHaveBeenCalledWith(5);
+	});
+
+	it('defaults to a safe no-op when no metrics port is supplied', async () => {
+		const { scheduler, taskStore } = makeScheduler();
+		taskStore.deleteFinishedOlderThan.mockResolvedValue(0);
+
+		// No metrics dep: the defaulted no-op must not throw.
+		await expect(scheduler.prune()).resolves.toEqual({ deleted: 0, drained: true });
+	});
+
+	it('maps a successful fire onto dispatch and success metrics', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		// A task due in the past fires on the next timer tick.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.beginDispatch.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The fire is detached from the claim: wait for the timer to deliver it.
+		await vi.waitFor(() => {
+			expect(metrics.recordFireOutcome).toHaveBeenCalledWith('test-task', 'success');
+		});
+		expect(metrics.recordDispatch).toHaveBeenCalledWith('test-task');
+		expect(metrics.observeDispatchLagSeconds).toHaveBeenCalledWith('test-task', expect.any(Number));
+		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+	});
+
+	it('maps a terminal failure onto a failure outcome and a dead-letter', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', {
+			execute: vi.fn().mockRejectedValue(new Error('boom')),
+		});
+		// Single attempt: the first failure exhausts it.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 1 })]);
+		taskStore.beginDispatch.mockResolvedValue(1);
+		taskStore.failTaskTerminal.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(metrics.recordFireOutcome).toHaveBeenCalledWith('test-task', 'failure');
+		});
+		expect(metrics.recordDeadLettered).toHaveBeenCalledTimes(1);
+		expect(metrics.recordRetry).not.toHaveBeenCalled();
+	});
+
+	it('maps a failure with attempts remaining onto a retry', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', {
+			execute: vi.fn().mockRejectedValue(new Error('boom')),
+		});
+		// Attempts remain, so the failure reschedules rather than fails terminally.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 3 })]);
+		taskStore.beginDispatch.mockResolvedValue(1);
+		taskStore.rescheduleTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(metrics.recordRetry).toHaveBeenCalledWith('test-task');
+		});
+		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
+		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+	});
+
+	it('does not let a throwing metrics sink break a pass', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		metrics.recordPruned.mockImplementation(() => {
+			throw new Error('exporter down');
+		});
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		// The pass completes normally even though recording its outcome threw.
+		await expect(scheduler.prune()).resolves.toEqual({ deleted: 5, drained: true });
+	});
+
+	it('does not let a throwing metrics sink break a fire', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		metrics.recordDispatch.mockImplementation(() => {
+			throw new Error('exporter down');
+		});
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		const execute = vi.fn().mockResolvedValue(undefined);
+		scheduler.registerTaskHandler('test-task', { execute });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.beginDispatch.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The handler still runs and the task still completes despite the sink throwing.
+		await vi.waitFor(() => {
+			expect(taskStore.completeTask).toHaveBeenCalledTimes(1);
+		});
+		expect(execute).toHaveBeenCalledTimes(1);
 	});
 });

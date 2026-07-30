@@ -8,7 +8,7 @@ import MCPOnboardingModal from './MCPOnboardingModal.vue';
 const mockClipboardCopy = vi.fn();
 const mockShowError = vi.fn();
 
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: () => ({
 		copy: mockClipboardCopy,
 		copied: { value: false },
@@ -46,6 +46,7 @@ vi.mock('@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUser
 type MockMcpStore = {
 	mcpAccessEnabled: boolean;
 	mcpManagedByEnv: boolean;
+	serverUrl: string;
 	setMcpAccessEnabled: ReturnType<typeof vi.fn>;
 };
 
@@ -94,6 +95,7 @@ describe('MCPOnboardingModal', () => {
 		mockMcpStore = reactive({
 			mcpAccessEnabled: false,
 			mcpManagedByEnv: false,
+			serverUrl: 'https://example.n8n.cloud/mcp-server/http',
 			setMcpAccessEnabled: vi.fn().mockImplementation(async () => {
 				mockMcpStore.mcpAccessEnabled = true;
 				return true;

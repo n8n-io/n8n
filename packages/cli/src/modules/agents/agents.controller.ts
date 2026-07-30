@@ -1,4 +1,4 @@
-import { CreateAgentDto, ListAgentsQueryDto } from '@n8n/api-types';
+import { type AgentCapabilitySummary, CreateAgentDto, ListAgentsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -70,6 +70,16 @@ export class AgentsController {
 			req.params.projectId,
 			req.user,
 		);
+	}
+
+	/** Capability metadata for the canvas node card (model + chip labels). */
+	@Get('/:agentId/summary')
+	@ProjectScope('agent:read')
+	async getSummary(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentCapabilitySummary> {
+		const { projectId, agentId } = req.params;
+		return await this.agentsService.getCapabilitySummary(agentId, projectId);
 	}
 
 	@Delete('/:agentId')

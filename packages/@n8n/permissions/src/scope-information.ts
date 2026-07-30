@@ -95,8 +95,18 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description: 'Allows removing credential shares.',
 	},
 	'credential:connect': {
-		displayName: 'Connect Credential',
-		description: 'Allows connecting an own account to a private credential.',
+		displayName: 'Connect End-User Credential',
+		description: 'Allows connecting an own account to an end-user credential.',
+	},
+	'credential:createEndUser': {
+		displayName: 'Manage End-User Credential',
+		description:
+			"Allows creating, deleting, and changing the type of end-user credentials, which resolve to each user's own connection.",
+	},
+	'credential:manageInstance': {
+		displayName: 'Manage provider connections',
+		description:
+			'Allows creating, updating, and deleting provider connections used by instance-level features. These connections are not available in workflows.',
 	},
 	'insights:read': {
 		displayName: 'Read Insights',

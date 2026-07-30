@@ -29,7 +29,11 @@ function makeContext(options: MakeContextOptions = {}): OrchestrationContext {
 		userId: 'user-1',
 		workflowService: {
 			getAsWorkflowJSON: vi.fn().mockResolvedValue(workflowJson),
-			updateFromWorkflowJSON: vi.fn().mockResolvedValue(undefined),
+			updateFromWorkflowJSON: vi.fn().mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-1',
+				checksum: 'checksum-1',
+			}),
 		} as never,
 		credentialService: {
 			get: vi.fn().mockResolvedValue({ id: 'cred-1', name: 'My Key' }),
@@ -38,6 +42,7 @@ function makeContext(options: MakeContextOptions = {}): OrchestrationContext {
 		executionService: {} as never,
 		nodeService: {} as never,
 		dataTableService: {} as never,
+		workflowTemplateService: {} as never,
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 	};
 

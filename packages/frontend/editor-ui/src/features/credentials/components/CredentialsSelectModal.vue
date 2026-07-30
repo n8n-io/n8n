@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCredentialsStore } from '../credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -8,6 +8,7 @@ import { computed, onMounted, ref } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
+import type { NewCredentialsModal } from '@/Interface';
 
 import { N8nButton, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -27,6 +28,11 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 
 const searchQuery = ref('');
+
+const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
+	const data = uiStore.modalsById[CREDENTIAL_SELECT_MODAL_KEY]?.data;
+	return data?.usageScope === 'instance' ? 'instance' : undefined;
+});
 
 onMounted(async () => {
 	try {
@@ -76,6 +82,7 @@ function openCredentialType() {
 		undefined,
 		{
 			instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			usageScope: presetUsageScope.value,
 		},
 	);
 

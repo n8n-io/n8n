@@ -9,7 +9,8 @@ import { useDebounceFn } from '@vueuse/core';
 import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { useToast } from '@/app/composables/useToast';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -37,16 +38,26 @@ const props = withDefaults(
 		disabled?: boolean;
 		embedded?: boolean;
 		projectId?: string;
+		/** Cap for the instructions editor — compact hosts (NDV) pass a smaller value. */
+		instructionsMaxHeight?: string;
 		showModel?: boolean;
 		showInstructions?: boolean;
 		showInstructionsToolbar?: boolean;
+		/**
+		 * Emit instructions edits per keystroke instead of debounced. For hosts
+		 * whose updates are cheap local writes (inline agent → node parameter);
+		 * autosaving hosts (builder) keep the debounce.
+		 */
+		immediateUpdates?: boolean;
 	}>(),
 	{
 		disabled: false,
 		embedded: false,
+		instructionsMaxHeight: '360px',
 		showModel: true,
 		showInstructions: true,
 		showInstructionsToolbar: false,
+		immediateUpdates: false,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -108,9 +119,6 @@ const panelTestId = computed(() => {
 const instructionsToolbarMode = computed(() =>
 	props.showInstructionsToolbar ? 'always' : 'never',
 );
-const instructionsEditorVariant = computed(() =>
-	props.showInstructionsToolbar ? 'contained' : 'ghost',
-);
 
 function onModelChange(selection: AgentModelSelection) {
 	const credentialId = credentialsByProvider.value?.[selection.provider];
@@ -153,13 +161,17 @@ watch(
 	},
 );
 
-const emitInstructions = useDebounceFn(() => {
+const emitInstructionsDebounced = useDebounceFn(() => {
 	emit('update:config', { instructions: instructions.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 
 function onInstructionsInput(value: string) {
 	instructions.value = value;
-	void emitInstructions();
+	if (props.immediateUpdates) {
+		emit('update:config', { instructions: value });
+		return;
+	}
+	void emitInstructionsDebounced();
 }
 </script>
 
@@ -171,13 +183,14 @@ function onInstructionsInput(value: string) {
 			:description="i18n.baseText('agents.builder.agent.description')"
 		/>
 
-		<div v-if="props.showModel" :class="[$style.field, props.disabled && shared.disabledOverlay]">
-			<label :class="$style.label"
+		<div v-if="props.showModel" :class="[$style.field]">
+			<label :class="[$style.label, props.disabled && shared.disabled]"
 				><N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 					i18n.baseText('agents.builder.agent.model.label')
 				}}</N8nText></label
 			>
 			<AgentModelSelector
+				:disabled="props.disabled"
 				:selected-model="selectedAgent"
 				:credentials="credentialsByProvider"
 				:models-by-provider="filteredAgents"
@@ -190,8 +203,8 @@ function onInstructionsInput(value: string) {
 			/>
 		</div>
 
-		<div v-if="props.showInstructions" :class="[$style.field, $style.instructionsField]">
-			<label :class="$style.label">
+		<div v-if="props.showInstructions" :class="[$style.field]">
+			<label :class="[$style.label, props.disabled && shared.disabled]">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 					i18n.baseText('agents.builder.agent.instructions.label')
 				}}</N8nText>
@@ -199,10 +212,10 @@ function onInstructionsInput(value: string) {
 			<N8nMarkdownEditor
 				:class="$style.instructionsDocument"
 				:model-value="instructions"
-				:readonly="props.disabled"
-				:variant="instructionsEditorVariant"
+				:disabled="props.disabled"
 				:show-toolbar="instructionsToolbarMode"
-				max-height="none"
+				:max-height="props.instructionsMaxHeight"
+				variant="contained"
 				data-testid="agent-instructions-document"
 				@update:model-value="onInstructionsInput"
 			/>
@@ -225,11 +238,15 @@ function onInstructionsInput(value: string) {
 	width: 100%;
 }
 
+.instructionsDocument:disabled {
+	opacity: 0.5;
+}
+
+/* Follow the editor's configured max-height and scroll within the cap. */
 .instructionsDocument :global(.n8n-markdown) {
-	max-height: none;
+	max-height: var(--markdown-editor-max-height);
 	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));
-	overflow-y: visible;
-	padding: 0;
+	overflow-y: auto;
 }
 
 .field {

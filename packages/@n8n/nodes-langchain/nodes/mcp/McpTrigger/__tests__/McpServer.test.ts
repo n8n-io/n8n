@@ -575,13 +575,38 @@ describe('McpServer', () => {
 		) => Promise<{ isError?: boolean; content: Array<{ text: string }>; [k: string]: unknown }>;
 
 		// Capture the CallTool handler that setupHandlers registers on the server.
-		function getCallToolHandler(): CallToolHandler {
-			const server = createMockServer();
+		function getCallToolHandler(
+			server: ReturnType<typeof createMockServer> = createMockServer(),
+		): CallToolHandler {
 			(mcpServer as unknown as { setupHandlers(s: unknown): void }).setupHandlers(server);
 			const calls = (server.setRequestHandler as unknown as { mock: { calls: unknown[][] } }).mock
 				.calls;
 			// [0] = ListTools handler, [1] = CallTool handler
 			return calls[1][1] as CallToolHandler;
+		}
+
+		// A mock server whose client advertised URL-mode elicitation support.
+		function serverWithUrlElicitation(
+			elicitResults: Array<{ action: 'accept' | 'decline' | 'cancel' }> | Error = [
+				{ action: 'accept' },
+			],
+		): ReturnType<typeof createMockServer> {
+			const server = createMockServer();
+			(
+				server.getClientCapabilities as unknown as { mockReturnValue: (v: unknown) => void }
+			).mockReturnValue({ elicitation: { url: {} } });
+			const elicit = server.elicitInput as unknown as {
+				mockReset: () => void;
+				mockRejectedValue: (e: unknown) => void;
+				mockResolvedValueOnce: (v: unknown) => unknown;
+			};
+			elicit.mockReset();
+			if (elicitResults instanceof Error) {
+				elicit.mockRejectedValue(elicitResults);
+			} else {
+				elicitResults.forEach((r) => elicit.mockResolvedValueOnce(r));
+			}
+			return server;
 		}
 
 		async function registerToolSession(tool: ReturnType<typeof createMockTool>): Promise<void> {
@@ -662,6 +687,201 @@ describe('McpServer', () => {
 
 			expect(tool.invoke).toHaveBeenCalled();
 			expect(result.content[0].text).toBe(JSON.stringify({ ok: true }));
+		});
+
+		it('falls back to text (no elicitation) when the client lacks the capability', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize',
+					},
+				],
+			});
+
+			// Default mock server advertises no elicitation capability.
+			const server = createMockServer();
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(server.elicitInput).not.toHaveBeenCalled();
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('https://n8n.test/authorize');
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('drives connection through URL elicitation when the client supports it', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c1',
+					},
+				],
+			});
+
+			const server = serverWithUrlElicitation([{ action: 'accept' }]);
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(server.elicitInput).toHaveBeenCalledTimes(1);
+			const elicitParams = (server.elicitInput as unknown as { mock: { calls: unknown[][] } }).mock
+				.calls[0][0] as { mode: string; url: string; elicitationId: string };
+			expect(elicitParams.mode).toBe('url');
+			expect(elicitParams.url).toBe('https://n8n.test/authorize/c1');
+			expect(elicitParams.elicitationId).toBeTruthy();
+			// The raw URL is not relayed as tool text; the client surfaced it itself.
+			expect(result.content[0].text).not.toContain('https://n8n.test/authorize/c1');
+			expect(result.content[0].text).toContain('Slack (slackOAuth2Api)');
+			expect(result.isError).toBeUndefined();
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('elicits once per missing credential', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c1',
+					},
+					{
+						credentialId: 'c2',
+						credentialName: 'Notion',
+						credentialType: 'notionOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c2',
+					},
+				],
+			});
+
+			const server = serverWithUrlElicitation([{ action: 'accept' }, { action: 'accept' }]);
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(server.elicitInput).toHaveBeenCalledTimes(2);
+			expect(result.isError).toBeUndefined();
+			expect(result.content[0].text).toContain('Slack (slackOAuth2Api)');
+			expect(result.content[0].text).toContain('Notion (notionOAuth2Api)');
+		});
+
+		it('flags an error when the user declines an elicitation', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c1',
+					},
+				],
+			});
+
+			const server = serverWithUrlElicitation([{ action: 'decline' }]);
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('still need to be connected');
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('falls back to text when elicitation throws', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c1',
+					},
+				],
+			});
+
+			const server = serverWithUrlElicitation(new Error('client closed'));
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(server.elicitInput).toHaveBeenCalled();
+			expect(result.isError).toBe(true);
+			// Fallback response carries the raw URL.
+			expect(result.content[0].text).toContain('https://n8n.test/authorize/c1');
+		});
+
+		it('falls back to text when a missing credential has no connection URL', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c1',
+					},
+					{
+						credentialId: 'c2',
+						credentialName: 'Header Auth',
+						credentialType: 'httpHeaderAuth',
+						status: 'missing',
+					},
+				],
+			});
+
+			const server = serverWithUrlElicitation([{ action: 'accept' }]);
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			// Can't fully drive connection via elicitation, so use the text path.
+			expect(server.elicitInput).not.toHaveBeenCalled();
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('https://n8n.test/authorize/c1');
+			expect(result.content[0].text).toContain('Header Auth (httpHeaderAuth): not connected');
 		});
 	});
 });

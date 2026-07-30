@@ -110,12 +110,12 @@ export class InstanceRegistryService {
 		const useRedis = this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue';
 
 		if (useRedis) {
-			const { RedisInstanceStorage } = await import('./storage/redis-instance-storage');
+			const { RedisInstanceStorage } = await import('./storage/redis-instance-storage.js');
 			const { Container } = await import('@n8n/di');
 			return Container.get(RedisInstanceStorage);
 		}
 
-		const { MemoryInstanceStorage } = await import('./storage/memory-storage');
+		const { MemoryInstanceStorage } = await import('./storage/memory-storage.js');
 		return new MemoryInstanceStorage();
 	}
 

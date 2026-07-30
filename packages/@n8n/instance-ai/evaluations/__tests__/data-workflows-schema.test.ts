@@ -37,7 +37,7 @@ describe('EvalTestCaseSchema', () => {
 	it('accepts a minimal valid fixture', () => {
 		const parsed = EvalTestCaseSchema.parse(validFixture());
 		expect(parsed.executionScenarios).toHaveLength(1);
-		expect(parsed.conversation[0].role).toBe('user');
+		expect(parsed.conversation![0].role).toBe('user');
 	});
 
 	it('rejects an empty conversation', () => {
@@ -49,7 +49,7 @@ describe('EvalTestCaseSchema', () => {
 			...validFixture(),
 			conversation: [{ role: 'user', text: ['line 1', 'line 2'] }],
 		});
-		expect(parsed.conversation[0].text).toBe('line 1\nline 2');
+		expect(parsed.conversation![0].text).toBe('line 1\nline 2');
 	});
 
 	it('rejects 0 execution scenarios AND 0 expectations (a case must assert something)', () => {
@@ -90,11 +90,53 @@ describe('EvalTestCaseSchema', () => {
 		expect(parsed.priorConversation).toHaveLength(1);
 	});
 
-	it('rejects seedFile combined with priorConversation', () => {
+	it('rejects a case still pointing at a seedFile', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), seedFile: 'seeds/some-thread.seed.json' }),
+		).toThrow(/seedFile/);
+	});
+
+	it('accepts an inline conversationSeed and defaults its optional arrays', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			conversationSeed: {
+				messages: [
+					{
+						id: 'm1',
+						type: 'llm',
+						role: 'user',
+						createdAt: '2026-06-29T09:00:00.000Z',
+						content: [{ type: 'text', text: 'build it' }],
+					},
+				],
+			},
+		});
+		expect(parsed.conversationSeed?.messages).toHaveLength(1);
+		expect(parsed.conversationSeed?.workflows).toEqual([]);
+		expect(parsed.conversationSeed?.dataTables).toEqual([]);
+	});
+
+	it('rejects an inline conversationSeed with no messages', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), conversationSeed: { messages: [] } }),
+		).toThrow();
+	});
+
+	it('rejects conversationSeed combined with another seeding mode', () => {
 		expect(() =>
 			EvalTestCaseSchema.parse({
 				...validFixture(),
-				seedFile: 'seeds/some-thread.seed.json',
+				conversationSeed: {
+					messages: [
+						{
+							id: 'm1',
+							type: 'llm',
+							role: 'user',
+							createdAt: '2026-06-29T09:00:00.000Z',
+							content: [{ type: 'text', text: 'build it' }],
+						},
+					],
+				},
 				priorConversation: [{ role: 'user', text: 'prelude' }],
 			}),
 		).toThrow(/mutually exclusive/);
@@ -164,7 +206,7 @@ describe('EvalTestCaseSchema', () => {
 			EvalTestCaseSchema.parse({
 				...rest,
 				seedThread: { threadId: 't1' },
-				seedFile: 'seeds/x.seed.json',
+				priorConversation: [{ role: 'user', text: 'prelude' }],
 			}),
 		).toThrow(/mutually exclusive/);
 	});
@@ -251,7 +293,7 @@ describe('EvalTestCaseSchema', () => {
 			requires: 'mock-server',
 		} as (typeof fixture.executionScenarios)[number];
 		const parsed = EvalTestCaseSchema.parse(fixture);
-		expect(parsed.executionScenarios[0].requires).toBe('mock-server');
+		expect(parsed.executionScenarios![0].requires).toBe('mock-server');
 	});
 });
 
@@ -272,6 +314,47 @@ describe('loadWorkflowTestCasesWithFiles · file-aware errors', () => {
 		mockedReadFile.mockReturnValue(JSON.stringify({ conversation: [] }));
 		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/demo\.json/);
 		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/complexity/);
+	});
+});
+
+describe('EvalTestCaseSchema · artifact grading via outcome expectations', () => {
+	it('accepts a workflow case graded only by outcomeExpectations (no scenarios)', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
+		const parsed = EvalTestCaseSchema.parse({
+			...rest,
+			outcomeExpectations: ['the final workflow posts to Slack'],
+		});
+		expect(parsed.outcomeExpectations).toEqual(['the final workflow posts to Slack']);
+	});
+
+	it('accepts an agent-style case graded only by outcomeExpectations (no scenarios)', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
+		const parsed = EvalTestCaseSchema.parse({
+			...rest,
+			outcomeExpectations: ['an agent was created and no workflow was built'],
+		});
+		expect(parsed.outcomeExpectations).toEqual(['an agent was created and no workflow was built']);
+	});
+
+	it('rejects a case with no scenario and no process/outcome expectation', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
+		expect(() => EvalTestCaseSchema.parse(rest)).toThrow(
+			/needs at least one executionScenario, or a process\/outcome expectation/,
+		);
+	});
+
+	it('rejects the removed expectedArtifacts / artifactExpectations fields (strict schema)', () => {
+		// Artifact grading moved onto outcomeExpectations — these case fields no longer exist,
+		// and the strict schema rejects them so a stale case fails loudly rather than silently.
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), expectedArtifacts: ['agent'] }),
+		).toThrow();
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				artifactExpectations: { agent: ['the agent has a Slack tool'] },
+			}),
+		).toThrow();
 	});
 });
 

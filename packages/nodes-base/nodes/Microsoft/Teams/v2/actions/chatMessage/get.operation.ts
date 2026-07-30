@@ -3,7 +3,7 @@ import { type INodeProperties, type IExecuteFunctions, NodeOperationError } from
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { chatRLC } from '../../descriptions';
-import { microsoftApiRequest, SP_HIDE } from '../../transport';
+import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChatUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
@@ -38,17 +38,19 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	// catch below, so the static SP message is surfaced, not the generic one).
 	throwIfChatUnsupported.call(this);
 
-	try {
-		const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
-		const messageId = this.getNodeParameter('messageId', i) as string;
+	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
+	const messageId = this.getNodeParameter('messageId', i) as string;
+	// Built outside the try so an invalid id surfaces as its own validation
+	// error instead of being replaced by the not-found message below
+	const endpoint = buildTeamsPath.call(this, [
+		'/v1.0/chats/',
+		{ id: chatId },
+		'/messages/',
+		{ id: messageId },
+	]);
 
-		// OAuth2-only path (chat is hidden + guarded under SP), so `chatId` is
-		// interpolated raw without buildTeamsPath by design.
-		return await microsoftApiRequest.call(
-			this,
-			'GET',
-			`/v1.0/chats/${chatId}/messages/${messageId}`,
-		);
+	try {
+		return await microsoftApiRequest.call(this, 'GET', endpoint);
 	} catch (error) {
 		throw new NodeOperationError(
 			this.getNode(),

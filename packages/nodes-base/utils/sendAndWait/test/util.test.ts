@@ -127,6 +127,7 @@ describe('Send and Wait utils tests', () => {
 						label: 'Approve',
 						style: 'primary',
 						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						approved: true,
 					},
 				],
 			});
@@ -164,11 +165,13 @@ describe('Send and Wait utils tests', () => {
 						label: 'Reject',
 						style: 'secondary',
 						url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+						approved: false,
 					},
 					{
 						label: 'Approve',
 						style: 'primary',
 						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						approved: true,
 					},
 				]),
 			);
@@ -809,5 +812,23 @@ describe('configureWaitTillDate', () => {
 			.mockReturnValueOnce('minutes');
 
 		expect(() => configureWaitTillDate(mockExecuteFunctions, 'root')).toThrow(NodeOperationError);
+	});
+});
+
+describe('getSendAndWaitProperties additionalProperties', () => {
+	const hitl: INodeProperties = {
+		displayName: 'Capture Who Responded',
+		name: 'captureResponder',
+		type: 'boolean',
+		default: false,
+	};
+
+	it('renders additionalProperties before the Options collection', () => {
+		const props = getSendAndWaitProperties([], undefined, [hitl]);
+		// The first "options" collection is the approval one, emitted right after "Approval Options".
+		const firstOptionsIndex = props.findIndex((p) => p.name === 'options');
+		const hitlIndex = props.findIndex((p) => p.name === 'captureResponder');
+		expect(hitlIndex).toBeGreaterThan(-1);
+		expect(hitlIndex).toBeLessThan(firstOptionsIndex);
 	});
 });

@@ -14,6 +14,8 @@ describe('ApiKeyScope', () => {
 			'execution:read',
 			'testRun:list',
 			'testRun:read',
+			'testRun:create',
+			'testRun:cancel',
 			'project:create',
 			'project:delete',
 			'project:list',

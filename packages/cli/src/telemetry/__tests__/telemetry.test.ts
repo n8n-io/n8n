@@ -1,10 +1,13 @@
+import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import { defineTelemetryEvents } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { InstanceSettings } from 'n8n-core';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { z } from 'zod/v4';
 
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
@@ -677,6 +680,36 @@ describe('Telemetry', () => {
 			expect(payload).not.toHaveProperty('cost_avg');
 			expect(payload).not.toHaveProperty('tool_call_count_p50');
 			expect(payload).not.toHaveProperty('num_skills_p75');
+			// Saved agents carry no agent_type (the exact toEqual above also
+			// guards against it sneaking in).
+			expect(payload).not.toHaveProperty('agent_type');
+		});
+
+		test('should carry agent_type through to the flushed payload for inline runs', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'inline:wf-1:Message an Agent',
+				agent_type: 'inline',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			const payload = spyTrack.mock.calls.find(
+				([eventName]) => eventName === 'Agent session metrics',
+			)?.[1];
+			expect(payload).toEqual(
+				expect.objectContaining({
+					agent_id: 'inline:wf-1:Message an Agent',
+					agent_type: 'inline',
+				}),
+			);
 			expect(telemetry.getAgentSessionMetricsBuffer()).toEqual({});
 		});
 
@@ -999,6 +1032,21 @@ describe('Telemetry', () => {
 			);
 		});
 
+		test('should call rudderStack.track() with the user_cloud_id context trait when set', () => {
+			telemetry.setUserCloudId('cloud-user-123');
+
+			telemetry.track('Test Event', { user_id: '1234' });
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					context: {
+						ip: '0.0.0.0',
+						traits: { user_cloud_id: 'cloud-user-123' },
+					},
+				}),
+			);
+		});
+
 		test('should include instance_id, version_cli, and user_id in track properties', () => {
 			const eventName = 'Test Event';
 			const properties = { user_id: '1234', custom_prop: 'value' };
@@ -1055,6 +1103,80 @@ describe('Telemetry', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('track() with registry entries', () => {
+		const TEST_TELEMETRY = defineTelemetryEvents({
+			USER_TESTED_REGISTRY_ENTRY: {
+				name: 'User tested registry entry',
+				description: 'Fires when the registry entry pipeline is exercised in tests.',
+				properties: z.object({ workflow_id: z.string() }),
+			},
+		});
+
+		test('should emit the entry name and properties through the standard pipeline', () => {
+			telemetry.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, { workflow_id: 'wf-1' });
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: 'User tested registry entry',
+					properties: expect.objectContaining({ workflow_id: 'wf-1' }),
+					context: expect.objectContaining({ ip: '0.0.0.0' }),
+				}),
+			);
+		});
+
+		test('should warn and still emit when properties do not match the schema', () => {
+			const logger = mock<Logger>();
+			const validationTelemetry = new Telemetry(
+				logger,
+				new PostHogClient(instanceSettings, mock()),
+				mock(),
+				instanceSettings,
+				mock(),
+				globalConfig,
+				mock(),
+				mock(),
+			);
+			// @ts-expect-error Assigning to private property
+			validationTelemetry.rudderStack = mockRudderStack;
+
+			expect(() =>
+				validationTelemetry.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, {
+					workflow_id: 123 as unknown as string,
+				}),
+			).not.toThrow();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('"User tested registry entry" failed schema validation'),
+			);
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: 'User tested registry entry',
+					properties: expect.objectContaining({ workflow_id: 123 }),
+				}),
+			);
+		});
+
+		test('should warn about schema mismatches even when RudderStack is not initialized', () => {
+			const logger = mock<Logger>();
+			const uninitializedTelemetry = new Telemetry(
+				logger,
+				new PostHogClient(instanceSettings, mock()),
+				mock(),
+				instanceSettings,
+				mock(),
+				globalConfig,
+				mock(),
+				mock(),
+			);
+
+			uninitializedTelemetry.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, {
+				workflow_id: 123 as unknown as string,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('failed schema validation'));
 		});
 	});
 });

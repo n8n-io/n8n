@@ -3,9 +3,10 @@ name: planning
 description: >-
   ONLY for coordinated multi-artifact work: multiple workflows with dependencies,
   shared data-table schema/migration across tasks, or the user explicitly asked
-  to review a plan first. Do NOT use for new one-off workflows, single-workflow
-  edits, verification-only requests, or standalone data-table ops — use
-  workflow-builder or data-table-manager instead.
+  to review a plan first. Load create-tasks via load_tool before calling it
+  (search "create tasks" if not visible). Do NOT use for new one-off workflows,
+  single-workflow edits, verification-only requests, or standalone data-table
+  ops — use workflow-builder or data-table-manager instead.
 recommended_tools:
   - create-tasks
   - workflows
@@ -22,6 +23,9 @@ recommended_tools:
 Use this skill to design a dependency-aware task graph in the orchestrator and
 submit it with `create-tasks`. Do not spawn another agent and do not use
 incremental plan item tools.
+
+Before calling `create-tasks`, load it via `load_tool` (search "create tasks" if
+it is not visible).
 
 ## When NOT to use this skill
 
@@ -52,6 +56,15 @@ single-workflow builds and existing-workflow edits use `workflow-builder` with
 `build-workflow` directly. Standalone data-table work uses `data-table-manager`
 with direct `data-tables` and `parse-file` calls.
 
+## Knowledge Base
+
+**Consult the knowledge base before planning.** Read the relevant `.md` guides
+and templates for each technique the request involves (`knowledge-base/index.json`,
+`knowledge-base/best-practices/index.json`, and linked files). Use
+`workspace_execute_command` with `rg` or `find` under `knowledge-base/templates/`
+to locate matching SDK examples — never load `templates/index.json` wholesale.
+Skip only for trivial mechanical edits you have already reviewed in this thread.
+
 ## Method
 
 1. Decide whether the request is plan-worthy by coordination need, not by
@@ -60,6 +73,7 @@ with direct `data-tables` and `parse-file` calls.
    `nodes(action="suggested")`, `credentials(action="list")`,
    `data-tables(action="list")`, `parse-file`, `workflows`, and `research`
    when relevant.
+
 3. Prefer reasonable assumptions over questions. Ask the user only when the
    answer would materially change the plan and cannot be discovered.
 4. Build a dependency-aware graph. Producers must come before consumers.
@@ -69,7 +83,8 @@ with direct `data-tables` and `parse-file` calls.
    artifact shared across tasks.
 6. Add checkpoint tasks only for exceptional semantic checks that normal
    workflow verification cannot cover.
-7. Call `create-tasks` with `planningContext.source: "planning-skill"`,
+7. Load `create-tasks` via `load_tool` if needed, then call `create-tasks` with
+   `planningContext.source: "planning-skill"`,
    a concise `summary`, optional `assumptions`, `postBuildRunRequested: true`
    only when the user explicitly asked to run, execute, or test a workflow
    after building it, and the final task graph.
@@ -167,8 +182,9 @@ Do not add checkpoints for routine verification-only work.
 
 ## Revisions
 
-If the user rejects the plan with requested changes, revise surgically and call
-`create-tasks` again in the same orchestrator run with
+If the user rejects the plan with requested changes, revise surgically, load
+`create-tasks` via `load_tool` if needed, and call `create-tasks` again in the
+same orchestrator run with
 `planningContext.source: "planning-skill"`.
 
 If the user denies the plan outright, stop. Do not call `create-tasks` again in

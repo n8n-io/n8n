@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactiveOmit, reactivePick } from '@vueuse/core';
+import { reactivePick } from '@vueuse/core';
 import { Label, Primitive, SwitchRoot, SwitchThumb, useForwardProps } from 'reka-ui';
 import { computed, useAttrs, useId } from 'vue';
 
@@ -18,19 +18,22 @@ const rootProps = useForwardProps(reactivePick(props, 'required', 'value', 'defa
 const modelValue = defineModel<boolean>({ default: undefined });
 
 const attrs = useAttrs();
-const primitiveClass = computed(() => attrs.class);
-const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
+const getRootAttrs = () => {
+	const rootAttrs = { ...attrs };
+	delete rootAttrs.class;
+	return rootAttrs;
+};
 </script>
 
 <template>
 	<Primitive
 		:as
-		:class="[$style.switch, $style[size], primitiveClass]"
+		:class="[$style.switch, $style[size], attrs.class]"
 		:data-disabled="disabled ? '' : undefined"
 	>
 		<SwitchRoot
 			:id="uuid"
-			v-bind="{ ...rootProps, ...rootAttrs }"
+			v-bind="{ ...rootProps, ...getRootAttrs() }"
 			v-model="modelValue"
 			:name="name"
 			:disabled="disabled"

@@ -22,6 +22,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
 			loadSkill: vi.fn(),
 		})),
+		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),

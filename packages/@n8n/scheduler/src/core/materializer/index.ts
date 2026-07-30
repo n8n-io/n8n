@@ -11,6 +11,8 @@ export type {
 	DueJobs,
 	NewOccurrence,
 	PlannedJob,
+	RecordedOccurrence,
+	RecordOccurrencesResult,
 	RunInTransaction,
 	MaterializerTransaction,
 } from './transaction';

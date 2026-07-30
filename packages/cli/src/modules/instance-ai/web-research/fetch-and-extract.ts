@@ -51,6 +51,8 @@ export interface FetchAndExtractOptions {
 	maxContentLength?: number;
 	maxResponseBytes?: number;
 	timeoutMs?: number;
+	/** Combined with the request timeout so Stop cancels in-flight fetches. */
+	abortSignal?: AbortSignal;
 	/**
 	 * SSRF-validated fetch transport.
 	 */
@@ -85,13 +87,15 @@ export async function fetchAndExtract(
 
 	const customFetch = options.transport.asCustomFetch();
 
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), timeoutMs);
+	const timeoutSignal = AbortSignal.timeout(timeoutMs);
+	const signal = options.abortSignal
+		? AbortSignal.any([timeoutSignal, options.abortSignal])
+		: timeoutSignal;
 
 	let response: Response;
 	try {
 		response = await customFetch(url, {
-			signal: controller.signal,
+			signal,
 			headers: {
 				'User-Agent': 'n8n-instance-ai/1.0 (content extraction)',
 				Accept:
@@ -101,8 +105,6 @@ export async function fetchAndExtract(
 		});
 	} catch (error) {
 		throw unwrapFetchError(error);
-	} finally {
-		clearTimeout(timeout);
 	}
 
 	// `redirect: 'follow'` resolves to the final, non-redirect response.

@@ -8,7 +8,7 @@ import {
 	getEscalationWarningKey,
 	isOptionImplied,
 	resolveOptionState,
-	toggleOption,
+	toggleOptionInGroup,
 } from './instanceRoleScopes';
 
 const ALL_SCOPES_SET = new Set<string>(ALL_SCOPES as string[]);
@@ -58,6 +58,14 @@ describe('instanceRoleScopes config', () => {
 
 	it('renders resource groups in the configured display order', () => {
 		expect(INSTANCE_SCOPE_GROUP_LIST.map((g) => g.resource)).toEqual(INSTANCE_RESOURCE_ORDER);
+	});
+
+	it('gives every permission option a tooltip description key', () => {
+		for (const group of INSTANCE_SCOPE_GROUP_LIST) {
+			for (const option of group.options) {
+				expect(option.descriptionKey).toBeTruthy();
+			}
+		}
 	});
 
 	describe('relationship rules', () => {
@@ -222,29 +230,59 @@ describe('getEscalationWarningKey', () => {
 	});
 });
 
-describe('toggleOption', () => {
-	const option = ['tag:create', 'tag:update', 'tag:delete'];
+describe('toggleOptionInGroup', () => {
+	const apiKeyGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'apiKey')!;
+	const manageOwn = apiKeyGroup.options.find((o) => o.key === 'Manage own')!;
+	const manageAll = apiKeyGroup.options.find((o) => o.key === 'Manage all')!;
 
-	it('adds the full resolved scope set when unchecked', () => {
-		const result = toggleOption(['user:read'], option);
-		expect(result).toEqual(expect.arrayContaining(['user:read', ...option]));
-		expect(result).toHaveLength(4);
+	const roleGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'role')!;
+	const manageProjectRoles = roleGroup.options.find((o) => o.key === 'Manage project roles')!;
+	const manageAllRoles = roleGroup.options.find((o) => o.key === 'Manage')!;
+
+	it('adds the full scope set when checking an unchecked option', () => {
+		const result = toggleOptionInGroup([], manageAll, apiKeyGroup.options);
+		expect(result).toEqual(expect.arrayContaining([...manageAll.scopes]));
+		expect(result).toHaveLength(manageAll.scopes.length);
 	});
 
-	it('adds the full resolved scope set when indeterminate', () => {
-		const result = toggleOption(['tag:create'], option);
-		expect(result).toEqual(expect.arrayContaining(option));
-		expect(result).toHaveLength(3);
+	it('downgrades to "Manage own" when unchecking "Manage all" (keeps own selected)', () => {
+		const result = toggleOptionInGroup([...manageAll.scopes], manageAll, apiKeyGroup.options);
+		expect(new Set(result)).toEqual(new Set(manageOwn.scopes));
+		// The exclusive "manage" scope is gone, but every "Manage own" scope survives.
+		expect(result).not.toContain('apiKey:manage');
+		for (const scope of manageOwn.scopes) expect(result).toContain(scope);
 	});
 
-	it('removes the full resolved scope set when fully checked', () => {
-		const result = toggleOption(['user:read', ...option], option);
+	it('downgrades to "Manage project roles" when unchecking "Manage all roles"', () => {
+		const result = toggleOptionInGroup(
+			[...manageAllRoles.scopes],
+			manageAllRoles,
+			roleGroup.options,
+		);
+		expect(new Set(result)).toEqual(new Set(manageProjectRoles.scopes));
+		expect(result).not.toContain('role:manage');
+		for (const scope of manageProjectRoles.scopes) expect(result).toContain(scope);
+	});
+
+	it('fully clears a subordinate option when it is unchecked directly', () => {
+		const result = toggleOptionInGroup([...manageOwn.scopes], manageOwn, apiKeyGroup.options);
+		expect(result).toEqual([]);
+	});
+
+	it('removes the whole scope set when the option has no subordinate', () => {
+		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
+		const manageTags = tagGroup.options.find((o) => o.key === 'Manage')!;
+		const result = toggleOptionInGroup(
+			['user:read', ...manageTags.scopes],
+			manageTags,
+			tagGroup.options,
+		);
 		expect(result).toEqual(['user:read']);
 	});
 
 	it('does not mutate the input array', () => {
-		const input = ['user:read'];
-		toggleOption(input, option);
-		expect(input).toEqual(['user:read']);
+		const input = [...manageAll.scopes];
+		toggleOptionInGroup(input, manageAll, apiKeyGroup.options);
+		expect(input).toEqual([...manageAll.scopes]);
 	});
 });

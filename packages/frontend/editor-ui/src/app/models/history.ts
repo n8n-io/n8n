@@ -334,6 +334,7 @@ function groupsAreEqual(a: IWorkflowGroup, b: IWorkflowGroup): boolean {
 	return (
 		a.id === b.id &&
 		a.name === b.name &&
+		a.description === b.description &&
 		a.nodeIds.length === b.nodeIds.length &&
 		a.nodeIds.every((nodeId, index) => nodeId === b.nodeIds[index])
 	);

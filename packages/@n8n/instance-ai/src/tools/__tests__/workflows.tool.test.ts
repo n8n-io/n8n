@@ -10,6 +10,10 @@ import {
 	buildCompletedReport,
 } from '../workflows/setup-workflow.service';
 import { STRUCTURE_ONLY_NOTE } from '../workflows/summarize-workflow';
+import {
+	getWorkflowSourceFileBinding,
+	saveWorkflowSourceFileBinding,
+} from '../workflows/workflow-file-bindings';
 import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
@@ -643,6 +647,118 @@ describe('workflows tool', () => {
 		});
 	});
 
+	describe('workflow source binding refresh', () => {
+		it('refreshes bound checksum after current-version get-as-code', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v-current',
+				checksum: 'checksum-current',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodes: [],
+				connections: {},
+			});
+
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/main.workflow.ts',
+				workflowId: 'wf1',
+				workflowVersionId: 'v-stale',
+				workflowChecksum: 'checksum-stale',
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'wf1',
+				workflowVersionId: 'v-current',
+				workflowChecksum: 'checksum-current',
+			});
+		});
+
+		it('does not refresh bound checksum for historical get-as-code reads', async () => {
+			const context = createMockContext();
+
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/main.workflow.ts',
+				workflowId: 'wf1',
+				workflowVersionId: 'v-stale',
+				workflowChecksum: 'checksum-stale',
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1', versionId: 'v7' },
+				{} as never,
+			);
+
+			expect(context.workflowService.get).not.toHaveBeenCalled();
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'wf1',
+				workflowVersionId: 'v-stale',
+				workflowChecksum: 'checksum-stale',
+			});
+		});
+
+		it('refreshes bound checksum after update', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'always_allow' },
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v-updated',
+				checksum: 'checksum-updated',
+			});
+			(context.workflowService.get as Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v-updated',
+				checksum: 'checksum-updated',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodes: [],
+				connections: {},
+			});
+
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/main.workflow.ts',
+				workflowId: 'wf1',
+				workflowVersionId: 'v-stale',
+				workflowChecksum: 'checksum-stale',
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{
+					action: 'update',
+					workflowId: 'wf1',
+					workflow: { name: 'Updated WF', nodes: [], connections: {} },
+				},
+				{ resumeData: { approved: true } } as never,
+			);
+
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'wf1',
+				workflowVersionId: 'v-updated',
+				workflowChecksum: 'checksum-updated',
+			});
+		});
+	});
+
 	describe('delete action', () => {
 		it('should return denied when permission is blocked', async () => {
 			const context = createMockContext({
@@ -921,6 +1037,7 @@ describe('workflows tool', () => {
 				id: workflowId,
 				name: workflowId,
 				versionId: `${workflowId}-draft`,
+				checksum: `${workflowId}-checksum`,
 				activeVersionId: workflowId === 'sub-a' ? 'sub-a-previous' : null,
 				isArchived: false,
 				createdAt: '2024-01-01',
@@ -931,6 +1048,19 @@ describe('workflows tool', () => {
 			(context.workflowService.publish as Mock).mockImplementation((workflowId: string) => {
 				if (workflowId === 'wf1') throw new Error('Main publish failed');
 				return { activeVersionId: `${workflowId}-active` };
+			});
+
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/sub-a.workflow.ts',
+				workflowId: 'sub-a',
+				workflowVersionId: 'sub-a-previous',
+				workflowChecksum: 'sub-a-previous-checksum',
+			});
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/sub-b.workflow.ts',
+				workflowId: 'sub-b',
+				workflowVersionId: 'sub-b-previous',
+				workflowChecksum: 'sub-b-previous-checksum',
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
@@ -951,6 +1081,20 @@ describe('workflows tool', () => {
 				success: false,
 				error: 'Main publish failed',
 				rolledBackWorkflowIds: ['sub-b', 'sub-a'],
+			});
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/sub-a.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'sub-a',
+				workflowVersionId: 'sub-a-draft',
+				workflowChecksum: 'sub-a-checksum',
+			});
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/sub-b.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'sub-b',
+				workflowVersionId: 'sub-b-draft',
+				workflowChecksum: 'sub-b-checksum',
 			});
 		});
 

@@ -1,25 +1,18 @@
-import type { WorkflowTestCase } from '../../types';
+// ---------------------------------------------------------------------------
+// Authoring dir for intent-resolution eval cases (`--tier agents`): user-voiced
+// build requests asked plan-first and graded on the approach the assistant
+// PROPOSES, via ordinary processExpectations. Builds are never exercised, and
+// expectations name no build tools — the agent-build surface is being
+// redesigned. The corpus lives in the LangTracer `agents` suite (pushed via
+// eval:langtracer-push); author a case here, calibrate, push, delete the file.
+// README.md has the authoring contract. Requires the agents module.
+// ---------------------------------------------------------------------------
+
 import { loadEvalCasesFromDir, type WorkflowTestCaseWithFile } from '../../utils/load-eval-cases';
-
-const INTENT_CLASSIFICATION_PREAMBLE = [
-	'This is not a request to build or execute anything. Do not create workflows, do not create agents, and do not run anything.',
-	'I only want you to classify the intent of this hypothetical request:',
-].join('\n');
-
-function withIntentClassificationPreamble(testCase: WorkflowTestCase): WorkflowTestCase {
-	return {
-		...testCase,
-		conversation: testCase.conversation?.map((turn, index) =>
-			index === 0 && turn.role === 'user'
-				? { ...turn, text: [INTENT_CLASSIFICATION_PREAMBLE, turn.text].join('\n') }
-				: turn,
-		),
-	};
-}
 
 export function loadAgentEvalTestCasesWithFiles(
 	filter?: string,
 	exclude?: string,
 ): WorkflowTestCaseWithFile[] {
-	return loadEvalCasesFromDir(__dirname, filter, exclude, withIntentClassificationPreamble);
+	return loadEvalCasesFromDir(__dirname, filter, exclude);
 }

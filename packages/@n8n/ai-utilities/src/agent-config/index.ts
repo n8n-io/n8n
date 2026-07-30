@@ -1,4 +1,4 @@
-export { getProviderPrefix } from './model-id';
+export { getProviderPrefix, splitModelId } from './model-id';
 export {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,

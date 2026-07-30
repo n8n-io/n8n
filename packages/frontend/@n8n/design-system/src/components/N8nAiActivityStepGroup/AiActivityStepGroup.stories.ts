@@ -1,7 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { defineComponent } from 'vue';
 
-import ReasoningBlock from '../../../../../editor-ui/src/features/ai/instanceAi/components/ReasoningBlock.vue';
 import N8nAiActivityStep from '../N8nAiActivityStep';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
@@ -134,7 +133,6 @@ const storyComponents = {
 	N8nAiActivityStepResultSection,
 	ToolResultJson: StoryToolResultJson,
 	ToolResultRenderer: StoryToolResultRenderer,
-	ReasoningBlock,
 };
 
 const slotStyles = '';
@@ -170,15 +168,17 @@ export const Group: StoryFn = () => ({
 
 const Template: StoryFn = (args) => ({
 	components: { N8nAiActivityStep, ...storyComponents },
-	setup: () => ({ args }),
+	setup: () => ({ args, jsonTextStyle }),
 	template: `
 		<style>${slotStyles}</style>
 		<div style="max-width: 720px; padding: var(--spacing--m);">
-			<reasoning-block
+			<n8n-ai-activity-step
 				v-if="args.type === 'reasoning'"
-				:entry="{ content: args.result.content }"
-				:streaming="args.loading"
-			/>
+				:label="args.label"
+				:loading="args.loading"
+			>
+				<pre :style="jsonTextStyle">{{ args.result.content }}</pre>
+			</n8n-ai-activity-step>
 			<n8n-ai-activity-step v-else v-bind="args">
 				<tool-result-renderer
 					:result="args.result"

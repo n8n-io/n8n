@@ -9,11 +9,9 @@ function setup(
 	initialGroups: Array<{ id: string; name: string; nodeIds: string[] }> = [],
 	{
 		workflowId = 'wf-test',
-		isGroupingEnabled = () => true,
 		getGroupExpansionMode,
 	}: {
 		workflowId?: string;
-		isGroupingEnabled?: () => boolean;
 		getGroupExpansionMode?: () => GroupExpansionMode | undefined;
 	} = {},
 ) {
@@ -25,7 +23,6 @@ function setup(
 		workflowId: () => workflowId,
 		getCurrentGroupIds: () => nodeGroups.allGroups.value.map((group) => group.id),
 		onNodeGroupsChange: nodeGroups.onNodeGroupsChange,
-		isGroupingEnabled,
 		getGroupExpansionMode,
 	});
 	return { nodeGroups, view };
@@ -191,7 +188,6 @@ describe('useCanvasNodeGroupView', () => {
 				workflowId: () => 'wf',
 				getCurrentGroupIds: () => active.allGroups.value.map((group) => group.id),
 				onNodeGroupsChange: (handler) => active.onNodeGroupsChange(handler),
-				isGroupingEnabled: () => true,
 				getGroupExpansionMode: () => 'all',
 			});
 
@@ -217,7 +213,6 @@ describe('useCanvasNodeGroupView', () => {
 				workflowId: () => 'wf',
 				getCurrentGroupIds: () => active.allGroups.value.map((group) => group.id),
 				onNodeGroupsChange: (handler) => active.onNodeGroupsChange(handler),
-				isGroupingEnabled: () => true,
 			});
 
 			active = versionB;
@@ -361,28 +356,6 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed('g1')).toBe(false);
 
 			view.toggleCollapsed('g1');
-			expect(view.isGroupCollapsed('g1')).toBe(true);
-		});
-	});
-
-	describe('grouping disabled', () => {
-		it('never reports a group as collapsed so member nodes stay visible', () => {
-			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }], {
-				isGroupingEnabled: () => false,
-			});
-
-			expect(view.isGroupCollapsed('g1')).toBe(false);
-		});
-
-		it('reflects the latest enabled state on each read', () => {
-			let enabled = false;
-			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }], {
-				isGroupingEnabled: () => enabled,
-			});
-
-			expect(view.isGroupCollapsed('g1')).toBe(false);
-
-			enabled = true;
 			expect(view.isGroupCollapsed('g1')).toBe(true);
 		});
 	});

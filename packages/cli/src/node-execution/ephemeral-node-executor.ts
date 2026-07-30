@@ -11,6 +11,7 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	ITaskDataConnections,
+	IWorkflowExecuteAdditionalData,
 	NodeOutput,
 } from 'n8n-workflow';
 import {
@@ -19,14 +20,19 @@ import {
 	UserError,
 	AI_VENDOR_NODE_TYPES,
 	createEmptyRunExecutionData,
+	DATA_TABLE_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
-	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';
 import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
+
+import {
+	isUnsupportedEphemeralNodeOperation,
+	unsupportedEphemeralNodeOperationMessage,
+} from './node-tool-operation-support';
 
 /** Minimal tool shape for constructing an in-memory single-node execution. */
 export type EphemeralWorkflowToolLike = {
@@ -35,6 +41,10 @@ export type EphemeralWorkflowToolLike = {
 	nodeTypeVersion: number;
 	nodeParameters: INodeParameters;
 	credentials?: Record<string, INodeCredentialsDetails> | null;
+	/** Ephemeral node name override (defaults to 'Target Node'). */
+	nodeName?: string;
+	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
+	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 };
 
 export interface InlineNodeExecutionRequest {
@@ -49,6 +59,10 @@ export interface InlineNodeExecutionRequest {
 	credentialDetails?: Record<string, INodeCredentialsDetails>;
 	inputData: INodeExecutionData[];
 	projectId: string;
+	/** Ephemeral node name override (defaults to 'Target Node'). */
+	nodeName?: string;
+	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
+	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 }
 
 export interface NodeExecutionResult {
@@ -56,9 +70,6 @@ export interface NodeExecutionResult {
 	data: INodeExecutionData[];
 	error?: string;
 }
-
-// send and wait requires persistent workflows to handle the wait logic
-const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
 
 /**
  * Node types that must never run as an agent tool, regardless of RBAC —
@@ -89,8 +100,11 @@ function stripAgentToolSuffix(nodeType: string): string {
  * marked `usableAsTool`. They expose the full provider API (image generation,
  * audio, files, embeddings, etc.) — not just chat completion — and are
  * designed to back LangChain agents rather than be called as agent tools, so
- * they ship without the flag. Surfacing them here lets the agent builder use
- * e.g. OpenAI image generation as a tool.
+ * they ship without the flag. This is a backward-compatibility allowance:
+ * agents that already have a provider node attached keep executing. Discovery
+ * deliberately excludes provider nodes via
+ * `AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES`, so no new agent can pick
+ * one up.
  *
  * Scope this list to *provider* nodes only. Don't add the agent node itself,
  * the LM Chat sub-models (`lmChatOpenAi`, etc.), or generic LangChain helpers
@@ -254,8 +268,8 @@ export class EphemeralNodeExecutor {
 
 		const operation = nodeParameters.operation;
 
-		if (operation && typeof operation === 'string' && OPERATION_BLACKLIST.includes(operation)) {
-			throw new UserError(`The "${operation}" is not supported for agent tool execution.`, {
+		if (isUnsupportedEphemeralNodeOperation(operation)) {
+			throw new UserError(unsupportedEphemeralNodeOperationMessage(operation), {
 				extra: { nodeType, operation },
 			});
 		}
@@ -273,7 +287,7 @@ export class EphemeralNodeExecutor {
 	) {
 		const node: INode = {
 			id: uuid(),
-			name: 'Target Node',
+			name: tool.nodeName ?? 'Target Node',
 			type: tool.nodeType,
 			typeVersion: tool.nodeTypeVersion,
 			position: [0, 0],
@@ -287,6 +301,11 @@ export class EphemeralNodeExecutor {
 			nodeTypes: this.nodeTypes,
 		});
 		const additionalData = await getBase({ projectId: tool.projectId });
+		if (tool.nodeType === DATA_TABLE_TOOL_NODE_TYPE) {
+			// Data Table uses separate project authorization and an ephemeral workflow has no owner fallback.
+			additionalData.dataTableProjectId = tool.projectId;
+		}
+		tool.configureAdditionalData?.(additionalData);
 		const runExecutionData = createEmptyRunExecutionData();
 		const inputData: ITaskDataConnections = { main: [inputItems] };
 		const executeData: IExecuteData = { node, data: inputData, source: null };
@@ -405,6 +424,8 @@ export class EphemeralNodeExecutor {
 			nodeTypeVersion: request.nodeTypeVersion,
 			nodeParameters: request.nodeParameters,
 			credentials: mergedCredentials,
+			nodeName: request.nodeName,
+			configureAdditionalData: request.configureAdditionalData,
 		};
 
 		// Native tool nodes (toolWikipedia, toolCalculator, etc.) expose their real

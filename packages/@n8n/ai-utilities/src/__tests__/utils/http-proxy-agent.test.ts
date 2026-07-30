@@ -244,6 +244,64 @@ describe('getProxyAgent', () => {
 			// Since we can't easily re-import, we verify the mock was called with defaults
 			expect(Agent).toHaveBeenCalled();
 		});
+
+		it('should return an Agent instead of undefined when N8N_AI_TIMEOUT_MAX is set, even without a proxy or explicit timeout options', () => {
+			process.env.N8N_AI_TIMEOUT_MAX = '120000';
+
+			const agent = getProxyAgent('https://api.openai.com/v1');
+
+			// DEFAULT_TIMEOUT was captured from the env at module load time (before this test set it),
+			// so the value here reflects that capture, not '120000' — the module-reset test below
+			// covers the env value actually being picked up end to end.
+			expect(Agent).toHaveBeenCalled();
+			expect(agent).toEqual(expect.objectContaining({ type: 'Agent' }));
+			expect(ProxyAgent).not.toHaveBeenCalled();
+		});
+
+		it('should honor N8N_AI_TIMEOUT_MAX when there is no proxy and the caller passes no timeout options at all', async () => {
+			vi.resetModules();
+			process.env.N8N_AI_TIMEOUT_MAX = '120000';
+
+			const undici = await import('undici');
+			const { getProxyAgent: freshGetProxyAgent } = await import('../../utils/http-proxy-agent.js');
+
+			const agent = freshGetProxyAgent('https://api.openai.com/v1');
+
+			expect(undici.Agent).toHaveBeenCalledWith({
+				headersTimeout: 120000,
+				bodyTimeout: 120000,
+			});
+			expect(agent).toEqual({
+				type: 'Agent',
+				options: { headersTimeout: 120000, bodyTimeout: 120000 },
+			});
+		});
+	});
+
+	describe('secure lookup', () => {
+		it('should build an Agent with the lookup on connect when no proxy is configured', () => {
+			const lookup = vi.fn();
+
+			const agent = getProxyAgent('https://api.openai.com/v1', undefined, lookup);
+
+			expect(Agent).toHaveBeenCalledWith(expect.objectContaining({ connect: { lookup } }));
+			expect(agent).toEqual(expect.objectContaining({ type: 'Agent' }));
+			expect(ProxyAgent).not.toHaveBeenCalled();
+		});
+
+		it('should not attach the lookup to a ProxyAgent when a proxy is configured', () => {
+			const proxyUrl = 'https://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+			const lookup = vi.fn();
+
+			getProxyAgent('https://api.openai.com/v1', undefined, lookup);
+
+			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
+			expect(ProxyAgent).not.toHaveBeenCalledWith(
+				expect.objectContaining({ connect: expect.anything() }),
+			);
+			expect(Agent).not.toHaveBeenCalled();
+		});
 	});
 });
 

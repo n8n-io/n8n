@@ -7,6 +7,16 @@ import type { IconColor } from '@n8n/design-system/types/icon';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { MetricCategory } from './evaluation.utils';
 
+// Reserved data-table column holding a case's user-facing name. Excluded from
+// input/expected fields and ignored by runs — it exists only for the UI.
+export const TEST_CASE_NAME_COLUMN = 'caseName';
+
+// Name that keys the eval config + its data table. All writers and lookups MUST
+// use this helper: a mismatched truncation would make the exact-match config
+// lookup silently resolve the wrong config.
+export const getCanonicalEvaluationName = (workflowName?: string): string =>
+	`Evaluation: ${workflowName ?? 'workflow'}`.slice(0, 120);
+
 // Values must remain ChatHubLLMProvider members so JudgeSelection round-trips.
 export const LM_SUBNODE_TYPE_TO_CHATHUB_PROVIDER: Record<string, ChatHubLLMProvider> = {
 	'@n8n/n8n-nodes-langchain.lmChatOpenAi': 'openai',
@@ -54,12 +64,23 @@ export type CannedMetricKey =
 export type CannedMetric = {
 	key: CannedMetricKey;
 	labelKey: BaseTextKey;
+	// The action-phrased label shown in the "Add metric" dropdown (e.g. "To be
+	// similar to"). Used everywhere the metric is named — the overview chips and
+	// the result badges — so selecting an option and seeing it listed match.
+	// Falls back to `labelKey` for metrics not offered in the dropdown.
+	optionLabelKey?: BaseTextKey;
 	descriptionKey: BaseTextKey;
 	category: MetricCategory;
 	icon: IconName;
 	tileBg: string;
 	tileFg: string;
 };
+
+// The unified display label for a canned metric: the dropdown's option label
+// when present, else the noun label.
+export function cannedMetricLabelKey(metric: CannedMetric): BaseTextKey {
+	return metric.optionLabelKey ?? metric.labelKey;
+}
 
 export const LLM_JUDGE_METRIC_KEYS = new Set<CannedMetricKey>(['correctness', 'helpfulness']);
 
@@ -116,6 +137,7 @@ export const CANNED_METRICS: readonly CannedMetric[] = [
 	{
 		key: 'correctness',
 		labelKey: 'evaluations.wizardSidepanel.metric.correctness.label',
+		optionLabelKey: 'evaluations.tests.metric.correctness.option',
 		descriptionKey: 'evaluations.wizardSidepanel.metric.correctness.description',
 		category: 'aiBased',
 		icon: 'badge-check',
@@ -134,6 +156,7 @@ export const CANNED_METRICS: readonly CannedMetric[] = [
 	{
 		key: 'stringSimilarity',
 		labelKey: 'evaluations.wizardSidepanel.metric.stringSimilarity.label',
+		optionLabelKey: 'evaluations.tests.metric.stringSimilarity.option',
 		descriptionKey: 'evaluations.wizardSidepanel.metric.stringSimilarity.description',
 		category: 'stringSimilarity',
 		icon: 'case-upper',
@@ -152,6 +175,7 @@ export const CANNED_METRICS: readonly CannedMetric[] = [
 	{
 		key: 'toolsUsed',
 		labelKey: 'evaluations.wizardSidepanel.metric.toolsUsed.label',
+		optionLabelKey: 'evaluations.tests.metric.toolsUsed.option',
 		descriptionKey: 'evaluations.wizardSidepanel.metric.toolsUsed.description',
 		category: 'toolsUsed',
 		icon: 'wrench',
@@ -210,7 +234,7 @@ const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
 	PARTIAL_CASES_FAILED: 'evaluation.runDetail.error.partialCasesFailed',
 } as const;
 
-export const getErrorBaseKey = (errorCode?: string): string => {
+export const getErrorBaseKey = (errorCode?: string): BaseTextKey | '' => {
 	return (
 		testCaseErrorDictionary[errorCode as TestCaseExecutionErrorCodes] ??
 		testRunErrorDictionary[errorCode as TestRunErrorCode] ??

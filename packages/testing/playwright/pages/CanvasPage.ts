@@ -592,7 +592,7 @@ export class CanvasPage extends BasePage {
 	 * interacting with it after a navigation.
 	 */
 	async waitForCanvasReady(): Promise<void> {
-		await expect(this.canvasPane()).toBeVisible();
+		await expect(this.canvasPane()).toBeVisible({ timeout: 30_000 });
 		await expect(this.getNodeViewLoader()).toBeHidden();
 		await expect(this.getLoadingMask()).toBeHidden();
 	}
@@ -1207,17 +1207,14 @@ export class CanvasPage extends BasePage {
 		return box;
 	}
 
-	async dragNodeGroupFromTitleBar(
-		title: string,
-		deltaX: number,
-		deltaY: number,
-		grabFraction = 0.9,
-	): Promise<void> {
-		const box = await this.getNodeGroupTitle(title).boundingBox();
-		if (!box) throw new Error(`Node group title "${title}" not found or not visible`);
+	async dragNodeGroupFromTitleBar(title: string, deltaX: number, deltaY: number): Promise<void> {
+		const header = await this.getNodeGroupHeader(title).boundingBox();
+		const name = await this.getNodeGroupTitle(title).boundingBox();
+		if (!header || !name) throw new Error(`Node group "${title}" not found or not visible`);
 
-		const startX = box.x + box.width * grabFraction;
-		const startY = box.y + box.height / 2;
+		// Grab the empty draggable space between the name and the header's right edge
+		const startX = (name.x + name.width + header.x + header.width) / 2;
+		const startY = header.y + header.height / 2;
 
 		await this.page.mouse.move(startX, startY);
 		await this.page.mouse.down();
@@ -1227,8 +1224,10 @@ export class CanvasPage extends BasePage {
 
 	async editNodeGroupTitle(oldTitle: string, newTitle: string, commit: 'enter' | 'blur' = 'enter') {
 		const group = await this.lockNodeGroupByTitle(oldTitle);
-		await group.getByTestId('inline-edit-preview').click();
-		const input = group.getByTestId('inline-edit-input');
+		// Scope to the title: an expanded group also renders a description inline edit.
+		const title = group.getByTestId('canvas-node-group-title');
+		await title.getByTestId('inline-edit-preview').click();
+		const input = title.getByTestId('inline-edit-input');
 		await input.fill(newTitle);
 		if (commit === 'enter') {
 			await input.press('Enter');
@@ -1239,8 +1238,9 @@ export class CanvasPage extends BasePage {
 
 	async cancelNodeGroupTitleEdit(title: string) {
 		const group = await this.lockNodeGroupByTitle(title);
-		await group.getByTestId('inline-edit-preview').click();
-		const input = group.getByTestId('inline-edit-input');
+		const titleEl = group.getByTestId('canvas-node-group-title');
+		await titleEl.getByTestId('inline-edit-preview').click();
+		const input = titleEl.getByTestId('inline-edit-input');
 		await input.fill('temporary');
 		await input.press('Escape');
 	}
@@ -1259,6 +1259,14 @@ export class CanvasPage extends BasePage {
 
 	getNodeGroupFrame(title: string): Locator {
 		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-frame');
+	}
+
+	async getNodeGroupFrameBoundingBox(
+		title: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.getNodeGroupFrame(title).boundingBox();
+		if (!box) throw new Error(`Node group frame for "${title}" not found or not visible`);
+		return box;
 	}
 
 	async toggleNodeGroup(title: string) {

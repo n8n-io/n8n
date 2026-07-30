@@ -1,13 +1,16 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { SettingsSidebar } from './components/SettingsSidebar';
 
 /**
  * Page object for Settings including Personal Settings where users can update their profile and manage MFA.
  */
 export class SettingsPersonalPage extends BasePage {
+	readonly settingsSidebar = new SettingsSidebar(this.page);
+
 	getMenuItems() {
-		return this.page.getByTestId('menu-item');
+		return this.settingsSidebar.getMenuItems();
 	}
 
 	async gotoSettings() {

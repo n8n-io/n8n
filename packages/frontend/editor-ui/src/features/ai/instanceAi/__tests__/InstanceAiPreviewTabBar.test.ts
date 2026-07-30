@@ -2,11 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { TabsRoot } from 'reka-ui';
+import { readFileSync } from 'node:fs';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: () => ({ copy: vi.fn() }),
 }));
 
@@ -132,5 +133,14 @@ describe('InstanceAiPreviewTabBar', () => {
 
 		expect(collapseButton).not.toBeNull();
 		expect(collapseButton).toHaveAttribute('aria-label', 'Collapse panel');
+	});
+
+	it('does not fade the left edge of artifact tabs', () => {
+		const source = readFileSync(
+			'src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue',
+			'utf8',
+		);
+
+		expect(source).not.toContain('--left--fade');
 	});
 });

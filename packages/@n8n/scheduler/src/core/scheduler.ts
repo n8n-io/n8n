@@ -37,17 +37,17 @@ export interface Scheduler {
  */
 export interface SchedulerPasses {
 	/** One materializer pass: record upcoming occurrences of due jobs as tasks. */
-	materialize(): Promise<MaterializerSummary>;
+	materialize(signal?: AbortSignal): Promise<MaterializerSummary>;
 
 	/**
 	 * One executor tick: claim the due tasks this instance can run and schedule
 	 * each to fire at its `runAt`. Returns the claimed tasks.
 	 */
-	execute(): Promise<ClaimedTask[]>;
+	execute(signal?: AbortSignal): Promise<ClaimedTask[]>;
 
 	/** One reaper sweep: recover tasks stranded by an expired lease. */
-	reap(): Promise<ReapResult>;
+	reap(signal?: AbortSignal): Promise<ReapResult>;
 
 	/** One retention pass: delete finished tasks past their windows. */
-	prune(): Promise<RetentionSummary>;
+	prune(signal?: AbortSignal): Promise<RetentionSummary>;
 }

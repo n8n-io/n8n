@@ -225,7 +225,7 @@ describe('AgentTaskService', () => {
 			expect(agent.schema?.tasks).toEqual([
 				{ type: 'task', id: expect.stringMatching(/^task_/), enabled: true },
 			]);
-			expect(txManager.save).toHaveBeenCalled();
+			expect(txManager.save).toHaveBeenCalledTimes(2);
 		});
 
 		it('rejects an invalid cron without creating', async () => {
@@ -255,6 +255,91 @@ describe('AgentTaskService', () => {
 			});
 
 			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createTasks', () => {
+		const PROJECT_ID = 'project-1';
+
+		const taskOneDto = {
+			name: 'Daily summary',
+			objective: 'Do X',
+			cronExpression: '0 9 * * *',
+			enabled: true,
+		};
+		const taskTwoDto = {
+			name: 'Weekly digest',
+			objective: 'Do Y',
+			cronExpression: '0 9 * * 1',
+			enabled: true,
+		};
+
+		it('creates multiple tasks with unique enabled refs, saved with the agent in one transaction, preserving order', async () => {
+			const agent = makeAgent({
+				schema: { name: 'a', model: 'm', instructions: 'i', tasks: [] },
+			} as Partial<Agent>);
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
+
+			const dtos = await service.createTasks(AGENT_ID, PROJECT_ID, [taskOneDto, taskTwoDto]);
+
+			expect(dtos).toHaveLength(2);
+			expect(dtos[0].name).toBe('Daily summary');
+			expect(dtos[1].name).toBe('Weekly digest');
+			expect(dtos[0].id).not.toEqual(dtos[1].id);
+
+			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledTimes(1);
+			expect(agent.schema?.tasks).toEqual([
+				{ type: 'task', id: dtos[0].id, enabled: true },
+				{ type: 'task', id: dtos[1].id, enabled: true },
+			]);
+			// 2 task saves + 1 agent save, all inside the same transaction call.
+			expect(agentRepository.manager.transaction).toHaveBeenCalledTimes(1);
+			expect(txManager.save).toHaveBeenCalledTimes(3);
+		});
+
+		it('rejects an empty batch before loading or writing anything', async () => {
+			await expect(service.createTasks(AGENT_ID, PROJECT_ID, [])).rejects.toThrow(BadRequestError);
+
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			expect(taskRepository.create).not.toHaveBeenCalled();
+			expect(txManager.save).not.toHaveBeenCalled();
+		});
+
+		it('rejects the whole batch without writing when any cron is invalid', async () => {
+			await expect(
+				service.createTasks(AGENT_ID, PROJECT_ID, [
+					taskOneDto,
+					{ ...taskTwoDto, cronExpression: 'not-a-cron' },
+				]),
+			).rejects.toThrow(BadRequestError);
+
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			expect(taskRepository.create).not.toHaveBeenCalled();
+			expect(txManager.save).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the agent is not found in the project', async () => {
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(null);
+
+			await expect(service.createTasks(AGENT_ID, PROJECT_ID, [taskOneDto])).rejects.toThrow(
+				NotFoundError,
+			);
+
+			expect(taskRepository.create).not.toHaveBeenCalled();
+			expect(txManager.save).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the agent has no config yet', async () => {
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(
+				makeAgent({ schema: null } as Partial<Agent>),
+			);
+
+			await expect(service.createTasks(AGENT_ID, PROJECT_ID, [taskOneDto])).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(taskRepository.create).not.toHaveBeenCalled();
+			expect(txManager.save).not.toHaveBeenCalled();
 		});
 	});
 

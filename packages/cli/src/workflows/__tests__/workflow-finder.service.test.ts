@@ -1,4 +1,9 @@
-import type { FolderRepository, SharedWorkflow, SharedWorkflowRepository } from '@n8n/db';
+import type {
+	FolderRepository,
+	SharedWorkflow,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { RoleService } from '@/services/role.service';
@@ -13,12 +18,14 @@ function makeService(rows?: FolderRow[]) {
 	if (rows) {
 		sharedWorkflowRepository.find.mockResolvedValue(rows as unknown as SharedWorkflow[]);
 	}
+	const workflowRepository = mock<WorkflowRepository>();
 	const service = new WorkflowFinderService(
 		sharedWorkflowRepository,
 		mock<FolderRepository>(),
 		mock<RoleService>(),
+		workflowRepository,
 	);
-	return { service, sharedWorkflowRepository };
+	return { service, sharedWorkflowRepository, workflowRepository };
 }
 
 describe('WorkflowFinderService', () => {
@@ -66,6 +73,26 @@ describe('WorkflowFinderService', () => {
 
 			expect([...result.keys()]).toEqual(['f1']);
 			expect(result.get('f1')).toEqual(['w2']);
+		});
+	});
+
+	describe('findExistingWorkflowIds', () => {
+		it('returns an empty set without querying when no ids are given', async () => {
+			const { service, workflowRepository } = makeService();
+
+			const result = await service.findExistingWorkflowIds([]);
+
+			expect(result.size).toBe(0);
+			expect(workflowRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('returns the ids that exist in the database, unscoped by access', async () => {
+			const { service, workflowRepository } = makeService();
+			workflowRepository.find.mockResolvedValue([{ id: 'wf-1' }] as never);
+
+			const result = await service.findExistingWorkflowIds(['wf-1', 'wf-missing']);
+
+			expect(result).toEqual(new Set(['wf-1']));
 		});
 	});
 });

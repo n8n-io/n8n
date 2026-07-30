@@ -19,7 +19,8 @@ recommended_tools:
 
 Load this skill when the current message contains `<planned-task-follow-up>`,
 `<background-task-completed>`, `<running-tasks>`, or immediately after calling
-`create-tasks`.
+`create-tasks`. Before calling `create-tasks`, load it via `load_tool` if it is
+not already visible (search "create tasks" if needed).
 
 ## Silence after spawning tasks
 
@@ -76,7 +77,8 @@ create another plan.
 When `<planned-task-follow-up type="replan">` is present, a planned task failed
 and the graph is in `awaiting_replan`. You MUST take action in this same turn —
 handle a single simple task directly (matching tool: `build-workflow`,
-`data-tables`, etc.), call `create-tasks` with
+`data-tables`, etc.), load `create-tasks` via `load_tool` if needed and call
+`create-tasks` with
 `planningContext.source: "replan"` for multiple dependent tasks, or explain the
 blocker to the user if nothing sensible remains. Do NOT reply with an
 acknowledgement or status update alone — the scheduler will not fire another
@@ -86,7 +88,8 @@ Replan routing (do not re-plan from scratch):
 
 - One simple task remains (single data-table op, credential setup, single-workflow
   patch) → handle directly with the matching tool.
-- Multiple dependent tasks still need scheduling → `create-tasks` with
+- Multiple dependent tasks still need scheduling → load `create-tasks` via
+  `load_tool` if needed, then call `create-tasks` with
   `planningContext.source: "replan"`.
 - Nothing sensible remains → explain the blocker to the user.
 

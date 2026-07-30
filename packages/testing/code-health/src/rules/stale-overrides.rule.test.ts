@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -288,6 +289,77 @@ describe('StaleOverridesRule', () => {
 		const violations = rule.analyze(context());
 
 		expect(violations).toHaveLength(0);
+	});
+
+	it('flags a versioned-selector override that duplicates a named catalog entry', () => {
+		// Regression: a dependency autofix pinned `undici@<=6.27.0` to a concrete
+		// version that the undici-v6 catalog already governs. The version selector
+		// on the key must not hide the duplication.
+		writeWorkspace(
+			tmpDir,
+			'packages:\n  - packages/*\ncatalogs:\n  undici-v6:\n    undici: ^6.27.0\n',
+		);
+		writeRootPackageJson(tmpDir, { overrides: { 'undici@<=6.27.0': '6.27.0' } });
+		writeLock(tmpDir, { packages: ['undici@6.27.0'] });
+
+		const violations = rule.analyze(context());
+
+		const dup = violations.find((v) => v.message.includes('duplicates a catalog entry'));
+		expect(dup).toBeDefined();
+		expect(dup?.message).toContain('undici');
+		expect(dup?.message).toContain('"catalog:undici-v6"');
+	});
+
+	it('flags a scoped versioned-selector override that duplicates a default catalog entry', () => {
+		// Regression: a dependency autofix pinned `@tiptap/core@<=3.27.0` to a
+		// concrete version while the default catalog already pins @tiptap/core.
+		writeWorkspace(tmpDir, "packages:\n  - packages/*\ncatalog:\n  '@tiptap/core': 3.22.5\n");
+		writeRootPackageJson(tmpDir, { overrides: { '@tiptap/core@<=3.27.0': '3.27.0' } });
+		writeLock(tmpDir, { packages: ['@tiptap/core@3.27.0'] });
+
+		const violations = rule.analyze(context());
+
+		const dup = violations.find((v) => v.message.includes('duplicates a catalog entry'));
+		expect(dup).toBeDefined();
+		expect(dup?.message).toContain('@tiptap/core');
+		expect(dup?.message).toContain('"catalog:"');
+	});
+
+	it('detects catalog duplication regardless of any version selector on the key', () => {
+		// Metamorphic invariant: appending a version selector to an override key
+		// (`pkg` -> `pkg@<=1.2.3`) must not change whether the override is
+		// recognised as duplicating a catalog entry — the selector is irrelevant
+		// to "does this package duplicate a catalog entry". This is the exact
+		// class of override that slipped through as a concrete-version pin.
+		const pkgArb = fc.constantFrom(
+			'undici',
+			'lodash',
+			'chokidar',
+			'@tiptap/core',
+			'@sentry/node',
+			'@scope/pkg',
+		);
+		// `>` is pnpm's reserved parent>child separator, so realistic version
+		// selectors on an override key use `<=` / `<` / `^` / `~` / exact forms.
+		const selectorArb = fc.constantFrom('<=6.27.0', '<7.0.0', '^3.0.0', '~2.1.0', '5', '6.0.0');
+
+		const hasCatalogDuplicate = (overrideKey: string, pkg: string): boolean => {
+			const workspace = `packages:\n  - packages/*\ncatalog:\n  '${pkg}': 1.0.0\n`;
+			writeWorkspace(tmpDir, workspace);
+			writeRootPackageJson(tmpDir, { overrides: { [overrideKey]: '1.0.0' } });
+			writeLock(tmpDir, { packages: [`${pkg}@1.0.0`] });
+			return rule.analyze(context()).some((v) => v.message.includes('duplicates a catalog entry'));
+		};
+
+		fc.assert(
+			fc.property(pkgArb, selectorArb, (pkg, selector) => {
+				const bare = hasCatalogDuplicate(pkg, pkg);
+				const withSelector = hasCatalogDuplicate(`${pkg}@${selector}`, pkg);
+
+				expect(bare).toBe(true);
+				expect(withSelector).toBe(bare);
+			}),
+		);
 	});
 
 	it('reports the line number of the override key in package.json', () => {

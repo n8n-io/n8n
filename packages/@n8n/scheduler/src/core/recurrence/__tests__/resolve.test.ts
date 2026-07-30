@@ -15,6 +15,8 @@ function makeJob(overrides: Partial<ScheduledJob> = {}): ScheduledJob {
 		timezone: null,
 		intervalSeconds: 60,
 		fireAt: null,
+		recurrenceUnit: null,
+		recurrenceSize: null,
 		nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 		lastFiredAt: null,
 		maxAttempts: 1,
@@ -59,6 +61,63 @@ describe('resolveSchedule', () => {
 		});
 	});
 
+	it('assembles a recurring_cron schedule from the flat columns', () => {
+		const schedule = resolveSchedule(
+			makeJob({
+				kind: 'recurring_cron',
+				cronExpression: '0 0 9 * * 1',
+				timezone: 'UTC',
+				recurrenceUnit: 'weeks',
+				recurrenceSize: 3,
+				intervalSeconds: null,
+			}),
+			DEFAULT_TZ,
+		);
+
+		expect(schedule).toEqual({
+			kind: 'recurring_cron',
+			cronExpression: '0 0 9 * * 1',
+			timezone: 'UTC',
+			recurrenceUnit: 'weeks',
+			recurrenceSize: 3,
+		});
+	});
+
+	it('resolves a null recurring_cron timezone to the instance default', () => {
+		const schedule = resolveSchedule(
+			makeJob({
+				kind: 'recurring_cron',
+				cronExpression: '0 0 9 * * 1',
+				timezone: null,
+				recurrenceUnit: 'weeks',
+				recurrenceSize: 3,
+				intervalSeconds: null,
+			}),
+			DEFAULT_TZ,
+		);
+
+		expect(schedule).toMatchObject({ timezone: DEFAULT_TZ });
+	});
+
+	it('throws when a recurring_cron row is missing a required column', () => {
+		const row = {
+			kind: 'recurring_cron',
+			cronExpression: '0 0 9 * * 1',
+			recurrenceUnit: 'weeks',
+			recurrenceSize: 3,
+			intervalSeconds: null,
+		} as const;
+		expect(() => resolveSchedule(makeJob({ ...row, cronExpression: null }), DEFAULT_TZ)).toThrow(
+			CorruptStorageRowError,
+		);
+		expect(() => resolveSchedule(makeJob({ ...row, recurrenceUnit: null }), DEFAULT_TZ)).toThrow(
+			CorruptStorageRowError,
+		);
+		expect(() => resolveSchedule(makeJob({ ...row, recurrenceSize: null }), DEFAULT_TZ)).toThrow(
+			CorruptStorageRowError,
+		);
+	});
+
 	it('assembles an interval schedule', () => {
 		const schedule = resolveSchedule(
 			makeJob({ kind: 'interval', intervalSeconds: 30 }),
@@ -88,5 +147,10 @@ describe('resolveSchedule', () => {
 		expect(() =>
 			resolveSchedule(makeJob({ kind: 'one_off', intervalSeconds: null }), DEFAULT_TZ),
 		).toThrow(CorruptStorageRowError);
+	});
+
+	it('throws on a kind outside the enum (a corrupt row)', () => {
+		const corrupt = makeJob({ kind: 'weekly' as ScheduledJob['kind'] });
+		expect(() => resolveSchedule(corrupt, DEFAULT_TZ)).toThrow(CorruptStorageRowError);
 	});
 });

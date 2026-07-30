@@ -4,7 +4,7 @@ import WorkflowHistoryButton from '@/features/workflows/workflowHistory/componen
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	VIEWS,
 	WORKFLOW_PUBLISH_MODAL_KEY,
@@ -50,6 +50,16 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowPublicationStatusSync } from '@/app/composables/useWorkflowPublicationStatusSync';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import WorkflowReviewRequiredToggle from '@/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue';
+import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue';
+import WorkflowSubmitForReviewDialog from '@/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue';
+import WorkflowReviewSubmittedDialog from '@/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue';
+import WorkflowUpdateReviewDialog from '@/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue';
+import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
+import { useWorkflowReviewStatusSync } from '@/features/workflow-reviews/composables/useWorkflowReviewStatusSync';
+import { useWorkflowReviewDialogPreferences } from '@/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -71,6 +81,7 @@ const workflowDocumentStore = computed(() =>
 // Pass a getter so the composable re-syncs internally when the user navigates
 // to a different workflow without this component being remounted.
 useWorkflowPublicationStatusSync(() => workflowDocumentStore.value.documentId);
+useWorkflowReviewStatusSync(() => (props.isNewWorkflow ? undefined : props.id));
 const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
@@ -82,13 +93,40 @@ const toast = useToast();
 const saveStore = useWorkflowSaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
+const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
+const reviewRequiredStore = useReviewRequiredStore();
+const reviewStatusStore = useWorkflowReviewStatusStore();
+const { publishChoiceDismissed, submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
+
+const effectiveReviewRequired = computed(
+	() => reviewStatusStore.hasOpenReview(props.id) || reviewRequiredStore.isReviewRequired(props.id),
+);
 
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
 );
 
+const showWorkflowReviewRequiredToggle = computed(
+	() => isWorkflowReviewsEnabled.value && !props.isNewWorkflow,
+);
+
 const autoSaveForPublish = ref(false);
 const isSaving = ref(false);
+const showPublishChoiceDialog = ref(false);
+const showSubmitForReviewDialog = ref(false);
+const showReviewSubmittedDialog = ref(false);
+const showUpdateReviewDialog = ref(false);
+
+watch(
+	() => props.id,
+	() => {
+		showPublishChoiceDialog.value = false;
+		showSubmitForReviewDialog.value = false;
+		showReviewSubmittedDialog.value = false;
+		showUpdateReviewDialog.value = false;
+		uiStore.closeModal(WORKFLOW_PUBLISH_MODAL_KEY);
+	},
+);
 
 const showSaveButton = computed(() => !settingsStore.isAutosaveEnabled);
 
@@ -199,20 +237,73 @@ const saveBeforePublish = async () => {
 	return saved;
 };
 
-const onPublishButtonClick = async () => {
-	// If there are unsaved changes, save the workflow first
-	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		const saved = await saveBeforePublish();
-		if (!saved) {
-			// If save failed, don't open the modal
-			return;
-		}
-	}
+const ensureWorkflowSaved = async (): Promise<boolean> => {
+	if (!uiStore.stateIsDirty && !props.isNewWorkflow) return true;
+	return await saveBeforePublish();
+};
 
+const openPublishModal = () => {
 	uiStore.openModalWithData({
 		name: WORKFLOW_PUBLISH_MODAL_KEY,
 		data: {},
 	});
+};
+
+const flushSaveForReview = async (): Promise<string | undefined> => {
+	if (!(await ensureWorkflowSaved())) return undefined;
+
+	return workflowDocumentStore.value.versionId || undefined;
+};
+
+const onReviewSubmitted = () => {
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText('workflowReviews.submitted.toast'),
+	});
+
+	if (!submittedDialogDismissed.value) {
+		showReviewSubmittedDialog.value = true;
+	}
+};
+
+const onReviewUpdated = () => {
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText('workflowReviews.updateReview.toast'),
+	});
+};
+
+/** The submit dialog hit a 409: an open review exists, so offer updating it instead. */
+const onReviewConflict = () => {
+	showUpdateReviewDialog.value = true;
+};
+
+const onPublishButtonClick = async () => {
+	if (!(await ensureWorkflowSaved())) return;
+
+	if (isWorkflowReviewsEnabled.value) {
+		// TODO(LIGO-604): backend publish enforcement. Until then this gate is
+		// best-effort: a not-yet-fetched status (e.g. Publish clicked before the
+		// on-mount fetch resolves) reads as "no open review" — accepted, since
+		// only backend enforcement can close that hole.
+		if (reviewStatusStore.hasOpenReview(props.id)) {
+			showUpdateReviewDialog.value = true;
+			return;
+		}
+
+		if (effectiveReviewRequired.value) {
+			showSubmitForReviewDialog.value = true;
+			return;
+		}
+
+		// TODO(LIGO-784): once the designed secondary affordance exists, revisit this gate
+		if (!publishChoiceDismissed.value) {
+			showPublishChoiceDialog.value = true;
+			return;
+		}
+	}
+
+	openPublishModal();
 };
 
 const publishButtonConfig = computed(() => {
@@ -418,6 +509,7 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	actions.push({
 		id: VERSION_ACTIONS.PUBLISH_TIMELINE,
 		label: i18n.baseText('workflowHistory.action.viewTimeline'),
+		disabled: props.isNewWorkflow,
 	});
 
 	actions.push({
@@ -440,13 +532,7 @@ const shouldDisableActionDropdown = computed(() => {
 });
 
 const onNameVersion = async () => {
-	// If there are unsaved changes, save the workflow first
-	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		const saved = await saveBeforePublish();
-		if (!saved) {
-			return;
-		}
-	}
+	if (!(await ensureWorkflowSaved())) return;
 
 	const currentVersionId = workflowDocumentStore.value.versionId ?? '';
 	const currentVersionData = workflowDocumentStore.value.versionData;
@@ -674,6 +760,7 @@ defineExpose({
 				</N8nTooltip>
 				<N8nActionDropdown
 					:items="versionMenuActions"
+					:width="showWorkflowReviewRequiredToggle ? '230px' : undefined"
 					placement="bottom-end"
 					data-test-id="version-menu"
 					@select="onDropdownMenuSelect"
@@ -687,6 +774,9 @@ defineExpose({
 							:aria-label="i18n.baseText('node.moreActions')"
 							data-test-id="version-menu-button"
 						/>
+					</template>
+					<template v-if="showWorkflowReviewRequiredToggle" #footer>
+						<WorkflowReviewRequiredToggle :workflow-id="props.id" />
 					</template>
 				</N8nActionDropdown>
 			</div>
@@ -702,6 +792,27 @@ defineExpose({
 			:tags="tags"
 			:current-folder="currentFolder"
 		/>
+		<template v-if="isWorkflowReviewsEnabled">
+			<WorkflowPublishChoiceDialog
+				v-model:open="showPublishChoiceDialog"
+				@publish="openPublishModal"
+				@submit-for-review="showSubmitForReviewDialog = true"
+			/>
+			<WorkflowSubmitForReviewDialog
+				v-model:open="showSubmitForReviewDialog"
+				:workflow-id="props.id"
+				:flush-save="flushSaveForReview"
+				@submitted="onReviewSubmitted"
+				@conflict="onReviewConflict"
+			/>
+			<WorkflowReviewSubmittedDialog v-model:open="showReviewSubmittedDialog" />
+			<WorkflowUpdateReviewDialog
+				v-model:open="showUpdateReviewDialog"
+				:workflow-id="props.id"
+				:flush-save="flushSaveForReview"
+				@updated="onReviewUpdated"
+			/>
+		</template>
 	</div>
 </template>
 

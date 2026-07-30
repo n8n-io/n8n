@@ -6,6 +6,12 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => {
 			const translations: Record<string, string> = {
+				'instanceAi.tools.read_config': 'Reading agent config',
+				'instanceAi.tools.resolve_integration': 'Adding integration',
+				'instanceAi.tools.build-agent': 'Building agent',
+				'instanceAi.tools.get_node_types': 'Reading node schema',
+				'instanceAi.tools.list_credentials': 'Inspecting credentials',
+				'instanceAi.tools.list_workflows': 'Listing workflows',
 				'instanceAi.tools.nodes': 'Search nodes',
 				'instanceAi.tools.executions': 'Run workflow',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
@@ -54,11 +60,15 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns default icon for removed delegate tool', () => {
-		expect(getToolIcon('delegate')).toBe('settings');
+		expect(getToolIcon('delegate')).toBe('wrench');
 	});
 
 	test('returns share for tools ending with -with-agent', () => {
 		expect(getToolIcon('build-workflow-with-agent')).toBe('share');
+	});
+
+	test('returns share for resolve_integration', () => {
+		expect(getToolIcon('resolve_integration')).toBe('share');
 	});
 
 	test('returns table for data-table tools', () => {
@@ -70,6 +80,8 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('executions')).toBe('workflow');
 		expect(getToolIcon('nodes')).toBe('workflow');
 		expect(getToolIcon('templates')).toBe('workflow');
+		expect(getToolIcon('search_nodes')).toBe('workflow');
+		expect(getToolIcon('get_node_types')).toBe('workflow');
 		expect(getToolIcon('submit-workflow')).toBe('workflow');
 		expect(getToolIcon('materialize-node-type')).toBe('workflow');
 	});
@@ -84,7 +96,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('treats removed plan tool as an ordinary unknown icon', () => {
-		expect(getToolIcon('plan')).toBe('settings');
+		expect(getToolIcon('plan')).toBe('wrench');
 	});
 
 	test('returns key-round for credential tools', () => {
@@ -110,14 +122,17 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('n8n-docs')).toBe('book-open');
 	});
 
-	test('returns settings as default', () => {
-		expect(getToolIcon('unknown-tool')).toBe('settings');
+	test('returns wrench as default', () => {
+		expect(getToolIcon('unknown-tool')).toBe('wrench');
 	});
 });
 
 describe('useToolLabel', () => {
 	test('getToolLabel returns translated label when found', () => {
 		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('read_config')).toBe('Reading agent config');
+		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
+		expect(getToolLabel('build-agent')).toBe('Building agent');
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 		expect(getToolLabel('list_skills')).toBe('Checking available skills');
@@ -136,6 +151,14 @@ describe('useToolLabel', () => {
 				filePath: 'scripts/import-rows.mjs',
 			}),
 		).toBe('Inspecting import rows script');
+	});
+
+	test('getToolLabel humanizes builder tools via i18n keys for the stable tool IDs', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
+		expect(getToolLabel('get_node_types')).toBe('Reading node schema');
+		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
+		expect(getToolLabel('list_workflows')).toBe('Listing workflows');
 	});
 
 	test('getToolLabel shows skill script commands cleanly', () => {

@@ -1,8 +1,14 @@
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
 import { makeN8nLlmFailedAttemptHandler, getNodeProxyAgent } from '@n8n/ai-utilities';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import { UserError, type INode, type ISupplyDataFunctions } from 'n8n-workflow';
+import {
+	UserError,
+	type ILoadOptionsFunctions,
+	type INode,
+	type ISupplyDataFunctions,
+} from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
@@ -26,7 +32,12 @@ vi.mock('@utils/aws/resolveAwsCredentials', () => ({
 vi.mock('@aws-sdk/client-bedrock-runtime', () => ({
 	BedrockRuntimeClient: vi.fn(),
 }));
+vi.mock('@smithy/node-http-handler', () => ({
+	NodeHttpHandler: vi.fn(),
+}));
+
 const MockedBedrockRuntimeClient = vi.mocked(BedrockRuntimeClient);
+const MockedNodeHttpHandler = vi.mocked(NodeHttpHandler);
 const MockedChatBedrockConverse = vi.mocked(ChatBedrockConverse);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
@@ -270,7 +281,6 @@ describe('LmChatAwsBedrock', () => {
 				expect(MockedChatBedrockConverse).toHaveBeenCalledWith(
 					expect.objectContaining({
 						topP: 0.9,
-						maxRetries: 5,
 						performanceConfig: { latency: 'optimized' },
 						guardrailConfig: {
 							guardrailIdentifier: 'gr-123',
@@ -279,6 +289,26 @@ describe('LmChatAwsBedrock', () => {
 						},
 						additionalModelRequestFields: { top_k: 50 },
 					}),
+				);
+				// Retries are configured on the SDK client, since ChatBedrockConverse
+				// bypasses LangChain's retrying caller.
+				expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
+					expect.objectContaining({ maxAttempts: 6 }),
+				);
+			});
+
+			it('maps Max Retries 0 to a single SDK attempt', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+					if (paramName === 'options') return { maxRetries: 0 };
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
+					expect.objectContaining({ maxAttempts: 1 }),
 				);
 			});
 
@@ -298,6 +328,9 @@ describe('LmChatAwsBedrock', () => {
 				expect(config).not.toHaveProperty('performanceConfig');
 				expect(config).not.toHaveProperty('guardrailConfig');
 				expect(config).not.toHaveProperty('additionalModelRequestFields');
+				// Unset Max Retries keeps the SDK's default retry strategy.
+				const clientConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0] ?? {};
+				expect(clientConfig).not.toHaveProperty('maxAttempts');
 			});
 
 			it('throws a UserError when additionalModelRequestFields is invalid JSON', async () => {
@@ -343,6 +376,29 @@ describe('LmChatAwsBedrock', () => {
 				expect(config).not.toHaveProperty('guardrailConfig');
 			});
 
+			it.each([
+				['left blank', ''],
+				['whitespace-only', '   '],
+			])('defaults the guardrail version to DRAFT when %s', async (_case, version) => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+					if (paramName === 'options')
+						return {
+							guardrail: { values: { guardrailIdentifier: 'gr-123', guardrailVersion: version } },
+						};
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedChatBedrockConverse).toHaveBeenCalledWith(
+					expect.objectContaining({
+						guardrailConfig: { guardrailIdentifier: 'gr-123', guardrailVersion: 'DRAFT' },
+					}),
+				);
+			});
+
 			it('passes an inference-profile ARN model ID through verbatim without building a URL', async () => {
 				const arn =
 					'arn:aws:bedrock:eu-west-3:123456789012:inference-profile/eu.amazon.nova-pro-v1:0';
@@ -364,6 +420,85 @@ describe('LmChatAwsBedrock', () => {
 				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
 					'https://bedrock-runtime.eu-west-3.amazonaws.com',
 				);
+			});
+		});
+
+		describe('request handler (timeout & proxy)', () => {
+			const setNodeParameters = (options: Record<string, unknown>) => {
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+					if (paramName === 'options') return options;
+					return undefined;
+				});
+			};
+
+			it('creates a handler with requestTimeout when timeout is set and no proxy is configured', async () => {
+				const ctx = setupMockContext();
+				setNodeParameters({ timeout: 120000 });
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedNodeHttpHandler).toHaveBeenCalledWith({
+					requestTimeout: 120000,
+					throwOnRequestTimeout: true,
+				});
+				const clientConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0];
+				expect(clientConfig?.requestHandler).toBe(MockedNodeHttpHandler.mock.instances.at(-1));
+			});
+
+			it('merges timeout and proxy agents into a single handler', async () => {
+				const ctx = setupMockContext();
+				const fakeAgent = { fake: 'agent' } as unknown as ReturnType<typeof getNodeProxyAgent>;
+				mockedGetNodeProxyAgent.mockReturnValue(fakeAgent);
+				setNodeParameters({ timeout: 30000 });
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedNodeHttpHandler).toHaveBeenCalledTimes(1);
+				expect(MockedNodeHttpHandler).toHaveBeenCalledWith({
+					httpAgent: fakeAgent,
+					httpsAgent: fakeAgent,
+					requestTimeout: 30000,
+					throwOnRequestTimeout: true,
+				});
+			});
+
+			it('creates a proxy-only handler without timeout keys when timeout is unset', async () => {
+				const ctx = setupMockContext();
+				const fakeAgent = { fake: 'agent' } as unknown as ReturnType<typeof getNodeProxyAgent>;
+				mockedGetNodeProxyAgent.mockReturnValue(fakeAgent);
+				setNodeParameters({});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedNodeHttpHandler).toHaveBeenCalledTimes(1);
+				const handlerOptions = MockedNodeHttpHandler.mock.calls.at(-1)?.[0] ?? {};
+				expect(handlerOptions).toEqual({ httpAgent: fakeAgent, httpsAgent: fakeAgent });
+				expect(handlerOptions).not.toHaveProperty('requestTimeout');
+				expect(handlerOptions).not.toHaveProperty('throwOnRequestTimeout');
+			});
+
+			it('creates no handler at all when neither timeout nor proxy is configured', async () => {
+				const ctx = setupMockContext();
+				setNodeParameters({});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedNodeHttpHandler).not.toHaveBeenCalled();
+				const clientConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0] ?? {};
+				expect(clientConfig).not.toHaveProperty('requestHandler');
+			});
+
+			it('passes timeout 0 through as a disabled requestTimeout', async () => {
+				const ctx = setupMockContext();
+				setNodeParameters({ timeout: 0 });
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedNodeHttpHandler).toHaveBeenCalledWith({
+					requestTimeout: 0,
+					throwOnRequestTimeout: true,
+				});
 			});
 		});
 
@@ -424,6 +559,227 @@ describe('LmChatAwsBedrock', () => {
 					'https://bedrock-runtime.eu-central-1.amazonaws.com',
 				);
 			});
+		});
+
+		describe('runtime endpoint override', () => {
+			const useModel = (ctx: Mocked<ISupplyDataFunctions>) => {
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+			};
+
+			it('routes inference and the proxy agent to the override endpoint when set', async () => {
+				const ctx = setupMockContext();
+				useModel(ctx);
+				mockedResolveAwsCredentials.mockResolvedValue({
+					region: 'us-east-1',
+					credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+					bedrockRuntimeEndpoint: 'https://vpce-abc.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				const expected = 'https://vpce-abc.bedrock-runtime.us-east-1.vpce.amazonaws.com';
+				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(expected);
+				expect(MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0]?.endpoint).toBe(expected);
+			});
+
+			it('leaves the SDK endpoint unset when no override is present', async () => {
+				const ctx = setupMockContext();
+				useModel(ctx);
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0]?.endpoint).toBeUndefined();
+				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
+					'https://bedrock-runtime.us-east-1.amazonaws.com',
+				);
+			});
+
+			it('throws a UserError for an invalid override', async () => {
+				const ctx = setupMockContext();
+				useModel(ctx);
+				mockedResolveAwsCredentials.mockResolvedValue({
+					region: 'us-east-1',
+					credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+					bedrockRuntimeEndpoint: 'ftp://bedrock-runtime.us-east-1.amazonaws.com',
+				});
+
+				await expect(node.supplyData.call(ctx, 0)).rejects.toThrow(UserError);
+			});
+		});
+	});
+
+	describe('listModels', () => {
+		const foundationResponse = {
+			modelSummaries: [
+				{
+					modelId: 'amazon.nova-pro-v1:0',
+					modelName: 'Nova Pro',
+					modelArn: 'arn:aws:bedrock:eu-central-1::foundation-model/amazon.nova-pro-v1:0',
+				},
+				{
+					modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
+					modelName: 'Claude 3 Haiku',
+					modelArn: 'arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-3-haiku',
+				},
+			],
+		};
+		const profilesResponse = {
+			inferenceProfileSummaries: [
+				{
+					inferenceProfileId: 'eu.anthropic.claude-sonnet-4-6-v1:0',
+					inferenceProfileName: 'EU Anthropic Claude Sonnet 4.6',
+					inferenceProfileArn:
+						'arn:aws:bedrock:eu-central-1:123456789012:inference-profile/eu.anthropic.claude-sonnet-4-6-v1:0',
+					description: 'Routes requests across EU regions',
+				},
+			],
+		};
+
+		const createLoadOptionsContext = (
+			authentication: 'iam' | 'assumeRole',
+			httpMock: ReturnType<typeof vi.fn>,
+		) =>
+			({
+				getNodeParameter: vi.fn().mockReturnValue(authentication),
+				getCredentials: vi.fn().mockResolvedValue({ region: 'eu-central-1' }),
+				helpers: { httpRequestWithAuthentication: httpMock },
+				logger: { warn: vi.fn() },
+			}) as unknown as ILoadOptionsFunctions;
+
+		const httpMockFor = (
+			foundation: Promise<unknown> | unknown,
+			profiles: Promise<unknown> | unknown,
+		) =>
+			vi.fn().mockImplementation(async (_credentialsType: string, options: { url: string }) => {
+				return options.url.startsWith('/foundation-models') ? await foundation : await profiles;
+			});
+
+		it('merges foundation models and inference profiles into one sorted list', async () => {
+			const httpMock = httpMockFor(foundationResponse, profilesResponse);
+			const ctx = createLoadOptionsContext('iam', httpMock);
+
+			const options = await node.methods.loadOptions.listModels.call(ctx);
+
+			expect(options).toEqual([
+				{
+					name: 'Claude 3 Haiku',
+					value: 'anthropic.claude-3-haiku-20240307-v1:0',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
+					description: 'arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-3-haiku',
+				},
+				{
+					name: 'EU Anthropic Claude Sonnet 4.6',
+					value: 'eu.anthropic.claude-sonnet-4-6-v1:0',
+					description: 'Routes requests across EU regions',
+				},
+				{
+					name: 'Nova Pro',
+					value: 'amazon.nova-pro-v1:0',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
+					description: 'arn:aws:bedrock:eu-central-1::foundation-model/amazon.nova-pro-v1:0',
+				},
+			]);
+			expect(httpMock).toHaveBeenCalledWith(
+				'aws',
+				expect.objectContaining({
+					baseURL: 'https://bedrock.eu-central-1.amazonaws.com',
+					url: '/foundation-models?&byOutputModality=TEXT&byInferenceType=ON_DEMAND',
+				}),
+			);
+			expect(httpMock).toHaveBeenCalledWith(
+				'aws',
+				expect.objectContaining({ url: '/inference-profiles?maxResults=1000' }),
+			);
+		});
+
+		it('uses the awsAssumeRole credential when authentication is assumeRole', async () => {
+			const httpMock = httpMockFor(foundationResponse, profilesResponse);
+			const ctx = createLoadOptionsContext('assumeRole', httpMock);
+
+			await node.methods.loadOptions.listModels.call(ctx);
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith('awsAssumeRole');
+			expect(httpMock).toHaveBeenCalledWith('awsAssumeRole', expect.anything());
+		});
+
+		it('still lists foundation models and warns when the inference-profiles request fails', async () => {
+			const failure = new Error('AccessDenied');
+			const httpMock = httpMockFor(foundationResponse, Promise.reject(failure));
+			const ctx = createLoadOptionsContext('iam', httpMock);
+
+			const options = await node.methods.loadOptions.listModels.call(ctx);
+
+			expect(options.map((o) => o.value)).toEqual([
+				'anthropic.claude-3-haiku-20240307-v1:0',
+				'amazon.nova-pro-v1:0',
+			]);
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				'Bedrock model listing: inference-profiles request failed',
+				{ error: failure },
+			);
+		});
+
+		it('still lists inference profiles and warns when the foundation-models request fails', async () => {
+			const failure = new Error('AccessDenied');
+			const httpMock = httpMockFor(Promise.reject(failure), profilesResponse);
+			const ctx = createLoadOptionsContext('iam', httpMock);
+
+			const options = await node.methods.loadOptions.listModels.call(ctx);
+
+			expect(options.map((o) => o.value)).toEqual(['eu.anthropic.claude-sonnet-4-6-v1:0']);
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				'Bedrock model listing: foundation-models request failed',
+				{ error: failure },
+			);
+		});
+
+		it('throws when both list requests fail', async () => {
+			const failure = new Error('AccessDenied');
+			const httpMock = httpMockFor(Promise.reject(failure), Promise.reject(new Error('other')));
+			const ctx = createLoadOptionsContext('iam', httpMock);
+
+			await expect(node.methods.loadOptions.listModels.call(ctx)).rejects.toThrow('AccessDenied');
+		});
+
+		it('rejects an unsupported credential region before any request is made', async () => {
+			const httpMock = httpMockFor(foundationResponse, profilesResponse);
+			const ctx = createLoadOptionsContext('iam', httpMock);
+			ctx.getCredentials = vi.fn().mockResolvedValue({ region: 'not-a-region' });
+
+			await expect(node.methods.loadOptions.listModels.call(ctx)).rejects.toThrow(
+				'Unsupported AWS region',
+			);
+			expect(httpMock).not.toHaveBeenCalled();
+		});
+
+		it('uses the China partition domain for cn regions', async () => {
+			const httpMock = httpMockFor(foundationResponse, profilesResponse);
+			const ctx = createLoadOptionsContext('iam', httpMock);
+			ctx.getCredentials = vi.fn().mockResolvedValue({ region: 'cn-north-1' });
+
+			await node.methods.loadOptions.listModels.call(ctx);
+
+			expect(httpMock).toHaveBeenCalledWith(
+				'aws',
+				expect.objectContaining({ baseURL: 'https://bedrock.cn-north-1.amazonaws.com.cn' }),
+			);
+		});
+
+		it('is exposed as version 1.2 with the merged picker as default', () => {
+			expect(node.description.version).toEqual([1, 1.1, 1.2]);
+			const mergedModelField = node.description.properties.find(
+				(p) => p.name === 'model' && p.typeOptions?.loadOptionsMethod === 'listModels',
+			);
+			expect(mergedModelField?.displayOptions?.show?.['@version']).toEqual([
+				{ _cnd: { gte: 1.2 } },
+			]);
+			// The legacy source toggle must not render on 1.2
+			const modelSource = node.description.properties.find((p) => p.name === 'modelSource');
+			expect(modelSource?.displayOptions?.show?.['@version']).toEqual([{ _cnd: { eq: 1.1 } }]);
 		});
 	});
 });

@@ -132,6 +132,17 @@ export interface IExecutionsCurrentSummary {
 	status: ExecutionStatus;
 }
 
+/**
+ * An already-persisted execution a process wants to take over, plus the status it must
+ * still be in for the claim to succeed. The status travels with the id so the takeover
+ * is a compare-and-swap: if the row moved on, another process already claimed it.
+ */
+export interface ResumableExecution {
+	executionId: string;
+	/** `waiting` for a row being resumed, `new` for one enqueued before a restart. */
+	expectedStatus: Extract<ExecutionStatus, 'new' | 'waiting'>;
+}
+
 export interface IExecutingWorkflowData {
 	executionData: IWorkflowExecutionDataProcess;
 	startedAt: Date;
@@ -187,11 +198,11 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	error_node_type?: string;
 	is_manual: boolean;
 	crashed?: boolean;
-	used_private_credentials?: boolean;
-	/** Number of nodes that attempted to resolve a private credential (regardless of success). */
-	private_credentials_attempted_count?: number;
-	/** Number of nodes that successfully resolved a private credential. */
-	private_credentials_resolved_count?: number;
+	used_end_user_credentials?: boolean;
+	/** Number of nodes that attempted to resolve an end-user credential (regardless of success). */
+	end_user_credentials_attempted_count?: number;
+	/** Number of nodes that successfully resolved an end-user credential. */
+	end_user_credentials_resolved_count?: number;
 	/** Effective resolver id the execution ran with (workflow override or seeded system resolver). */
 	credential_resolver_id?: string;
 	execution_source?: WorkflowExecutionSource;
@@ -235,6 +246,8 @@ export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProper
 	/** Internal aggregation key only. This must never be emitted to telemetry. */
 	thread_id: string;
 	run_type: AgentRunTelemetryType;
+	/** Absent for saved agents; 'inline' for node-embedded agent definitions. */
+	agent_type?: 'inline';
 	turn_status: AgentTurnTelemetryStatus;
 	configuration: IAgentConfigurationTelemetryProperties;
 	latency_ms: number;

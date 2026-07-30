@@ -9,7 +9,7 @@ import RunDataAi from '@/features/ndv/runData/components/ai/RunDataAi.vue';
 import { useNodeType } from '@/app/composables/useNodeType';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
@@ -418,7 +418,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<NodeExecuteButton
 									hide-icon
 									transparent
-									type="secondary"
+									variant="subtle"
 									:node-name="activeNode?.name ?? ''"
 									:label="
 										i18n.baseText(
@@ -437,7 +437,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							<NodeExecuteButton
 								hide-icon
 								transparent
-								type="secondary"
+								variant="subtle"
 								:node-name="activeNode?.name ?? ''"
 								:label="
 									i18n.baseText(

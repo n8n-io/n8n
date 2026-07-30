@@ -29,7 +29,13 @@ describe('AuthService', () => {
 		mfaEnabled: false,
 		role: GLOBAL_OWNER_ROLE,
 	};
-	const user = mock<User>(userData);
+	// Assign user data onto an empty mock instead of passing it as overrides:
+	// mock(overrides) deep-wraps nested objects in proxies and mutates shared
+	// constants like GLOBAL_OWNER_ROLE in place, stacking a proxy layer per
+	// call and slowing the whole file down.
+	const mockUser = (overrides: Partial<User> = {}) =>
+		Object.assign(mock<User>(), userData, overrides);
+	const user = mockUser();
 	const globalConfig = mock<GlobalConfig>({
 		auth: { cookie: { secure: true, samesite: 'lax' } },
 		userManagement: { jwtSecret: 'random-secret' },
@@ -435,7 +441,7 @@ describe('AuthService', () => {
 			});
 
 			it('should clear cookie if MFA required and not used', async () => {
-				const userWithMfa = mock<User>({ ...userData, mfaEnabled: true, mfaSecret: 'secret' });
+				const userWithMfa = mockUser({ mfaEnabled: true, mfaSecret: 'secret' });
 
 				const req = mockReq();
 				req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
@@ -712,7 +718,7 @@ describe('AuthService', () => {
 				{ ...userData, mfaEnabled: true, mfaSecret: '123' },
 			],
 		])('should throw if %s', async (_, data) => {
-			userRepository.findOne.mockResolvedValueOnce(data && mock<User>(data));
+			userRepository.findOne.mockResolvedValueOnce(data && Object.assign(mock<User>(), data));
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
@@ -1036,7 +1042,7 @@ describe('AuthService', () => {
 		it('should throw when user is disabled', async () => {
 			const token = authService.issueJWT(user, false, browserId);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(mock<User>({ ...userData, disabled: true }));
+			userRepository.findOne.mockResolvedValue(mockUser({ disabled: true }));
 
 			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
 		});
@@ -1171,7 +1177,7 @@ describe('AuthService', () => {
 			it('should throw when user is disabled', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(mock<User>({ ...userData, disabled: true }));
+				userRepository.findOne.mockResolvedValue(mockUser({ disabled: true }));
 
 				await expect(
 					authService.authenticateUserBasedOnToken(token, method, endpoint, browserId),
@@ -1181,9 +1187,7 @@ describe('AuthService', () => {
 			it('should throw when user password has changed', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(
-					mock<User>({ ...userData, password: 'newPasswordHash' }),
-				);
+				userRepository.findOne.mockResolvedValue(mockUser({ password: 'newPasswordHash' }));
 
 				await expect(
 					authService.authenticateUserBasedOnToken(token, method, endpoint, browserId),
@@ -1409,7 +1413,7 @@ describe('AuthService', () => {
 			it('should throw when user is disabled', async () => {
 				const token = authService.issueJWT(user, true, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(mock<User>({ ...userData, disabled: true }));
+				userRepository.findOne.mockResolvedValue(mockUser({ disabled: true }));
 
 				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
 			});
@@ -1417,9 +1421,7 @@ describe('AuthService', () => {
 			it('should throw when user password hash changed', async () => {
 				const token = authService.issueJWT(user, true, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(
-					mock<User>({ ...userData, password: 'newPasswordHash' }),
-				);
+				userRepository.findOne.mockResolvedValue(mockUser({ password: 'newPasswordHash' }));
 
 				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
 			});

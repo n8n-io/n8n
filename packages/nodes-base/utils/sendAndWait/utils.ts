@@ -31,7 +31,7 @@ import type { IEmail } from './interfaces';
 export type SendAndWaitConfig = {
 	title: string;
 	message: string;
-	options: Array<{ label: string; url: string; style: string }>;
+	options: Array<{ label: string; url: string; style: string; approved: boolean }>;
 	appendAttribution?: boolean;
 };
 
@@ -224,6 +224,8 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
+		// Advanced-HITL nodes (Slack, Telegram) render these as a section right before "Options".
+		...additionalProperties,
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -291,7 +293,6 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...additionalProperties,
 	];
 
 	return updateDisplayOptions(
@@ -524,6 +525,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 			label,
 			url: approvedSignedResumeUrl,
 			style: 'primary',
+			approved: true,
 		});
 	} else if (approvalOptions.approvalType === 'double') {
 		const approveLabel = escapeHtml(approvalOptions.approveLabel || 'Approve');
@@ -536,11 +538,13 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 			label: disapproveLabel,
 			url: disapprovedSignedResumeUrl,
 			style: buttonDisapprovalStyle,
+			approved: false,
 		});
 		config.options.push({
 			label: approveLabel,
 			url: approvedSignedResumeUrl,
 			style: buttonApprovalStyle,
+			approved: true,
 		});
 	} else {
 		const label = escapeHtml(approvalOptions.approveLabel || 'Approve');
@@ -549,6 +553,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 			label,
 			url: approvedSignedResumeUrl,
 			style,
+			approved: true,
 		});
 	}
 

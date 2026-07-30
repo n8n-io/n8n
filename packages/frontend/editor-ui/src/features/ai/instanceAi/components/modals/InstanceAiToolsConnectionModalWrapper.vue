@@ -23,6 +23,7 @@ import {
 	type ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
+import { useInstanceAiMcpTelemetry } from '../../instanceAiMcp.telemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import type {
 	InstanceAiMcpConnectionResponse,
@@ -56,6 +57,7 @@ const props = defineProps<{
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
+const mcpTelemetry = useInstanceAiMcpTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
 const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
@@ -96,7 +98,7 @@ const activeItemId = ref(readConnectionIdPayload(modalState.value?.data));
 
 // If there is a connection ID in the modal data, the modal is being opened
 // for a particular connection, not from a list, so we don't show the back button
-const shouldHideBackButton = computed(() => !!readConnectionIdPayload(modalState.value?.data));
+const isDirectConnectionOpen = computed(() => !!readConnectionIdPayload(modalState.value?.data));
 
 const detailItem = computed<ToolConnectionItem | null>(() => {
 	return activeItemId.value ? (items.value.find((i) => i.id === activeItemId.value) ?? null) : null;
@@ -221,6 +223,7 @@ function buildItem(
 	return {
 		id: connection?.id ?? server.slug,
 		kind: 'mcp-server',
+		category: 'mcp',
 		title: server.title,
 		description: server.tagline,
 		longDescription: server.description,
@@ -275,6 +278,7 @@ const serviceItems = computed<ServiceConnectionItem[]>(() => {
 		.map((service) => ({
 			id: service.id,
 			kind: 'service',
+			category: 'built-in',
 			serviceId: service.id,
 			title: i18n.baseText(service.titleKey),
 			description: i18n.baseText(service.descriptionKey),
@@ -407,6 +411,34 @@ function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResp
 	return mcpStore.catalog?.find((s) => s.slug === slug);
 }
 
+function trackMcpCredentialInteraction(
+	item: ToolConnectionItem,
+	track: (serverSlug: string) => void,
+): void {
+	if (item.kind !== 'mcp-server') return;
+	const server = findServerForItem(item);
+	if (!server) return;
+	track(server.slug);
+}
+
+function handleFirstCredentialConnect(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackFirstCredentialConnectionStart(serverSlug);
+	});
+}
+
+function handleCredentialDropdownOpen(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackCredentialDropdownOpened(serverSlug);
+	});
+}
+
+function handleNewCredentialConnect(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackNewCredentialConnectionStart(serverSlug);
+	});
+}
+
 async function handleSelectCredential(
 	item: ToolConnectionItem,
 	_authType: string,
@@ -415,6 +447,7 @@ async function handleSelectCredential(
 	if (item.kind !== 'mcp-server') return;
 	const server = findServerForItem(item);
 	if (!server) return;
+	mcpTelemetry.trackExistingCredentialSelected(server.slug);
 	const ok = await connectOrSwapCredential(server.slug, credentialId);
 	if (ok) showSettingsForServer(server.slug);
 }
@@ -427,10 +460,12 @@ async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSet
 		excludedTools: settings.excludedTools,
 	});
 	if (!updated) return;
+	mcpTelemetry.trackToolFilterSettingsUpdated(updated.serverSlug, settings.inclusionMode);
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('instanceAi.mcp.settings.saved'),
 	});
+	if (isDirectConnectionOpen.value) uiStore.closeModal(props.modalName);
 }
 
 async function handleDisconnect(item: ToolConnectionItem) {
@@ -458,12 +493,15 @@ async function handleConnect(item: ToolConnectionItem) {
 	<ToolsConnectionModal
 		v-model:open="isOpen"
 		:items="items"
-		:sections="['connected', 'built-in-services', 'nodes']"
+		:categories="['all', 'built-in', 'mcp']"
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
-		:hide-back-button="shouldHideBackButton"
+		:hide-back-button="isDirectConnectionOpen"
 		@update:detail-item="(item) => (activeItemId = item?.id ?? null)"
 		@select-credential="handleSelectCredential"
+		@credential-dropdown-open="handleCredentialDropdownOpen"
+		@first-credential-connect="handleFirstCredentialConnect"
+		@new-credential-connect="handleNewCredentialConnect"
 		@connect="handleConnect"
 		@save="handleSave"
 		@disconnect="handleDisconnect"

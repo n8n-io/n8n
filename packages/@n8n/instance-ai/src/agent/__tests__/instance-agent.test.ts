@@ -12,6 +12,7 @@ const mockAgentInstances: Array<{
 	telemetry: Mock;
 	workspace: Mock;
 	thinking: Mock;
+	mcpConnectionFailures: Mock;
 }> = [];
 
 const mockMemoryBuilder = {
@@ -34,6 +35,7 @@ vi.mock('@n8n/agents', () => ({
 		this.telemetry = vi.fn().mockReturnThis();
 		this.workspace = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
+		this.mcpConnectionFailures = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Memory: vi.fn().mockImplementation(function Memory() {
@@ -107,9 +109,10 @@ const getSystemPrompt = getSystemPromptImport as unknown as Mock;
 
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
+	connectionFailures: Array<{ server: { name: string }; error: string }> = [],
 ) {
 	return {
-		getRegularTools: vi.fn().mockResolvedValue(regularTools),
+		getRegularTools: vi.fn().mockResolvedValue({ tools: regularTools, connectionFailures }),
 		disconnect: vi.fn().mockResolvedValue(undefined),
 	};
 }
@@ -179,8 +182,12 @@ describe('createInstanceAgent', () => {
 
 		expect(Agent).toHaveBeenCalledTimes(2);
 		const attachedTools = getAttachedTools();
+		const deferredTools = getDeferredTools();
 		const secondRunAttachedTools = getAttachedTools(1);
-		expect(attachedTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
+		expect(attachedTools['create-tasks-run-1']).toBeUndefined();
+		expect(deferredTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
+		expect(attachedTools['evals-run-1']).toBeUndefined();
+		expect(deferredTools['evals-run-1']).toMatchObject({ name: 'evals-run-1' });
 		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
 		expect(attachedTools['build-workflow-run-1']).toMatchObject({
@@ -555,7 +562,7 @@ describe('createInstanceAgent', () => {
 		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
 	});
 
-	it('keeps evals always loaded so user-requested eval setup can route directly', async () => {
+	it('defers evals behind tool search so the first prompt stays smaller', async () => {
 		const memoryConfig = {} as never;
 
 		await createInstanceAgent({
@@ -576,10 +583,10 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		expect(attachedTools['evals-evals-test']).toMatchObject({
+		expect(attachedTools['evals-evals-test']).toBeUndefined();
+		expect(deferredTools['evals-evals-test']).toMatchObject({
 			name: 'evals-evals-test',
 		});
-		expect(deferredTools['evals-evals-test']).toBeUndefined();
 	});
 
 	it('configures observational memory on the Memory builder when provided', async () => {
@@ -633,6 +640,7 @@ describe('createInstanceAgent', () => {
 
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
+			effort: 'medium',
 		});
 	});
 
@@ -654,5 +662,47 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
+
+	it('reports MCP connection failures to the SDK agent so the runtime can inject a model note', async () => {
+		const failures = [
+			{ server: { name: 'dead' }, error: 'fetch failed' },
+			{ server: { name: 'also_dead' }, error: 'boom' },
+		];
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'mcp-failure-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'mcp-failure-run' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map(), failures),
+		} as never);
+
+		expect(mockAgentInstances[0]?.mcpConnectionFailures).toHaveBeenCalledWith([
+			{ server: 'dead', error: 'fetch failed' },
+			{ server: 'also_dead', error: 'boom' },
+		]);
+	});
+
+	it('does not report MCP connection failures when the manager has none', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'no-mcp-failure-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'no-mcp-failure-run' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.mcpConnectionFailures).not.toHaveBeenCalled();
 	});
 });

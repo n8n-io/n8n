@@ -71,17 +71,29 @@ const classes = computed(() => ({
 }));
 
 const isExecuteNodeVisible = computed(() => {
+	if (props.readOnly && !props.canExecute) {
+		return false;
+	}
+
+	// The agent node is a regular executable main-flow node (not a configuration
+	// sub-node), so it always offers execute.
+	if (render.value.type === CanvasNodeRenderType.Agent) {
+		return true;
+	}
+
 	return (
-		(!props.readOnly || props.canExecute) &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
 		(!render.value.options.configuration || isToolNode.value)
 	);
 });
 
-const isDisableNodeVisible = computed(() => {
-	return !props.readOnly && render.value.type === CanvasNodeRenderType.Default;
-});
+const isDisableNodeVisible = computed(
+	() =>
+		!props.readOnly &&
+		(render.value.type === CanvasNodeRenderType.Default ||
+			render.value.type === CanvasNodeRenderType.Agent),
+);
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);
 

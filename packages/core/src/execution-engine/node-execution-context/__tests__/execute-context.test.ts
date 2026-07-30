@@ -455,7 +455,7 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
 				'exec-1-0',
@@ -466,9 +466,11 @@ describe('ExecuteContext', () => {
 					workflowId: 'wf-id',
 					workflowName: 'My workflow',
 					callingNodeName: node.name,
+					callingNodeId: node.id,
 					inputData: [{ json: { test: 'data' } }],
 					inputDataScope: 'item',
 					exposeWorkflowData: false,
+					hasCallerSessionId: false,
 					nodes: [
 						{ name: node.name, type: node.type },
 						{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
@@ -491,7 +493,7 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
 				'exec-1-0',
@@ -539,7 +541,7 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
 				'exec-1-1',
@@ -583,7 +585,7 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
 				'exec-1-0',
@@ -630,7 +632,7 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(multiBranchAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
 				'exec-1-0',
@@ -677,7 +679,7 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(outOfRangeAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
 				'exec-1-5',

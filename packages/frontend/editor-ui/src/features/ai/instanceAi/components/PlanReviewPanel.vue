@@ -124,7 +124,7 @@ function handleDeny() {
 <template>
 	<CollapsibleRoot
 		v-model:open="isExpanded"
-		:class="$style.root"
+		:class="[$style.root, showActions && $style.awaitingInput]"
 		:aria-busy="isShimmering ? 'true' : undefined"
 		:data-loading="isShimmering ? 'true' : undefined"
 		data-test-id="instance-ai-plan-review"
@@ -274,6 +274,12 @@ function handleDeny() {
 	overflow: hidden;
 	background-color: var(--color--background--light-3);
 	max-width: 90%;
+}
+
+// Highlight that the plan is waiting for the user's review; read-only /
+// resolved / building cards keep the regular border.
+.awaitingInput {
+	border: 2px solid var(--color--primary);
 }
 
 .expiredHint {
