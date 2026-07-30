@@ -668,27 +668,13 @@ describe('update-workflow MCP tool', () => {
 
 			describe('a submitted group overlapping an existing one', () => {
 				const buildWorkflowWithGroup = () =>
-					Object.assign(new WorkflowEntity(), {
-						id: 'wf-1',
-						name: 'Existing',
-						settings: { availableInMCP: true },
-						nodes: [
-							makeNode({ id: 'trigger', name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }),
-							makeNode({ id: 'a', name: 'A', position: [200, 0] }),
-							makeNode({ id: 'b', name: 'B', position: [400, 0] }),
-						],
-						connections: {
-							Trigger: { main: [[{ node: 'A', type: 'main', index: 0 }]] },
-							A: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
-						} as IConnections,
+					Object.assign(buildWorkflowWithTrigger(), {
 						nodeGroups: [{ id: 'g1', name: 'Existing group', nodeIds: ['a', 'b'] }],
 					});
 
 				test('is skipped without taking the existing group down with it', async () => {
-					// The validator flags both sides of an overlap: the new group for
-					// belonging to multiple groups, the existing one for holding nodes
-					// already grouped. Only the submitted one may go — the operation was
-					// rejected, so its collateral damage must be rejected too.
+					// The validator flags both sides of an overlap; only the submitted one
+					// may go, since the operation that caused it was rejected.
 					findWorkflowMock.mockResolvedValue(buildWorkflowWithGroup());
 
 					const result = await callHandler(

@@ -473,10 +473,18 @@ describe('validateWorkflowStructure', () => {
 	});
 });
 
-describe('validateWorkflowNodeGroups', () => {
-	const makeNode = (id: string) =>
-		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+// Shared by both node-group suites: the connection fixtures below key off the
+// `Node <id>` naming, so the two must stay defined together.
+const makeNode = (id: string) =>
+	({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+const regularNodeType = { group: ['transform'] } as never;
+// Two nodes connected n1 → n2 form a groupable chain.
+const connectedNodes = [makeNode('n1'), makeNode('n2')];
+const chainConnections = {
+	'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
+} as never;
 
+describe('validateWorkflowNodeGroups', () => {
 	it('should pass when nodeGroups is undefined', () => {
 		expect(() =>
 			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }, null),
@@ -584,12 +592,8 @@ describe('validateWorkflowNodeGroups', () => {
 
 	describe('full validation', () => {
 		const triggerType = { group: ['trigger'] } as never;
-		const regularType = { group: ['transform'] } as never;
-		// Two nodes connected n1 → n2 form a groupable chain.
-		const connectedNodes = [makeNode('n1'), makeNode('n2')];
-		const connections = {
-			'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
-		} as never;
+		const regularType = regularNodeType;
+		const connections = chainConnections;
 
 		it('passes for a valid connected group', () => {
 			expect(() =>
@@ -691,9 +695,6 @@ describe('validateWorkflowNodeGroups', () => {
 });
 
 describe('dropInvalidNodeGroups', () => {
-	const makeNode = (id: string) =>
-		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
-
 	it('leaves a valid workflow untouched and reports nothing', () => {
 		const workflow = {
 			nodes: [makeNode('n1'), makeNode('n2')],
@@ -725,17 +726,15 @@ describe('dropInvalidNodeGroups', () => {
 		// first for holding a node that now belongs elsewhere. A caller that can
 		// only blame one of them must be able to drop just that one.
 		const buildOverlapping = () => ({
-			nodes: [makeNode('n1'), makeNode('n2')],
-			connections: {
-				'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
-			} as never,
+			nodes: connectedNodes,
+			connections: chainConnections,
 			nodeGroups: [
 				{ id: 'g1', name: 'First', nodeIds: ['n1', 'n2'] },
 				{ id: 'g2', name: 'Second', nodeIds: ['n1'] },
 			],
 		});
 
-		const regularType = { group: ['transform'] } as never;
+		const regularType = regularNodeType;
 
 		it('drops only the matching groups and reports only those', () => {
 			const workflow = buildOverlapping();
