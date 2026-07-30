@@ -130,8 +130,7 @@ export class ErrorReporter {
 			const { executionId } = options ?? {};
 			const context = executionId ? ` (execution ${executionId})` : '';
 
-			// A cause chain can loop back on itself, e.g. an axios error re-wrapped
-			// by a node error that is itself the cause further down the chain.
+			// Prevent infinite loops in cyclic cause chains.
 			const seen = new Set<Error>();
 
 			do {
