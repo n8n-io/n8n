@@ -139,6 +139,7 @@ async function onUpgradeClick() {
 		:name="modalName"
 		width="560px"
 		:center="false"
+		:overlay-class="$style.blurredOverlay"
 		:event-bus="modalBus"
 		:show-close="false"
 		:close-on-click-modal="false"
@@ -482,10 +483,8 @@ async function onUpgradeClick() {
 
 .statCards {
 	display: flex;
+	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--md);
-	border: var(--border);
-	border-radius: var(--radius--sm);
-	overflow: hidden;
 }
 
 .statCard {
@@ -495,11 +494,9 @@ async function onUpgradeClick() {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--md) var(--spacing--xs);
+	border-radius: var(--radius--sm);
+	background: var(--background--subtle);
 	text-align: center;
-
-	& + & {
-		border-left: var(--border);
-	}
 }
 
 .statIconTile {
@@ -508,10 +505,15 @@ async function onUpgradeClick() {
 	justify-content: center;
 	width: var(--spacing--xl);
 	height: var(--spacing--xl);
-	margin: 0 auto;
-	border-radius: var(--radius--lg);
-	background: var(--background--subtle);
+	margin: 0 auto var(--spacing--4xs);
+	border-radius: var(--radius--xs);
+	border: var(--border-width) var(--border-style) var(--border-color--subtle);
+	background: var(--background--surface);
 	color: var(--icon-color);
+}
+
+.blurredOverlay {
+	backdrop-filter: blur(4px);
 }
 
 .calloutTitle {
