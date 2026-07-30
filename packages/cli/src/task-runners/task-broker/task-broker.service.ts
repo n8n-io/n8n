@@ -128,15 +128,21 @@ export class TaskBroker {
 		});
 	}
 
-	expireTasks() {
-		const now = process.hrtime.bigint();
+	private discardOffers(shouldDiscard: (offer: TaskOffer) => boolean) {
 		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
-			const offer = this.pendingTaskOffers[i];
-			if (offer.validFor === -1) continue; // non-expiring offer
-			if (offer.validUntil < now) {
+			if (shouldDiscard(this.pendingTaskOffers[i])) {
 				this.pendingTaskOffers.splice(i, 1);
 			}
 		}
+	}
+
+	expireTasks() {
+		const now = process.hrtime.bigint();
+		this.discardOffers(({ validFor, validUntil }) => validFor !== -1 && validUntil < now);
+	}
+
+	private discardOffersFrom(runnerId: TaskRunner['id']) {
+		this.discardOffers((offer) => offer.runnerId === runnerId);
 	}
 
 	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
@@ -147,12 +153,7 @@ export class TaskBroker {
 	deregisterRunner(runnerId: string, error: Error) {
 		this.knownRunners.delete(runnerId);
 
-		// Remove any pending offers
-		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
-			if (this.pendingTaskOffers[i].runnerId === runnerId) {
-				this.pendingTaskOffers.splice(i, 1);
-			}
-		}
+		this.discardOffersFrom(runnerId);
 
 		// Fail any tasks
 		for (const task of this.tasks.values()) {
