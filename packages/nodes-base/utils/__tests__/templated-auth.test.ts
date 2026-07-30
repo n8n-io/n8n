@@ -1,6 +1,6 @@
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { resolveTemplatedAuth } from '../templated-auth';
+import { applyTemplatedAuth, resolveTemplatedAuth } from '../templated-auth';
 
 const credentialData = (
 	template: object,
@@ -141,6 +141,14 @@ describe('resolveTemplatedAuth', () => {
 			expect(result.headers).toEqual({ Authorization: 'Key secret' });
 		});
 
+		it('should omit an entry before resolving its other missing placeholders', () => {
+			const result = resolveTemplatedAuth(
+				credentialData({ headers: { 'X-Scope': '{{org}}:{{api_key}}' } }, {}, defs),
+			);
+
+			expect(result.headers).toEqual({});
+		});
+
 		it('should still fail closed for empty required placeholders', () => {
 			expect(() =>
 				resolveTemplatedAuth(
@@ -158,5 +166,26 @@ describe('resolveTemplatedAuth', () => {
 				}),
 			).toThrow('No value set for placeholder {{org}}');
 		});
+	});
+});
+
+describe('applyTemplatedAuth', () => {
+	const credentials = credentialData({ body: { token: '{{api_key}}' } }, { api_key: 'secret' });
+
+	it('should merge a body template into an object body', () => {
+		const requestOptions = { body: { payload: true } };
+
+		applyTemplatedAuth(credentials, requestOptions);
+
+		expect(requestOptions.body).toEqual({ payload: true, token: 'secret' });
+	});
+
+	it.each([
+		['raw', 'payload'],
+		['binary', Buffer.from('payload')],
+	])('should reject a %s request body', (_, body) => {
+		expect(() => applyTemplatedAuth(credentials, { body })).toThrow(
+			'Simplified Custom Auth body templates cannot be applied to non-object request bodies',
+		);
 	});
 });

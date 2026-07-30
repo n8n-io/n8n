@@ -1,3 +1,4 @@
+import isPlainObject from 'lodash/isPlainObject';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 
@@ -17,6 +18,14 @@ type TemplatedAuthRequestOptions = {
 
 /** A resolved string that must be dropped from the output (empty optional). */
 const OMIT = Symbol('omit');
+
+function isEmptyPlaceholderValue(value: unknown): value is null | undefined | '' {
+	return value === undefined || value === null || value === '';
+}
+
+function isPlainDataObject(value: unknown): value is IDataObject {
+	return isPlainObject(value);
+}
 
 /** Marker names whose placeholder def declares `optional: true`. */
 function optionalMarkerNames(credentialData: ICredentialDataDecryptedObject): Set<string> {
@@ -62,14 +71,14 @@ export function resolveTemplatedAuth(
 
 	const resolve = <T>(part: T): T | typeof OMIT => {
 		if (typeof part === 'string') {
-			let omit = false;
+			const shouldOmit = [...part.matchAll(PLACEHOLDER_MARKER_REGEX)].some(
+				([, name]) => isEmptyPlaceholderValue(values[name]) && optionalMarkers.has(name),
+			);
+			if (shouldOmit) return OMIT;
+
 			const resolved = part.replace(PLACEHOLDER_MARKER_REGEX, (marker, name: string) => {
 				const value = values[name];
-				if (value === undefined || value === null || value === '') {
-					if (optionalMarkers.has(name)) {
-						omit = true;
-						return '';
-					}
+				if (isEmptyPlaceholderValue(value)) {
 					throw new UserError(
 						`No value set for placeholder ${marker} of the Simplified Custom Auth credential`,
 					);
@@ -81,7 +90,7 @@ export function resolveTemplatedAuth(
 				}
 				return String(value);
 			});
-			return omit ? OMIT : (resolved as T);
+			return resolved as T;
 		}
 		if (Array.isArray(part)) {
 			return (part as unknown[])
@@ -116,7 +125,13 @@ export function applyTemplatedAuth(
 		requestOptions.headers = { ...requestOptions.headers, ...templatedAuth.headers };
 	}
 	if (templatedAuth.body) {
-		requestOptions.body = { ...(requestOptions.body as IDataObject), ...templatedAuth.body };
+		const existingBody = requestOptions.body;
+		if (existingBody !== undefined && !isPlainDataObject(existingBody)) {
+			throw new UserError(
+				'Simplified Custom Auth body templates cannot be applied to non-object request bodies',
+			);
+		}
+		requestOptions.body = { ...existingBody, ...templatedAuth.body };
 	}
 	if (templatedAuth.qs) {
 		requestOptions.qs = { ...requestOptions.qs, ...templatedAuth.qs };
