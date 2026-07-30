@@ -3,12 +3,13 @@ import { McpServerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
-import type {
-	ServerRequest,
-	ServerNotification,
-	JSONRPCMessage,
+import {
+	ListToolsRequestSchema,
+	CallToolRequestSchema,
+	type ServerRequest,
+	type ServerNotification,
+	type JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';
@@ -635,9 +636,11 @@ export class McpServer {
 		);
 
 		server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-			const callId = extra.requestId
-				? `${extra.sessionId}_${extra.requestId}`
-				: (extra.sessionId ?? '');
+			if (!extra.sessionId) {
+				throw new OperationalError('Require a sessionId for the tool call');
+			}
+
+			const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
 
 			// Successfully dispatched, so we can clear the backstop now.
 			this.clearDispatchBackstop(callId);
@@ -645,9 +648,6 @@ export class McpServer {
 			try {
 				if (!request.params?.name || !request.params?.arguments) {
 					throw new OperationalError('Require a name and arguments for the tool call');
-				}
-				if (!extra.sessionId) {
-					throw new OperationalError('Require a sessionId for the tool call');
 				}
 
 				const toolName = request.params.name;
