@@ -27,6 +27,11 @@ const STUCK_LOCK_WARN_AFTER_PASSES = 3;
  * held and let the periodic sweep retry it after the lock is released —
  * nothing ever waits on or bypasses a held lock. Convergence is guaranteed by
  * the reconciliation loop, not by any single pass.
+ *
+ * The one exception is shutdown: no sweep runs afterwards, so a workflow whose
+ * lock is held at that instant keeps its triggers until the process exits.
+ * Acceptable — exit reclaims all in-memory registrations, and broker-side
+ * trigger state self-heals through its own session timeouts.
  */
 @Service()
 export class PublishedWorkflowTriggerDeactivator {
@@ -112,6 +117,7 @@ export class PublishedWorkflowTriggerDeactivator {
 					this.trackSkippedWhileLocked(workflowId);
 					continue;
 				}
+				this.consecutiveLockSkipsByWorkflowId.delete(workflowId);
 				const result = await this.lifecycleLock.runExclusive(workflowId, async () => {
 					if (this.instanceSettings.isLeader) return false;
 					return await this.activeWorkflowTriggers.remove(workflowId);
@@ -119,7 +125,6 @@ export class PublishedWorkflowTriggerDeactivator {
 				if (result) {
 					deactivatedWorkflows.push(workflowId);
 				}
-				this.consecutiveLockSkipsByWorkflowId.delete(workflowId);
 			} catch (error) {
 				this.errorReporter.error(error, { shouldBeLogged: true });
 			}

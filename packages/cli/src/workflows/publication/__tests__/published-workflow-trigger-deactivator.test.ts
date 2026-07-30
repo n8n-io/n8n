@@ -264,6 +264,27 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 				expect(logger.warn).toHaveBeenCalled();
 			});
 
+			test('an unlocked pass resets the streak even when the teardown itself fails', async () => {
+				// The warn claims the LOCK was held for N consecutive passes — a pass
+				// that found the lock free must break the streak, whatever remove() did.
+				activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-1']);
+				const deactivator = createDeactivator();
+
+				lifecycleLock.isLocked.mockReturnValue(true);
+				await deactivator.sweepGhostTriggers();
+				await deactivator.sweepGhostTriggers();
+
+				// Lock free, but the close itself fails.
+				lifecycleLock.isLocked.mockReturnValue(false);
+				activeWorkflowTriggers.remove.mockRejectedValueOnce(new Error('closeFunction failed'));
+				await deactivator.sweepGhostTriggers();
+
+				lifecycleLock.isLocked.mockReturnValue(true);
+				await deactivator.sweepGhostTriggers();
+
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
 			test('resets the stuck-lock tracking once the workflow is swept', async () => {
 				activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-flaky']);
 				const deactivator = createDeactivator();

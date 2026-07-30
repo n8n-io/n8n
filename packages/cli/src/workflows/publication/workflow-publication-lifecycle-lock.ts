@@ -13,15 +13,16 @@ interface WorkflowLockState {
  * leave a trigger running on a demoted instance.
  *
  * The lock is keyed by workflow id rather than instance-global so unrelated
- * workflows never block each other — teardown can deactivate every workflow with
- * no in-flight record immediately and wait only on the ones being processed.
+ * workflows never block each other. Teardown never queues on a held lock at
+ * all: it checks {@link isLocked} and skips, relying on the periodic sweep to
+ * retry after release.
  *
  * Synchronization is local — only the leader processes the outbox — so in-process
  * locks are sufficient; no distributed lock is needed.
  *
- * Hand-rolled rather than using a mutex library: we need per-workflow keyed locks,
- * and {@link runExclusiveOrTimeout} runs `fn` anyway (without the lock) on timeout
- * instead of rejecting — off-the-shelf mutexes don't offer this.
+ * Hand-rolled rather than using a mutex library: per-workflow keyed FIFO locks
+ * with cheap lock-state visibility are the entire requirement — a dependency
+ * would cost more than these few lines.
  */
 @Service()
 export class WorkflowPublicationLifecycleLock {
