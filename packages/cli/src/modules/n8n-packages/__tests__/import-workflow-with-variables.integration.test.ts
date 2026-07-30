@@ -448,6 +448,41 @@ describe('workflow package import — with variables', () => {
 			expect(layout).toHaveLength(2);
 		});
 
+		it('carries the package value into the personal project when no projectId is given', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+
+			const result = await importPackage({
+				user: owner,
+				packageBuffer,
+				variableMissingMode: 'create-with-value',
+			});
+
+			expect(result.variables).toEqual({
+				matched: [],
+				missing: [],
+				created: ['API_URL'],
+				stubbed: [],
+			});
+			const personalProject = await getPersonalProject(owner);
+			const layout = await variableLayout();
+			expect(layout).toEqual(
+				expect.arrayContaining([
+					{ key: 'API_URL', scope: sourceProject.id, value: 'https://source.example.com' },
+					{ key: 'API_URL', scope: personalProject.id, value: 'https://source.example.com' },
+				]),
+			);
+			expect(layout).toHaveLength(2);
+		});
+
 		it('rejects global placement for a user without the global variable:create scope', async () => {
 			const owner = await createOwner();
 			const member = await createMember();
