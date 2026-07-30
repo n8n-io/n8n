@@ -17,17 +17,22 @@ import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise
 import type {
 	Workflow,
 	INode,
+	INodeType,
 	IDataObject,
 	IWebhookResponseData,
 	IN8nHttpFullResponse,
 	IWorkflowBase,
 	IRunExecutionData,
 	IExecuteData,
+	IWebhookData,
+	IWorkflowExecuteAdditionalData,
+	CredentialCheckResult,
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 	NodeOperationError,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
@@ -42,9 +47,16 @@ import {
 	setupResponseNodePromise,
 	prepareExecutionData,
 	handleHostedChatResponse,
+	executeWebhook,
 	_privateGetWebhookErrorMessage,
 } from '../webhook-helpers';
-import type { IWebhookResponseCallbackData } from '../webhook.types';
+import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
+import type { Project } from '@n8n/db';
+import { AuthService } from '@/auth/auth.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WebhookService } from '../webhook.service';
 
 vi.mock('stream/promises', () => ({
 	finished: vi.fn(),
@@ -932,5 +944,174 @@ describe('getWebhookErrorMessage', () => {
 		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
 			'Error: Workflow could not be started',
 		);
+	});
+});
+
+describe('executeWebhook credential-status gate', () => {
+	const ownershipService = mockInstance(OwnershipService);
+	const webhookService = mockInstance(WebhookService);
+	mockInstance(AuthService);
+	mockInstance(WorkflowStatisticsService);
+
+	const WORKFLOW_ID = 'wf-1';
+
+	const missingGateResult: CredentialCheckResult = {
+		readyToExecute: false,
+		credentials: [
+			{
+				credentialId: 'cred-1',
+				credentialName: 'My Gmail',
+				credentialType: 'gmailOAuth2',
+				resolverId: 'resolver-1',
+				status: 'missing',
+				authorizationUrl:
+					'https://n8n.test/rest/credentials/cred-1/authorize?token=signed-connect-token',
+			},
+		],
+	};
+
+	const readyGateResult: CredentialCheckResult = {
+		readyToExecute: true,
+		credentials: [
+			{
+				credentialId: 'cred-1',
+				credentialName: 'My Gmail',
+				credentialType: 'gmailOAuth2',
+				resolverId: 'resolver-1',
+				status: 'configured',
+			},
+		],
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(mock<Project>({ id: 'project-1' }));
+		// The gate runs *after* the webhook node executes, so `runWebhook` must resolve.
+		// `noWebhookResponse` lets execution return before reaching the workflow runner,
+		// keeping the test focused on the gate itself.
+		webhookService.runWebhook.mockResolvedValue({ noWebhookResponse: true });
+	});
+
+	/**
+	 * Drives `executeWebhook` for a Webhook node with the given authentication mode and
+	 * wires the dynamic-credentials credential-check proxy to return `gateResult`.
+	 * Returns the spied proxy and the captured `responseCallback`.
+	 */
+	const runGate = async (options: {
+		authentication: string;
+		gateResult?: CredentialCheckResult;
+	}) => {
+		const checkCredentialStatus = vi.fn().mockResolvedValue(options.gateResult);
+
+		const additionalData = {
+			'dynamic-credentials': { credentialCheckProxy: { checkCredentialStatus } },
+			encryptedRunnerIdentity: 'encrypted-runner-identity',
+		} as unknown as IWorkflowExecuteAdditionalData;
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		const workflowStartNode = mock<INode>({
+			name: 'Webhook',
+			type: WEBHOOK_NODE_TYPE,
+			typeVersion: 2,
+			parameters: { authentication: options.authentication },
+		});
+
+		// Force a valid `onReceived` response mode; the deep mock would otherwise return undefined.
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'webhook' } })),
+			},
+			expression: {
+				getSimpleParameterValue: vi.fn().mockReturnValue('onReceived'),
+				getComplexParameterValue: vi.fn().mockReturnValue('firstEntryJson'),
+			},
+		});
+
+		const webhookData = {
+			webhookDescription: { name: 'default' },
+			workflowId: WORKFLOW_ID,
+		} as unknown as IWebhookData;
+
+		const workflowData = mock<IWorkflowBase>({ id: WORKFLOW_ID });
+		const req = mock<WebhookRequest>({ method: 'POST', contentType: undefined });
+		const res = mock<express.Response>({ headersSent: false });
+		const responseCallback = vi.fn();
+
+		await executeWebhook(
+			workflow,
+			webhookData,
+			workflowData,
+			workflowStartNode,
+			'manual',
+			undefined,
+			undefined,
+			undefined,
+			req,
+			res,
+			responseCallback,
+		);
+
+		return { checkCredentialStatus, responseCallback };
+	};
+
+	it('responds 428 with the missing-credential list and signed connect links when the caller has unconnected credentials', async () => {
+		const { checkCredentialStatus, responseCallback } = await runGate({
+			authentication: 'n8nOAuth2',
+			gateResult: missingGateResult,
+		});
+
+		// Checked using the established identity and the workflow being called.
+		expect(checkCredentialStatus).toHaveBeenCalledWith(WORKFLOW_ID, {
+			credentials: 'encrypted-runner-identity',
+		});
+
+		expect(responseCallback).toHaveBeenCalledWith(null, {
+			data: missingGateResult,
+			responseCode: 428,
+		});
+
+		// The 428 body carries a valid signed connect link for each missing credential.
+		const [, callbackData] = responseCallback.mock.calls[0] as [
+			unknown,
+			IWebhookResponseCallbackData,
+		];
+		expect(callbackData.data).toBe(missingGateResult);
+		expect(missingGateResult.credentials[0].authorizationUrl).toContain(
+			'/credentials/cred-1/authorize?token=',
+		);
+	});
+
+	it('proceeds without a 428 when all resolvable credentials are connected', async () => {
+		const { checkCredentialStatus, responseCallback } = await runGate({
+			authentication: 'n8nOAuth2',
+			gateResult: readyGateResult,
+		});
+
+		expect(checkCredentialStatus).toHaveBeenCalledTimes(1);
+		expect(responseCallback).not.toHaveBeenCalledWith(
+			null,
+			expect.objectContaining({ responseCode: 428 }),
+		);
+		// Execution continued past the gate to the normal webhook response.
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	it('does not gate webhooks that do not establish a triggering identity', async () => {
+		const { checkCredentialStatus, responseCallback } = await runGate({
+			authentication: 'none',
+			gateResult: missingGateResult,
+		});
+
+		expect(checkCredentialStatus).not.toHaveBeenCalled();
+		expect(responseCallback).not.toHaveBeenCalledWith(
+			null,
+			expect.objectContaining({ responseCode: 428 }),
+		);
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
 	});
 });
