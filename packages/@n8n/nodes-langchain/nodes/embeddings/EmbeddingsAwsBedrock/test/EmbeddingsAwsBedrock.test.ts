@@ -142,6 +142,48 @@ describe('EmbeddingsAwsBedrock', () => {
 		);
 	});
 
+	it('keeps the credential region for a non-ARN model (including region-prefixed profile IDs)', async () => {
+		mockedResolveAwsCredentials.mockResolvedValue({
+			region: 'us-east-1',
+			credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+		});
+		const node = new EmbeddingsAwsBedrock();
+		await node.supplyData.call(mockContext('eu.cohere.embed-v4:0'), 0);
+		expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
+			expect.objectContaining({ region: 'us-east-1' }),
+		);
+	});
+
+	it('overrides the credential region with the region from a model ARN', async () => {
+		mockedResolveAwsCredentials.mockResolvedValue({
+			region: 'us-east-1',
+			credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+		});
+		const node = new EmbeddingsAwsBedrock();
+		await node.supplyData.call(
+			mockContext('arn:aws:bedrock:eu-west-3:123456789012:inference-profile/eu.cohere.embed-v4:0'),
+			0,
+		);
+		expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
+			expect.objectContaining({ region: 'eu-west-3' }),
+		);
+	});
+
+	it('throws when the ARN region is not supported', async () => {
+		mockedResolveAwsCredentials.mockResolvedValue({
+			region: 'us-east-1',
+			credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+		});
+		const node = new EmbeddingsAwsBedrock();
+		await expect(
+			node.supplyData.call(
+				mockContext('arn:aws:bedrock:not-a-region:123456789012:inference-profile/x'),
+				0,
+			),
+		).rejects.toThrow();
+		expect(MockedBedrockRuntimeClient).not.toHaveBeenCalled();
+	});
+
 	describe('options', () => {
 		beforeEach(() => {
 			mockedResolveAwsCredentials.mockResolvedValue({
@@ -323,6 +365,7 @@ describe('EmbeddingsAwsBedrock', () => {
 				getNodeParameter: vi.fn().mockReturnValue(authentication),
 				getCredentials: vi.fn().mockResolvedValue({ region: 'eu-central-1' }),
 				helpers: { httpRequestWithAuthentication: httpMock },
+				logger: { warn: vi.fn() },
 			}) as unknown as ILoadOptionsFunctions;
 
 		const httpMockFor = (
