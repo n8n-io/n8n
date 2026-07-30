@@ -40,7 +40,13 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 					},
 				],
 				indices: [
-					{ name: 'idx_workflow_step_execution_execution_id', columnNames: ['execution_id'] },
+					// Composite: steps are looked up per execution, usually narrowed to
+					// specific nodes. The leading column also serves execution-only
+					// lookups and the FK's cascading delete.
+					{
+						name: 'idx_workflow_step_execution_execution_id_node_id',
+						columnNames: ['execution_id', 'node_id'],
+					},
 				],
 				foreignKeys: [
 					{

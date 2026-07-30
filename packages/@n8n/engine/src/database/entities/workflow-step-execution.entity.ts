@@ -14,7 +14,7 @@ import type { StepError } from '../../execution/step-store';
 import { generateId } from '../generate-id';
 
 @Entity('workflow_step_execution')
-@Index('idx_workflow_step_execution_execution_id', ['executionId'])
+@Index('idx_workflow_step_execution_execution_id_node_id', ['executionId', 'nodeId'])
 export class WorkflowStepExecution {
 	@PrimaryColumn('uuid')
 	id!: string;
