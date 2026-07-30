@@ -27,6 +27,7 @@ import {
 	classifyScenarioExecutionError,
 	extractErrorMessage,
 	MAX_EXEC_ATTEMPTS,
+	PROVIDER_OUTAGE_ROOT_CAUSE,
 	shouldRetryScenarioExecution,
 } from '../harness/transient-error';
 import { BUILD_ONLY_SCENARIO_NAME, type DatasetExampleInputs } from '../langsmith/dataset-sync';
@@ -234,10 +235,16 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				passed: false,
 				score: 0,
 				reasoning: `Build failed: ${build.error ?? 'unknown'}`,
-				// Seeding and transport failures are harness problems, not agent build
-				// failures — keep them out of the agent's build_failure bucket.
+				// Seeding, transport and provider failures are harness/infra problems,
+				// not agent build failures — keep them out of the build_failure bucket,
+				// which lang-tracer maps straight to `builder_issue`.
 				failureCategory:
 					build.seedingFailed || build.transportFailure ? 'framework_issue' : 'build_failure',
+				// Pinned marker so lang-tracer attributes an outage to infra instead of
+				// recording it as a builder regression (TRUST-374).
+				...(build.providerOutage
+					? { rootCause: `${PROVIDER_OUTAGE_ROOT_CAUSE}: ${build.providerOutage}` }
+					: {}),
 				execErrors: build.error ? [build.error] : [],
 				buildDurationMs,
 				...buildSpendFields,

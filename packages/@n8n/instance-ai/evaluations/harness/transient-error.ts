@@ -91,6 +91,111 @@ export function classifyScenarioExecutionError(errorMessage: string): {
 	};
 }
 
+// ---------------------------------------------------------------------------
+// Provider outages (TRUST-374)
+//
+// A model-provider 5xx/529 during the BUILD is upstream of the n8n instance:
+// the lane stays healthy and the socket never breaks, so none of the checks
+// above see it. Left unclassified it reads as "the agent built it wrong" — and
+// because it fails in seconds rather than minutes, a 15-minute outage let each
+// runner shred its remaining queue at ~60x normal speed (sweep #57: 124 units
+// scored flat zero, with no product regression behind them).
+// ---------------------------------------------------------------------------
+
+/** Statuses a model provider returns when it is overloaded or briefly broken.
+ *  429 counts: provider-side throttling is not a builder defect either. */
+const PROVIDER_OUTAGE_STATUSES = new Set([429, 500, 502, 503, 529]);
+
+/** Shapes that need no corroboration — the ai-sdk error class and Anthropic's
+ *  overload code only appear on a genuine provider failure. */
+const PROVIDER_ERROR_TOKEN = /AI_APICallError|AI_RetryError|overloaded_error/i;
+
+/** Shapes that indicate an outage only once we know the text came from the model
+ *  call. "Internal server error" on its own is far too common to classify from. */
+const TRANSIENT_FAILURE_TOKEN =
+	/\bInternal server error\b|\bOverloaded\b|\bService Unavailable\b|\bBad Gateway\b|\b(?:HTTP|status(?: code)?)\s*[:=]?\s*(?:429|500|502|503|529)\b/i;
+
+/**
+ * Root cause stamped on a build that died on a provider outage. lang-tracer keys
+ * `infra_incomplete` attribution off this exact prefix, so the wording is a
+ * cross-repo contract — same arrangement as `BUDGET_TIMEOUT_ROOT_CAUSE`.
+ */
+export const PROVIDER_OUTAGE_ROOT_CAUSE =
+	'Model provider was unavailable during the build (transient upstream 5xx/429), so the agent produced no output';
+
+/** Max attempts (initial + retries) for a build hitting a provider outage. Kept
+ *  separate from `MAX_BUILD_ATTEMPTS` because each of these retries also waits
+ *  out a backoff, so the two budgets are not interchangeable. */
+export const MAX_PROVIDER_BUILD_ATTEMPTS = 3;
+
+/**
+ * How long to wait BEFORE re-attempting a build that died on a provider outage.
+ * This is a delay between attempts, not a limit on how long a build may take —
+ * the build's own budget (`effectiveTimeoutMs`, 15+ minutes) is untouched.
+ *
+ * Deliberately long relative to the failure itself: a provider 5xx comes back in
+ * ~3 seconds, so instant cross-lane retries just re-hit the same upstream and
+ * the run queue drains at the speed of the outage. Absorbing ~2 minutes locally
+ * is the cheapest defence available, and it costs nothing when the provider is
+ * healthy because none of this runs.
+ */
+export function providerRetryBackoffMs(attempt: number): number {
+	return attempt === 1 ? 30_000 : 90_000;
+}
+
+/** True for error text that only a failing model provider produces. */
+export function isTransientProviderError(message: string): boolean {
+	if (PROVIDER_ERROR_TOKEN.test(message)) return true;
+	// `Agent error:` is summarizeMissingWorkflowError's prefix for run-level error
+	// events — i.e. the agent's own model call blew up. `Tool errors:` is
+	// deliberately excluded: that is the built workflow's own (mocked) HTTP
+	// traffic, and a 5xx there is a real product signal.
+	return /^Agent error:/i.test(message) && TRANSIENT_FAILURE_TOKEN.test(message);
+}
+
+/** Minimal view of a captured SSE event — avoids a cycle back through `types`. */
+interface ErrorEventLike {
+	type: string;
+	data: Record<string, unknown>;
+}
+
+/**
+ * Provider evidence read from the captured event stream. Preferred over the
+ * flattened error text because the agent's `error` events carry the ai-sdk
+ * `statusCode` verbatim, making this a structured check rather than a guess.
+ * Only run-level `error` events count — a `tool-error` carrying an HTTP 500 is
+ * the built workflow's own API call failing.
+ */
+export function providerOutageFromEvents(events: ErrorEventLike[] | undefined): string | undefined {
+	for (const event of events ?? []) {
+		if (event.type !== 'error') continue;
+		const payload = (event.data.payload ?? event.data) as Record<string, unknown>;
+		const status = payload.statusCode;
+		const content = typeof payload.content === 'string' ? payload.content : undefined;
+		if (typeof status === 'number' && PROVIDER_OUTAGE_STATUSES.has(status)) {
+			return `provider HTTP ${String(status)}${content ? `: ${content}` : ''}`;
+		}
+		if (content && PROVIDER_ERROR_TOKEN.test(content)) return content;
+	}
+	return undefined;
+}
+
+/**
+ * Provider-outage evidence for a failed build, structured signal first. Returns
+ * the evidence (for the root cause) or undefined when the failure is a genuine
+ * builder verdict.
+ */
+export function findProviderOutage(build: {
+	success: boolean;
+	error?: string;
+	events?: ErrorEventLike[];
+}): string | undefined {
+	if (build.success) return undefined;
+	const fromEvents = providerOutageFromEvents(build.events);
+	if (fromEvents) return fromEvents;
+	return build.error && isTransientProviderError(build.error) ? build.error : undefined;
+}
+
 /**
  * Eval-DB races abort an execution before any node runs. Two known shapes:
  * `SQLITE_CONSTRAINT: FOREIGN KEY constraint failed` and `Workflow <id> not

@@ -178,6 +178,11 @@ export interface BuildResult {
 	/** Transport-level failure (network error, or the lane unreachable right
 	 *  after failing — e.g. timed out against a dead lane). Routed to `framework_issue`. */
 	transportFailure?: boolean;
+	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
+	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
+	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
+	 *  outage never lands in the builder's baseline (TRUST-374). */
+	providerOutage?: string;
 }
 
 export interface BuildWorkflowConfig {

@@ -2,6 +2,7 @@ import type { CliArgs } from '../cli/args';
 import type { BuildResult } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
+import { PROVIDER_OUTAGE_ROOT_CAUSE } from '../harness/transient-error';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type { BuildOrchestrator, CachedBuild, LaneState } from '../run/build-orchestrator';
 import { createCasePipeline, type CasePipelineDeps } from '../run/case-pipeline';
@@ -239,6 +240,27 @@ describe('createCasePipeline', () => {
 		const output = await pipeline.runRow(rowInputs('happy-path'));
 
 		expect(output.failureCategory).toBe('framework_issue');
+	});
+
+	it('stamps the pinned root cause on a provider-outage build so LangTracer sees infra', async () => {
+		const lane = makeLane();
+		const orchestrator = makeOrchestrator({
+			build: okBuild({
+				success: false,
+				workflowId: undefined,
+				error: 'Agent error: Internal server error; No output generated.',
+				transportFailure: true,
+				providerOutage: 'provider HTTP 529: Overloaded',
+			}),
+			lane,
+			buildDurationMs: 5,
+		});
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output.failureCategory).toBe('framework_issue');
+		expect(output.rootCause).toBe(`${PROVIDER_OUTAGE_ROOT_CAUSE}: provider HTTP 529: Overloaded`);
 	});
 
 	it('scores a build-only sentinel row from the expectation verdicts', async () => {

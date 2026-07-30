@@ -843,6 +843,41 @@ When a scenario fails, the verifier categorizes the root cause:
 
 Suite pass rates typically sit between 40–65%; most failures are `builder_issue` on scenarios that require error handling the agent doesn't produce by default.
 
+### Provider outages are never a builder verdict
+
+A model-provider 5xx/429/529 during the build happens upstream of the n8n
+instance, so the lane stays healthy and nothing looks broken locally — but the
+build fails, and unclassified it reads exactly like "the agent built it wrong".
+A ~15-minute Anthropic outage recorded 124 flat-zero units as a product
+regression in nightly sweep #57 (TRUST-374).
+
+`harness/transient-error.ts` classifies these from the run's `error` events
+(structured `statusCode`), falling back to the flattened `Agent error: …` text.
+A classified outage is:
+
+- **retried** up to `MAX_PROVIDER_BUILD_ATTEMPTS` times, waiting **30s then 90s
+  between attempts**. This is a delay between attempts, not a limit on build
+  duration — the build's own budget (`effectiveTimeoutMs`, 15+ minutes) is
+  untouched. It matters because a provider 5xx returns in ~3 seconds, so instant
+  cross-lane retries re-hit the same upstream and let one runner shred its whole
+  queue at ~60× normal speed;
+- reported as `framework_issue`, never `build_failure` (which LangTracer maps
+  straight to `builder_issue`);
+- stamped with `PROVIDER_OUTAGE_ROOT_CAUSE` on the row's `rootCause`. LangTracer
+  keys `infra_incomplete` attribution off that exact prefix, so the wording is a
+  cross-repo contract — same arrangement as `BUDGET_TIMEOUT_ROOT_CAUSE`;
+- left **ungraded** by the expectation judge: a run that produced no agent output
+  has nothing to grade, so its expectations are recorded as `incomplete` rather
+  than judged against an empty transcript (`build-expectations/select.ts`).
+
+A `Tool errors: …` 5xx is deliberately **not** an outage — that is the built
+workflow's own (mocked) HTTP traffic, which is a real product signal.
+
+Still uncovered: the server-side LLM mock generator shares the same provider, so
+during an outage its failures surface as `_evalMockError` and land in the
+`mock_issue` bucket. Detecting that needs the server to expose the provider
+status.
+
 ## Troubleshooting
 
 **`Wrong username or password` on login.** Your instance has no owner. Run the `rest/e2e/reset` curl from [Quick start](#quick-start) (needs `E2E_TESTS=true` on the server).
