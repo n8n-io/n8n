@@ -19,7 +19,13 @@ describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;
 
 	beforeEach(() => {
-		taskBroker = new TaskBroker(mock(), mock(), mock(), mock());
+		// real timeout values, so flows that arm timers never call setTimeout(NaN)
+		taskBroker = new TaskBroker(
+			mock(),
+			mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskTimeout: 60, taskAcceptTimeout: 2 }),
+			mock(),
+			mock(),
+		);
 		vi.restoreAllMocks();
 	});
 
@@ -127,6 +133,15 @@ describe('TaskBroker', () => {
 	});
 
 	describe('unreachable runners', () => {
+		beforeEach(() => {
+			// fake timers so the matching flows arm no lingering real timers
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
 		const offerFrom = (runnerId: string): TaskOffer => ({
 			offerId: `offer-${runnerId}`,
 			runnerId,
@@ -244,7 +259,12 @@ describe('TaskBroker', () => {
 
 		it('should settle the accept flow gracefully when the runner dies before receiving settings', async () => {
 			const loggerMock = mock<Logger>();
-			taskBroker = new TaskBroker(loggerMock, mock(), mock(), mock());
+			taskBroker = new TaskBroker(
+				loggerMock,
+				mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskTimeout: 60, taskAcceptTimeout: 2 }),
+				mock(),
+				mock(),
+			);
 
 			let isReachable = true;
 			const runnerCallback = vi.fn((message: BrokerMessage.ToRunner.All) => {
@@ -1161,6 +1181,11 @@ describe('TaskBroker', () => {
 	describe('task runner accept timeout', () => {
 		const ACCEPT_TIMEOUT_MS = 2100;
 
+		// a failing assertion must not leak fake timers into later tests
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
 		const offerFor = (runnerId: string, offerId: string): TaskOffer => ({
 			offerId,
 			runnerId,
@@ -1174,7 +1199,6 @@ describe('TaskBroker', () => {
 			const acceptPromise = taskBroker.acceptOffer(offer, request);
 			vi.advanceTimersByTime(ACCEPT_TIMEOUT_MS);
 			await acceptPromise;
-			vi.useRealTimers();
 		};
 
 		it('broker should handle timeout when waiting for acknowledgment of offer accept', async () => {
@@ -1182,7 +1206,7 @@ describe('TaskBroker', () => {
 
 			taskBroker = new TaskBroker(
 				loggerMock,
-				mock<TaskRunnersConfig>({ taskAcceptTimeout: 2 }),
+				mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskAcceptTimeout: 2 }),
 				mock(),
 				mock(),
 			);
@@ -1208,7 +1232,7 @@ describe('TaskBroker', () => {
 
 			taskBroker = new TaskBroker(
 				mock<Logger>(),
-				mock<TaskRunnersConfig>({ taskAcceptTimeout: 2 }),
+				mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskAcceptTimeout: 2 }),
 				mock(),
 				mock(),
 			);
@@ -1242,7 +1266,7 @@ describe('TaskBroker', () => {
 
 			taskBroker = new TaskBroker(
 				mock<Logger>(),
-				mock<TaskRunnersConfig>({ taskAcceptTimeout: 2 }),
+				mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskAcceptTimeout: 2 }),
 				mock(),
 				mock(),
 			);
@@ -1262,7 +1286,7 @@ describe('TaskBroker', () => {
 		it('should stop tracking the acknowledgment that timed out', async () => {
 			taskBroker = new TaskBroker(
 				mock<Logger>(),
-				mock<TaskRunnersConfig>({ taskAcceptTimeout: 2 }),
+				mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskAcceptTimeout: 2 }),
 				mock(),
 				mock(),
 			);
@@ -1283,7 +1307,7 @@ describe('TaskBroker', () => {
 			const loggerMock = mock<Logger>();
 			taskBroker = new TaskBroker(
 				loggerMock,
-				mock<TaskRunnersConfig>({ taskAcceptTimeout: 5 }),
+				mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskAcceptTimeout: 5 }),
 				mock(),
 				mock(),
 			);
@@ -1303,8 +1327,6 @@ describe('TaskBroker', () => {
 			expect(loggerMock.warn).toHaveBeenCalledWith(
 				expect.stringContaining('took too long to acknowledge'),
 			);
-
-			vi.useRealTimers();
 		});
 
 		it('should restart the request expiry window when the runner fails to acknowledge', async () => {
@@ -1343,8 +1365,6 @@ describe('TaskBroker', () => {
 				requestId: 'request1',
 				reason: 'timeout',
 			});
-
-			vi.useRealTimers();
 		});
 
 		it('should stop restarting the expiry window after repeated acknowledgment failures', async () => {
@@ -1379,12 +1399,15 @@ describe('TaskBroker', () => {
 			}
 
 			expect(await timeoutAfterAcceptFailure('offer4')).toBe(previousTimeout);
-
-			vi.useRealTimers();
 		});
 	});
 
 	describe('acceptOffer', () => {
+		// a failing assertion must not leak fake timers into later tests
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
 		const offerFor = (runnerId: string, offerId: string): TaskOffer => ({
 			offerId,
 			runnerId,
@@ -1449,8 +1472,6 @@ describe('TaskBroker', () => {
 
 			// only the task execution timeout remains armed
 			expect(vi.getTimerCount()).toBe(1);
-
-			vi.useRealTimers();
 		});
 
 		it('should reject an acceptance awaiting acknowledgment when its runner deregisters', async () => {
@@ -1482,12 +1503,15 @@ describe('TaskBroker', () => {
 			expect(liveRunnerCallback).toHaveBeenCalledWith(
 				expect.objectContaining({ type: 'broker:taskofferaccept', offerId: 'liveOffer1' }),
 			);
-
-			vi.useRealTimers();
 		});
 	});
 
 	describe('request timeout', () => {
+		// a failing assertion must not leak fake timers into later tests
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
 		it('should time out request and send `broker:requestexpired` message', async () => {
 			vi.useFakeTimers();
 
@@ -1517,8 +1541,6 @@ describe('TaskBroker', () => {
 				requestId: 'request1',
 				reason: 'timeout',
 			});
-
-			vi.useRealTimers();
 		});
 
 		it('should clear timeout on request matched', async () => {
@@ -1566,8 +1588,6 @@ describe('TaskBroker', () => {
 			expect(requesterCallback).not.toHaveBeenCalledWith(
 				expect.objectContaining({ type: 'broker:requestexpired' }),
 			);
-
-			vi.useRealTimers();
 		});
 
 		it('should reset timeout on request deferred', async () => {
@@ -1621,7 +1641,6 @@ describe('TaskBroker', () => {
 			});
 
 			handleTimeoutSpy.mockRestore();
-			vi.useRealTimers();
 		});
 	});
 });
