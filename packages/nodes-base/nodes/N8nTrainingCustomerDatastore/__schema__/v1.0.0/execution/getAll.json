@@ -19,9 +19,6 @@
         "status": {
             "type": "string"
         },
-        "stoppedAt": {
-            "type": "string"
-        },
         "waitTill": {
             "type": "null"
         },
@@ -29,5 +26,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 5
 }
