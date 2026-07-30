@@ -9,6 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+import { sleep } from '@n8n/utils/sleep';
 
 import type { LaneAllocator } from './lane-allocator';
 import { selectAuthorExpectations } from '../build-expectations/select';
@@ -257,8 +258,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		runDebugByThreadId,
 		agentContextByKey,
 	} = deps;
-	const sleep =
-		deps.sleep ?? (async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms)));
+	const delay = deps.sleep ?? sleep;
 
 	// A build that sat out its timeout against a dead lane reports "Run timed
 	// out", not "fetch failed" — so any failed build also health-probes its lane.
@@ -511,7 +511,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						? `Build ${fileSlug} attempt ${String(attempt)}/${String(maxAttempts)} hit a provider outage (${providerOutage}); waiting ${String(Math.round(backoffMs / 1000))}s before retrying`
 						: `Build ${fileSlug} attempt ${String(attempt)}/${String(maxAttempts)} failed transiently on lane ${String(lane.laneNum)} (${build.error ?? 'unknown'}); retrying on another lane`,
 				);
-				if (backoffMs > 0) await sleep(backoffMs);
+				if (backoffMs > 0) await delay(backoffMs);
 				lane = await allocator.acquire(fileSlug, { not: lane });
 			}
 			buildDurations.set(key, buildDurationMs);
