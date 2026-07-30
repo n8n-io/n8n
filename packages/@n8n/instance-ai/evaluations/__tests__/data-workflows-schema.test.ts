@@ -325,6 +325,62 @@ describe('EvalTestCaseSchema', () => {
 		).toThrow(/full envelope[\s\S]*shorthand/);
 	});
 
+	it('accepts an attach on the opening turn naming a seeded workflow', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			conversation: [
+				{ role: 'user', text: 'why is this failing?', attach: { workflow: 'wf12345678' } },
+			],
+			seed: {
+				mode: 'inline',
+				messages: [{ role: 'user', text: 'build it' }],
+				workflows: [{ id: 'wf12345678', name: 'Batch loop', nodes: [], connections: {} }],
+			},
+		});
+		expect(parsed.conversation?.[0].attach).toEqual({ workflow: 'wf12345678' });
+	});
+
+	it('rejects an attach on a later turn — an attachment is a hand-off', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [
+					{ role: 'user', text: 'why is this failing?' },
+					{ role: 'user', text: 'and now this', attach: { workflow: 'wf12345678' } },
+				],
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					workflows: [{ id: 'wf12345678', name: 'Batch loop', nodes: [], connections: {} }],
+				},
+			}),
+		).toThrow(/only the first conversation turn may carry .attach./);
+	});
+
+	it('rejects an attach naming a workflow the seed does not declare', () => {
+		// A dangling reference hands the agent nothing and reads as a builder failure.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: 'why?', attach: { workflow: 'not-in-the-seed' } }],
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					workflows: [{ id: 'wf12345678', name: 'Batch loop', nodes: [], connections: {} }],
+				},
+			}),
+		).toThrow(/must be the id of a workflow the inline seed declares/);
+	});
+
+	it('rejects an attach on a case with no inline seed at all', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: 'why?', attach: { workflow: 'wf12345678' } }],
+			}),
+		).toThrow(/must be the id of a workflow the inline seed declares/);
+	});
+
 	it('accepts a replay seed with no conversation (live turn from the trace)', () => {
 		const { conversation: _omit, ...rest } = validFixture();
 		const parsed = EvalTestCaseSchema.parse({

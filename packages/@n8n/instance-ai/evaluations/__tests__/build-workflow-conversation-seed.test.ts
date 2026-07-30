@@ -63,13 +63,15 @@ function inlineSeed(): ConversationSeed {
 
 function makeClient(
 	restoreThread: ReturnType<typeof vi.fn>,
-	overrides: Partial<Record<'listWorkflows' | 'deleteWorkflow', ReturnType<typeof vi.fn>>> = {},
+	overrides: Partial<
+		Record<'listWorkflows' | 'deleteWorkflow' | 'sendMessage', ReturnType<typeof vi.fn>>
+	> = {},
 ): N8nClient {
 	return {
 		getPersonalProjectId: vi.fn().mockResolvedValue('project-1'),
 		ensureThread: vi.fn().mockResolvedValue(undefined),
 		setThreadCredentialAllowlist: vi.fn().mockResolvedValue(undefined),
-		sendMessage: vi.fn().mockResolvedValue(undefined),
+		sendMessage: overrides.sendMessage ?? vi.fn().mockResolvedValue(undefined),
 		getThreadMessages: vi.fn().mockResolvedValue({ messages: [] }),
 		listWorkflows: overrides.listWorkflows ?? vi.fn().mockResolvedValue([]),
 		deleteWorkflow: overrides.deleteWorkflow ?? vi.fn().mockResolvedValue(undefined),
@@ -249,13 +251,61 @@ describe('buildWorkflow with an inline seed', () => {
 			preRunWorkflowIds: new Set(['leftover-1', 'leftover-2', 'leftover-3']),
 			seed: { mode: 'inline' as const, ...inlineSeed() },
 		});
-
 		expect(deleteWorkflow.mock.calls.map((call) => String(call[0]))).toEqual([
 			'leftover-1',
 			'leftover-2',
 			'leftover-3',
 		]);
 		expect(build.success).toBe(true);
+	});
+
+	// The shape a real user creates by opening the assistant with a workflow in front
+	// of them: the product hands the agent a resource reference, so it resolves by id
+	// and never hunts by name.
+	it('sends the attached seed workflow with the opening message, using the REMAPPED id', async () => {
+		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage }),
+			...baseConfig,
+			conversation: [
+				{ role: 'user' as const, text: 'why is this failing?', attach: { workflow: SEED_WF_ID } },
+			],
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		const [, , attachments] = sendMessage.mock.calls[0] as [
+			string,
+			string,
+			Array<{ type: string; id: string; name: string }> | undefined,
+		];
+		expect(attachments).toHaveLength(1);
+		expect(attachments?.[0].type).toBe('workflow');
+		// The authored id is rewritten per run, so sending it verbatim would point the
+		// agent at a workflow that doesn't exist on this instance.
+		expect(attachments?.[0].id).not.toBe(SEED_WF_ID);
+		const [, , workflows] = restoreThread.mock.calls[0] as [
+			string,
+			unknown,
+			Array<{ id: string; name: string }>,
+		];
+		expect(attachments?.[0].id).toBe(workflows[0].id);
+		expect(attachments?.[0].name).toBe(workflows[0].name);
+	});
+
+	it('sends no attachments when the opening turn declares none', async () => {
+		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
+		await buildWorkflow({
+			client: makeClient(
+				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [] }),
+				{ sendMessage },
+			),
+			...baseConfig,
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+		expect(sendMessage.mock.calls[0][2]).toBeUndefined();
 	});
 
 	it('does not restore anything for a case with no seed', async () => {

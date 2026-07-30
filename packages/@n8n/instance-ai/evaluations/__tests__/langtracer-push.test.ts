@@ -54,12 +54,32 @@ describe('planPush', () => {
 		expect(plan.unchanged).toEqual([]);
 	});
 
-	it('skips a case that uses an unsupported seeding mode', () => {
+	it('skips a replay-seeded case — its trace expires, so it has no suite home', () => {
 		const plan = planPush([item('c', { seed: { mode: 'replay', threadId: 't' } })], {}, {});
 		expect(plan.skipped).toHaveLength(1);
 		expect(plan.skipped[0].fileSlug).toBe('c');
-		expect(plan.skipped[0].reason).toMatch(/seed \(mode: replay\)/);
+		expect(plan.skipped[0].reason).toMatch(/replay seed/);
 		expect(plan.toCreate).toEqual([]);
+	});
+
+	it('PUSHES an inline-seeded case — the durable kind is exactly what suites are for', () => {
+		const seed = {
+			mode: 'inline' as const,
+			messages: [
+				{
+					id: 'm1',
+					type: 'llm',
+					role: 'assistant' as const,
+					createdAt: '2026-06-29T09:00:00.000Z',
+					content: [{ type: 'text', text: 'built it' }],
+				},
+			],
+			workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
+			dataTables: [],
+		};
+		const plan = planPush([item('repair-it', { seed })], {}, {});
+		expect(plan.skipped).toEqual([]);
+		expect(plan.toCreate).toHaveLength(1);
 	});
 
 	it('treats a scenario-only difference as an update (PATCH reconciles scenarios by name)', () => {

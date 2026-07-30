@@ -33,6 +33,24 @@ export const conversationTurnTextSchema = z
 export const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	text: conversationTurnTextSchema,
+	/** Hand the agent a seeded workflow with this turn, the way the editor does when
+	 *  a user opens the assistant with a workflow in front of them: the product sends
+	 *  it as a resource reference and the agent resolves it by id, never by name.
+	 *
+	 *  Without this a case sourced from that kind of conversation is HARDER than
+	 *  reality — the real agent was handed the workflow, while the eval agent gets
+	 *  prose that deliberately doesn't name it ("why is this failing?") and has to
+	 *  guess. It would list workflows and pick, or ask which one, and we would score
+	 *  a clarification failure the real user never hit.
+	 *
+	 *  `workflow` is the id as the seed declares it; the harness swaps in the
+	 *  per-run remapped id, so an author tracks nothing. Only the opening turn may
+	 *  carry it (a refine below) — an attachment is a hand-off, not something the
+	 *  user re-sends every message. */
+	attach: z
+		.object({ workflow: z.string().min(1) })
+		.strict()
+		.optional(),
 });
 
 const ExecutionScenarioSchema = z.object({
@@ -188,6 +206,26 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		message:
 			'a case needs a conversation, or a seed with mode: replay (which supplies the live turn from the trace)',
 	})
+	// An attachment is a hand-off: it rides the message that opens the conversation,
+	// not every message after it. Rejected rather than ignored on a later turn, so a
+	// misplaced one can't silently do nothing.
+	.refine((c) => (c.conversation ?? []).slice(1).every((turn) => turn.attach === undefined), {
+		message: 'only the first conversation turn may carry `attach` — an attachment is a hand-off',
+	})
+	// A dangling attachment would hand the agent a reference to nothing, which reads
+	// as a builder failure. Only an inline seed declares workflows to point at.
+	.refine(
+		(c) => {
+			const attached = c.conversation?.[0]?.attach?.workflow;
+			if (attached === undefined) return true;
+			const declared = c.seed?.mode === 'inline' ? c.seed.workflows : [];
+			return declared.some((workflow) => workflow.id === attached);
+		},
+		{
+			message:
+				'`attach.workflow` must be the id of a workflow the inline seed declares — otherwise the attachment points at nothing',
+		},
+	)
 	.superRefine((c, ctx) => {
 		// Note: this message avoids double quotes — ZodError.message is a JSON.stringify of
 		// the issue list, which would otherwise backslash-escape them and break substring/regex

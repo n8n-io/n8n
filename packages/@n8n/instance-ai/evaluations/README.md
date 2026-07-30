@@ -847,6 +847,28 @@ transcript builder would silently drop.
 
 The seed lives **in the case body** rather than in a sibling file, so it travels with the case whatever the source — a JSON on disk, a suite pulled with `--source langtracer`, or a case body handed to a dispatcher. (There used to be a `seedFile` path pointing at a sibling JSON. Only the disk loader could resolve it, so a case delivered any other way lost its seed; the key is gone and a case still carrying it fails at load.)
 
+#### Handing the agent the workflow (`attach`)
+
+When a real user opens the assistant with a workflow in front of them — "why is this
+failing?" — the editor sends that workflow as a resource reference and the agent
+resolves it by **id**, never by name. Declare it on the opening turn:
+
+```json
+"conversation": [
+  { "role": "user", "text": "why is this failing?", "attach": { "workflow": "wKk3RmT9xQ2bVn7L" } }
+]
+```
+
+The id is the one the seed declares; the harness substitutes the per-run remapped id,
+so the attachment always points at the workflow that actually exists. Only the opening
+turn may carry it, and it must name a workflow the inline seed declares — both are
+refused at case load rather than silently ignored.
+
+Omit it when the user refers to the workflow in words instead ("the batch image
+workflow") — finding it is then part of what the case tests. Getting this backwards
+makes a case harder than reality: the agent has to guess from prose that deliberately
+names nothing, and a clarification the real user never saw scores as a failure.
+
 #### How restore works (all paths)
 
 At build time the seed is restored right after the credential pin: seeded workflows are recreated under **fresh ids and a per-restore unique name** (`… [seed <8 hex>]`) with node credentials stripped, and the message log is written verbatim. Both are remapped through the history, so parallel iterations never share a workflow row *or* a name — a seeded case's live turn names its workflow the way a user would, so a same-named copy is one the agent can ground on instead, and the judge would then grade a different workflow than the agent edited. Any leftover carrying the seed suffix with the same base name is deleted before the restore; workflows without the suffix (real ones, and anything the agent built) are never touched. Restore failures fail the build — a seeded case cannot meaningfully run unseeded. Seeded turns join the transcript marked as *seeded prior context*, visible to the expectations judge and prompt-aware checks but distinguishable from live behaviour.

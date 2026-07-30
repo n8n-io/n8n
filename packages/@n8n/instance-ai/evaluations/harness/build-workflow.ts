@@ -7,7 +7,7 @@
 // execution and cleanup.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest, InstanceAiWorkflowAttachment } from '@n8n/api-types';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -102,6 +102,9 @@ interface MultiTurnDriverConfig {
 	/** Shared with `createDeclaredCredentials`'s pre-run seeding — see
 	 *  `CredentialCreationConfig.nameCounts`. */
 	credentialNameCounts?: Map<string, number>;
+	/** Resource references sent with the FIRST message only — an attachment is a
+	 *  hand-off, not something a user re-sends every turn. */
+	openingAttachments?: InstanceAiWorkflowAttachment[];
 }
 
 async function driveMultiTurnConversation(
@@ -141,6 +144,7 @@ async function driveMultiTurnConversation(
 	await config.client.sendMessage(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
+		config.openingAttachments,
 	);
 
 	await runMultiTurnConversation({
@@ -289,6 +293,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let builtDataTableIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
 	let seedingFailed = false;
+	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
+	// name). Lets an authored `attach` reference survive the per-run remap.
+	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
 
 	try {
 		const buildStart = Date.now();
@@ -387,6 +394,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		if (seed) {
 			try {
 				const remapped = remapSeedWorkflowIds(seed);
+				// The remap preserves order, so index-align the authored ids with the per-run
+				// ones. An author writes the id the seed declares; an attachment has to carry
+				// the id that actually exists on the instance.
+				seedWorkflowsBySeedId = new Map(
+					seed.workflows.map((workflow, index) => [workflow.id, remapped.workflows[index]]),
+				);
 				await evictLeftoverSeedWorkflows(
 					client,
 					remapped,
@@ -461,6 +474,18 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		await delay(SSE_SETTLE_DELAY_MS);
 
+		// The opening turn may hand the agent a seeded workflow, the way the editor does.
+		// Resolved AFTER the restore so it carries the id that exists on the instance;
+		// the case schema already refused an `attach` no seeded workflow declares.
+		const attachedSeedWorkflow = conversation[0]?.attach?.workflow;
+		const restoredForAttach =
+			attachedSeedWorkflow === undefined
+				? undefined
+				: seedWorkflowsBySeedId.get(attachedSeedWorkflow);
+		const openingAttachments: InstanceAiWorkflowAttachment[] | undefined = restoredForAttach
+			? [{ type: 'workflow', id: restoredForAttach.id, name: restoredForAttach.name }]
+			: undefined;
+
 		let proxyDecisionStats: ProxyDecisionStats | undefined;
 		if (isMultiTurn) {
 			proxyDecisionStats = await driveMultiTurnConversation({
@@ -488,10 +513,15 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// The pre-seeded-table note goes to the agent, but the recorded turn
 				// (and the graded transcript) keeps the clean user prompt.
 				openingMessageSuffix: scenarioSeedTablesNote,
+				openingAttachments,
 			});
 		} else {
 			recordUserTurn(events, openingMessage);
-			await client.sendMessage(threadId, openingMessage + scenarioSeedTablesNote);
+			await client.sendMessage(
+				threadId,
+				openingMessage + scenarioSeedTablesNote,
+				openingAttachments,
+			);
 			await waitForAllActivity({
 				client,
 				threadId,
