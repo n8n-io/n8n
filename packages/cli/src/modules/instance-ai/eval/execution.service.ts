@@ -86,7 +86,7 @@ const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
 interface RunBudget {
 	/** As requested — for the message the caller reads. */
 	totalMs: number;
-	/** Epoch ms. Setup time counts against it, so the run gets what is left. */
+	/** Epoch ms; setup counts against it, so the run gets what is left. */
 	deadlineAt: number;
 }
 
@@ -205,10 +205,8 @@ export class EvalExecutionService {
 			options.scenarioHints,
 			interceptionEnabled,
 			vendorLlmRouting,
-			// Anchored at request receipt, not at the run: hint generation and pin-data
-			// generation are LLM calls that take tens of seconds, so a budget measured
-			// from the run would expire well after the caller's own deadline and never
-			// bite.
+			// Anchored at request receipt: hint and pin-data generation are LLM calls,
+			// so a budget starting at the run would expire after the caller's deadline.
 			options.timeoutMs === undefined
 				? undefined
 				: { totalMs: options.timeoutMs, deadlineAt: Date.now() + options.timeoutMs },
@@ -939,21 +937,10 @@ export class EvalExecutionService {
 	}
 
 	/**
-	 * Await the execution, but never past the caller's budget — and stop it when
-	 * that budget elapses.
-	 *
-	 * Eval mode skips concurrency reservation (see ActiveExecutions.add), so
-	 * nothing else bounds one of these runs: when the client gives up, the
-	 * execution keeps going indefinitely, burning CPU and writing execution data on
-	 * an instance shared with every other case pinned to it. In run 30432642501 one
-	 * such run held a core for 78 minutes while the client abandoned it twice, and
-	 * the retries piled more of them onto the same lane.
-	 *
-	 * Stopping it also makes the outcome deterministic: the caller gets an in-band
-	 * error naming the budget instead of a bare transport abort.
-	 *
-	 * Omitting the budget keeps the old unbounded behaviour, for callers that
-	 * enforce their own deadline.
+	 * Await the execution, stopping it once the caller's budget elapses. Eval mode
+	 * skips concurrency reservation (see `ActiveExecutions.add`), so nothing else
+	 * would: an abandoned run keeps burning CPU on an instance shared with every
+	 * other case pinned to it. Omit the budget to keep waiting indefinitely.
 	 */
 	private async awaitRunWithinBudget(
 		executionId: string,

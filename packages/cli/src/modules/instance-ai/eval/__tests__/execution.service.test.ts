@@ -525,8 +525,7 @@ describe('EvalExecutionService', () => {
 			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(DB_EXECUTION_ID);
 		});
 
-		// Eval mode skips concurrency reservation, so nothing else would ever stop a
-		// run the client has abandoned — it keeps burning CPU on a shared lane.
+		// Nothing else stops a run the client abandoned — eval mode skips reservation.
 		it('stops the execution and reports it when the run outlives the caller budget', async () => {
 			vi.useFakeTimers();
 			try {

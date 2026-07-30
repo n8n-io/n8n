@@ -29,14 +29,11 @@ import { z } from 'zod';
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
 
 /**
- * Floor for requests that pass no budget of their own. Because the dispatcher
- * above removes undici's timeouts, such a call hangs FOREVER against a lane that
- * stops answering rather than failing — in run 30432642501 a wedged lane held
- * three builds for 80 minutes and then ate the run's last 30 minutes inside a
- * cleanup `deleteWorkflow`, until the job hit its 90-minute cap. Sized for the
- * slowest legitimate REST call under lane contention (seconds), NOT for the
- * work a call kicks off: long-running callers (mocked executions, thread
- * restore) still pass their own, larger budget.
+ * Floor for requests that pass no budget of their own — without it the dispatcher
+ * above leaves them unbounded, so a lane that stops answering hangs the harness
+ * instead of failing it. Sized for the slowest plain REST call under contention,
+ * not for the work a call kicks off: mocked executions and thread restore pass
+ * their own, larger budget.
  */
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
 
@@ -47,14 +44,9 @@ const RESTORE_THREAD_TIMEOUT_MS = 300_000;
 const CLIENT_ABORT_MARGIN_MS = 5_000;
 
 /**
- * Server-side budget for the mocked-execution endpoints, derived from the
- * caller's own budget so the server gives up just before the client does — the
- * caller then gets an in-band error naming the real cause instead of a bare
- * transport abort, and the server never keeps running work nobody awaits.
- *
- * Floored at the schema minimum (30s). Deliberately NOT capped at 15 minutes:
- * that cap used to truncate the larger budget a `complex` case carries, stopping
- * such a run 7 minutes before its caller would have.
+ * Server budget for the mocked-execution endpoints: the server gives up just
+ * before the client, so the caller gets an in-band error rather than a bare
+ * abort. Not capped at 15 minutes — that used to truncate a `complex` budget.
  */
 function serverBudgetFor(timeoutMs: number): number {
 	return Math.max(timeoutMs - CLIENT_ABORT_MARGIN_MS, 30_000);
@@ -825,12 +817,8 @@ export class N8nClient {
 		const body: { scenarioHints?: string; pinNodes?: string[]; timeoutMs?: number } = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
-		// Forward the budget so the server stops its own execution instead of
-		// leaving it running: an abandoned eval execution keeps burning CPU and
-		// writing execution data on a lane shared with every other case pinned to
-		// it. The server deadline lands just BEFORE the client's, so the harness
-		// gets an in-band error naming the real cause instead of a bare transport
-		// abort (scenario-execution.ts routes it to the same timeout path).
+		// Forwarded so the server stops the run instead of leaving it burning CPU on
+		// a shared lane after the client gives up.
 		const serverBudgetMs = serverBudgetFor(timeoutMs);
 		body.timeoutMs = serverBudgetMs;
 

@@ -81,8 +81,8 @@ describe('N8nClient — TRUST-229 artifact fetch methods', () => {
 		});
 	});
 
-	// The client disables undici's own timeouts process-wide, so a request
-	// without an AbortSignal hangs forever against a lane that stops answering.
+	// undici's own timeouts are disabled process-wide, so an unsignalled request
+	// hangs forever against a lane that stops answering.
 	describe('request bound', () => {
 		it('applies the default floor to a call that passes no budget', async () => {
 			const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');

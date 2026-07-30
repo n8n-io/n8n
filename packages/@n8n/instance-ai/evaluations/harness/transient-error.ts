@@ -56,21 +56,18 @@ export function isExecutionTimeout(message: string): boolean {
 }
 
 /**
- * True when a request was cut short by the client's own AbortSignal. Narrower
- * than {@link isExecutionTimeout} on purpose: a build's error text can quote a
- * node's `TimeoutError` without the lane being at fault, and treating that as a
- * transport failure would retry the whole build on another lane.
+ * A request cut short by the client's own AbortSignal. Narrower than
+ * {@link isExecutionTimeout}: a build error quoting a node's `TimeoutError` must
+ * not read as a dead lane.
  */
 export function isRequestAbort(message: string): boolean {
 	return /operation was aborted/i.test(message);
 }
 
 /**
- * True when the SERVER stopped the execution for exceeding the budget the client
- * forwarded (see `EvalExecutionService.awaitRunWithinBudget`). It arrives in-band
- * (`success: false`) rather than as a transport abort, so without recognising it
- * the row would reach the judge as an ordinary failed execution and be attributed
- * to the builder. Wording is kept in sync with the server's message.
+ * The server stopped the run for exceeding the forwarded budget. Arrives in-band
+ * (`success: false`), so it needs recognising or the judge sees an ordinary failed
+ * execution. Wording kept in sync with `EvalExecutionService`.
  */
 export function isServerBudgetStop(errors: string[] | undefined): boolean {
 	return (errors ?? []).some((e) => /exceeded its .*eval budget/i.test(e));

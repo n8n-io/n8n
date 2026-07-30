@@ -142,17 +142,14 @@ jobs:
       # Host OOMs and disk exhaustion leave no application trace — sample host
       # + container telemetry every 60s and ship it with the results artifact.
       #
-      # The top-CPU line narrows what container-level stats cannot: when a lane
-      # pins a core (run 30432642501 held one at ~100% for 78 minutes), it shows
-      # whether the burn is a node process or a node-spawned binary like `gm`.
-      # Deliberately `comm=`, not `args=`: this file ships in the results artifact,
-      # and the startup `docker run -e <SECRET>` invocations carry secrets in argv.
-      # Command lines are captured per-container instead (`docker top`, below),
-      # where no process argv holds a secret.
+      # `docker stats` names a lane burning a core but not the process inside it,
+      # and every n8n process reports `comm=node` — so sample per-lane instead.
+      # Args are safe here (container argv, unlike the host's `docker run -e`).
       - name: Start host telemetry sampler
         run: |
           mkdir -p eval-diag
           { echo "=== disk at job start ==="; df -h /; docker system df; } > eval-diag/df-at-start.log
+          # shellcheck disable=SC2016 # deferred on purpose: the sampler expands these
           nohup bash -c 'while true; do
             {
               date -u +%FT%TZ
@@ -160,7 +157,10 @@ jobs:
               df -h / | tail -1
               docker stats --no-stream --format "{{.Name}} cpu={{.CPUPerc}} mem={{.MemUsage}}"
               ps -eo rss=,pid=,comm= --sort=-rss | head -5
-              ps -eo pcpu=,pid=,comm= --sort=-pcpu | head -5
+              for c in $(docker ps --format "{{.Names}}" --filter name=n8n-eval-); do
+                docker top "$c" -o pid,pcpu,args --sort=-pcpu 2>/dev/null |
+                  sed -n "2,3p" | sed "s|^|$c |" | cut -c1-150
+              done
               echo
             } >> eval-diag/host-samples.log 2>&1
             sleep 60
@@ -224,14 +224,10 @@ jobs:
             # restarted by docker instead of staying dead; pruning + log caps
             # keep per-lane disk and memory flat over a multi-hour run.
             #
-            # NODE_OPTIONS also arms Node's diagnostic report on SIGUSR2, which the
-            # log-capture step requests from a lane that is still burning CPU.
-            # Measured caveat: the report is queued on the event loop, so a lane
-            # pinned in a tight JS loop yields nothing — the per-process CPU
-            # snapshot is the signal that always works. Still worth arming, since a
-            # lane that is merely saturated does produce one, with the JS stack and
-            # libuv handle state. Keep the flag and the signal in sync: without
-            # `--report-on-signal`, SIGUSR2's default action would kill the process.
+            # NODE_OPTIONS arms Node's diagnostic report on SIGUSR2 (requested in the
+            # log-capture step). Keep flag and signal in sync — unarmed, SIGUSR2 kills
+            # the process. The report is queued on the event loop, so a lane pinned in
+            # a tight JS loop yields nothing; a merely saturated one does.
             docker run -d --name "n8n-eval-$((i+1))" \
               "${NETWORK_ARGS[@]}" \
               --memory 2.5g --memory-swap 2.5g \
@@ -440,14 +436,9 @@ jobs:
             done <<< "$v"
           done
 
-          # A lane still burning a core at the end of the run is wedged, and a
-          # spin leaves no log line at all. Container stats say WHICH lane; only a
-          # per-process snapshot says which process (n8n main thread vs its JS
-          # task-runner child vs a spawned binary) — the evidence run 30432642501
-          # could not produce. Also request a Node diagnostic report; it is queued
-          # on the event loop, so it lands only for a lane that is saturated
-          # rather than pinned. Collected at the end of this step, which gives it
-          # the log dump's worth of time to be written.
+          # A lane still burning a core is wedged, and a spin leaves no log line —
+          # so snapshot its processes and ask for a JS stack. The report is
+          # collected at the end of this step, giving Node time to write it.
           HOT_LANES=""
           while read -r name cpu; do
             [ -n "$name" ] || continue

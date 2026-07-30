@@ -179,9 +179,7 @@ describe('createBuildOrchestrator', () => {
 	});
 
 	it('retries a request-level abort on another lane — a wedged lane keeps passing readiness', async () => {
-		// The stubbed probe answers healthy, so the retry can only come from the
-		// abort message itself: a lane that stops answering calls which normally
-		// take seconds is a transport failure, not an agent verdict.
+		// Probe answers healthy, so the retry can only come from the message itself.
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
 		const wedged = vi
 			.fn()
@@ -199,8 +197,7 @@ describe('createBuildOrchestrator', () => {
 	});
 
 	it("keeps the chat loop's own budget overrun a verdict, not a transport failure", async () => {
-		// Same shape as above but a different message: the agent ran out of its
-		// per-iteration budget on a healthy lane, which the builder owns.
+		// Same shape, different message: the agent was slow on a healthy lane.
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
 		const slow = vi.fn().mockResolvedValue(failedBuild('Run timed out after 900000ms'));
 		const orchestrator = createBuildOrchestrator(makeDeps([makeLane(1, slow)]));

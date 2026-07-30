@@ -263,12 +263,9 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	// A build that sat out its timeout against a dead lane reports "Run timed
 	// out", not "fetch failed" — so any failed build also health-probes its lane.
 	//
-	// A request-level abort ("operation was aborted", from the n8n client's
-	// per-request floor) is a transport symptom too: the lane stopped answering a
-	// call that normally takes seconds. It must be told apart from the chat loop's
-	// own budget overrun, which reports "Run timed out after Nms" and stays an
-	// agent verdict — otherwise a wedged lane would spray build_failure rows
-	// instead of retrying elsewhere.
+	// A request-level abort counts too — the lane stopped answering a call that
+	// takes seconds. Distinct from the chat loop's own overrun ("Run timed out
+	// after Nms"), which is the agent being slow on a healthy lane.
 	async function isTransportFailure(build: BuildResult, lane: LaneState): Promise<boolean> {
 		if (build.success) return false;
 		if (

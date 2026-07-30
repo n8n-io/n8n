@@ -310,10 +310,8 @@ async function runScenario(
 			pinNodes,
 		);
 	}
-	// A server-side budget stop is the same event as the client-side abort it
-	// replaces — the run was killed for time, not by the builder. Throw so the
-	// caller's timeout path classifies it (framework_issue + at most one retry)
-	// instead of letting the judge attribute a stopped run to the agent.
+	// Killed for time, not by the builder: throw so the caller's timeout path
+	// classifies it instead of the judge blaming the agent.
 	if (!evalResult.success && isServerBudgetStop(evalResult.errors)) {
 		throw new Error(`The operation was aborted due to timeout: ${evalResult.errors.join('; ')}`);
 	}
