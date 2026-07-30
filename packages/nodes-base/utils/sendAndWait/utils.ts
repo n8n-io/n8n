@@ -7,7 +7,12 @@ import type {
 	INodeProperties,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+	tryToParseJsonToFormFields,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 
 import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
@@ -16,6 +21,7 @@ import {
 	prepareFormData,
 	prepareFormFields,
 	prepareFormReturnItem,
+	resolveRawData,
 } from '../../nodes/Form/utils/utils';
 import { escapeHtml } from '../utilities';
 import { limitWaitTimeOption } from './descriptions';
@@ -493,6 +499,28 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 }
 
 // Send and Wait Config -----------------------------------------------------------
+
+// The response form is only built when it is requested, from data that may no longer resolve
+// by then. Parse it here, exactly as the webhook will, so a form that cannot be built fails
+// the node instead of sending a message with a link that can never render.
+function validateCustomFormFields(context: IExecuteFunctions) {
+	// The 'fields' branch has no parse step, only html expression resolution
+	if (context.getNodeParameter('defineForm', 0, 'fields') !== 'json') return;
+
+	try {
+		const jsonOutput = context.getNodeParameter('jsonOutput', 0, '', {
+			rawExpressions: true,
+		}) as string;
+
+		tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
+	} catch (error) {
+		throw new NodeOperationError(context.getNode(), error.message, {
+			description: error.message,
+			itemIndex: 0,
+		});
+	}
+}
+
 export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitConfig {
 	const message = escapeHtml((context.getNodeParameter('message', 0, '') as string).trim())
 		.replace(/\\n/g, '\n')
@@ -516,6 +544,10 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 	};
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
+
+	if (responseType === 'customForm') {
+		validateCustomFormFields(context);
+	}
 
 	const approvedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'true' });
 

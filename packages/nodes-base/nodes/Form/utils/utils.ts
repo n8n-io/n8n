@@ -1105,7 +1105,10 @@ export async function formWebhook(
 	};
 }
 
-export function resolveRawData(context: IWebhookFunctions, rawData: string) {
+// Structural so both IWebhookFunctions and IExecuteFunctions satisfy it
+type ExpressionResolutionContext = Pick<IWebhookFunctions, 'evaluateExpression'>;
+
+export function resolveRawData(context: ExpressionResolutionContext, rawData: string) {
 	if (!rawData) return rawData;
 
 	const resolvables = getResolvables(rawData);
