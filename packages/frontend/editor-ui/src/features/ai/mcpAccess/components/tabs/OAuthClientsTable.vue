@@ -69,6 +69,9 @@ const detailsOpen = ref(false);
 
 const canManageAllClients = computed(() => rbacStore.hasScope('mcp:manage'));
 const ownership = computed(() => mcpStore.oauthClientsOwnership);
+const offeredScopes = computed(() =>
+	props.scopeTools ? Object.keys(props.scopeTools) : undefined,
+);
 
 // Badges show the unfiltered totals so a search-narrowed "Mine (0)" doesn't read
 // as "no connected clients" when there are clients that just don't match.
@@ -204,7 +207,7 @@ const tableHeaders = computed<Array<TableHeader<OAuthClientResponseDto>>>(() => 
 
 function accessSummary(client: OAuthClientResponseDto): string {
 	if (client.scopes.length === 0) return i18n.baseText('settings.mcp.oAuthClients.access.none');
-	if (isFullAccessGrant(client.scopes)) {
+	if (isFullAccessGrant(client.scopes, offeredScopes.value)) {
 		return i18n.baseText('settings.mcp.oAuthClients.access.full');
 	}
 	const visible = client.scopes

@@ -1,5 +1,5 @@
 import type { Mocked } from 'vitest';
-import { Logger } from '@n8n/backend-common';
+import { Logger, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { OperationContext, TransactionRunner, User } from '@n8n/db';
@@ -771,6 +771,7 @@ describe('OAuthTokenService', () => {
 				mock<McpSettingsService>(),
 				mcpConfig,
 				mock<GlobalConfig>(),
+				mock<ModuleRegistry>(),
 			);
 
 			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());

@@ -3,7 +3,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { ProjectRelationRepository, User } from '@n8n/db';
+import { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -42,9 +42,11 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
+import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
 
@@ -81,6 +83,7 @@ const agentEntity = (overrides: Record<string, unknown> = {}): Agent =>
 		projectId: 'project-1',
 		versionId: 'v1',
 		activeVersionId: null,
+		availableInMCP: true,
 		createdAt: new Date('2026-01-01T00:00:00.000Z'),
 		updatedAt: new Date('2026-01-02T00:00:00.000Z'),
 		schema: baseConfig,
@@ -105,7 +108,7 @@ describe('McpAgentToolsService', () => {
 	const mcpRegistryService = mockInstance(McpRegistryService);
 	const outboundHttp = mockInstance(OutboundHttp);
 	const urlService = mockInstance(UrlService);
-	const projectRelationRepository = mockInstance(ProjectRelationRepository);
+	const projectScopeService = mockInstance(ProjectScopeService);
 
 	const service = new McpAgentToolsService(
 		telemetry,
@@ -130,7 +133,7 @@ describe('McpAgentToolsService', () => {
 		mockInstance(SsrfProtectionConfig),
 		mockInstance(SsrfProtectionService),
 		urlService,
-		projectRelationRepository,
+		projectScopeService,
 	);
 
 	let tools: Map<string, RegisteredTool>;
@@ -142,6 +145,7 @@ describe('McpAgentToolsService', () => {
 		agentsService.findByIdForUser.mockResolvedValue(agentEntity());
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([] as never);
 		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
+		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 
 		tools = new Map();
 		registerResource = vi.fn();
@@ -186,6 +190,45 @@ describe('McpAgentToolsService', () => {
 				expect.any(Object),
 				expect.any(Function),
 			);
+		});
+
+		it('matches AGENT_TOOLS in the scope map (drift guard)', () => {
+			expect(new Set(tools.keys())).toEqual(new Set(AGENT_TOOLS));
+		});
+
+		const registerFiltered = (allowedToolNames?: Set<string>) => {
+			const filteredTools = new Map<string, RegisteredTool>();
+			const resource = vi.fn();
+			const server = {
+				registerTool: (name: string, config: RegisteredTool['config'], handler: unknown) => {
+					filteredTools.set(name, { config, handler: handler as RegisteredTool['handler'] });
+				},
+				resource,
+			} as unknown as McpServer;
+			service.registerTools(server, user, allowedToolNames);
+			return { tools: filteredTools, resource };
+		};
+
+		it('registers only the tools allowed by the granted scopes', () => {
+			const allowed = new Set<string>(TOOLS_BY_SCOPE['agent:read']);
+			const { tools: filteredTools, resource } = registerFiltered(allowed);
+
+			expect(new Set(filteredTools.keys())).toEqual(allowed);
+			expect(resource).toHaveBeenCalledTimes(1);
+		});
+
+		it('registers no tools and no resource for an empty allow-list', () => {
+			const { tools: filteredTools, resource } = registerFiltered(new Set());
+
+			expect(filteredTools.size).toBe(0);
+			expect(resource).not.toHaveBeenCalled();
+		});
+
+		it('skips the reference resource when the reference tool is out of scope', () => {
+			const { tools: filteredTools, resource } = registerFiltered(new Set(['search_agents']));
+
+			expect([...filteredTools.keys()]).toEqual(['search_agents']);
+			expect(resource).not.toHaveBeenCalled();
 		});
 	});
 
@@ -241,6 +284,37 @@ describe('McpAgentToolsService', () => {
 				ok: false,
 				code: 'agent_tool_error',
 				error: 'You do not have permission to access agents in this project.',
+			});
+		});
+	});
+
+	describe('availableInMCP enforcement', () => {
+		const identity = { projectId: 'project-1', agentId: 'agent-1' };
+
+		test.each<[string, Record<string, unknown>]>([
+			['get_agent', identity],
+			[
+				'mutate_agent',
+				{ ...identity, baseConfigHash: 'hash', operation: { type: 'config.replace', config: {} } },
+			],
+			['validate_agent', identity],
+			['publish_agent', identity],
+			['unpublish_agent', identity],
+			['revert_agent', identity],
+			['list_agent_versions', identity],
+			['delete_agent', identity],
+			[
+				'update_agent_integration',
+				{ ...identity, action: 'disconnect', type: 'slack', credentialId: 'cred-1' },
+			],
+		])('%s refuses an agent that is not available in MCP', async (toolName, input) => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ availableInMCP: false }));
+
+			const result = await callTool(toolName, input);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: expect.stringContaining('not available in MCP'),
 			});
 		});
 	});
@@ -627,6 +701,9 @@ describe('McpAgentToolsService', () => {
 				...initialConfig,
 				name: 'My Agent',
 			});
+			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'My Agent', {
+				availableInMCP: true,
+			});
 			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
@@ -685,32 +762,33 @@ describe('McpAgentToolsService', () => {
 
 	describe('search_agents', () => {
 		it('only searches projects where the user has agent:list', async () => {
-			projectRelationRepository.findAllByUser.mockResolvedValue([
-				{ projectId: 'project-1' },
-				{ projectId: 'project-2' },
-			] as never);
-			userHasScopesMock.mockImplementation(
-				async (
-					_user: User,
-					_scopes: string[],
-					_global: boolean,
-					{ projectId }: { projectId: string },
-				) => projectId === 'project-1',
-			);
 			agentsService.findSummariesInProjects.mockResolvedValue([
 				agentEntity({ id: 'agent-1', projectId: 'project-1' }),
 			]);
 
 			const result = await callTool('search_agents', {});
 
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:list']);
 			expect(agentsService.findSummariesInProjects).toHaveBeenCalledWith(
 				['project-1'],
 				expect.any(Object),
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true, count: 1 });
 			expect(result.structuredContent.data).toEqual([
-				expect.objectContaining({ id: 'agent-1', projectId: 'project-1' }),
+				expect.objectContaining({ id: 'agent-1', projectId: 'project-1', availableInMCP: true }),
 			]);
+		});
+
+		it('searches without a project restriction for global agent:list', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			agentsService.findSummariesInProjects.mockResolvedValue([
+				agentEntity({ id: 'agent-1', projectId: 'project-2' }),
+			]);
+
+			const result = await callTool('search_agents', {});
+
+			expect(agentsService.findSummariesInProjects).toHaveBeenCalledWith(null, expect.any(Object));
+			expect(result.structuredContent).toMatchObject({ ok: true, count: 1 });
 		});
 
 		it('pushes query, publishedOnly, excludeAgentId, and limit filters into the lookup', async () => {
@@ -1303,6 +1381,21 @@ describe('McpAgentToolsService', () => {
 				published: true,
 				activeVersionId: 'v2',
 			});
+		});
+
+		it('denies connect without the agent:publish scope even when update is allowed', async () => {
+			userHasScopesMock.mockImplementation(
+				async (_user: unknown, scopes: string[]) => !scopes.includes('agent:publish'),
+			);
+
+			const result = await callTool('update_agent_integration', input);
+
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:publish'], false, {
+				projectId: 'project-1',
+			});
+			expect(result.isError).toBe(true);
+			expect(integrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 
 		it('requires settings for telegram integrations', async () => {
