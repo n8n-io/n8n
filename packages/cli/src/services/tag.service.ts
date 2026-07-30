@@ -120,6 +120,21 @@ export class TagService {
 		});
 	}
 
+	async getByIds(ids: string[]): Promise<TagEntity[]> {
+		if (ids.length === 0) return [];
+		return await this.tagRepository.findMany(ids);
+	}
+
+	/**
+	 * Exact (case-sensitive) name lookup. Unlike `findByNames`, the input list
+	 * is passed through verbatim: case-variant names are distinct tags and must
+	 * all be looked up.
+	 */
+	async getByNames(names: string[]): Promise<TagEntity[]> {
+		if (names.length === 0) return [];
+		return await this.tagRepository.findManyByName(names);
+	}
+
 	/**
 	 * Paginated tags with non-archived usage counts plus the total count, both
 	 * via DB-level queries. Runs the data query and `count` in parallel.
