@@ -1,6 +1,15 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import type { Project, User, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import type {
+	ExecutionRepository,
+	Project,
+	User,
+	WorkflowEntity,
+	WorkflowHistory,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { ErrorReporter } from 'n8n-core';
 import {
 	NodeConnectionTypes,
 	type IConnections,
@@ -16,6 +25,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import type { EventService } from '@/events/event.service';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
@@ -94,9 +104,12 @@ describe('WorkflowExecutionService', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const pollCursorService = mock<PollCursorService>();
+	const executionRepository = mock<ExecutionRepository>();
+	const logger = mock<Logger>();
+	const errorReporter = mock<ErrorReporter>();
 	const workflowExecutionService = new WorkflowExecutionService(
-		mock(),
-		mock(),
+		logger,
+		errorReporter,
 		mock(),
 		mock(),
 		nodeTypes,
@@ -111,6 +124,7 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		pollCursorService,
+		executionRepository,
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -348,6 +362,59 @@ describe('WorkflowExecutionService', () => {
 				{ executionId: 'exec-9', expectedStatus: 'new' },
 				responsePromise,
 			);
+		});
+
+		test('crashes the committed execution when the runner refuses to start it', async () => {
+			const runError = new Error('concurrency queue torn down');
+			workflowRunner.run.mockRejectedValue(runError);
+
+			const returned = await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+			);
+
+			expect(returned).toBe('exec-9');
+			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith('exec-9');
+			expect(errorReporter.error).toHaveBeenCalledWith(runError, expect.anything());
+			expect(logger.error).toHaveBeenCalled();
+		});
+
+		test('rejects the response promise when the runner refuses to start the execution', async () => {
+			const runError = new Error('concurrency queue torn down');
+			workflowRunner.run.mockRejectedValue(runError);
+			const responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+			);
+
+			expect(responsePromise.reject).toHaveBeenCalledWith(runError);
+		});
+
+		test('leaves the committed execution alone when another process already claimed it', async () => {
+			workflowRunner.run.mockRejectedValue(new ExecutionAlreadyResumingError('exec-9'));
+
+			const returned = await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+			);
+
+			expect(returned).toBe('exec-9');
+			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
 		});
 
 		test('commits the poll items as the trigger data of the execution', async () => {
@@ -735,6 +802,7 @@ describe('WorkflowExecutionService', () => {
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
 				pollCursorService,
+				mock(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -808,6 +876,7 @@ describe('WorkflowExecutionService', () => {
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
 				pollCursorService,
+				mock(),
 			);
 
 			const result = await service.executeManually(workflowData, runPayload, user);
@@ -980,6 +1049,7 @@ describe('WorkflowExecutionService', () => {
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
 				pollCursorService,
+				mock(),
 			);
 		});
 
@@ -1137,6 +1207,7 @@ describe('WorkflowExecutionService', () => {
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
 				pollCursorService,
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1281,6 +1352,7 @@ describe('WorkflowExecutionService', () => {
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
 				pollCursorService,
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1386,6 +1458,7 @@ describe('WorkflowExecutionService', () => {
 				workflowsConfig,
 				workflowPublishedDataService,
 				pollCursorService,
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1440,6 +1513,7 @@ describe('WorkflowExecutionService', () => {
 				workflowsConfig,
 				workflowPublishedDataService,
 				pollCursorService,
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1481,6 +1555,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				pollCursorService,
+				mock(),
 			);
 
 			const user = mock<User>({ id: 'user-id' });

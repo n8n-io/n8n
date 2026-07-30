@@ -28,7 +28,7 @@ export class PollCursorService {
 	async readCursor(
 		workflowId: string,
 		nodeId: string,
-		seed: PollCursor,
+		nodeStaticData: PollCursor,
 	): Promise<PollCursor | null> {
 		const stored = await this.transactionRunner.run(
 			{},
@@ -36,12 +36,15 @@ export class PollCursorService {
 				await this.pollerStateRepository.ensureCursor(
 					workflowId,
 					nodeId,
-					seed as PollerCursor,
+					nodeStaticData as PollerCursor,
 					ctx,
 				),
 		);
 
 		const cursor = stored as PollCursor;
+
+		this.syncNodeStaticData(nodeStaticData, cursor);
+
 		return Object.keys(cursor).length === 0 ? null : cursor;
 	}
 
@@ -80,6 +83,16 @@ export class PollCursorService {
 				`Failed to mirror the poll cursor of node "${nodeName}" to workflow static data`,
 				{ workflowId, nodeName },
 			);
+		}
+	}
+
+	private syncNodeStaticData(nodeStaticData: PollCursor, cursor: PollCursor): void {
+		for (const key of Object.keys(nodeStaticData)) {
+			if (!(key in cursor)) delete nodeStaticData[key];
+		}
+
+		for (const [key, value] of Object.entries(cursor)) {
+			if (nodeStaticData[key] !== value) nodeStaticData[key] = value;
 		}
 	}
 
