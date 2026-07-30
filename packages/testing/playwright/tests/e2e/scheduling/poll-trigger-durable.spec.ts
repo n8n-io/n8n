@@ -49,13 +49,13 @@ test.describe(
 			// `fireScheduledJobsNow` forces the job's `nextRunAt` to now so the 1s
 			// sweep configured above claims it, instead of waiting out the real
 			// cron interval.
-			const { workflowId, nodeId, path } = await expectPollTriggerFires(
+			const { workflowId, nodeId } = await expectPollTriggerFires(
 				api,
 				services.proxy,
 				makePollTriggerWorkflow,
+				{ itemsAfterSeedPoll: [{ id: 1 }, { id: 2 }] },
 			);
 
-			await services.proxy.createGetExpectation(path, { items: [{ id: 2 }] });
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 
 			const scheduledExecution = await api.workflows.waitForExecution(
