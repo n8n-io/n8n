@@ -68,6 +68,9 @@ const resetManager = async () => {
 	const config = Container.get(ExternalSecretsConfig);
 	const settingsStore = Container.get(ExternalSecretsSettingsStore);
 	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
+	// Simulate a fresh process: without this, providers from the previous test survive in the
+	// singleton registry and act as connected predecessors during replacement.
+	providerRegistry.clear();
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
 	const providerConnectionManager = Container.get(ExternalSecretsProviderConnectionManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
