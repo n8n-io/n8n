@@ -1,6 +1,6 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
-import { ExecutionRepository, PollerStateRepository } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository, PollerStateRepository, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
@@ -14,6 +14,7 @@ describe('poll cursor atomicity', () => {
 	let executionPersistence: ExecutionPersistence;
 	let executionRepository: ExecutionRepository;
 	let pollerStateRepository: PollerStateRepository;
+	let transactionRunner: TransactionRunner;
 	let workflow: WorkflowEntity;
 
 	beforeAll(async () => {
@@ -22,6 +23,7 @@ describe('poll cursor atomicity', () => {
 		executionPersistence = Container.get(ExecutionPersistence);
 		executionRepository = Container.get(ExecutionRepository);
 		pollerStateRepository = Container.get(PollerStateRepository);
+		transactionRunner = Container.get(TransactionRunner);
 	});
 
 	beforeEach(async () => {
@@ -43,10 +45,20 @@ describe('poll cursor atomicity', () => {
 		deduplicationKey,
 	});
 
+	const buildExecutionEntity = (): Partial<ExecutionEntity> => ({
+		finished: false,
+		mode: 'trigger',
+		status: 'new',
+		createdAt: new Date(),
+		startedAt: new Date(),
+		stoppedAt: new Date(),
+		workflowId: workflow.id,
+	});
+
 	it('commits the cursor advance and the execution row together', async () => {
 		await pollCursorService.readCursor(workflow.id, nodeId, { lastItemId: 'a' });
 
-		const executionId = await pollCursorService.commitWithExecution({
+		const { executionId } = await pollCursorService.commitWithExecution({
 			workflowId: workflow.id,
 			nodeId,
 			cursor: { lastItemId: 'b' },
@@ -106,5 +118,40 @@ describe('poll cursor atomicity', () => {
 		expect(
 			await pollCursorService.readCursor(workflow.id, nodeId, { lastItemId: 'ignored' }),
 		).toEqual({ lastItemId: 'from-static-data' });
+	});
+
+	describe('ExecutionRepository.runInTransaction', () => {
+		it('joins the caller-supplied transaction so a later failure in the caller rolls back work already run through it', async () => {
+			let executionId: string | undefined;
+
+			await expect(
+				transactionRunner.run({}, async (ctx) => {
+					executionId = await executionRepository.runInTransaction(ctx, async (tx) => {
+						const saved = await tx.save(ExecutionEntity, buildExecutionEntity());
+						return saved.id;
+					});
+					throw new Error('caller fails after work already ran');
+				}),
+			).rejects.toThrow('caller fails after work already ran');
+
+			expect(await executionRepository.findOneBy({ id: executionId })).toBeNull();
+		});
+
+		it('opens a new, independent transaction for a context carrying none', async () => {
+			const committedId = await executionRepository.runInTransaction({}, async (tx) => {
+				const saved = await tx.save(ExecutionEntity, buildExecutionEntity());
+				return saved.id;
+			});
+
+			await expect(
+				executionRepository.runInTransaction({}, async (tx) => {
+					await tx.save(ExecutionEntity, buildExecutionEntity());
+					throw new Error('second transaction fails');
+				}),
+			).rejects.toThrow('second transaction fails');
+
+			const remaining = await executionRepository.find({ select: ['id'] });
+			expect(remaining.map((e) => e.id)).toEqual([committedId]);
+		});
 	});
 });
