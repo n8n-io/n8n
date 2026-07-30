@@ -136,6 +136,54 @@ describe('SDK node groups', () => {
 			expect(json.nodeGroups![0].nodeIds).toEqual([idByName.get('A')]);
 			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
 		});
+
+		function describedWorkflowJSON(description?: unknown): WorkflowJSON {
+			return {
+				id: WF_ID,
+				name: 'wf',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [
+					{
+						id: 'random-uuid',
+						name: 'G',
+						nodeIds: ['id-a'],
+						...(description !== undefined ? { description: description as string } : {}),
+					},
+				],
+			};
+		}
+
+		it('preserves the description across a fromJSON round-trip', () => {
+			const json = workflow.fromJSON(describedWorkflowJSON('Pulls the CRM contacts')).toJSON();
+
+			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
+		});
+
+		it('keeps the description when the imported workflow is edited', () => {
+			const builder = workflow.fromJSON(describedWorkflowJSON('Pulls the CRM contacts'));
+			builder.add(node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B' } }));
+
+			const json = builder.toJSON();
+
+			expect(json.nodes.map((n) => n.name)).toContain('B');
+			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
+		});
+
+		it('drops a description that the source JSON carries as a non-string', () => {
+			const json = workflow.fromJSON(describedWorkflowJSON(42)).toJSON();
+
+			expect(json.nodeGroups![0]).not.toHaveProperty('description');
+		});
 	});
 
 	describe('regenerateNodeIds()', () => {

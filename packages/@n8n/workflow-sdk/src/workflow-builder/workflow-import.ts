@@ -36,6 +36,7 @@ export interface ParsedWorkflow {
 		id?: string;
 		name: string;
 		members: Array<NodeInstance<string, string, unknown>>;
+		description?: string;
 	}>;
 }
 
@@ -185,6 +186,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 					const instance = idToInstance.get(id);
 					return instance !== undefined ? [instance] : [];
 				}),
+				...(group.description !== undefined ? { description: group.description } : {}),
 			}))
 		: undefined;
 
