@@ -121,9 +121,7 @@ export class PollCursorService {
 	}
 
 	private toBucket(value: IDataObject[string]): PollCursor {
-		return typeof value === 'object' && value !== null && !Array.isArray(value)
-			? { ...value }
-			: {};
+		return typeof value === 'object' && value !== null && !Array.isArray(value) ? { ...value } : {};
 	}
 
 	/**

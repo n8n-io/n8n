@@ -248,7 +248,9 @@ export class ApiHelpers {
 		if (!response.ok()) {
 			throw new TestError(`Failed to get poller cursor: ${await response.text()}`);
 		}
-		const { data } = (await response.json()) as { data: { cursor: Record<string, unknown> | null } };
+		const { data } = (await response.json()) as {
+			data: { cursor: Record<string, unknown> | null };
+		};
 		return data.cursor;
 	}
 
