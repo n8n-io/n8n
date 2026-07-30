@@ -70,8 +70,8 @@ Add the resource and ops in `packages/@n8n/permissions/`:
 4. **`src/roles/scopes/global-scopes.ee.ts`** — add to `GLOBAL_OWNER_SCOPES` (admin inherits via `concat()`). Do **not** add to member/chat-user globals — they get scopes via project relations.
 5. **Personal-space publishing**: if you add a `<resource>:publish` scope, also append it to `PERSONAL_SPACE_PUBLISHING_SETTING.scopes` in `constants.ee.ts` so personal-owner gating matches `workflow:publish`.
 6. **Frontend wiring** — three files in the editor; skipping any of them means the new scopes will not appear in the project-role configuration UI:
-   - `packages/frontend/editor-ui/src/app/stores/rbac.store.ts` — add `<resource>: {}` to `scopesByResourceId` (typecheck will fail otherwise).
-   - `packages/frontend/editor-ui/src/features/project-roles/projectRoleScopes.ts` — add the resource to `UI_OPERATIONS` (operations to render in the permissions matrix, in display order) **and** to `SCOPE_TYPES` (the order the resource group appears on the page).
+   - `packages/frontend/@n8n/stores/src/rbac.store.ts` — add `<resource>: {}` to `scopesByResourceId` (typecheck will fail otherwise).
+   - `packages/frontend/editor-ui/src/features/roles/project/projectRoleScopes.ts` — add the resource to `UI_OPERATIONS` (operations to render in the permissions matrix, in display order) **and** to `SCOPE_TYPES` (the order the resource group appears on the page).
    - `packages/frontend/@n8n/i18n/src/locales/en.json` — add `projectRoles.<resource>:<op>` (column label) and `projectRoles.<resource>:<op>.tooltip` (hover description) for every op, plus `projectRoles.type.<resource>` (the group header).
 7. **Snapshot** — update `packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap` to include the new `<resource>:*` entries.
 
