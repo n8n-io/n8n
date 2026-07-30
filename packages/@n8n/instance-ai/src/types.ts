@@ -980,7 +980,7 @@ export interface InstanceAiContext {
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
-	agentBuilderTarget?: { agentId: string; projectId: string };
+	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**
