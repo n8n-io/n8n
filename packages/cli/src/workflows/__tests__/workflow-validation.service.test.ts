@@ -709,6 +709,13 @@ describe('WorkflowValidationService', () => {
 
 		beforeEach(() => {
 			mockNodeTypes = mock<NodeTypes>();
+			// Pin the flag off so the expected copy never depends on the ambient env.
+			// Tests that need it on opt in with `withFormOAuth2(true)`.
+			vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', 'false');
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
 		});
 
 		it('should return valid when no credentials are used', async () => {
@@ -1067,10 +1074,6 @@ describe('WorkflowValidationService', () => {
 			const withFormOAuth2 = (enabled: boolean) =>
 				vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', enabled ? 'true' : 'false');
 
-			afterEach(() => {
-				vi.unstubAllEnvs();
-			});
-
 			const validateWithFormTrigger = async (authentication: string) => {
 				const nodes: INode[] = [
 					createNode('On form submission', FORM_TRIGGER, {
@@ -1177,7 +1180,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.error).toBe(
-				'Cannot publish workflow: end-user credentials ("My OAuth2") require a trigger with an identity extractor configured.',
+				'Cannot publish workflow: end-user credentials ("My OAuth2") require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.',
 			);
 		});
 

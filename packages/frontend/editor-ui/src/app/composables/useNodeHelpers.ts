@@ -474,7 +474,7 @@ export function useNodeHelpers() {
 			// form-trigger OAuth2 is on — without it a form establishes no identity, so
 			// listing it would advertise a fix that doesn't work.
 			if (blockingTrigger) {
-				let messageKey: BaseTextKey = 'nodeIssues.credentials.privateRequiresManualTrigger';
+				let messageKey: BaseTextKey = 'nodeIssues.credentials.privateRequiresIdentityTrigger';
 
 				if (!blockingTrigger.isSystemResolver) {
 					messageKey = 'nodeIssues.credentials.privateRequiresIdentityExtractor';

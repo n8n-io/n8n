@@ -268,7 +268,7 @@ describe('protected resource metadata for form triggers', () => {
 describe('authorize gate (workflow:execute)', () => {
 	test('authorizes the owner but denies a user without execute access', async () => {
 		const webhookPath = randomUUID();
-		await createPublishedFormWorkflow(webhookPath, formTriggerNode());
+		await createPublishedFormWorkflow(webhookPath, formTriggerNode({ requireExecuteAccess: true }));
 
 		const resource = await resolveResource(webhookPath);
 
@@ -278,7 +278,10 @@ describe('authorize gate (workflow:execute)', () => {
 
 	test('authorizes a user granted execute via a project role', async () => {
 		const webhookPath = randomUUID();
-		const workflow = await createPublishedFormWorkflow(webhookPath, formTriggerNode());
+		const workflow = await createPublishedFormWorkflow(
+			webhookPath,
+			formTriggerNode({ requireExecuteAccess: true }),
+		);
 		await shareWorkflowWithUsers(workflow, [member]);
 
 		const resource = await resolveResource(webhookPath);
@@ -298,9 +301,9 @@ describe('authorize gate (workflow:execute)', () => {
 		await expect(resource?.authorize(member)).resolves.toBe(true);
 	});
 
-	test('still requires execute access when the parameter is absent', async () => {
-		// `requireExecuteAccess` defaults to on, so a form whose node never set the
-		// parameter stays gated.
+	test('authorizes any authenticated user when the parameter is absent', async () => {
+		// `requireExecuteAccess` is opt-in, so an unset parameter means any authenticated
+		// user may submit — a form whose node never set it stays open.
 		const node = formTriggerNode();
 		expect(node.parameters.requireExecuteAccess).toBeUndefined();
 		const webhookPath = randomUUID();
@@ -308,7 +311,7 @@ describe('authorize gate (workflow:execute)', () => {
 
 		const resource = await resolveResource(webhookPath);
 
-		await expect(resource?.authorize(member)).resolves.toBe(false);
+		await expect(resource?.authorize(member)).resolves.toBe(true);
 	});
 });
 
@@ -336,7 +339,7 @@ describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () =>
 
 	test('refuses a submitter without execute access on the workflow', async () => {
 		const webhookPath = randomUUID();
-		await createPublishedFormWorkflow(webhookPath, formTriggerNode());
+		await createPublishedFormWorkflow(webhookPath, formTriggerNode({ requireExecuteAccess: true }));
 		const token = await mintAccessToken(member.id, resourceUrlFor(webhookPath));
 
 		const result = await Container.get(OAuthTokenService).verifyOAuthAccessToken(
@@ -350,7 +353,10 @@ describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () =>
 
 	test('allows a submitter granted execute via a project role', async () => {
 		const webhookPath = randomUUID();
-		const workflow = await createPublishedFormWorkflow(webhookPath, formTriggerNode());
+		const workflow = await createPublishedFormWorkflow(
+			webhookPath,
+			formTriggerNode({ requireExecuteAccess: true }),
+		);
 		await shareWorkflowWithUsers(workflow, [member]);
 		const token = await mintAccessToken(member.id, resourceUrlFor(webhookPath));
 

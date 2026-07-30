@@ -23,9 +23,9 @@ import type {
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
-import { isFormOAuth2Enabled } from '@/constants/form-trigger';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { isFormOAuth2Enabled } from '@/modules/oauth-server/protected-resource-resolvers/utils';
 import type { NodeTypes } from '@/node-types';
 
 export interface WorkflowValidationResult {
@@ -368,7 +368,7 @@ export class WorkflowValidationService {
 
 		// Custom resolver: every trigger must provide an external identity.
 		if (allTriggersProvideExternalIdentity) return undefined;
-		return `end-user credentials (${credNames}) require a trigger with an identity extractor configured.`;
+		return `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */

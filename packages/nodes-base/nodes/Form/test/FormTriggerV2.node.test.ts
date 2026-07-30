@@ -90,10 +90,10 @@ describe('FormTrigger', () => {
 			(property) => property.name === 'requireExecuteAccess',
 		);
 
-		it('should require workflow execute permission by default', () => {
+		it('should not require workflow execute permission by default', () => {
 			expect(requireExecuteAccess).toMatchObject({
 				type: 'boolean',
-				default: true,
+				default: false,
 				envFeatureFlag: 'FORM_TRIGGER_OAUTH2',
 			});
 		});

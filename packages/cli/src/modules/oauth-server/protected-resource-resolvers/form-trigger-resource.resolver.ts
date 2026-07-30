@@ -76,7 +76,9 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 			node.parameters.authentication === 'n8nUserAuth'
 		) {
 			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.form}/${path}`;
-			const requireExecute = node.parameters.requireExecuteAccess !== false;
+			// Opt-in, unlike the MCP resolvers' `!== false`: forms are public entry points, so
+			// an unset parameter means any authenticated user may submit. Don't "align" these.
+			const requireExecute = node.parameters.requireExecuteAccess === true;
 			return {
 				id: 'workflow-form:' + workflow.id,
 				isFirstParty: true,

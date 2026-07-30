@@ -229,7 +229,9 @@ describe('authorize gate (workflow:execute)', () => {
 	};
 
 	test('authorizes the owner but denies a user without execute access', async () => {
-		const { webhookPath } = await registerTestWebhookForSavedWorkflow(formTriggerNode());
+		const { webhookPath } = await registerTestWebhookForSavedWorkflow(
+			formTriggerNode({ requireExecuteAccess: true }),
+		);
 
 		const resource = await resolveResource(webhookPath);
 
@@ -238,7 +240,9 @@ describe('authorize gate (workflow:execute)', () => {
 	});
 
 	test('authorizes a user granted execute via a project role', async () => {
-		const { webhookPath, workflow } = await registerTestWebhookForSavedWorkflow(formTriggerNode());
+		const { webhookPath, workflow } = await registerTestWebhookForSavedWorkflow(
+			formTriggerNode({ requireExecuteAccess: true }),
+		);
 		await shareWorkflowWithUsers(workflow, [member]);
 
 		const resource = await resolveResource(webhookPath);
@@ -256,16 +260,16 @@ describe('authorize gate (workflow:execute)', () => {
 		await expect(resource?.authorize(member)).resolves.toBe(true);
 	});
 
-	test('still requires execute access when the parameter is absent', async () => {
-		// `requireExecuteAccess` defaults to on, so a workflow saved before the
-		// parameter existed — or one that never set it — stays gated.
+	test('authorizes any authenticated user when the parameter is absent', async () => {
+		// `requireExecuteAccess` is opt-in, so an unset parameter means any authenticated
+		// user may submit — a workflow saved before the parameter existed stays open.
 		const node = formTriggerNode();
 		expect(node.parameters.requireExecuteAccess).toBeUndefined();
 		const { webhookPath } = await registerTestWebhookForSavedWorkflow(node);
 
 		const resource = await resolveResource(webhookPath);
 
-		await expect(resource?.authorize(member)).resolves.toBe(false);
+		await expect(resource?.authorize(member)).resolves.toBe(true);
 	});
 });
 
