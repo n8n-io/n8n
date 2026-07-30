@@ -1,3 +1,4 @@
+
 import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,6 +25,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -229,11 +231,16 @@ export class TriggerExecutionContextFactory {
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
-			let stagedCursor: PollCursor | null = null;
+			const stagedCursorStore = new AsyncLocalStorage<{ cursor: PollCursor | null }>();
+
+			const __runPoll = async <T>(poll: () => Promise<T>): Promise<T> =>
+				await stagedCursorStore.run({ cursor: null }, poll);
 
 			const takeStagedCursor = (): PollCursor | null => {
-				const cursor = stagedCursor;
-				stagedCursor = null;
+				const staged = stagedCursorStore.getStore();
+				if (staged === undefined) return null;
+				const { cursor } = staged;
+				staged.cursor = null;
 				return cursor;
 			};
 
@@ -247,6 +254,12 @@ export class TriggerExecutionContextFactory {
 				const cursor = takeStagedCursor();
 
 				if (cursor === null) {
+					if (this.pollCursorService.enabled) {
+						this.logger.debug(
+							`Poll node "${node.name}" emitted items without staging a cursor, so its state is kept in workflow static data`,
+							{ workflowId: workflowData.id, nodeId: node.id },
+						);
+					}
 					void this.workflowStaticDataService.saveStaticData(workflow);
 				}
 
@@ -306,7 +319,15 @@ export class TriggerExecutionContextFactory {
 				);
 
 			const setCursor = (cursor: PollCursor) => {
-				stagedCursor = { ...(stagedCursor ?? {}), ...cursor };
+				const staged = stagedCursorStore.getStore();
+				if (staged === undefined) {
+					this.logger.warn(
+						`Poll node "${node.name}" staged a cursor outside of a poll, so the cursor was discarded`,
+						{ workflowId: workflowData.id, nodeId: node.id },
+					);
+					return;
+				}
+				staged.cursor = Object.keys(cursor).length === 0 ? null : { ...cursor };
 			};
 
 			const __commitCursor = async () => {
@@ -326,6 +347,7 @@ export class TriggerExecutionContextFactory {
 				getCursor,
 				setCursor,
 				__commitCursor,
+				__runPoll,
 			);
 		};
 	}

@@ -1408,6 +1408,7 @@ export interface IPollFunctions
 	getCursor(): Promise<PollCursor | null>;
 	setCursor(cursor: PollCursor): void;
 	__commitCursor(): Promise<void>;
+	__runPoll<T>(poll: () => Promise<T>): Promise<T>;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &

@@ -134,15 +134,28 @@ describe('PollContext', () => {
 			});
 		});
 
-		it('should merge a staged cursor onto the keys already in the static data', async () => {
+		it('should replace the keys already in the static data with the staged cursor', async () => {
 			const nodeStaticData: IDataObject = { lastTimeChecked: '2026-07-28T10:00:00.000Z' };
 			const context = buildContext(nodeStaticData);
 
 			context.setCursor({ lastItemId: 'a' });
 
-			await expect(context.getCursor()).resolves.toEqual({
+			await expect(context.getCursor()).resolves.toEqual({ lastItemId: 'a' });
+			expect(nodeStaticData).toEqual({ lastItemId: 'a' });
+		});
+
+		it('should keep a key the staged cursor restates', async () => {
+			const nodeStaticData: IDataObject = {
 				lastTimeChecked: '2026-07-28T10:00:00.000Z',
-				lastItemId: 'a',
+				etag: 'v1',
+			};
+			const context = buildContext(nodeStaticData);
+
+			context.setCursor({ lastTimeChecked: '2026-07-28T11:00:00.000Z', etag: 'v2' });
+
+			await expect(context.getCursor()).resolves.toEqual({
+				lastTimeChecked: '2026-07-28T11:00:00.000Z',
+				etag: 'v2',
 			});
 		});
 
@@ -152,6 +165,15 @@ describe('PollContext', () => {
 			context.setCursor({});
 
 			await expect(context.getCursor()).resolves.toBeNull();
+		});
+
+		it('should leave the stored cursor alone when staging a cursor with no keys', async () => {
+			const nodeStaticData: IDataObject = { lastItemId: 'a' };
+			const context = buildContext(nodeStaticData);
+
+			context.setCursor({});
+
+			expect(nodeStaticData).toEqual({ lastItemId: 'a' });
 		});
 
 		it('should leave the static data untouched when __commitCursor is called', async () => {
@@ -164,6 +186,15 @@ describe('PollContext', () => {
 		});
 	});
 
+	describe('default __runPoll', () => {
+		it('should run the poll and return its result', async () => {
+			const cursorWorkflow = mock<Workflow>({ expression, nodeTypes });
+			const context = new PollContext(cursorWorkflow, node, additionalData, mode, activation);
+
+			await expect(context.__runPoll(async () => 'polled')).resolves.toBe('polled');
+		});
+	});
+
 	describe('injected cursor accessors', () => {
 		const buildContext = (
 			nodeStaticData: IDataObject,
@@ -171,6 +202,7 @@ describe('PollContext', () => {
 				getCursor: IPollFunctions['getCursor'];
 				setCursor: IPollFunctions['setCursor'];
 				commitCursor: IPollFunctions['__commitCursor'];
+				runPoll?: IPollFunctions['__runPoll'];
 			},
 		) => {
 			const cursorWorkflow = mock<Workflow>({ expression, nodeTypes });
@@ -186,6 +218,7 @@ describe('PollContext', () => {
 				overrides.getCursor,
 				overrides.setCursor,
 				overrides.commitCursor,
+				overrides.runPoll,
 			);
 		};
 
@@ -231,6 +264,26 @@ describe('PollContext', () => {
 			await context.__commitCursor();
 
 			expect(commitCursor).toHaveBeenCalledTimes(1);
+		});
+
+		it('should delegate __runPoll to the injected implementation', async () => {
+			let runPollCalls = 0;
+			const runPoll: IPollFunctions['__runPoll'] = async (poll) => {
+				runPollCalls++;
+				return await poll();
+			};
+			const context = buildContext(
+				{},
+				{
+					getCursor: vi.fn().mockResolvedValue(null),
+					setCursor: vi.fn(),
+					commitCursor: vi.fn().mockResolvedValue(undefined),
+					runPoll,
+				},
+			);
+
+			await expect(context.__runPoll(async () => 'polled')).resolves.toBe('polled');
+			expect(runPollCalls).toBe(1);
 		});
 	});
 });

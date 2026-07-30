@@ -80,62 +80,71 @@ export class PollTriggerExecutor {
 						return;
 					}
 
-					try {
-						if (ownsIsolate) await workflow.expression.acquireIsolate();
+					await pollFunctions.__runPoll(async () => {
+						try {
+							if (ownsIsolate) await workflow.expression.acquireIsolate();
 
-						const pollResponse = await this.triggersAndPollers.runPollFunction(
-							workflow,
-							node,
-							pollFunctions,
-						);
-
-						// Same as the above `isCurrent` check; last chance to check before
-						// potentially starting the execution. Emitting now if superseded would run
-						// an execution against the old version of the workflow, so drop it.
-						// Bailing out here is safe even though `poll()` may have already advanced
-						// its state in the in-memory static data: persistence only happens inside
-						// `__emit` (`saveStaticData`), so the dropped call leaves the stored state
-						// untouched and the newly registered poller re-fetches the same events.
-						if (!testingTrigger && !isCurrent()) {
-							this.logger.debug(
-								`Discarding in-flight poll result for superseded workflow "${workflow.name}"`,
-								{ workflowId: workflow.id },
+							const pollResponse = await this.triggersAndPollers.runPollFunction(
+								workflow,
+								node,
+								pollFunctions,
 							);
+
+							// Same as the above `isCurrent` check; last chance to check before
+							// potentially starting the execution. Emitting now if superseded would run
+							// an execution against the old version of the workflow, so drop it.
+							// Bailing out here is safe even though `poll()` may have already advanced
+							// its state in the in-memory static data: persistence only happens inside
+							// `__emit` (`saveStaticData`), so the dropped call leaves the stored state
+							// untouched and the newly registered poller re-fetches the same events.
+							if (!testingTrigger && !isCurrent()) {
+								this.logger.debug(
+									`Discarding in-flight poll result for superseded workflow "${workflow.name}"`,
+									{ workflowId: workflow.id },
+								);
+								span.setStatus({ code: SpanStatus.ok });
+								return;
+							}
+
+							if (pollResponse !== null) {
+								pollFunctions.__emit(pollResponse);
+							} else if (!testingTrigger) {
+								try {
+									await pollFunctions.__commitCursor();
+								} catch (error) {
+									this.logger.error(
+										`Failed to commit the poll cursor for workflow "${workflow.name}"; the next poll repeats the same window`,
+										{ workflowId: workflow.id, nodeId: node.id, error },
+									);
+								}
+							}
+
 							span.setStatus({ code: SpanStatus.ok });
-							return;
-						}
+						} catch (error) {
+							// If the poll trigger fails in the first activation
+							// throw the error back so we let the user know there is
+							// an issue with the trigger.
+							if (testingTrigger) {
+								span.setStatus({ code: SpanStatus.error });
+								throw error;
+							}
 
-						if (pollResponse !== null) {
-							pollFunctions.__emit(pollResponse);
-						} else if (!testingTrigger) {
-							await pollFunctions.__commitCursor();
-						}
+							// Ignore poll errors that are against a superseded workflow
+							if (!isCurrent()) {
+								this.logger.debug(
+									`Ignoring in-flight poll error for superseded workflow "${workflow.name}"`,
+									{ workflowId: workflow.id },
+								);
+								span.setStatus({ code: SpanStatus.ok });
+								return;
+							}
 
-						span.setStatus({ code: SpanStatus.ok });
-					} catch (error) {
-						// If the poll trigger fails in the first activation
-						// throw the error back so we let the user know there is
-						// an issue with the trigger.
-						if (testingTrigger) {
 							span.setStatus({ code: SpanStatus.error });
-							throw error;
+							pollFunctions.__emitError(error as Error);
+						} finally {
+							if (ownsIsolate) await workflow.expression.releaseIsolate();
 						}
-
-						// Ignore poll errors that are against a superseded workflow
-						if (!isCurrent()) {
-							this.logger.debug(
-								`Ignoring in-flight poll error for superseded workflow "${workflow.name}"`,
-								{ workflowId: workflow.id },
-							);
-							span.setStatus({ code: SpanStatus.ok });
-							return;
-						}
-
-						span.setStatus({ code: SpanStatus.error });
-						pollFunctions.__emitError(error as Error);
-					} finally {
-						if (ownsIsolate) await workflow.expression.releaseIsolate();
-					}
+					});
 				},
 			);
 		};
