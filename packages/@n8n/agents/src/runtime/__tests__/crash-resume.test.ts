@@ -14,6 +14,8 @@ import { z } from 'zod';
 
 import type { CheckpointStore, SerializableAgentState } from '../../types';
 import type { StreamChunk } from '../../types/sdk/agent';
+import type { BuiltFileStore } from '../../types/sdk/file-store';
+import type { AgentDbMessage } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { AgentEventBus } from '../state/event-bus';
@@ -328,6 +330,133 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 		await expect(runtime.crashResume({ runId: 'run_claimed' })).rejects.toThrow(
 			/pending tool calls/,
 		);
+	});
+
+	describe('file-part rehydration on resume', () => {
+		const fileBytes = new Uint8Array([1, 2, 3]);
+
+		/** A user message whose file part is reference-only, as checkpoints persist it. */
+		function referenceOnlyUserMessage(): AgentDbMessage {
+			return {
+				id: 'm-user',
+				createdAt: new Date('2026-01-01T00:00:00Z'),
+				role: 'user',
+				content: [
+					{ type: 'text', text: 'look at this' },
+					{
+						type: 'file',
+						mediaType: 'image/png',
+						fileRef: { id: 'att-1', fileName: 'photo.png', sizeBytes: 3 },
+					},
+				],
+			};
+		}
+
+		function createFileStoreRuntime(store: CheckpointStore, fileStore: BuiltFileStore) {
+			return new AgentRuntime({
+				name: 'crash-test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'You are a test assistant.',
+				tools: [lookupTool, approveTool],
+				eventBus: new AgentEventBus(),
+				checkpointStorage: store,
+				fileStore,
+			});
+		}
+
+		/** The hydrated file part as the AI SDK receives it from the resumed model call. */
+		function findFilePart(callArgs: unknown) {
+			const { messages } = callArgs as {
+				messages: Array<{ role: string; content: unknown }>;
+			};
+			return messages
+				.flatMap((m) => (Array.isArray(m.content) ? (m.content as Array<{ type: string }>) : []))
+				.find((part) => part.type === 'file') as { type: string; data?: Uint8Array } | undefined;
+		}
+
+		it('crashResume() rehydrates reference-only file parts before the model call', async () => {
+			const store = new RecordingCheckpointStore();
+			store.map.set('run_files', {
+				status: 'running',
+				messageList: {
+					messages: [referenceOnlyUserMessage()],
+					historyIds: [],
+					inputIds: ['m-user'],
+					responseIds: [],
+				},
+				pendingToolCalls: {},
+				persistence: { threadId: 'thread-files', resourceId: 'user-1' },
+			});
+			const fileStore: BuiltFileStore = { load: vi.fn().mockResolvedValue(fileBytes) };
+			const runtime = createFileStoreRuntime(store, fileStore);
+			streamText.mockReset();
+			streamText.mockReturnValueOnce(makeStreamSuccess('resumed'));
+
+			const result = await runtime.crashResume({ runId: 'run_files' });
+			await collectChunks(result.stream);
+
+			expect(fileStore.load).toHaveBeenCalledWith(expect.objectContaining({ id: 'att-1' }), {
+				threadId: 'thread-files',
+			});
+			expect(findFilePart(streamText.mock.calls[0][0])?.data).toBe(fileBytes);
+		});
+
+		it('resume() rehydrates reference-only file parts before the model call', async () => {
+			const store = new RecordingCheckpointStore();
+			store.map.set('run_files', {
+				status: 'suspended',
+				messageList: {
+					messages: [
+						referenceOnlyUserMessage(),
+						{
+							id: 'm-assistant',
+							createdAt: new Date('2026-01-01T00:00:01Z'),
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-hitl',
+									toolName: 'approve',
+									input: { question: 'ok?' },
+									state: 'pending',
+								},
+							],
+						},
+					],
+					historyIds: [],
+					inputIds: ['m-user'],
+					responseIds: ['m-assistant'],
+				},
+				pendingToolCalls: {
+					'tc-hitl': {
+						suspended: true,
+						toolCallId: 'tc-hitl',
+						toolName: 'approve',
+						input: { question: 'ok?' },
+						suspendPayload: { question: 'approve?' },
+						resumeSchema: {},
+						runId: 'run_files',
+					},
+				},
+				persistence: { threadId: 'thread-files', resourceId: 'user-1' },
+			});
+			const fileStore: BuiltFileStore = { load: vi.fn().mockResolvedValue(fileBytes) };
+			const runtime = createFileStoreRuntime(store, fileStore);
+			streamText.mockReset();
+			streamText.mockReturnValueOnce(makeStreamSuccess('approved'));
+
+			const result = await runtime.resume(
+				'stream',
+				{ approved: true },
+				{ runId: 'run_files', toolCallId: 'tc-hitl' },
+			);
+			await collectChunks((result as { stream: ReadableStream<unknown> }).stream);
+
+			expect(fileStore.load).toHaveBeenCalledWith(expect.objectContaining({ id: 'att-1' }), {
+				threadId: 'thread-files',
+			});
+			expect(findFilePart(streamText.mock.calls[0][0])?.data).toBe(fileBytes);
+		});
 	});
 
 	it('surfaces an error when maxIterations is decreased on crashResume (parity with resume)', async () => {

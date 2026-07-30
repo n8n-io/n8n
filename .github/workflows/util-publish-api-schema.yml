@@ -58,6 +58,14 @@ jobs:
             Content-Type: text/yaml; charset=utf-8
           EOF
 
+      # wrangler-action self-installs Wrangler with `pnpm add` at the workspace
+      # root, which pnpm rejects (ERR_PNPM_ADDING_TO_ROOT). Pre-install it and
+      # allow the root add so the action finds Wrangler and skips its own install.
+      - name: Setup Wrangler Pre-requisites
+        run: |
+          echo "ignore-workspace-root-check=true" >> .npmrc
+          pnpm add --global wrangler
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
         with:
