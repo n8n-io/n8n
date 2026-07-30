@@ -68,6 +68,14 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Documentation URL',
+			name: 'docsUrl',
+			type: 'string',
+			description:
+				'Provider page where the user creates/copies the secret (e.g. the API-keys dashboard). Not shown in the form — the AI Assistant help thread points the user there.',
+			default: '',
+		},
+		{
 			// Machine-readable service identity: the credential type is shared by
 			// every service, so setup surfaces need this to offer a credential only
 			// to nodes calling the same service. The name field stays the human layer.

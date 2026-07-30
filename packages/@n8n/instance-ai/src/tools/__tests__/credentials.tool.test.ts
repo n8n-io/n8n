@@ -762,6 +762,7 @@ describe('credentials tool', () => {
 						type: 'password' as const,
 					},
 				],
+				docsUrl: 'https://fal.ai/dashboard/keys',
 				suggestedName: 'fal.ai API Key',
 				testUrl: 'https://fal.run/v1/models',
 			};

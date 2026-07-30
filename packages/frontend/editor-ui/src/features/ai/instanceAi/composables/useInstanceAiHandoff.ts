@@ -94,6 +94,7 @@ export function buildInstanceAiCredentialHandoffContext(
 			...(credential.placeholderTitles?.length
 				? { placeholderTitles: credential.placeholderTitles }
 				: {}),
+			...(credential.docsUrl ? { docsUrl: credential.docsUrl } : {}),
 			...(credential.documentationUrl ? { documentationUrl: credential.documentationUrl } : {}),
 			...(credential.oauthRedirectUrl ? { oauthRedirectUrl: credential.oauthRedirectUrl } : {}),
 		},

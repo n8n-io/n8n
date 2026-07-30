@@ -183,6 +183,10 @@ const testUrlText = computed(() =>
 	typeof props.credentialData.testUrl === 'string' ? props.credentialData.testUrl : '',
 );
 
+const docsUrlText = computed(() =>
+	typeof props.credentialData.docsUrl === 'string' ? props.credentialData.docsUrl : '',
+);
+
 // Local buffer: the stored value is a JSON array, so echoing the parsed value
 // back into the input would eat separators as the user types them.
 const codesText = ref(
@@ -383,6 +387,24 @@ const typeOptions = computed(() => [
 						:class="[$style.mono, $style.narrow]"
 						data-test-id="templated-auth-codes-input"
 						@update:model-value="onCodesInput"
+					/>
+				</N8nInputLabel>
+			</div>
+
+			<div :class="$style.section">
+				<N8nInputLabel
+					:label="i18n.baseText('credentialEdit.templatedAuth.docsUrl')"
+					:tooltip-text="i18n.baseText('credentialEdit.templatedAuth.docsUrl.tooltip')"
+					:bold="false"
+					size="medium"
+				>
+					<N8nInput
+						size="small"
+						:model-value="docsUrlText"
+						:placeholder="i18n.baseText('credentialEdit.templatedAuth.docsUrl.placeholder')"
+						:class="$style.mono"
+						data-test-id="templated-auth-docs-url-input"
+						@update:model-value="emitSetupUpdate('docsUrl', $event)"
 					/>
 				</N8nInputLabel>
 			</div>

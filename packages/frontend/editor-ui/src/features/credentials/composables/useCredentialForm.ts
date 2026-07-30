@@ -476,6 +476,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			template: JSON.stringify(setupHint.template, null, 2),
 			placeholderDefs: JSON.stringify(setupHint.placeholders, null, 2),
 			...(setupHint.testUrl ? { testUrl: setupHint.testUrl } : {}),
+			...(setupHint.docsUrl ? { docsUrl: setupHint.docsUrl } : {}),
 			...(setupHint.acceptedStatusCodes?.length
 				? { acceptedStatusCodes: JSON.stringify(setupHint.acceptedStatusCodes) }
 				: {}),

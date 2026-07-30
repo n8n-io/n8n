@@ -76,6 +76,12 @@ export const setupHintField = z
 			)
 			.min(1)
 			.describe('One entry per {{marker}} in the template — every marker must be described here.'),
+		docsUrl: z
+			.string()
+			.optional()
+			.describe(
+				'Direct URL of the provider page where the user creates/copies the secret (e.g. https://replicate.com/account/api-tokens). Not shown in the form — the AI help thread uses it to send the user to the exact page, so it must come from a fetched page, never constructed. NOT the API reference documentation.',
+			),
 		suggestedName: z
 			.string()
 			.optional()

@@ -314,6 +314,10 @@ export const credentialSetupHintSchema = z.object({
 		body: z.record(z.unknown()).optional(),
 	}),
 	placeholders: z.array(credentialPlaceholderDefSchema).min(1),
+	/** The provider page where the user creates/copies the secret. Not rendered
+	 *  in the form — handed to the AI help thread so it can point the user at
+	 *  the exact page the recipe research already verified. */
+	docsUrl: z.string().optional(),
 	suggestedName: z.string().optional(),
 	/** GET endpoint the created credential is auth-probed against. */
 	testUrl: z.string().optional(),
@@ -958,6 +962,10 @@ export const instanceAiCredentialHandoffContextSchema = z.object({
 		 *  the user only pastes these values, so the thread gives where-to-find
 		 *  guidance instead of configuration steps. */
 		placeholderTitles: z.array(z.string().min(1).max(255)).max(20).optional(),
+		/** The provider's key page from the recipe (where the user creates/copies
+		 *  the secret) — distinct from documentationUrl, the n8n docs page of the
+		 *  credential type. The thread directs the user there. */
+		docsUrl: z.string().url().max(2048).optional(),
 		documentationUrl: z.string().url().max(2048).optional(),
 		oauthRedirectUrl: z.string().url().max(2048).optional(),
 	}),

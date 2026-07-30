@@ -135,6 +135,18 @@ export function deriveServiceName(
 	return setupHint?.suggestedName?.trim() || undefined;
 }
 
+/** A stored URL only when it parses as http(s) — junk must not reach the
+ *  handoff context's strict url() validation. */
+export function parseHttpUrl(value: unknown): string | undefined {
+	if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return undefined;
+	try {
+		new URL(value);
+		return value;
+	} catch {
+		return undefined;
+	}
+}
+
 /** Fallback input label for a marker without a def: `api_key` → "Api key". */
 export function humanizeMarkerName(name: string): string {
 	const spaced = name.replace(/_/g, ' ').trim();

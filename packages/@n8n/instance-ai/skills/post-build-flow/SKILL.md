@@ -77,8 +77,8 @@ setup card pre-fills the credential and the user only pastes their secret —
 instead of facing an empty JSON template they'd have to decode from the
 provider's docs. Before composing the hints, load the
 `credential-recipe-research` skill and execute its lookup procedure — the
-template and `testUrl` must come from the provider documentation it has you
-fetch, never from memory:
+template, `docsUrl` and `testUrl` must come from the provider documentation
+it has you fetch, never from memory:
 
 - `template` — the auth request parts (headers/qs/body) exactly as documented,
   with `{{placeholder}}` markers where the user's values go.
@@ -91,6 +91,11 @@ fetch, never from memory:
   the provider documents the value as optional (e.g. an org/region
   qualifier) — template entries referencing an empty optional placeholder are
   omitted from the request.
+- `docsUrl` — the provider page where a logged-in user CREATES/COPIES the
+  secret (e.g. `https://replicate.com/account/api-tokens`) — never the API
+  reference. Not shown in the form: the AI Assistant help thread uses it to
+  send the user to the exact page. Found via the `credential-recipe-research`
+  procedure; omit when it finds nothing conclusive.
 - `testUrl` — a documented side-effect-free GET that rejects a bad key with
   401/403, used to verify the credential on save and later retests; never one
   of the workflow's own endpoints, never anything billable. Found via the
@@ -122,6 +127,7 @@ Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
           "type": "password"
         }
       ],
+      "docsUrl": "https://fal.ai/dashboard/keys",
       "testUrl": "https://fal.run/v1/models"
     }
   ]

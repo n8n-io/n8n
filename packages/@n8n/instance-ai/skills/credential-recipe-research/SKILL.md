@@ -2,11 +2,11 @@
 name: credential-recipe-research
 description: >-
   Lookup procedure for Simplified Custom Auth recipe fields — sources the auth
-  template and an auth-rejecting testUrl from the provider's real
-  documentation instead of memory. Load before composing credentialHints for
-  a service without a dedicated credential type (the post-build-flow setup
-  step), or when asked to fix a recipe whose template or test endpoint is
-  wrong.
+  template, the key-issuing docsUrl and an auth-rejecting testUrl from the
+  provider's real documentation instead of memory. Load before composing
+  credentialHints for a service without a dedicated credential type (the
+  post-build-flow setup step), or when asked to fix a recipe whose template,
+  key page or test endpoint is wrong.
 recommended_tools:
   - research
   - workflows
@@ -31,7 +31,33 @@ like `xi-api-key`). If the documented auth is basic, digest, or OAuth, stop:
 that is not expressible as a template — use the matching generic type instead
 (see the workflow-builder skill's credential ladder).
 
-## 2. Verification endpoint (testUrl)
+## 2. Key page (docsUrl)
+
+Find where a logged-in user CREATES or COPIES the key. The URL is not shown
+in the form — the AI Assistant help thread presents it as THE place to get
+the value, so a wrong URL sends the user to a dead end with full confidence:
+
+- Search `"<service> dashboard API keys"`, and scan the fetched auth docs for
+  phrases like "get your key from", "Dashboard → API Keys", "console",
+  "settings".
+- The answer normally lives on an app/console/dashboard host —
+  `console.apify.com/settings/integrations`,
+  `elevenlabs.io/app/settings/api-keys`, `replicate.com/account/api-tokens`,
+  `app.tavily.com/home` — not under `/docs`, `/reference`, or
+  `/documentation`.
+- Accept a docs-domain URL only when the fetched page shows keys are actually
+  issued there (some ReadMe-style logged-in portals do).
+- NEVER construct a dashboard path by analogy (`/account/api-keys`,
+  `/dashboard/keys`, …). Dashboards are apps behind a login: a fetch answers
+  200 for any invented route, so the path cannot be verified by fetching.
+  Emit a deep dashboard URL only when it appears VERBATIM on a page you
+  fetched; when the docs only describe navigation ("Dashboard → API Keys")
+  without a literal URL, use the dashboard/app root they reference — a
+  shallower real page beats a deeper invented one.
+- Nothing conclusive after both steps → omit docsUrl. Never pass off the API
+  reference as the key page.
+
+## 3. Verification endpoint (testUrl)
 
 Find a documented, side-effect-free GET that rejects a bad key with 401/403.
 Check the API reference in this order and stop at the first qualifying hit:
@@ -55,7 +81,7 @@ Rules, all mandatory:
 - Nothing qualifies → omit testUrl. The credential saves fine and the card
   honestly reports it could not be verified, which beats a false green.
 
-## 3. Compose
+## 4. Compose
 
 Fill `credentialHints` (field list and example in the post-build-flow skill)
 from the findings above only. `suggestedName` names the service ("Apify API
