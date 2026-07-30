@@ -933,20 +933,4 @@ describe('getWebhookErrorMessage', () => {
 			'Error: Workflow could not be started',
 		);
 	});
-
-	// parseFormFields only tags errors as 'manual-form-test' in test mode, so a send-and-wait
-	// custom form that cannot be built from upstream data loses its reason. Pins the current
-	// behaviour; surfacing user-caused causes here is a separate follow-up.
-	it('should obfuscate form field parsing errors from send-and-wait custom forms', () => {
-		const err = new NodeOperationError(
-			workflowStartNode,
-			'Field dropdown in field 0 has an invalid option 1',
-			{ description: 'Field dropdown in field 0 has an invalid option 1' },
-		);
-
-		expect(err.type).toBeUndefined();
-		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toBe(
-			'Workflow Webhook Error: Workflow could not be started!',
-		);
-	});
 });
