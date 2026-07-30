@@ -223,4 +223,84 @@ describe('emitPackageImportedEvent', () => {
 		expect(payload.options.tagMissingMode).toBe('create');
 		expect(payload.options.tagConflictPolicy).toBe('rename');
 	});
+
+	it('still counts a missing requirement the import left unfilled', () => {
+		const eventService = mock<EventService>();
+
+		emitPackageImportedEvent(eventService, {
+			request,
+			manifest,
+			scopes: [
+				scope({
+					projectId: 'P1',
+					outcomes: [outcome('wf1', 'WF1', 'created')],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					// Of three missing requirements, one was created with a value and one already existed.
+					variables: { matched: 0, missing: 3, requirements: 3, valued: 1, existing: 1 },
+				}),
+			],
+		});
+
+		// The one that already existed is reported as matched, like the API summary does, so all
+		// three requirements are accounted for.
+		expect(lastImportedPayload(eventService).counts.variables).toEqual({
+			matched: 1,
+			missing: 1,
+			created: 1,
+			stubbed: 0,
+			requirements: 3,
+		});
+	});
+
+	it('reconciles the names of every scope together before counting them', () => {
+		const eventService = mock<EventService>();
+
+		emitPackageImportedEvent(eventService, {
+			request,
+			manifest,
+			scopes: [
+				// Both scopes need the same name: the first creates it, so the second finds the
+				// destination occupied and skips. Only one row exists, and nothing pre-existed.
+				scope({
+					projectId: 'P1',
+					outcomes: [outcome('wf1', 'WF1', 'created')],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					variables: { matched: 0, missing: 1, requirements: 1, valued: 1 },
+				}),
+				scope({
+					projectId: 'P2',
+					outcomes: [outcome('wf2', 'WF2', 'created')],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					variables: { matched: 0, missing: 1, requirements: 1, existing: 1 },
+				}),
+			],
+		});
+
+		expect(lastImportedPayload(eventService).counts.variables).toEqual({
+			matched: 0,
+			missing: 0,
+			created: 1,
+			stubbed: 0,
+			requirements: 2,
+		});
+	});
+
+	it('preserves the folder id for a single-scope import', () => {
+		const eventService = mock<EventService>();
+
+		emitPackageImportedEvent(eventService, {
+			request,
+			manifest,
+			scopes: [
+				scope({
+					projectId: 'P1',
+					folderId: 'F1',
+					outcomes: [outcome('wf1', 'WF1', 'created')],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+				}),
+			],
+		});
+
+		expect(lastImportedPayload(eventService).folderId).toBe('F1');
+	});
 });
