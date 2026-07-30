@@ -218,6 +218,7 @@ function onInstructionsInput(value: string) {
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
+				:bound-credential-id="props.config?.credential ?? null"
 				:is-managed-credential="isManagedCredential"
 				data-testid="agent-model-selector"
 				@change="onModelChange"
