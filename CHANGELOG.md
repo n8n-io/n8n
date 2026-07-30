@@ -1,3 +1,11 @@
+## [2.33.2](https://github.com/n8n-io/n8n/compare/n8n@2.33.1...n8n@2.33.2) (2026-07-30)
+
+
+### Bug Fixes
+
+* Preserve AI Assistant sandbox provider selection ([#35167](https://github.com/n8n-io/n8n/issues/35167)) ([9bd6f28](https://github.com/n8n-io/n8n/commit/9bd6f28dc7836fe51a9f209481eec905395483d1))
+
+
 ## [2.33.1](https://github.com/n8n-io/n8n/compare/n8n@2.33.0...n8n@2.33.1) (2026-07-29)
 
 
