@@ -265,7 +265,20 @@ export class E2EController {
 	@Post('/scheduled-jobs/fire-now', { skipAuth: true })
 	async fireScheduledJobsNow(req: Request<{}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.body;
-		await this.scheduledJobRepository.forceDueNowByWorkflowNode(workflowId, nodeId);
+		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, 0);
+		return { success: true };
+	}
+
+	/**
+	 * Backdates a job's `nextRunAt`, so the next materializer pass sees the same
+	 * overdue schedule it would after a real outage of that length.
+	 */
+	@Post('/scheduled-jobs/backdate', { skipAuth: true })
+	async backdateScheduledJob(
+		req: Request<{}, {}, { workflowId: string; nodeId: string; secondsAgo: number }>,
+	) {
+		const { workflowId, nodeId, secondsAgo } = req.body;
+		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
 		return { success: true };
 	}
 
