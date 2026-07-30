@@ -1039,22 +1039,29 @@ describe('TaskBroker', () => {
 	});
 
 	describe('task runner accept timeout', () => {
+		const ACCEPT_TIMEOUT_MS = 2100;
+
+		const offerFor = (runnerId: string, offerId: string): TaskOffer => ({
+			offerId,
+			runnerId,
+			taskType: 'taskType1',
+			validFor: 10_000,
+			validUntil: createValidUntil(10_000),
+		});
+
+		const expectAcceptTimeout = async (offer: TaskOffer, request: TaskRequest) => {
+			vi.useFakeTimers();
+			const acceptPromise = taskBroker.acceptOffer(offer, request);
+			vi.advanceTimersByTime(ACCEPT_TIMEOUT_MS);
+			await acceptPromise;
+			vi.useRealTimers();
+		};
+
 		it('broker should handle timeout when waiting for acknowledgment of offer accept', async () => {
-			const runnerId = 'runner1';
-			const runner = mock<TaskRunner>({ id: runnerId });
-			const messageCallback = vi.fn();
 			const loggerMock = mock<Logger>();
 
 			taskBroker = new TaskBroker(loggerMock, mock(), mock(), mock());
-			taskBroker.registerRunner(runner, messageCallback);
-
-			const offer: TaskOffer = {
-				offerId: 'offer1',
-				runnerId,
-				taskType: 'taskType1',
-				validFor: 1000,
-				validUntil: createValidUntil(1000),
-			};
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
 
 			const request: TaskRequest = {
 				requestId: 'request1',
@@ -1062,22 +1069,12 @@ describe('TaskBroker', () => {
 				taskType: 'taskType1',
 			};
 
-			vi.useFakeTimers();
-
-			const acceptPromise = taskBroker.acceptOffer(offer, request);
-
-			vi.advanceTimersByTime(2100);
-
-			await acceptPromise;
+			await expectAcceptTimeout(offerFor('runner1', 'offer1'), request);
 
 			expect(request.acceptInProgress).toBe(false);
 			expect(loggerMock.warn).toHaveBeenCalledWith(
-				expect.stringContaining(
-					`Runner (${runnerId}) took too long to acknowledge acceptance of task`,
-				),
+				expect.stringContaining('Runner (runner1) took too long to acknowledge acceptance of task'),
 			);
-
-			vi.useRealTimers();
 		});
 	});
 
