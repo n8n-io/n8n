@@ -28,11 +28,7 @@ export class CredentialsOverwrites {
 		private readonly cipher: Cipher,
 	) {}
 
-	/**
-	 * Reload hook registered by FrontendService to regenerate credential types
-	 * after overwrites change. Kept as a callback so this module doesn't depend
-	 * on FrontendService. No-op until (and unless) a frontend is present.
-	 */
+	/** Registered by FrontendService to regenerate credential types after overwrites change, without this module depending on it. */
 	private reloadHandler?: () => Promise<void>;
 
 	registerReloadHandler(handler: () => Promise<void>) {
