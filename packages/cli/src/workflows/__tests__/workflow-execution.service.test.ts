@@ -22,6 +22,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { toITaskData } from '@test/helpers';
 
 import type { WorkflowRequest } from '../workflow.request';
@@ -89,6 +90,7 @@ const mockOwnershipService = () => {
 describe('WorkflowExecutionService', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRunner = mock<WorkflowRunner>();
+	const pollCursorService = mock<PollCursorService>();
 	const workflowExecutionService = new WorkflowExecutionService(
 		mock(),
 		mock(),
@@ -105,6 +107,7 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
+		pollCursorService,
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -154,6 +157,74 @@ describe('WorkflowExecutionService', () => {
 				true,
 				undefined,
 				undefined,
+				undefined,
+			);
+		});
+	});
+
+	describe('runPolledWorkflow()', () => {
+		const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+		const workflow = mock<IWorkflowBase>({
+			id: 'wf-1',
+			active: true,
+			activeVersionId: 'some-version-id',
+			nodes: [node],
+		});
+		const cursor = { lastItemId: 'a' };
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			pollCursorService.commitWithExecution.mockResolvedValue('exec-9');
+			pollCursorService.mirrorToStaticData.mockResolvedValue(undefined);
+			workflowRunner.run.mockResolvedValue('exec-9');
+			workflowRunner.establishContextForPersistence.mockResolvedValue(undefined);
+		});
+
+		test('masks the trigger items before the payload is committed', async () => {
+			workflowRunner.establishContextForPersistence.mockImplementation(async (data) => {
+				const { executionData } = data.executionData ?? {};
+				if (executionData) executionData.nodeExecutionStack = [];
+				return undefined;
+			});
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: { authorization: 'Bearer secret' } }]],
+				additionalData,
+				'trigger',
+				cursor,
+			);
+
+			expect(workflowRunner.establishContextForPersistence).toHaveBeenCalledTimes(1);
+			expect(pollCursorService.commitWithExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					cursor,
+				}),
+			);
+			const [{ payload }] = pollCursorService.commitWithExecution.mock.calls[0];
+			expect(payload.data.executionData?.nodeExecutionStack).toEqual([]);
+			expect(payload.status).toBe('new');
+		});
+
+		test('starts the committed execution with `{ executionId, expectedStatus: new }`', async () => {
+			const returned = await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+			);
+
+			expect(returned).toBe('exec-9');
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowData: workflow }),
+				true,
+				undefined,
+				{ executionId: 'exec-9', expectedStatus: 'new' },
 				undefined,
 			);
 		});
