@@ -8,6 +8,7 @@ import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import type { BinaryMetadata } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { getBinaryDataFileName } from '@/app/utils/fileUtils';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 type Props = {
@@ -40,12 +41,9 @@ const i18n = useI18n();
 async function downloadBinaryData() {
 	if (!props.binaryData) return;
 	try {
-		const { id, fileName, mimeType, fileExtension } = props.binaryData;
+		const { id, fileName, mimeType } = props.binaryData;
 		const url = useWorkflowsStore().getBinaryUrl(id, 'download', fileName ?? '', mimeType);
-		let name = fileName ?? 'file';
-		if (!name.includes('.') && fileExtension) {
-			name = [name, fileExtension].join('.');
-		}
+		const name = getBinaryDataFileName(props.binaryData);
 		const response = await fetch(url);
 		if (!response.ok) throw new Error('Error downloading file');
 		const blob = await response.blob();

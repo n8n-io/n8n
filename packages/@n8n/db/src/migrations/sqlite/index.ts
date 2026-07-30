@@ -61,6 +61,7 @@ import { AddRecurringCronScheduleKind1784000000045 } from './1784000000045-AddRe
 import { AddAvailableInMcpToAgents1784897791636 } from './1784897791636-AddAvailableInMcpToAgents';
 import { ChangeInstalledNodeVersionType1785162364000 } from './1785162364000-ChangeInstalledNodeVersionType';
 import { AddIsFirstPartyToOAuthClients1785162364001 } from './1785162364001-AddIsFirstPartyToOAuthClients';
+import { AddMisfirePolicyToScheduler1785247194307 } from './1785247194307-AddMisfirePolicyToScheduler';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -456,6 +457,7 @@ const sqliteMigrations: Migration[] = [
 	AddIsFirstPartyToOAuthClients1785162364001,
 	AddAgentFileStorageColumns1785186578138,
 	CrashStaleEnqueuedExecutions1785247194306,
+	AddMisfirePolicyToScheduler1785247194307,
 	CreateAgentChatAttachmentsTable1785255306000,
 ];
 
