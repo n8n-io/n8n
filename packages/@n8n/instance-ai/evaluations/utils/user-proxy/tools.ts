@@ -75,7 +75,7 @@ const pickResourceDecisionSchema = z.object({
  *  - `manual` → `{kind:'credentialSelection', credentials:{[type]: id}}` — the
  *    resume payload itself is how the assistant learns the credential exists
  *    (tool State 5); no re-check round-trip. Live-captured tool result (one
- *    existing credential, auto-selected): `{success:true, credentials:{slackApi: "..."}}`.
+ *    existing credential, auto-selected): `{success:true, credentials:{slackApi:"eg_slackapi_key"}}`.
  *    `manual` covers all three existing-credential counts for the resolved
  *    type (ticket TRUST-349):
  *      - zero  → the harness creates a real credential for it
