@@ -26,6 +26,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { WebhookResponseTooLargeError } from '@/errors/webhook-response-too-large.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ManualExecutionService } from '@/manual-execution.service';
@@ -2066,7 +2067,7 @@ describe('JobProcessor', () => {
 				hooks.runHook('sendResponse', [
 					{ body: { blob: 'x'.repeat(2 * 1024 * 1024) }, headers: {}, statusCode: 200 },
 				]),
-			).rejects.toThrow(/too large/);
+			).rejects.toThrow(WebhookResponseTooLargeError);
 
 			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
 		});
@@ -2080,7 +2081,7 @@ describe('JobProcessor', () => {
 
 			await expect(
 				hooks.runHook('sendResponse', [{ toolResult: 'x'.repeat(2 * 1024 * 1024) }]),
-			).rejects.toThrow(/too large/);
+			).rejects.toThrow(WebhookResponseTooLargeError);
 
 			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
 		});

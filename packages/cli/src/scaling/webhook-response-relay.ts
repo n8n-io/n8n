@@ -6,9 +6,11 @@
  */
 
 import { jsonSizeExceeds } from '@n8n/utils/json/json-size-exceeds';
-import { BINARY_ENCODING, UserError } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 import type { IDataObject, IExecuteResponsePromiseData, IN8nHttpFullResponse } from 'n8n-workflow';
 import { Readable } from 'node:stream';
+
+import { WebhookResponseTooLargeError } from '@/errors/webhook-response-too-large.error';
 
 /** Sentinel key marking a base64-encoded Buffer body relayed inline through the queue. */
 export const ENCODED_BUFFER_KEY = '__@N8nEncodedBuffer@__';
@@ -16,7 +18,7 @@ export const ENCODED_BUFFER_KEY = '__@N8nEncodedBuffer@__';
 /**
  * Asserts that a payload is small enough to be relayed through the queue.
  *
- * @throws UserError When the payload exceeds `maxSizeInMiB`.
+ * @throws {WebhookResponseTooLargeError} When the payload exceeds `maxSizeInMiB`.
  *
  * @remarks The whole payload counts, headers included, the body and the rest
  * being measured separately, each against the limit. A Buffer body counts
@@ -30,13 +32,7 @@ export function assertRelayableSize(
 	maxSizeInMiB: number,
 ): void {
 	if (exceedsRelayableSize(payload, maxSizeInMiB * 1024 * 1024)) {
-		throw new UserError(
-			`The response is too large to be sent back from the worker (over ${maxSizeInMiB} MiB)`,
-			{
-				description:
-					'In scaling mode a response is relayed to the main instance through the queue, which limits how large it can be. Respond with binary data to have the payload streamed from storage instead, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX.',
-			},
-		);
+		throw new WebhookResponseTooLargeError(maxSizeInMiB);
 	}
 }
 

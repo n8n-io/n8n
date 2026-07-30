@@ -1,6 +1,7 @@
-import { UserError } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { Readable } from 'node:stream';
+
+import { WebhookResponseTooLargeError } from '@/errors/webhook-response-too-large.error';
 
 import {
 	assertRelayableSize,
@@ -134,18 +135,22 @@ describe('assertRelayableSize', () => {
 			['a JSON body', { blob: 'x'.repeat(3 * ONE_MIB) }],
 			['a JSON body nested in an array', { items: [{ blob: 'x'.repeat(3 * ONE_MIB) }] }],
 		])('rejects %s', (_label, body) => {
-			expect(() => assertRelayableSize(fullResponse(body), 2)).toThrow(UserError);
+			expect(() => assertRelayableSize(fullResponse(body), 2)).toThrow(
+				WebhookResponseTooLargeError,
+			);
 		});
 
 		it('rejects a Buffer body only its base64 expansion pushes over the limit', () => {
 			const body = Buffer.alloc(1.75 * ONE_MIB);
 
-			expect(() => assertRelayableSize(fullResponse(body), 2)).toThrow(UserError);
+			expect(() => assertRelayableSize(fullResponse(body), 2)).toThrow(
+				WebhookResponseTooLargeError,
+			);
 		});
 
 		it('rejects a payload that is not a full response', () => {
 			expect(() => assertRelayableSize({ toolResult: 'x'.repeat(3 * ONE_MIB) }, 2)).toThrow(
-				UserError,
+				WebhookResponseTooLargeError,
 			);
 		});
 
@@ -156,21 +161,21 @@ describe('assertRelayableSize', () => {
 				statusCode: 200,
 			};
 
-			expect(() => assertRelayableSize(response, 2)).toThrow(UserError);
+			expect(() => assertRelayableSize(response, 2)).toThrow(WebhookResponseTooLargeError);
 		});
 
 		it('rejects an oversized value beside the body of a payload that is not a full response', () => {
 			const payload = { body: 'small', extra: 'x'.repeat(3 * ONE_MIB) };
 
-			expect(() => assertRelayableSize(payload, 2)).toThrow(UserError);
+			expect(() => assertRelayableSize(payload, 2)).toThrow(WebhookResponseTooLargeError);
 		});
 
 		it('names the limit and how to raise it', () => {
-			let error: UserError | undefined;
+			let error: WebhookResponseTooLargeError | undefined;
 			try {
 				assertRelayableSize(fullResponse('x'.repeat(3 * ONE_MIB)), 2);
 			} catch (e) {
-				error = e as UserError;
+				error = e as WebhookResponseTooLargeError;
 			}
 
 			expect(error?.message).toContain('over 2 MiB');
