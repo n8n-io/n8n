@@ -53,18 +53,8 @@ export class EvaluationConfig {
 	agentEvalsEnabled: boolean = false;
 
 	/**
-	 * Wall-clock ceiling on a single agent-eval run, in minutes. Any non-positive
-	 * value disables it.
-	 *
-	 * A run's cases share the license-tiered evaluation concurrency queue, which
-	 * is 1 on lower plans — so a large dataset runs strictly serially and, with no
-	 * ceiling, only a process restart ends it. Past the deadline no further case
-	 * starts, and the run is marked errored with a `timeout` code if that actually
-	 * left cases unrun.
-	 *
-	 * Not a hard stop: a case already executing is bounded by its own per-case
-	 * timeout, so a run can overrun this by up to one case — and a run whose last
-	 * case finishes just past the deadline still completes normally.
+	 * Wall-clock ceiling on one agent-eval run, in minutes; non-positive disables.
+	 * Stops further cases starting — an in-flight one runs out its own timeout.
 	 */
 	@Env('N8N_AGENT_EVALS_RUN_TIMEOUT_MINUTES')
 	agentEvalsRunTimeoutMinutes: number = 60;

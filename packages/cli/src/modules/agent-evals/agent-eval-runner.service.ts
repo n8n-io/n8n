@@ -114,9 +114,8 @@ export class AgentEvalRunnerService {
 			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
 		}
 
-		// A run reads agents and Data Tables directly. With either module off their
-		// entities are never registered, so without this the run dies inside TypeORM
-		// instead of saying what is actually missing.
+		// With either module off its entities are never registered, so the run would
+		// die inside TypeORM instead of saying what is missing.
 		const inactive = (['agents', 'data-table'] as const).filter(
 			(name) => !this.moduleRegistry.isActive(name),
 		);
@@ -248,9 +247,8 @@ export class AgentEvalRunnerService {
 					? Math.min(resolvedLimit, MAX_PER_RUN_CONCURRENCY)
 					: MAX_PER_RUN_CONCURRENCY,
 			);
-			// Cooperative stop: whichever case first observes a cancel aborts, which
-			// evicts every case still waiting for a queue slot. The run deadline below
-			// trips the same signal.
+			// Whichever case first observes a cancel aborts, evicting every case still
+			// queued. The deadline below trips the same signal.
 			const abort = new AbortController();
 			const totalUsage: CaseUsage = { inputTokens: 0, outputTokens: 0 };
 
@@ -267,9 +265,8 @@ export class AgentEvalRunnerService {
 				return true;
 			};
 
-			// Cases the run never started. Lets the settle step tell a deadline that
-			// actually cost work from one that merely elapsed while the last case was
-			// finishing — the latter is a completed run, not a failed one.
+			// Cases the run never started: lets the settle step tell a deadline that
+			// cost work from one that merely elapsed as the last case finished.
 			let stoppedCases = 0;
 			const stopCase = async (resultRow: AgentEvalResult) => {
 				stoppedCases++;
@@ -278,10 +275,8 @@ export class AgentEvalRunnerService {
 
 			const deadline = this.startRunDeadline(abort);
 
-			// `runCase` has its own safety net, but the cancellation reads and the
-			// `markAsCancelled` writes around it do not. Rejecting the whole pool on
-			// one of those left the run errored with no final tally while the
-			// remaining cases kept writing results — so collect instead of throwing.
+			// The stop reads/writes around `runCase` sit outside its safety net, so
+			// collect their throws instead of letting one reject the whole pool.
 			const settlements = await Promise.allSettled(
 				cases.map(
 					async (resolvedCase, index) =>
@@ -293,9 +288,8 @@ export class AgentEvalRunnerService {
 								return;
 							}
 
-							// Wait for a queue slot, bailing (and evicting the entry) if the run
-							// stops while queued. The helper owns release/remove for the bail
-							// path; the finally owns release for the acquired path.
+							// The helper owns release/remove when the run stops while queued;
+							// the finally owns release once a slot is held.
 							const executionId = `${runId}-case-${index}`;
 							if (!(await this.acquireEvaluationSlot(executionId, abort.signal))) {
 								await stopCase(resultRow);
@@ -344,9 +338,8 @@ export class AgentEvalRunnerService {
 			const counts = await this.resultRepository.countByStatus(runId);
 			const metrics: IDataObject = { ...toSummaryCounts(counts), usage: { ...totalUsage } };
 
-			// Every branch records the tally under `metrics` — an unsettled run, or one
-			// whose counts land somewhere consumers don't look, is what callers polling
-			// `getRunSummary` can't recover from.
+			// Every branch records the tally under `metrics`, so pollers never find a
+			// settled run whose counts are missing or filed elsewhere.
 			if (wasCancelled) {
 				// A user stop outranks the deadline: it's intent, not a failure.
 				await this.runRepository.markAsCancelled(runId, metrics);
@@ -371,9 +364,8 @@ export class AgentEvalRunnerService {
 				);
 			} else {
 				if (deadline.hasExpired()) {
-					// Overran, but the last case finished before the abort could skip
-					// anything. The deadline exists to stop runaway runs, not to fail one
-					// that got there — worth a line for anyone tuning the limit.
+					// Overran, but nothing was left to skip. Logged for anyone tuning the
+					// limit, since the run itself still succeeded.
 					this.logger.debug(
 						`[AgentEvalRunner] Run ${runId} overran its ${deadline.deadlineMinutes}-minute deadline, but every case had finished`,
 					);
@@ -387,16 +379,8 @@ export class AgentEvalRunnerService {
 	}
 
 	/**
-	 * Arm the run-level deadline. Cases share the license-tiered evaluation queue,
-	 * which is 1 slot on lower plans — so a large dataset runs serially and, with
-	 * no ceiling, only a restart ends it. Expiring trips the run's abort, which
-	 * evicts queued cases through the same path a cancel uses. Any non-positive
-	 * value disables it.
-	 *
-	 * This bounds when the *last* case may start, not when the run ends: the
-	 * execution service takes no abort signal, so a case already running is only
-	 * bounded by its own per-case timeout. Expiry alone therefore doesn't fail a
-	 * run — the settle step also requires that it left cases unrun.
+	 * Arm the run-level deadline; expiring trips the run's abort. Non-positive
+	 * disables. Bounds when the last case may *start*, not when the run ends.
 	 */
 	private startRunDeadline(abort: AbortController): {
 		hasExpired: () => boolean;

@@ -46,10 +46,8 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 	}
 
 	/**
-	 * `metrics` is optional because a run can fail before any case ran, but one
-	 * that fails partway has real counts and token usage — and consumers read
-	 * those from `metrics` on every other terminal status, so an errored run
-	 * must not be the one place they live somewhere else.
+	 * `metrics` is optional: a run failing before any case ran has none, but one
+	 * failing partway keeps its counts where the other statuses put them.
 	 */
 	async markAsError(
 		id: string,
