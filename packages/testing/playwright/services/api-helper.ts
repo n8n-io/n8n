@@ -247,6 +247,19 @@ export class ApiHelpers {
 		}
 	}
 
+	async backdateScheduledJob(
+		workflowId: string,
+		nodeId: string,
+		secondsAgo: number,
+	): Promise<void> {
+		const response = await this.request.post('/rest/e2e/scheduled-jobs/backdate', {
+			data: { workflowId, nodeId, secondsAgo },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to backdate scheduled job: ${await response.text()}`);
+		}
+	}
+
 	// ===== FEATURE FLAG METHODS =====
 
 	async setEnvFeatureFlags(flags: Record<string, string>): Promise<{
