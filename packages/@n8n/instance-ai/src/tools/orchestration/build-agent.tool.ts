@@ -467,12 +467,21 @@ async function runBuilderConsumeLoop(params: {
 	await onSettled?.();
 	trackConfigMutations(context, target.agentId, result.workSummary);
 
+	if (result.status === 'cancelled') {
+		const cancelled = createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
+		publishAgentBuilderCancelled(context, builderAgentId);
+		await failTraceRun(context, traceRun, cancelled);
+		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
+		throw cancelled;
+	}
+
 	// The builder names (and renames) the target agent via its config tools, so
 	// the orchestrator-supplied name can be missing or stale by the time the
 	// turn settles. Refresh it so the tool output (`targetIdentity`), the
 	// republished agent-spawned event, and the thread binding all carry the
 	// agent's real display name. Best-effort: a stale title is cosmetic and
-	// must not fail an otherwise-successful turn.
+	// must not fail an otherwise-successful turn. Skipped on cancel — abort
+	// should not wait on display-name I/O.
 	try {
 		const freshName = await delegate.resolveAgentName(target.agentId);
 		if (freshName && freshName !== target.name) {
@@ -490,14 +499,6 @@ async function runBuilderConsumeLoop(params: {
 	}
 
 	if (result.status !== 'suspended') {
-		if (result.status === 'cancelled') {
-			const cancelled = createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
-			publishAgentBuilderCancelled(context, builderAgentId);
-			await failTraceRun(context, traceRun, cancelled);
-			await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
-			throw cancelled;
-		}
-
 		const output = await finishTurn(context, builderAgentId, result, carriedConfigUpdated);
 		if (output.ok) {
 			await finishTraceRun(context, traceRun, { outputs: output });

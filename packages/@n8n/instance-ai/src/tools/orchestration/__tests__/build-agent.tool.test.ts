@@ -553,6 +553,7 @@ describe('build-agent tool', () => {
 				[expectedUsageItem],
 				'cancelled',
 			);
+			expect(delegate.resolveAgentName).not.toHaveBeenCalled();
 			const completed = publishedEvents.find((event) => event.type === 'agent-completed');
 			expect(completed && 'payload' in completed ? completed.payload : undefined).toEqual({
 				role: 'agent-builder',
