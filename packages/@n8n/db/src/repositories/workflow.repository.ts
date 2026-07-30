@@ -53,6 +53,11 @@ export type WorkflowFolderUnionFull = (
 	resource: ResourceType;
 };
 
+type WorkflowListResult = {
+	workflows: ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[];
+	count: number;
+};
+
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {
 	constructor(
@@ -767,32 +772,28 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	@TimedQuery()
-	async getMany(workflowIds: string[], options: ListQuery.Options = {}) {
+	async getMany(
+		workflowIds: string[],
+		options: ListQuery.Options = {},
+	): Promise<WorkflowListResult['workflows']> {
 		if (workflowIds.length === 0) {
 			return [];
 		}
 
 		const query = this.getManyQuery(workflowIds, options);
-
-		const workflows = (await query.getMany()) as
-			| ListQueryDb.Workflow.Plain[]
-			| ListQueryDb.Workflow.WithSharing[];
-
-		return workflows;
+		return await query.getMany();
 	}
 
-	async getManyAndCount(sharedWorkflowIds: string[], options: ListQuery.Options = {}) {
+	async getManyAndCount(
+		sharedWorkflowIds: string[],
+		options: ListQuery.Options = {},
+	): Promise<WorkflowListResult> {
 		if (sharedWorkflowIds.length === 0) {
 			return { workflows: [], count: 0 };
 		}
 
 		const query = this.getManyQuery(sharedWorkflowIds, options);
-
-		const [workflows, count] = (await query.getManyAndCount()) as [
-			ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
-			number,
-		];
-
+		const [workflows, count] = await query.getManyAndCount();
 		return { workflows, count };
 	}
 
@@ -812,7 +813,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		},
 		options: ListQuery.Options = {},
 		callableForParentWorkflowId?: string,
-	) {
+	): Promise<WorkflowListResult> {
 		const query = this.getManyQueryWithSharingSubquery(
 			user,
 			sharingOptions,
@@ -820,11 +821,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			callableForParentWorkflowId,
 		);
 
-		const [workflows, count] = (await query.getManyAndCount()) as [
-			ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
-			number,
-		];
-
+		const [workflows, count] = await query.getManyAndCount();
 		return { workflows, count };
 	}
 
