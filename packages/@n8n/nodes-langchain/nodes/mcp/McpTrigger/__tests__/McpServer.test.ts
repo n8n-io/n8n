@@ -168,6 +168,66 @@ describe('McpServer', () => {
 
 			expect(result.wasToolCall).toBe(false);
 		});
+
+		describe('waiting for the tool handler', () => {
+			const registerWith = async (sessionId: string, transportType: 'sse' | 'streamableHttp') => {
+				const transport = createMockTransport(sessionId, transportType);
+				await (
+					mcpServer as unknown as { sessionManager: SessionManager }
+				).sessionManager.registerSession(sessionId, createMockServer(), transport);
+				return transport;
+			};
+
+			const postToolCall = (sessionId: string) => {
+				let settled = false;
+				const pending = mcpServer
+					.handlePostMessage(
+						createMockRequestWithSessionId(
+							sessionId,
+							createValidToolCallMessage('get_weather', { city: 'London' }, 7),
+						),
+						createMockResponse(),
+						[createMockTool('get_weather')],
+					)
+					.then((result) => {
+						settled = true;
+						return result;
+					});
+				return { pending, settled: () => settled };
+			};
+
+			const flush = async () => await new Promise((resolve) => setImmediate(resolve));
+
+			// The isolate window belongs to the caller (the webhook), so returning as soon as
+			// SSE acks would release it while the tool is still resolving expressions.
+			it('should not settle a direct-mode SSE tool call when the transport acks', async () => {
+				const transport = await registerWith('sse-tool', 'sse');
+				const { pending, settled } = postToolCall('sse-tool');
+
+				await flush();
+
+				expect(transport.handleRequest).toHaveBeenCalled();
+				expect(settled()).toBe(false);
+
+				// Only the CallTool handler finishing releases the caller.
+				(mcpServer as unknown as { resolveFunctions: Record<string, () => void> }).resolveFunctions[
+					'sse-tool_7'
+				]();
+				await pending;
+
+				expect(settled()).toBe(true);
+			});
+
+			it('should settle a streamable HTTP tool call when the transport completes', async () => {
+				await registerWith('http-tool', 'streamableHttp');
+				const { pending, settled } = postToolCall('http-tool');
+
+				await flush();
+				await pending;
+
+				expect(settled()).toBe(true);
+			});
+		});
 	});
 
 	describe('handleDeleteRequest', () => {
