@@ -137,7 +137,10 @@ const modelsByProvider: AgentModelsByProvider = {
 
 async function mountSelector(
 	credentials: Record<string, string | null>,
-	{ credentialModalAppendToBody = false }: { credentialModalAppendToBody?: boolean } = {},
+	{
+		credentialModalAppendToBody = false,
+		boundCredentialId = null,
+	}: { credentialModalAppendToBody?: boolean; boundCredentialId?: string | null } = {},
 ) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
 	return mount(AgentModelSelector, {
@@ -148,6 +151,7 @@ async function mountSelector(
 			isLoading: false,
 			projectId: 'project-1',
 			warnMissingCredentials: true,
+			boundCredentialId,
 			credentialModalAppendToBody,
 		},
 	});
@@ -193,7 +197,10 @@ describe('AgentModelSelector', () => {
 	});
 
 	it('surfaces a stale selected credential as missing', async () => {
-		const wrapper = await mountSelector({ anthropic: 'deleted-credential' });
+		const wrapper = await mountSelector(
+			{ anthropic: 'deleted-credential' },
+			{ boundCredentialId: 'deleted-credential' },
+		);
 		const dropdown = getDropdown(wrapper);
 		const anthropicItem = getProviderItem(wrapper, 'anthropic');
 
@@ -202,8 +209,20 @@ describe('AgentModelSelector', () => {
 		expect(JSON.stringify(anthropicItem?.children ?? [])).not.toContain('Claude Sonnet 4.5');
 	});
 
+	it('reports missing credentials when the picker resolves one the config has not bound', async () => {
+		const wrapper = await mountSelector(
+			{ anthropic: 'anthropic-cred' },
+			{ boundCredentialId: null },
+		);
+
+		expect(getDropdown(wrapper).props('credentialsMissing')).toBe(true);
+	});
+
 	it('uses an available selected credential', async () => {
-		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
+		const wrapper = await mountSelector(
+			{ anthropic: 'anthropic-cred' },
+			{ boundCredentialId: 'anthropic-cred' },
+		);
 		const dropdown = getDropdown(wrapper);
 		const anthropicItem = getProviderItem(wrapper, 'anthropic');
 
