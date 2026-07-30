@@ -1,0 +1,28 @@
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-import-decision.test.ts
+  s_46457fdbb606db::t_7df60493def2e3 260-275
+  s_46457fdbb606db::t_c0a4ab476e110f 118,121-122
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_46457fdbb606db::t_07e7c71a175cb1 89-91
+  s_46457fdbb606db::t_e99a8b2d30c317 24
+  s_46457fdbb606db::t_80f4a68b4a6cc5 120-127
+  s_46457fdbb606db::t_813ecbface2e84 2
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_46457fdbb606db::t_528c55b9cea120 26-31
+  s_46457fdbb606db::t_51a85138d7548c 67-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0a3bb2f8535b647ab7ee149da7af27018150aa97",
+  "prompts": {},
+  "sessions": {
+    "s_46457fdbb606db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3c28356-f7a4-4aa1-baa1-0a7a42ab1b95",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
