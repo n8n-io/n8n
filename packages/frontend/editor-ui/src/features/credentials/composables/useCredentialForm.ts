@@ -109,14 +109,16 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			return credentialsStore.getCredentialTypeByName(selectedCredential.value) ?? null;
 		}
 		if (toValue(options.showAuthSelector)) {
-			const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
-			if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
-				return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
-			}
+			// The caller-requested type (the auth row clicked in the node's credential
+			// dropdown) wins over the recommended/first auth option.
 			const activeId = toValue(options.activeId);
 			if (activeId) {
 				const nodeCredential = activeNodeType.value?.credentials?.find((c) => c.name === activeId);
 				if (nodeCredential) return nodeCredential;
+			}
+			const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
+			if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
+				return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
 			}
 			return activeNodeType.value?.credentials?.[0] ?? null;
 		}
