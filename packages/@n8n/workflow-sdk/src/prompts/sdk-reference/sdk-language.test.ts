@@ -90,7 +90,7 @@ describe('NODE_GROUPS_REFERENCE', () => {
 	});
 
 	it('tells an editing agent to keep existing descriptions', () => {
-		expect(NODE_GROUPS_REFERENCE).toMatch(/descriptions\s+included/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/keep the .+ and their descriptions\s+intact/is);
 	});
 
 	it('states the single entry/exit boundary rule that grouping enforces', () => {

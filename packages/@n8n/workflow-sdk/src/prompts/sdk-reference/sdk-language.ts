@@ -103,8 +103,8 @@ export default workflow('id', 'My workflow')
 \`description\` is optional and shown when the group is collapsed. Keep it to one
 sentence — anything past ${GROUP_DESCRIPTION_MAX_LENGTH} characters is cut off.
 
-When editing an existing workflow, **keep the \`.group(...)\` calls intact**, descriptions
-included, unless the change is specifically about grouping.
+When editing an existing workflow, **keep the \`.group(...)\` calls and their descriptions
+intact** unless the change is specifically about grouping.
 
 An invalid group is rejected on save, so these following rules MUST be followed when
 creating or editing groups.
