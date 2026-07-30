@@ -32,6 +32,8 @@ export type NewScheduledJob = Pick<
 	| 'fireAt'
 	| 'nextRunAt'
 	| 'maxAttempts'
+	| 'misfirePolicy'
+	| 'misfireGraceSeconds'
 >;
 
 /** A changed schedule definition, plus the fresh clock it restarts from. */
@@ -45,6 +47,8 @@ export type ScheduledJobDefinitionUpdate = Pick<
 	| 'intervalSeconds'
 	| 'fireAt'
 	| 'nextRunAt'
+	| 'misfirePolicy'
+	| 'misfireGraceSeconds'
 >;
 
 @Service()
@@ -131,6 +135,22 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { id: In(ids) });
 	}
 
+	async countByWorkflowNode(workflowId: string, nodeId: string): Promise<number> {
+		return await this.count({ where: { workflowId, nodeId } });
+	}
+
+	async backdateNextRunAt(
+		workflowId: string,
+		nodeId: string,
+		secondsInPast: number,
+	): Promise<void> {
+		await this.createQueryBuilder()
+			.update(ScheduledJob)
+			.set({ nextRunAt: () => dbNowPlusMsLiteral(this.isPostgres, -secondsInPast * 1000) })
+			.where('"workflowId" = :workflowId AND "nodeId" = :nodeId', { workflowId, nodeId })
+			.execute();
+	}
+
 	/**
 	 * Insert new job rows and return one id per input job, in the same order as
 	 * `jobs`, so the caller can zip the ids back to the jobs by index.
@@ -194,6 +214,16 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		update: ScheduledJobDefinitionUpdate,
 	): Promise<void> {
 		await manager.update(ScheduledJob, { id }, update);
+	}
+
+	/** Updates misfire policy and grace only, leaving schedule and clock untouched. */
+	async updateMisfirePolicy(
+		manager: EntityManager,
+		ids: number[],
+		update: Pick<ScheduledJob, 'misfirePolicy' | 'misfireGraceSeconds'>,
+	): Promise<void> {
+		if (ids.length === 0) return;
+		await manager.update(ScheduledJob, ids, update);
 	}
 
 	async deleteManyByIds(manager: EntityManager, ids: number[]): Promise<void> {

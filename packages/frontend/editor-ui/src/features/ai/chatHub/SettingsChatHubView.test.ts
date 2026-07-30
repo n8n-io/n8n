@@ -57,7 +57,7 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 

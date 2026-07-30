@@ -4,7 +4,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { MODAL_CONFIRM } from '@/app/constants/modals';

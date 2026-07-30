@@ -4,7 +4,8 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeOperationError } from 'n8n-workflow';
 
 type RequestParameters = {
 	headers?: IDataObject;

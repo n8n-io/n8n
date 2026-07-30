@@ -9,6 +9,7 @@ import {
 	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
+	ScheduledJobRepository,
 	SettingsRepository,
 	UserRepository,
 } from '@n8n/db';
@@ -194,6 +195,7 @@ export class E2EController {
 		private readonly frontendService: FrontendService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
+		private readonly scheduledJobRepository: ScheduledJobRepository,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -245,6 +247,39 @@ export class E2EController {
 	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
 		this.executionsConfig.mode = req.body.enabled ? 'queue' : 'regular';
 		return { success: true, message: `Queue mode set to ${this.executionsConfig.mode}` };
+	}
+
+	/**
+	 * Number of scheduled-job rows for a trigger node, so a test can assert on
+	 * removal directly instead of waiting out a real tick to prove a job
+	 * stopped firing.
+	 */
+	@Get('/scheduled-jobs/count', { skipAuth: true })
+	async countScheduledJobs(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
+		const { workflowId, nodeId } = req.query;
+		const count = await this.scheduledJobRepository.countByWorkflowNode(workflowId, nodeId);
+		return { count };
+	}
+
+	/** Lets a test observe a real scheduled dispatch without waiting out the job's cron interval. */
+	@Post('/scheduled-jobs/fire-now', { skipAuth: true })
+	async fireScheduledJobsNow(req: Request<{}, {}, { workflowId: string; nodeId: string }>) {
+		const { workflowId, nodeId } = req.body;
+		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, 0);
+		return { success: true };
+	}
+
+	/**
+	 * Backdates a job's `nextRunAt`, so the next materializer pass sees the same
+	 * overdue schedule it would after a real outage of that length.
+	 */
+	@Post('/scheduled-jobs/backdate', { skipAuth: true })
+	async backdateScheduledJob(
+		req: Request<{}, {}, { workflowId: string; nodeId: string; secondsAgo: number }>,
+	) {
+		const { workflowId, nodeId, secondsAgo } = req.body;
+		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
+		return { success: true };
 	}
 
 	@Get('/env-feature-flags', { skipAuth: true })

@@ -409,6 +409,22 @@ export class FrontendService {
 			},
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
+				postMessageAllowedOrigins: this.securityConfig.postMessageAllowedOrigins
+					.split(',')
+					.map((origin) => origin.trim())
+					.filter((origin) => origin !== '')
+					// Normalize to a serialized origin (lowercase scheme/host, no trailing
+					// slash or default port) so config values match `MessageEvent.origin`.
+					// URLs with an opaque origin serialize to 'null', which would match any
+					// opaque-origin sender — keep the raw value for those instead.
+					.map((origin) => {
+						try {
+							const normalized = new URL(origin).origin;
+							return normalized === 'null' ? origin : normalized;
+						} catch {
+							return origin;
+						}
+					}),
 			},
 			chatTrigger: {
 				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,

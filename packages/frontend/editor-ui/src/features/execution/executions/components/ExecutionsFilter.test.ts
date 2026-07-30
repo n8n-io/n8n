@@ -10,7 +10,7 @@ import ExecutionsFilter from '../components/ExecutionsFilter.vue';
 import type { IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterType } from '../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
-import * as telemetryModule from '@/app/composables/useTelemetry';
+import * as telemetryModule from '@n8n/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { MockInstance } from 'vitest';
 import * as restApiClient from '@n8n/rest-api-client';

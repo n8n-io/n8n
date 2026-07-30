@@ -1,6 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
@@ -14,6 +15,9 @@ import type * as _importType0 from 'n8n-workflow';
 vi.mock('n8n-workflow', async () => ({
 	...(await vi.importActual<typeof _importType0>('n8n-workflow')),
 	NodeApiError: vi.fn(),
+}));
+
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -151,6 +155,31 @@ describe('Slack V2 > GenericFunctions', () => {
 				expect(error).toBeInstanceOf(NodeOperationError);
 				expect(error.message).toBe('Slack error response: "some_other_error"');
 			}
+		});
+
+		it('should surface transport/auth failures as NodeOperationError', async () => {
+			// A network/HTTP failure rejects before the ok:false handling; it must be surfaced with a
+			// readable message instead of a raw object the options UI renders as "[object Object]".
+			const transportError = new Error('fetch failed');
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockRejectedValue(transportError);
+
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
+				NodeOperationError,
+			);
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
+				'fetch failed',
+			);
+		});
+
+		it('should not re-wrap an error that is already a NodeOperationError', async () => {
+			const opError = new NodeOperationError(mockExecuteFunctions.getNode(), 'boom');
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockRejectedValue(opError);
+
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toBe(
+				opError,
+			);
 		});
 
 		it('should add message_timestamp and remove ts when response contains ts', async () => {

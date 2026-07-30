@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';

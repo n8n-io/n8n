@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { workflowReferences } from './references/workflow-references';
 import { decideWorkflowConflictAction } from './workflow-conflict-policy';
 import { decideWorkflowId } from './workflow-id-policy';
 import {
@@ -11,18 +12,18 @@ import {
 	type WorkflowIdConflict,
 } from './workflow-import-match.service';
 import type {
+	PersistedWorkflowOutcome,
 	PersistedWorkflowPlanItem,
 	PreparedWorkflow,
 	WorkflowConflict,
 	WorkflowFolderConflict,
 	WorkflowImportContext,
-	WorkflowImportOutcome,
 	WorkflowImportPlan,
 	WorkflowPlanItem,
 	WorkflowPlannedAction,
 } from './workflow-import.types';
-import { WorkflowPublisher } from './workflow-publisher';
 import type {
+	ImportBindingMap,
 	ImportContext,
 	ImportWorkflowProperties,
 	PackageImportBindings,
@@ -30,14 +31,14 @@ import type {
 } from '../../n8n-packages.types';
 
 export interface WorkflowImportResult {
-	outcomes: WorkflowImportOutcome[];
+	outcomes: PersistedWorkflowOutcome[];
 	bindings: PackageImportBindings;
 }
 
 /**
  * Imports a batch of prepared workflows in two phases:
  * {@link plan} matches each workflow against the destination project and decides what action create/update/skip
- * {@link apply} writes that plan into n8n and publishes the workflows
+ * {@link apply} writes that plan into n8n. Publishing is a separate package-wide sweep.
  */
 @Service()
 export class WorkflowImporter {
@@ -45,7 +46,6 @@ export class WorkflowImporter {
 		private readonly workflowImportMatchService: WorkflowImportMatchService,
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowService: WorkflowService,
-		private readonly workflowPublisher: WorkflowPublisher,
 	) {}
 
 	async plan(
@@ -133,59 +133,48 @@ export class WorkflowImporter {
 		});
 	}
 
+	/**
+	 * Writes the planned workflows. Publishing is deliberately not done here: activation rejects a
+	 * parent whose sub-workflow is not yet published, so it has to wait until every workflow in the
+	 * package exists — see `WorkflowPublisher.applyToPackage`.
+	 */
 	async apply(
 		context: WorkflowImportContext,
 		plan: WorkflowImportPlan,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowImportResult> {
-		const workflowBindings = new Map(bindings.workflows);
-		const outcomes: WorkflowImportOutcome[] = [];
+		const workflowBindings = new Map([
+			...bindings.workflows,
+			...collectPlannedWorkflowBindings(plan.items),
+		]);
+		const resolvedBindings: PackageImportBindings = { ...bindings, workflows: workflowBindings };
 
+		const outcomes: PersistedWorkflowOutcome[] = [];
 		for (const item of plan.items) {
-			const outcome = await this.applyItem(context, item, bindings);
-			outcomes.push(outcome);
-			// Works for every status: created/updated/skipped all resolve to a real target id.
-			workflowBindings.set(outcome.sourceWorkflowId, outcome.workflow.id);
+			outcomes.push(await this.applyItem(context, item, resolvedBindings));
 		}
 
-		return { outcomes, bindings: { ...bindings, workflows: workflowBindings } };
+		return { outcomes, bindings: resolvedBindings };
 	}
 
 	private async applyItem(
 		context: WorkflowImportContext,
 		item: WorkflowPlanItem,
 		bindings: PackageImportBindings,
-	): Promise<WorkflowImportOutcome> {
+	): Promise<PersistedWorkflowOutcome> {
 		if (item.action === 'skip') {
 			return {
 				status: 'skipped',
 				workflow: item.existing,
 				sourceWorkflowId: item.sourceWorkflowId,
-				publishing: { state: 'unchanged' },
 			};
 		}
 
-		const savedWorkflow = await this.persistWorkflow(context, item, bindings);
-		const { workflow, publishing } = await this.workflowPublisher.apply(
-			context.user,
-			item,
-			savedWorkflow,
-			context.publishingPolicy,
-			context.publishBlocked,
-		);
-
-		// Publish reloads the workflow without parentFolder; restore it for the import summary.
-		workflow.parentFolder =
-			workflow.parentFolder ??
-			savedWorkflow.parentFolder ??
-			(item.action === 'update' ? item.existing.parentFolder : null) ??
-			null;
-
 		return {
 			status: item.action === 'create' ? 'created' : 'updated',
-			workflow,
+			workflow: await this.persistWorkflow(context, item, bindings),
 			sourceWorkflowId: item.sourceWorkflowId,
-			publishing,
+			item,
 		};
 	}
 
@@ -194,6 +183,9 @@ export class WorkflowImporter {
 		item: PersistedWorkflowPlanItem,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowEntity> {
+		const tagIds =
+			item.tagIds && [...new Set(item.tagIds)].filter((id) => !context.droppedTagIds.has(id));
+
 		if (item.action === 'create') {
 			const entity = prepareEntityForPersist(item.entity, bindings, item.decidedId);
 			return await this.workflowCreationService.createWorkflow(context.user, entity, {
@@ -202,6 +194,7 @@ export class WorkflowImporter {
 				publicApi: true,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,
+				...(tagIds !== undefined ? { tagIds } : {}),
 			});
 		}
 
@@ -209,8 +202,17 @@ export class WorkflowImporter {
 		return await this.workflowService.update(context.user, entity, item.existing.id, {
 			publicApi: true,
 			source: 'import',
+			...(tagIds !== undefined ? { tagIds } : {}),
 		});
 	}
+}
+
+function planItemTargetId(item: WorkflowPlanItem): string {
+	return item.action === 'create' ? item.decidedId : item.existing.id;
+}
+
+export function collectPlannedWorkflowBindings(items: WorkflowPlanItem[]): ImportBindingMap {
+	return new Map(items.map((item) => [item.sourceWorkflowId, planItemTargetId(item)]));
 }
 
 /** Clones package content for persistence without mutating the import plan. */
@@ -221,16 +223,18 @@ function prepareEntityForPersist(
 ): WorkflowEntity {
 	const entity = Object.assign(new WorkflowEntity(), source, {
 		nodes: structuredClone(source.nodes),
+		...(source.settings ? { settings: structuredClone(source.settings) } : {}),
 		...(decidedId !== undefined ? { id: decidedId } : {}),
 	});
 	applyCredentialBindingsInPlace(entity, bindings.credentials);
+	for (const reference of workflowReferences) reference.apply(entity, bindings);
 	return entity;
 }
 
 /** Mutates node credential ids on `entity` using the resolved import binding map. */
 function applyCredentialBindingsInPlace(
 	entity: WorkflowEntity,
-	credentialBindings: PackageImportBindings['credentials'],
+	credentialBindings: ImportBindingMap,
 ): void {
 	for (const node of entity.nodes) {
 		for (const details of Object.values(node.credentials ?? {})) {

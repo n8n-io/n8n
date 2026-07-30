@@ -23,6 +23,7 @@ import {
 	buildWorkflowCallingSubWorkflow,
 	buildWorkflowReferencingCredential,
 	buildWorkflowUsingErrorWorkflow,
+	executeWorkflowNode,
 } from './utils/test-builders';
 
 beforeAll(async () => {
@@ -46,7 +47,7 @@ describe('workflow package export', () => {
 	});
 
 	async function exportSingleWorkflow(user: User, workflowId: string) {
-		const stream = await service.exportPackage({ user, workflowIds: [workflowId] });
+		const { stream } = await service.exportPackage({ user, workflowIds: [workflowId] });
 		return await readExport(stream);
 	}
 
@@ -100,7 +101,7 @@ describe('workflow package export', () => {
 			const wfA = await createWorkflow({ name: 'Alpha', nodes: [], connections: {} }, project);
 			const wfB = await createWorkflow({ name: 'Beta', nodes: [], connections: {} }, project);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [wfA.id, wfB.id],
 			});
@@ -149,7 +150,7 @@ describe('workflow package export', () => {
 				project,
 			);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [wfA.id, wfB.id],
 			});
@@ -173,7 +174,7 @@ describe('workflow package export', () => {
 			const wfA = await createWorkflow({ name: 'Duplicate', nodes: [], connections: {} }, project);
 			const wfB = await createWorkflow({ name: 'Duplicate', nodes: [], connections: {} }, project);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [wfA.id, wfB.id],
 			});
@@ -220,7 +221,7 @@ describe('workflow package export', () => {
 				'2 workflow dependencies not included in the package',
 			);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id, workflowB.id, workflowC.id],
 			});
@@ -274,7 +275,7 @@ describe('workflow package export', () => {
 				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
 			).rejects.toThrow('workflow dependency not included in the package');
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parent.id, child.id],
 			});
@@ -326,7 +327,7 @@ describe('workflow package export', () => {
 				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
 			).rejects.toThrow('workflow dependency not included in the package');
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parent.id, child.id],
 			});
@@ -364,7 +365,7 @@ describe('workflow package export', () => {
 				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
 			).rejects.toThrow('workflow dependency not included in the package');
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parent.id, errorHandler.id],
 			});
@@ -393,7 +394,7 @@ describe('workflow package export', () => {
 				subWorkflowId: child.id,
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parentA.id, parentB.id, child.id],
 			});
@@ -433,23 +434,6 @@ describe('workflow package export', () => {
 			).rejects.toThrow(PackageExportBlockedError);
 		});
 
-		it('rejects reference-only static sub-workflow dependency policy', async () => {
-			const owner = await createOwner();
-			const project = await createTeamProject('Project A', owner);
-			const workflow = await createWorkflow(
-				{ name: 'Parent', nodes: [], connections: {} },
-				project,
-			);
-
-			await expect(
-				service.exportPackage({
-					user: owner,
-					workflowIds: [workflow.id],
-					missingWorkflowDependencyPolicy: 'reference-only',
-				}),
-			).rejects.toThrow('Reference-only static sub-workflow dependencies are not supported');
-		});
-
 		it('auto-includes transitive static sub-workflows and their requirements', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
@@ -473,7 +457,7 @@ describe('workflow package export', () => {
 				subWorkflowId: workflowB.id,
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id],
 				missingWorkflowDependencyPolicy: 'include-in-package',
@@ -554,7 +538,7 @@ describe('workflow package export', () => {
 			];
 			await Container.get(WorkflowRepository).save(workflowA);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id],
 				missingWorkflowDependencyPolicy: 'include-in-package',
@@ -591,7 +575,7 @@ describe('workflow package export', () => {
 			];
 			await Container.get(WorkflowRepository).save(workflowA);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id, workflowB.id],
 			});
@@ -603,6 +587,231 @@ describe('workflow package export', () => {
 			expect(manifest.requirements?.workflows).toEqual([
 				{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
 				{ id: workflowA.id, name: workflowA.name, usedByWorkflows: [workflowB.id] },
+			]);
+		});
+	});
+
+	describe('reference-only missing dependency policy', () => {
+		async function exportReferenceOnly(user: User, workflowIds: string[]) {
+			const { stream } = await service.exportPackage({
+				user,
+				workflowIds,
+				missingWorkflowDependencyPolicy: 'reference-only',
+			});
+			return await readExport(stream);
+		}
+
+		it('lists a missing sub-workflow as a requirement instead of failing', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const child = await createWorkflow({ name: 'Child', nodes: [], connections: {} }, project);
+			const parent = await buildWorkflowCallingSubWorkflow({
+				name: 'Parent',
+				project,
+				subWorkflowId: child.id,
+			});
+
+			const { manifest, entries } = await exportReferenceOnly(owner, [parent.id]);
+
+			expect(manifest.workflows).toEqual([
+				{ id: parent.id, name: 'Parent', target: expect.any(String) },
+			]);
+			expect(manifest.requirements?.workflows).toEqual([
+				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+			]);
+			// Only the parent's workflow.json travels; the referenced child stays out.
+			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(1);
+		});
+
+		it('does not bundle or require credentials used only by a referenced sub-workflow', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const credential = await saveCredential(
+				{ name: 'Child API', type: 'httpHeaderAuth', data: { name: 'X-Auth', value: 'secret' } },
+				{ project, role: 'credential:owner' },
+			);
+			const child = await buildWorkflowReferencingCredential({
+				name: 'Child',
+				project,
+				credential,
+			});
+			const parent = await buildWorkflowCallingSubWorkflow({
+				name: 'Parent',
+				project,
+				subWorkflowId: child.id,
+			});
+
+			const { manifest, entries } = await exportReferenceOnly(owner, [parent.id]);
+
+			expect(manifest.credentials).toBeUndefined();
+			expect(manifest.requirements?.credentials).toBeUndefined();
+			expect(entries.some((e) => e.name.includes('credential'))).toBe(false);
+			expect(manifest.requirements?.workflows).toEqual([
+				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+			]);
+		});
+
+		it('keeps a credential shared with a referenced sub-workflow, attributed to the exported workflow only', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const credential = await saveCredential(
+				{ name: 'Shared API', type: 'httpHeaderAuth', data: { name: 'X-Auth', value: 'secret' } },
+				{ project, role: 'credential:owner' },
+			);
+			const child = await buildWorkflowReferencingCredential({
+				name: 'Child',
+				project,
+				credential,
+			});
+			const parent = await createWorkflow(
+				{
+					name: 'Parent',
+					nodes: [
+						executeWorkflowNode(child.id),
+						{
+							id: 'http',
+							name: 'HTTP',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {},
+							credentials: {
+								[credential.type]: { id: credential.id, name: credential.name },
+							},
+						},
+					],
+					connections: {},
+				},
+				project,
+			);
+
+			const { manifest } = await exportReferenceOnly(owner, [parent.id]);
+
+			expect(manifest.requirements?.credentials).toEqual([
+				{
+					id: credential.id,
+					name: credential.name,
+					type: credential.type,
+					usedByWorkflows: [parent.id],
+				},
+			]);
+			expect(manifest.requirements?.workflows).toEqual([
+				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+			]);
+		});
+
+		it('references a self-calling sub-workflow once and exports the requested workflow normally', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const brie = await createWorkflow({ name: 'BRIE', nodes: [], connections: {} }, project);
+			brie.nodes = [executeWorkflowNode(brie.id)];
+			await Container.get(WorkflowRepository).save(brie);
+			const cheddar = await buildWorkflowCallingSubWorkflow({
+				name: 'CHEDDAR',
+				project,
+				subWorkflowId: brie.id,
+			});
+
+			const { manifest, entries } = await exportReferenceOnly(owner, [cheddar.id]);
+
+			expect(manifest.workflows).toEqual([
+				{ id: cheddar.id, name: 'CHEDDAR', target: expect.any(String) },
+			]);
+			expect(manifest.requirements?.workflows).toEqual([
+				{ id: brie.id, name: 'BRIE', usedByWorkflows: [cheddar.id] },
+			]);
+			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(1);
+		});
+
+		it('lists only direct references, not the referenced workflows own dependencies', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const workflowC = await createWorkflow(
+				{ name: 'Workflow C', nodes: [], connections: {} },
+				project,
+			);
+			const workflowB = await buildWorkflowCallingSubWorkflow({
+				name: 'Workflow B',
+				project,
+				subWorkflowId: workflowC.id,
+			});
+			const workflowA = await buildWorkflowCallingSubWorkflow({
+				name: 'Workflow A',
+				project,
+				subWorkflowId: workflowB.id,
+			});
+
+			const { manifest } = await exportReferenceOnly(owner, [workflowA.id]);
+
+			expect(manifest.requirements?.workflows).toEqual([
+				{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
+			]);
+		});
+
+		it('omits the name when the referenced workflow is not accessible to the exporting user', async () => {
+			const owner = await createOwner();
+			const ownerProject = await createTeamProject('Owner Project', owner);
+			const foreignWorkflow = await createWorkflow(
+				{ name: 'Foreign', nodes: [], connections: {} },
+				ownerProject,
+			);
+			const member = await createMember();
+			const memberPersonal = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+				member.id,
+			);
+			const parent = await buildWorkflowCallingSubWorkflow({
+				name: 'Parent',
+				project: memberPersonal,
+				subWorkflowId: foreignWorkflow.id,
+			});
+
+			const { manifest } = await exportReferenceOnly(member, [parent.id]);
+
+			expect(manifest.requirements?.workflows).toEqual([
+				{ id: foreignWorkflow.id, usedByWorkflows: [parent.id] },
+			]);
+			expect(manifest.requirements?.workflows?.[0]).not.toHaveProperty('name');
+		});
+
+		it('still lists references that are satisfied inside the package', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const child = await createWorkflow({ name: 'Child', nodes: [], connections: {} }, project);
+			const parent = await buildWorkflowCallingSubWorkflow({
+				name: 'Parent',
+				project,
+				subWorkflowId: child.id,
+			});
+
+			const { manifest, entries } = await exportReferenceOnly(owner, [parent.id, child.id]);
+
+			expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
+			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(2);
+			expect(manifest.requirements?.workflows).toEqual([
+				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+			]);
+		});
+
+		it('lists a missing error workflow as a requirement instead of failing', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const errorHandler = await createWorkflow(
+				{ name: 'Error Handler', nodes: [], connections: {} },
+				project,
+			);
+			const parent = await buildWorkflowUsingErrorWorkflow({
+				name: 'Parent',
+				project,
+				errorWorkflowId: errorHandler.id,
+			});
+
+			const { manifest } = await exportReferenceOnly(owner, [parent.id]);
+
+			expect(manifest.workflows).toEqual([
+				{ id: parent.id, name: 'Parent', target: expect.any(String) },
+			]);
+			expect(manifest.requirements?.workflows).toEqual([
+				{ id: errorHandler.id, name: errorHandler.name, usedByWorkflows: [parent.id] },
 			]);
 		});
 	});
