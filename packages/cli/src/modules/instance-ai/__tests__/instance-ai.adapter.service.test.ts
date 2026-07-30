@@ -2245,6 +2245,57 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('defaults executionOrder to v1 when the SDK workflow declares no settings', async () => {
+		// Regression: the SDK omits the settings argument when empty, so AI-authored
+		// workflows persisted with `{}` and ran on legacy v0.
+		const { adapter, mockWorkflowRepository, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+		);
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('keeps an explicit executionOrder from the SDK workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON({
+			...minimalWorkflowJSON,
+			settings: { executionOrder: 'v0' },
+		} as unknown as WorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v0' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('does not inject executionOrder on update, leaving the stored value to the merge', async () => {
+		// update merges over stored settings, so forcing v1 here would upgrade a
+		// workflow the user deliberately kept on v0.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: {} }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
 	it('clears existing node groups when the SDK workflow declares none (update is authoritative)', async () => {
 		// Regression: the SDK omits `nodeGroups` when no `.group(...)` is declared. The
 		// update path must treat that as "no groups" and send [] so a removed group is

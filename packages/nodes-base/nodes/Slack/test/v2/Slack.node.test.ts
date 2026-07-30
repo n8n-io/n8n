@@ -1,6 +1,7 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INode,
 	INodeExecutionData,
 	INodeParameterResourceLocator,
@@ -2377,6 +2378,141 @@ describe('SlackV2', () => {
 					},
 				],
 			]);
+		});
+	});
+
+	describe('getUsers', () => {
+		let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
+		let withRateLimitSpy: MockInstance;
+
+		const mockUsers = [
+			{ id: 'U111111111', name: 'john.doe', real_name: 'John Doe' },
+			{ id: 'U222222222', name: 'jane.smith', real_name: 'Jane Smith' },
+			// no real_name, e.g. a bot or an unconfigured account
+			{ id: 'U333333333', name: 'alertbot' },
+			// same real_name as U111111111 — real names aren't unique in Slack, handles are
+			{ id: 'U444444444', name: 'jdoe2', real_name: 'John Doe' },
+		];
+
+		// as [label, value] tuples, to keep the assertions clear of `{ name, value }`
+		// literals that n8n-nodes-base/node-param-display-name-miscased reads as node params
+		const asTuples = (options: Array<{ name: string; value?: string | number | boolean }>) =>
+			options.map((o) => [o.name, o.value]);
+
+		beforeEach(() => {
+			mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
+			withRateLimitSpy = vi
+				.spyOn(GenericFunctions, 'slackApiRequestAllItemsWithRateLimit')
+				.mockResolvedValue({ data: mockUsers, cursor: undefined });
+		});
+
+		describe('listSearch', () => {
+			it('should label users with real name and handle, falling back to the handle alone', async () => {
+				const result = await node.methods.listSearch.getUsers.call(mockLoadOptionsFunctions);
+
+				expect(asTuples(result.results)).toEqual([
+					['alertbot', 'U333333333'],
+					['Jane Smith (@jane.smith)', 'U222222222'],
+					['John Doe (@jdoe2)', 'U444444444'],
+					['John Doe (@john.doe)', 'U111111111'],
+				]);
+			});
+
+			it('should keep users sharing a real name distinguishable', async () => {
+				const result = await node.methods.listSearch.getUsers.call(
+					mockLoadOptionsFunctions,
+					'John Doe',
+				);
+
+				// same real name, different handles and IDs
+				expect(asTuples(result.results)).toEqual([
+					['John Doe (@jdoe2)', 'U444444444'],
+					['John Doe (@john.doe)', 'U111111111'],
+				]);
+			});
+
+			it('should filter by real name', async () => {
+				const result = await node.methods.listSearch.getUsers.call(
+					mockLoadOptionsFunctions,
+					'jane s',
+				);
+
+				expect(asTuples(result.results)).toEqual([['Jane Smith (@jane.smith)', 'U222222222']]);
+			});
+
+			it('should filter by handle', async () => {
+				const result = await node.methods.listSearch.getUsers.call(
+					mockLoadOptionsFunctions,
+					'john.doe',
+				);
+
+				expect(asTuples(result.results)).toEqual([['John Doe (@john.doe)', 'U111111111']]);
+			});
+
+			it('should filter by user ID', async () => {
+				const result = await node.methods.listSearch.getUsers.call(
+					mockLoadOptionsFunctions,
+					'U222222222',
+				);
+
+				expect(asTuples(result.results)).toEqual([['Jane Smith (@jane.smith)', 'U222222222']]);
+			});
+
+			it('should return the user ID as the value, never the label', async () => {
+				const result = await node.methods.listSearch.getUsers.call(mockLoadOptionsFunctions);
+
+				expect(result.results.map((r) => r.value)).toEqual([
+					'U333333333',
+					'U222222222',
+					'U444444444',
+					'U111111111',
+				]);
+			});
+
+			it('should pass the pagination token through and return the next cursor', async () => {
+				withRateLimitSpy.mockResolvedValue({ data: mockUsers, cursor: 'next-cursor' });
+
+				const result = await node.methods.listSearch.getUsers.call(
+					mockLoadOptionsFunctions,
+					undefined,
+					'page-2',
+				);
+
+				expect(withRateLimitSpy).toHaveBeenCalledWith(
+					mockLoadOptionsFunctions,
+					'members',
+					'GET',
+					'/users.list',
+					{},
+					{ limit: 200, cursor: 'page-2' },
+					expect.objectContaining({ onFail: 'stop' }),
+				);
+				expect(result.paginationToken).toBe('next-cursor');
+			});
+		});
+
+		describe('loadOptions', () => {
+			it('should label users with real name and handle, falling back to the handle alone', async () => {
+				const result = await node.methods.loadOptions.getUsers.call(mockLoadOptionsFunctions);
+
+				expect(asTuples(result)).toEqual([
+					['alertbot', 'U333333333'],
+					['Jane Smith (@jane.smith)', 'U222222222'],
+					['John Doe (@jdoe2)', 'U444444444'],
+					['John Doe (@john.doe)', 'U111111111'],
+				]);
+			});
+
+			it('should return the user ID as the value, never the label', async () => {
+				const result = await node.methods.loadOptions.getUsers.call(mockLoadOptionsFunctions);
+
+				expect(result.map((o) => o.value)).toEqual([
+					'U333333333',
+					'U222222222',
+					'U444444444',
+					'U111111111',
+				]);
+			});
 		});
 	});
 });
