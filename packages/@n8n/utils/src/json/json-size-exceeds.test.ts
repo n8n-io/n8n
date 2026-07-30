@@ -4,8 +4,8 @@ import { jsonSizeExceeds } from './json-size-exceeds';
 
 const ONE_MIB = 1024 * 1024;
 
-/** Smallest limit, in bytes, at which `value` is reported as exceeding it. */
-const smallestExceededLimit = (value: unknown) => {
+/** Size the estimator credits a value with, read off the limits it answers on. */
+const measuredSize = (value: unknown) => {
 	let exceeded = -1;
 	let within = 1;
 	while (jsonSizeExceeds(value, within)) {
@@ -20,21 +20,99 @@ const smallestExceededLimit = (value: unknown) => {
 		}
 	}
 
-	return exceeded;
+	return within;
 };
 
-const realSize = (value: unknown) => Buffer.byteLength(JSON.stringify(value) ?? 'undefined');
+/** Size the value actually serializes to. Zero when it serializes to nothing. */
+const realSize = (value: unknown) => {
+	const serialized = JSON.stringify(value);
+	return serialized === undefined ? 0 : Buffer.byteLength(serialized);
+};
+
+/** Deterministic generator, so that a failing value can be reproduced. */
+const seeded = (seed: number) => () => {
+	seed = (seed * 1103515245 + 12345) % 2147483648;
+	return seed / 2147483648;
+};
+
+const pick = <T>(random: () => number, options: T[]) =>
+	options[Math.floor(random() * options.length)];
+
+const AWKWARD_STRINGS = [
+	'',
+	'plain text',
+	'a"quoted"b',
+	'back\\slash',
+	'line\nbreak',
+	'\u0001\u001f',
+	'\b\t\r\f',
+	'é accents',
+	'蟹 three bytes',
+	'🙂 pair',
+	'\ud800',
+	'\udfff',
+	'\ud83d🙂',
+	'k'.repeat(40),
+];
+
+const randomLeaf = (random: () => number): unknown =>
+	pick<unknown>(random, [
+		pick(random, AWKWARD_STRINGS),
+		Math.floor(random() * 1e9),
+		-Math.floor(random() * 1e9),
+		random(),
+		random() * 10 ** Math.floor(random() * 40 - 20),
+		pick(random, [0, -0, NaN, Infinity, -Infinity, 1e21, 5e-324, Number.MAX_SAFE_INTEGER]),
+		pick(random, [true, false, null, undefined]),
+		() => 'dropped',
+		new Date(Math.floor(random() * 1e12)),
+		new Date(NaN),
+		Buffer.from([0, 7, 128, 255].slice(0, 1 + Math.floor(random() * 4))),
+		new Uint8Array([1, 2, 255]),
+		new Float64Array([1.5, -1e-7]),
+		{ toJSON: () => pick(random, AWKWARD_STRINGS) },
+		{ toJSON: () => ({ replaced: [1, 2] }) },
+		{ toJSON: () => undefined },
+	]);
+
+const randomValue = (random: () => number, depth: number): unknown => {
+	if (depth === 0) {
+		return randomLeaf(random);
+	}
+
+	const length = Math.floor(random() * 5);
+	const members = Array.from({ length }, () => randomValue(random, depth - 1));
+
+	return random() < 0.5
+		? members
+		: Object.fromEntries(
+				members.map((member, index) => [pick(random, AWKWARD_STRINGS) + index, member]),
+			);
+};
 
 describe('jsonSizeExceeds', () => {
-	describe('never reports a size larger than the real one', () => {
+	describe('never reports a size below the real one', () => {
 		it.each<[string, unknown]>([
 			['a string', 'hello'],
 			['an empty string', ''],
 			['a multi-byte string', 'pour sûr 😀'],
 			['a multi-byte key', { ['clé 蟹']: 'valeur' }],
-			['a string needing escapes', 'a"b\\c\nd'],
+			['a string needing escapes', 'a"b\\c\nd'],
+			['a string of quotes, which serialization doubles', '"'.repeat(50)],
+			['a string of control characters, which serialization sextuples', '\u0001\u0002\u001f'],
+			['a string of letter-escaped controls', '\b\t\n\f\r'],
+			['a key needing escapes', { ['a"b\\c\n']: 1 }],
+			['a lone high surrogate', '\ud800'],
+			['a lone low surrogate', '\udfff'],
+			['a surrogate pair', '🙂'],
+			['a pair preceded by a lone surrogate', '\ud83d🙂'],
+			['a pair split across strings', ['\ud83d', '\ude42']],
 			['integers', [0, -0, 1, -1, 9, 10, 99, 100, 999999, 1000000]],
+			['integers at every digit count', Array.from({ length: 21 }, (_, i) => 10 ** i)],
+			['negative integers at every digit count', Array.from({ length: 21 }, (_, i) => -(10 ** i))],
+			['integers just below powers of ten', [9, 99, 999, 999999999999999]],
 			['extreme magnitudes', [1e20, 1e21, 1e22, 1e-7, 5e-324, Number.MAX_SAFE_INTEGER]],
+			['the longest a number can serialize to', -0.0000075911789601505095],
 			['non-finite numbers', [NaN, Infinity, -Infinity]],
 			['floats', [0.1, -0.5, 1.5, -1.25e-300, 1.2345678901234567]],
 			['keywords', [true, false, null]],
@@ -44,19 +122,31 @@ describe('jsonSizeExceeds', () => {
 			['entries serialization drops', { kept: 1, gone: undefined, alsoGone: () => 0 }],
 			['an element serialization turns into null', [1, undefined, 2]],
 			['a nested Buffer', { file: Buffer.from([0, 9, 99, 255]) }],
+			['an empty Buffer', { file: Buffer.alloc(0) }],
 			['a Date', { at: new Date('2026-07-27T10:00:00.000Z') }],
+			['an invalid Date, which serializes as null', { at: new Date(NaN) }],
+			['a value serializing itself', { at: { toJSON: () => 'replaced' } }],
+			['a value serializing itself into a container', { at: { toJSON: () => ({ a: [1, 2] }) } }],
+			['a value serializing itself into nothing', { gone: { toJSON: () => undefined }, kept: 1 }],
+			['a typed array, which serializes as index entries', { view: new Uint8Array([1, 255]) }],
+			['a typed array of floats', { view: new Float64Array([1.5, -1e-7]) }],
+			['an empty typed array', { view: new Uint8Array() }],
+			[
+				'a DataView, which serializes as an empty object',
+				{ view: new DataView(new ArrayBuffer(4)) },
+			],
 			['long keys', { ['k'.repeat(500)]: 'v'.repeat(500) }],
 			['many entries', Object.fromEntries(Array.from({ length: 200 }, (_, i) => [`k${i}`, i]))],
 			['many elements', Array.from({ length: 200 }, (_, i) => i * 7919)],
 		])('holds for %s', (_label, value) => {
-			expect(smallestExceededLimit(value)).toBeLessThanOrEqual(realSize(value));
+			expect(measuredSize(value)).toBeGreaterThanOrEqual(realSize(value));
 		});
 
 		it('holds for a container reached twice, which serialization repeats', () => {
 			const shared = { s: 'x', n: [1, 2] };
 			const value = { a: shared, b: shared };
 
-			expect(smallestExceededLimit(value)).toBeLessThanOrEqual(realSize(value));
+			expect(measuredSize(value)).toBeGreaterThanOrEqual(realSize(value));
 		});
 
 		it('holds for a sparse array, whose holes serialize as null', () => {
@@ -64,7 +154,44 @@ describe('jsonSizeExceeds', () => {
 			sparse[0] = 1;
 			sparse[3] = 2;
 
-			expect(smallestExceededLimit(sparse)).toBeLessThanOrEqual(realSize(sparse));
+			expect(measuredSize(sparse)).toBeGreaterThanOrEqual(realSize(sparse));
+		});
+
+		it('holds for generated values mixing every kind of member', () => {
+			const random = seeded(20260730);
+			const undersized: unknown[] = [];
+
+			for (let count = 0; count < 400; count++) {
+				const value = randomValue(random, 4);
+				const real = realSize(value);
+				const undersizedHere =
+					measuredSize(value) < real || (real > 0 && !jsonSizeExceeds(value, real - 1));
+
+				if (undersizedHere) {
+					undersized.push(value);
+				}
+			}
+
+			expect(undersized).toEqual([]);
+		});
+	});
+
+	describe('overshoots by one byte per container with members', () => {
+		it.each<[string, unknown, number]>([
+			['a string root', 'hello', 0],
+			['a number root', 42, 0],
+			['an empty object', {}, 0],
+			['an object whose only entry is dropped', { gone: undefined }, 0],
+			['a flat object', { a: 1, b: 'two', c: true, d: null }, 1],
+			['a flat array', [1, 'two', false, null], 1],
+			['nested objects', { a: { b: { c: 1 } } }, 3],
+			['an array of objects', [{ a: 1 }, { b: 2 }], 3],
+			['escaped keys and values', { ['a"b']: 'c\nd\u0001é蟹🙂' }, 1],
+			['a Date', { at: new Date('2026-07-27T10:00:00.000Z') }, 1],
+			['a value serializing itself', { at: { toJSON: () => 'replaced' } }, 1],
+			['integers of every length', { small: 7, big: 1234567890, negative: -42 }, 1],
+		])('holds for %s', (_label, value, containers) => {
+			expect(measuredSize(value)).toBe(realSize(value) + containers);
 		});
 	});
 
@@ -74,6 +201,12 @@ describe('jsonSizeExceeds', () => {
 			['a string whose characters take three bytes each', () => '蟹'.repeat(ONE_MIB)],
 			['a key whose characters take three bytes each', () => ({ ['蟹'.repeat(ONE_MIB)]: 0 })],
 			['a string in an object', () => ({ blob: 'x'.repeat(3 * ONE_MIB) })],
+			['a string whose escapes double its size', () => ({ blob: '"'.repeat(1.5 * ONE_MIB + 1) })],
+			[
+				'a string whose escapes sextuple its size',
+				() => ({ blob: '\u0001'.repeat(0.5 * ONE_MIB) }),
+			],
+			['a string of lone surrogates', () => ({ blob: '\ud800'.repeat(0.5 * ONE_MIB) })],
 			[
 				'a string split across keys',
 				() => ({ a: 'x'.repeat(ONE_MIB), b: 'y'.repeat(2 * ONE_MIB) }),
@@ -85,11 +218,23 @@ describe('jsonSizeExceeds', () => {
 			['an array of empty objects', () => new Array(800_000).fill(0).map(() => ({}))],
 			['a Buffer', () => ({ file: Buffer.alloc(3 * ONE_MIB) })],
 			[
+				'a Buffer whose bytes serialize as two characters each',
+				() => ({ file: Buffer.alloc(1.5 * ONE_MIB) }),
+			],
+			['a typed array, whose index keys are serialized', () => ({ view: new Uint8Array(ONE_MIB) })],
+			[
+				'a value serializing itself into a long string',
+				() => ({ at: { toJSON: () => 'x'.repeat(3 * ONE_MIB) } }),
+			],
+			[
 				'many keys',
 				() => Object.fromEntries(Array.from({ length: 300_000 }, (_, i) => [`k${i}`, 0])),
 			],
 		])('reports %s', (_label, build) => {
-			expect(jsonSizeExceeds(build(), 2 * ONE_MIB)).toBe(true);
+			const value = build();
+
+			expect(realSize(value)).toBeGreaterThan(2 * ONE_MIB);
+			expect(jsonSizeExceeds(value, 2 * ONE_MIB)).toBe(true);
 		});
 	});
 
@@ -97,26 +242,22 @@ describe('jsonSizeExceeds', () => {
 		it.each<[string, () => unknown]>([
 			['a short string', () => 'hello'],
 			['a long-but-allowed string', () => 'x'.repeat(ONE_MIB)],
+			['a string of emoji', () => ({ blob: '🙂'.repeat(0.4 * ONE_MIB) })],
 			['a nested string', () => ({ outer: { inner: ['x'.repeat(ONE_MIB)] } })],
 			['null', () => null],
 			['a number', () => 42],
 			['an empty object', () => ({})],
-			['a small Buffer', () => ({ file: Buffer.alloc(ONE_MIB) })],
+			['a small Buffer', () => ({ file: Buffer.alloc(0.4 * ONE_MIB) })],
+			['a Date', () => ({ at: new Date() })],
 			[
-				'a deeply nested value',
-				() => {
-					const root: Record<string, unknown> = {};
-					let leaf = root;
-					for (let depth = 0; depth < 100_000; depth++) {
-						const next: Record<string, unknown> = {};
-						leaf.n = next;
-						leaf = next;
-					}
-					return root;
-				},
+				'many small entries',
+				() => Object.fromEntries(Array.from({ length: 20_000 }, (_, i) => [`k${i}`, i])),
 			],
 		])('accepts %s', (_label, build) => {
-			expect(jsonSizeExceeds(build(), 2 * ONE_MIB)).toBe(false);
+			const value = build();
+
+			expect(realSize(value)).toBeLessThanOrEqual(2 * ONE_MIB);
+			expect(jsonSizeExceeds(value, 2 * ONE_MIB)).toBe(false);
 		});
 	});
 
@@ -136,6 +277,19 @@ describe('jsonSizeExceeds', () => {
 		expect(jsonSizeExceeds(node, 2 * ONE_MIB)).toBe(true);
 	});
 
+	it('answers on a value nested deeper than serialization can go', () => {
+		const root: Record<string, unknown> = {};
+		let leaf = root;
+		for (let depth = 0; depth < 100_000; depth++) {
+			const next: Record<string, unknown> = {};
+			leaf.n = next;
+			leaf = next;
+		}
+
+		expect(jsonSizeExceeds(root, 2 * ONE_MIB)).toBe(false);
+		expect(() => JSON.stringify(root)).toThrow(RangeError);
+	});
+
 	it('answers on a cyclic value instead of throwing', () => {
 		const cyclic: Record<string, unknown> = { name: 'cycle' };
 		cyclic.self = cyclic;
@@ -152,16 +306,53 @@ describe('jsonSizeExceeds', () => {
 		expect(jsonSizeExceeds(value, 2 * ONE_MIB)).toBe(false);
 	});
 
+	it('reads members in the order serialization reads them', () => {
+		const build = (read: string[]) => ({
+			get first() {
+				read.push('first');
+				return {
+					get nested() {
+						read.push('nested');
+						return 'x';
+					},
+				};
+			},
+			get second() {
+				read.push('second');
+				return [
+					{
+						get deep() {
+							read.push('deep');
+							return 1;
+						},
+					},
+				];
+			},
+			get third() {
+				read.push('third');
+				return true;
+			},
+		});
+
+		const walked: string[] = [];
+		const serialized: string[] = [];
+		jsonSizeExceeds(build(walked), Number.MAX_SAFE_INTEGER);
+		JSON.stringify(build(serialized));
+
+		expect(walked).toEqual(serialized);
+		expect(walked).toEqual(['first', 'nested', 'second', 'deep', 'third']);
+	});
+
 	it('stops walking once the limit is crossed', () => {
 		const visited: string[] = [];
 		const value = {
+			blob: 'x'.repeat(3 * ONE_MIB),
 			untouched: {
 				get deep() {
 					visited.push('deep');
 					return 'y';
 				},
 			},
-			blob: 'x'.repeat(3 * ONE_MIB),
 		};
 
 		expect(jsonSizeExceeds(value, 2 * ONE_MIB)).toBe(true);
@@ -183,11 +374,18 @@ describe('jsonSizeExceeds', () => {
 		expect(read).toBeLessThan(10_000);
 	});
 
+	it('stops measuring a single oversized string once the limit is crossed', () => {
+		const value = { blob: 'x'.repeat(64 * ONE_MIB) };
+
+		expect(jsonSizeExceeds(value, ONE_MIB)).toBe(true);
+	});
+
 	it('reports any non-empty value against a zero limit', () => {
 		expect(jsonSizeExceeds({ a: 1 }, 0)).toBe(true);
 		expect(jsonSizeExceeds([null], 0)).toBe(true);
 		expect(jsonSizeExceeds('', 0)).toBe(true);
-		expect(jsonSizeExceeds({}, 0)).toBe(false); // the root's own delimiters are not counted
+		expect(jsonSizeExceeds({}, 0)).toBe(true); // the root's own delimiters count
+		expect(jsonSizeExceeds({}, 2)).toBe(false);
 	});
 
 	it('reports every value against a negative limit', () => {
