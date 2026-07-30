@@ -120,9 +120,6 @@
         "prefs": {
             "type": "object",
             "properties": {
-                "autoArchive": {
-                    "type": "null"
-                },
                 "background": {
                     "type": "string"
                 },
@@ -218,5 +215,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 1
 }
