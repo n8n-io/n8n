@@ -133,8 +133,8 @@ export class ScheduledJob extends WithTimestamps {
 	nextRunAt: Date | null;
 
 	/**
-	 * Last instant this job's clock has moved past. Not proof that a run happened:
-	 * a discarded occurrence still advances it.
+	 * The latest instant the job's clock has advanced past. Not proof a run
+	 * happened: a discarded occurrence still advances it.
 	 */
 	@DateTimeColumn({ nullable: true })
 	lastFiredAt: Date | null;
