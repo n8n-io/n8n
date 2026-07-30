@@ -91,6 +91,12 @@
                 "ItemChildCount": {
                     "type": "string"
                 },
+                "LinkTitle": {
+                    "type": "string"
+                },
+                "LinkTitleNoMenu": {
+                    "type": "string"
+                },
                 "Modified": {
                     "type": "string"
                 },
@@ -153,5 +159,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

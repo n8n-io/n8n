@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import type { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { EntityManager, NewScheduledJob, ScheduledJob } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -26,6 +27,7 @@ interface ProvisionScope {
 	nodeId: string;
 	taskType: string;
 	payload: Record<string, unknown>;
+	misfirePolicy: ScheduledJobMisfirePolicy;
 }
 
 /** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
@@ -104,8 +106,12 @@ export class DurableJobProvisioner {
 		taskType: string,
 		payload: Record<string, unknown>,
 		desired: DesiredJob[],
+		misfirePolicy: ScheduledJobMisfirePolicy,
 	): Promise<ProvisionSummary> {
-		return await this.provisioner.provision({ workflowId, nodeId, taskType, payload }, desired);
+		return await this.provisioner.provision(
+			{ workflowId, nodeId, taskType, payload, misfirePolicy },
+			desired,
+		);
 	}
 
 	/** Delete all of a node's jobs; their queued tasks cascade away. */
@@ -142,15 +148,26 @@ export class DurableJobProvisioner {
 		nodeId,
 		taskType,
 		payload,
+		misfirePolicy,
 	}: ProvisionScope): RunInProvisionTransaction {
+		const misfireGraceSeconds = this.globalConfig.scheduler.misfireGraceSeconds;
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
+				const outdatedPolicyJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
 						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
+						for (const row of rows) {
+							if (
+								row.misfirePolicy !== misfirePolicy ||
+								row.misfireGraceSeconds !== misfireGraceSeconds
+							) {
+								outdatedPolicyJobIds.push(row.id);
+							}
+						}
 						return rows.map(
 							(row): ExistingJob => ({
 								id: row.id,
@@ -171,6 +188,8 @@ export class DurableJobProvisioner {
 								...scheduleColumns(job.schedule),
 								nextRunAt: job.firstRunAt,
 								maxAttempts: this.globalConfig.scheduler.maxAttempts,
+								misfirePolicy,
+								misfireGraceSeconds,
 							}),
 						);
 						const ids = await this.jobs.insertMany(manager, rows);
@@ -181,6 +200,8 @@ export class DurableJobProvisioner {
 						await this.jobs.updateDefinition(manager, jobId, {
 							...scheduleColumns(schedule),
 							nextRunAt,
+							misfirePolicy,
+							misfireGraceSeconds,
 						});
 						seededJobIds.add(jobId);
 					},
@@ -188,6 +209,18 @@ export class DurableJobProvisioner {
 						await this.tasks.deletePendingByJobIds(manager, jobIds),
 					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
 				});
+				// Only `redefine` touches a job's misfire policy and grace, so an unchanged
+				// schedule needs this to pick up a policy/grace change on its own.
+				await this.jobs.updateMisfirePolicy(manager, outdatedPolicyJobIds, {
+					misfirePolicy,
+					misfireGraceSeconds,
+				});
+				// Queued tasks were stamped with the previous grace; recompute their deadline.
+				await this.tasks.updateMissedAfterForJobs(
+					manager,
+					outdatedPolicyJobIds,
+					misfireGraceSeconds,
+				);
 				// After all of provisioning's own writes (including withdrawing a
 				// redefined job's stale tasks) so the seeded occurrences are the last word.
 				await this.seedInitialOccurrences(manager, seededJobIds);
@@ -229,6 +262,8 @@ export class DurableJobProvisioner {
 				},
 				recordOccurrences: async (occurrences) =>
 					await this.tasks.insertIgnoringDuplicates(manager, occurrences),
+				retireSuperseded: async (superseded) =>
+					await this.tasks.updateToMissed(manager, superseded),
 				advanceJobs: async (planned) =>
 					await this.jobs.advanceMany(
 						manager,
