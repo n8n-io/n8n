@@ -89,7 +89,7 @@ export class TaskBroker {
 
 	private runnerAcceptRejects: Map<
 		Task['id'],
-		{ accept: RunnerAcceptCallback; reject: TaskRejectCallback }
+		{ accept: RunnerAcceptCallback; reject: TaskRejectCallback; runnerId: TaskRunner['id'] }
 	> = new Map();
 
 	private requesterAcceptRejects: Map<
@@ -200,6 +200,15 @@ export class TaskBroker {
 		this.knownRunners.delete(runnerId);
 
 		this.discardOffersFrom(runnerId);
+
+		for (const [taskId, acceptReject] of this.runnerAcceptRejects) {
+			if (acceptReject.runnerId === runnerId) {
+				this.handleRunnerReject(
+					taskId,
+					`The Task Runner (${runnerId}) has disconnected: ${error.message}`,
+				);
+			}
+		}
 
 		// Fail any tasks
 		for (const task of this.tasks.values()) {
@@ -595,13 +604,18 @@ export class TaskBroker {
 
 	async acceptOffer(offer: TaskOffer, request: TaskRequest): Promise<void> {
 		const taskId = nanoid(8);
+		let runnerAcceptTimer: NodeJS.Timeout | undefined;
 
 		try {
 			const acceptPromise = new Promise((resolve, reject) => {
-				this.runnerAcceptRejects.set(taskId, { accept: resolve as () => void, reject });
+				this.runnerAcceptRejects.set(taskId, {
+					accept: resolve as () => void,
+					reject,
+					runnerId: offer.runnerId,
+				});
 
 				// TODO: customisable timeout
-				setTimeout(() => {
+				runnerAcceptTimer = setTimeout(() => {
 					reject(new TaskRunnerAcceptTimeoutError(taskId, offer.runnerId));
 				}, 2000);
 			});
@@ -637,6 +651,8 @@ export class TaskBroker {
 				return;
 			}
 			throw e;
+		} finally {
+			clearTimeout(runnerAcceptTimer);
 		}
 
 		clearTimeout(request.timeout);
@@ -653,12 +669,15 @@ export class TaskBroker {
 			(r) => r.requestId === request.requestId,
 		);
 		if (requestIndex === -1) {
-			this.logger.error(
-				`Failed to find task request (${request.requestId}) after a task was accepted. This shouldn't happen, and might be a race condition.`,
+			this.logger.warn(
+				`Task request (${request.requestId}) expired while runner (${offer.runnerId}) was accepting task (${taskId}), canceling task`,
 			);
+			await this.cancelTask(taskId, 'Task request expired');
 			return;
 		}
 		this.pendingTaskRequests.splice(requestIndex, 1);
+
+		let requesterAcceptTimer: NodeJS.Timeout | undefined;
 
 		try {
 			const acceptPromise = new Promise<RequesterMessage.ToBroker.TaskSettings['settings']>(
@@ -671,7 +690,7 @@ export class TaskBroker {
 					});
 
 					// TODO: customisable timeout
-					setTimeout(() => {
+					requesterAcceptTimer = setTimeout(() => {
 						reject('Requester timed out');
 					}, 2000);
 				},
@@ -697,6 +716,8 @@ export class TaskBroker {
 			}
 			await this.cancelTask(task.id, 'Unknown reason');
 			throw e;
+		} finally {
+			clearTimeout(requesterAcceptTimer);
 		}
 	}
 
@@ -816,7 +837,7 @@ export class TaskBroker {
 	setRunnerAcceptRejects(
 		runnerAcceptRejects: Record<
 			string,
-			{ accept: RunnerAcceptCallback; reject: TaskRejectCallback }
+			{ accept: RunnerAcceptCallback; reject: TaskRejectCallback; runnerId: TaskRunner['id'] }
 		>,
 	) {
 		this.runnerAcceptRejects = new Map(Object.entries(runnerAcceptRejects));

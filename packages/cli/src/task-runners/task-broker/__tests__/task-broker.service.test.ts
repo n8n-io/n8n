@@ -656,7 +656,7 @@ describe('TaskBroker', () => {
 			const accept = vi.fn();
 			const reject = vi.fn();
 
-			taskBroker.setRunnerAcceptRejects({ [taskId]: { accept, reject } });
+			taskBroker.setRunnerAcceptRejects({ [taskId]: { accept, reject, runnerId } });
 			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 
 			await taskBroker.onRunnerMessage(runnerId, message);
@@ -682,7 +682,7 @@ describe('TaskBroker', () => {
 			const accept = vi.fn();
 			const reject = vi.fn();
 
-			taskBroker.setRunnerAcceptRejects({ [taskId]: { accept, reject } });
+			taskBroker.setRunnerAcceptRejects({ [taskId]: { accept, reject, runnerId } });
 			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 
 			await taskBroker.onRunnerMessage(runnerId, message);
@@ -1302,6 +1302,105 @@ describe('TaskBroker', () => {
 			}
 
 			expect(await timeoutAfterAcceptFailure('offer4')).toBe(previousTimeout);
+
+			vi.useRealTimers();
+		});
+	});
+
+	describe('acceptOffer', () => {
+		const offerFor = (runnerId: string, offerId: string): TaskOffer => ({
+			offerId,
+			runnerId,
+			taskType: 'taskType1',
+			validFor: 10_000,
+			validUntil: createValidUntil(10_000),
+		});
+
+		const acknowledgingRunnerCallback = () =>
+			vi.fn((message: BrokerMessage.ToRunner.All) => {
+				if (message.type === 'broker:taskofferaccept') {
+					taskBroker.handleRunnerAccept(message.taskId);
+				}
+			});
+
+		it('should cancel the task toward the runner when the request expired during acceptance', async () => {
+			const runnerCallback = acknowledgingRunnerCallback();
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), runnerCallback);
+
+			// the request is no longer pending by the time the runner acknowledges
+			await taskBroker.acceptOffer(offerFor('runner1', 'offer1'), {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				acceptInProgress: true,
+			});
+
+			expect(runnerCallback).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'broker:taskcancel', reason: 'Task request expired' }),
+			);
+			expect(taskBroker.getTasks().size).toBe(0);
+		});
+
+		it('should not leave acknowledgment timers armed after a successful accept flow', async () => {
+			vi.useFakeTimers();
+
+			const config = mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskTimeout: 60 });
+			taskBroker = new TaskBroker(mock(), config, mock(), mock());
+
+			const runnerCallback = acknowledgingRunnerCallback();
+			const requesterCallback = vi.fn((message: BrokerMessage.ToRequester.All) => {
+				if (message.type === 'broker:taskready') {
+					taskBroker.handleRequesterAccept(message.taskId, {});
+				}
+			});
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), runnerCallback);
+			taskBroker.registerRequester('requester1', requesterCallback);
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				acceptInProgress: true,
+			};
+			taskBroker.setPendingTaskRequests([request]);
+
+			await taskBroker.acceptOffer(offerFor('runner1', 'offer1'), request);
+
+			// only the task execution timeout remains armed
+			expect(vi.getTimerCount()).toBe(1);
+
+			vi.useRealTimers();
+		});
+
+		it('should reject an acceptance awaiting acknowledgment when its runner deregisters', async () => {
+			vi.useFakeTimers();
+
+			const liveRunnerCallback = vi.fn();
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'deadRunner' }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'liveRunner' }), liveRunnerCallback);
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				acceptInProgress: true,
+			};
+			taskBroker.setPendingTaskRequests([request]);
+			taskBroker.setPendingTaskOffers([offerFor('liveRunner', 'liveOffer1')]);
+
+			const acceptPromise = taskBroker.acceptOffer(offerFor('deadRunner', 'deadOffer1'), request);
+			taskBroker.deregisterRunner('deadRunner', new Error('connection lost'));
+
+			// resolves without the acknowledgment window elapsing
+			await acceptPromise;
+
+			const pendingAcceptanceRunnerIds = [...taskBroker.getRunnerAcceptRejects().values()].map(
+				({ runnerId }) => runnerId,
+			);
+			expect(pendingAcceptanceRunnerIds).toEqual(['liveRunner']);
+			expect(liveRunnerCallback).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'broker:taskofferaccept', offerId: 'liveOffer1' }),
+			);
 
 			vi.useRealTimers();
 		});
