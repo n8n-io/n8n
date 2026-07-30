@@ -25,8 +25,16 @@ export class AgentChatAttachmentRepository extends Repository<AgentChatAttachmen
 		return await this.findOneBy({ id, agentId: scope.agentId, projectId: scope.projectId });
 	}
 
-	async findByThreadId(threadId: string): Promise<AgentChatAttachment[]> {
-		return await this.findBy({ threadId });
+	/**
+	 * Thread lookup scoped to a project or agent — the scope carries the
+	 * caller's authorization and lets the matching composite index
+	 * ((projectId, threadId) or (agentId, threadId)) serve the query.
+	 */
+	async findByThread(
+		threadId: string,
+		scope: { projectId: string } | { agentId: string },
+	): Promise<AgentChatAttachment[]> {
+		return await this.findBy({ threadId, ...scope });
 	}
 
 	async findByIds(ids: string[]): Promise<AgentChatAttachment[]> {

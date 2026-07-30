@@ -286,7 +286,7 @@ export class AgentExecutionService {
 		);
 
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
-		await this.agentChatAttachmentService.deleteByThread(threadId);
+		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await Promise.all([
 			this.agentExecutionThreadRepository.delete({ id: threadId }),
 			this.agentExecutionLogStore.delete(

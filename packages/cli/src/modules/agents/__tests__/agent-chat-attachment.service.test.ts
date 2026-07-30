@@ -199,15 +199,18 @@ describe('AgentChatAttachmentService', () => {
 	});
 
 	describe('deleteByThread', () => {
-		it('deletes rows and bytes for the thread', async () => {
+		it('deletes rows and bytes for the thread within the given scope', async () => {
 			binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
-			repository.findByThreadId.mockResolvedValue([
+			repository.findByThread.mockResolvedValue([
 				{ id: 'att-1', binaryDataId: 'filesystem-v2:a' },
 				{ id: 'att-2', binaryDataId: 'filesystem-v2:b' },
 			] as AgentChatAttachment[]);
 
-			await service.deleteByThread('thread-1');
+			await service.deleteByThread('thread-1', { projectId: 'project-1' });
 
+			expect(repository.findByThread).toHaveBeenCalledWith('thread-1', {
+				projectId: 'project-1',
+			});
 			expect(repository.delete).toHaveBeenCalledWith(['att-1', 'att-2']);
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
 				'filesystem-v2:a',
@@ -216,8 +219,8 @@ describe('AgentChatAttachmentService', () => {
 		});
 
 		it('is a no-op for threads without attachments', async () => {
-			repository.findByThreadId.mockResolvedValue([]);
-			await service.deleteByThread('thread-1');
+			repository.findByThread.mockResolvedValue([]);
+			await service.deleteByThread('thread-1', { agentId: 'agent-1' });
 			expect(repository.delete).not.toHaveBeenCalled();
 		});
 	});

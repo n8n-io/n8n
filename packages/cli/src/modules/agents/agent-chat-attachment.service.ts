@@ -133,8 +133,14 @@ export class AgentChatAttachmentService {
 		});
 	}
 
-	async deleteByThread(threadId: string): Promise<void> {
-		await this.deleteAttachments(await this.repository.findByThreadId(threadId), { threadId });
+	/** `scope` carries the caller's authorization (project or agent) and drives index use. */
+	async deleteByThread(
+		threadId: string,
+		scope: { projectId: string } | { agentId: string },
+	): Promise<void> {
+		await this.deleteAttachments(await this.repository.findByThread(threadId, scope), {
+			threadId,
+		});
 	}
 
 	/** Called before the agent row is removed, so bytes don't outlive the cascading rows. */

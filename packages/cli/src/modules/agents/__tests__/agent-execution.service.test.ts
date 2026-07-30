@@ -640,7 +640,9 @@ describe('AgentExecutionService', () => {
 			});
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
 			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1');
-			expect(agentChatAttachmentService.deleteByThread).toHaveBeenCalledWith('thread-1');
+			expect(agentChatAttachmentService.deleteByThread).toHaveBeenCalledWith('thread-1', {
+				projectId: 'project-1',
+			});
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 		});
 
