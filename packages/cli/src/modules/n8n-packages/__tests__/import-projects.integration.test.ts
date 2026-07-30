@@ -11,8 +11,10 @@ import {
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
+	TagRepository,
 	VariablesRepository,
 	WorkflowRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -64,6 +66,8 @@ async function importProjects(
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
 		variableMissingMode: 'do-nothing',
+		tagMissingMode: 'create',
+		tagConflictPolicy: 'skip',
 		...overrides,
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
@@ -118,6 +122,8 @@ afterAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate([
+		'WorkflowTagMapping',
+		'TagEntity',
 		'Folder',
 		'Project',
 		'ProjectRelation',
@@ -338,6 +344,44 @@ describe('project shell import', () => {
 		expect(wfb.projectId).toBe('P2');
 		expect((await findWorkflow(wfa.localId))?.parentFolder?.id).toBe('FA');
 		expect((await findWorkflow(wfb.localId))?.parentFolder?.id).toBe('FB');
+	});
+
+	it('creates a tag shared across two projects exactly once and attaches it in both', async () => {
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/brie/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa', tagIds: ['TAG1'] }),
+				},
+				{
+					target: 'projects/stilton/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb', tagIds: ['TAG1'] }),
+				},
+			],
+			manifestExtras: {
+				requirements: {
+					tags: [{ id: 'TAG1', name: 'shared', usedByWorkflows: ['WFA', 'WFB'] }],
+				},
+			},
+		});
+
+		const result = await importProjects(owner, packageBuffer);
+
+		expect(result.tags).toEqual({ matched: [], created: ['shared'], renamed: [], skipped: [] });
+		expect(await Container.get(TagRepository).find()).toEqual([
+			expect.objectContaining({ id: 'TAG1', name: 'shared' }),
+		]);
+		const mappings = await Container.get(WorkflowTagMappingRepository).find();
+		expect(mappings.map(({ workflowId, tagId }) => ({ workflowId, tagId }))).toEqual(
+			expect.arrayContaining(
+				result.workflows.map(({ localId }) => ({ workflowId: localId, tagId: 'TAG1' })),
+			),
+		);
+		expect(mappings).toHaveLength(2);
 	});
 
 	it('reuses the project and folder and updates the workflow on re-import', async () => {

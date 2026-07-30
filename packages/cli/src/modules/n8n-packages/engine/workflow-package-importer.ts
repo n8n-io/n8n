@@ -12,18 +12,24 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
+import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
+import {
+	assertPackageImportApiKeyScopes,
+	assertTagWritesAllowed,
+	assertVariableCreationAllowed,
+} from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
 	identifyRequirements,
 	toImportedWorkflowSummaries,
 	toPackageSummary,
+	toTagSummary,
 	toVariableSummary,
 } from './import-result';
 import { emitPackageImportedEvent } from './import-telemetry';
@@ -103,6 +109,12 @@ export class WorkflowPackageImporter {
 			missingMode: request.variableMissingMode,
 		};
 
+		const tagRequest: TagImportRequest = {
+			requirements: manifest.requirements?.tags,
+			missingMode: request.tagMissingMode,
+			conflictPolicy: request.tagConflictPolicy,
+		};
+
 		const plan = await this.importOrchestrator.plan({
 			context,
 			folders,
@@ -110,10 +122,12 @@ export class WorkflowPackageImporter {
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
+			tagRequest,
 			options: request,
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 		});
 
+		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
 		await this.importOrchestrator.assertNotBlocked([plan]);
 
 		const content = await this.importOrchestrator.apply(plan);
@@ -131,7 +145,14 @@ export class WorkflowPackageImporter {
 			request,
 			manifest,
 			scopes: [
-				{ context, imported: content, credentialRequest, dataTableRequest, variableRequest },
+				{
+					context,
+					imported: content,
+					credentialRequest,
+					dataTableRequest,
+					variableRequest,
+					tagRequest,
+				},
 			],
 		});
 
@@ -150,6 +171,7 @@ export class WorkflowPackageImporter {
 				stubbed: content.credentialResult.stubbed,
 			},
 			variables: toVariableSummary(content.variablePlan, content.variableResult),
+			tags: toTagSummary(content.tagPlan),
 		});
 	}
 
