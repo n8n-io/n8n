@@ -50,6 +50,7 @@ describe('WorkflowRemover.plan', () => {
 		const plan = await remover.plan(context, {
 			workflowItems: [created('fresh')],
 			packageFolderIds: [],
+			folderConflictPolicy: 'overwrite',
 			deletionPolicy: 'archive',
 		});
 
@@ -67,6 +68,7 @@ describe('WorkflowRemover.plan', () => {
 		const plan = await remover.plan(context, {
 			workflowItems: [created('a'), updated('b'), skipped('c')],
 			packageFolderIds: [],
+			folderConflictPolicy: 'overwrite',
 			deletionPolicy: 'archive',
 		});
 
@@ -80,6 +82,7 @@ describe('WorkflowRemover.plan', () => {
 			workflowItems: [created('parent')],
 			packageFolderIds: [],
 			subWorkflowRequirementIds: ['sub'],
+			folderConflictPolicy: 'overwrite',
 			deletionPolicy: 'archive',
 		});
 
@@ -96,6 +99,7 @@ describe('WorkflowRemover.plan', () => {
 		const plan = await remover.plan(context, {
 			workflowItems: [],
 			packageFolderIds: ['F1'],
+			folderConflictPolicy: 'overwrite',
 			deletionPolicy: 'archive',
 		});
 
@@ -108,6 +112,7 @@ describe('WorkflowRemover.plan', () => {
 		const plan = await remover.plan(context, {
 			workflowItems: [],
 			packageFolderIds: [],
+			folderConflictPolicy: 'overwrite',
 			deletionPolicy: 'archive',
 		});
 
@@ -124,6 +129,7 @@ describe('WorkflowRemover.plan', () => {
 		await remover.plan(context, {
 			workflowItems: [created('keep')],
 			packageFolderIds: [],
+			folderConflictPolicy: 'overwrite',
 			deletionPolicy: 'archive',
 		});
 
@@ -134,12 +140,47 @@ describe('WorkflowRemover.plan', () => {
 		);
 	});
 
+	it.each(['merge', 'fail'] as const)('removes nothing under %s', async (folderConflictPolicy) => {
+		const { remover, workflowFinderService } = makeRemover([
+			{ id: 'stale', name: 'Stale', parentFolderId: null },
+		]);
+
+		const plan = await remover.plan(context, {
+			folderConflictPolicy,
+			deletionPolicy: 'archive',
+			workflowItems: [],
+			packageFolderIds: [],
+		});
+
+		expect(plan.removals).toEqual([]);
+		// Reconciliation is off, so the target is never even read.
+		expect(workflowFinderService.findOwnedWorkflowPlacementsInProject).not.toHaveBeenCalled();
+	});
+
+	it('removes nothing when the project is still to be created', async () => {
+		const { remover, workflowFinderService } = makeRemover([
+			{ id: 'stale', name: 'Stale', parentFolderId: null },
+		]);
+
+		const plan = await remover.plan(context, {
+			folderConflictPolicy: 'overwrite',
+			deletionPolicy: 'archive',
+			workflowItems: [],
+			packageFolderIds: [],
+			projectPendingCreation: true,
+		});
+
+		expect(plan.removals).toEqual([]);
+		expect(workflowFinderService.findOwnedWorkflowPlacementsInProject).not.toHaveBeenCalled();
+	});
+
 	it('skips the permission query entirely when nothing would be archived', async () => {
 		const { remover, workflowFinderService } = makeRemover([]);
 
 		const plan = await remover.plan(context, {
 			workflowItems: [],
 			packageFolderIds: [],
+			folderConflictPolicy: 'overwrite',
 			deletionPolicy: 'archive',
 		});
 

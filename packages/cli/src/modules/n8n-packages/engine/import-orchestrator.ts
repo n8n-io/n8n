@@ -20,7 +20,6 @@ import type {
 	FolderImportPlan,
 	PreparedFolder,
 } from '../entities/folder/folder-import.types';
-import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import { FolderImporter } from '../entities/folder/folder-importer';
 import { TagImporter } from '../entities/tag/tag-importer';
 import { droppedTagIds } from '../entities/tag/tag.types';
@@ -170,20 +169,14 @@ export class ImportOrchestrator {
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
-		// Planned against a project that does not exist yet, there is nothing to reconcile.
-		const removalPlan =
-			removesUnpackagedWorkflows(options.folderConflictPolicy) && !input.projectPendingCreation
-				? await this.workflowRemover.plan(context, {
-						workflowItems: workflowPlan.items,
-						packageFolderIds: folders.map(({ sourceFolderId }) => sourceFolderId),
-						subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
-						deletionPolicy: options.overwriteDeletionPolicy,
-					})
-				: {
-						removals: [],
-						failures: [],
-						deletionPolicy: options.overwriteDeletionPolicy,
-					};
+		const removalPlan = await this.workflowRemover.plan(context, {
+			folderConflictPolicy: options.folderConflictPolicy,
+			deletionPolicy: options.overwriteDeletionPolicy,
+			workflowItems: workflowPlan.items,
+			packageFolderIds: folders.map(({ sourceFolderId }) => sourceFolderId),
+			subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
+			projectPendingCreation: input.projectPendingCreation,
+		});
 
 		// Skipped workflows are never written, so their node types don't gate the import.
 		const missingNodeTypes = collectMissingNodeTypes(

@@ -4,6 +4,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { removesUnpackagedWorkflows } from '../folder/folder-conflict-policy';
 import type { WorkflowPlanItem } from './workflow-import.types';
 import type {
 	RemovableWorkflow,
@@ -35,6 +36,15 @@ export class WorkflowRemover {
 			failures: [],
 			deletionPolicy: request.deletionPolicy,
 		};
+
+		// Owned here rather than by the caller: the policy that turns reconciliation on is this
+		// service's concern, and a project being created holds nothing to reconcile against.
+		if (
+			!removesUnpackagedWorkflows(request.folderConflictPolicy) ||
+			request.projectPendingCreation
+		) {
+			return nothingToRemove;
+		}
 
 		const placements = await this.workflowFinderService.findOwnedWorkflowPlacementsInProject(
 			context.projectId,
