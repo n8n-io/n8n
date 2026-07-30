@@ -383,7 +383,7 @@ test('API-only test', async ({ api }) => {
 To test features behind feature flags (experiments), use `TestRequirements` with storage overrides:
 
 ```typescript
-import type { TestRequirements } from '../config/TestRequirements';
+import type { TestRequirements } from '../../../Types';
 
 const requirements: TestRequirements = {
   storage: {
