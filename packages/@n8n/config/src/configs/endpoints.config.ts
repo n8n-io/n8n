@@ -139,17 +139,6 @@ export class EndpointsConfig {
 	@Env('N8N_FORMDATA_FILE_SIZE_MAX')
 	formDataFileSizeMax: number = 200;
 
-	/**
-	 * Maximum size in MiB of a response body a worker relays back to main in scaling mode.
-	 * A larger response fails the node instead of being sent through the queue.
-	 *
-	 * Relaying costs the queue a multiple of the body size,
-	 * so size this against the memory available to it,
-	 * and return large payloads as binary data to have them streamed from storage instead.
-	 */
-	@Env('N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX')
-	webhookResponseRelaySizeMax: number = 64;
-
 	@Nested
 	metrics: PrometheusMetricsConfig;
 

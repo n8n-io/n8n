@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { EndpointsConfig, ExecutionsConfig } from '@n8n/config';
+import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository, Project } from '@n8n/db';
 import { WorkflowPublishHistoryRepository } from '@n8n/db';
 import type { WorkflowExecute as ActualWorkflowExecute, InstanceSettings } from 'n8n-core';
@@ -74,10 +74,14 @@ const logger = mock<Logger>({
 	scoped: vi.fn().mockImplementation(() => logger),
 });
 
-const executionsConfig = mock<ExecutionsConfig>({
-	timeout: -1,
-	maxTimeout: 3600,
-});
+const executionsConfigWith = (overrides: Partial<ExecutionsConfig> = {}) =>
+	mock<ExecutionsConfig>({
+		timeout: -1,
+		maxTimeout: 3600,
+		...overrides,
+	});
+
+const executionsConfig = executionsConfigWith();
 
 const successRun = (): IRun =>
 	mock<IRun>({
@@ -127,7 +131,6 @@ describe('JobProcessor', () => {
 			mock(),
 			executionsConfig,
 			mock(),
-			mock(),
 		);
 
 		const result = await jobProcessor.processJob(mock<Job>());
@@ -157,7 +160,6 @@ describe('JobProcessor', () => {
 			mock(),
 			manualExecutionService,
 			executionsConfig,
-			mock(),
 			mock(),
 		);
 
@@ -192,7 +194,6 @@ describe('JobProcessor', () => {
 				mock(),
 				manualExecutionService,
 				executionsConfig,
-				mock(),
 				mock(),
 			);
 
@@ -236,7 +237,6 @@ describe('JobProcessor', () => {
 			mock(),
 			manualExecutionService,
 			executionsConfig,
-			mock(),
 			mock(),
 		);
 
@@ -285,7 +285,6 @@ describe('JobProcessor', () => {
 			mock(),
 			manualExecutionService,
 			executionsConfig,
-			mock(),
 			mock(),
 		);
 
@@ -336,7 +335,6 @@ describe('JobProcessor', () => {
 			manualExecutionService,
 			executionsConfig,
 			mock(),
-			mock(),
 		);
 
 		const executionId = 'execution-id';
@@ -374,7 +372,6 @@ describe('JobProcessor', () => {
 			mock(),
 			manualExecutionService,
 			executionsConfig,
-			mock(),
 			mock(),
 		);
 
@@ -429,7 +426,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 
 			await jobProcessor.processJob(mock<Job>());
@@ -477,7 +473,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -537,7 +532,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -588,7 +582,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -650,7 +643,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -738,7 +730,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -812,7 +803,6 @@ describe('JobProcessor', () => {
 				mcpInstanceSettings,
 				manualExecutionService,
 				executionsConfig,
-				mock(),
 				mock(),
 			);
 
@@ -916,7 +906,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1004,7 +993,6 @@ describe('JobProcessor', () => {
 					createManualExecutionServiceMock(),
 					executionsConfig,
 					mock(), // eventService
-					mock(),
 				);
 
 				const job = mock<Job>();
@@ -1140,7 +1128,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1248,7 +1235,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1343,7 +1329,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1432,7 +1417,6 @@ describe('JobProcessor', () => {
 				mcpInstanceSettings,
 				manualExecutionService,
 				executionsConfig,
-				mock(),
 				mock(),
 			);
 
@@ -1533,7 +1517,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1618,7 +1601,6 @@ describe('JobProcessor', () => {
 				mcpInstanceSettings,
 				manualExecutionService,
 				executionsConfig,
-				mock(),
 				mock(),
 			);
 
@@ -1711,7 +1693,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1788,7 +1769,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1827,7 +1807,6 @@ describe('JobProcessor', () => {
 				mock(),
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 			const run = mock<IRun>({
 				status: 'waiting',
@@ -1856,7 +1835,6 @@ describe('JobProcessor', () => {
 				mock(),
 				mock(),
 				executionsConfig,
-				mock(),
 				mock(),
 			);
 			const run = mock<IRun>({
@@ -1906,7 +1884,6 @@ describe('JobProcessor', () => {
 				mock(),
 				manualExecutionService,
 				executionsConfig,
-				mock(),
 				mock(),
 			);
 
@@ -1974,7 +1951,6 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(),
 			);
 
 			const job = mock<Job>();
@@ -2000,7 +1976,7 @@ describe('JobProcessor', () => {
 
 	describe('webhook response relay', () => {
 		const processJobAndCaptureHooks = async (
-			webhookResponseRelaySizeMax: number,
+			webhookResponseRelaySizeMaxMiB: number,
 			jobData: Partial<Job['data']> = {},
 		) => {
 			const executionPersistence = mock<ExecutionPersistence>();
@@ -2023,9 +1999,8 @@ describe('JobProcessor', () => {
 				mock(),
 				mock(),
 				createManualExecutionServiceMock(),
-				executionsConfig,
+				executionsConfigWith({ webhookResponseRelaySizeMaxMiB }),
 				mock(),
-				mock<EndpointsConfig>({ webhookResponseRelaySizeMax }),
 			);
 
 			const job = mock<Job>({
