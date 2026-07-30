@@ -114,9 +114,6 @@
         "SyncToken": {
             "type": "string"
         },
-        "V4IDPseudonym": {
-            "type": "string"
-        },
         "Vendor1099": {
             "type": "boolean"
         },
@@ -129,5 +126,5 @@
             }
         }
     },
-    "version": 2
+    "version": 1
 }
