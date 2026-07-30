@@ -359,7 +359,15 @@ export class TriggerExecutionContextFactory {
 			};
 
 			if (!this.pollCursorService.enabled) {
-				return new PollContext(workflow, node, additionalData, mode, activation, __emit, __emitError);
+				return new PollContext(
+					workflow,
+					node,
+					additionalData,
+					mode,
+					activation,
+					__emit,
+					__emitError,
+				);
 			}
 
 			// Reads the stored cursor on every poll, since a registration outlives many

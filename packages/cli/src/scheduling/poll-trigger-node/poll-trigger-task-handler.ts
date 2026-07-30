@@ -103,7 +103,10 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// is committed on its own. The stored active state is re-read first, since a
 				// workflow deactivated mid-poll must not have its cursor advanced; the flag
 				// check keeps that query off the path that stores no cursor.
-				if (this.pollCursorService.enabled && (await this.workflowRepository.isActive(workflowId))) {
+				if (
+					this.pollCursorService.enabled &&
+					(await this.workflowRepository.isActive(workflowId))
+				) {
 					try {
 						await commitCursor();
 					} catch (error) {

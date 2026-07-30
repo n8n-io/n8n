@@ -28,10 +28,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should fire the activation-time seed poll', async ({
-			api,
-			services,
-		}) => {
+		test('should fire the activation-time seed poll', async ({ api, services }) => {
 			// Only proves the seed poll that runs inline on activation; the durable
 			// claim/dispatch path is exercised separately below.
 			await expectPollTriggerFires(api, services.proxy, makePollTriggerWorkflow);
