@@ -217,10 +217,8 @@ export class McpServer {
 				this.pendingGateResults[callId] = gateResult;
 			}
 
-			// SSE acks a tools/call with 202 as soon as it dispatches the request, then runs
-			// the handler detached. Settling on that would let the caller (the webhook) return
-			// and release its expression isolate while the tool is still resolving parameters,
-			// so for this case wait for the handler itself and settle early only on failure.
+			// SSE acks with 202 before the detached handler runs, so settling on that would
+			// release the caller's expression isolate mid-tool-call.
 			const awaitToolHandler =
 				isToolCall && transport.transportType === 'sse' && !this.executionCoordinator.isQueueMode();
 
