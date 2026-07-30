@@ -275,6 +275,9 @@ export class TriggerExecutionContextFactory {
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
+			// A poll's staged cursor lives in an async scope entered per poll, rather than
+			// in a variable per node: only the poll that staged a cursor can commit it, and
+			// two overlapping polls of the same node never share a slot.
 			const stagedCursorStore = new AsyncLocalStorage<{
 				cursor: PollCursor | null;
 				closed: boolean;
@@ -289,6 +292,7 @@ export class TriggerExecutionContextFactory {
 				}
 			};
 
+			/** Takes and clears the staged cursor, so one advance is committed at most once. */
 			const takeStagedCursor = (): PollCursor | null => {
 				const staged = stagedCursorStore.getStore();
 				if (staged === undefined) return null;
@@ -306,6 +310,8 @@ export class TriggerExecutionContextFactory {
 
 				const cursor = takeStagedCursor();
 
+				// A staged cursor is persisted by the transaction inside `runPolledWorkflow`;
+				// saving static data here as well would race that write.
 				if (cursor === null) {
 					if (this.pollCursorService.enabled) {
 						this.logger.debug(
@@ -356,6 +362,9 @@ export class TriggerExecutionContextFactory {
 				return new PollContext(workflow, node, additionalData, mode, activation, __emit, __emitError);
 			}
 
+			// Reads the stored cursor on every poll, since a registration outlives many
+			// ticks. A cursor already staged by this poll wins, so a node reading back
+			// what it set within one poll sees its own value.
 			const getCursor = async () => {
 				const staged = stagedCursorStore.getStore();
 				if (staged?.cursor !== undefined && staged?.cursor !== null) return { ...staged.cursor };

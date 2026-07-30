@@ -88,6 +88,8 @@ export class PollTriggerExecutor {
 						return;
 					}
 
+					// Poll and hand-off share one staging scope, so a cursor staged here can
+					// only be committed by this poll and never by a later tick.
 					await runPoll(async () => {
 						try {
 							if (ownsIsolate) await workflow.expression.acquireIsolate();
@@ -102,9 +104,9 @@ export class PollTriggerExecutor {
 							// potentially starting the execution. Emitting now if superseded would run
 							// an execution against the old version of the workflow, so drop it.
 							// Bailing out here is safe even though `poll()` may have already advanced
-							// its state in the in-memory static data: persistence only happens inside
-							// `__emit` (`saveStaticData`), so the dropped call leaves the stored state
-							// untouched and the newly registered poller re-fetches the same events.
+							// its state: nothing is persisted until `__emit` or `__commitCursor` runs,
+							// so the dropped call leaves the stored state untouched and the newly
+							// registered poller re-fetches the same events.
 							if (!testingTrigger && !isCurrent()) {
 								this.logger.debug(
 									`Discarding in-flight poll result for superseded workflow "${workflow.name}"`,
@@ -117,9 +119,14 @@ export class PollTriggerExecutor {
 							if (pollResponse !== null) {
 								pollFunctions.__emit(pollResponse);
 							} else if (!testingTrigger) {
+								// A poll that found nothing may still have moved its cursor, and the
+								// advance is committed on its own. The activation poll is left out
+								// because it persists nothing.
 								try {
 									await commitCursor();
 								} catch (error) {
+									// The poll itself succeeded, so a failed cursor write is logged rather
+									// than routed to the error workflow.
 									this.errorReporter.error(error, {
 										extra: { workflowId: workflow.id, nodeId: node.id },
 									});

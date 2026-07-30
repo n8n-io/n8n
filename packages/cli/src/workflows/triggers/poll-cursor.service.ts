@@ -25,6 +25,11 @@ export class PollCursorService {
 		return this.pollerConfig.durableCursorsEnabled;
 	}
 
+	/**
+	 * Reads the node's stored cursor, seeding it from the node's static data the first
+	 * time, so a node that polled before durable cursors were enabled resumes where it
+	 * left off. `null` means the node has never polled.
+	 */
 	async readCursor(
 		workflowId: string,
 		nodeId: string,
@@ -48,6 +53,12 @@ export class PollCursorService {
 		return Object.keys(cursor).length === 0 ? null : cursor;
 	}
 
+	/**
+	 * Commits the cursor advance and the execution row in one transaction, so a poll
+	 * never advances past items no execution carried. The transaction opens once
+	 * `poll()` has returned, so it is never held across the polled source's I/O.
+	 * Returns the cursor the advance replaced.
+	 */
 	async commitWithExecution(args: {
 		workflowId: string;
 		nodeId: string;
@@ -63,12 +74,21 @@ export class PollCursorService {
 		});
 	}
 
+	/**
+	 * Commits an advance made by a poll that emitted no items, so a source that only
+	 * ever moves the cursor is not re-fetched forever.
+	 */
 	async commitCursorOnly(workflowId: string, nodeId: string, cursor: PollCursor): Promise<void> {
 		await this.transactionRunner.run({}, async (ctx) => {
 			await this.stageCursor(workflowId, nodeId, cursor, ctx);
 		});
 	}
 
+	/**
+	 * Mirrors a committed cursor into workflow static data, so turning durable cursors
+	 * off resumes from the same place. A failure is logged rather than thrown: the
+	 * execution is already committed and must still start.
+	 */
 	async mirrorToStaticData(
 		workflowId: string,
 		nodeName: string,
@@ -83,6 +103,8 @@ export class PollCursorService {
 			const nodeKey = `node:${nodeName}`;
 			const bucket = this.toBucket(staticData[nodeKey]);
 
+			// Only the keys the previous cursor owned are cleared, so anything else the
+			// node keeps in its static data survives a cursor write.
 			for (const key of Object.keys(previousCursor)) {
 				if (!(key in cursor)) delete bucket[key];
 			}
@@ -104,6 +126,11 @@ export class PollCursorService {
 			: {};
 	}
 
+	/**
+	 * Brings the node's live static data in line with the cursor, so that a whole-blob
+	 * save by any other node in the workflow writes the current cursor back, not a
+	 * stale one.
+	 */
 	private syncNodeStaticData(
 		nodeStaticData: PollCursor,
 		cursor: PollCursor,
@@ -118,6 +145,11 @@ export class PollCursorService {
 		}
 	}
 
+	/**
+	 * Advances the node's stored cursor and returns the one it replaced, so a caller
+	 * knows which keys this cursor drops. A row is inserted first, since a node can
+	 * stage a cursor without ever having read one and the advance matches by row.
+	 */
 	private async stageCursor(
 		workflowId: string,
 		nodeId: string,
