@@ -1,7 +1,7 @@
 import { Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 
-import { toPackagesError } from './shared';
+import { toPackagesError } from './package-error';
 import { BaseCommand } from '../../base-command';
 import type { ExportPackageCounts, ExportPackageResult } from '../../client';
 

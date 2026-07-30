@@ -14,7 +14,7 @@
             "type": "string"
         },
         "contact_email": {
-            "type": "string"
+            "type": "null"
         },
         "contact_person": {
             "type": "string"
@@ -67,13 +67,13 @@
                         "type": "integer"
                     },
                     "amount": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "barcode": {
                         "type": "string"
                     },
                     "basic_amount": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "basic_rate": {
                         "type": "number"
@@ -86,6 +86,9 @@
                     },
                     "creation": {
                         "type": "string"
+                    },
+                    "customer_provided_item_cost": {
+                        "type": "integer"
                     },
                     "description": {
                         "type": "string"
@@ -108,6 +111,9 @@
                     "is_finished_item": {
                         "type": "integer"
                     },
+                    "is_legacy_scrap_item": {
+                        "type": "integer"
+                    },
                     "is_scrap_item": {
                         "type": "integer"
                     },
@@ -119,6 +125,9 @@
                     },
                     "item_name": {
                         "type": "string"
+                    },
+                    "landed_cost_voucher_amount": {
+                        "type": "integer"
                     },
                     "modified": {
                         "type": "string"
@@ -150,6 +159,9 @@
                     "retain_sample": {
                         "type": "integer"
                     },
+                    "s_warehouse": {
+                        "type": "string"
+                    },
                     "sample_quantity": {
                         "type": "integer"
                     },
@@ -167,6 +179,9 @@
                     },
                     "transferred_qty": {
                         "type": "integer"
+                    },
+                    "type": {
+                        "type": "string"
                     },
                     "uom": {
                         "type": "string"
@@ -229,5 +244,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }
