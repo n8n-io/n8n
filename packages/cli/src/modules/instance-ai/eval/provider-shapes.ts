@@ -80,6 +80,14 @@ function isGoogleDocsBatchUpdate(host: string, path: string): boolean {
 	);
 }
 
+function isGmailMessagesList(host: string, path: string, method: string): boolean {
+	return (
+		method.toUpperCase() === 'GET' &&
+		host.endsWith('googleapis.com') &&
+		/\/gmail\/v1\/users\/[^/]+\/messages\/?$/.test(path)
+	);
+}
+
 // ---------------------------------------------------------------------------
 // Tolerant text extraction (shared by the Gemini normalizer)
 // ---------------------------------------------------------------------------
@@ -235,6 +243,21 @@ function resolveHubspotVid(body: Record<string, unknown>): number {
 }
 
 // ---------------------------------------------------------------------------
+// Gmail — messages.list
+// ---------------------------------------------------------------------------
+
+/**
+ * The Gmail node's list operation reads `responseData.messages`. A recurring
+ * model slip (despite quirk guidance) is answering with a bare ARRAY of
+ * message objects — the node then sees zero messages and the workflow's list
+ * branch silently does nothing. Wrap a bare array into the real envelope.
+ */
+function normalizeGmailMessagesList(spec: NormalizableSpec): void {
+	if (!Array.isArray(spec.body)) return;
+	spec.body = { messages: spec.body, resultSizeEstimate: spec.body.length };
+}
+
+// ---------------------------------------------------------------------------
 // Google Docs — /documents/{id}:batchUpdate
 // ---------------------------------------------------------------------------
 
@@ -273,6 +296,7 @@ export function applyProviderShapeNormalizers(
 	if (redditKind) return normalizeReddit(spec, redditKind);
 	if (isHubspotUpsert(host, path)) return normalizeHubspotUpsert(spec);
 	if (isGoogleDocsBatchUpdate(host, path)) return normalizeGoogleDocsBatchUpdate(spec);
+	if (isGmailMessagesList(host, path, info.method)) return normalizeGmailMessagesList(spec);
 }
 
 /**
@@ -293,8 +317,14 @@ export function findProviderShapeViolation(
 	if (redditKind) return redditViolation(body, redditKind);
 	if (isHubspotUpsert(host, path)) return hubspotViolation(body);
 	if (isGoogleDocsBatchUpdate(host, path)) return googleDocsViolation(body);
+	if (isGmailMessagesList(host, path, info.method)) return gmailMessagesListViolation(body);
 
 	return undefined;
+}
+
+function gmailMessagesListViolation(body: unknown): string | undefined {
+	if (!Array.isArray(body)) return undefined;
+	return 'Invalid: Gmail messages.list returns an OBJECT envelope `{ "messages": [{ "id", "threadId" }, ...], "resultSizeEstimate": <n> }` — the node reads response.messages, so a bare array yields zero messages. Resubmit wrapped in that envelope.';
 }
 
 function openAiImagesViolation(body: unknown): string | undefined {
