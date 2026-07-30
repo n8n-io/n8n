@@ -17,7 +17,7 @@ test.use({
 			N8N_SCHEDULER_ENABLED: 'true',
 			N8N_USE_WORKFLOW_PUBLICATION_SERVICE: 'true',
 			N8N_SCHEDULER_POLL_TRIGGERS_ENABLED: 'true',
-			N8N_SCHEDULER_SWEEP_INTERVAL: '1',
+			N8N_SCHEDULER_MATERIALIZATION_INTERVAL: '1',
 			N8N_SCHEDULER_EXECUTOR_INTERVAL: '1',
 		},
 	},
@@ -29,7 +29,10 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should emit an item the cursor has not reached yet', async ({ api, services }) => {
+		test('should emit an item past the cursor and mirror the advance to static data', async ({
+			api,
+			services,
+		}) => {
 			const { workflowId, nodeId } = await expectPollTriggerFires(
 				api,
 				services.proxy,
@@ -49,22 +52,14 @@ test.describe(
 			await expect
 				.poll(async () => await api.getPollerCursor(workflowId, nodeId), { timeout: 15_000 })
 				.toEqual({ lastItemId: 2 });
-		});
 
-		test('should not re-emit an item the committed cursor already covers', async ({
-			api,
-			services,
-		}) => {
-			const { workflowId, nodeId } = await expectPollTriggerFires(
-				api,
-				services.proxy,
-				makePollTriggerWorkflow,
-			);
-
-			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
-			await api.fireScheduledJobsNow(workflowId, nodeId);
-
-			await expectNoNewTriggerExecution(api, workflowId, afterSeedPoll);
+			// The mirror is what lets the flag be turned back off without losing the
+			// place the durable cursor reached.
+			await expect
+				.poll(async () => await readNodeStaticData(api, workflowId, POLL_TRIGGER_NODE_NAME), {
+					timeout: 15_000,
+				})
+				.toEqual({ lastItemId: 2 });
 		});
 
 		test('should keep the cursor when the workflow static data is cleared', async ({
@@ -79,7 +74,10 @@ test.describe(
 
 			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
 			await clearStaticDataAndReactivate(api, workflowId);
+			await api.fireScheduledJobsNow(workflowId, nodeId);
 
+			// Covers both polls that run with the static data gone: the reactivation
+			// seed poll and the scheduled tick forced above.
 			await expectNoNewTriggerExecution(api, workflowId, afterSeedPoll);
 			expect(await readNodeStaticData(api, workflowId, POLL_TRIGGER_NODE_NAME)).toBeNull();
 			expect(await api.getPollerCursor(workflowId, nodeId)).toEqual({ lastItemId: 1 });

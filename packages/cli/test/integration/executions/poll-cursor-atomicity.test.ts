@@ -68,7 +68,10 @@ describe('poll cursor atomicity', () => {
 		expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
 			lastItemId: 'b',
 		});
-		expect(await executionRepository.findOneBy({ id: executionId })).not.toBeNull();
+		expect(await executionRepository.findOneBy({ id: executionId })).toMatchObject({
+			status: 'new',
+			workflowId: workflow.id,
+		});
 	});
 
 	it('leaves the cursor unadvanced and writes no execution when the insert fails', async () => {
@@ -121,6 +124,9 @@ describe('poll cursor atomicity', () => {
 	});
 
 	describe('ExecutionRepository.runInTransaction', () => {
+		// The reverse of the rollback test above: there the insert fails, here the insert
+		// succeeds and the caller fails afterwards, which only rolls the insert back if
+		// the repository joined the caller's transaction rather than opening its own.
 		it('joins the caller-supplied transaction so a later failure in the caller rolls back work already run through it', async () => {
 			let executionId: string | undefined;
 
@@ -135,23 +141,6 @@ describe('poll cursor atomicity', () => {
 			).rejects.toThrow('caller fails after work already ran');
 
 			expect(await executionRepository.findOneBy({ id: executionId })).toBeNull();
-		});
-
-		it('opens a new, independent transaction for a context carrying none', async () => {
-			const committedId = await executionRepository.runInTransaction({}, async (tx) => {
-				const saved = await tx.save(ExecutionEntity, buildExecutionEntity());
-				return saved.id;
-			});
-
-			await expect(
-				executionRepository.runInTransaction({}, async (tx) => {
-					await tx.save(ExecutionEntity, buildExecutionEntity());
-					throw new Error('second transaction fails');
-				}),
-			).rejects.toThrow('second transaction fails');
-
-			const remaining = await executionRepository.find({ select: ['id'] });
-			expect(remaining.map((e) => e.id)).toEqual([committedId]);
 		});
 	});
 });

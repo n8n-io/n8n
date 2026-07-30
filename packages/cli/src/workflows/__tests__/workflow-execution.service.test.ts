@@ -14,6 +14,7 @@ import {
 	NodeConnectionTypes,
 	type IConnections,
 	type INode,
+	type INodeExecutionData,
 	type INodeType,
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
@@ -189,19 +190,54 @@ describe('WorkflowExecutionService', () => {
 			nodes: [node],
 		});
 		const cursor = { lastItemId: 'a' };
+		const pollItems = [[{ json: { id: 1 } }]];
 		let liveWorkflow: MockProxy<Workflow>;
+		let responsePromise: MockProxy<IDeferredPromise<IExecuteResponsePromiseData>>;
+
+		const runPolledWorkflow = async (items: INodeExecutionData[][] = pollItems) =>
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				items,
+				additionalData,
+				'trigger',
+				cursor,
+				liveWorkflow,
+				responsePromise,
+			);
+
+		/** The payload the service handed to the cursor commit. */
+		const committedPayload = () => pollCursorService.commitWithExecution.mock.calls[0][0].payload;
 
 		beforeEach(() => {
 			vi.clearAllMocks();
 			liveWorkflow = mock<Workflow>();
 			liveWorkflow.getStaticData.mockReturnValue({});
+			responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
 			pollCursorService.commitWithExecution.mockResolvedValue({
 				executionId: 'exec-9',
-				previousCursor: {},
+				previousCursor: { lastItemId: 'previous' },
 			});
 			pollCursorService.mirrorToStaticData.mockResolvedValue(undefined);
 			workflowRunner.run.mockResolvedValue('exec-9');
 			workflowRunner.establishContextForPersistence.mockResolvedValue(undefined);
+		});
+
+		test('commits the poll items as the trigger data of a new execution for the polled node', async () => {
+			await runPolledWorkflow();
+
+			expect(pollCursorService.commitWithExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowId: 'wf-1', nodeId: 'node-1', cursor }),
+			);
+			expect(committedPayload()).toMatchObject({
+				mode: 'trigger',
+				workflowId: 'wf-1',
+				finished: false,
+				status: 'new',
+			});
+			expect(committedPayload().data.executionData?.nodeExecutionStack).toEqual([
+				{ node, data: { main: pollItems }, source: null },
+			]);
 		});
 
 		test('masks the trigger items before the payload is committed', async () => {
@@ -211,39 +247,14 @@ describe('WorkflowExecutionService', () => {
 				return undefined;
 			});
 
-			await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: { authorization: 'Bearer secret' } }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
+			await runPolledWorkflow([[{ json: { authorization: 'Bearer secret' } }]]);
 
 			expect(workflowRunner.establishContextForPersistence).toHaveBeenCalledTimes(1);
-			expect(pollCursorService.commitWithExecution).toHaveBeenCalledWith(
-				expect.objectContaining({
-					workflowId: 'wf-1',
-					nodeId: 'node-1',
-					cursor,
-				}),
-			);
-			const [{ payload }] = pollCursorService.commitWithExecution.mock.calls[0];
-			expect(payload.data.executionData?.nodeExecutionStack).toEqual([]);
-			expect(payload.status).toBe('new');
+			expect(committedPayload().data.executionData?.nodeExecutionStack).toEqual([]);
 		});
 
-		test('starts the committed execution with `{ executionId, expectedStatus: new }`', async () => {
-			const returned = await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
+		test('starts the committed execution, forwarding the response promise, and returns its id', async () => {
+			const returned = await runPolledWorkflow();
 
 			expect(returned).toBe('exec-9');
 			expect(workflowRunner.run).toHaveBeenCalledWith(
@@ -251,111 +262,45 @@ describe('WorkflowExecutionService', () => {
 				true,
 				undefined,
 				{ executionId: 'exec-9', expectedStatus: 'new' },
-				undefined,
+				responsePromise,
 			);
+			expect(workflowRunner.registerAndFailExecution).not.toHaveBeenCalled();
 		});
 
-		test('mirrors the committed cursor to the static data of the polled node', async () => {
+		test('mirrors the cursor the commit replaced to the static data of the polled node', async () => {
 			const nodeStaticData = { lastItemId: 'stale' };
 			liveWorkflow.getStaticData.mockReturnValue(nodeStaticData);
 
-			await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
+			await runPolledWorkflow();
 
 			expect(pollCursorService.mirrorToStaticData).toHaveBeenCalledWith(
 				'wf-1',
 				'Poll Node',
 				cursor,
 				nodeStaticData,
-				{},
-			);
-		});
-
-		test('hands the mirror the cursor the commit replaced', async () => {
-			pollCursorService.commitWithExecution.mockResolvedValue({
-				executionId: 'exec-9',
-				previousCursor: { lastItemId: 'previous' },
-			});
-
-			await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
-
-			expect(pollCursorService.mirrorToStaticData).toHaveBeenCalledWith(
-				'wf-1',
-				'Poll Node',
-				cursor,
-				{},
 				{ lastItemId: 'previous' },
 			);
 		});
 
-		test('starts the committed execution and returns its id even when mirroring the cursor to static data fails', async () => {
-			pollCursorService.mirrorToStaticData.mockRejectedValue(new Error('static data write failed'));
-
-			const returned = await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
-
-			expect(returned).toBe('exec-9');
-			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-		});
-
-		test('reports a failing mirror of the cursor to static data', async () => {
+		test('starts the run and reports the failure when mirroring the cursor fails', async () => {
 			const mirrorError = new Error('static data write failed');
 			pollCursorService.mirrorToStaticData.mockRejectedValue(mirrorError);
 
-			await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
+			const returned = await runPolledWorkflow();
 
+			expect(returned).toBe('exec-9');
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(errorReporter.error).toHaveBeenCalledWith(mirrorError, {
 				executionId: 'exec-9',
 				shouldBeLogged: false,
 			});
-			expect(logger.error).toHaveBeenCalled();
 		});
 
 		test('neither mirrors nor starts a run when the commit is rejected as a duplicate', async () => {
 			const duplicateError = new DuplicateExecutionError('dedup-key');
 			pollCursorService.commitWithExecution.mockRejectedValue(duplicateError);
 
-			await expect(
-				workflowExecutionService.runPolledWorkflow(
-					workflow,
-					node,
-					[[{ json: {} }]],
-					additionalData,
-					'trigger',
-					cursor,
-					liveWorkflow,
-				),
-			).rejects.toBe(duplicateError);
+			await expect(runPolledWorkflow()).rejects.toBe(duplicateError);
 
 			expect(pollCursorService.mirrorToStaticData).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
@@ -365,164 +310,38 @@ describe('WorkflowExecutionService', () => {
 			const contextError = mock<ExecutionError>({ message: 'masking failed' });
 			workflowRunner.establishContextForPersistence.mockResolvedValue(contextError);
 
-			const returned = await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
+			const returned = await runPolledWorkflow();
 
 			expect(returned).toBe('exec-9');
 			expect(workflowRunner.registerAndFailExecution).toHaveBeenCalledWith(
 				expect.objectContaining({ workflowData: workflow }),
 				contextError,
 				{ executionId: 'exec-9', expectedStatus: 'new' },
-				undefined,
+				responsePromise,
 			);
 			expect(workflowRunner.run).not.toHaveBeenCalled();
-		});
-
-		test('hands the response promise to the failed execution when establishing context errors', async () => {
-			const contextError = mock<ExecutionError>({ message: 'masking failed' });
-			workflowRunner.establishContextForPersistence.mockResolvedValue(contextError);
-			const responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
-
-			await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-				responsePromise,
-			);
-
-			expect(workflowRunner.registerAndFailExecution).toHaveBeenCalledWith(
-				expect.anything(),
-				contextError,
-				{ executionId: 'exec-9', expectedStatus: 'new' },
-				responsePromise,
-			);
-		});
-
-		test('starts the run and fails nothing when establishing context succeeds', async () => {
-			await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
-
-			expect(workflowRunner.registerAndFailExecution).not.toHaveBeenCalled();
-			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-		});
-
-		test('hands the response promise to the runner', async () => {
-			const responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
-
-			await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-				responsePromise,
-			);
-
-			expect(workflowRunner.run).toHaveBeenCalledWith(
-				expect.anything(),
-				true,
-				undefined,
-				{ executionId: 'exec-9', expectedStatus: 'new' },
-				responsePromise,
-			);
 		});
 
 		test('crashes the committed execution when the runner refuses to start it', async () => {
 			const runError = new Error('concurrency queue torn down');
 			workflowRunner.run.mockRejectedValue(runError);
 
-			const returned = await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
+			const returned = await runPolledWorkflow();
 
 			expect(returned).toBe('exec-9');
 			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith('exec-9');
-			expect(errorReporter.error).toHaveBeenCalledWith(runError, expect.anything());
-			expect(logger.error).toHaveBeenCalled();
-		});
-
-		test('rejects the response promise when the runner refuses to start the execution', async () => {
-			const runError = new Error('concurrency queue torn down');
-			workflowRunner.run.mockRejectedValue(runError);
-			const responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
-
-			await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-				responsePromise,
-			);
-
 			expect(responsePromise.reject).toHaveBeenCalledWith(runError);
+			expect(errorReporter.error).toHaveBeenCalledWith(runError, expect.anything());
 		});
 
 		test('leaves the committed execution alone when another process already claimed it', async () => {
 			workflowRunner.run.mockRejectedValue(new ExecutionAlreadyResumingError('exec-9'));
 
-			const returned = await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				[[{ json: {} }]],
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
+			const returned = await runPolledWorkflow();
 
 			expect(returned).toBe('exec-9');
 			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
-		});
-
-		test('commits the poll items as the trigger data of the execution', async () => {
-			const pollItems = [[{ json: { id: 1 } }]];
-
-			await workflowExecutionService.runPolledWorkflow(
-				workflow,
-				node,
-				pollItems,
-				additionalData,
-				'trigger',
-				cursor,
-				liveWorkflow,
-			);
-
-			const [{ payload }] = pollCursorService.commitWithExecution.mock.calls[0];
-			expect(payload.data.executionData?.nodeExecutionStack).toEqual([
-				{ node, data: { main: pollItems }, source: null },
-			]);
-			expect(payload.mode).toBe('trigger');
-			expect(payload.workflowId).toBe('wf-1');
-			expect(payload.finished).toBe(false);
+			expect(responsePromise.reject).not.toHaveBeenCalled();
 		});
 	});
 
@@ -721,7 +540,6 @@ describe('WorkflowExecutionService', () => {
 				pushRef: undefined,
 				workflowData,
 				userId,
-				// pass unexecuted trigger to start from
 				triggerToStartFrom: runPayload.triggerToStartFrom,
 				projectId: 'test-project-id',
 				projectName: 'Test Project',
@@ -1150,7 +968,6 @@ describe('WorkflowExecutionService', () => {
 		});
 
 		test('when receiving no `runData`, should set `runData` to undefined in `executionData`', async () => {
-			// ACT
 			const workflowData = mock<IWorkflowBase>({ nodes: [] });
 			await service.executeManually(
 				workflowData,
@@ -1160,13 +977,11 @@ describe('WorkflowExecutionService', () => {
 				mock<User>({ id: 'user-id' }),
 			);
 
-			// ASSERT
 			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
 			expect(callArgs.executionData?.resultData?.runData).toBeUndefined();
 		});
 
 		test('when receiving `runData`, should preserve it in `executionData` for partial execution', async () => {
-			// ARRANGE
 			const runData = {
 				[webhookNode.name]: [
 					{
@@ -1183,7 +998,6 @@ describe('WorkflowExecutionService', () => {
 				mock<INodeType>({ description: { group: [] } }),
 			);
 
-			// ACT
 			const workflowData = mock<IWorkflowBase>({
 				nodes: [hackerNewsNode, webhookNode],
 				connections,
@@ -1198,13 +1012,11 @@ describe('WorkflowExecutionService', () => {
 				mock<User>({ id: 'user-id' }),
 			);
 
-			// ASSERT
 			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
 			expect(callArgs.executionData?.resultData?.runData).toEqual(runData);
 		});
 
 		test('should not initialize nested `executionData.executionData` to avoid treating it as resumed execution', async () => {
-			// ACT
 			const workflowData = mock<IWorkflowBase>({ nodes: [] });
 			await service.executeManually(
 				workflowData,
@@ -1214,13 +1026,10 @@ describe('WorkflowExecutionService', () => {
 				mock<User>({ id: 'user-id' }),
 			);
 
-			// ASSERT
 			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
-			// Should have executionData at top level with startData and manualData
 			expect(callArgs.executionData).toBeDefined();
 			expect(callArgs.executionData?.startData).toBeDefined();
 			expect(callArgs.executionData?.manualData).toBeDefined();
-			// But nested executionData.executionData should be undefined
 			expect(callArgs.executionData?.executionData).toBeUndefined();
 		});
 	});

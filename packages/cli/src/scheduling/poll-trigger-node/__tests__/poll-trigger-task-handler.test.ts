@@ -5,6 +5,7 @@ import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
 import type { ErrorReporter, TriggersAndPollers } from 'n8n-core';
 import type { INode, INodeExecutionData, IPollFunctions, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError, Workflow, WorkflowExpression } from 'n8n-workflow';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -182,31 +183,6 @@ describe('PollTriggerTaskHandler', () => {
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
-		test('commits the cursor when poll() returns null and the workflow is still active', async () => {
-			triggersAndPollers.runPollFunction.mockResolvedValue(null);
-
-			await handler.execute(buildTask(), report);
-
-			expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(1);
-		});
-
-		test('does not commit the cursor when the workflow was deactivated during an empty poll()', async () => {
-			triggersAndPollers.runPollFunction.mockResolvedValue(null);
-			workflowRepository.isActive.mockResolvedValue(false);
-
-			await handler.execute(buildTask(), report);
-
-			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
-			expect(onDispatch).not.toHaveBeenCalled();
-			expect(releaseIsolate).toHaveBeenCalledTimes(1);
-		});
-
-		test('leaves the cursor to the emit path when poll() returns new data', async () => {
-			await handler.execute(buildTask(), report);
-
-			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
-		});
-
 		test('discards the result and reports no dispatch when the workflow was deactivated during poll()', async () => {
 			workflowRepository.isActive.mockResolvedValue(false);
 
@@ -258,14 +234,6 @@ describe('PollTriggerTaskHandler', () => {
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
-		test('does not commit the cursor when poll() throws', async () => {
-			triggersAndPollers.runPollFunction.mockRejectedValue(new Error('poll source unreachable'));
-
-			await handler.execute(buildTask(), report);
-
-			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
-		});
-
 		test('logs a failing cursor commit instead of routing it to the error workflow', async () => {
 			triggersAndPollers.runPollFunction.mockResolvedValue(null);
 			const commitError = new Error('poller state write failed');
@@ -286,6 +254,39 @@ describe('PollTriggerTaskHandler', () => {
 				}),
 			);
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('cursor commit', () => {
+		const cases: Array<
+			[string, { poll: INodeExecutionData[][] | null | Error; active: boolean; commits: number }]
+		> = [
+			[
+				'commits on its own for an empty poll of a still-active workflow',
+				{ poll: null, active: true, commits: 1 },
+			],
+			[
+				'commits nothing for an empty poll of a workflow deactivated mid-poll',
+				{ poll: null, active: false, commits: 0 },
+			],
+			[
+				'leaves the commit to the emit path when the poll returns data',
+				{ poll: pollData, active: true, commits: 0 },
+			],
+			[
+				'commits nothing when the poll throws',
+				{ poll: new Error('poll source unreachable'), active: true, commits: 0 },
+			],
+		];
+
+		test.each(cases)('%s', async (_name, { poll, active, commits }) => {
+			if (poll instanceof Error) triggersAndPollers.runPollFunction.mockRejectedValue(poll);
+			else triggersAndPollers.runPollFunction.mockResolvedValue(poll);
+			workflowRepository.isActive.mockResolvedValue(active);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(commits);
 		});
 	});
 
@@ -314,42 +315,35 @@ describe('PollTriggerTaskHandler', () => {
 	});
 
 	describe('staged cursor scope', () => {
-		test('runs poll(), the emit and the commit inside one __runPoll scope', async () => {
-			const calls: string[] = [];
-			pollFunctions.__runPoll.mockImplementation(async (poll) => {
-				calls.push('scope-open');
-				const result = await poll();
-				calls.push('scope-close');
-				return result;
-			});
-			triggersAndPollers.runPollFunction.mockImplementation(async () => {
-				calls.push('poll');
-				return null;
-			});
-			pollFunctions.__commitCursor.mockImplementation(async () => {
-				calls.push('commit');
-			});
+		// Stands in for the factory's staging store: a cursor can only be committed
+		// from inside the scope its own poll opened.
+		const scope = new AsyncLocalStorage<string>();
 
-			await handler.execute(buildTask(), report);
-
-			expect(calls).toEqual(['scope-open', 'poll', 'commit', 'scope-close']);
+		beforeEach(() => {
+			pollFunctions.__runPoll.mockImplementation(async (poll) => await scope.run('staging', poll));
 		});
 
-		test('emits inside the __runPoll scope', async () => {
-			const calls: string[] = [];
-			pollFunctions.__runPoll.mockImplementation(async (poll) => {
-				calls.push('scope-open');
-				const result = await poll();
-				calls.push('scope-close');
-				return result;
-			});
-			pollFunctions.__emit.mockImplementation(() => {
-				calls.push('emit');
+		test('commits the cursor inside the scope __runPoll opened', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+			let scopeAtCommit: string | undefined;
+			pollFunctions.__commitCursor.mockImplementation(async () => {
+				scopeAtCommit = scope.getStore();
 			});
 
 			await handler.execute(buildTask(), report);
 
-			expect(calls).toEqual(['scope-open', 'emit', 'scope-close']);
+			expect(scopeAtCommit).toBe('staging');
+		});
+
+		test('emits inside the scope __runPoll opened', async () => {
+			let scopeAtEmit: string | undefined;
+			pollFunctions.__emit.mockImplementation(() => {
+				scopeAtEmit = scope.getStore();
+			});
+
+			await handler.execute(buildTask(), report);
+
+			expect(scopeAtEmit).toBe('staging');
 		});
 	});
 

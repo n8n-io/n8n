@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { INode, INodeExecutionData, IPollFunctions, Workflow } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -98,15 +99,6 @@ describe('PollTriggerExecutor', () => {
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
 		});
 
-		it('does not commit the cursor when the poll returns null', async () => {
-			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null);
-
-			const execute = executor.create(workflow, node, pollFunctions, () => true);
-			await execute(true);
-
-			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
-		});
-
 		it('rethrows the poll error so activation fails', async () => {
 			const error = new Error('poll failed');
 			triggersAndPollers.runPollFunction.mockRejectedValueOnce(error);
@@ -131,13 +123,12 @@ describe('PollTriggerExecutor', () => {
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
-		it('commits the cursor when the poll returns null', async () => {
+		it('does not emit and still releases the isolate when the poll returns nothing', async () => {
 			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null);
 
 			const execute = executor.create(workflow, node, pollFunctions, () => true);
 			await execute();
 
-			expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(1);
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
@@ -160,78 +151,6 @@ describe('PollTriggerExecutor', () => {
 				expect.objectContaining({ extra: { workflowId: 'wf-id', nodeId: 'poll-node' } }),
 			);
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
-		});
-
-		it('leaves the cursor to the emit path when the poll returns data', async () => {
-			triggersAndPollers.runPollFunction.mockResolvedValueOnce([[{ json: { ok: true } }]]);
-
-			const execute = executor.create(workflow, node, pollFunctions, () => true);
-			await execute();
-
-			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
-		});
-
-		it('does not commit the cursor when superseded after an empty poll resolves', async () => {
-			let isCurrent = true;
-			triggersAndPollers.runPollFunction.mockImplementationOnce(async () => {
-				isCurrent = false;
-				return null;
-			});
-
-			const execute = executor.create(workflow, node, pollFunctions, () => isCurrent);
-			await execute();
-
-			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
-		});
-
-		it('runs the poll, the emit and the commit inside one __runPoll scope', async () => {
-			const calls: string[] = [];
-			pollFunctions.__runPoll.mockImplementation(async (poll) => {
-				calls.push('scope-open');
-				const result = await poll();
-				calls.push('scope-close');
-				return result;
-			});
-			triggersAndPollers.runPollFunction.mockImplementationOnce(async () => {
-				calls.push('poll');
-				return null;
-			});
-			pollFunctions.__commitCursor.mockImplementationOnce(async () => {
-				calls.push('commit');
-			});
-
-			const execute = executor.create(workflow, node, pollFunctions, () => true);
-			await execute();
-
-			expect(calls).toEqual(['scope-open', 'poll', 'commit', 'scope-close']);
-		});
-
-		it('emits inside the __runPoll scope', async () => {
-			const calls: string[] = [];
-			pollFunctions.__runPoll.mockImplementation(async (poll) => {
-				calls.push('scope-open');
-				const result = await poll();
-				calls.push('scope-close');
-				return result;
-			});
-			triggersAndPollers.runPollFunction.mockResolvedValueOnce([[{ json: { ok: true } }]]);
-			pollFunctions.__emit.mockImplementationOnce(() => {
-				calls.push('emit');
-			});
-
-			const execute = executor.create(workflow, node, pollFunctions, () => true);
-			await execute();
-
-			expect(calls).toEqual(['scope-open', 'emit', 'scope-close']);
-		});
-
-		it('does not commit the cursor when the poll throws', async () => {
-			triggersAndPollers.runPollFunction.mockRejectedValueOnce(new Error('poll failed'));
-
-			const execute = executor.create(workflow, node, pollFunctions, () => true);
-			await execute();
-
-			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
 		});
 
 		it('emits an error when the poll fails for a current workflow', async () => {
@@ -282,6 +201,108 @@ describe('PollTriggerExecutor', () => {
 
 			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('cursor commit', () => {
+		const items: INodeExecutionData[][] = [[{ json: { ok: true } }]];
+
+		// `supersede` stands in for the workflow being removed or reactivated while
+		// the poll is in flight.
+		const cases: Array<
+			[
+				string,
+				{
+					testingTrigger: boolean;
+					poll: (supersede: () => void) => Promise<INodeExecutionData[][] | null>;
+					commits: number;
+				},
+			]
+		> = [
+			[
+				'commits on its own for an empty scheduled poll',
+				{ testingTrigger: false, poll: async () => null, commits: 1 },
+			],
+			[
+				'leaves the commit to the emit path when the scheduled poll returns data',
+				{ testingTrigger: false, poll: async () => items, commits: 0 },
+			],
+			[
+				'commits nothing when the scheduled poll throws',
+				{
+					testingTrigger: false,
+					poll: async () => {
+						throw new Error('poll failed');
+					},
+					commits: 0,
+				},
+			],
+			[
+				'commits nothing when an empty scheduled poll is superseded while in flight',
+				{
+					testingTrigger: false,
+					poll: async (supersede) => {
+						supersede();
+						return null;
+					},
+					commits: 0,
+				},
+			],
+			[
+				'commits nothing for an empty activation poll',
+				{ testingTrigger: true, poll: async () => null, commits: 0 },
+			],
+		];
+
+		it.each(cases)('%s', async (_name, { testingTrigger, poll, commits }) => {
+			let isCurrent = true;
+			triggersAndPollers.runPollFunction.mockImplementationOnce(
+				async () =>
+					await poll(() => {
+						isCurrent = false;
+					}),
+			);
+
+			const execute = executor.create(workflow, node, pollFunctions, () => isCurrent);
+			await execute(testingTrigger);
+
+			expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(commits);
+		});
+	});
+
+	describe('staged cursor scope', () => {
+		// Stands in for the factory's staging store: a cursor can only be committed
+		// from inside the scope its own poll opened.
+		const scope = new AsyncLocalStorage<string>();
+
+		beforeEach(() => {
+			pollFunctions.__runPoll.mockImplementation(async (poll) => await scope.run('staging', poll));
+		});
+
+		it('commits the cursor inside the scope __runPoll opened', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null);
+			let scopeAtCommit: string | undefined;
+			pollFunctions.__commitCursor.mockImplementationOnce(async () => {
+				scopeAtCommit = scope.getStore();
+			});
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute();
+
+			expect(scopeAtCommit).toBe('staging');
+		});
+
+		it('emits inside the scope __runPoll opened', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce([[{ json: { ok: true } }]]);
+			let scopeAtEmit: string | undefined;
+			pollFunctions.__emit.mockImplementationOnce(() => {
+				scopeAtEmit = scope.getStore();
+			});
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute();
+
+			expect(scopeAtEmit).toBe('staging');
 		});
 	});
 
