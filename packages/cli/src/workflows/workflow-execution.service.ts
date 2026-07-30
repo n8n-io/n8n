@@ -1,8 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
 import {
@@ -31,6 +32,7 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
@@ -65,6 +67,7 @@ export class WorkflowExecutionService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
+		private readonly executionRepository: ExecutionRepository,
 	) {}
 
 	async runWorkflow(
@@ -183,15 +186,42 @@ export class WorkflowExecutionService {
 			return executionId;
 		}
 
-		await this.workflowRunner.run(
-			runData,
-			true,
-			undefined,
-			{ executionId, expectedStatus: 'new' },
-			responsePromise,
-		);
+		try {
+			await this.workflowRunner.run(
+				runData,
+				true,
+				undefined,
+				{ executionId, expectedStatus: 'new' },
+				responsePromise,
+			);
+		} catch (error) {
+			await this.crashUnstartablePolledExecution(executionId, error, responsePromise);
+		}
 
 		return executionId;
+	}
+
+	private async crashUnstartablePolledExecution(
+		executionId: string,
+		error: unknown,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<void> {
+		if (error instanceof ExecutionAlreadyResumingError) {
+			this.logger.debug('Polled execution was already claimed, leaving it to its owner', {
+				executionId,
+			});
+			return;
+		}
+
+		this.errorReporter.error(error, { executionId, shouldBeLogged: false });
+		this.logger.error('Failed to start the execution committed for a poll', {
+			executionId,
+			error,
+		});
+
+		responsePromise?.reject(ensureError(error));
+
+		await this.executionRepository.markAsCrashed(executionId);
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {
