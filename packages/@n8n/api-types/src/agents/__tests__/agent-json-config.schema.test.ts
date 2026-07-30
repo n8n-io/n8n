@@ -10,6 +10,31 @@ const minimalConfig = {
 	instructions: 'Help the user.',
 };
 
+describe('AgentJsonConfigSchema — reasoning', () => {
+	it.each(['low', 'medium', 'high'] as const)(
+		'preserves generic %s reasoning effort',
+		(reasoning) => {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				config: { reasoning },
+			});
+
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.data.config?.reasoning).toBe(reasoning);
+		},
+	);
+
+	it('rejects reasoning levels outside the agent config options', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { reasoning: 'max' },
+		});
+
+		expect(result.success).toBe(false);
+	});
+});
+
 describe('AgentJsonConfigSchema — tools', () => {
 	describe('custom tool id field', () => {
 		it('accepts a valid alphanumeric id', () => {

@@ -4661,22 +4661,22 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Provider options merging
+// Generic reasoning
 // ---------------------------------------------------------------------------
 
-describe('provider options merging', () => {
+describe('reasoning', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('should deep-merge thinking config with call-level providerOptions', async () => {
+	it('passes reasoning as a top-level generateText option without provider-specific settings', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const runtime = new AgentRuntime({
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			instructions: 'You are a test assistant.',
-			thinking: { budgetTokens: 10000 },
+			reasoning: 'high',
 		});
 
 		await runtime.generate('hello', {
@@ -4687,12 +4687,52 @@ describe('provider options merging', () => {
 		});
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.reasoning).toBe('high');
 		expect((callArgs.providerOptions as Record<string, Record<string, unknown>>).anthropic).toEqual(
-			{
-				thinking: { type: 'enabled', budgetTokens: 10000 },
-				cacheControl: { type: 'ephemeral' },
-			},
+			{ cacheControl: { type: 'ephemeral' } },
 		);
+	});
+
+	it('passes reasoning as a top-level streamText option', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-5.1',
+			instructions: 'You are a test assistant.',
+			reasoning: 'low',
+		});
+
+		const result = await runtime.stream('hello');
+		await collectChunks(result.stream);
+
+		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.reasoning).toBe('low');
+		expect(callArgs.providerOptions).toBeUndefined();
+	});
+});
+
+describe('provider-specific thinking', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('maps a fixed Anthropic thinking budget into providerOptions', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			thinking: { budgetTokens: 4096 },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.reasoning).toBeUndefined();
+		expect(callArgs.providerOptions).toEqual({
+			anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } },
+		});
 	});
 });
 
@@ -4945,14 +4985,14 @@ describe('promptCaching', () => {
 		expect(typeof openaiOpts.promptCacheKey).toBe('string');
 	});
 
-	it('merges thinking config with generated prompt caching and caller providerOptions for OpenAI', async () => {
+	it('keeps generic reasoning separate from prompt caching and caller providerOptions', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const runtime = new AgentRuntime({
 			name: 'test',
 			model: 'openai/gpt-5.1',
 			instructions: 'You are a test assistant.',
-			thinking: { reasoningEffort: 'high' },
+			reasoning: 'high',
 			promptCaching: { enabled: true },
 		});
 
@@ -4962,7 +5002,9 @@ describe('promptCaching', () => {
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const openaiOpts = (callArgs.providerOptions as Record<string, Record<string, unknown>>).openai;
-		expect(openaiOpts.reasoningEffort).toBe('high');
+		expect(callArgs.reasoning).toBe('high');
+		expect(openaiOpts).not.toHaveProperty('reasoningEffort');
+		expect(openaiOpts).not.toHaveProperty('reasoningSummary');
 		expect(openaiOpts.promptCacheRetention).toBe('24h');
 		expect(typeof openaiOpts.promptCacheKey).toBe('string');
 		expect(openaiOpts.strictJsonSchema).toBe(false);

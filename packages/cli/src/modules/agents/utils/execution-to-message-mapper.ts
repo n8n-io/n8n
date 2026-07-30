@@ -126,6 +126,14 @@ function assistantContentFromExecution(
 			if (!part) continue;
 
 			content.push(part);
+		} else if (event.type === 'reasoning') {
+			if (!event.content.trim()) continue;
+			content.push({
+				type: 'reasoning',
+				text: event.content,
+				startTime: event.timestamp,
+				...(event.endTime !== undefined && { endTime: event.endTime }),
+			});
 		} else if (event.type === 'tool-call') {
 			content.push(timelineToolCallToPart(event));
 		}

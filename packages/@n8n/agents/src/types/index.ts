@@ -29,6 +29,7 @@ export type {
 	ThinkingConfigFor,
 	ThinkingConfig,
 } from './sdk/provider';
+export type { ReasoningLevel } from './sdk/reasoning';
 
 export type {
 	AgentResult,
