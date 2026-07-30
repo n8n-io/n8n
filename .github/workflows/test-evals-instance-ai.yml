@@ -142,12 +142,9 @@ jobs:
       # Host OOMs and disk exhaustion leave no application trace — sample host
       # + container telemetry every 60s and ship it with the results artifact.
       #
-      # `docker stats` names a lane burning a core but not the process inside it,
-      # and `comm` is useless for that (Node reports `MainThread`) — so sample
-      # per-lane. Args are safe here (container argv, unlike `docker run -e`).
-      # Sorted in the shell, not via `ps --sort`: `docker top` has to parse that
-      # output and the runner's ps rejected the flag. Errors are NOT swallowed —
-      # a silent variant shipped broken once (run 30526483810).
+      # `docker stats` names a hot lane but not the process inside it, and `comm`
+      # can't (Node reports `MainThread`). Sorted in the shell — `docker top` parses
+      # the ps output it asks for and the runner's ps rejects `--sort`.
       - name: Start host telemetry sampler
         run: |
           mkdir -p eval-diag
@@ -227,10 +224,8 @@ jobs:
             # restarted by docker instead of staying dead; pruning + log caps
             # keep per-lane disk and memory flat over a multi-hour run.
             #
-            # NODE_OPTIONS arms Node's diagnostic report on SIGUSR2 (requested in the
-            # log-capture step). Keep flag and signal in sync — unarmed, SIGUSR2 kills
-            # the process. The report is queued on the event loop, so a lane pinned in
-            # a tight JS loop yields nothing; a merely saturated one does.
+            # Arms Node's diagnostic report on SIGUSR2 (requested in the log-capture
+            # step). Keep flag and signal in sync — unarmed, SIGUSR2 kills the process.
             docker run -d --name "n8n-eval-$((i+1))" \
               "${NETWORK_ARGS[@]}" \
               --memory 2.5g --memory-swap 2.5g \
@@ -439,9 +434,8 @@ jobs:
             done <<< "$v"
           done
 
-          # A lane still burning a core is wedged, and a spin leaves no log line —
-          # so snapshot its processes and ask for a JS stack. The report is
-          # collected at the end of this step, giving Node time to write it.
+          # A spin leaves no log line, so snapshot the processes and ask for a JS
+          # stack. Report is collected at the end of the step, once Node can write it.
           HOT_LANES=""
           while read -r name cpu; do
             [ -n "$name" ] || continue
@@ -485,7 +479,6 @@ jobs:
             docker logs "$c" 2>&1 | tail -100 || true
           done
 
-          # Ships with the results artifact; carries the JS stack + libuv handles.
           for name in $HOT_LANES; do
             docker exec "$name" sh -c 'cat /tmp/report.*.json 2>/dev/null' \
               > "eval-diag/node-report-$name.json" 2>/dev/null || true

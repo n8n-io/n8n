@@ -525,9 +525,8 @@ describe('EvalExecutionService', () => {
 			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(DB_EXECUTION_ID);
 		});
 
-		// Nothing else stops a run the client abandoned — eval mode skips reservation.
-		// Stopping rejects the promise the service awaits (as ActiveExecutions does),
-		// so this also pins that the budget is reported and not that rejection.
+		// Stopping rejects the promise the service awaits, as ActiveExecutions does —
+		// pinning that the budget is reported and not that rejection.
 		it('stops the execution and reports it when the run outlives the caller budget', async () => {
 			vi.useFakeTimers();
 			try {
@@ -553,7 +552,6 @@ describe('EvalExecutionService', () => {
 				expect(result.success).toBe(false);
 				expect(result.errors).toEqual([expect.stringContaining('30s eval budget')]);
 			} finally {
-				// Restore even on failure — leaked fake timers break every later test.
 				vi.useRealTimers();
 			}
 		});

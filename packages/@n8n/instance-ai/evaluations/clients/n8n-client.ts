@@ -28,13 +28,9 @@ import { z } from 'zod';
 // eval CLI harness — never import into the n8n server or shared runtime code.
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
 
-/**
- * Floor for requests that pass no budget of their own — without it the dispatcher
- * above leaves them unbounded, so a lane that stops answering hangs the harness
- * instead of failing it. Sized for the slowest plain REST call under contention,
- * not for the work a call kicks off: mocked executions and thread restore pass
- * their own, larger budget.
- */
+/** Floor for calls that pass no budget: the dispatcher above leaves those
+ *  unbounded, so a silent lane would hang rather than fail. Sized for a plain
+ *  REST call — slower callers pass their own. */
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
 
 /** Bulk creation of seed workflows + data tables; slower than a plain REST call. */
@@ -43,11 +39,8 @@ const RESTORE_THREAD_TIMEOUT_MS = 300_000;
 /** How much longer the client waits than the server budget it hands over. */
 const CLIENT_ABORT_MARGIN_MS = 5_000;
 
-/**
- * Server budget for the mocked-execution endpoints: the server gives up just
- * before the client, so the caller gets an in-band error rather than a bare
- * abort. Not capped at 15 minutes — that used to truncate a `complex` budget.
- */
+/** Server gives up just before the client, so the caller gets an in-band error
+ *  rather than a bare abort. Uncapped: 15 min truncated `complex` budgets. */
 function serverBudgetFor(timeoutMs: number): number {
 	return Math.max(timeoutMs - CLIENT_ABORT_MARGIN_MS, 30_000);
 }
@@ -817,8 +810,7 @@ export class N8nClient {
 		const body: { scenarioHints?: string; pinNodes?: string[]; timeoutMs?: number } = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
-		// Forwarded so the server stops the run instead of leaving it burning CPU on
-		// a shared lane after the client gives up.
+		// Forwarded so the server stops the run rather than leaving it burning CPU.
 		const serverBudgetMs = serverBudgetFor(timeoutMs);
 		body.timeoutMs = serverBudgetMs;
 

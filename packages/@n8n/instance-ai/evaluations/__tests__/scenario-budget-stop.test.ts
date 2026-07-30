@@ -6,8 +6,8 @@ import type { EvalLogger } from '../harness/logger';
 import { executeScenario } from '../harness/scenario-execution';
 import type { ExecutionScenario } from '../types';
 
-// The server reports a stopped run in-band (`success: false`), which would reach
-// the judge as an ordinary failure — it has to land on the timeout path instead.
+// A stopped run arrives in-band, so it must land on the timeout path rather than
+// reach the judge as an ordinary failure.
 
 const silentLogger: EvalLogger = {
 	info: () => {},
@@ -52,8 +52,7 @@ describe('server-side budget stop', () => {
 			execResult(['Sheet with ID __evalMockResource not found']),
 		);
 
-		// Carries on to verification, which fails un-stubbed — so capture whatever
-		// surfaces and assert the budget path was not what fired.
+		// Verification fails un-stubbed, so just assert the budget path did not fire.
 		const failure = await executeScenario(client, 'wf-1', scenario, [], silentLogger).catch(
 			(error: unknown) => error,
 		);

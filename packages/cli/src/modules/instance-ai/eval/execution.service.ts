@@ -82,11 +82,10 @@ import {
 /** Max output items per branch kept in the artifact. The full count lives in `outputCount`. */
 const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
 
-/** A caller's run budget, resolved to a wall-clock deadline at request receipt. */
+/** A caller's run budget as a wall-clock deadline; setup counts against it, so
+ *  the run gets what is left. `totalMs` is kept for the message. */
 interface RunBudget {
-	/** As requested — for the message the caller reads. */
 	totalMs: number;
-	/** Epoch ms; setup counts against it, so the run gets what is left. */
 	deadlineAt: number;
 }
 
@@ -205,8 +204,8 @@ export class EvalExecutionService {
 			options.scenarioHints,
 			interceptionEnabled,
 			vendorLlmRouting,
-			// Anchored at request receipt: hint and pin-data generation are LLM calls,
-			// so a budget starting at the run would expire after the caller's deadline.
+			// Anchored at receipt: setup is LLM calls, so a run-anchored budget would
+			// expire after the caller's own deadline.
 			options.timeoutMs === undefined
 				? undefined
 				: { totalMs: options.timeoutMs, deadlineAt: Date.now() + options.timeoutMs },
@@ -937,10 +936,9 @@ export class EvalExecutionService {
 	}
 
 	/**
-	 * Await the execution, stopping it once the caller's budget elapses. Eval mode
-	 * skips concurrency reservation (see `ActiveExecutions.add`), so nothing else
-	 * would: an abandoned run keeps burning CPU on an instance shared with every
-	 * other case pinned to it. Omit the budget to keep waiting indefinitely.
+	 * Await the execution, stopping it once the budget elapses. Eval mode skips
+	 * concurrency reservation (see `ActiveExecutions.add`), so nothing else would,
+	 * and an abandoned run keeps burning CPU on a shared instance. Omit to wait.
 	 */
 	private async awaitRunWithinBudget(
 		executionId: string,
@@ -949,21 +947,18 @@ export class EvalExecutionService {
 		const postExecute = this.activeExecutions.getPostExecutePromise(executionId);
 		if (!budget) return await postExecute;
 
-		// Race loser: swallow the cancellation rejection our own timer causes, so
-		// it can't surface as an unhandled rejection after the race settles.
+		// Race loser: our timer's cancellation must not surface as unhandled.
 		postExecute.catch(() => {});
 
-		// Clamped at 0: setup can legitimately consume the whole budget, and then the
-		// run must be stopped rather than granted a fresh one.
+		// Clamped: setup may have eaten the budget, which stops the run at once.
 		const remainingMs = Math.max(budget.deadlineAt - Date.now(), 0);
 		const seconds = Math.round(budget.totalMs / 1000);
 		const budgetError = () =>
 			new Error(`Execution exceeded its ${seconds}s eval budget and was stopped`);
 
-		// `stopExecution` rejects the very promise being raced, and that rejection
-		// settles the race first — so the outcome is reported off this flag rather
-		// than off whichever arm won, otherwise the caller sees a bare "execution
-		// cancelled" and cannot tell a budget stop from any other cancellation.
+		// `stopExecution` rejects the promise being raced, so report off this flag
+		// rather than whichever arm won — else a budget stop reads as any other
+		// cancellation.
 		let stoppedForBudget = false;
 
 		let deadline: NodeJS.Timeout | undefined;

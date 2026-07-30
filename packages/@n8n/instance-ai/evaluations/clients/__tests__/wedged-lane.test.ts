@@ -8,19 +8,15 @@ import {
 } from '../../harness/transient-error';
 import { N8nClient } from '../n8n-client';
 
-// A lane that accepts the connection and then never answers is what wedged run
-// 30432642501. Run against real undici rather than a stubbed fetch, because the
-// two things that matter here are undici's own behaviour: that the per-request
-// signal is what ends the call (the client removes undici's timeouts globally),
-// and that the abort's message is the string the transport classifiers key on.
+// Real undici, not a stubbed fetch: what matters is undici's own behaviour — that
+// the per-request signal is what ends a call to a lane that never answers, and
+// that the abort's message is the string the transport classifiers key on.
 describe('a lane that accepts connections but never answers', () => {
 	let server: Server;
 	let baseUrl = '';
 
 	beforeAll(async () => {
-		server = createServer(() => {
-			// Accept and hold: no response, no socket close.
-		});
+		server = createServer(() => {}); // accept and hold: no response, no close
 		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
 		const address = server.address();
 		if (address === null || typeof address === 'string') throw new Error('no port assigned');
@@ -34,8 +30,7 @@ describe('a lane that accepts connections but never answers', () => {
 	it('aborts at the budget instead of hanging, and reads as a transport failure', async () => {
 		const client = new N8nClient(baseUrl);
 
-		// This route carries its own budget, so the assertion costs 200ms — not the
-		// 120s floor a budget-less call would wait.
+		// This route takes its own budget, so the assertion costs 200ms, not 120s.
 		const failure = await client
 			.listThreadDebugRuns('11111111-1111-4111-8111-111111111111', 200)
 			.catch((error: unknown) => error);
@@ -44,9 +39,8 @@ describe('a lane that accepts connections but never answers', () => {
 		const message = extractErrorMessage(failure);
 		expect(message).toBe('The operation was aborted due to timeout');
 
-		// Why isRequestAbort exists: the network predicate does NOT match this, so
-		// a build killed here would otherwise fall through to the health probe —
-		// which a lane wedged with a live HTTP listener still passes.
+		// Why isRequestAbort exists: the network predicate misses this, and a lane
+		// wedged with a live listener still passes the health probe.
 		expect(isRequestAbort(message)).toBe(true);
 		expect(isExecutionTimeout(message)).toBe(true);
 		expect(isTransientNetworkError(message)).toBe(false);

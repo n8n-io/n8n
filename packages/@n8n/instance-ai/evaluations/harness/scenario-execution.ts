@@ -310,8 +310,7 @@ async function runScenario(
 			pinNodes,
 		);
 	}
-	// Killed for time, not by the builder: throw so the caller's timeout path
-	// classifies it instead of the judge blaming the agent.
+	// Killed for time, not by the builder — throw so the timeout path classifies it.
 	if (!evalResult.success && isServerBudgetStop(evalResult.errors)) {
 		throw new Error(`The operation was aborted due to timeout: ${evalResult.errors.join('; ')}`);
 	}
