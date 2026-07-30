@@ -1,7 +1,7 @@
 import type { TagEntity, ITagWithCountDb } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In, QueryFailedError } from '@n8n/typeorm';
+import { QueryFailedError } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -151,7 +151,7 @@ export class TagService {
 		];
 		if (uniqueNames.length === 0) return [];
 
-		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
+		const existing = await this.tagRepository.findManyByName(uniqueNames);
 		const existingByName = new Map(existing.map((t) => [t.name, t]));
 
 		const result: TagEntity[] = [];
