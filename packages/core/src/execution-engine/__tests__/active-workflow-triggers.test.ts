@@ -85,7 +85,7 @@ describe('ActiveWorkflowTriggers', () => {
 			scheduledTaskManager,
 			triggersAndPollers,
 			errorReporter,
-			new PollTriggerExecutor(logger, triggersAndPollers, tracing),
+			new PollTriggerExecutor(logger, triggersAndPollers, tracing, errorReporter),
 		);
 	});
 
@@ -1316,7 +1316,7 @@ describe('ActiveWorkflowTriggers', () => {
 				realScheduledTaskManager,
 				triggersAndPollers,
 				errorReporter,
-				new PollTriggerExecutor(realLogger, triggersAndPollers, tracing),
+				new PollTriggerExecutor(realLogger, triggersAndPollers, tracing, errorReporter),
 			);
 		});
 
@@ -1501,7 +1501,7 @@ describe('ActiveWorkflowTriggers', () => {
 				scheduledTaskManager,
 				triggersAndPollers,
 				errorReporter,
-				new PollTriggerExecutor(logger, triggersAndPollers, tracing),
+				new PollTriggerExecutor(logger, triggersAndPollers, tracing, errorReporter),
 			);
 		};
 

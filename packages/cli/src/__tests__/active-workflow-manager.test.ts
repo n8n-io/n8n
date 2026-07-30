@@ -821,7 +821,7 @@ describe('ActiveWorkflowManager', () => {
 					scheduledTaskManager,
 					triggersAndPollers,
 					mock(),
-					new PollTriggerExecutor(logger, triggersAndPollers, new Tracing()),
+					new PollTriggerExecutor(logger, triggersAndPollers, new Tracing(), mock()),
 				);
 
 				await realActiveWorkflowTriggers.addAllTriggers(

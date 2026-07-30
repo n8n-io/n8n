@@ -3,7 +3,7 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { TriggersAndPollers } from 'n8n-core';
+import { ErrorReporter, TriggersAndPollers } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -36,6 +36,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly pollCursorService: PollCursorService,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -54,7 +55,13 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const { workflow, pollFunctions } =
 			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node);
 
-		return await pollFunctions.__runPoll(async () => {
+		const runPoll = async <T>(poll: () => Promise<T>): Promise<T> =>
+			pollFunctions.__runPoll ? await pollFunctions.__runPoll(poll) : await poll();
+		const commitCursor = async () => {
+			if (pollFunctions.__commitCursor) await pollFunctions.__commitCursor();
+		};
+
+		return await runPoll(async () => {
 			// Scheduled polls run outside any activation isolate window, so acquire and
 			// release one per tick; the finally releases even when poll() throws.
 			await workflow.expression.acquireIsolate();
@@ -92,8 +99,11 @@ export class PollTriggerTaskHandler implements TaskHandler {
 
 				if (this.pollCursorService.enabled && (await this.workflowRepository.isActive(workflowId))) {
 					try {
-						await pollFunctions.__commitCursor();
+						await commitCursor();
 					} catch (error) {
+						this.errorReporter.error(error, {
+							extra: { taskId: task.id, jobId: task.jobId, workflowId, nodeId },
+						});
 						this.logger.error(
 							'Failed to commit the poll cursor; the next poll repeats the same window',
 							{ taskId: task.id, jobId: task.jobId, workflowId, nodeId, error },
