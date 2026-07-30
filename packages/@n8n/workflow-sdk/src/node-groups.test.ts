@@ -9,7 +9,7 @@ import { generateDeterministicGroupId } from './workflow-builder/string-utils';
 
 const WF_ID = 'wf-groups-1';
 
-function buildGroupedWorkflow() {
+function buildGroupedWorkflow(options: { description?: string } = {}) {
 	const start = trigger({
 		type: MANUAL_TRIGGER_NODE_TYPE,
 		version: 1,
@@ -26,11 +26,10 @@ function buildGroupedWorkflow() {
 		config: { name: 'Transform' },
 	});
 
-	return workflow(WF_ID, 'Grouped workflow')
-		.add(start)
-		.to(fetchNode)
-		.to(transform)
-		.group('Ingestion', [fetchNode, transform]);
+	const builder = workflow(WF_ID, 'Grouped workflow').add(start).to(fetchNode).to(transform);
+	return options.description === undefined
+		? builder.group('Ingestion', [fetchNode, transform])
+		: builder.group('Ingestion', [fetchNode, transform], { description: options.description });
 }
 
 describe('SDK node groups', () => {
@@ -396,6 +395,40 @@ describe('SDK node groups', () => {
 			// Deterministic ids mean the group survives identically across the round-trip.
 			expect(json2.nodeGroups![0].id).toBe(json1.nodeGroups![0].id);
 			expect(json2.nodeGroups![0].nodeIds).toEqual(json1.nodeGroups![0].nodeIds);
+		});
+
+		it('emits the description as the third argument and preserves it through a re-parse', () => {
+			const builder = buildGroupedWorkflow({ description: 'Pulls the CRM contacts' });
+			builder.regenerateNodeIds();
+
+			const code = generateWorkflowCode(builder.toJSON());
+			expect(code).toContain(
+				".group('Ingestion', [fetch_data, transform], { description: 'Pulls the CRM contacts' })",
+			);
+
+			const rebuilt = parseWorkflowCodeToBuilder(code);
+			rebuilt.regenerateNodeIds();
+
+			expect(rebuilt.toJSON().nodeGroups![0].description).toBe('Pulls the CRM contacts');
+		});
+
+		it('escapes a quote in the description so the emitted code re-parses', () => {
+			const builder = buildGroupedWorkflow({ description: "Bob's contacts" });
+			builder.regenerateNodeIds();
+
+			const code = generateWorkflowCode(builder.toJSON());
+			expect(code).toContain("{ description: 'Bob\\'s contacts' }");
+
+			const rebuilt = parseWorkflowCodeToBuilder(code);
+
+			expect(rebuilt.toJSON().nodeGroups![0].description).toBe("Bob's contacts");
+		});
+
+		it('emits a two-argument .group() call when the group has no description', () => {
+			const code = generateWorkflowCode(buildGroupedWorkflow().toJSON());
+
+			expect(code).toContain(".group('Ingestion', [fetch_data, transform])");
+			expect(code).not.toContain('description:');
 		});
 	});
 });
