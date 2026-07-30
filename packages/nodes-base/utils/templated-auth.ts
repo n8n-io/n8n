@@ -9,6 +9,12 @@ export type TemplatedAuthParts = {
 	qs?: IDataObject;
 };
 
+type TemplatedAuthRequestOptions = {
+	headers?: IDataObject;
+	body?: unknown;
+	qs?: IDataObject;
+};
+
 /** A resolved string that must be dropped from the output (empty optional). */
 const OMIT = Symbol('omit');
 
@@ -97,4 +103,24 @@ export function resolveTemplatedAuth(
 	const resolved = resolve(template);
 	// The top level is always an object, so it can never resolve to OMIT.
 	return resolved === OMIT ? {} : resolved;
+}
+
+/** Resolve and merge a Templated Custom Auth credential into request options. */
+export function applyTemplatedAuth(
+	credentialData: ICredentialDataDecryptedObject,
+	requestOptions: TemplatedAuthRequestOptions,
+): TemplatedAuthParts {
+	const templatedAuth = resolveTemplatedAuth(credentialData);
+
+	if (templatedAuth.headers) {
+		requestOptions.headers = { ...requestOptions.headers, ...templatedAuth.headers };
+	}
+	if (templatedAuth.body) {
+		requestOptions.body = { ...(requestOptions.body as IDataObject), ...templatedAuth.body };
+	}
+	if (templatedAuth.qs) {
+		requestOptions.qs = { ...requestOptions.qs, ...templatedAuth.qs };
+	}
+
+	return templatedAuth;
 }
