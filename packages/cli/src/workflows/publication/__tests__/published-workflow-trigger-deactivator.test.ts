@@ -115,6 +115,19 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 			});
 		});
 
+		test('tears down at shutdown even while still leader', async () => {
+			// A leader shutting down gracefully never loses leadership first —
+			// the leader guard must not disable the shutdown teardown.
+			instanceSettings = { isLeader: true } as InstanceSettings;
+			activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-1']);
+
+			const deactivator = createDeactivator();
+			deactivator.shutdown();
+			await deactivator.deactivateAllNonWebhookTriggers();
+
+			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-1');
+		});
+
 		test('aborts the remaining teardown when promoted back to leader mid-stepdown', async () => {
 			activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-1', 'wf-2']);
 			lifecycleLock.runExclusive.mockImplementation(async (_workflowId, fn) => {

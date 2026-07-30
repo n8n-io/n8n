@@ -119,7 +119,7 @@ export class PublishedWorkflowTriggerDeactivator {
 				}
 				this.consecutiveLockSkipsByWorkflowId.delete(workflowId);
 				const result = await this.lifecycleLock.runExclusive(workflowId, async () => {
-					if (this.instanceSettings.isLeader) return false;
+					if (this.instanceSettings.isLeader && !this.isShuttingDown) return false;
 					return await this.activeWorkflowTriggers.remove(workflowId);
 				});
 				if (result) {
