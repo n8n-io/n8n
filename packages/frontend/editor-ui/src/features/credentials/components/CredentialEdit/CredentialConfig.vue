@@ -14,10 +14,11 @@ import type { IUpdateInformation } from '@/Interface';
 import CredentialModeSelector, { type CredentialModeOption } from './CredentialModeSelector.vue';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
 	DOCS_DOMAIN,
+	END_USER_CREDENTIALS_DOCS_URL,
 	EnterpriseEditionFeature,
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/app/constants';
@@ -26,6 +27,7 @@ import { useCredentialsStore } from '../../credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
@@ -39,18 +41,17 @@ import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import {
 	N8nButton,
 	N8nCallout,
-	N8nIcon,
 	N8nInfoTip,
 	N8nInlineAskAssistantButton,
 	N8nLink,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
-import { ElSwitch } from 'element-plus';
+import CredentialTypeSelector from './CredentialTypeSelector.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 type Props = {
 	mode: string;
@@ -70,7 +71,6 @@ type Props = {
 	isManaged?: boolean;
 	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
-	isShared?: boolean;
 	connectedByMe?: boolean;
 	isNewCredential?: boolean;
 	managedOauthAvailable?: boolean;
@@ -108,6 +108,7 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
@@ -115,10 +116,6 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
-
-// A shared credential can't be turned into a dynamic credential (they're mutually exclusive).
-// Toggling back from dynamic to static stays allowed.
-const isDynamicToggleDisabled = computed(() => Boolean(props.isShared) && !props.isResolvable);
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -152,6 +149,14 @@ const appName = computed(
 const credentialTypeName = computed(() => props.credentialType?.name);
 const credentialOwnerName = computed(() =>
 	credentialsStore.getCredentialOwnerNameById(`${props.credentialId}`),
+);
+// Team-owned credentials don't have a single human "owner", so naming the
+// project ("Only My project can edit…") is misleading — point at the edit
+// permission instead. Personal/shared credentials keep naming the owner.
+const isHomeTeamProject = computed(
+	() =>
+		credentialsStore.getCredentialById(`${props.credentialId}`)?.homeProject?.type ===
+		ProjectTypes.Team,
 );
 const documentationUrl = computed(() => {
 	const type = props.credentialType;
@@ -214,8 +219,32 @@ const showOAuthNotConnectedBanner = computed(() => {
 	);
 });
 
-const showDisconnectButton = computed(
-	() => !!props.isPrivateCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
+const isConnectedOAuth = computed(
+	() => !!props.isOAuthType && !!props.requiredPropertiesFilled && !!props.isOAuthConnected,
+);
+
+// "Stale" = connected but the last credential test failed (e.g. token revoked or
+// expired). In this state we promote Switch account over the plain Retry button.
+const isStale = computed(() => isConnectedOAuth.value && !!props.authError);
+
+// The connected account label: for end-user creds it's the current user's own
+// connection; for fixed creds it's the identifier derived from the stored token
+// (may be absent for providers that don't return one — then fall back to a
+// generic "Account connected" message).
+const connectedAccountName = computed<string | undefined>(() => {
+	if (props.isResolvable) {
+		return usersStore.currentUser?.email ?? undefined;
+	}
+	const identifier = props.credentialData?.accountIdentifier;
+	return typeof identifier === 'string' && identifier ? identifier : undefined;
+});
+
+const connectedBannerMessage = computed(() =>
+	connectedAccountName.value
+		? i18n.baseText('credentialEdit.credentialConfig.connectedAs', {
+				interpolate: { account: connectedAccountName.value },
+			})
+		: i18n.baseText('credentialEdit.credentialConfig.accountConnected'),
 );
 
 const isMissingCredentials = computed(() => props.credentialType === null);
@@ -245,6 +274,23 @@ const canEdit = computed(() => {
 
 const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
+});
+
+// Switching a credential's type in either direction requires BOTH edit access
+// and the createEndUser permission — the change edits the credential and affects
+// every user's own connection, not just the caller's.
+const canSelectEndUserType = computed(
+	() => canWrite.value && !!props.credentialPermissions.createEndUser,
+);
+
+// Connecting an existing private credential only needs the `connect` capability
+// (no edit rights); shared/static credentials store the token on the shared
+// credential itself, so connecting them follows the write permission.
+const canConnect = computed(() => {
+	if (!isNewCredential.value && props.isResolvable) {
+		return !!props.credentialPermissions.connect;
+	}
+	return canWrite.value;
 });
 
 // When Instance AI is available it supersedes the legacy assistant for setup
@@ -298,10 +344,13 @@ function onAuthTypeChange(value: CredentialModeOption): void {
 // (artifact) closes them so the conversation comes into view.
 async function onInstanceAiCredentialHelpClick() {
 	const shouldCloseModal = await props.instanceAiCredentialHelp?.({
-		name: props.credentialType.name,
+		credentialType: props.credentialType.name,
 		displayName: props.credentialType.displayName,
 		nodeName: activeNode.value?.name,
+		nodeType: activeNode.value?.type,
 		id: props.credentialId || undefined,
+		documentationUrl: documentationUrl.value || undefined,
+		oauthRedirectUrl: props.isOAuthType ? oAuthCallbackUrl.value : undefined,
 	});
 	if (shouldCloseModal) {
 		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -391,151 +440,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</template>
 				</N8nCallout>
 
-				<Banner
-					v-show="showValidationWarning"
-					theme="danger"
-					:message="
-						i18n.baseText(
-							`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-								credentialPermissions.update ? '' : '.sharee'
-							}`,
-							{ interpolate: { owner: credentialOwnerName } },
-						)
-					"
-				/>
-
-				<Banner
-					v-if="authError && !showValidationWarning"
-					theme="danger"
-					:message="
-						i18n.baseText(
-							`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-								credentialPermissions.update ? '' : '.sharee'
-							}`,
-							{ interpolate: { owner: credentialOwnerName } },
-						)
-					"
-					:details="authError"
-					:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
-					button-loading-label="Retrying"
-					:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-					:button-loading="isRetesting"
-					@click="$emit('retest')"
-				/>
-
-				<Banner
-					v-show="showOAuthSuccessBanner && !showValidationWarning"
-					theme="success"
-					:message="i18n.baseText('credentialEdit.credentialConfig.accountConnected')"
-					:button-label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
-					:button-title="i18n.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
-					data-test-id="oauth-connect-success-banner"
-					@click="$emit('oauth')"
-				>
-					<template #button>
-						<div :class="$style.bannerActions">
-							<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
-							<QuickConnectButton
-								v-else
-								size="small"
-								:service-name="serviceName"
-								:credential-type-name="credentialType.name"
-								:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
-								data-test-id="quick-connect-reconnect-button"
-								@click="$emit('oauth')"
-							/>
-							<N8nButton
-								v-if="showDisconnectButton"
-								variant="outline"
-								:size="isGoogleOAuthType ? 'xlarge' : 'small'"
-								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
-								data-test-id="oauth-disconnect-button"
-								@click="$emit('disconnect')"
-							/>
-						</div>
-					</template>
-				</Banner>
-
-				<Banner
-					v-show="testedSuccessfully && !showValidationWarning"
-					theme="success"
-					:message="i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
-					:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
-					:button-loading-label="i18n.baseText('credentialEdit.credentialConfig.retrying')"
-					:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-					:button-loading="isRetesting"
-					data-test-id="credentials-config-container-test-success"
-					@click="$emit('retest')"
-				/>
-
-				<div
-					v-if="
-						isPrivateCredentialsEnabled &&
-						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
-						isOAuthType &&
-						canWrite
-					"
-					:class="$style.dynamicCredentials"
-					data-test-id="dynamic-credentials-section"
-				>
-					<div :class="$style.dynamicCredentialsRow">
-						<N8nTooltip placement="top" :disabled="!isDynamicToggleDisabled">
-							<template #content>
-								<div>
-									{{
-										i18n.baseText(
-											'credentialEdit.credentialConfig.dynamicCredentials.sharedDisabledTooltip',
-										)
-									}}
-								</div>
-							</template>
-							<ElSwitch
-								:model-value="isResolvable"
-								:disabled="isDynamicToggleDisabled"
-								data-test-id="dynamic-credentials-toggle"
-								@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
-							/>
-						</N8nTooltip>
-						<N8nText size="small">
-							{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
-						</N8nText>
-						<N8nTooltip placement="top">
-							<template #content>
-								<div>
-									{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip') }}
-								</div>
-							</template>
-							<N8nIcon icon="circle-help" size="small" color="text-light" />
-						</N8nTooltip>
-					</div>
-				</div>
-
-				<Banner
-					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
-					theme="warning"
-					:message="i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')"
-					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
-					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
-					data-test-id="oauth-not-connected-banner"
-					@click="$emit('oauth')"
-				>
-					<template v-if="isGoogleOAuthType" #button>
-						<div data-test-id="quick-connect-button">
-							<GoogleAuthButton @click="$emit('oauth')" />
-						</div>
-					</template>
-					<template v-else #button>
-						<QuickConnectButton
-							size="small"
-							:service-name="serviceName"
-							:credential-type-name="credentialType.name"
-							:label="i18n.baseText('credentialEdit.credentialConfig.connect')"
-							data-test-id="quick-connect-button"
-							@click="$emit('oauth')"
-						/>
-					</template>
-				</Banner>
-
 				<template v-if="canWrite">
 					<!-- Instance AI credential setup help (mimics the assistant button) -->
 					<div
@@ -579,7 +483,172 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							}}
 						</span>
 					</div>
+				</template>
 
+				<Banner
+					v-show="showValidationWarning"
+					theme="danger"
+					:message="
+						i18n.baseText(
+							`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
+								credentialPermissions.update ? '' : '.sharee'
+							}`,
+							{ interpolate: { owner: credentialOwnerName } },
+						)
+					"
+				/>
+
+				<Banner
+					v-if="authError && !showValidationWarning"
+					theme="danger"
+					:message="
+						i18n.baseText(
+							`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
+								credentialPermissions.update ? '' : '.sharee'
+							}`,
+							{ interpolate: { owner: credentialOwnerName } },
+						)
+					"
+					:details="authError"
+					:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
+					button-loading-label="Retrying"
+					:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+					:button-loading="isRetesting"
+					@click="$emit('retest')"
+				>
+					<!-- A stale connection (connected, but the last test failed) promotes
+						 Switch account over the plain Retry button. -->
+					<template v-if="isStale && canConnect" #button>
+						<div :class="$style.bannerActions">
+							<N8nButton
+								size="small"
+								:label="i18n.baseText('credentialEdit.credentialConfig.switchAccount')"
+								data-test-id="oauth-stale-switch-account-button"
+								@click="$emit('oauth')"
+							/>
+							<N8nButton
+								variant="subtle"
+								size="small"
+								:class="$style.disconnectButton"
+								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
+								data-test-id="oauth-stale-disconnect-button"
+								@click="$emit('disconnect')"
+							/>
+						</div>
+					</template>
+				</Banner>
+
+				<!-- Type selection stays above the connection banners: the connect /
+					 connected banner always renders below the selector, so it keeps a
+					 stable position when the credential connects or the type changes. -->
+				<CredentialTypeSelector
+					v-if="
+						isPrivateCredentialsEnabled &&
+						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
+						isOAuthType &&
+						// Only users who can manage end-user credentials see the selector at all;
+						// it's disabled for them when they lack edit access to the credential.
+						!!credentialPermissions.createEndUser
+					"
+					:model-value="Boolean(isResolvable)"
+					:disabled="!canSelectEndUserType"
+					:info-tip="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')"
+					@update:model-value="(val) => $emit('update:isResolvable', val)"
+				/>
+
+				<Banner
+					v-show="showOAuthSuccessBanner && !showValidationWarning"
+					theme="success"
+					:message="connectedBannerMessage"
+					data-test-id="oauth-connect-success-banner"
+				>
+					<template v-if="isResolvable" #subtitle>
+						<N8nText size="small" color="text-light">
+							{{
+								i18n.baseText('credentialEdit.credentialConfig.endUserCredential.connectedSubtext')
+							}}&nbsp;
+						</N8nText>
+						<N8nLink theme="text" underline :to="END_USER_CREDENTIALS_DOCS_URL" size="small">
+							{{ i18n.baseText('generic.learnMore') }}
+						</N8nLink>
+					</template>
+					<template v-if="canConnect" #button>
+						<div :class="$style.bannerActions">
+							<N8nButton
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('credentialEdit.credentialConfig.switchAccount')"
+								data-test-id="oauth-switch-account-button"
+								@click="$emit('oauth')"
+							/>
+							<N8nButton
+								variant="subtle"
+								size="small"
+								:class="$style.disconnectButton"
+								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
+								data-test-id="oauth-disconnect-button"
+								@click="$emit('disconnect')"
+							/>
+						</div>
+					</template>
+				</Banner>
+
+				<Banner
+					v-show="testedSuccessfully && !showValidationWarning"
+					theme="success"
+					:message="i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
+					:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
+					:button-loading-label="i18n.baseText('credentialEdit.credentialConfig.retrying')"
+					:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+					:button-loading="isRetesting"
+					data-test-id="credentials-config-container-test-success"
+					@click="$emit('retest')"
+				/>
+
+				<Banner
+					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
+					:theme="isResolvable ? 'info' : 'warning'"
+					:message="
+						isResolvable
+							? i18n.baseText('credentialEdit.credentialConfig.accountNotConnected.endUser', {
+									interpolate: { service: serviceName },
+								})
+							: i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')
+					"
+					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
+					data-test-id="oauth-not-connected-banner"
+					@click="$emit('oauth')"
+				>
+					<template v-if="isResolvable" #subtitle>
+						<N8nText size="small" color="text-light">
+							{{
+								i18n.baseText('credentialEdit.credentialConfig.endUserCredential.connectSubtext')
+							}}&nbsp;
+						</N8nText>
+						<N8nLink theme="text" underline :to="END_USER_CREDENTIALS_DOCS_URL" size="small">
+							{{ i18n.baseText('generic.learnMore') }}
+						</N8nLink>
+					</template>
+					<template v-if="isGoogleOAuthType" #button>
+						<div v-if="canConnect" data-test-id="quick-connect-button">
+							<GoogleAuthButton @click="$emit('oauth')" />
+						</div>
+					</template>
+					<template v-else #button>
+						<QuickConnectButton
+							v-if="canConnect"
+							size="small"
+							:service-name="serviceName"
+							:credential-type-name="credentialType.name"
+							:label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+							data-test-id="quick-connect-button"
+							@click="$emit('oauth')"
+						/>
+					</template>
+				</Banner>
+
+				<template v-if="canWrite">
 					<CopyInput
 						v-if="isOAuthType && !isManagedOAuth"
 						:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
@@ -600,9 +669,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					<div>
 						<N8nInfoTip :bold="false">
 							{{
-								i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
-									interpolate: { credentialOwnerName },
-								})
+								isHomeTeamProject
+									? i18n.baseText('credentialEdit.credentialEdit.info.sharee.team')
+									: i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
+											interpolate: { credentialOwnerName },
+										})
 							}}
 						</N8nInfoTip>
 					</div>
@@ -652,6 +723,17 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	gap: var(--spacing--2xs);
 }
 
+// Outline button tinted for the destructive "Disconnect" action so it reads as
+// the primary action without the heaviness of a filled destructive button.
+.disconnectButton {
+	--button--color: var(--color--danger);
+	--button--color--hover: var(--color--danger);
+	--button--color--active: var(--color--danger);
+	--button--border-color: var(--color--danger);
+	--button--border-color--hover: var(--color--danger);
+	--button--border-color--active: var(--color--danger);
+}
+
 .askAssistantButton {
 	display: flex;
 	align-items: center;
@@ -662,28 +744,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	}
 }
 
-.dynamicCredentials {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius);
-}
-
-.dynamicCredentialsRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.dynamicCredentialsNotice {
-	margin-top: var(--spacing--xs);
-}
-
 .docsCallout {
-	background-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
-	border-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-300));
+	// Match the neutral connect banner tint (was too dark in light mode).
+	background-color: light-dark(var(--color--black-alpha-50), var(--color--white-alpha-100));
+	border-color: light-dark(var(--color--black-alpha-100), var(--color--white-alpha-300));
 
 	a {
 		text-decoration: none;

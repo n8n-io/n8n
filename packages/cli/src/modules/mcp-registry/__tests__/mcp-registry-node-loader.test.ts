@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, NodeLoader } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
@@ -52,7 +52,7 @@ function createBaseNodeClass() {
 		description: baseDescription,
 		methods: {
 			loadOptions: {
-				getTools: jest.fn(),
+				getTools: vi.fn(),
 			},
 		},
 	};
@@ -88,7 +88,7 @@ function createLoadNodesAndCredentials(options?: {
 	}
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
-		loaders,
+		loaders: loaders as never,
 		knownCredentials: knownCredentials as never,
 	});
 

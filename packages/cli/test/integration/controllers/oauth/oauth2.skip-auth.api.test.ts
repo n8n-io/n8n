@@ -5,8 +5,12 @@
  * because skipAuthOnOAuthCallback is evaluated at module load time.
  */
 
-// Set environment variable before any imports
-process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
+// Set the env var before imports. Vitest hoists `import`s above top-level statements, so a plain
+// assignment would run *after* the oauth module reads `skipAuthOnOAuthCallback`. `vi.hoisted` runs
+// before the imports.
+vi.hoisted(() => {
+	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
+});
 
 import { testDb } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, User } from '@n8n/db';
@@ -73,8 +77,8 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 	describe('OAuth callback without authentication', () => {
 		it('should handle OAuth callback without authentication when skipAuthOnOAuthCallback is enabled', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = (Response.render = jest.fn(function () {
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = (Response.render = vi.fn(function (this: { end: () => void }) {
 				this.end();
 			}));
 
@@ -113,8 +117,8 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 
 		it('should allow callback completion by any user when skipAuthOnOAuthCallback is enabled', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = (Response.render = jest.fn(function () {
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = (Response.render = vi.fn(function (this: { end: () => void }) {
 				this.end();
 			}));
 
@@ -189,7 +193,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 
 	describe('Error handling', () => {
 		it('should still validate CSRF state even when skipAuthOnOAuthCallback is enabled', async () => {
-			const renderSpy = (Response.render = jest.fn(function () {
+			const renderSpy = (Response.render = vi.fn(function (this: { end: () => void }) {
 				this.end();
 			}));
 
@@ -209,8 +213,8 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 
 		it('should handle OAuth provider errors gracefully', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = (Response.render = jest.fn(function () {
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = (Response.render = vi.fn(function (this: { end: () => void }) {
 				this.end();
 			}));
 
@@ -243,8 +247,8 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 	describe('Security validation', () => {
 		it('should not skip CSRF token validation when skipAuthOnOAuthCallback is enabled', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = (Response.render = jest.fn(function () {
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = (Response.render = vi.fn(function (this: { end: () => void }) {
 				this.end();
 			}));
 

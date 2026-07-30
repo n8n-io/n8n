@@ -7,9 +7,9 @@ import type {
 	WorkflowEntity,
 } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IRun } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { InsightsMetadata } from '../database/entities/insights-metadata';
 import type { InsightsMetadataRepository } from '../database/repositories/insights-metadata.repository';
@@ -42,11 +42,11 @@ describe('initialization safeguards', () => {
 	});
 
 	beforeEach(() => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	test('does not collect events when not initialized', async () => {
@@ -115,7 +115,7 @@ describe('initialization safeguards', () => {
 		insightsCollectionService.scheduleFlushing();
 
 		// ASSERT - setTimeout should not have been called
-		expect(jest.getTimerCount()).toBe(0);
+		expect(vi.getTimerCount()).toBe(0);
 	});
 });
 
@@ -150,7 +150,7 @@ describe('calculateTimeSaved', () => {
 			stoppedAt: DateTime.utc().plus({ minutes: 10 }).toJSDate(),
 		});
 
-		// @ts-ignore-next-line
+		// @ts-expect-error private method under test
 		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
 		expect(timeSaved).toBe(10);
 	});
@@ -206,7 +206,7 @@ describe('calculateTimeSaved', () => {
 			},
 		});
 
-		// @ts-ignore-next-line
+		// @ts-expect-error private method under test
 		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
 		expect(timeSaved).toBe(20);
 	});

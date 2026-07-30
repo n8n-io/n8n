@@ -83,7 +83,7 @@ test.describe(
 			expect(nodeCount).toBeGreaterThan(0);
 
 			// Verify "Execute and refine" button appears after workflow is built
-			await expect(n8n.page.getByRole('button', { name: 'Execute and refine' })).toBeVisible();
+			await expect(n8n.aiBuilder.getExecuteAndRefineButton()).toBeVisible();
 		});
 
 		// suffers from the same issue as test above
@@ -114,7 +114,7 @@ test.describe(
 			await stopButton.click();
 
 			// Verify "Task aborted" message appears (search by text, not test-id)
-			await expect(n8n.page.getByText('Task aborted')).toBeVisible();
+			await expect(n8n.aiBuilder.getTaskAbortedMessage()).toBeVisible();
 
 			// Verify canvas returns to default state (no nodes added)
 			const nodeCount = await n8n.canvas.getCanvasNodes().count();

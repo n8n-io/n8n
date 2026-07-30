@@ -14,12 +14,12 @@ import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { DateTime } from 'luxon';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { ApiKey, ApiKeyOwner, ApiKeyOwnerSummary } from '@n8n/api-types';
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({ track }),
@@ -136,14 +136,18 @@ function makeKey(overrides: Partial<ApiKey> = {}): ApiKey {
 	};
 }
 
-const assertHintsAreShown = () => {
+const assertHintsAreShown = (expectedPlaygroundHref: string) => {
 	const apiDocsLink = screen.getByTestId('api-docs-link');
 	expect(apiDocsLink).toBeInTheDocument();
 	expect(apiDocsLink).toHaveAttribute('href', 'https://docs.n8n.io/api');
 	expect(apiDocsLink).toHaveAttribute('target', '_blank');
 
 	expect(screen.getByTestId('webhook-docs-link')).toBeInTheDocument();
-	expect(screen.getByTestId('api-playground-link')).toBeInTheDocument();
+
+	const playgroundLink = screen.getByTestId('api-playground-link');
+	expect(playgroundLink).toBeInTheDocument();
+	// The playground href must have exactly one slash between baseUrl and publicApiPath.
+	expect(playgroundLink).toHaveAttribute('href', expectedPlaygroundHref);
 };
 
 describe('SettingsApiView', () => {
@@ -181,7 +185,8 @@ describe('SettingsApiView', () => {
 		const dateInTheFuture = DateTime.now().plus({ days: 1 });
 
 		rootStore.baseUrl = 'http://localhost:5678';
-		settingsStore.publicApiPath = '/api';
+		// Match the backend default (no leading slash) so the join logic is tested as in prod.
+		settingsStore.publicApiPath = 'api';
 		settingsStore.publicApiLatestVersion = 1;
 		settingsStore.isPublicApiEnabled = true;
 		settingsStore.isSwaggerUIEnabled = true;
@@ -210,12 +215,14 @@ describe('SettingsApiView', () => {
 		// "Last used" is "Never" until populated.
 		expect(screen.getAllByText('Never').length).toBeGreaterThan(0);
 
-		assertHintsAreShown();
+		// Swagger UI enabled: link points at the instance's API docs, joined with a single slash.
+		assertHintsAreShown('http://localhost:5678/api/v1/docs');
 	});
 
 	it('renders the table when keys exist, without swagger', () => {
 		rootStore.baseUrl = 'http://localhost:5678';
-		settingsStore.publicApiPath = '/api';
+		// Match the backend default (no leading slash) so the join logic is tested as in prod.
+		settingsStore.publicApiPath = 'api';
 		settingsStore.publicApiLatestVersion = 1;
 		settingsStore.isPublicApiEnabled = true;
 		settingsStore.isSwaggerUIEnabled = false;
@@ -229,7 +236,31 @@ describe('SettingsApiView', () => {
 		renderComponent(SettingsApiView);
 
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
-		assertHintsAreShown();
+		// Swagger UI disabled: link falls back to the public docs API reference.
+		assertHintsAreShown('https://docs.n8n.io/api/api-reference/');
+	});
+
+	it('joins baseUrl and publicApiPath with a single slash regardless of their slash shape', () => {
+		// baseUrl with a trailing slash + publicApiPath with a leading slash would
+		// otherwise concatenate into a double slash ("…//api/…").
+		rootStore.baseUrl = 'http://localhost:5678/';
+		settingsStore.publicApiPath = '/api';
+		settingsStore.publicApiLatestVersion = 1;
+		settingsStore.isPublicApiEnabled = true;
+		settingsStore.isSwaggerUIEnabled = true;
+		cloudStore.userIsTrialing = false;
+		apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', apiKey: '****Atcr' })];
+		apiKeysStore.allCount = 1;
+		apiKeysStore.mineCount = 1;
+		apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+		apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+
+		renderComponent(SettingsApiView);
+
+		expect(screen.getByTestId('api-playground-link')).toHaveAttribute(
+			'href',
+			'http://localhost:5678/api/v1/docs',
+		);
 	});
 
 	it('shows the revoke confirm dialog when the revoke action is clicked', async () => {
@@ -246,6 +277,27 @@ describe('SettingsApiView', () => {
 		await fireEvent.click(screen.getByTestId('api-key-revoke-action'));
 
 		expect(screen.getByText(/Revoke "test-key-1" API key/)).toBeInTheDocument();
+	});
+
+	it('opens the scopes modal when the scopes count is clicked', async () => {
+		settingsStore.isPublicApiEnabled = true;
+		cloudStore.userIsTrialing = false;
+		apiKeysStore.apiKeys = [
+			makeKey({ id: '1', label: 'test-key-1', scopes: ['user:create', 'workflow:read'] }),
+		];
+		apiKeysStore.allCount = 1;
+		apiKeysStore.mineCount = 1;
+		apiKeysStore.totalMineCount = 1;
+		apiKeysStore.totalAllCount = 1;
+
+		renderComponent(SettingsApiView);
+
+		await fireEvent.click(screen.getByTestId('api-key-scopes-cell'));
+
+		// The dialog renders via a portal; its title interpolates the key label.
+		expect(await screen.findByText('test-key-1 scopes')).toBeInTheDocument();
+		expect(screen.getByText('user:create')).toBeInTheDocument();
+		expect(screen.getByText('workflow:read')).toBeInTheDocument();
 	});
 
 	describe('rotation', () => {
@@ -433,6 +485,37 @@ describe('SettingsApiView', () => {
 			await fireEvent.click(screen.getByText('Mine'));
 
 			expect(track).not.toHaveBeenCalledWith('User viewed all API keys');
+		});
+
+		it('hides the Owner column on the Mine tab', () => {
+			settingsStore.isPublicApiEnabled = true;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 2;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+			apiKeysStore.ownership = 'mine';
+
+			renderComponent(SettingsApiView);
+
+			// Ownership is implied on "Mine": no Owner header, no owner cells.
+			expect(screen.queryByText('Owner')).toBeNull();
+			expect(screen.queryAllByTestId('api-key-owner-cell')).toHaveLength(0);
+		});
+
+		it('shows the Owner column on the All tab', () => {
+			settingsStore.isPublicApiEnabled = true;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 2;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+			apiKeysStore.ownership = 'all';
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.getByText('Owner')).toBeInTheDocument();
+			expect(screen.getAllByTestId('api-key-owner-cell')).toHaveLength(1);
 		});
 	});
 

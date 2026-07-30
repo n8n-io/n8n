@@ -9,6 +9,7 @@
 
 packages/core/                                          @n8n-io/catalysts
 packages/workflow/                                      @n8n-io/catalysts
+packages/workflow/styker.config.mjs                     @n8n-io/qa-dx
 packages/@n8n/config/                                   @n8n-io/catalysts
 packages/@n8n/backend-common/                           @n8n-io/catalysts
 packages/@n8n/backend-network/                          @n8n-io/catalysts

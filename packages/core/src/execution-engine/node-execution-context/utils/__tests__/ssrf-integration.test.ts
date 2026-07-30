@@ -115,6 +115,59 @@ describe('SSRF end-to-end integration', () => {
 		).resolves.toEqual({ ok: true });
 	});
 
+	test('blocks request to a deny-listed hostname even when it resolves to a public IP', async () => {
+		const dnsResolver = createMockDnsResolver({
+			'exfil.example.com': [{ address: '93.184.216.34', family: 4 }],
+		});
+		const { ssrfBridge } = createSsrfBridge(
+			{ blockedHostnames: ['exfil.example.com'] },
+			dnsResolver,
+		);
+		const helpers = createRequestHelpers(ssrfBridge);
+
+		await expect(
+			helpers.httpRequest({ method: 'GET', url: 'https://exfil.example.com/data' }),
+		).rejects.toThrow('The request was blocked because the destination hostname is restricted');
+		// Denied by name, so DNS resolution never runs.
+		expect(dnsResolver.lookup).not.toHaveBeenCalled();
+	});
+
+	test('blocks redirects to a deny-listed hostname', async () => {
+		const dnsResolver = createMockDnsResolver({
+			'public.example': [{ address: '93.184.216.34', family: 4 }],
+		});
+		const { ssrfBridge } = createSsrfBridge(
+			{ blockedHostnames: ['exfil.example.com'] },
+			dnsResolver,
+		);
+		const helpers = createRequestHelpers(ssrfBridge);
+
+		nock('http://public.example')
+			.get('/redirect')
+			.reply(301, '', { Location: 'http://exfil.example.com/data' });
+
+		await expect(
+			helpers.httpRequest({ method: 'GET', url: 'http://public.example/redirect' }),
+		).rejects.toThrow('The request was blocked because the destination hostname is restricted');
+	});
+
+	test('allows a hostname carved out of a broad deny via the allow-list', async () => {
+		const dnsResolver = createMockDnsResolver({
+			'api.example.com': [{ address: '93.184.216.34', family: 4 }],
+		});
+		const { ssrfBridge } = createSsrfBridge(
+			{ allowedHostnames: ['api.example.com'], blockedHostnames: ['*.example.com'] },
+			dnsResolver,
+		);
+		const helpers = createRequestHelpers(ssrfBridge);
+
+		nock('https://api.example.com').get('/health').reply(200, { ok: true });
+
+		await expect(
+			helpers.httpRequest({ method: 'GET', url: 'https://api.example.com/health' }),
+		).resolves.toEqual({ ok: true });
+	});
+
 	test('allows private IP within configured allowlisted range', async () => {
 		const { ssrfBridge } = createSsrfBridge({ allowedIpRanges: ['10.0.0.0/24'] });
 		const helpers = createRequestHelpers(ssrfBridge);

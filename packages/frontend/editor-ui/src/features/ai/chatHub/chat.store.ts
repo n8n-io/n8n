@@ -29,6 +29,7 @@ import {
 	fetchChatSettingsApi,
 	fetchChatProviderSettingsApi,
 	updateChatSettingsApi,
+	updateChatEnabledApi,
 	fetchToolsApi,
 	createToolApi,
 	updateToolApi,
@@ -96,7 +97,7 @@ import {
 	chunkFilesBySize,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { createRunExecutionData, deepCopy, type INode } from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -1123,6 +1124,12 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return providerSettings;
 	}
 
+	async function setChatEnabled(enabled: boolean) {
+		await updateChatEnabledApi(rootStore.restApiContext, enabled);
+		// Refresh module settings so isChatFeatureEnabled recomputes app-wide.
+		await settingsStore.getModuleSettings();
+	}
+
 	async function updateProviderSettings(updated: ChatProviderSettingsDto) {
 		if (!updated.enabled) {
 			updated.allowedModels = [];
@@ -1585,6 +1592,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+		setChatEnabled,
 		semanticSearchReadiness,
 
 		/**

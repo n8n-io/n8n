@@ -142,7 +142,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('wi-99');
 		});
 
-		it('should default workItemId to "unknown"', () => {
+		it('should default report-verification-verdict workItemId to "unknown"', () => {
 			const action: WorkflowLoopAction = {
 				type: 'verify',
 				workflowId: 'wf-456',
@@ -151,7 +151,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('"unknown"');
 		});
 
-		it('should mention verify-built-workflow and execution run action', () => {
+		it('should mention repeatable verify-built-workflow and fixture overrides', () => {
 			const action: WorkflowLoopAction = {
 				type: 'verify',
 				workflowId: 'wf-789',
@@ -160,7 +160,8 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('workflows(action="get-as-code", workflowId)');
 			expect(result).toContain('Build/save success only means a workflow was saved');
 			expect(result).toContain('verify-built-workflow');
-			expect(result).toContain('executions(action="run")');
+			expect(result).toContain('safe to call multiple times');
+			expect(result).toContain('fixtureOverrides');
 		});
 
 		it('should mention execution debug action and report-verification-verdict', () => {
@@ -311,7 +312,7 @@ describe('formatWorkflowLoopGuidance', () => {
 		it('should pass workItemId to verify guidance', () => {
 			const action: WorkflowLoopAction = { type: 'verify', workflowId: 'wf-1' };
 			const result = formatWorkflowLoopGuidance(action, { workItemId: 'wi-abc' });
-			// workItemId appears in two places: verify-built-workflow and report-verification-verdict
+			// workItemId appears in verify-built-workflow guidance and report-verification-verdict.
 			const occurrences = result.split('wi-abc').length - 1;
 			expect(occurrences).toBeGreaterThanOrEqual(2);
 		});

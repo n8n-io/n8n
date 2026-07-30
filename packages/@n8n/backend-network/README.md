@@ -88,12 +88,11 @@ destination really not user-controlled?".
 
 `SsrfProtectionConfig` (env-driven) configures *how* the guard behaves once it
 runs — the blocked/allowed IP ranges (`N8N_SSRF_BLOCKED_IP_RANGES`,
-`N8N_SSRF_ALLOWED_IP_RANGES`), the allowed hostnames
-(`N8N_SSRF_ALLOWED_HOSTNAMES`), and the DNS-cache size. Its `enabled` flag
-(`N8N_SSRF_PROTECTION_ENABLED`) is the **instance-wide gate that high-risk call
-sites consult** to decide whether to turn the guard on (see below). The config
-sets the policy; the call site decides whether that policy applies to *this*
-destination.
+`N8N_SSRF_ALLOWED_IP_RANGES`), the allowed and blocked hostnames
+(`N8N_SSRF_ALLOWED_HOSTNAMES`, `N8N_SSRF_BLOCKED_HOSTNAMES`), and the DNS-cache
+size. Its `enabled` flag (`N8N_SSRF_PROTECTION_ENABLED`) is the **instance-wide gate that high-risk call sites consult** to decide whether to turn the guard on (see below).
+
+The config sets the policy; the call site decides whether that policy applies to *this* destination.
 
 ### Choosing an SSRF level: low-risk vs high-risk calls
 

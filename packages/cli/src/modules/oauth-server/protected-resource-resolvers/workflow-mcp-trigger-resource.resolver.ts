@@ -2,9 +2,10 @@ import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { WebhookService } from '@/webhooks/webhook.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowRepository } from '@n8n/db';
+import { User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import {
@@ -22,6 +23,7 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly urlService: UrlService,
 		private readonly logger: Logger,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	readonly id = 'workflow-mcp-trigger';
@@ -94,12 +96,25 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 			node.parameters.authentication === 'n8nOAuth2'
 		) {
 			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.mcp}/${path}`;
+			const requireExecute = node.parameters.requireExecuteAccess !== false;
 			return {
 				id: 'workflow-mcp:' + workflow.id,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => [resourceUrl],
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,
 				displayName: workflow.name,
+				authorize: async (user: User) => {
+					if (requireExecute) {
+						return (
+							await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+								[workflow.id],
+								user,
+								['workflow:execute'],
+							)
+						).has(workflow.id);
+					}
+					return true;
+				},
 			};
 		}
 

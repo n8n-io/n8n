@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import type { Logger } from '@n8n/backend-common';
+import { mock } from 'vitest-mock-extended';
 
 import { InstanceSettingsLoaderService } from '../instance-settings-loader.service';
 import type { CommunityPackagesInstanceSettingsLoader } from '../loaders/community-packages.instance-settings-loader';
@@ -10,7 +10,7 @@ import type { SecurityPolicyInstanceSettingsLoader } from '../loaders/security-p
 import type { SsoInstanceSettingsLoader } from '../loaders/sso/sso.instance-settings-loader';
 
 describe('InstanceSettingsLoaderService', () => {
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const ownerLoader = mock<OwnerInstanceSettingsLoader>();
 	const ssoLoader = mock<SsoInstanceSettingsLoader>();
 	const securityPolicyLoader = mock<SecurityPolicyInstanceSettingsLoader>();
@@ -19,7 +19,7 @@ describe('InstanceSettingsLoaderService', () => {
 	const communityPackagesLoader = mock<CommunityPackagesInstanceSettingsLoader>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnThis();
 		ownerLoader.run.mockResolvedValue('skipped');
 		ssoLoader.run.mockResolvedValue('skipped');

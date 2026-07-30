@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import get from 'lodash/get';
 import type { INodeTypes, IConnections as N8nIConnections, IDisplayOptions } from 'n8n-workflow';
 import { mapConnectionsByDestination } from 'n8n-workflow';
@@ -13,6 +13,7 @@ import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
 import { containsPlaceholderMarker } from '../workflow-builder/string-utils';
 
 export {
+	getSchemaBaseDirs,
 	setSchemaBaseDirs,
 	validateNodeConfig,
 	type SchemaValidationResult,

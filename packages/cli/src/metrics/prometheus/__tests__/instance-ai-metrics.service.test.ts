@@ -1,7 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method -- jest mocks */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method -- vi mocks */
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
 import type { EventService } from '@/events/event.service';
@@ -10,7 +11,7 @@ import type { InstanceAiRunProbe } from '@/modules/instance-ai/instance-ai-run-p
 import { DURATION_BUCKETS_SECONDS } from '../constant';
 import { PrometheusInstanceAiMetricsService } from '../instance-ai-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusInstanceAiMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -19,9 +20,9 @@ describe('PrometheusInstanceAiMetricsService', () => {
 	const eventService = mock<EventService>();
 	const runProbe = mock<InstanceAiRunProbe>();
 	let service: PrometheusInstanceAiMetricsService;
-	let mockCounterInc: jest.Mock;
-	let mockHistogramObserve: jest.Mock;
-	let mockGaugeSet: jest.Mock;
+	let mockCounterInc: Mock;
+	let mockHistogramObserve: Mock;
+	let mockGaugeSet: Mock;
 
 	function getEventHandler(eventName: string) {
 		return eventService.on.mock.calls.find((c) => c[0] === eventName)?.[1];
@@ -30,16 +31,16 @@ describe('PrometheusInstanceAiMetricsService', () => {
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_' });
 		service = new PrometheusInstanceAiMetricsService(config, eventService, runProbe);
-		mockCounterInc = jest.fn();
+		mockCounterInc = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
-		mockHistogramObserve = jest.fn();
+		mockHistogramObserve = vi.fn();
 		promClient.Histogram.prototype.observe = mockHistogramObserve;
-		mockGaugeSet = jest.fn();
+		mockGaugeSet = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {
@@ -93,7 +94,7 @@ describe('PrometheusInstanceAiMetricsService', () => {
 			runProbe.activeRunCount.mockReturnValue(3);
 			service.init();
 
-			const gaugeOptions = (promClient.Gauge as unknown as jest.Mock).mock.calls.find(
+			const gaugeOptions = (promClient.Gauge as unknown as Mock).mock.calls.find(
 				(c) => c[0]?.name === 'n8n_instance_ai_active_runs',
 			)?.[0];
 			expect(gaugeOptions).toBeDefined();
@@ -124,6 +125,32 @@ describe('PrometheusInstanceAiMetricsService', () => {
 				{ status: 'completed', model: 'claude-opus-4' },
 				1,
 			);
+		});
+
+		it('counts tokens/cost/tool-calls but not runs or duration for suspended segments', () => {
+			service.init();
+			const handler = getEventHandler('instance-ai-run-finished');
+
+			handler!({
+				status: 'suspended',
+				durationMs: 4200,
+				model: 'claude-opus-4',
+				toolCalls: 2,
+				toolErrors: 0,
+				usage: { promptTokens: 100, completionTokens: 10, totalTokens: 110, costUsd: 0.5 },
+			});
+
+			// No run count, no duration — the terminal event owns those.
+			expect(mockCounterInc).not.toHaveBeenCalledWith(
+				{ status: 'suspended', model: 'claude-opus-4' },
+				1,
+			);
+			expect(mockHistogramObserve).not.toHaveBeenCalled();
+			// Segment usage and tool activity are recorded.
+			expect(mockCounterInc).toHaveBeenCalledWith(2); // tool calls
+			expect(mockCounterInc).toHaveBeenCalledWith({ type: 'input' }, 100);
+			expect(mockCounterInc).toHaveBeenCalledWith({ type: 'output' }, 10);
+			expect(mockCounterInc).toHaveBeenCalledWith(0.5);
 		});
 
 		it('should observe duration histogram in seconds when durationMs is present', () => {

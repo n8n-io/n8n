@@ -585,6 +585,7 @@ describe('code-generator', () => {
 					connections: {},
 					settings: {
 						timezone: 'America/New_York',
+						errorWorkflow: 'error-handler-123',
 						executionOrder: 'v1',
 					},
 				};
@@ -593,6 +594,7 @@ describe('code-generator', () => {
 
 				expect(code).toContain("const wf = workflow('settings-test', 'Settings Test',");
 				expect(code).toContain("timezone: 'America/New_York'");
+				expect(code).toContain("errorWorkflow: 'error-handler-123'");
 				expect(code).toContain("executionOrder: 'v1'");
 				expect(code).toContain('export default wf');
 			});

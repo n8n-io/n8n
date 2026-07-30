@@ -16,3 +16,15 @@ export function dialogRootIn(scope: Page | Locator): Locator {
 export function dialogCloseIconIn(scope: Page | Locator): Locator {
 	return scope.locator('.el-dialog__close').first();
 }
+
+/**
+ * Click the dialog close (X) icon within `scope`, but only if it's currently visible.
+ *
+ * `scope` must be the modal's own root (not a page-wide `getByRole('dialog')`) so that,
+ * when modals are stacked, the close icon resolves to the intended dialog.
+ */
+export async function closeDialogIfOpen(scope: Page | Locator): Promise<void> {
+	const closeBtn = dialogCloseIconIn(scope);
+	if (!(await closeBtn.isVisible())) return;
+	await closeBtn.click();
+}

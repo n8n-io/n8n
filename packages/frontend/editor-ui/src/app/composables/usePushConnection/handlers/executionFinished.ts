@@ -3,7 +3,7 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
@@ -546,7 +546,7 @@ export function setRunExecutionData(
 		stoppedAt: execution.stoppedAt,
 	});
 	executionDataStore.setExecutionRunData(runExecutionData);
-	workflowExecutionStateStore.setActiveExecutionId(undefined);
+	workflowExecutionStateStore.setDisplayedExecutionId(execution.id);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view

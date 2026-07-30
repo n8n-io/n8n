@@ -1,6 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -57,7 +57,7 @@ function makeService() {
 
 describe('AgentCustomToolsService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('builds and stores a custom tool, marks the draft dirty, and clears runtime cache', async () => {
@@ -69,7 +69,7 @@ describe('AgentCustomToolsService', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			id: expect.stringMatching(/^tool_[A-Za-z0-9]{16}$/),
+			id: 'lookup_customer',
 			descriptor,
 		});
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });

@@ -40,15 +40,26 @@ export class EvalThreadRestoreService {
 	) {}
 
 	/**
-	 * Recreate each seed data table (schema only — no rows) and map its seed id to
-	 * the freshly created one. Tables are created under a uniquified name (names
-	 * are unique per project; the id, which the workflow references, is what
-	 * matters). Rolls back tables already created if a later one fails.
+	 * Recreate each seed data table and map its seed id to the freshly created
+	 * one. Tables are created under a uniquified name (names are unique per
+	 * project; the id, which the workflow references, is what matters). A table
+	 * declaring `rows` is seeded with them against its declared column types
+	 * (TRUST-311) — free-text `dataSetup` can't declare types, so a string id
+	 * like `row_001` would otherwise be rejected by a `number` column. Rolls back
+	 * tables already created if a later table (or its rows) fails.
+	 *
+	 * `uniquifyNames` (default true) appends a unique suffix to each name to dodge
+	 * the per-project unique-name constraint — safe when the seed workflow
+	 * references tables by id (id-remap). Pass false to keep the EXACT declared
+	 * name, so a freshly-built workflow's by-name references resolve (TRUST-311
+	 * scenario seeding).
 	 */
 	async restoreDataTables(
 		dataTables: InstanceAiEvalSeedDataTable[],
 		projectId: string,
+		options: { uniquifyNames?: boolean } = {},
 	): Promise<Map<string, string>> {
+		const uniquifyNames = options.uniquifyNames ?? true;
 		const idMap = new Map<string, string>();
 		try {
 			for (const table of dataTables) {
@@ -59,19 +70,45 @@ export class EvalThreadRestoreService {
 						`Seed data table id "${table.id}" is too short to remap safely (need ≥8 chars)`,
 					);
 				}
-				const suffix = ` [seed ${randomUUID().slice(0, 8)}]`;
-				const name = `${table.name.slice(0, 128 - suffix.length)}${suffix}`;
+				let name = table.name;
+				if (uniquifyNames) {
+					const suffix = ` [seed ${randomUUID().slice(0, 8)}]`;
+					name = `${table.name.slice(0, 128 - suffix.length)}${suffix}`;
+				}
 				const created = await this.dataTableService.createDataTable(projectId, {
 					name,
 					columns: table.columns,
 				});
+				// Map before seeding rows so a row-insert failure rolls this table back too.
 				idMap.set(table.id, created.id);
+				if (table.rows && table.rows.length > 0) {
+					await this.dataTableService.insertRows(created.id, projectId, table.rows);
+				}
 			}
 		} catch (error) {
 			await this.deleteDataTables([...idMap.values()], projectId);
 			throw error;
 		}
 		return idMap;
+	}
+
+	/**
+	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert).
+	 * Used for the per-scenario row seeding of a case whose tables were created
+	 * empty before the build turn (TRUST-311 follow-up): the table already exists
+	 * (the built workflow bound its id), so we only swap the rows a scenario
+	 * declares — clearing whatever a prior scenario or a build-time execution
+	 * left. Rows are validated against each column's type by `insertRows`.
+	 */
+	async reseedDataTableRows(
+		tableId: string,
+		projectId: string,
+		rows: NonNullable<InstanceAiEvalSeedDataTable['rows']>,
+	): Promise<void> {
+		await this.dataTableService.clearRows(tableId, projectId);
+		if (rows.length > 0) {
+			await this.dataTableService.insertRows(tableId, projectId, rows);
+		}
 	}
 
 	/** Best-effort delete (rollback of a failed restore). */

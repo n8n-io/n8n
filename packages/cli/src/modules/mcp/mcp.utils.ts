@@ -1,8 +1,7 @@
 import type { AuthenticatedRequest } from '@n8n/db';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Request } from 'express';
 import type { INode } from 'n8n-workflow';
-
-import { isRecord } from '@n8n/utils';
 
 import { SUPPORTED_MCP_TRIGGERS, SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import { isJSONRPCRequest } from './mcp.typeguards';
@@ -44,7 +43,7 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
 	if (!isJSONRPCRequest(body)) return {};
 	if (!body.params) return {};
 
-	const { arguments: args } = body.params;
+	const args = body.params.arguments;
 	if (isRecord(args)) {
 		return args;
 	}

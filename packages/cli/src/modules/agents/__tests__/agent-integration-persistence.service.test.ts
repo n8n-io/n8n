@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -45,7 +45,7 @@ function makeService() {
 
 describe('AgentIntegrationPersistenceService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('lists public descriptor metadata from the integration registry', () => {
@@ -97,6 +97,23 @@ describe('AgentIntegrationPersistenceService', () => {
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			agentId,
 			{ type: 'slack', credentialId: 'slack-1' },
+			'connect',
+		);
+	});
+
+	it('consumes a same-type draft entry (empty credentialId) when connecting a real credential', async () => {
+		const { service, agentRepository, chatIntegrationService, runtimeCacheService } = makeService();
+		const agent = makeAgent({ integrations: [{ type: 'slack', credentialId: '' }] });
+
+		await service.saveCredentialIntegration(agent, { type: 'slack', credentialId: 'c1' });
+
+		expect(agent.integrations).toEqual([{ type: 'slack', credentialId: 'c1' }]);
+		expect(agent.versionId).not.toBe(agent.activeVersionId);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
+			agentId,
+			{ type: 'slack', credentialId: 'c1' },
 			'connect',
 		);
 	});

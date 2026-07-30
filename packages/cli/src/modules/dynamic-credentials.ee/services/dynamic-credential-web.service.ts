@@ -1,9 +1,10 @@
-import { AuthService } from '@/auth/auth.service';
-import { Service } from '@n8n/di';
 import { Z } from '@n8n/api-types';
-import { z } from 'zod';
-import { ICredentialContext } from 'n8n-workflow';
+import { Service } from '@n8n/di';
 import { Request } from 'express';
+import { ICredentialContext } from 'n8n-workflow';
+import { z } from 'zod';
+
+import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 class AuthSourceQuerySchema extends Z.class({

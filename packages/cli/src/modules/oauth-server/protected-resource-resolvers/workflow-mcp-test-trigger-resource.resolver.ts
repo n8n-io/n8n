@@ -2,6 +2,7 @@ import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -12,6 +13,7 @@ import {
 	trimSlashes,
 	trimTrailingSlash,
 } from './utils';
+import { User } from '@n8n/db';
 
 @Service()
 export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResourceResolver {
@@ -20,13 +22,14 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 		private readonly registrations: TestWebhookRegistrationsService,
 		private readonly urlService: UrlService,
 		private readonly logger: Logger,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	readonly id = 'workflow-mcp-test-trigger';
 	readonly scopes = WORKFLOW_MCP_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl());
+		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getTestWebhookBaseUrl());
 		if (pathname === undefined) {
 			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
 			return undefined;
@@ -74,12 +77,25 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 			node.parameters.authentication === 'n8nOAuth2'
 		) {
 			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.mcpTest}/${path}`;
+			const requireExecute = node.parameters.requireExecuteAccess !== false;
 			return {
 				id: 'workflow-mcp-test:' + workflowEntity.id,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => [resourceUrl],
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
+				authorize: async (user: User) => {
+					if (requireExecute) {
+						return (
+							await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+								[workflowEntity.id],
+								user,
+								['workflow:execute'],
+							)
+						).has(workflowEntity.id);
+					}
+					return true;
+				},
 			};
 		}
 

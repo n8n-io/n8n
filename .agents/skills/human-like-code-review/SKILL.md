@@ -93,6 +93,71 @@ If there's a risk of broken backward compatibility, consider node versioning and
 leave this inside the comments - point out the risk and suggest a new node version
 (or a versioned default) rather than changing existing behavior in place.
 
+## Review checklist
+
+Use this checklist while reviewing. Do not force comments for every category,
+but make sure the diff has been checked against these common failure modes.
+
+### Memory leaks
+
+- Event listeners / subscriptions added without a corresponding remove/unsubscribe
+- Timers (`setInterval`, `setTimeout`) that are never cleared
+- Closures that capture large objects and outlive their scope
+- Caches or Maps that grow without eviction logic
+- Streams or file handles opened but not closed on all code paths, including error paths
+- Class fields holding references that should be nulled on `dispose()`/`destroy()`
+- **Streams**: `.write()` return value ignored (missing `drain` await), `.pipe()` used instead of `pipeline()`, missing `AbortSignal` for teardown, `objectMode` streams with untuned `highWaterMark`, Transform streams without asymmetric buffer limits.
+
+### Edge cases
+
+- `null` / `undefined` inputs - are they guarded or documented as preconditions?
+- Empty collections - does the code handle `[]` and `{}`?
+- Off-by-one errors in loops and slices
+- Concurrent / re-entrant calls - are async methods safe to call twice in flight?
+- Race conditions between async operations that share mutable state, cursors, locks, polling, or background tasks
+- Integer overflow / precision loss for numeric fields
+- Partial failure in multi-step operations - is state left consistent?
+- Missing `default` in `switch` statements over union types
+
+### Persistence / API contracts
+
+- Migrations, foreign keys, rollback behavior, and entity fields line up
+- Resource ownership and project/user scoping are enforced in services, not just routes
+- Authenticated controller routes use `@ProjectScope` or `@GlobalScope`
+- Package boundaries are respected; `cli` or n8n-specific concepts should not leak into generic SDK packages
+
+### Readability
+
+- Method names that don't match what the method does
+- Boolean parameters that obscure call-site intent (prefer objects or overloads)
+- Deep nesting (> 3 levels) - early returns or extraction help
+- Magic numbers / strings without named constants
+- Comments that restate the code instead of explaining *why*
+- Inconsistent naming conventions within the same file or module
+- Too many type assertions instead of type guards
+
+### Method / function size
+
+- Flag any method over ~100 lines for a refactor suggestion
+- Flag methods that are growing toward complexity: many parameters (> 4), deeply nested conditions, multiple levels of abstraction mixed together
+- Suggest extraction by responsibility: setup, core logic, teardown - each can be its own well-named helper
+- For complex switch/if-chains, suggest a dispatch table or strategy pattern where it simplifies future extension
+
+## Severity and priority definitions
+
+| Severity | Meaning |
+|---|---|
+| Critical | Data loss, crash, security hole, or resource leak that will occur in production |
+| High | Likely to cause bugs or silent failures under realistic inputs |
+| Medium | Reduces robustness or will cause problems as the code grows |
+| Low | Style, readability, or minor improvement |
+
+| Priority | Meaning |
+|---|---|
+| P1 | Must fix before merge |
+| P2 | Should fix in this PR or as immediate follow-up |
+| P3 | Nice to have, can be filed as a task |
+
 ## Output format
 
 The markdown file must contain:
@@ -104,6 +169,9 @@ The markdown file must contain:
 
 `file name + line number + comment`
 
+- A plain-text `## Issue Summary` section at the end of the review (omit
+  categories with no issues).
+
 Comments should be easy to copy/paste. Do not quote comments using `>` - just write them directly.
 
 It's totally okay to have no line comments. Do not force findings or point out
@@ -111,6 +179,29 @@ minor things just to have something to say. In those cases, prefer an empty
 comments list and a short positive `## General` comment.
 
 When a comment suggests something different, be precise about it. Either propose the actual code change (a short snippet or `suggestion` block the author can apply directly) or, if a full snippet isn't practical, state the concrete direction (which function/value/approach to use) rather than a vague hint. Avoid comments like "this could be cleaner" with no actionable next step.
+
+### Issue summary
+
+After the prose review, always end with a plain-text `## Issue Summary` section. If there are no issues in a category, skip that category rather than
+adding empty headings.
+
+Use this format:
+
+```markdown
+## Issue Summary
+
+1. Critical / P1 / Memory leak
+   Location: `path/to/file.ts:42`
+   `setInterval` in constructor is never cleared.
+
+2. High / P2 / Edge case
+   Location: `path/to/service.ts:100`
+   No guard for empty array - crashes on `arr[0].id`.
+
+3. Medium / P3 / Method size
+   Location: `path/to/handler.ts:buildFoo()`
+   80-line method mixes validation, mapping and I/O; suggest splitting into three helpers.
+```
 
 ### Hints for a reviewer
 

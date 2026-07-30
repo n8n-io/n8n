@@ -42,5 +42,8 @@
     "kafkajs": "catalog:",
     "testcontainers": "catalog:",
     "undici": "catalog:undici-v7"
+  },
+  "devDependencies": {
+    "tsx": "catalog:"
   }
 }

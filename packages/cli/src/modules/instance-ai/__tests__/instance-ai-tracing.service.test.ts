@@ -1,13 +1,14 @@
+import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import type { InstanceAiTraceContext } from '@n8n/instance-ai';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
-const continueInstanceAiTraceContext = jest.fn();
-const releaseTraceClient = jest.fn();
-const submitLangsmithUserFeedback = jest.fn();
+const continueInstanceAiTraceContext = vi.fn();
+const releaseTraceClient = vi.fn();
+const submitLangsmithUserFeedback = vi.fn();
 
-jest.mock('@n8n/instance-ai', () => ({
+vi.mock('@n8n/instance-ai', () => ({
 	continueInstanceAiTraceContext: (...args: unknown[]) => continueInstanceAiTraceContext(...args),
 	releaseTraceClient: (...args: unknown[]) => releaseTraceClient(...args),
 	submitLangsmithUserFeedback: (...args: unknown[]) => submitLangsmithUserFeedback(...args),
@@ -31,8 +32,8 @@ type FakeTraceRun = {
 type FakeTraceContext = {
 	rootRun: FakeTraceRun;
 	actorRun: FakeTraceRun;
-	finishRun: jest.Mock;
-	traceWriter?: { getEvents: jest.Mock };
+	finishRun: Mock;
+	traceWriter?: { getEvents: Mock };
 };
 
 function makeTraceContext(overrides: Partial<FakeTraceContext> = {}): InstanceAiTraceContext {
@@ -40,7 +41,7 @@ function makeTraceContext(overrides: Partial<FakeTraceContext> = {}): InstanceAi
 	const ctx: FakeTraceContext = {
 		rootRun: root,
 		actorRun: root,
-		finishRun: jest.fn(async () => {}),
+		finishRun: vi.fn(async () => {}),
 		...overrides,
 	};
 	return ctx as unknown as InstanceAiTraceContext;
@@ -57,20 +58,20 @@ function createService(
 ) {
 	const logger = mock<Logger>(overrides.logger);
 	const eventBus: InstanceAiTracingEventBus = {
-		getEventsForRun: jest.fn(() => []),
+		getEventsForRun: vi.fn(() => []),
 		...overrides.eventBus,
 	};
 	const runState: InstanceAiTracingRunState = {
-		attachTracing: jest.fn(),
+		attachTracing: vi.fn(),
 		...overrides.runState,
 	};
 	const dbSnapshotStorage: InstanceAiTracingSnapshotStorage = {
-		findLangsmithAnchor: jest.fn(async () => undefined),
+		findLangsmithAnchor: vi.fn(async () => undefined),
 		...overrides.dbSnapshotStorage,
 	};
 	const aiService: InstanceAiTracingAiService = {
-		isProxyEnabled: jest.fn(() => false),
-		getClient: jest.fn(),
+		isProxyEnabled: vi.fn(() => false),
+		getClient: vi.fn(),
 		...overrides.aiService,
 	};
 
@@ -143,7 +144,7 @@ describe('InstanceAiTracingService', () => {
 			const writerEvents = [{ a: 1 }];
 			const tracing = makeTraceContext({
 				rootRun: { id: 'root-1', traceId: 'trace-1' },
-				traceWriter: { getEvents: jest.fn(() => writerEvents) },
+				traceWriter: { getEvents: vi.fn(() => writerEvents) },
 			});
 			const { service } = createService();
 
@@ -219,7 +220,7 @@ describe('InstanceAiTracingService', () => {
 
 	describe('submitLangsmithFeedback', () => {
 		it('skips submission when no LangSmith anchor exists', async () => {
-			const findLangsmithAnchor = jest.fn(async () => undefined);
+			const findLangsmithAnchor = vi.fn(async () => undefined);
 			const { service } = createService({ dbSnapshotStorage: { findLangsmithAnchor } });
 
 			await service.submitLangsmithFeedback(
@@ -234,13 +235,13 @@ describe('InstanceAiTracingService', () => {
 		});
 
 		it('submits feedback when an anchor exists and the proxy is disabled', async () => {
-			const findLangsmithAnchor = jest.fn(async () => ({
+			const findLangsmithAnchor = vi.fn(async () => ({
 				langsmithRunId: 'ls-run',
 				langsmithTraceId: 'ls-trace',
 			}));
 			const { service } = createService({
 				dbSnapshotStorage: { findLangsmithAnchor },
-				aiService: { isProxyEnabled: jest.fn(() => false) },
+				aiService: { isProxyEnabled: vi.fn(() => false) },
 			});
 
 			await service.submitLangsmithFeedback(

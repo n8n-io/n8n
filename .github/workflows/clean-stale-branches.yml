@@ -41,5 +41,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           STALE_DAYS: ${{ inputs.days || '100' }}
-          EXCLUDE_BRANCHES: ${{ inputs.exclude || '' }}
+          # Long-lived major branches are also protected by their deletion rulesets;
+          # this static keep-list is a safety net for scheduled runs (which pass no exclude input).
+          EXCLUDE_BRANCHES: ${{ inputs.exclude || '1.x,3.x' }}
         run: node .github/scripts/stale/clean-stale-branches.mjs --days="$STALE_DAYS" ${{ !inputs.dry-run && '--execute' || '--dry-run' }}

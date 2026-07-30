@@ -39,6 +39,21 @@ export function itemFilterKey(item: TimelineItem): string {
 
 export type TimelineLabelResolver = (key: string) => string;
 
+function searchableValueText(value: unknown): string | undefined {
+	if (value === undefined) return undefined;
+	if (value === null) return 'null';
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+		return String(value);
+	}
+
+	try {
+		return JSON.stringify(value) ?? String(value);
+	} catch {
+		return String(value);
+	}
+}
+
 export function timelineItemSearchText(
 	item: TimelineItem,
 	labelForKey: TimelineLabelResolver,
@@ -59,6 +74,8 @@ export function timelineItemSearchText(
 		item.workflowName,
 		item.nodeDisplayName,
 		item.subAgentName,
+		searchableValueText(item.toolInput),
+		searchableValueText(item.toolOutput),
 	);
 	if (item.toolName) parts.push(formatToolNameForDisplay(item.toolName));
 

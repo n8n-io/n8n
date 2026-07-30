@@ -190,6 +190,45 @@ describe('getConnection', () => {
 		expect(abortController.signal.aborted).toBe(true);
 	});
 
+	test('postpones stale cleanup while pool is not idle', async () => {
+		// ARRANGE
+		const connectionType = {};
+		let isPoolBusy = true;
+		let abortController: AbortController | undefined;
+		const fallBackHandler = vi.fn(async (ac: AbortController) => {
+			abortController = ac;
+			return connectionType;
+		});
+		const isIdle = vi.fn(() => !isPoolBusy);
+
+		await cpm.getConnection({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
+			fallBackHandler,
+			isIdle,
+			wasUsed: vi.fn(),
+		});
+
+		// ACT 1
+		vi.advanceTimersByTime(ttl + cleanUpInterval * 2);
+
+		// ASSERT 1
+		if (abortController === undefined) {
+			expect.fail("abortController haven't been initialized");
+		}
+		const controller = abortController;
+		expect(isIdle).toHaveBeenCalledWith(connectionType);
+		expect(controller.signal.aborted).toBe(false);
+
+		// ACT 2
+		isPoolBusy = false;
+		vi.advanceTimersByTime(ttl + cleanUpInterval * 2);
+
+		// ASSERT 2
+		expect(controller.signal.aborted).toBe(true);
+	});
+
 	test('throws OperationsError if the fallBackHandler aborts during connection initialization', async () => {
 		// ARRANGE
 		const connectionType = {};
@@ -330,5 +369,34 @@ describe('wasUsed', () => {
 
 		// ASSERT 2
 		expect(wasUsed).toHaveBeenCalledTimes(1);
+	});
+
+	test("uses the current caller's `wasUsed`, not the one that created the pool", async () => {
+		// ARRANGE
+		const connectionType = {};
+		const fallBackHandler = vi.fn(async () => connectionType);
+
+		const firstWasUsed = vi.fn();
+		const secondWasUsed = vi.fn();
+
+		const baseOptions = {
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
+			fallBackHandler,
+		};
+
+		// ACT 1 — pool is created with the first caller's `wasUsed`
+		await cpm.getConnection({ ...baseOptions, wasUsed: firstWasUsed });
+
+		// ACT 2 — cache hit from a different caller
+		await cpm.getConnection({ ...baseOptions, wasUsed: secondWasUsed });
+
+		// ASSERT — only the current caller's `wasUsed` runs; the pool does not
+		// retain the original closure (which would pin its execution context)
+		expect(fallBackHandler).toHaveBeenCalledTimes(1);
+		expect(firstWasUsed).toHaveBeenCalledTimes(0);
+		expect(secondWasUsed).toHaveBeenCalledTimes(1);
+		expect(secondWasUsed).toHaveBeenCalledWith(connectionType);
 	});
 });

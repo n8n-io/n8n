@@ -127,7 +127,7 @@ export interface ExecuteWorkflowResult {
 	error?: string;
 }
 
-/** Response from get_execution tool */
+/** Response from get_workflow_execution tool */
 export interface GetExecutionResult {
 	execution: {
 		id: string;
@@ -555,6 +555,7 @@ export class McpApiHelper {
 		session: McpSession,
 		path: string,
 		message: unknown,
+		options?: { headers?: Record<string, string> },
 	): Promise<APIResponse> {
 		if (session.transport !== 'streamableHttp') {
 			throw new Error('Invalid Streamable HTTP session');
@@ -566,6 +567,7 @@ export class McpApiHelper {
 				'Content-Type': 'application/json',
 				Accept: 'application/json, text/event-stream',
 				'mcp-session-id': session.sessionId,
+				...options?.headers,
 			},
 			data: message,
 		});
@@ -628,6 +630,7 @@ export class McpApiHelper {
 		path: string,
 		toolName: string,
 		args: Record<string, unknown>,
+		options?: { headers?: Record<string, string> },
 	): Promise<McpToolCallResponse> {
 		const message = this.createMessage('tools/call', {
 			name: toolName,
@@ -638,7 +641,7 @@ export class McpApiHelper {
 			// For SSE, response comes via the stream
 			return await this.sseSendAndWait<McpToolCallResponse>(session, message);
 		} else {
-			const response = await this.streamableHttpSendMessage(session, path, message);
+			const response = await this.streamableHttpSendMessage(session, path, message, options);
 			return await this.parseResponse<McpToolCallResponse>(response);
 		}
 	}
@@ -949,15 +952,17 @@ export class McpApiHelper {
 	 *
 	 * @param apiKey - The MCP API key for authentication
 	 * @param workflowId - The workflow ID to execute
+	 * @param executionMode - Whether to execute the current or published workflow version
 	 * @param inputs - Optional inputs for the workflow
 	 * @returns Execution result
 	 */
 	async internalMcpExecuteWorkflow(
 		apiKey: string,
 		workflowId: string,
+		executionMode: 'manual' | 'production',
 		inputs?: Record<string, unknown>,
 	): Promise<ExecuteWorkflowResult> {
-		const args: Record<string, unknown> = { workflowId };
+		const args: Record<string, unknown> = { workflowId, executionMode };
 		if (inputs) {
 			args.inputs = inputs;
 		}
@@ -977,7 +982,7 @@ export class McpApiHelper {
 	}
 
 	/**
-	 * Calls get_execution tool on the internal MCP service.
+	 * Calls get_workflow_execution tool on the internal MCP service.
 	 */
 	async internalMcpGetExecution(
 		apiKey: string,
@@ -986,7 +991,7 @@ export class McpApiHelper {
 		options?: { includeData?: boolean; nodeNames?: string[]; truncateData?: number },
 	): Promise<GetExecutionResult> {
 		try {
-			return await this.callInternalMcpTool<GetExecutionResult>(apiKey, 'get_execution', {
+			return await this.callInternalMcpTool<GetExecutionResult>(apiKey, 'get_workflow_execution', {
 				workflowId,
 				executionId,
 				...options,

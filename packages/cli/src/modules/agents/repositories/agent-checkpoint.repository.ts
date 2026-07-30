@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, Equal, IsNull, Or, Repository } from '@n8n/typeorm';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 
@@ -7,6 +7,33 @@ import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 	constructor(dataSource: DataSource) {
 		super(AgentCheckpoint, dataSource.manager);
+	}
+
+	async claimForResume(
+		runId: string,
+		suspendedState: string,
+		runningState: string,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ runId, expired: false, state: suspendedState },
+			{ state: runningState },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	async cancelSuspended(runId: string, agentId: string, suspendedState: string): Promise<boolean> {
+		const result = await this.update(
+			{
+				runId,
+				agentId: Or(Equal(agentId), IsNull()),
+				expired: false,
+				state: suspendedState,
+			},
+			{ expired: true, state: null },
+		);
+
+		return (result.affected ?? 0) > 0;
 	}
 
 	async markExpired(olderThan: Date): Promise<number> {

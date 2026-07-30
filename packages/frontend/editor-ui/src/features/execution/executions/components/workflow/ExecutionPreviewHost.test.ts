@@ -142,6 +142,7 @@ describe('ExecutionPreviewHost', () => {
 			askAi: false,
 			executionSuccessToasts: false,
 			executionErrorToasts: false,
+			expandGroups: 'errored',
 		});
 	});
 

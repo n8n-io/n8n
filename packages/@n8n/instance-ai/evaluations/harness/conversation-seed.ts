@@ -1,13 +1,14 @@
-// Conversation seeding for eval builds — backs the `seedFile` (synthetic) and
-// `priorConversation` (prose) paths. Real conversations use `seedThread`
+// Conversation seeding for eval builds — backs the `conversationSeed` (synthetic)
+// and `priorConversation` (prose) paths. Real conversations use `seedThread`
 // (reconstructed from a LangSmith trace; see langsmith-seed.ts).
 
-import { generateNanoId, isRecord } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import {
 	extractAskUserAnswers,
 	extractAskUserQuestions,
@@ -18,7 +19,7 @@ import {
 import type { ConversationTurn, TranscriptStep, TranscriptTurn } from '../types';
 
 // ---------------------------------------------------------------------------
-// Seed file schema
+// Seed schema
 // ---------------------------------------------------------------------------
 
 const SeedWorkflowSchema = z.object({
@@ -42,11 +43,77 @@ const SeedDataTableSchema = z.object({
 	// of a trace and are kept out of the eval instance entirely.
 });
 
+/** A content block. Only `type` is ours to require — the block shapes belong to
+ *  the agent's message store, so an unrecognised one is accepted and simply not
+ *  interpreted. `.passthrough()` is load-bearing: `z.object` strips unknown keys,
+ *  which would silently gut `toolCallId`/`input`/`output` from every tool call. */
+const SeedMessageBlockSchema = z
+	.object({
+		type: z.string().min(1, 'a content block needs a non-empty `type`'),
+	})
+	.passthrough();
+
+/** A message envelope. Validated because a hand-authored seed is now the primary
+ *  path, and a malformed message is stored verbatim AND skipped by
+ *  `transcriptPrefixFromSeed` — so the case grades against a transcript that
+ *  doesn't match what the agent actually saw. Envelope only; block internals are
+ *  the store's contract, not ours. */
+const seedMessageObjectSchema = z
+	.object({
+		id: z.string().min(1),
+		// Restricted to the two roles the transcript builder renders: any other
+		// value is guaranteed to vanish from the judge transcript, which is the
+		// exact silent failure this schema exists to catch. If the message store
+		// gains a role, the builder needs updating too — fail loudly then.
+		// Optional in the shape because a `custom` message carries no role; the
+		// refine below requires it for every message that is actually rendered.
+		role: z.enum(['user', 'assistant']).optional(),
+		/** The store's own discriminator (`llm`, `custom`, …) — not enumerated. */
+		type: z.string().min(1),
+		/** Ordering before the live turn depends on this being a real timestamp. */
+		createdAt: z
+			.string()
+			.min(1)
+			.refine((v) => !Number.isNaN(Date.parse(v)), {
+				message: 'must be a parseable timestamp (e.g. an ISO 8601 string)',
+			}),
+		content: z.array(SeedMessageBlockSchema).optional(),
+	})
+	.passthrough();
+
+/** Inferred from the pre-`superRefine` shape — identical type, but resolving the
+ *  refined `ZodEffects` chain trips "type instantiation excessively deep" under
+ *  CI's type-aware lint (same reason as `EvalTestCaseInput` in schema.ts). */
+export type SeedMessage = z.infer<typeof seedMessageObjectSchema>;
+
+const SeedMessageSchema = seedMessageObjectSchema.superRefine((message, ctx) => {
+	// `custom` messages are stored but never rendered (no role, any content
+	// shape). Everything else is read by the transcript builder, which needs a
+	// role it renders and an array of blocks.
+	if (message.type === 'custom') return;
+	if (message.role === undefined) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['role'],
+			message:
+				'is required (only `type: custom` messages may omit it — they are stored but never rendered)',
+		});
+	}
+	if (!Array.isArray(message.content)) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['content'],
+			message:
+				'must be an array of content blocks (only `type: custom` messages may omit it — they are stored but never rendered)',
+		});
+	}
+});
+
 export const ConversationSeedSchema = z.object({
 	/** Provenance (thread id, instance, export time) — informational only. */
 	source: z.record(z.unknown()).optional(),
 	/** Native agent message log (user/assistant turns with resolved tool-call blocks). */
-	messages: z.array(z.record(z.unknown())).min(1),
+	messages: z.array(SeedMessageSchema).min(1),
 	/** Workflows the history references, recreated on restore. */
 	workflows: z.array(SeedWorkflowSchema).default([]),
 	/** Data tables the history references, recreated (and id-rewritten) on restore. */
@@ -54,25 +121,6 @@ export const ConversationSeedSchema = z.object({
 });
 
 export type ConversationSeed = z.infer<typeof ConversationSeedSchema>;
-
-export function loadConversationSeed(filePath: string): ConversationSeed {
-	let raw: unknown;
-	try {
-		raw = JSON.parse(readFileSync(filePath, 'utf-8'));
-	} catch (error) {
-		throw new Error(
-			`Failed to read conversation seed ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
-		);
-	}
-	const parsed = ConversationSeedSchema.safeParse(raw);
-	if (!parsed.success) {
-		const issues = parsed.error.issues
-			.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
-			.join('\n');
-		throw new Error(`Invalid conversation seed ${filePath}:\n${issues}`);
-	}
-	return parsed.data;
-}
 
 // ---------------------------------------------------------------------------
 // Prose prior turns → seed messages
@@ -181,7 +229,7 @@ type SeedStepInterpreter = (call: SeedToolCall) => TranscriptStep | null;
 
 const interpretAskUser: SeedStepInterpreter = (call) => {
 	const questions = call.input?.questions;
-	if (call.toolName !== 'ask-user' || !Array.isArray(questions)) return null;
+	if (call.toolName !== DOMAIN_TOOL_IDS.ASK_USER || !Array.isArray(questions)) return null;
 	const parsed = extractAskUserQuestions(questions);
 	if (parsed.length === 0) return null;
 	// The kept (resume) block carries the user's answers in its output.
@@ -193,7 +241,7 @@ const interpretAskUser: SeedStepInterpreter = (call) => {
 
 const interpretPlan: SeedStepInterpreter = (call) => {
 	const tasks = call.input?.tasks;
-	if (call.toolName !== 'create-tasks' || !Array.isArray(tasks)) return null;
+	if (call.toolName !== ORCHESTRATION_TOOL_IDS.CREATE_TASKS || !Array.isArray(tasks)) return null;
 	const parsed = extractPlanTasks(tasks);
 	return parsed.length > 0 ? { kind: 'plan', tasks: parsed } : null;
 };
@@ -219,11 +267,36 @@ const interpretSetupCard: SeedStepInterpreter = (call) => {
 	return requests.length > 0 ? { kind: 'setup-card', requests, outcome: 'pending' } : null;
 };
 
+// A HITL confirmation other than ask-user/setup-card (plan-review, resource decision, …):
+// the request is in the resume block's input, the decision in its output.
+const interpretConfirmation: SeedStepInterpreter = (call) => {
+	const reasonRaw = call.input?.resumeReason ?? call.input?.inputType;
+	const resumeReason = typeof reasonRaw === 'string' ? reasonRaw : undefined;
+	if (!resumeReason || resumeReason === 'questions' || Array.isArray(call.input?.setupRequests)) {
+		return null;
+	}
+	const toolNameRaw = call.input?.toolName;
+	const messageRaw = call.input?.message;
+	const approvedRaw = call.output?.approved;
+	const feedbackRaw = call.output?.feedback;
+	return {
+		kind: 'confirmation',
+		toolName: typeof toolNameRaw === 'string' ? toolNameRaw : call.toolName,
+		resumeReason,
+		approved: typeof approvedRaw === 'boolean' ? approvedRaw : undefined,
+		// Plan-review prompts are boilerplate; the plan renders separately.
+		message:
+			resumeReason === 'plan-review' || typeof messageRaw !== 'string' ? undefined : messageRaw,
+		feedback: typeof feedbackRaw === 'string' ? feedbackRaw : undefined,
+	};
+};
+
 const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
 	interpretAskUser,
 	interpretPlan,
 	interpretSetupWizard,
 	interpretSetupCard,
+	interpretConfirmation,
 ];
 
 /** Map a seeded tool-call block to a transcript step (special interpreters above,

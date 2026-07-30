@@ -5,6 +5,10 @@ global.fetch = vi.fn();
 const { mockContainer, mockReadFile, MockSecurityConfig } = vi.hoisted(() => {
 	class MockSecurityConfig {
 		awsSystemCredentialsAccess = true;
+
+		// These tests exercise the legacy hand-rolled resolvers; the SDK paths are
+		// covered in system-credentials-sdk.test.ts.
+		awsSystemCredentialsSdkSources = 'none';
 	}
 	return {
 		mockContainer: { get: vi.fn() },
@@ -30,7 +34,8 @@ import type { Mock } from 'vitest';
 
 const mockEnvGetter = vi.fn();
 
-const { getSystemCredentials, credentialsResolver } = systemCredentialsUtils;
+const { getSystemCredentials, getRoleForServiceAccountCredentials, credentialsResolver } =
+	systemCredentialsUtils;
 const envGetter = (...args: Parameters<typeof systemCredentialsUtils.envGetter>) =>
 	systemCredentialsUtils.envGetter(...args);
 
@@ -76,8 +81,8 @@ describe('system-credentials-utils', () => {
 		it('should throw UserError when AWS system credentials access is disabled', async () => {
 			mockSecurityConfigInstance.awsSystemCredentialsAccess = false;
 
-			await expect(getSystemCredentials()).rejects.toThrow(UserError);
-			await expect(getSystemCredentials()).rejects.toThrow(
+			await expect(getSystemCredentials('us-east-1')).rejects.toThrow(UserError);
+			await expect(getSystemCredentials('us-east-1')).rejects.toThrow(
 				'Access to AWS system credentials disabled, contact your administrator.',
 			);
 		});
@@ -96,7 +101,7 @@ describe('system-credentials-utils', () => {
 				}
 			});
 
-			const result = await getSystemCredentials();
+			const result = await getSystemCredentials('us-east-1');
 			expect(result).toEqual({
 				accessKeyId: 'test-access-key',
 				secretAccessKey: 'test-secret-key',
@@ -109,7 +114,7 @@ describe('system-credentials-utils', () => {
 			mockEnvGetter.mockReturnValue(undefined);
 			(global.fetch as Mock).mockRejectedValue(new Error('Network error'));
 
-			const result = await getSystemCredentials();
+			const result = await getSystemCredentials('us-east-1');
 			expect(result).toBeNull();
 		});
 	});
@@ -831,7 +836,7 @@ describe('system-credentials-utils', () => {
 		it('should return null when AWS_ROLE_ARN or AWS_WEB_IDENTITY_TOKEN_FILE is not available via envGetter', async () => {
 			mockEnvGetter.mockImplementation(() => undefined);
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toBeNull();
 			expect(mockEnvGetter).toHaveBeenCalledWith('AWS_ROLE_ARN');
 			expect(mockEnvGetter).toHaveBeenCalledWith('AWS_WEB_IDENTITY_TOKEN_FILE');
@@ -868,7 +873,7 @@ describe('system-credentials-utils', () => {
 				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toEqual({
 				accessKeyId: 'test-access-key',
 				secretAccessKey: 'test-secret-key',
@@ -877,7 +882,7 @@ describe('system-credentials-utils', () => {
 
 			expect(mockReadFile).toHaveBeenCalledWith('/tmp/token', 'utf8');
 			expect(global.fetch).toHaveBeenCalledWith(
-				'https://sts.amazonaws.com',
+				'https://sts.us-east-1.amazonaws.com',
 				expect.objectContaining({
 					method: 'POST',
 					headers: {
@@ -907,7 +912,7 @@ describe('system-credentials-utils', () => {
 			mockReadFile.mockResolvedValue('test-web-identity-token');
 			(global.fetch as Mock).mockResolvedValue({ ok: false });
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toBeNull();
 		});
 
@@ -937,7 +942,7 @@ describe('system-credentials-utils', () => {
 				json: vi.fn().mockResolvedValue(incomplete),
 			});
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toBeNull();
 		});
 
@@ -955,7 +960,7 @@ describe('system-credentials-utils', () => {
 			mockReadFile.mockResolvedValue('test-web-identity-token');
 			(global.fetch as Mock).mockRejectedValue(new Error('Network error'));
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toBeNull();
 		});
 
@@ -972,8 +977,58 @@ describe('system-credentials-utils', () => {
 			});
 			mockReadFile.mockResolvedValue('');
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toBeNull();
+		});
+
+		const mockSuccessfulStsResponse = () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_ROLE_ARN':
+						return 'arn:aws:iam::123456789012:role/test-role';
+					case 'AWS_WEB_IDENTITY_TOKEN_FILE':
+						return '/tmp/token';
+					default:
+						return undefined;
+				}
+			});
+			mockReadFile.mockResolvedValue('test-web-identity-token');
+			(global.fetch as Mock).mockResolvedValue({
+				ok: true,
+				json: vi.fn().mockResolvedValue({
+					AssumeRoleWithWebIdentityResponse: {
+						AssumeRoleWithWebIdentityResult: {
+							Credentials: {
+								AccessKeyId: 'test-access-key',
+								SecretAccessKey: 'test-secret-key',
+								SessionToken: 'test-token',
+							},
+						},
+					},
+				}),
+			});
+		};
+
+		it('should use the China STS endpoint for cn- regions', async () => {
+			mockSuccessfulStsResponse();
+
+			await getRoleForServiceAccountCredentials('cn-north-1');
+
+			expect(global.fetch).toHaveBeenCalledWith(
+				'https://sts.cn-north-1.amazonaws.com.cn',
+				expect.objectContaining({ method: 'POST' }),
+			);
+		});
+
+		it('should use the GovCloud STS endpoint for us-gov- regions', async () => {
+			mockSuccessfulStsResponse();
+
+			await getRoleForServiceAccountCredentials('us-gov-west-1');
+
+			expect(global.fetch).toHaveBeenCalledWith(
+				'https://sts.us-gov-west-1.amazonaws.com',
+				expect.objectContaining({ method: 'POST' }),
+			);
 		});
 	});
 });

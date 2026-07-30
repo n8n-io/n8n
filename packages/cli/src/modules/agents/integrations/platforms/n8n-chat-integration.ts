@@ -12,11 +12,11 @@ import {
 import { respondInputSchema } from '../integration-action-executor';
 import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
 import { integrationError, unsupportedQuery } from '../integration-helpers';
-import type {
-	IntegrationAction,
-	IntegrationActionResult,
-	IntegrationContextQuery,
-} from '../integration-tools';
+import {
+	resolveIntegrationActionDefinitions,
+	resolveIntegrationContextQueryDefinitions,
+} from '../integration-tool-definitions';
+import type { IntegrationActionResult } from '../integration-tools';
 
 /**
  * The in-app chat channel ("n8n Chat").
@@ -52,13 +52,17 @@ export class N8nChatIntegration extends AgentChatIntegration {
 		'fields',
 	];
 
-	readonly contextQueries: IntegrationContextQuery[] = [
+	readonly contextToolDefinitions = resolveIntegrationContextQueryDefinitions([
 		'get_current_message_context',
 		'get_current_subject',
 		'get_current_user',
-	];
+	]);
 
-	readonly actions: IntegrationAction[] = ['respond'];
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond']);
+
+	readonly actionToolGuidance = [
+		'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Call this tool only with message.card, to render a rich card or collect structured input.',
+	];
 
 	constructor(private readonly userRepository: UserRepository) {
 		super();
@@ -92,9 +96,9 @@ export class N8nChatIntegration extends AgentChatIntegration {
 		}
 		// No external post: the chat UI renders the card from the tool-call
 		// input. Echo the context so the thread target stays current.
-		// The tool boundary validates via `validateActionOperationSchema`
-		// (integration-tools.ts) and the executor parses respond input with
-		// `respondInputSchema`; this parse guards direct executor calls.
+		// The tool boundary validates through the generated action schema and
+		// the executor parses respond input with `respondInputSchema`; this
+		// parse guards direct executor calls.
 		return {
 			ok: true,
 			messageContext: {

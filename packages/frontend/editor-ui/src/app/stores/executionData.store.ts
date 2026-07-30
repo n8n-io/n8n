@@ -12,6 +12,7 @@ import {
 	WAIT_INDEFINITELY,
 	type ExecutionStatus,
 	type INode,
+	type IPinData,
 	type IRunData,
 	type IRunExecutionData,
 	type ITaskData,
@@ -97,17 +98,8 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 
 		const executedNode = computed(() => execution.value?.executedNode);
 
-		/**
-		 * Nodes whose output was simulated (mocked) instead of executed, keyed by
-		 * node name. Set by AI-driven workflow verification runs; empty for
-		 * regular executions. Drives "simulated" labeling in canvas and NDV.
-		 *
-		 * Deliberately a plain Record rather than a per-key reactive Map like the
-		 * issue/status projections: the map arrives whole with the execution data
-		 * and never mutates per node, so per-key granularity buys nothing.
-		 */
-		const executionSimulationByNodeName = computed<Record<string, { reason: string }>>(
-			() => execution.value?.data?.resultData?.simulation ?? {},
+		const executionPinDataByNodeName = computed<IPinData>(
+			() => execution.value?.data?.resultData?.pinData ?? {},
 		);
 
 		// Per-node-name execution-issues map with atomic per-name updates.
@@ -618,12 +610,6 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				delete pinData[oldName];
 			}
 
-			const simulation = data.resultData?.simulation;
-			if (simulation?.[oldName]) {
-				simulation[newName] = simulation[oldName];
-				delete simulation[oldName];
-			}
-
 			// pairedItem.sourceOverwrite.previousNode in pinData
 			Object.values(pinData ?? {})
 				.flatMap((items) =>
@@ -731,7 +717,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionResultDataLastUpdate: readonly(executionResultDataLastUpdate),
 			executionRunData,
 			executedNode,
-			executionSimulationByNodeName,
+			executionPinDataByNodeName,
 			executionIssuesByNodeName,
 			executionStatusByNodeId,
 			executionRunDataByNodeId,

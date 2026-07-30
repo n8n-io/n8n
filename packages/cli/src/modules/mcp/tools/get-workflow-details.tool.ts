@@ -1,5 +1,12 @@
 import type { User } from '@n8n/db';
+import { isTriggerNodeType, type INodeTypes } from 'n8n-workflow';
 import z from 'zod';
+
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { RoleService } from '@/services/role.service';
+import type { Telemetry } from '@/telemetry';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type {
@@ -7,15 +14,9 @@ import type {
 	WorkflowDetailsResult,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { toTagSummary, workflowDetailsOutputSchema } from './schemas';
+import { toNodeGroupSummary, toTagSummary, workflowDetailsOutputSchema } from './schemas';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
-
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to retrieve'),
@@ -33,10 +34,12 @@ export const createWorkflowDetailsTool = (
 	baseWebhookUrl: string,
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
+	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	telemetry: Telemetry,
 	roleService: RoleService,
 	projectService: ProjectService,
+	testBaseWebhookUrl: string = baseWebhookUrl,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'get_workflow_details',
@@ -66,10 +69,12 @@ export const createWorkflowDetailsTool = (
 					baseWebhookUrl,
 					workflowFinderService,
 					credentialsService,
+					nodeTypes,
 					endpoints,
 					roleService,
 					projectService,
 					{ workflowId },
+					testBaseWebhookUrl,
 				);
 
 				// Track successful execution
@@ -106,17 +111,19 @@ export async function getWorkflowDetails(
 	baseWebhookUrl: string,
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
+	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	roleService: RoleService,
 	projectService: ProjectService,
 	{ workflowId }: { workflowId: string },
+	testBaseWebhookUrl: string = baseWebhookUrl,
 ): Promise<WorkflowDetailsResult> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{ includeActiveVersion: true },
+		{ includeActiveVersion: true, includeTags: true },
 	);
 
 	// Compute user scopes for this workflow
@@ -134,21 +141,32 @@ export async function getWorkflowDetails(
 						({ credentials: _credentials, ...node }) => node,
 					),
 					connections: workflow.activeVersion.connections ?? {},
-					nodeGroups: workflow.activeVersion.nodeGroups ?? [],
+					nodeGroups: toNodeGroupSummary(
+						workflow.activeVersion.nodeGroups ?? [],
+						workflow.activeVersion.nodes ?? [],
+					),
 				}
 			: null;
 
 	const supportedTriggers = Object.keys(SUPPORTED_MCP_TRIGGERS);
-	const triggers = nodes.filter(
-		(node) => supportedTriggers.includes(node.type) && node.disabled !== true,
+	const activeNodes = nodes.filter((node) => node.disabled !== true);
+	const triggers = activeNodes.filter((node) => supportedTriggers.includes(node.type));
+	// Triggers the workflow does have but MCP can't execute directly (e.g. Gmail Trigger),
+	// so the notice can distinguish these from a workflow with no triggers at all.
+	const unsupportedTriggers = activeNodes.filter(
+		(node) => isTriggerNodeType(node.type) && !supportedTriggers.includes(node.type),
 	);
 
 	const triggerNotice = await getTriggerDetails(
 		user,
 		triggers,
+		unsupportedTriggers,
 		baseWebhookUrl,
 		credentialsService,
+		nodeTypes,
 		endpoints,
+		workflow.id,
+		testBaseWebhookUrl,
 	);
 
 	const sanitizedWorkflow: WorkflowDetailsResult['workflow'] = {
@@ -164,7 +182,7 @@ export async function getWorkflowDetails(
 		settings: workflow.settings ?? null,
 		connections,
 		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
-		nodeGroups: workflow.nodeGroups ?? [],
+		nodeGroups: toNodeGroupSummary(workflow.nodeGroups ?? [], nodes),
 		activeVersion,
 		tags: toTagSummary(workflow.tags),
 		meta: workflow.meta ?? null,

@@ -143,6 +143,14 @@ export class RunDataPanel {
 		return this.getSchemaItems().locator('span').filter({ hasText: text }).first();
 	}
 
+	getSchemaItemToggle(text: string) {
+		return this.getSchemaItem(text).locator('.toggle');
+	}
+
+	getSchemaItemPill(text: string) {
+		return this.getSchemaItemText(text).locator('span');
+	}
+
 	getNodeInputOptions() {
 		return this.root.getByTestId('ndv-input-select');
 	}

@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.16.0 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 24.18.0 by default for reproducible builds.'
     required: false
-    default: '24.16.0'
+    default: '24.18.0'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -17,7 +17,7 @@ inputs:
   build-command:
     description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
     required: false
-    default: 'pnpm build:unchecked'
+    default: 'pnpm build'
   install-command:
     description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
     required: false
@@ -251,8 +251,15 @@ runs:
       shell: bash
       run: echo "running=${TURBOGHA_PORT:+true}" >> "$GITHUB_OUTPUT"
 
+    # Skipped on Windows: the turbogha server binds IPv4 while `localhost`
+    # resolves to IPv6 first there, so turbo can never reach it (the build
+    # logs `failed to contact remote cache` for every artifact and falls back
+    # to a local cache). The remote cache is inert, but the action's post-run
+    # still fetches the unreachable server to save it and dies with a bare
+    # `fetch failed`, turning the whole job red. Skip it so the one Windows
+    # build job stays green; Linux/Blacksmith jobs keep remote caching.
     - name: Configure Turborepo Cache
-      if: steps.turbo-server.outputs.running != 'true'
+      if: steps.turbo-server.outputs.running != 'true' && runner.os != 'Windows'
       uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
       with:
         server-port: 0

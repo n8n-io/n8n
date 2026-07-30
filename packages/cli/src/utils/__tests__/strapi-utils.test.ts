@@ -1,6 +1,6 @@
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { paginatedRequest, buildStrapiUpdateQuery } from '../strapi-utils';
 
@@ -20,12 +20,12 @@ const page = <T>(
 });
 
 describe('Strapi utils', () => {
-	const request = jest.fn();
-	const requests = jest.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const request = vi.fn();
+	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
 	mockInstance(OutboundHttp, { requests });
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		requests.mockReturnValue(mock<HttpRequestClient>({ request }));
 	});
 

@@ -8,6 +8,7 @@ import {
 	formatDuration,
 	IDLE_THRESHOLD_MS,
 	flattenExecutionsToTimelineItems,
+	matchesSearch,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -108,6 +109,27 @@ describe('kindColorToken', () => {
 	});
 });
 
+describe('matchesSearch', () => {
+	const labelForKey = (key: string) => key;
+
+	it('matches tool call input and output values', () => {
+		const toolItem = item({
+			kind: 'tool',
+			toolName: 'fetch_urlscan_results',
+			toolInput: {
+				url: 'https://urlscan.io/api/v1/search/?q=domain%3Aapp.n8n.cloud',
+			},
+			toolOutput: {
+				domain: 'monicasue.app.n8n.cloud',
+				stats: { uniqIPs: 1 },
+			},
+		});
+
+		expect(matchesSearch(toolItem, 'monicasue', labelForKey)).toBe(true);
+		expect(matchesSearch(toolItem, 'uniqIPs', labelForKey)).toBe(true);
+	});
+});
+
 describe('formatDuration', () => {
 	it('returns empty string for zero or negative input', () => {
 		expect(formatDuration(0)).toBe('');
@@ -160,14 +182,12 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		startedAt: '2026-04-24T10:00:00Z',
 		stoppedAt: null,
 		duration: 0,
-		userMessage: '',
-		assistantResponse: '',
+		userMessage: null,
 		model: null,
 		promptTokens: null,
 		completionTokens: null,
 		totalTokens: null,
 		cost: null,
-		toolCalls: null,
 		timeline: null,
 		error: null,
 		hitlStatus: null,

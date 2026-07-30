@@ -156,6 +156,20 @@ describe('getAdditionalKeys', () => {
 		expect(result.$execution?.customData).toBeUndefined();
 	});
 
+	it('should expose $evaluation.runId when evaluationRunId is set', () => {
+		const dataWithRunId = { ...additionalData, evaluationRunId: 'run-123' };
+		const result = getAdditionalKeys(dataWithRunId, 'manual', null);
+
+		expect(result.$evaluation).toEqual({ runId: 'run-123' });
+	});
+
+	it('should leave $evaluation undefined when evaluationRunId is unset', () => {
+		const dataWithoutRunId = { ...additionalData, evaluationRunId: undefined };
+		const result = getAdditionalKeys(dataWithoutRunId, 'manual', null);
+
+		expect(result.$evaluation).toBeUndefined();
+	});
+
 	it('should respect metadata KV limit', () => {
 		const result = getAdditionalKeys(additionalData, 'manual', runExecutionData);
 		const customData = result.$execution?.customData;

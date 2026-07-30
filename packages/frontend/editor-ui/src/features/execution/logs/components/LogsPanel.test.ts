@@ -13,7 +13,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import { computed, h, nextTick, ref, shallowRef } from 'vue';
+import { computed, h, nextTick, shallowRef } from 'vue';
 import {
 	aiAgentNode,
 	aiChatExecutionResponse as aiChatExecutionResponseTemplate,
@@ -35,8 +35,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { LOGS_PANEL_STATE } from '../logs.constants';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { userEvent } from '@testing-library/user-event';
-import type { ChatMessage } from '@n8n/chat/types';
-import * as useChatMessaging from '@/features/execution/logs/composables/useChatMessaging';
 import { useToast } from '@/app/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 
@@ -72,6 +70,15 @@ vi.mock('@/stores/pushConnection.store', () => ({
 		isConnected: true,
 	}),
 }));
+
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
@@ -360,6 +367,7 @@ describe('LogsPanel', () => {
 			createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
 		).addNodeExecutionStartedData({
 			nodeName: 'AI Agent',
+			sequenceNumber: 0,
 			executionId: '567',
 			data: { executionIndex: 0, startTime: Date.parse('2025-04-20T12:34:51.000Z'), source: [] },
 		});
@@ -648,29 +656,6 @@ describe('LogsPanel', () => {
 		});
 
 		describe('session management', () => {
-			const mockMessages: ChatMessage[] = [
-				{
-					id: '1',
-					text: 'Existing message',
-					sender: 'user',
-				},
-			];
-
-			beforeEach(() => {
-				vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(
-					({ onNewMessage: addChatMessage }) => {
-						addChatMessage(mockMessages[0]);
-
-						return {
-							sendMessage: vi.fn(),
-							previousMessageIndex: ref(0),
-							isLoading: computed(() => false),
-							setLoadingState: vi.fn(),
-						};
-					},
-				);
-			});
-
 			it('should allow copying session ID', async () => {
 				const { getByTestId } = render();
 

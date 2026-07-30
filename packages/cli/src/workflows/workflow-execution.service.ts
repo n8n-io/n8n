@@ -3,6 +3,7 @@ import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
 import {
 	DirectedGraph,
@@ -11,7 +12,6 @@ import {
 	anyReachableRootHasRunData,
 } from 'n8n-core';
 import type {
-	IDeferredPromise,
 	IExecuteData,
 	IExecuteResponsePromiseData,
 	INode,
@@ -40,6 +40,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
@@ -88,6 +89,11 @@ export class WorkflowExecutionService {
 			},
 		});
 
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflowData.id,
+		);
+
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
 			userId: additionalData.userId,
@@ -95,6 +101,8 @@ export class WorkflowExecutionService {
 			executionData,
 			workflowData,
 			deduplicationKey,
+			projectId,
+			projectName,
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
@@ -126,8 +134,12 @@ export class WorkflowExecutionService {
 		workflowData.active = false;
 		workflowData.activeVersionId = null;
 
-		// TODO: Will be fixed on the FE side with CAT-1808
-		if ('triggerToStartFrom' in payload) {
+		// The UI can send runData alongside triggerToStartFrom, but a trigger
+		// means a full run, so stale runData must not demote it to a partial
+		// execution. ManualRunDto already strips it for endpoint traffic; this
+		// keeps the same precedence for direct callers.
+		// TODO: Remove once the FE stops sending it (CAT-1808)
+		if ('triggerToStartFrom' in payload && payload.triggerToStartFrom !== undefined) {
 			Reflect.deleteProperty(payload, 'runData');
 		}
 
@@ -225,9 +237,12 @@ export class WorkflowExecutionService {
 		}
 
 		if (data) {
-			const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
-			data.projectId = project.id;
-			data.projectName = project.name;
+			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+				this.ownershipService,
+				workflowData.id,
+			);
+			data.projectId = projectId;
+			data.projectName = projectName;
 
 			data.encryptedRunnerIdentity = n8nAuthCookie
 				? await this.executionContextService.buildManualExecutionCredentials(n8nAuthCookie)
@@ -260,6 +275,7 @@ export class WorkflowExecutionService {
 						userId: data.userId,
 						dirtyNodeNames: data.dirtyNodeNames,
 						triggerToStartFrom: data.triggerToStartFrom,
+						source: data.source,
 					},
 					// Set this to null so `createRunExecutionData` doesn't initialize it.
 					// Otherwise this would be treated as a resumed execution after waiting.
@@ -285,7 +301,10 @@ export class WorkflowExecutionService {
 		executionMode: WorkflowExecuteMode = 'chat',
 		pushRef?: string,
 	) {
-		const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflowData.id,
+		);
 
 		const data: IWorkflowExecutionDataProcess = {
 			userId: user.id,
@@ -295,8 +314,8 @@ export class WorkflowExecutionService {
 			streamingEnabled,
 			httpResponse,
 			pushRef,
-			projectId: project.id,
-			projectName: project.name,
+			projectId,
+			projectName,
 		};
 
 		const executionId = await this.workflowRunner.run(data, undefined, true);
@@ -306,6 +325,8 @@ export class WorkflowExecutionService {
 			workflowId: workflowData.id,
 			workflowName: workflowData.name,
 			executionId,
+			projectId,
+			projectName,
 			source: 'chat',
 		});
 
@@ -501,6 +522,8 @@ export class WorkflowExecutionService {
 				workflowId,
 				workflowName: workflowData.name,
 				executionId,
+				projectId: runningProject.id,
+				projectName: runningProject.name,
 				source: 'error',
 			});
 		} catch (error) {
@@ -593,7 +616,9 @@ export class WorkflowExecutionService {
 function isPartialExecution(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.PartialManualExecutionToDestinationPayload {
-	return 'destinationNode' in payload && 'runData' in payload;
+	return (
+		'runData' in payload && payload.runData !== undefined && payload.destinationNode !== undefined
+	);
 }
 
 /**
@@ -605,22 +630,26 @@ function isPartialExecution(
 function isFullExecutionFromKnownTrigger(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.FullManualExecutionFromKnownTriggerPayload {
-	return 'triggerToStartFrom' in payload;
+	return 'triggerToStartFrom' in payload && payload.triggerToStartFrom !== undefined;
 }
 
 /**
  * Type guard to check if payload is a FullManualExecutionFromUnknownTriggerPayload.
  *
- * An unknown trigger payload has neither `triggerToStartFrom` nor `runData`.
+ * An unknown trigger payload has a `destinationNode` to work back from,
+ * but neither `triggerToStartFrom` nor `runData`.
  * The trigger will need to be determined.
  */
 function isFullExecutionFromUnknownTrigger(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload {
-	if ('triggerToStartFrom' in payload) {
+	if ('triggerToStartFrom' in payload && payload.triggerToStartFrom !== undefined) {
 		return false;
 	}
-	return !('runData' in payload);
+	if ('runData' in payload && payload.runData !== undefined) {
+		return false;
+	}
+	return payload.destinationNode !== undefined;
 }
 
 function triggerHasNoPinnedData(

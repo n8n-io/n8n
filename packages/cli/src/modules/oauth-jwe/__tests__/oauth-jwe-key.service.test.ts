@@ -50,7 +50,7 @@ describe('OAuthJweKeyService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Default: cache miss; refreshFn runs and its result is returned.
 		cacheService.get.mockImplementation(async (_key, options) => {

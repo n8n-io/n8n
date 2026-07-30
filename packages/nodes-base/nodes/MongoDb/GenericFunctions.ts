@@ -1,21 +1,24 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { MongoClient, ObjectId } from 'mongodb';
+import { Binary, MongoClient, ObjectId } from 'mongodb';
 import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { createSecureContext } from 'tls';
+
+import { routeBinaryProperties } from '@utils/binary';
 
 import type {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
 } from './mongoDb.types';
-import { formatPrivateKey } from '../../utils/utilities';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -184,6 +187,36 @@ export function stringifyObjectIDs(items: INodeExecutionData[]) {
 	return items;
 }
 
+const mongoValueToBuffer = (value: unknown): Buffer | undefined => {
+	if (value instanceof Binary) return Buffer.from(value.buffer);
+	if (Buffer.isBuffer(value)) return value;
+	return undefined;
+};
+
+// v1.4+: move top-level binary fields to the item's binary output, and deep-serialize
+// the remaining document so nested ObjectIds/Dates become JSON-safe (hex/ISO) strings.
+// (Deeply-nested binary values still serialize to base64 within json.)
+export async function serializeMongoItems(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	return await Promise.all(
+		items.map(async (item) => {
+			const { json, binary: routed } = await routeBinaryProperties.call(
+				this,
+				item.json,
+				mongoValueToBuffer,
+			);
+
+			const result: INodeExecutionData = { ...item, json };
+			if (item.binary !== undefined || Object.keys(routed).length) {
+				result.binary = { ...(item.binary ?? {}), ...routed };
+			}
+			return result;
+		}),
+	);
+}
+
 export async function connectMongoClient(
 	connectionString: string,
 	nodeVersion: number,
@@ -196,9 +229,9 @@ export async function connectMongoClient(
 	};
 
 	if (credentials.tls) {
-		const ca = credentials.ca ? formatPrivateKey(credentials.ca as string) : undefined;
-		const cert = credentials.cert ? formatPrivateKey(credentials.cert as string) : undefined;
-		const key = credentials.key ? formatPrivateKey(credentials.key as string) : undefined;
+		const ca = credentials.ca ? formatPemBlock(credentials.ca as string) : undefined;
+		const cert = credentials.cert ? formatPemBlock(credentials.cert as string) : undefined;
+		const key = credentials.key ? formatPemBlock(credentials.key as string) : undefined;
 		const passphrase = (credentials.passphrase as string) || undefined;
 
 		const secureContext = createSecureContext({

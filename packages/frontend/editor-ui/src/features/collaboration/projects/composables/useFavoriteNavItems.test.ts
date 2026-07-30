@@ -7,6 +7,7 @@ import type { UserFavorite } from '@/app/api/favorites';
 import { useFavoriteNavItems } from './useFavoriteNavItems';
 import { VIEWS } from '@/app/constants';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('vue-router')>();
@@ -206,13 +207,57 @@ describe('useFavoriteNavItems', () => {
 		});
 	});
 
+	describe('favoriteAgentItems', () => {
+		it('should map agent favorites with projectId to menu items', () => {
+			favoritesStore.favorites = [
+				makeFavorite({
+					resourceId: 'agent-1',
+					resourceType: 'agent',
+					resourceName: 'My Agent',
+					resourceProjectId: 'proj-1',
+				}),
+			];
+
+			const { favoriteAgentItems } = useFavoriteNavItems();
+
+			expect(favoriteAgentItems.value).toHaveLength(1);
+			expect(favoriteAgentItems.value[0].resourceId).toBe('agent-1');
+			expect(favoriteAgentItems.value[0].resourceType).toBe('agent');
+			expect(favoriteAgentItems.value[0].menuItem).toMatchObject({
+				id: 'favorite-agent-agent-1',
+				label: 'My Agent',
+				icon: 'robot',
+				route: {
+					to: {
+						name: AGENT_BUILDER_VIEW,
+						params: { projectId: 'proj-1', agentId: 'agent-1' },
+					},
+				},
+			});
+		});
+
+		it('should exclude agent favorites without resourceProjectId', () => {
+			favoritesStore.favorites = [
+				makeFavorite({
+					resourceId: 'agent-1',
+					resourceType: 'agent',
+					resourceName: 'My Agent',
+					resourceProjectId: undefined,
+				}),
+			];
+
+			const { favoriteAgentItems } = useFavoriteNavItems();
+
+			expect(favoriteAgentItems.value).toHaveLength(0);
+		});
+	});
+
 	describe('favoriteGroups', () => {
 		it('should return empty array when no favorites', () => {
 			const { favoriteGroups } = useFavoriteNavItems();
 
 			expect(favoriteGroups.value).toHaveLength(0);
 		});
-
 		it('should include only groups with items', () => {
 			favoritesStore.favorites = [
 				makeFavorite({ resourceId: 'wf-1', resourceType: 'workflow', resourceName: 'Workflow 1' }),
@@ -224,7 +269,7 @@ describe('useFavoriteNavItems', () => {
 			expect(favoriteGroups.value[0].type).toBe('workflow');
 		});
 
-		it('should order groups: projects first, then folders, workflows, dataTables', () => {
+		it('should order groups: projects first, then folders, workflows, dataTables, agents', () => {
 			favoritesStore.favorites = [
 				makeFavorite({ id: 1, resourceId: 'wf-1', resourceType: 'workflow' }),
 				makeFavorite({
@@ -247,6 +292,13 @@ describe('useFavoriteNavItems', () => {
 					resourceName: 'Folder 1',
 					resourceProjectId: 'proj-1',
 				}),
+				makeFavorite({
+					id: 5,
+					resourceId: 'agent-1',
+					resourceType: 'agent',
+					resourceName: 'Agent 1',
+					resourceProjectId: 'proj-1',
+				}),
 			];
 
 			const { favoriteGroups } = useFavoriteNavItems();
@@ -256,6 +308,7 @@ describe('useFavoriteNavItems', () => {
 				'folder',
 				'workflow',
 				'dataTable',
+				'agent',
 			]);
 		});
 	});

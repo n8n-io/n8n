@@ -1,0 +1,8 @@
+type: object
+properties:
+  id:
+    type: string
+    example: 9f8e7d6c5b4a3210
+  status:
+    type: string
+    enum: ['cancelled']

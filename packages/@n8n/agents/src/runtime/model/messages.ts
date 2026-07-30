@@ -1,22 +1,22 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	FilePart,
 	ModelMessage,
 	TextPart,
 	ToolCallPart,
 	ToolResultPart,
-	ImagePart,
-	ToolApprovalRequest,
-	ToolApprovalResponse,
 	FinishReason as AiFinishReason,
 } from 'ai';
 
+import { getProviderQuirks, PROVIDER_QUIRKS } from './provider-quirks';
 import type { FinishReason } from '../../types';
 import type {
 	AgentMessage,
+	ContentCustom,
 	ContentFile,
 	ContentReasoning,
+	ContentReasoningFile,
 	ContentText,
 	ContentToolCall,
 	Message,
@@ -24,18 +24,9 @@ import type {
 } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 
-/** Reasoning content part — mirrors @ai-sdk/provider-utils ReasoningPart (not re-exported by 'ai'). */
-type ReasoningPart = { type: 'reasoning'; text: string };
-
-type AiContentPart =
-	| TextPart
-	| FilePart
-	| ImagePart
-	| ReasoningPart
-	| ToolCallPart
-	| ToolResultPart
-	| ToolApprovalRequest
-	| ToolApprovalResponse;
+// Used across all message roles; AssistantContent omits user images and tool approval responses.
+type AiContentPart = Exclude<ModelMessage['content'], string>[number];
+type AiAssistantContent = Exclude<Extract<ModelMessage, { role: 'assistant' }>['content'], string>;
 
 // --- Type guards for MessageContent blocks ---
 
@@ -47,8 +38,16 @@ function isReasoning(block: MessageContent): block is ContentReasoning {
 	return block.type === 'reasoning';
 }
 
+function isReasoningFile(block: MessageContent): block is ContentReasoningFile {
+	return block.type === 'reasoning-file';
+}
+
 function isFile(block: MessageContent): block is ContentFile {
 	return block.type === 'file';
+}
+
+function isCustom(block: MessageContent): block is ContentCustom {
+	return block.type === 'custom';
 }
 
 function isToolCall(block: MessageContent): block is ContentToolCall {
@@ -106,34 +105,63 @@ function getRecord(value: unknown): Record<string, unknown> | undefined {
 	return isRecord(value) ? value : undefined;
 }
 
+function hasEntries(value: Record<string, unknown>): boolean {
+	return Object.keys(value).length > 0;
+}
+
+function hasReplayableReasoningProviderOptions(
+	providerOptions: ProviderOptions | undefined,
+): boolean {
+	if (!providerOptions) return false;
+
+	return Object.entries(providerOptions).some(([provider, options]) => {
+		const replayKeys = getProviderQuirks(provider).reasoningReplayKeys;
+		if (replayKeys) return replayKeys.some((key) => typeof options[key] === 'string');
+		return hasEntries(options);
+	});
+}
+
 type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
-function isContentToolResultOutput(value: JSONValue): value is ContentToolResultOutput {
+function isContentToolResultOutput(value: unknown): value is ContentToolResultOutput {
 	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
 }
 
+function normalizeReasoningFileData(
+	data: Extract<AiContentPart, { type: 'reasoning-file' }>['data'],
+): ContentReasoningFile['data'] {
+	if (data instanceof URL) return data.toString();
+	if (typeof data !== 'object' || data === null || !('type' in data)) return data;
+	if (data.type === 'data') return data.data;
+	return data.url.toString();
+}
+
 /**
- * Anthropic replays reasoning from `providerOptions`, but the AI SDK exposes the
- * replay `signature`/`redactedData` in `providerMetadata`. Copy them across so
- * the next request can replay the reasoning block. Existing `providerOptions`
- * values win.
+ * Providers replay reasoning from `providerOptions`, but the AI SDK exposes the
+ * replay data in `providerMetadata` (see `PROVIDER_QUIRKS[provider].reasoningReplayKeys`).
+ * Copy it across so the next request can replay the reasoning block. Existing
+ * `providerOptions` values win.
  */
 function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
-	const metadata = getRecord(block.providerMetadata?.anthropic);
-	const signature = metadata?.signature;
-	const redactedData = metadata?.redactedData;
-	if (typeof signature !== 'string' && typeof redactedData !== 'string') {
-		return block.providerOptions;
+	const additions: Record<string, JSONObject> = {};
+
+	for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
+		const replayKeys = quirks.reasoningReplayKeys;
+		if (!replayKeys) continue;
+
+		const metadata = getRecord(block.providerMetadata?.[provider]);
+		const replayed: JSONObject = {};
+		for (const key of replayKeys) {
+			if (typeof metadata?.[key] === 'string') replayed[key] = metadata[key];
+		}
+		if (hasEntries(replayed)) {
+			additions[provider] = { ...replayed, ...block.providerOptions?.[provider] };
+		}
 	}
 
-	return {
-		...block.providerOptions,
-		anthropic: {
-			...(typeof signature === 'string' && { signature }),
-			...(typeof redactedData === 'string' && { redactedData }),
-			...getRecord(block.providerOptions?.anthropic),
-		},
-	};
+	if (!hasEntries(additions)) return block.providerOptions;
+
+	return { ...block.providerOptions, ...additions };
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
@@ -147,6 +175,14 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 			data: block.data,
 			mediaType: block.mediaType ?? 'application/octet-stream',
 		};
+	} else if (isReasoningFile(block)) {
+		base = {
+			type: 'reasoning-file',
+			data: block.data,
+			mediaType: block.mediaType,
+		};
+	} else if (isCustom(block)) {
+		base = { type: 'custom', kind: block.kind };
 	} else if (isToolCall(block)) {
 		base = {
 			type: 'tool-call',
@@ -166,6 +202,9 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		const providerOptions = isReasoning(block)
 			? toReasoningProviderOptions(block)
 			: block.providerOptions;
+		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(providerOptions)) {
+			return undefined;
+		}
 
 		return {
 			...base,
@@ -234,6 +273,17 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 		}
 		case 'reasoning':
 			base = { type: 'reasoning', text: part.text };
+			break;
+		case 'reasoning-file': {
+			base = {
+				type: 'reasoning-file',
+				data: normalizeReasoningFileData(part.data),
+				mediaType: part.mediaType,
+			};
+			break;
+		}
+		case 'custom':
+			base = { type: 'custom', kind: part.kind };
 			break;
 		case 'tool-call': {
 			const normalizedInput = normalizeToolInputForModel(part.input);
@@ -340,9 +390,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 			if (assistantParts.length > 0) {
 				const assistantBase: ModelMessage = {
 					role: 'assistant',
-					content: assistantParts as Array<
-						TextPart | ReasoningPart | ToolCallPart | ToolResultPart | FilePart
-					>,
+					content: assistantParts as AiAssistantContent,
 				};
 				const assistantMsg: ModelMessage = msg.providerOptions
 					? { ...assistantBase, providerOptions: msg.providerOptions }

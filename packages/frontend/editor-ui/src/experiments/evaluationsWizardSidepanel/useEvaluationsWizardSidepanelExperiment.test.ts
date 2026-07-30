@@ -2,7 +2,10 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT } from '@/app/constants/experiments';
 import { useEvaluationsWizardSidepanelExperiment } from './useEvaluationsWizardSidepanelExperiment';
 
-const { getVariant } = vi.hoisted(() => ({ getVariant: vi.fn() }));
+const { getVariant, settings } = vi.hoisted(() => ({
+	getVariant: vi.fn(),
+	settings: { evaluation: { configEvalsEnabled: false } as { configEvalsEnabled: boolean } },
+}));
 
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
@@ -10,9 +13,14 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	})),
 }));
 
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: vi.fn(() => ({ settings })),
+}));
+
 describe('useEvaluationsWizardSidepanelExperiment', () => {
 	beforeEach(() => {
 		getVariant.mockReset();
+		settings.evaluation.configEvalsEnabled = false;
 	});
 
 	it.each([
@@ -26,5 +34,14 @@ describe('useEvaluationsWizardSidepanelExperiment', () => {
 
 		expect(isFeatureEnabled.value).toBe(enabled);
 		expect(getVariant).toHaveBeenCalledWith(EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name);
+	});
+
+	it('returns true from the operator override even when PostHog is on the control arm', () => {
+		getVariant.mockReturnValue(EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.control);
+		settings.evaluation.configEvalsEnabled = true;
+
+		const { isFeatureEnabled } = useEvaluationsWizardSidepanelExperiment();
+
+		expect(isFeatureEnabled.value).toBe(true);
 	});
 });

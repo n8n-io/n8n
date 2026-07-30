@@ -10,7 +10,8 @@
  * network package.
  */
 import type { SsrfBridge } from '@n8n/backend-network/transport';
-import { createResultOk, ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createResultOk } from '@n8n/utils/result';
 import dns from 'node:dns';
 import type { LookupFunction } from 'node:net';
 

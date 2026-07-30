@@ -1,6 +1,7 @@
 import type { CallbackManagerForRetrieverRun } from '@langchain/core/callbacks/manager';
 import { Document } from '@langchain/core/documents';
 import { BaseRetriever, type BaseRetrieverInput } from '@langchain/core/retrievers';
+import { logWrapper } from '@n8n/ai-utilities';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
@@ -16,8 +17,6 @@ import type {
 	INodeParameterResourceLocator,
 	ExecuteWorkflowData,
 } from 'n8n-workflow';
-
-import { logWrapper } from '@n8n/ai-utilities';
 
 function objectToString(obj: Record<string, string> | IDataObject, level = 0) {
 	let result = '';

@@ -18,7 +18,7 @@ vi.mock('@/app/composables/useToast', () => ({
 }));
 
 const trackMock = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 
@@ -203,6 +203,18 @@ describe('TestRunDetailView', () => {
 		await waitFor(() => {
 			const cards = container.querySelectorAll('[data-test-id="test-case-card"]');
 			expect(cards.length).toBe(mockTestCases.length);
+		});
+	});
+
+	it('renders the execution view link on failed cases alongside the rerun button', async () => {
+		// mockTestCases has one success and one error case, both with an
+		// executionId. The link must show for both so a failed case is still
+		// clickable through to its execution; only the failed case also gets
+		// the rerun button.
+		const { getAllByTestId } = renderComponent();
+		await waitFor(() => {
+			expect(getAllByTestId('test-case-view-link')).toHaveLength(mockTestCases.length);
+			expect(getAllByTestId('test-case-rerun-button')).toHaveLength(1);
 		});
 	});
 

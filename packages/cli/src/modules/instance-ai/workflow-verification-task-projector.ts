@@ -2,6 +2,7 @@ import type { TaskList } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
 	deriveWorkflowVerificationObligationFromOutcome,
+	orchestratorAgentId,
 	ThreadTaskStorage,
 	WorkflowLoopStorage,
 	type ManagedBackgroundTask,
@@ -17,8 +18,6 @@ import {
 	parseWorkflowBuildOutcome,
 	type WorkflowVerificationObligationService,
 } from './workflow-verification-obligation-service';
-
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
 const BUILD_DESCRIPTION = 'Build workflow';
 const VERIFY_DESCRIPTION = 'Verify workflow';
@@ -406,7 +405,7 @@ export class WorkflowVerificationTaskProjector {
 		this.eventBus.publish(threadId, {
 			type: 'tasks-update',
 			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(runId),
 			payload: { tasks: taskList },
 		});
 	}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCredentialsStore } from '../credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -8,6 +8,7 @@ import { computed, onMounted, ref } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
+import type { NewCredentialsModal } from '@/Interface';
 
 import { N8nButton, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -26,6 +27,13 @@ const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 
+const searchQuery = ref('');
+
+const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
+	const data = uiStore.modalsById[CREDENTIAL_SELECT_MODAL_KEY]?.data;
+	return data?.usageScope === 'instance' ? 'instance' : undefined;
+});
+
 onMounted(async () => {
 	try {
 		await credentialsStore.fetchCredentialTypes(false);
@@ -41,9 +49,19 @@ onMounted(async () => {
 });
 
 // Exclude purpose built credentials for ChatHub
-const selectableCredentialTypes = computed(() =>
+const allSelectableCredentialTypes = computed(() =>
 	credentialsStore.allCredentialTypes.filter((c) => !c.name.startsWith('chatHub')),
 );
+
+const selectableCredentialTypes = computed(() => {
+	if (!searchQuery.value) return allSelectableCredentialTypes.value;
+	const q = searchQuery.value.toLowerCase();
+	return allSelectableCredentialTypes.value.filter((c) => c.displayName.toLowerCase().includes(q));
+});
+
+function filterCredentials(query: string) {
+	searchQuery.value = query;
+}
 
 function onSelect(type: string) {
 	selected.value = type;
@@ -64,6 +82,7 @@ function openCredentialType() {
 		undefined,
 		{
 			instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			usageScope: presetUsageScope.value,
 		},
 	);
 
@@ -106,6 +125,7 @@ function openCredentialType() {
 					:placeholder="i18n.baseText('credentialSelectModal.searchForApp')"
 					size="xlarge"
 					:model-value="selected"
+					:filter-method="filterCredentials"
 					data-test-id="new-credential-type-select"
 					@update:model-value="onSelect"
 				>

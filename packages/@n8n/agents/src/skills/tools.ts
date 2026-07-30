@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { Tool } from '../sdk/tool';
 import type { BuiltTool } from '../types';
 import {
-	LIST_SKILLS_TOOL_NAME,
 	RUNTIME_SKILL_FILE_NAME,
 	SKILL_LOAD_TOOL_NAME,
 	type RuntimeSkillLinkedFile,
@@ -25,11 +24,7 @@ const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'other',
 ];
 
-export const RUNTIME_SKILL_TOOL_NAMES = new Set([LIST_SKILLS_TOOL_NAME, SKILL_LOAD_TOOL_NAME]);
-
-const skillsListInputSchema = z.object({
-	category: z.string().optional().describe('Optional exact category filter.'),
-});
+export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILL_LOAD_TOOL_NAME]);
 
 const linkedFileSchema: z.ZodType<RuntimeSkillLinkedFile> = z.object({
 	path: z.string(),
@@ -46,69 +41,10 @@ const linkedFilesSchema: z.ZodType<RuntimeSkillLinkedFiles> = z.object({
 	other: z.array(linkedFileSchema),
 });
 
-const skillInterfaceSchema = z
-	.object({
-		displayName: z.string().optional(),
-		shortDescription: z.string().optional(),
-		defaultPrompt: z.string().optional(),
-		icon: z.string().optional(),
-		brandColor: z.string().optional(),
-	})
-	.optional();
-
-const skillPolicySchema = z
-	.object({
-		allowImplicitInvocation: z.boolean().optional(),
-		product: z.string().optional(),
-	})
-	.optional();
-
-const skillDependenciesSchema = z
-	.object({
-		tools: z.array(z.string()).optional(),
-		secrets: z.array(z.string()).optional(),
-		mcpServers: z
-			.array(
-				z.object({
-					name: z.string(),
-					description: z.string().optional(),
-					transport: z.string().optional(),
-					url: z.string().optional(),
-					command: z.string().optional(),
-				}),
-			)
-			.optional(),
-	})
-	.optional();
-
-const compactSkillSchema = z.object({
-	name: z.string(),
-	description: z.string(),
-	category: z.string().optional(),
-	path: z.string().optional(),
-	directory: z.string().optional(),
-	hash: z.string(),
-	recommendedTools: z.array(z.string()).optional(),
-	allowedTools: z.array(z.string()).optional(),
-	interface: skillInterfaceSchema,
-	policy: skillPolicySchema,
-	dependencies: skillDependenciesSchema,
-	platforms: z.array(z.string()).optional(),
-});
-
-const skillsListOutputSchema = z.object({
-	success: z.boolean(),
-	registryHash: z.string(),
-	count: z.number(),
-	categories: z.array(z.string()),
-	skills: z.array(compactSkillSchema),
-});
-
 const skillLoadBaseInputSchema = z.object({
-	skillId: z.string().min(1).optional().describe('Skill id from list_skills.'),
-	name: z.string().min(1).optional().describe('Skill name from list_skills.'),
+	skillId: z.string().min(1).optional().describe('Skill id from the skill catalog.'),
+	name: z.string().min(1).optional().describe('Skill name from the skill catalog.'),
 });
-
 const skillLoadInputSchema = skillLoadBaseInputSchema.refine(
 	({ skillId, name }) => skillId !== undefined || name !== undefined,
 	{
@@ -121,7 +57,6 @@ const skillLoadInputWithFilesSchema = skillLoadBaseInputSchema
 	.extend({
 		filePath: z
 			.string()
-			.min(1)
 			.optional()
 			.describe('Optional linked file path relative to the skill directory.'),
 	})
@@ -141,7 +76,6 @@ const skillLoadOutputSchema = z.object({
 	hash: z.string().optional(),
 	category: z.string().optional(),
 	content: z.string().optional(),
-	instructions: z.string().optional(),
 	filePath: z.string().optional(),
 	bytes: z.number().optional(),
 	sha256: z.string().optional(),
@@ -151,34 +85,20 @@ const skillLoadOutputSchema = z.object({
 	availableSkills: z.array(z.string()).optional(),
 });
 
+const skillLoadContentOutputSchema = z.object({
+	type: z.literal('content'),
+	value: z.array(z.object({ type: z.literal('text'), text: z.string() })),
+});
+
+const skillLoadResultSchema = z.union([skillLoadContentOutputSchema, skillLoadOutputSchema]);
+
 type SkillLoadOutput = z.infer<typeof skillLoadOutputSchema>;
 
+/** Main-skill success result; passed through as a text tool_result without JSON escaping. */
+type SkillLoadContentOutput = z.infer<typeof skillLoadContentOutputSchema>;
+
 export function createRuntimeSkillTools(source: RuntimeSkillSource): BuiltTool[] {
-	return [createListSkillsTool(source), createSkillLoadTool(source)];
-}
-
-export function createListSkillsTool(source: RuntimeSkillSource): BuiltTool {
-	return new Tool(LIST_SKILLS_TOOL_NAME)
-		.description(
-			'List installed skills from the registry. Use before loading a skill when you need to discover available domains.',
-		)
-		.input(skillsListInputSchema)
-		.output(skillsListOutputSchema)
-		.handler(async ({ category }) => {
-			await source.prepare?.();
-			const skills = source.registry.skills
-				.filter((skill) => !category || skill.category === category)
-				.map(compactSkill);
-
-			return await Promise.resolve({
-				success: true,
-				registryHash: source.registry.skillsHash,
-				count: skills.length,
-				categories: categoriesFor(source.registry),
-				skills,
-			});
-		})
-		.build();
+	return [createSkillLoadTool(source)];
 }
 
 export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
@@ -188,7 +108,7 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 				'Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.',
 			)
 			.input(skillLoadInputSchema)
-			.output(skillLoadOutputSchema)
+			.output(skillLoadResultSchema)
 			.handler(async ({ skillId, name }) => await loadSkill(source, { skillId, name }))
 			.build();
 	}
@@ -199,7 +119,7 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; use filePath only for a linked file path returned in linkedFiles.',
 		)
 		.input(skillLoadInputWithFilesSchema)
-		.output(skillLoadOutputSchema)
+		.output(skillLoadResultSchema)
 		.handler(
 			async ({ skillId, name, filePath }) =>
 				await loadSkill(source, { skillId, name, filePath, loadFile }),
@@ -215,7 +135,7 @@ async function loadSkill(
 		filePath?: string;
 		loadFile?: NonNullable<RuntimeSkillSource['loadFile']>;
 	},
-): Promise<SkillLoadOutput> {
+): Promise<SkillLoadOutput | SkillLoadContentOutput> {
 	const { skillId, name, filePath, loadFile } = input;
 	await source.prepare?.();
 	const skillEntry = findSkillEntry(source.registry, { skillId, name });
@@ -228,17 +148,18 @@ async function loadSkill(
 		};
 	}
 
-	const loadMainSkill = filePath === undefined || filePath.trim() === RUNTIME_SKILL_FILE_NAME;
+	const loadMainSkill = isMainSkillFilePath(filePath);
 	if (!loadMainSkill) {
-		const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, filePath);
+		const linkedFilePath = filePath ?? '';
+		const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, linkedFilePath);
 		if (!linkedFile) {
 			return {
 				ok: false,
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
-				filePath,
-				error: `File is not registered for skill ${skillEntry.name}: ${filePath}. To load the main skill instructions, retry without filePath.`,
+				filePath: linkedFilePath,
+				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}. To load the main skill instructions, retry without filePath.`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
@@ -249,7 +170,7 @@ async function loadSkill(
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
-				filePath,
+				filePath: linkedFilePath,
 				error: 'This skill source does not support loading linked files.',
 				linkedFiles: skillEntry.linkedFiles,
 			};
@@ -262,8 +183,8 @@ async function loadSkill(
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
-				filePath,
-				error: `File is not registered for skill ${skillEntry.name}: ${filePath}`,
+				filePath: linkedFilePath,
+				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
@@ -297,44 +218,21 @@ async function loadSkill(
 	}
 
 	const content = cap(skill.instructions);
+	const linkedFilePaths = LINKED_FILE_GROUPS.flatMap((group) => skillEntry.linkedFiles[group]).map(
+		(file) => file.path,
+	);
+	const header = [
+		activationEnvelope(skillEntry),
+		...(linkedFilePaths.length > 0
+			? [
+					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.map(envelopeValue).join(', ')}]`,
+				]
+			: []),
+	];
 	return {
-		ok: true,
-		success: true,
-		skillId: skillEntry.id,
-		name: skillEntry.name,
-		description: skill.description,
-		path: skillEntry.path ?? skillEntry.sourcePath,
-		skillDir: skillEntry.directory,
-		hash: skillEntry.hash,
-		category: skillEntry.category,
-		content,
-		instructions: content,
-		activation: activationEnvelope(skillEntry),
-		linkedFiles: skillEntry.linkedFiles,
+		type: 'content',
+		value: [{ type: 'text', text: `${header.join('\n')}\n\n${content}` }],
 	};
-}
-
-function compactSkill(skill: RuntimeSkillRegistryEntry) {
-	return {
-		name: skill.name,
-		description: skill.description,
-		...(skill.category ? { category: skill.category } : {}),
-		...(skill.path ? { path: skill.path } : {}),
-		...(skill.directory ? { directory: skill.directory } : {}),
-		hash: skill.hash,
-		...(skill.recommendedTools ? { recommendedTools: skill.recommendedTools } : {}),
-		...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
-		...(skill.interface ? { interface: skill.interface } : {}),
-		...(skill.policy ? { policy: skill.policy } : {}),
-		...(skill.dependencies ? { dependencies: skill.dependencies } : {}),
-		...(skill.platforms ? { platforms: skill.platforms } : {}),
-	};
-}
-
-function categoriesFor(registry: RuntimeSkillRegistry): string[] {
-	return Array.from(
-		new Set(registry.skills.map((skill) => skill.category).filter(isPresentString)),
-	).sort();
 }
 
 function findSkillEntry(
@@ -376,6 +274,17 @@ function findRegisteredLinkedFile(
 	return undefined;
 }
 
+function isMainSkillFilePath(filePath?: string): boolean {
+	if (filePath === undefined) return true;
+	const normalized = filePath.trim();
+	return (
+		normalized === '' ||
+		normalized === '/' ||
+		normalized === '.' ||
+		normalized === RUNTIME_SKILL_FILE_NAME
+	);
+}
+
 function envelopeValue(value: string): string {
 	return JSON.stringify(value);
 }
@@ -394,8 +303,4 @@ function redactSecrets(content: string): string {
 			/\b(api[_-]?key|token|password|passwd|secret|credential)(\s*[:=]\s*)(["']?)[^\s"',;]+(\3)/gi,
 			`$1$2$3${SECRET_REDACTION}$4`,
 		);
-}
-
-function isPresentString(value: string | undefined): value is string {
-	return typeof value === 'string' && value.length > 0;
 }

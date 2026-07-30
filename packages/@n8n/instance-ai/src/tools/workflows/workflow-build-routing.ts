@@ -1,9 +1,16 @@
-import { isMockableTriggerNodeType } from './workflow-json-utils';
+import { isTriggerNodeType } from './workflow-json-utils';
 import type {
 	WorkflowBuildOutcome,
 	WorkflowSetupRequirement,
 	WorkflowVerificationReadiness,
 } from '../../workflow-loop/workflow-loop-state';
+
+type WorkflowBuildRoutingInput = Omit<
+	WorkflowBuildOutcome,
+	'verificationReadiness' | 'setupRequirement'
+> & {
+	workflowNeedsSetup?: boolean;
+};
 
 function hasSetupCredentials(
 	outcome: Pick<WorkflowBuildOutcome, 'mockedCredentialTypes' | 'mockedCredentialsByNode'>,
@@ -15,7 +22,7 @@ function hasSetupCredentials(
 }
 
 function determineVerificationReadiness(
-	outcome: Pick<WorkflowBuildOutcome, 'submitted' | 'workflowId' | 'triggerNodes'>,
+	outcome: Pick<WorkflowBuildRoutingInput, 'submitted' | 'workflowId' | 'triggerNodes'>,
 ): WorkflowVerificationReadiness {
 	if (!outcome.submitted) {
 		return {
@@ -33,11 +40,15 @@ function determineVerificationReadiness(
 		};
 	}
 
-	if (!outcome.triggerNodes?.some((node) => isMockableTriggerNodeType(node.nodeType))) {
+	// Any trigger type is verifiable: deterministic triggers get shaped input
+	// (getPinDataForTrigger), every other trigger gets a simulated fixture from
+	// the build outcome sidecar (planVerificationSimulation), so the trigger
+	// never really fires. Only a workflow with no trigger at all can't run.
+	if (!outcome.triggerNodes?.some((node) => isTriggerNodeType(node.nodeType))) {
 		return {
 			status: 'not_verifiable',
-			reason: 'non-mockable-trigger',
-			guidance: 'The workflow does not have a trigger the post-build verifier can exercise.',
+			reason: 'no-trigger-node',
+			guidance: 'The workflow does not have a trigger node the post-build verifier can start from.',
 		};
 	}
 
@@ -46,12 +57,13 @@ function determineVerificationReadiness(
 
 function determineSetupRequirement(
 	outcome: Pick<
-		WorkflowBuildOutcome,
+		WorkflowBuildRoutingInput,
 		| 'submitted'
 		| 'workflowId'
 		| 'mockedCredentialTypes'
 		| 'mockedCredentialsByNode'
 		| 'hasUnresolvedPlaceholders'
+		| 'workflowNeedsSetup'
 	>,
 ): WorkflowSetupRequirement {
 	if (!outcome.submitted || !outcome.workflowId) {
@@ -74,14 +86,21 @@ function determineSetupRequirement(
 		};
 	}
 
+	if (outcome.workflowNeedsSetup) {
+		return {
+			status: 'required',
+			reason: 'workflow-needs-setup',
+			guidance: 'Route the workflow through setup so the user can fill pending node setup fields.',
+		};
+	}
+
 	return { status: 'not_required' };
 }
 
-export function withDeterministicRouting(
-	outcome: Omit<WorkflowBuildOutcome, 'verificationReadiness' | 'setupRequirement'>,
-): WorkflowBuildOutcome {
+export function withDeterministicRouting(outcome: WorkflowBuildRoutingInput): WorkflowBuildOutcome {
+	const { workflowNeedsSetup, ...buildOutcome } = outcome;
 	return {
-		...outcome,
+		...buildOutcome,
 		verificationReadiness: determineVerificationReadiness(outcome),
 		setupRequirement: determineSetupRequirement(outcome),
 	};

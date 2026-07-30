@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type {
 	CapacityTarget,
@@ -11,7 +11,7 @@ describe('ConcurrencyCapacityReservation', () => {
 	const concurrencyControlService = mock<ConcurrencyControlService>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('reserve', () => {

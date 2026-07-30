@@ -210,7 +210,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when isOAuthType is false', async () => {
@@ -236,7 +236,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when user lacks create permission for new credential', async () => {
@@ -262,7 +262,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when user lacks update permission for existing credential', async () => {
@@ -288,7 +288,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should display dynamic credentials section when all conditions are met for new credential', async () => {
@@ -305,6 +305,7 @@ describe('CredentialConfig', () => {
 					isResolvable: false,
 					credentialPermissions: {
 						create: true,
+						createEndUser: true,
 						update: false,
 						read: true,
 						delete: false,
@@ -315,8 +316,8 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
-			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-select')).toBeInTheDocument();
 		});
 
 		it('should display dynamic credentials section when all conditions are met for existing credential', async () => {
@@ -333,6 +334,7 @@ describe('CredentialConfig', () => {
 					isResolvable: false,
 					credentialPermissions: {
 						create: false,
+						createEndUser: true,
 						update: true,
 						read: true,
 						delete: false,
@@ -343,11 +345,11 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
-			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-select')).toBeInTheDocument();
 		});
 
-		it('should disable the dynamic credentials toggle when the credential is already shared', async () => {
+		it('should keep the credential type selector enabled when the credential is already shared', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -359,9 +361,9 @@ describe('CredentialConfig', () => {
 					isOAuthType: true,
 					isNewCredential: false,
 					isResolvable: false,
-					isShared: true,
 					credentialPermissions: {
 						create: false,
+						createEndUser: true,
 						update: true,
 						read: true,
 						delete: false,
@@ -372,11 +374,126 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('dynamic-credentials-toggle')).toHaveClass('is-disabled');
+			const input = screen.getByTestId('credential-type-select').querySelector('input');
+			expect(input).not.toBeDisabled();
+		});
+
+		it('should hide the type selector when the user cannot manage end-user credentials', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					credentialPermissions: {
+						create: false,
+						createEndUser: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should hide the type selector on an end-user credential when the user cannot manage end-user credentials', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should show the type selector disabled when the user can manage end-user credentials but cannot edit', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: false,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			const input = screen.getByTestId('credential-type-select').querySelector('input');
+			expect(input).toBeDisabled();
+		});
+
+		it('should show the type selector for an end-user credential with the createEndUser permission', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
 		});
 	});
 
-	describe('Disconnect button on success banner', () => {
+	describe('Connected state buttons on success banner', () => {
 		const writePermissions = {
 			create: true,
 			update: true,
@@ -385,6 +502,7 @@ describe('CredentialConfig', () => {
 			share: false,
 			list: true,
 			move: false,
+			connect: true,
 		};
 
 		const oAuthConnectedProps = {
@@ -399,7 +517,7 @@ describe('CredentialConfig', () => {
 			credentialPermissions: writePermissions,
 		};
 
-		it('renders Disconnect when resolvable, connectedByMe and dynamic credentials enabled', () => {
+		it('renders Disconnect and Switch account for a connected end-user credential', () => {
 			renderComponent({
 				props: {
 					...oAuthConnectedProps,
@@ -410,48 +528,48 @@ describe('CredentialConfig', () => {
 			});
 
 			expect(screen.getByTestId('oauth-disconnect-button')).toBeInTheDocument();
+			expect(screen.getByTestId('oauth-switch-account-button')).toBeInTheDocument();
 		});
 
-		it('hides Disconnect when connectedByMe is false', () => {
-			renderComponent({
-				props: {
-					...oAuthConnectedProps,
-					isPrivateCredentialsEnabled: true,
-					isResolvable: true,
-					connectedByMe: false,
-				},
-			});
-
-			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
-		});
-
-		it('hides Disconnect for static (non-resolvable) credentials', () => {
+		it('renders Disconnect and Switch account for a connected fixed credential', () => {
 			renderComponent({
 				props: {
 					...oAuthConnectedProps,
 					isPrivateCredentialsEnabled: true,
 					isResolvable: false,
-					connectedByMe: true,
+					connectedByMe: false,
 				},
 			});
 
-			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+			expect(screen.getByTestId('oauth-disconnect-button')).toBeInTheDocument();
+			expect(screen.getByTestId('oauth-switch-account-button')).toBeInTheDocument();
 		});
 
-		it('hides Disconnect when dynamic credentials are disabled', () => {
+		it('hides the connected buttons when the user cannot connect', () => {
 			renderComponent({
 				props: {
 					...oAuthConnectedProps,
-					isPrivateCredentialsEnabled: false,
+					credentialPermissions: {
+						create: false,
+						update: false,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+						connect: false,
+					},
+					isPrivateCredentialsEnabled: true,
 					isResolvable: true,
 					connectedByMe: true,
 				},
 			});
 
 			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('oauth-switch-account-button')).not.toBeInTheDocument();
 		});
 
-		it('emits disconnect on click', async () => {
+		it('emits disconnect when clicking Disconnect', async () => {
 			const { emitted } = renderComponent({
 				props: {
 					...oAuthConnectedProps,
@@ -463,6 +581,77 @@ describe('CredentialConfig', () => {
 
 			await screen.getByTestId('oauth-disconnect-button').click();
 			expect(emitted().disconnect).toBeTruthy();
+		});
+
+		it('emits oauth when clicking Switch account', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isPrivateCredentialsEnabled: true,
+					isResolvable: true,
+					connectedByMe: true,
+				},
+			});
+
+			await screen.getByTestId('oauth-switch-account-button').click();
+			expect(emitted().oauth).toBeTruthy();
+		});
+
+		it('shows stale-connection actions and emits their events on auth error', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					authError: 'Token expired',
+				},
+			});
+
+			const switchAccount = screen.getByTestId('oauth-stale-switch-account-button');
+			const disconnect = screen.getByTestId('oauth-stale-disconnect-button');
+			expect(switchAccount).toBeInTheDocument();
+			expect(disconnect).toBeInTheDocument();
+
+			await switchAccount.click();
+			expect(emitted().oauth).toBeTruthy();
+
+			await disconnect.click();
+			expect(emitted().disconnect).toBeTruthy();
+		});
+	});
+
+	describe('Connect banner gating for private credentials', () => {
+		const notConnectedProps = {
+			isManaged: false,
+			mode: 'edit' as const,
+			credentialType: mockCredentialType,
+			credentialProperties: [],
+			credentialData: {} as ICredentialDataDecryptedObject,
+			isOAuthType: true,
+			isOAuthConnected: false,
+			requiredPropertiesFilled: true,
+			isPrivateCredentialsEnabled: true,
+			isResolvable: true,
+		};
+
+		it('shows the connect button when the user has the connect scope but cannot edit', () => {
+			renderComponent({
+				props: {
+					...notConnectedProps,
+					credentialPermissions: { read: true, connect: true },
+				},
+			});
+
+			expect(screen.getByTestId('quick-connect-button')).toBeInTheDocument();
+		});
+
+		it('hides the connect button when the user lacks the connect scope', () => {
+			renderComponent({
+				props: {
+					...notConnectedProps,
+					credentialPermissions: { read: true },
+				},
+			});
+
+			expect(screen.queryByTestId('quick-connect-button')).not.toBeInTheDocument();
 		});
 	});
 
@@ -771,6 +960,78 @@ describe('CredentialConfig', () => {
 			});
 
 			expect(screen.queryByText('Need help filling out these fields?')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Read-only access (view without edit)', () => {
+		const credentialTypeWithField: ICredentialType = {
+			name: 'testCredential',
+			displayName: 'Test Credential',
+			properties: [{ displayName: 'Key', name: 'key', type: 'string', default: '' }],
+		};
+
+		const readOnlyPermissions = {
+			create: false,
+			update: false,
+			read: true,
+			delete: false,
+			share: false,
+			list: true,
+			move: false,
+		};
+
+		it('does not render credential inputs for users without edit permission', () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialId: 'existing-cred-123',
+					credentialType: credentialTypeWithField,
+					credentialProperties: credentialTypeWithField.properties,
+					credentialData: { key: 'secret' } as ICredentialDataDecryptedObject,
+					credentialPermissions: readOnlyPermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('credential-connection-parameter')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Connect banner gating by connect permission', () => {
+		const oAuthNotConnectedProps = {
+			isManaged: false,
+			mode: 'edit' as const,
+			credentialId: 'existing-cred-123',
+			credentialType: mockCredentialType,
+			credentialProperties: [],
+			credentialData: {} as ICredentialDataDecryptedObject,
+			isOAuthType: true,
+			isOAuthConnected: false,
+			requiredPropertiesFilled: true,
+			isResolvable: true,
+		};
+
+		it('shows the connect button for a private credential when the user can connect', () => {
+			renderComponent({
+				props: {
+					...oAuthNotConnectedProps,
+					credentialPermissions: { read: true, connect: true },
+				},
+			});
+
+			expect(screen.getByTestId('quick-connect-button')).toBeInTheDocument();
+		});
+
+		it('hides the connect button for a private credential when the user cannot connect', () => {
+			renderComponent({
+				props: {
+					...oAuthNotConnectedProps,
+					credentialPermissions: { read: true, connect: false },
+				},
+			});
+
+			expect(screen.getByTestId('oauth-not-connected-banner')).toBeInTheDocument();
+			expect(screen.queryByTestId('quick-connect-button')).not.toBeInTheDocument();
 		});
 	});
 });

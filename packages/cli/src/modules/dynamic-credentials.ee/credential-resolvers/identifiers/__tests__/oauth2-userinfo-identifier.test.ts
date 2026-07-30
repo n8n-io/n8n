@@ -2,7 +2,7 @@ import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
@@ -13,7 +13,7 @@ import { OAuth2UserInfoIdentifier } from '../oauth2-userinfo-identifier';
 describe('OAuth2UserInfoIdentifier', () => {
 	const logger = mockLogger();
 	const cache = mock<CacheService>();
-	const request = jest.fn();
+	const request = vi.fn();
 	const outboundHttp = mock<OutboundHttp>();
 	let identifier: OAuth2UserInfoIdentifier;
 
@@ -40,7 +40,7 @@ describe('OAuth2UserInfoIdentifier', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request }));
 		const httpClient = new OAuth2MetadataHttpClient(
 			logger,

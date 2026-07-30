@@ -3,7 +3,7 @@ import { UserError } from 'n8n-workflow';
 
 import { createAuthFetch } from '@/utils/auth-fetch';
 
-const baseFetchMock = jest.fn();
+const baseFetchMock = vi.fn();
 const baseFetch = ((...args: unknown[]) => baseFetchMock(...args)) as unknown as CustomFetch;
 
 function makeOk(): Response {
@@ -48,7 +48,7 @@ describe('createAuthFetch', () => {
 	it('returns the original 401 when onUnauthorized returns null', async () => {
 		baseFetchMock.mockResolvedValueOnce(make401());
 
-		const onUnauthorized = jest.fn().mockResolvedValue(null);
+		const onUnauthorized = vi.fn().mockResolvedValue(null);
 		const fetchFn = createAuthFetch({
 			baseFetch,
 			initialHeaders: { Authorization: 'Bearer A' },
@@ -64,7 +64,7 @@ describe('createAuthFetch', () => {
 	it('retries once with refreshed headers when onUnauthorized returns new headers', async () => {
 		baseFetchMock.mockResolvedValueOnce(make401()).mockResolvedValueOnce(makeOk());
 
-		const onUnauthorized = jest.fn().mockResolvedValue({ Authorization: 'Bearer B' });
+		const onUnauthorized = vi.fn().mockResolvedValue({ Authorization: 'Bearer B' });
 		const fetchFn = createAuthFetch({
 			baseFetch,
 			initialHeaders: { Authorization: 'Bearer A' },
@@ -103,7 +103,7 @@ describe('createAuthFetch — header merging', () => {
 			.mockResolvedValueOnce(new Response('ok', { status: 200 }));
 
 		let callCount = 0;
-		const onUnauthorized = jest.fn().mockImplementation(async () => {
+		const onUnauthorized = vi.fn().mockImplementation(async () => {
 			callCount++;
 			return { Authorization: `Bearer refreshed-${callCount}` };
 		});

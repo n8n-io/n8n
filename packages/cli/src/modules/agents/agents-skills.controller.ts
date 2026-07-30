@@ -1,4 +1,4 @@
-import { CreateAgentSkillDto, type AgentSkill, UpdateAgentSkillDto } from '@n8n/api-types';
+import { CreateAgentSkillDto, UpdateAgentSkillDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -46,13 +46,7 @@ export class AgentsSkillsController {
 		@Body payload: CreateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		const skill: AgentSkill = {
-			name: payload.name,
-			description: payload.description,
-			instructions: payload.instructions,
-		};
-
-		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, skill);
+		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload);
 	}
 
 	@Patch('/:agentId/skills/:skillId')

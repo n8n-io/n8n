@@ -1,13 +1,14 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags } from 'n8n-workflow';
 import { PostHog } from 'posthog-node';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { PostHogClient } from '@/posthog';
 
-jest.mock('posthog-node');
+vi.mock('posthog-node');
 
 function mockEvaluatedFlags(flags: FeatureFlags) {
 	return {
@@ -32,7 +33,7 @@ describe('PostHog', () => {
 
 	beforeEach(() => {
 		globalConfig.diagnostics.enabled = true;
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('inits PostHog correctly', async () => {
@@ -167,7 +168,7 @@ describe('PostHog', () => {
 
 		it('returns cached flags on second call', async () => {
 			const flags = { 'test-flag': true };
-			(PostHog.prototype.evaluateFlags as jest.Mock).mockResolvedValue(mockEvaluatedFlags(flags));
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags(flags));
 
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
@@ -182,10 +183,10 @@ describe('PostHog', () => {
 
 		it('refetches after cache expires', async () => {
 			const flags = { 'test-flag': true };
-			(PostHog.prototype.evaluateFlags as jest.Mock).mockResolvedValue(mockEvaluatedFlags(flags));
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags(flags));
 
 			const now = Date.now();
-			const spy = jest.spyOn(Date, 'now').mockReturnValue(now);
+			const spy = vi.spyOn(Date, 'now').mockReturnValue(now);
 
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
@@ -202,7 +203,7 @@ describe('PostHog', () => {
 		});
 
 		it('does not cache empty results', async () => {
-			(PostHog.prototype.evaluateFlags as jest.Mock).mockResolvedValue(mockEvaluatedFlags({}));
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
 
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
@@ -218,10 +219,12 @@ describe('PostHog', () => {
 				// Mutated per test; reset so test ordering doesn't leak override
 				// state into unrelated cases.
 				globalConfig.evaluation.collectionsEnabled = false;
+				globalConfig.evaluation.configEvalsEnabled = false;
+				globalConfig.evaluation.agentEvalsEnabled = false;
 			});
 
 			it('force-enables the eval-collections flag when N8N_EVAL_COLLECTIONS_ENABLED is set', async () => {
-				(PostHog.prototype.evaluateFlags as jest.Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
 				globalConfig.evaluation.collectionsEnabled = true;
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -232,8 +235,20 @@ describe('PostHog', () => {
 				expect(flags).toMatchObject({ '084_eval_collections': true });
 			});
 
+			it('force-enables the config-evaluations variant when N8N_CONFIG_EVALS_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.evaluation.configEvalsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '088_config_evaluations': 'variant' });
+			});
+
 			it('leaves flags untouched when no override is configured', async () => {
-				(PostHog.prototype.evaluateFlags as jest.Mock).mockResolvedValue(
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
 					mockEvaluatedFlags({ 'some-other-flag': true }),
 				);
 
@@ -246,7 +261,7 @@ describe('PostHog', () => {
 			});
 
 			it('falls back to env overrides when PostHog throws', async () => {
-				(PostHog.prototype.evaluateFlags as jest.Mock).mockRejectedValue(new Error('posthog down'));
+				(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('posthog down'));
 				globalConfig.evaluation.collectionsEnabled = true;
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -255,6 +270,30 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toEqual({ '084_eval_collections': true });
+			});
+
+			it('force-enables the agent-evals flag when N8N_AGENT_EVALS_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.evaluation.agentEvalsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '101_agent_evals': true });
+			});
+
+			it('falls back to the agent-evals override when PostHog throws', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('posthog down'));
+				globalConfig.evaluation.agentEvalsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({ '101_agent_evals': true });
 			});
 		});
 	});

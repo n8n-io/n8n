@@ -16,15 +16,15 @@ import {
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
+import { createResultError } from '@n8n/utils/result';
 import {
 	type IRunExecutionData,
-	createResultError,
 	type NodeConnectionType,
 	NodeConnectionTypes,
 	type IConnectedNode,
@@ -632,7 +632,7 @@ const onDragEnd = (el: HTMLElement) => {
 											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											telemetry-source="inputs"
 											size="small"
-											type="secondary"
+											variant="subtle"
 											hide-icon
 											execution-mode="exclusive"
 										/>

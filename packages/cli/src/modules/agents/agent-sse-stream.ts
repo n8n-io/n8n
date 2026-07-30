@@ -10,21 +10,10 @@ import { LoggerProxy } from 'n8n-workflow';
 
 export type FlushableResponse = Response & { flush?: () => void };
 
-/**
- * Side-effect callbacks for the agent builder. Keyed off discrete tool events
- * — no more `messageId` turn tracking. `toolInputStart` lets the builder
- * remember which tool is currently streaming arguments so it can route
- * `toolInputDelta` text into the right side-effect (e.g. `code-delta`).
- */
-export interface ToolEventCallbacks {
-	toolInputStart?: (toolName: string) => void;
-	toolInputDelta?: (toolCallId: string, delta: string) => void;
-	toolResult?: (toolName: string) => void;
-}
+const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 
 interface ChunkHandlerCtx {
 	send: (e: AgentSseEvent) => void;
-	onToolEvent?: ToolEventCallbacks;
 }
 
 /**
@@ -32,11 +21,26 @@ interface ChunkHandlerCtx {
  */
 export function initSseStream(res: FlushableResponse) {
 	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-	res.setHeader('Cache-Control', 'no-cache');
+	res.setHeader('Cache-Control', 'no-cache, no-transform');
 	res.setHeader('Connection', 'keep-alive');
 	res.setHeader('X-Accel-Buffering', 'no');
 	res.flushHeaders();
-	(res.socket as { setNoDelay?: (v: boolean) => void })?.setNoDelay?.(true);
+	res.socket?.setTimeout(0);
+	res.socket?.setNoDelay(true);
+	res.socket?.setKeepAlive(true);
+	res.write(':ok\n\n');
+	res.flush?.();
+
+	const heartbeat = setInterval(() => {
+		if (!res.writableEnded && !res.destroyed) {
+			res.write(':ping\n\n');
+			res.flush?.();
+		}
+	}, SSE_HEARTBEAT_INTERVAL_MS);
+	heartbeat.unref();
+	const stopHeartbeat = () => clearInterval(heartbeat);
+	res.once('finish', stopHeartbeat);
+	res.once('close', stopHeartbeat);
 
 	const send = (event: AgentSseEvent) => {
 		res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -120,7 +124,7 @@ function emitToolChunk(
 	>,
 	ctx: ChunkHandlerCtx,
 ): { suspended: boolean } {
-	const { send, onToolEvent } = ctx;
+	const { send } = ctx;
 
 	switch (chunk.type) {
 		case 'tool-input-start':
@@ -129,12 +133,10 @@ function emitToolChunk(
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
 			});
-			onToolEvent?.toolInputStart?.(chunk.toolName);
 			break;
 		case 'tool-input-delta':
 			if (chunk.delta) {
 				send({ type: 'tool-input-delta', toolCallId: chunk.toolCallId, delta: chunk.delta });
-				onToolEvent?.toolInputDelta?.(chunk.toolCallId, chunk.delta);
 			}
 			break;
 		case 'tool-call':
@@ -172,7 +174,6 @@ function emitToolChunk(
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
 				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
 			});
-			onToolEvent?.toolResult?.(chunk.toolName);
 			break;
 		}
 		case 'tool-call-suspended': {
@@ -193,8 +194,7 @@ function emitToolChunk(
  * Translate a single chunk into one or more SSE events.
  *
  * Returns `{ suspended: true }` when the chunk was a `tool-call-suspended`
- * — the run pauses and the caller stops pumping. All other chunks return
- * `{ suspended: false }`.
+ * and `{ suspended: false }` for all other chunks.
  */
 function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended: boolean } {
 	switch (chunk.type) {
@@ -230,6 +230,16 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 			ctx.send({ type: 'error', message: errMsg });
 			return { suspended: false };
 		}
+		case 'warning': {
+			ctx.send({
+				type: 'warning',
+				message: chunk.message,
+				...(chunk.code !== undefined && { code: chunk.code }),
+				...(chunk.source !== undefined && { source: chunk.source }),
+				...(chunk.server !== undefined && { server: chunk.server }),
+			});
+			return { suspended: false };
+		}
 		default:
 			return { suspended: false };
 	}
@@ -253,26 +263,19 @@ function stringifyError(error: unknown): string {
 /**
  * Pump SDK stream chunks through a typed AgentSseEvent stream.
  *
- * Side-effects (`config-updated` / `tool-updated` / `code-delta`) for the
- * agent builder are surfaced via the `onToolEvent` callback so the chat path
- * can ignore them.
- *
  * Returns `true` when a suspension was emitted (the run paused), `false`
  * otherwise.
  */
 export async function pumpChunks(
 	chunks: AsyncIterable<StreamChunk>,
 	send: (e: AgentSseEvent) => void,
-	onToolEvent?: ToolEventCallbacks,
 ): Promise<boolean> {
-	const ctx: ChunkHandlerCtx = {
-		send,
-		onToolEvent,
-	};
+	const ctx: ChunkHandlerCtx = { send };
+	let suspended = false;
 
 	for await (const chunk of chunks) {
-		const { suspended } = emitChunkEvents(chunk, ctx);
-		if (suspended) return true;
+		const result = emitChunkEvents(chunk, ctx);
+		suspended ||= result.suspended;
 	}
-	return false;
+	return suspended;
 }

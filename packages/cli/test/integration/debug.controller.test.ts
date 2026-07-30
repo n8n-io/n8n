@@ -3,6 +3,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 
@@ -39,7 +40,7 @@ describe('DebugController', () => {
 			activeWorkflowManager.allActiveInMemory.mockReturnValue([workflowId]);
 			activeWorkflowManager.getAllWorkflowActivationErrors.mockResolvedValue(activationErrors);
 
-			jest.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
+			vi.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
 
 			const response = await ownerAgent.get('/debug/multi-main-setup').expect(200);
 

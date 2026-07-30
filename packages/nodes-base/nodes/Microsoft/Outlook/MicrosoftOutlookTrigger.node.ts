@@ -9,6 +9,7 @@ import {
 
 import { getPollResponse } from './trigger/GenericFunctions';
 import { properties as messageProperties } from './trigger/MessageDescription';
+import { mailboxDescription } from './v2/descriptions';
 import { loadOptions } from './v2/methods';
 
 export class MicrosoftOutlookTrigger implements INodeType {
@@ -43,6 +44,15 @@ export class MicrosoftOutlookTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'microsoftEntraServicePrincipalApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftEntraServicePrincipalApi'],
+					},
+				},
+			},
 		],
 		polling: true,
 		inputs: [],
@@ -62,8 +72,27 @@ export class MicrosoftOutlookTrigger implements INodeType {
 						name: 'Microsoft OAuth2 (Graph)',
 						value: 'microsoftOAuth2Api',
 					},
+					{
+						name: 'Microsoft Entra Service Principal (App-Only)',
+						value: 'microsoftEntraServicePrincipalApi',
+						description:
+							'App-only access via a Microsoft Entra app registration. Choose which mailbox to act on under "Mailbox".',
+					},
 				],
 				default: 'microsoftOutlookOAuth2Api',
+			},
+			...mailboxDescription,
+			{
+				displayName:
+					'Unless restricted by an Application Access Policy (Exchange Online New-ApplicationAccessPolicy), the Mail.Read application permission lets this app read any mailbox in the tenant',
+				name: 'servicePrincipalNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						authentication: ['microsoftEntraServicePrincipalApi'],
+					},
+				},
 			},
 			{
 				displayName: 'Trigger On',

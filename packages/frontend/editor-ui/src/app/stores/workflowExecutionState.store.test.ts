@@ -624,6 +624,74 @@ describe('workflowExecutionState.store', () => {
 			});
 		});
 
+		describe('activeExecutionPinDataByNodeName', () => {
+			it('does not treat a displayed execution as preview pin data in debug mode', () => {
+				const executionStateStore = useWorkflowExecutionStateStore(
+					createWorkflowDocumentId('wf-1'),
+				);
+				const execution = makeExecution({
+					id: 'exec-1',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {},
+							pinData: { 'HTTP Request': [{ json: { source: 'workflow-pin-data' } }] },
+						},
+					}),
+				});
+
+				executionStateStore.setWorkflowExecutionData(execution);
+				expect(executionStateStore.isExecutionDataDisplayed).toBe(true);
+
+				executionStateStore.setIsInDebugMode(true);
+
+				expect(executionStateStore.displayedExecutionId).toBe('exec-1');
+				expect(executionStateStore.isExecutionDataDisplayed).toBe(false);
+				expect(executionStateStore.activeExecutionPinDataByNodeName).toEqual({
+					'HTTP Request': [{ json: { source: 'workflow-pin-data' } }],
+				});
+			});
+
+			it('uses the in-progress execution pin data while a new execution id is pending', () => {
+				const executionStateStore = useWorkflowExecutionStateStore(
+					createWorkflowDocumentId('wf-1'),
+				);
+				useExecutionDataStore(createExecutionDataId('previous-exec')).setExecution(
+					makeExecution({
+						id: 'previous-exec',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {},
+								pinData: { 'Send Rain Alert': [{ json: { stale: true } }] },
+							},
+						}),
+					}),
+				);
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+					makeExecution({
+						id: IN_PROGRESS_EXECUTION_ID,
+						data: createRunExecutionData({
+							resultData: {
+								runData: {},
+								pinData: { 'Get Berlin Forecast': [{ json: { dryRun: true } }] },
+							},
+						}),
+					}),
+				);
+
+				executionStateStore.setActiveExecutionId('previous-exec');
+				executionStateStore.setActiveExecutionId(undefined);
+				executionStateStore.setActiveExecutionId(null);
+
+				expect(executionStateStore.displayedExecutionId).toBe('previous-exec');
+				expect(executionStateStore.activeExecutionPinDataByNodeName).toEqual({
+					'Get Berlin Forecast': [{ json: { dryRun: true } }],
+				});
+				expect(
+					executionStateStore.activeExecutionPinDataByNodeName['Send Rain Alert'],
+				).toBeUndefined();
+			});
+		});
+
 		describe('activeExecutionExecutedNode', () => {
 			it('proxies the executedNode from the active executionData store', () => {
 				const executionStateStore = useWorkflowExecutionStateStore(
@@ -680,6 +748,7 @@ describe('workflowExecutionState.store', () => {
 				executionDataStore.addNodeExecutionStartedData({
 					executionId: 'exec-1',
 					nodeName: 'Code',
+					sequenceNumber: 0,
 					data: { startTime: 1 } as never,
 				});
 				executionStateStore.setActiveExecutionId('exec-1');
@@ -699,6 +768,7 @@ describe('workflowExecutionState.store', () => {
 				executionDataStore.addNodeExecutionStartedData({
 					executionId: IN_PROGRESS_EXECUTION_ID,
 					nodeName: 'Pending',
+					sequenceNumber: 0,
 					data: { startTime: 1 } as never,
 				});
 				executionStateStore.setActiveExecutionId(null);
@@ -828,6 +898,7 @@ describe('workflowExecutionState.store', () => {
 			executionStateStore.addActiveNodeExecutionStartedData({
 				executionId: 'exec-1',
 				nodeName: 'Code',
+				sequenceNumber: 0,
 				data: { startTime: 1 } as never,
 			});
 
@@ -843,6 +914,7 @@ describe('workflowExecutionState.store', () => {
 			executionDataStore.addNodeExecutionStartedData({
 				executionId: 'exec-1',
 				nodeName: 'Code',
+				sequenceNumber: 0,
 				data: { startTime: 1 } as never,
 			});
 			executionStateStore.setActiveExecutionId('exec-1');
@@ -865,6 +937,7 @@ describe('workflowExecutionState.store', () => {
 				executionStateStore.addActiveNodeExecutionStartedData({
 					executionId: 'x',
 					nodeName: 'N',
+					sequenceNumber: 0,
 					data: { startTime: 1 } as never,
 				}),
 			).not.toThrow();
@@ -1295,7 +1368,7 @@ describe('workflowExecutionState.store', () => {
 			executionStateStore.setSelectedTriggerNodeName('Trigger');
 			executionStateStore.setCurrentWorkflowExecutions([makeExecutionSummary({ id: '1' })]);
 			executionStateStore.setLastSuccessfulExecutionId('last-1');
-			executionStateStore.executingNode.addExecutingNode('Node');
+			executionStateStore.executingNode.addExecutingNode('Node', 0);
 
 			executionStateStore.resetExecutionState();
 
@@ -1362,7 +1435,7 @@ describe('workflowExecutionState.store', () => {
 				createWorkflowDocumentId('wf-1'),
 			);
 
-			workflowExecutionStateStore.executingNode.addExecutingNode('Node A');
+			workflowExecutionStateStore.executingNode.addExecutingNode('Node A', 0);
 
 			expect(workflowExecutionStateStore.executingNode.isNodeExecuting('Node A')).toBe(true);
 			expect(workflowExecutionStateStore.executingNode.lastAddedExecutingNode).toBe('Node A');
@@ -1372,11 +1445,47 @@ describe('workflowExecutionState.store', () => {
 			const a = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-a'));
 			const b = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-b'));
 
-			a.executingNode.addExecutingNode('Node A');
+			a.executingNode.addExecutingNode('Node A', 0);
 
 			expect(a.executingNode.isNodeExecuting('Node A')).toBe(true);
 			expect(b.executingNode.isNodeExecuting('Node A')).toBe(false);
 			expect(b.executingNode.executingNode).toEqual([]);
+		});
+
+		// CAT-2895: only the latest node (highest sequence number) renders as
+		// executing, so a stale node left over from a suspended tab can never add
+		// a second spinner. Driven through the store so the per-node canvas
+		// projection (executionRunningByNodeId) is asserted end to end.
+		it('shows only the latest node as executing, superseding the earlier one', () => {
+			const id = createWorkflowDocumentId('wf-latest');
+			const documentStore = useWorkflowDocumentStore(id);
+			const executionStateStore = useWorkflowExecutionStateStore(id);
+
+			documentStore.addNode({
+				id: 'a-id',
+				name: 'Node A',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+			documentStore.addNode({
+				id: 'b-id',
+				name: 'Node B',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+
+			executionStateStore.executingNode.addExecutingNode('Node A', 0);
+			executionStateStore.executingNode.addExecutingNode('Node B', 1);
+
+			expect(executionStateStore.executingNode.isNodeExecuting('Node A')).toBe(false);
+			expect(executionStateStore.executingNode.isNodeExecuting('Node B')).toBe(true);
+			// The canvas projection sees exactly one running node.
+			expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
+			expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
 		});
 	});
 

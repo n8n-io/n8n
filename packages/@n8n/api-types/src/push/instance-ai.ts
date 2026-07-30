@@ -11,6 +11,14 @@ export type InstanceAiPushMessage =
 			};
 	  }
 	| {
+			type: 'instanceAiBrowserStateChanged';
+			data: {
+				connected: boolean;
+				connectedAt: string | null;
+				toolCategories: ToolCategory[];
+			};
+	  }
+	| {
 			type: 'updateInstanceAiCredits';
 			data: {
 				creditsQuota: number;

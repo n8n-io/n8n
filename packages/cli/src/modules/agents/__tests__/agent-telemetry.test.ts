@@ -41,11 +41,10 @@ describe('agent telemetry', () => {
 				'openai.web_search': { enabled: true },
 			},
 			subAgents: {
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for research tasks.' }],
 			},
 			config: {
 				webSearch: { enabled: true },
-				nodeTools: { enabled: true },
 			},
 			memory: {
 				enabled: true,
@@ -61,8 +60,8 @@ describe('agent telemetry', () => {
 		).toEqual({
 			model: 'anthropic/claude-sonnet-4-5',
 			channels: ['linear', 'slack'],
-			tool_types: ['custom', 'mcp', 'node_tools', 'provider', 'subagent', 'web_search', 'workflow'],
-			tool_count: 7,
+			tool_types: ['custom', 'mcp', 'provider', 'subagent', 'web_search', 'workflow'],
+			tool_count: 6,
 			num_skills: 1,
 			memory_type: 'n8n_observational_episodic',
 		});

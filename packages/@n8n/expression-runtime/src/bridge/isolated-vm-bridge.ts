@@ -338,6 +338,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					};
 				}
 
+				// Dates have no enumerable own keys; pass through instead of
+				// marshaling as an empty object.
+				if (value instanceof Date) {
+					return value;
+				}
+
 				// Handle objects - return metadata with keys
 				if (value !== null && typeof value === 'object') {
 					return {
@@ -394,7 +400,26 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					return undefined;
 				}
 
+				// Only genuine array indices are reachable; anything else (e.g.
+				// 'constructor', '__lookupGetter__') would read off the prototype
+				// chain and could leak a host function reference across the boundary.
+				if (!Number.isInteger(index) || index < 0) {
+					return undefined;
+				}
+
 				const element = arr[index];
+
+				// Functions are never reachable through the data surface — mirror the
+				// guard in getValueAtPath so a host callable can't cross the boundary.
+				if (typeof element === 'function') {
+					return undefined;
+				}
+
+				// Dates have no enumerable own keys; pass through instead of
+				// marshaling as an empty object.
+				if (element instanceof Date) {
+					return element;
+				}
 
 				// If element is object/array, return metadata
 				if (element !== null && typeof element === 'object') {

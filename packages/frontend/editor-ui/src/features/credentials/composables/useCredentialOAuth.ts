@@ -2,21 +2,19 @@ import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import {
-	createResultError,
-	createResultOk,
 	NodeHelpers,
 	type CredentialInformation,
 	type GenericValue,
 	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 	type INodeProperties,
-	type Result,
 } from 'n8n-workflow';
 
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getTrustedOAuthOrigins, parseOAuthCallbackMessage } from './oauthCallback';
@@ -322,10 +320,14 @@ export function useCredentialOAuth() {
 
 		let credential: ICredentialsResponse;
 		try {
+			const name = await credentialsStore.getNewCredentialName({
+				credentialTypeName,
+				fallbackName: credentialType.displayName,
+			});
 			credential = await credentialsStore.createNewCredential(
 				{
 					id: '',
-					name: credentialType.displayName,
+					name,
 					type: credentialTypeName,
 					data,
 				},

@@ -12,7 +12,8 @@ type N8nRedisClientType =
 	| 'publisher(n8n)'
 	| 'cache(n8n)'
 	| 'registry(n8n)'
-	| 'leader(n8n)';
+	| 'leader(n8n)'
+	| 'lock(n8n)';
 
 /**
  * Redis client used internally by Bull. Suffixed with `(bull)` at `ScalingService.setupQueue`.

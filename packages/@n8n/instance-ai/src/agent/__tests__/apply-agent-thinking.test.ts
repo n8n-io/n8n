@@ -25,7 +25,31 @@ describe('applyAgentThinking', () => {
 	it('enables adaptive thinking for Anthropic', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'anthropic/claude-opus-4-8');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', { mode: 'adaptive' });
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'adaptive',
+			effort: 'medium',
+		});
+	});
+
+	it('enables adaptive thinking for dotted Anthropic provider IDs', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'anthropic.messages/claude-opus-4-8');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'adaptive',
+			effort: 'medium',
+		});
+	});
+
+	it('enables adaptive thinking for AI SDK Anthropic model objects', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, {
+			modelId: 'claude-opus-4-8',
+			config: { provider: 'anthropic.messages' },
+		} as unknown as Parameters<typeof applyAgentThinking>[1]);
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'adaptive',
+			effort: 'medium',
+		});
 	});
 
 	it('enables OpenAI reasoning for supported models', () => {

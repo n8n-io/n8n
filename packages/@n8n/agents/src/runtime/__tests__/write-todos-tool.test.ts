@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { isZodSchema } from '../../utils/zod';
 import { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from '../tools/write-todos-tool';
@@ -36,6 +37,20 @@ describe('createWriteTodosTool', () => {
 		expect(tool.systemInstruction).toContain('high');
 		expect(tool.systemInstruction).toContain('delegate_subagent');
 		expect(tool.systemInstruction).toContain('same difficulty');
+	});
+
+	it('references a renamed delegate tool in the planner guidance', () => {
+		const tool = createWriteTodosTool({ delegateToolName: 'agent' });
+
+		expect(tool.description).toContain('handled separately with agent.');
+		expect(tool.description).not.toContain('delegate_subagent');
+		expect(tool.systemInstruction).toContain('good candidates for agent.');
+		expect(tool.systemInstruction).toContain('then call agent separately for that task');
+		expect(tool.systemInstruction).not.toContain('delegate_subagent');
+
+		expect(isZodSchema(tool.inputSchema)).toBe(true);
+		if (!isZodSchema(tool.inputSchema)) return;
+		expect(JSON.stringify(zodToJsonSchema(tool.inputSchema))).not.toContain('delegate_subagent');
 	});
 
 	it('returns the provided todo list with a count', async () => {

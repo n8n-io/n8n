@@ -27,7 +27,8 @@ const SCAN_DIRS = [
 ].map((rel) => path.resolve(__dirname, rel));
 
 // Bump when more AWS SDK clients are added to the scanned surface.
-const MIN_EXPECTED_CLIENT_CONSTRUCTIONS = 2;
+// The chat and embeddings nodes share one construction site (createBedrockRuntimeClient).
+const MIN_EXPECTED_CLIENT_CONSTRUCTIONS = 1;
 
 interface ImportBinding {
 	module: string;

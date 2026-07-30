@@ -15,15 +15,14 @@ import { Service } from '@n8n/di';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { N8N_VERSION } from '@/constants';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
-import type { BuilderTelemetryProxyConfig } from '../tracing/builder-telemetry';
 import { BuilderNotConfiguredError } from './errors';
 import {
 	isSupportedAgentProvider,
@@ -39,6 +38,11 @@ const DEFAULT_SETTINGS: AgentBuilderAdminSettings = { mode: 'default' };
 function readEnvAnthropicKey(): string | null {
 	const key = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
 	return key && key.length > 0 ? key : null;
+}
+
+interface BuilderTelemetryProxyConfig {
+	apiUrl: string;
+	getAuthHeaders: () => Promise<Record<string, string>>;
 }
 
 interface ResolvedBuilderModelConfig {
@@ -97,30 +101,10 @@ export class AgentsBuilderSettingsService {
 		this.cached = settings;
 	}
 
-	/** Get the persisted admin settings + the derived `isConfigured` flag. */
+	/** Get the persisted admin settings. */
 	async getAdminSettings(): Promise<AgentBuilderAdminSettingsResponse> {
 		const settings = await this.loadSettings();
-		const isConfigured = await this.computeIsConfigured(settings);
-		return { settings, isConfigured };
-	}
-
-	/** Lightweight readiness check used by the builder UI to gate the input box. */
-	async getStatus(): Promise<{ isConfigured: boolean }> {
-		const settings = await this.loadSettings();
-		const isConfigured = await this.computeIsConfigured(settings);
-		return { isConfigured };
-	}
-
-	private async computeIsConfigured(settings: AgentBuilderAdminSettings): Promise<boolean> {
-		if (settings.mode === 'custom') {
-			const credential = await this.credentialsFinderService.findCredentialById(
-				settings.credentialId,
-			);
-			return !!credential;
-		}
-		// mode === 'default' — true if any of the runtime resolution branches
-		// can succeed: AI proxy enabled, or the env-var backstop is set.
-		return this.aiService.isProxyEnabled() || !!readEnvAnthropicKey();
+		return { settings };
 	}
 
 	/**

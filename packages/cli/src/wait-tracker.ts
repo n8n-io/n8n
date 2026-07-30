@@ -3,9 +3,9 @@ import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
 import {
-	ensureError,
-	sleep,
 	UnexpectedError,
 	UserError,
 	type IRun,
@@ -152,7 +152,10 @@ export class WaitTracker {
 
 		// Start the execution again
 		try {
-			await this.workflowRunner.run(data, false, false, executionId);
+			await this.workflowRunner.run(data, false, false, {
+				executionId,
+				expectedStatus: 'waiting',
+			});
 		} catch (error) {
 			if (error instanceof ExecutionAlreadyResumingError) {
 				// This execution is already being resumed by another child execution

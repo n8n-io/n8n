@@ -13,13 +13,13 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import type { NotificationHandle } from '@n8n/composables/useToast';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useI18n } from '@n8n/i18n';
@@ -259,7 +259,7 @@ async function handleArchiveWorkflow() {
 	uiStore.markStateClean();
 	const archivedWorkflowId = props.id;
 	const archivedWorkflowName = props.name;
-	toast.showToast({
+	const archiveToast = toast.showToast({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
 			interpolate: { workflowName: archivedWorkflowName },
 		}),
@@ -267,25 +267,29 @@ async function handleArchiveWorkflow() {
 		onClick: (event) => {
 			if (event?.target instanceof HTMLAnchorElement) {
 				event.preventDefault();
-				void deleteArchivedWorkflow(archivedWorkflowId, archivedWorkflowName);
+				void deleteArchivedWorkflow(archivedWorkflowId, archivedWorkflowName, archiveToast);
 			}
 		},
 		type: 'success',
 	});
 
-	// Navigate to the appropriate project's workflow list
-	const workflow = workflowsListStore.getWorkflowById(props.id);
-	if (workflow?.homeProject?.type === ProjectTypes.Team) {
+	// Navigate to the home of the workflow's context (personal or team project)
+	const homeProject = workflowDocumentStore?.value?.homeProject;
+	if (homeProject) {
 		await router.push({
 			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: workflow.homeProject.id },
+			params: { projectId: homeProject.id },
 		});
 	} else {
 		await router.push({ name: VIEWS.WORKFLOWS });
 	}
 }
 
-async function deleteArchivedWorkflow(id: IWorkflowDb['id'], name: IWorkflowDb['name']) {
+async function deleteArchivedWorkflow(
+	id: IWorkflowDb['id'],
+	name: IWorkflowDb['name'],
+	archiveToast: NotificationHandle,
+) {
 	const deleteConfirmed = await message.confirm(
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
 			interpolate: { workflowName: name },
@@ -312,6 +316,10 @@ async function deleteArchivedWorkflow(id: IWorkflowDb['id'], name: IWorkflowDb['
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
 	}
+
+	// Dismiss the archive toast so its now-stale 'Delete permanently' CTA
+	// disappears immediately instead of lingering until its duration elapses.
+	archiveToast.close();
 
 	toast.showMessage({
 		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
@@ -352,9 +360,8 @@ async function handleDeleteWorkflow() {
 		return;
 	}
 
-	// Get workflow before deletion to know which project to navigate to
-	const workflow = workflowsListStore.getWorkflowById(props.id);
-	const isTeamProject = workflow?.homeProject?.type === ProjectTypes.Team;
+	// Get workflow's home project before deletion to know which project to navigate to
+	const homeProject = workflowDocumentStore?.value?.homeProject;
 
 	try {
 		await workflowsListStore.deleteWorkflow(props.id);
@@ -372,11 +379,11 @@ async function handleDeleteWorkflow() {
 		type: 'success',
 	});
 
-	// Navigate to the appropriate project's workflow list
-	if (isTeamProject && workflow?.homeProject) {
+	// Navigate to the home of the workflow's context (personal or team project)
+	if (homeProject) {
 		await router.push({
 			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: workflow.homeProject.id },
+			params: { projectId: homeProject.id },
 		});
 	} else {
 		await router.push({ name: VIEWS.WORKFLOWS });

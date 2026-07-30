@@ -6,7 +6,7 @@ import { computed, inject } from 'vue';
 const i18n = useI18n();
 
 const props = defineProps<{
-	type: 'workflow' | 'data-table';
+	type: 'workflow' | 'data-table' | 'agent';
 	name: string;
 	resourceId: string;
 	projectId?: string;
@@ -19,13 +19,26 @@ const openDataTablePreview = inject<((id: string, projectId: string) => void) | 
 	'openDataTablePreview',
 	undefined,
 );
+const openAgentPreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openAgentPreview',
+	undefined,
+);
 
 const iconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
+	agent: 'robot',
 };
 
 const icon = computed(() => iconMap[props.type] ?? 'file');
+
+function projectResourceUrl(projectId: string | undefined, resourceType: 'data-table' | 'agent') {
+	if (resourceType === 'agent') {
+		return projectId ? `/projects/${projectId}/agents/${props.resourceId}` : '/home/agents';
+	}
+
+	return projectId ? `/projects/${projectId}/datatables/${props.resourceId}` : '/data-tables';
+}
 
 function handleClick(e: MouseEvent) {
 	if (props.type === 'workflow') {
@@ -36,14 +49,19 @@ function handleClick(e: MouseEvent) {
 		openPreview?.(props.resourceId);
 	} else if (props.type === 'data-table') {
 		if (e.metaKey || e.ctrlKey) {
-			const url = props.projectId
-				? `/projects/${props.projectId}/datatables/${props.resourceId}`
-				: '/data-tables';
-			window.open(url, '_blank');
+			window.open(projectResourceUrl(props.projectId, 'data-table'), '_blank');
 			return;
 		}
 		if (props.projectId) {
 			openDataTablePreview?.(props.resourceId, props.projectId);
+		}
+	} else if (props.type === 'agent') {
+		if (e.metaKey || e.ctrlKey) {
+			window.open(projectResourceUrl(props.projectId, 'agent'), '_blank');
+			return;
+		}
+		if (props.projectId) {
+			openAgentPreview?.(props.resourceId, props.projectId);
 		}
 	}
 }

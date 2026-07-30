@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -16,9 +17,9 @@ function makeController({
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
 }: {
-	agentPublishService?: jest.Mocked<AgentPublishService>;
-	agentValidationService?: jest.Mocked<AgentValidationService>;
-	credentialsService?: jest.Mocked<CredentialsService>;
+	agentPublishService?: Mocked<AgentPublishService>;
+	agentValidationService?: Mocked<AgentValidationService>;
+	credentialsService?: Mocked<CredentialsService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -88,7 +89,10 @@ describe('AgentPublishController revert to version', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
 
 		const result = await controller.revertToVersion(
 			{

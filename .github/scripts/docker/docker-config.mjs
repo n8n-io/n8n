@@ -78,6 +78,7 @@ class BuildContext {
 	sanitizeBranch(branch) {
 		if (!branch) return 'unknown';
 		return branch
+			.replace(/^refs\/heads\//, '')
 			.toLowerCase()
 			.replace(/[^a-z0-9._-]/g, '-')
 			.replace(/^[.-]/, '')

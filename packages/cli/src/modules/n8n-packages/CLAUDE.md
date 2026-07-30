@@ -18,6 +18,25 @@ flowchart LR
   A --> C["4. CLI<br/>@n8n/cli"]
 ```
 
+### Importer rules
+- Importers **plan and decide**; they must never touch a repository directly. All persistence and
+  lookups go through a **service**.
+- Prefer an **existing** domain service from the main n8n codebase (`FolderService`, `ProjectService`,
+  `WorkflowService`, …). When the importer needs a capability the service lacks — reusing a source id,
+  or a fetch-by-ids for matching — **extend that existing service with a general method** rather than
+  reaching for the repository or spinning up an import-only service. Canonical examples:
+  `ProjectService.createTeamProject(data, overrides)` (preset id + description) and
+  `FolderService.createFolder(dto, projectId, id?)` / `FolderService.getFoldersByIds(ids)`.
+- `N8nPackagesService.importPackage` is a thin **dispatcher**: it builds the reader, reads the manifest,
+  and delegates to a per-package-shape importer. Shapes mirror export's mutual exclusivity — a **project
+  package** (projects defined by the package) → `ProjectPackageImporter`, or a **workflow package** (loose
+  workflows + their folder shells + credential deps into a target project) → `WorkflowPackageImporter`.
+- `WorkflowPackageImporter` resolves the target scope from the request, then delegates the plan/gate/apply
+  work to `ImportOrchestrator` (brings folders + workflows + credential deps into one project scope).
+  `ProjectPackageImporter` creates the project shells, then reuses `ImportOrchestrator` per project to
+  bring each one's own folders + workflows + credential deps into scope. Don't split folder vs workflow:
+  they share target resolution, credential resolution, and publishing.
+
 ### Adding an IMPORT property
 
 1. **Module** (here)
@@ -46,14 +65,14 @@ flowchart LR
 
 ### Adding an EXPORT property
 
-1. **Module** — `n8n-packages.types.ts` `ExportWorkflowsRequest`; implement in
-   `n8n-packages.service.ts` `exportWorkflows` (+ `io/` writer or
+1. **Module** — `n8n-packages.types.ts` `ExportPackageRequest`; implement in
+   `n8n-packages.service.ts` `exportPackage` (+ `io/` writer or
    `entities/*/` exporter as needed).
-2. **DTO** — `@n8n/api-types/src/dto/packages/export-workflows-request.dto.ts`
-   (`ExportWorkflowsRequestDto`, zod).
-3. **Public API** — `n8n-packages.handler.ts` `exportWorkflows` reads from
+2. **DTO** — `@n8n/api-types/src/dto/packages/export-package-request.dto.ts`
+   (`ExportPackageRequestDto`, zod).
+3. **Public API** — `n8n-packages.handler.ts` `exportPackage` reads from
    `payload.data`; update the **separate** schema file
-   `spec/schemas/exportWorkflowsRequest.yml` (export's request schema is a
+   `spec/schemas/exportPackageRequest.yml` (export's request schema is a
    `$ref`, unlike import's inline schema).
 4. **CLI** — `src/client.ts` `exportPackage(...)`,
    `src/commands/package/export.ts` flag, and the docs/README.
@@ -63,10 +82,3 @@ flowchart LR
 The in-tree addition of `workflowIdPolicy` is the canonical example — it landed
 in the module types + importer, the DTO (+ form-fields list), the handler, and
 the CLI. Grep `workflowIdPolicy` to see every site a new import knob must touch.
-
-## More context
-
-See the module structure and import-pipeline flow notes in the root
-`AGENTS.md` and the package import/export RFC. Licensed behind
-`feat:n8nPackages`; the public-API endpoints are beta and gated by
-`N8N_PUBLIC_API_PACKAGES_ENABLED`.

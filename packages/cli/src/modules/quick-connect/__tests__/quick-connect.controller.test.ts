@@ -1,6 +1,6 @@
 import type { GetQuickConnectApiKeyDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { QuickConnectController } from '../quick-connect.controller';
 import type { QuickConnectService } from '../quick-connect.service';
@@ -26,7 +26,7 @@ describe('QuickConnectController', () => {
 			};
 			const expectedResult = { apiKey: 'test-api-key' };
 
-			service.getCredentialData = jest.fn().mockResolvedValue(expectedResult);
+			service.getCredentialData = vi.fn().mockResolvedValue(expectedResult);
 
 			const result = await controller.getCredentialData(req, {}, body);
 
@@ -45,7 +45,7 @@ describe('QuickConnectController', () => {
 			};
 			const error = new Error('Handler not configured');
 
-			service.getCredentialData = jest.fn().mockRejectedValue(error);
+			service.getCredentialData = vi.fn().mockRejectedValue(error);
 
 			await expect(controller.getCredentialData(req, {}, body)).rejects.toThrow(error);
 			expect(service.getCredentialData).toHaveBeenCalledWith('invalid', user);
@@ -62,7 +62,7 @@ describe('QuickConnectController', () => {
 			};
 			const expectedResult = { apiKey: 'custom-api-key-xyz' };
 
-			service.getCredentialData = jest.fn().mockResolvedValue(expectedResult);
+			service.getCredentialData = vi.fn().mockResolvedValue(expectedResult);
 
 			const result = await controller.getCredentialData(req, {}, body);
 

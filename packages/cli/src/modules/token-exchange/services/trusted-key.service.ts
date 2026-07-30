@@ -1,6 +1,3 @@
-import { createHash, createPublicKey } from 'node:crypto';
-import type { KeyObject } from 'node:crypto';
-
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { DbLock, DbLockService } from '@n8n/db';
@@ -10,6 +7,8 @@ import type { EntityManager } from '@n8n/typeorm';
 import { In, Not } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError, jsonParse } from 'n8n-workflow';
+import type { KeyObject } from 'node:crypto';
+import { createHash, createPublicKey } from 'node:crypto';
 import { z } from 'zod';
 
 import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
@@ -193,6 +192,7 @@ export class TrustedKeyService {
 				issuer: data.issuer,
 				expectedAudience: data.expectedAudience,
 				allowedRoles: data.allowedRoles,
+				requireVerifiedEmail: data.requireVerifiedEmail ?? true,
 			};
 		}
 
@@ -513,6 +513,7 @@ export class TrustedKeyService {
 					issuer: key.issuer,
 					expectedAudience: key.expectedAudience,
 					allowedRoles: key.allowedRoles,
+					requireVerifiedEmail: jwksConfig.requireVerifiedEmail ?? true,
 					expiresAt: new Date(Date.now() + result.ttlSeconds * 1000).toISOString(),
 				},
 			})),
@@ -551,7 +552,15 @@ export class TrustedKeyService {
 		const seenKids = new Set<string>();
 
 		for (const config of configs) {
-			const { kid, algorithms, key: pemString, issuer, expectedAudience, allowedRoles } = config;
+			const {
+				kid,
+				algorithms,
+				key: pemString,
+				issuer,
+				expectedAudience,
+				allowedRoles,
+				requireVerifiedEmail,
+			} = config;
 
 			if (seenKids.has(kid)) {
 				throw new UnexpectedError(`Trusted key "${kid}": duplicate kid`);
@@ -568,6 +577,7 @@ export class TrustedKeyService {
 					issuer,
 					expectedAudience,
 					allowedRoles,
+					requireVerifiedEmail,
 				},
 			});
 		}

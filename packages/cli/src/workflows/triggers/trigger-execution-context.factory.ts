@@ -1,5 +1,7 @@
 import { Logger } from '@n8n/backend-common';
+import type { IWorkflowDb } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	ErrorReporter,
 	PollContext,
@@ -8,14 +10,12 @@ import {
 	type IGetExecutePollFunctions,
 	type IGetExecuteTriggerFunctions,
 } from 'n8n-core';
-
-import { ActiveExecutions } from '@/active-executions';
 import type {
 	ExecutionError,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	INode,
 	INodeExecutionData,
+	IPollFunctions,
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
@@ -24,14 +24,20 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
+import { NodeTypes } from '@/node-types';
+import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { OwnershipService } from '@/services/ownership.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import type { IWorkflowDb } from '@n8n/db';
 
 export type TriggerFailureHandler = (opts: {
 	error: Error;
@@ -63,6 +69,9 @@ export class TriggerExecutionContextFactory {
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly storageConfig: StorageConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
+		private readonly ownershipService: OwnershipService,
+		private readonly nodeTypes: NodeTypes,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -82,6 +91,10 @@ export class TriggerExecutionContextFactory {
 		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 		onTriggerFailure: TriggerFailureHandler,
+		// This activation attempt's rule-collection session. Owned by the caller
+		// so the commit/discard that follows registration consumes the rules this
+		// attempt collected, never a concurrent attempt's.
+		scheduleCollectionSession: ScheduleTriggerCollectionSession,
 	): IGetExecuteTriggerFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const emit = (
@@ -123,14 +136,20 @@ export class TriggerExecutionContextFactory {
 						throw error;
 					});
 
-				void executePromise.then((executionId) => {
+				void executePromise.then(async (executionId) => {
 					// `executionId` is undefined when the catch above swallowed a
 					// duplicate scheduled execution; nothing ran, so nothing to emit.
 					if (executionId === undefined) return;
+					const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+						this.ownershipService,
+						workflowData.id,
+					);
 					this.eventService.emit('workflow-executed', {
 						workflowId: workflowData.id,
 						workflowName: workflowData.name,
 						executionId,
+						projectId,
+						projectName,
 						source: 'trigger',
 					});
 				});
@@ -173,6 +192,10 @@ export class TriggerExecutionContextFactory {
 					});
 			};
 
+			const schedulingFunctions = this.scheduleTriggerJobRegistrar.interceptsNode(node)
+				? scheduleCollectionSession.createCollector(workflow, node)
+				: undefined;
+
 			return new TriggerContext(
 				workflow,
 				node,
@@ -182,6 +205,7 @@ export class TriggerExecutionContextFactory {
 				emit,
 				emitError,
 				saveFailedExecution,
+				schedulingFunctions,
 			);
 		};
 	}
@@ -191,7 +215,7 @@ export class TriggerExecutionContextFactory {
 	 * and overwrites the emit to be able to start it in subprocess
 	 */
 	getExecutePollFunctions(
-		workflowData: IWorkflowDb,
+		workflowData: IWorkflowBase,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
@@ -249,6 +273,47 @@ export class TriggerExecutionContextFactory {
 		};
 	}
 
+	/**
+	 * Assemble the poll execution context: the Workflow, additionalData, and
+	 * resolve-at-emit closure needed to run `poll()`. The closure reads fresh
+	 * (non-cached) so the poll cursor in staticData is never stale.
+	 */
+	async createPollExecutionContext(
+		workflowData: IWorkflowBase,
+		node: INode,
+	): Promise<{ workflow: Workflow; pollFunctions: IPollFunctions }> {
+		const workflow = new Workflow({
+			id: workflowData.id,
+			name: workflowData.name,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: true,
+			nodeTypes: this.nodeTypes,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		});
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflowData.id,
+			workflowSettings: workflowData.settings,
+		});
+
+		const resolveWorkflowData = async () =>
+			await this.loadPublishedWorkflowData(workflowData.id, { bypassCache: true });
+
+		const getPollFunctions = this.getExecutePollFunctions(
+			workflowData,
+			additionalData,
+			'trigger',
+			'update',
+			resolveWorkflowData,
+		);
+		// getPollFunctions already closed over these; its signature still requires them.
+		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');
+
+		return { workflow, pollFunctions };
+	}
+
 	executeErrorWorkflow(
 		error: ExecutionError,
 		workflowData: IWorkflowBase,
@@ -273,24 +338,31 @@ export class TriggerExecutionContextFactory {
 	}
 
 	/**
-	 * Load the published workflow nodes/connections from the
-	 * `workflow_published_version` table. The passed-in workflow is used
-	 * for all other fields (staticData, settings, etc.).
+	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the
+	 * published data. `pinData` and `meta` are deliberately left out: they are
+	 * irrelevant to a production trigger execution.
+	 *
+	 * Pass `bypassCache` on the poll path: `saveStaticData` writes the poll cursor
+	 * into `staticData` without refreshing the cache, so a cached read would be stale.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
-	async loadPublishedWorkflowData(initialWorkflowData: IWorkflowDb): Promise<IWorkflowBase> {
-		const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
-			initialWorkflowData.id,
-		);
+	async loadPublishedWorkflowData(
+		workflowId: string,
+		{ bypassCache = false }: { bypassCache?: boolean } = {},
+	): Promise<IWorkflowBase> {
+		const publishedData = bypassCache
+			? await this.workflowPublishedDataService.getPublishedWorkflowDataForExecution(workflowId)
+			: await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
+					workflowId,
+				);
 
 		if (!publishedData) {
 			throw new UnexpectedError('Published version not found for workflow', {
-				extra: { workflowId: initialWorkflowData.id },
+				extra: { workflowId },
 			});
 		}
 
-		const { nodes, connections } = publishedData.publishedVersion;
-		return { ...initialWorkflowData, nodes, connections };
+		return publishedData;
 	}
 }

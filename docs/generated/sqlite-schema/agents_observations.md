@@ -76,8 +76,8 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   datetime_3_ createdAt
-  varchar_512_ description
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name

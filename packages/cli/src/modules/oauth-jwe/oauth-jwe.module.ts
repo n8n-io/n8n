@@ -14,7 +14,7 @@ export class OAuthJweModule implements ModuleInterface {
 	async init() {
 		if (!isFeatureFlagEnabled()) return;
 
-		const { OAuthJweDecryptService } = await import('./oauth-jwe-decrypt.service');
+		const { OAuthJweDecryptService } = await import('./oauth-jwe-decrypt.service.js');
 		Container.get(OAuthJweServiceProxy).setHandler(Container.get(OAuthJweDecryptService));
 
 		// Eager key bootstrap and the JWKS controller belong on main only.
@@ -22,9 +22,9 @@ export class OAuthJweModule implements ModuleInterface {
 		// the cache is cold and main hasn't generated yet, the partial unique
 		// index on `(type, algorithm)` serializes any concurrent generation.
 		if (Container.get(InstanceSettings).instanceType === 'main') {
-			const { OAuthJweKeyService } = await import('./oauth-jwe-key.service');
+			const { OAuthJweKeyService } = await import('./oauth-jwe-key.service.js');
 			await Container.get(OAuthJweKeyService).initialize();
-			await import('./oauth-jwe.controller');
+			await import('./oauth-jwe.controller.js');
 		}
 	}
 

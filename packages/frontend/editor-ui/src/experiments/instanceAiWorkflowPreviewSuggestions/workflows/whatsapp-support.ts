@@ -48,7 +48,7 @@ export const whatsappSupportWorkflow: PreviewWorkflow = {
 		{
 			id: 'notion-ticket',
 			label: 'Create ticket',
-			icon: { type: 'file', src: NOTION_ICON_SVG },
+			icon: { type: 'file', src: NOTION_ICON_SVG, lightInvert: true },
 			position: { x: 880, y: 240 },
 		},
 	],
@@ -84,6 +84,7 @@ export const whatsappSupportWorkflow: PreviewWorkflow = {
 				icon: NOTION_ICON_SVG,
 				title: 'Ticket created',
 				subtitle: 'Password reset · Unresolved',
+				lightInvert: true,
 			},
 		},
 	],

@@ -3,7 +3,7 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ListQuery } from '@/requests';
@@ -87,7 +87,7 @@ describe('McpSettingsController', () => {
 	let controller: McpSettingsController;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		instanceSettingsLoaderConfig.mcpManagedByEnv = false;
 		Container.set(Logger, logger);
 		Container.set(McpSettingsService, mcpSettingsService);
@@ -99,7 +99,7 @@ describe('McpSettingsController', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('updateSettings', () => {
@@ -475,6 +475,21 @@ describe('McpSettingsController', () => {
 					'http://localhost:3000/callback',
 					'http://127.0.0.1:3000/callback',
 				]);
+			} finally {
+				process.env.NODE_ENV = originalEnv;
+			}
+		});
+
+		test('allows http for IPv6 loopback [::1] outside development', () => {
+			const originalEnv = process.env.NODE_ENV;
+			process.env.NODE_ENV = 'production';
+
+			try {
+				const dto = new UpdateAllowedRedirectUrisDto({
+					uris: ['http://[::1]:3000/callback'],
+				});
+
+				expect(dto.uris).toEqual(['http://[::1]:3000/callback']);
 			} finally {
 				process.env.NODE_ENV = originalEnv;
 			}

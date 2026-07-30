@@ -12,7 +12,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { createUser } from '@test-integration/db/users';
 
@@ -80,7 +80,7 @@ describe('dataTableAggregate', () => {
 					project: project1,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 				{
 					userId: user.id,
@@ -90,7 +90,7 @@ describe('dataTableAggregate', () => {
 					project: project2,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			]);
 
@@ -179,7 +179,7 @@ describe('dataTableAggregate', () => {
 					project: project1,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 				{
 					userId: user.id,
@@ -189,7 +189,7 @@ describe('dataTableAggregate', () => {
 					project: project2,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			]);
 
@@ -228,7 +228,7 @@ describe('dataTableAggregate', () => {
 					project: project1,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			]);
 
@@ -261,7 +261,7 @@ describe('dataTableAggregate', () => {
 					project: project1,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			]);
 

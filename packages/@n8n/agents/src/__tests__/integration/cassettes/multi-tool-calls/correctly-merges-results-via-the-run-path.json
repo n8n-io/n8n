@@ -37,8 +37,7 @@
 						"required": ["text"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
-					},
-					"eager_input_streaming": true
+					}
 				}
 			],
 			"tool_choice": {
@@ -48,34 +47,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b080000000000000ac5564d6fda4010bdf32bd09c8d641348dbbdb5a2cd2105f54b4a9352ad167b6ab6ac77cdee988620fff76a01032690b4154d7cf37b339e79334f1ae30c35b16686ce8914b92361a9910812acb9009ae7080c6a2404d53bb005642641050c62258a045b63212745abd3eab6da61bb1b85610401c8c47fc3a53c8c5e4eb3e8bc777937e8bf9e8df2c1f53bccfa6f5208f62a4100d6280f08e7a423a17dd9d868424dc0be7d0fc091c9b945e18c06a60ba5d690c369813ac61a982009a95c851555f752e705713213d40ed8f9593b8058c463e4b14541d2685e8f082bdea2488e7155ae2f80f91833b442f16e763f7ecb46e37db60cc014b40bbd380bc0a19dc9183949b4c0c04f261136f143d63fd07ae13c45030cb4212e66422a31520865d95c3e65a381ab85af87c947cac493c36b3f10b22c94e0ed4aee2eefd5aef3c818c50b87d5eafd7bc1c3e8fa261d88b6f81c5dd0fce2637ff6a593913410801699cf4b91b8429dd27859262f08d8a2f46355cacbdd1448a4c59836a29afbda72a9d33d314df0201cd39fa022f1b0fe65484dff0ad9b6b5dae04f67f426381796a4504b101840797c054fd4c2620884b73404d61cc2189532f088379ea8b12194505fe8036e35f9636635f94e3f27757ef4f7ceefc8f4c3cdd5b47775f7e9327b3b77712f325fdf9fcaf9a75b5cf4fca6fea7166aa6fe65ac4ab6567ae6d62a5b9fcacbd181b557f7f9a0a41a093b126a1774d7ba7f7847cbff7748f72edfabb03c68f7ed7fc9fd19ee72e0737e036b3e2d00e9080000"
+			"1f8b0800000000000013cd56c16eda4010bdf31568ce46b22924adaf39a44a5ad4922aa42ad56ab1a7b661d97576672914f9dfa3050c3681a6515211dffc66d6f3decc3e8d718692c2e6148de10932435c5323e6c4c3e61268912384500b8257be43b884a98a51400891e036c656cab3896d755add56db6f7703df0fc0832c76df3009f3837e6fdcfd6e2ff5d995caf57cb1b8f93cebd90bf0f62a81075a0907706332435cbab29192849220fcf1d303432a671ab95112426985d84006ef2dca086b608cc433614acc96ec33995b62a426280d8467efda1e443c4a91451a39654ab27a865fc635f2f858ac3ceb0a609ee2143517ac3b7d9cbf8b06e97eb4f04059aa42e71d0f0cea591621a30c3584e03a13731dbb26cb5fa89d7096a08210a422c6673c137c24108aa2d92c1a0d5c0f7bd34836122a9a1c1ef98194559118e76ba9d5b853ba39474a09660d966377ef96f9c1a76fbdee75ffeaa66fcc843ad7eafde07c30998307924fddb90489099409a5ab32b9250897856ba9104eeab6409c698c682568f7eca4e5994cf6b434c181704c7e8c82f8dfe5af526af2d7c88ed57a7863a3e43639e79a322e56208400c541be27e1b21c02e19c86ae376f88d61052dcf139311921d4108a2d9de3e651f953de517985cb93cd7ebe1d83e7db71d0bf1d8d261777facffddd787c9bdaafc9e5978f2fb1e3eb8d2b7889bd4e4ca3e2ac21fcae99eb0db0535ac4ab4bfd5ab739d89755fe291c14540b4245406d9757efec3f6ef4e2ffadf4bd1dfcc12f8e0c74f78ff4b885d598db430f273aa49474090000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "4000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:36Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:36Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:46Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:46Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:36Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4800000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:36Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:46Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:46Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f182cee85906-WAW",
+			"cf-ray": "a154f8806a385b0f-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Mon, 22 Jun 2026 08:39:36 GMT",
-			"request-id": "req_011CcHzomuRZkWVnaanWYpLV",
+			"date": "Fri, 03 Jul 2026 09:47:48 GMT",
+			"request-id": "req_011CceuuNsVmGzZa9v1ksrjb",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=xLIx0nW5TVFLVMXs5uPeJ_6XMQFr6Ej2ydhMB40GXvc-1782117576.1306162-1.0.1.1-sIwAWF7E3CkbaRhQprShf1H3bpRouSvkaBOz22RHo7o; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-646a74712103169eda19965658e2bfee-854c37c7e7ed9d5b-01",
+			"traceresponse": "00-51f3ec01f713f8e6cbb72f7e2c7448ce-e7476722bebb91e8-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -110,7 +108,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01YZgNa2aS1GtyGQMvT4mtio",
+							"id": "toolu_01LTN5KRJSRsskt4Ko8W7Wkx",
 							"name": "get_length",
 							"input": {
 								"text": "hello"
@@ -121,7 +119,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_014igPZWqDWzRKmEyscD1oXL",
+							"id": "toolu_01WRVbbkCXrzqXjjVhuQgGPH",
 							"name": "get_length",
 							"input": {
 								"text": "world"
@@ -137,12 +135,12 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01YZgNa2aS1GtyGQMvT4mtio",
+							"tool_use_id": "toolu_01LTN5KRJSRsskt4Ko8W7Wkx",
 							"content": "{\"text\":\"hello\",\"length\":5}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_014igPZWqDWzRKmEyscD1oXL",
+							"tool_use_id": "toolu_01WRVbbkCXrzqXjjVhuQgGPH",
 							"content": "{\"text\":\"world\",\"length\":5}"
 						}
 					]
@@ -162,8 +160,7 @@
 						"required": ["text"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
-					},
-					"eager_input_streaming": true
+					}
 				}
 			],
 			"tool_choice": {
@@ -173,34 +170,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b080000000000000abd53b16edb3010ddfd15c48d8604486e04a4dc0b74083a055de280b8885789304daae4c9491ae8df0bda562bb94ad2a5d542e8bd47be7777383a906329f6142336a42263e0954646295e809f3b02093312b2f11fe40becbd260b126a8bbda6bc45b3ebf3abbcca37c5a62a8ba2840c8c4e6fc44615e5a7af57bb1fd5ed879b1bfcf8ec6e3fd787e6cbb587ecc2093208de2600633491d125dbda3b26c720efee3388ec3b1508a377205d6fed198af4bd2757d30cd4c4686c1cb17e4c6f5cd7b362bf2317415e17650635d62da93a10b2f14ecd15c5c80742fd1a37de4d06d4b5b4a7805655fb3ff5bfd9b2bd64870c7ccf53a8cc205238989a141b0a2021354663d0a9c7ee1b8554b76ac88304e759e1018dc5074b300c420cab159d667deea37ab0bede2d4f7c417234d1f474aa74caa742cff7989e92f078488061e2da19d75cd8084820bc964c93657c3bd951324b7642e6897ec9ceb97218c4f8fd7773b18596acf55b102d4661c935dc8af5ba5aafb72e175b78f4c1ea057612fa8d61faeebd59fa6e9279fed8b8e88bc5cf4898143b5b4520a715f7c1c15f2fe4f0ef36f26285369b490f17ea5e6adf9483f1de4fb9c4a38536050000"
+			"1f8b0800000000000013bd53b16edb3010ddfd15c28d8604484204141c9b06ed5434c8d0a12e888b789508d3a4429edc0481febda06db992a3a45d5a2d84de3bf2bd7b87a33d5916c98e42c0866460f4bc52c8289267e0a78e40c08c8474fc07f10c3ba7c88080da60af286b516ffbec2aabb2322fab22cf0b4841abf84668645e9437b74f5fdebb3e7cad3e5d7fecba6bfa70f3f90ed20b2548c13b13010c4107461b656b67992c83f8f63d85c0ae939e30380bc2f6c69ca0400f3dd99a66a022466dc288f5a37b6dbb9e25bb2dd900e25d5ea45063dd92ac3d216b67e5bc221f794fa85ee3c6bb5180ba9676e4d1c86af7b2fe375bb497ec9082eb790a152904f27b5d93644d1e04c460147a1533b63fc8c7be65430e0458c712f7a80dde1b826148cedfb05ad171e6a73ce5bd71f57679f20b250731458fc78ea77c6cf8748fe931161e0e01b028df69db5ce825104178cda222c3f8b6c543c9cce211995b3b979d0c666787ff5d3ad9404bc6b80d242d86c4906db84dd6eb6abdded82cd9c04fe78d5a60a7a1be3154d7fd69a6ae9b987ef1deb8fb8b01cc4898343cdb4e20ab24f7dec25fefe8f0ef96f462abca72586a7729b82907d3e87f01cc4b81f044050000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "4000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:37Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:37Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:48Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:48Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:37Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4800000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:37Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:48Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:48Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f1888abf5906-WAW",
+			"cf-ray": "a154f88b3b075b0f-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Mon, 22 Jun 2026 08:39:37 GMT",
-			"request-id": "req_011CcHzoqppHkB6o4TxqjW4g",
+			"date": "Fri, 03 Jul 2026 09:47:48 GMT",
+			"request-id": "req_011CceuuWF1ShvKdLQEjM8iL",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=.Pi8svjQ_dm470JTjb6vk_S34mSkLB9GwOKwmjs0_TY-1782117577.0463567-1.0.1.1-GtDtzoAfxxOtczkd5qQafUoK0Mx9yXaXv86UFHEsuL4; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-8f098573117eda662109049c4b5935bd-37a5db27ee0410e9-01",
+			"traceresponse": "00-a7a6b2d0dace2267fb7e66d81a989e80-2607643cad534549-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"

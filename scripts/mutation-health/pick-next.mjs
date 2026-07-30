@@ -118,14 +118,14 @@ const NON_SOURCE_DIRS = new Set(['__tests__', '__mocks__', 'fixtures']);
 
 // The vitest-eligible mutation-tracked packages. Single source of truth for
 // global mode: the picker walks every entry here unless overridden via
-// --block. Adding a package = one-line append here AND in
-// .github/workflows/mutation-health-nightly.yml `setup` job. Jest packages
-// and the isolated-vm engine (@n8n/expression-runtime, blocked on DEVP-257)
-// are intentionally absent.
+// --block. The nightly workflow's `setup` job builds its matrix from this
+// export (DEVP-497), so adding a package = one-line append here, nothing else.
 export const ELIGIBLE_PACKAGES = [
 	{ name: 'n8n-workflow', dir: 'packages/workflow' },
 	{ name: '@n8n/crdt', dir: 'packages/@n8n/crdt' },
 	{ name: '@n8n/decorators', dir: 'packages/@n8n/decorators' },
+	{ name: '@n8n/expression-runtime', dir: 'packages/@n8n/expression-runtime' },
+	{ name: 'n8n', dir: 'packages/cli' },
 ];
 
 export function isEligible(pkgName) {

@@ -49,7 +49,7 @@ provide(
 	EditorEnabledFeaturesKey,
 	computed<EditorEnabledFeatures>(() => ({
 		readOnly: true,
-		expandGroups: true,
+		expandGroups: 'all',
 		aiAssistant: false,
 		aiBuilder: false,
 		askAi: false,

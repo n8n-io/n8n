@@ -190,6 +190,16 @@ if (excludeTestController) {
 	echo(chalk.gray('  - Excluded test controller from packages/cli/package.json'));
 }
 
+// The release SBOM is built by cdxgen inventorying the top-level node_modules of this
+// deployed closure. Since #32569 dropped shamefully-hoist, only direct deps surface at
+// top level, so cdxgen would miss the transitive tree (the manifest would be incomplete).
+// Re-enable hoisting for the licenses build only — shipped images keep the non-hoisted
+// layout, since regular builds leave N8N_GENERATE_LICENSES unset.
+const generateLicenses = process.env.N8N_GENERATE_LICENSES === 'true';
+if (generateLicenses) {
+	process.env.npm_config_shamefully_hoist = 'true';
+}
+
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
 
 // Strip test/example/benchmark dirs shipped inside production deps that lack a
@@ -207,6 +217,31 @@ for (const pattern of phantomDirs) {
 	await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/${pattern}" -exec rm -rf {} + 2>/dev/null || true`;
 }
 echo(chalk.green('✅ Phantom dirs stripped'));
+
+// Strip non-runtime files (Node never loads these) to cut the image's file count,
+// which dominates layer extraction time on constrained hosts. .js.map is kept —
+// source-map-support needs it for production stack traces.
+echo(chalk.yellow('INFO: Stripping non-runtime files (.ts/.d.ts/.md) from production closure...'));
+// `@n8n/instance-ai` reads these markdown trees off disk on every agent request,
+// so they are runtime data despite the extension. Excluded via `-not -path` and
+// not `-prune`: `-delete` implies `-depth`, which makes `-prune` a no-op.
+const runtimeAssetGlobs = ['*/@n8n/instance-ai/skills/*', '*/@n8n/instance-ai/knowledge-base/*'];
+const keepRuntimeAssets = runtimeAssetGlobs.flatMap((glob) => ['-not', '-path', glob]);
+await $`find ${config.compiledAppDir} -type f \\( -name '*.ts' -o -name '*.d.ts.map' -o -name '*.md' -o -name '*.test.js' -o -name '*.spec.js' \\) ${keepRuntimeAssets} -delete 2>/dev/null || true`;
+echo(chalk.green('✅ Non-runtime files stripped'));
+
+// Stripping the trees above leaves a bootable image whose agent has no skills and
+// no knowledge base, so the damage only surfaces on the first request. Fail here.
+// `.nothrow()` because zx runs with `pipefail`: one unreadable path would
+// otherwise turn a healthy build into an unhandled rejection.
+for (const glob of runtimeAssetGlobs) {
+	const found = await $`find ${config.compiledAppDir} -type f -path ${glob}`.nothrow();
+	if (found.stdout.split('\n').filter(Boolean).length === 0) {
+		echo(chalk.red(`ERROR: no files left under ${glob} — runtime assets were stripped`));
+		process.exit(1);
+	}
+}
+echo(chalk.green('✅ Runtime assets intact'));
 
 await fs.ensureDir(config.compiledTaskRunnerDir);
 
@@ -229,7 +264,7 @@ const packageDeployTime = getElapsedTime('package_deploy');
 // Default: skip. cdxgen + license rendering adds ~minutes to every build:deploy and
 // is only needed for the release SBOM job. The release-publish workflow opts in by
 // setting N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
-if (process.env.N8N_GENERATE_LICENSES === 'true') {
+if (generateLicenses) {
 	echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
 	try {
 		const toolingDir = path.join(config.rootDir, '.github', 'scripts');

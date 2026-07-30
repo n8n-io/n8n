@@ -250,6 +250,20 @@ describe('instanceAi.reducer', () => {
 
 			expect(state.messages[0].agentTree!.status).toBe('error');
 		});
+
+		test('run-finish for an older run in the group does not clear activeRunId', () => {
+			const state = stateWithRun('run-active', 'agent-root');
+			state.groupIdByRunId.set('run-old', 'run-active');
+			state.messages[0].runIds = ['run-old', 'run-active'];
+
+			const newActiveRunId = handleEvent(
+				state,
+				makeRunFinishEvent('run-old', 'agent-root', 'completed'),
+			);
+
+			expect(newActiveRunId).toBe('run-active');
+			expect(state.messages[0].isStreaming).toBe(true);
+		});
 	});
 
 	// -----------------------------------------------------------------------
@@ -268,6 +282,69 @@ describe('instanceAi.reducer', () => {
 			expect(rootNode.timeline[0]).toBe(firstTimelineEntry);
 			expect(msg.agentTree!.textContent).toBe('Hello world');
 			expect(msg.content).toBe('Hello world');
+		});
+
+		test('text-block appends live and REPLACES its streamed segment on replay', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			// Live: two deltas of an open segment.
+			handleEvent(state, {
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				responseId: 'msg-open',
+				payload: { text: 'AAA' },
+			});
+			handleEvent(state, {
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				responseId: 'msg-open',
+				payload: { text: 'BBB' },
+			});
+			// Replayed coalesced block for the same segment: replaces, no duplication.
+			handleEvent(state, {
+				type: 'text-block',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				responseId: 'msg-open',
+				payload: { text: 'AAABBBCCC' },
+			});
+
+			const msg = state.messages[0];
+			expect(msg.agentTree!.textContent).toBe('AAABBBCCC');
+			expect(msg.content).toBe('AAABBBCCC');
+		});
+
+		test('a live text-block with a fresh responseId renders as appended text (durable outcome lines)', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'text-block',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				responseId: 'bg-outcome:run-1',
+				payload: { text: 'The background workflow-builder task was cancelled.' },
+			});
+
+			const msg = state.messages[0];
+			expect(msg.agentTree!.textContent).toBe(
+				'The background workflow-builder task was cancelled.',
+			);
+			expect(msg.content).toBe('The background workflow-builder task was cancelled.');
+		});
+
+		test('tool-interrupted resolves the call terminally', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'update-workflow'));
+			handleEvent(state, {
+				type: 'tool-interrupted',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', error: 'Interrupted by a process restart' },
+			});
+
+			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc.isLoading).toBe(false);
+			expect(tc.error).toContain('Interrupted');
 		});
 
 		test('text-delta for sub-agent appends to sub-agent textContent only, not msg.content', () => {
@@ -457,6 +534,18 @@ describe('instanceAi.reducer', () => {
 			handleEvent(state, makeErrorEvent('run-1', 'unknown-agent', 'root fallback'));
 
 			expect(state.messages[0].agentTree!.error).toContain('root fallback');
+		});
+
+		test('propagates a structured error code into errorDetails', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { content: 'Have reached end of quota', code: 'quota_exhausted' },
+			});
+
+			expect(state.messages[0].agentTree!.errorDetails?.code).toBe('quota_exhausted');
 		});
 
 		test('falls back to msg.content when no agentTree', () => {
@@ -653,8 +742,8 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('task-control')).toBe('tasks');
 		});
 
-		test('returns delegate for "delegate"', () => {
-			expect(getRenderHint('delegate')).toBe('delegate');
+		test('returns default for removed delegate tool', () => {
+			expect(getRenderHint('delegate')).toBe('default');
 		});
 
 		test('returns builder for workflow builder tool', () => {

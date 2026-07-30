@@ -3,6 +3,7 @@ import { AuthIdentityRepository, ProjectRepository, UserRepository } from '@n8n/
 import { Container } from '@n8n/di';
 import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
+import { InstanceSettings } from 'n8n-core';
 
 import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service';
 import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
@@ -14,7 +15,6 @@ import {
 	type TokenExchangeSuccessResponse,
 } from '@/modules/token-exchange/token-exchange.types';
 import { JwtService } from '@/services/jwt.service';
-import { InstanceSettings } from 'n8n-core';
 
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';
@@ -43,6 +43,7 @@ function makeExternalJwt(
 		exp: number;
 		jti: string;
 		email: string;
+		email_verified: boolean;
 		given_name: string;
 		family_name: string;
 		role: string;
@@ -58,6 +59,7 @@ function makeExternalJwt(
 			iat: now,
 			exp: now + 300,
 			jti: randomUUID(),
+			email_verified: true,
 			...overrides,
 		},
 		privateKey,

@@ -1,6 +1,7 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
 import type { EventService } from '@/events/event.service';
@@ -8,7 +9,7 @@ import type { EventService } from '@/events/event.service';
 import { DURATION_BUCKETS_SECONDS } from '../constant';
 import { PrometheusWorkflowExecutionDurationMetricsService } from '../workflow-execution-duration-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusWorkflowExecutionDurationMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -18,7 +19,7 @@ describe('PrometheusWorkflowExecutionDurationMetricsService', () => {
 	});
 	const eventService = mock<EventService>();
 	let service: PrometheusWorkflowExecutionDurationMetricsService;
-	let mockHistogramObserve: jest.Mock;
+	let mockHistogramObserve: Mock;
 
 	function getEventHandler() {
 		return eventService.on.mock.calls.find((c) => c[0] === 'workflow-post-execute')?.[1];
@@ -31,12 +32,12 @@ describe('PrometheusWorkflowExecutionDurationMetricsService', () => {
 			includeWorkflowIdLabel: false,
 		});
 		service = new PrometheusWorkflowExecutionDurationMetricsService(config, eventService);
-		mockHistogramObserve = jest.fn();
+		mockHistogramObserve = vi.fn();
 		promClient.Histogram.prototype.observe = mockHistogramObserve;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {

@@ -62,13 +62,10 @@ test.describe(
 			assertAssignmentCollectionValue(assignmentsParam);
 			assignmentsParam.assignments[0].value = 'draft-version';
 
-			await api.request.patch(`/rest/workflows/${childWorkflowId}`, {
-				data: {
-					versionId: childWorkflow.versionId,
-					name: childWorkflow.name,
-					nodes: childWorkflow.nodes,
-					connections: childWorkflow.connections,
-				},
+			await api.workflows.update(childWorkflowId, childWorkflow.versionId!, {
+				name: childWorkflow.name,
+				nodes: childWorkflow.nodes,
+				connections: childWorkflow.connections,
 			});
 
 			const { workflowId: parentWorkflowId, createdWorkflow: parentWorkflow } =
@@ -114,11 +111,9 @@ test.describe(
 					},
 				});
 
-			const runResponse = await api.request.post(`/rest/workflows/${parentWorkflowId}/run`, {
-				data: {
-					workflowData: parentWorkflow,
-					triggerToStartFrom: { name: 'When clicking Test workflow' },
-				},
+			const runResponse = await api.workflows.runRaw(parentWorkflowId, {
+				workflowData: parentWorkflow,
+				triggerNodeName: 'When clicking Test workflow',
 			});
 
 			expect(runResponse.ok()).toBe(true);
@@ -143,13 +138,10 @@ test.describe(
 
 			assertAssignmentCollectionValue(childAssignmentsParam);
 			childAssignmentsParam.assignments[0].value = 'draft-version';
-			await api.request.patch(`/rest/workflows/${childWorkflowId}`, {
-				data: {
-					versionId: childWorkflow.versionId,
-					name: childDefinition.name,
-					nodes: childDefinition.nodes,
-					connections: childDefinition.connections,
-				},
+			await api.workflows.update(childWorkflowId, childWorkflow.versionId!, {
+				name: childDefinition.name,
+				nodes: childDefinition.nodes,
+				connections: childDefinition.connections,
 			});
 
 			const parentFilePath = resolveFromRoot('workflows', 'subworkflow-version-parent.json');
@@ -296,18 +288,13 @@ test.describe(
 				},
 			};
 
-			const patchResponse = await api.request.patch(`/rest/workflows/${workflowId}`, {
-				data: {
-					versionId: workflow.versionId,
-					name: workflow.name,
-					nodes: workflow.nodes,
-					connections: workflow.connections,
-				},
+			const updatedWorkflow = await api.workflows.update(workflowId, workflow.versionId!, {
+				name: workflow.name,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
 			});
 
-			const updatedWorkflowData = await patchResponse.json();
-
-			await api.workflows.activate(workflowId, updatedWorkflowData.data.versionId);
+			await api.workflows.activate(workflowId, updatedWorkflow.versionId!);
 		});
 	},
 );

@@ -1,11 +1,10 @@
-import { CreateAgentDto, ListAgentsQueryDto, UpdateAgentDto } from '@n8n/api-types';
+import { type AgentCapabilitySummary, CreateAgentDto, ListAgentsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
 	Delete,
 	Get,
 	Param,
-	Patch,
 	Post,
 	ProjectScope,
 	Query,
@@ -73,47 +72,14 @@ export class AgentsController {
 		);
 	}
 
-	@Patch('/:agentId')
-	@ProjectScope('agent:update')
-	async update(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-		@Body payload: UpdateAgentDto,
-	) {
-		const { name, description } = payload;
-		let agent = await this.agentsService.findById(agentId, req.params.projectId);
-
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
-
-		if (name !== undefined) {
-			agent = await this.agentsService.updateName(agentId, req.params.projectId, name);
-		}
-
-		if (description !== undefined && agent) {
-			// Use the latest updatedAt from previous saves (name), not the original
-			// request updatedAt, to avoid false optimistic-lock conflicts.
-			const latestUpdatedAt =
-				agent.updatedAt instanceof Date ? agent.updatedAt.toISOString() : agent.updatedAt;
-			agent = await this.agentsService.updateDescription(
-				agentId,
-				req.params.projectId,
-				description,
-				latestUpdatedAt,
-			);
-		}
-
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
-
-		return await this.agentRunnableStateService.addRunnableState(
-			agent,
-			req.params.projectId,
-			req.user,
-		);
+	/** Capability metadata for the canvas node card (model + chip labels). */
+	@Get('/:agentId/summary')
+	@ProjectScope('agent:read')
+	async getSummary(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentCapabilitySummary> {
+		const { projectId, agentId } = req.params;
+		return await this.agentsService.getCapabilitySummary(agentId, projectId);
 	}
 
 	@Delete('/:agentId')
@@ -123,7 +89,7 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const deleted = await this.agentsService.delete(agentId, req.params.projectId, req.user.id);
+		const deleted = await this.agentsService.delete(agentId, req.params.projectId);
 
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);

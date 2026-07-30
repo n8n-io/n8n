@@ -15,14 +15,14 @@ import {
 } from 'n8n-workflow';
 import { agent as testAgent } from 'supertest';
 
-import { NodeTypes } from '@/node-types';
-import { WebhookServer } from '@/webhooks/webhook-server';
-
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import { initActiveWorkflowManager } from './shared/utils';
 
-jest.unmock('node:fs');
+import { NodeTypes } from '@/node-types';
+import { WebhookServer } from '@/webhooks/webhook-server';
+
+vi.unmock('node:fs');
 
 class WebhookTestingNode implements INodeType {
 	description: INodeTypeDescription = {

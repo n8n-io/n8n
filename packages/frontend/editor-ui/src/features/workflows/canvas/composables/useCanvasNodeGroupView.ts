@@ -1,9 +1,11 @@
-import { computed, getCurrentScope, onScopeDispose, ref, type InjectionKey } from 'vue';
-import { jsonParse } from 'n8n-workflow';
+import { computed, ref, type InjectionKey } from 'vue';
 import type { NodeGroupChangeEvent } from '@/app/stores/workflowDocument/useWorkflowDocumentNodeGroups';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 import { LOCAL_STORAGE_CANVAS_GROUP_EXPANDED } from '@/app/constants/localStorage';
-import { isStringArrayRecord } from '@/app/utils/objectUtils';
+import type { GroupExpansionMode } from '../canvas.types';
+import { applyOffset } from '../canvas.utils';
+import { useCanvasGroupIdStorage } from './useCanvasGroupIdStorage';
+import { useNodeGroupsSubscription } from './useNodeGroupsSubscription';
 import {
 	aggregateNodeGroupLayoutOffsets,
 	computeNodeGroupLayoutPushes,
@@ -16,9 +18,8 @@ export interface UseCanvasNodeGroupViewDeps {
 	workflowId: () => string;
 	getCurrentGroupIds: () => string[];
 	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
-	isGroupingEnabled: () => boolean;
-	// Show every group expanded and leave persisted view state untouched
-	forceAllGroupsExpanded: () => boolean;
+	// Host override for group expansion; leaves persisted view state untouched.
+	getGroupExpansionMode?: () => GroupExpansionMode | undefined;
 }
 
 export interface NodeGroupNodePosition {
@@ -31,27 +32,6 @@ export type GetNodePositionById = (nodeId: string) => [number, number] | undefin
 export type CanvasNodeGroupView = ReturnType<typeof useCanvasNodeGroupView>;
 
 export const NodeGroupViewKey: InjectionKey<CanvasNodeGroupView> = Symbol('nodeGroupView');
-
-// workflowId -> ordered expanded group ids.
-type ExpandedGroupStore = Record<string, string[]>;
-
-function readStore(): ExpandedGroupStore {
-	try {
-		const raw = localStorage.getItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED) ?? '';
-		const parsed = jsonParse<unknown>(raw, { fallbackValue: {} });
-		return isStringArrayRecord(parsed) ? parsed : {};
-	} catch {
-		return {};
-	}
-}
-
-function writeStore(store: ExpandedGroupStore) {
-	try {
-		localStorage.setItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED, JSON.stringify(store));
-	} catch {
-		// Failure is not critical, as collapse state is a view preference
-	}
-}
 
 /** Copy of `ignored` with `nodeIds` added to the set of every group in `groupIds`. */
 function withIgnoredNodes(
@@ -108,9 +88,12 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	);
 	const componentOffsets = computed(() => aggregateNodeGroupLayoutOffsets(pushEntries.value));
 
+	const storage = useCanvasGroupIdStorage(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED);
+	const usesStoredExpansion = () => deps.getGroupExpansionMode?.() === undefined;
+
 	function persist() {
-		if (deps.forceAllGroupsExpanded()) return;
-		writeStore({ ...readStore(), [deps.workflowId()]: [...expandedGroupIdOrder.value] });
+		if (!usesStoredExpansion()) return;
+		storage.write(deps.workflowId(), [...expandedGroupIdOrder.value]);
 	}
 
 	function clearIgnoredNodesForSourceGroup(id: string) {
@@ -129,15 +112,18 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		persist();
 	}
 
-	// Seed the expanded set on (re)load: all groups when forced, otherwise
-	// the persisted ids. Drop any id whose group no longer exists.
 	function restore(presentIds: Set<string>) {
-		const stored = deps.forceAllGroupsExpanded()
-			? [...presentIds]
-			: (readStore()[deps.workflowId()] ?? []);
-		expandedGroupIdOrder.value = stored.filter((id) => presentIds.has(id));
 		disabledPushSourceGroupIds.value = new Set();
 		ignoredNodeIdsBySourceGroup.value = new Map();
+
+		if (!usesStoredExpansion()) {
+			expandedGroupIdOrder.value = [];
+			return;
+		}
+
+		const storedExpandedGroupIds = storage.read(deps.workflowId());
+		// Prune ids whose group no longer exists
+		expandedGroupIdOrder.value = storedExpandedGroupIds.filter((id) => presentIds.has(id));
 
 		const groupsLoaded = presentIds.size > 0;
 		if (groupsLoaded) persist();
@@ -159,7 +145,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		persist();
 	}
 
-	const isGroupCollapsed = (id: string) => deps.isGroupingEnabled() && !expandedIds.value.has(id);
+	const isGroupCollapsed = (id: string) => !expandedIds.value.has(id);
 
 	function toggleCollapsed(id: string) {
 		setGroupExpanded(id, isGroupCollapsed(id));
@@ -264,7 +250,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 					if (!position) continue;
 					bakedMoves.push({
 						id: nodeId,
-						position: { x: position[0] + offset.x, y: position[1] + offset.y },
+						position: applyOffset(position, offset),
 					});
 				}
 			}
@@ -287,10 +273,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 			return [
 				{
 					id: nodeId,
-					position: {
-						x: position[0] + offset.x,
-						y: position[1] + offset.y,
-					},
+					position: applyOffset(position, offset),
 				},
 			];
 		});
@@ -325,28 +308,17 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		}
 	}
 
-	let subscription: { off: () => void } | undefined;
-
-	// Bind to the current document and seed from its groups; re-run when a
-	// persistent canvas swaps documents (e.g. switching history versions).
-	function reinitialize() {
-		subscription?.off();
-		subscription = deps.onNodeGroupsChange(handleNodeGroupsChange);
-		restore(new Set(deps.getCurrentGroupIds()));
-	}
-
-	reinitialize();
-
-	// Release the subscription with the surrounding scope so the handler
-	// doesn't outlive its owner.
-	if (getCurrentScope()) {
-		onScopeDispose(() => subscription?.off());
-	}
+	const { reinitialize } = useNodeGroupsSubscription({
+		onNodeGroupsChange: deps.onNodeGroupsChange,
+		onChange: handleNodeGroupsChange,
+		onRebind: () => restore(new Set(deps.getCurrentGroupIds())),
+	});
 
 	return {
 		reinitialize,
 		isGroupCollapsed,
 		toggleCollapsed,
+		setGroupExpanded,
 		syncLayoutComponents,
 		getVisualOffsetForComponent,
 		getVisualOffsetForNode,

@@ -1,6 +1,7 @@
 import type {
 	CreateRoleDto,
 	RoleAssignmentsResponse,
+	RoleMembersResponse,
 	RoleProjectMembersResponse,
 	UpdateRoleDto,
 } from '@n8n/api-types';
@@ -32,8 +33,13 @@ export const updateRole = async (
 	return await makeRestApiRequest(context, 'PATCH', `/roles/${slug}`, body);
 };
 
-export const deleteRole = async (context: IRestApiContext, slug: string): Promise<Role> => {
-	return await makeRestApiRequest(context, 'DELETE', `/roles/${slug}`);
+export const deleteRole = async (
+	context: IRestApiContext,
+	slug: string,
+	reassignRoleSlug?: string,
+): Promise<Role> => {
+	const query = reassignRoleSlug ? `?reassignRoleSlug=${encodeURIComponent(reassignRoleSlug)}` : '';
+	return await makeRestApiRequest(context, 'DELETE', `/roles/${slug}${query}`);
 };
 
 export const getRoleAssignments = async (
@@ -53,4 +59,11 @@ export const getRoleProjectMembers = async (
 		'GET',
 		`/roles/${slug}/assignments/${projectId}/members`,
 	);
+};
+
+export const getRoleMembers = async (
+	context: IRestApiContext,
+	slug: string,
+): Promise<RoleMembersResponse> => {
+	return await makeRestApiRequest(context, 'GET', `/roles/${slug}/members`);
 };

@@ -1,7 +1,8 @@
+import type { Mocked, MockedFunction } from 'vitest';
 import type { AddDatasetRowDto } from '@n8n/api-types';
 import type { EvaluationConfig, IExecutionResponse, User } from '@n8n/db';
 import type { EvaluationConfigRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IConnections, IRunData } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -15,14 +16,14 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { EvaluationDatasetService } from '../evaluation-dataset.service';
 
-jest.mock('@/permissions.ee/check-access');
-const userHasScopesMock = userHasScopes as jest.MockedFunction<typeof userHasScopes>;
+vi.mock('@/permissions.ee/check-access');
+const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
 
 describe('EvaluationDatasetService', () => {
-	let configRepository: jest.Mocked<EvaluationConfigRepository>;
-	let executionPersistence: jest.Mocked<ExecutionPersistence>;
-	let dataTableService: jest.Mocked<DataTableService>;
-	let sourceControlPreferencesService: jest.Mocked<SourceControlPreferencesService>;
+	let configRepository: Mocked<EvaluationConfigRepository>;
+	let executionPersistence: Mocked<ExecutionPersistence>;
+	let dataTableService: Mocked<DataTableService>;
+	let sourceControlPreferencesService: Mocked<SourceControlPreferencesService>;
 	let service: EvaluationDatasetService;
 
 	const user = mock<User>({ id: 'user-1' });
@@ -91,7 +92,7 @@ describe('EvaluationDatasetService', () => {
 	}
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		configRepository = mock<EvaluationConfigRepository>();
 		executionPersistence = mock<ExecutionPersistence>();
 		dataTableService = mock<DataTableService>();

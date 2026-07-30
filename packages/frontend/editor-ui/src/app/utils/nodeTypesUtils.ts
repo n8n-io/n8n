@@ -552,6 +552,17 @@ export const isResourceMapperFieldListStale = (
 	return false;
 };
 
+/**
+ * Detects a resource mapper schema that was authored (e.g. by an AI builder, or
+ * hand-edited) rather than loaded from its source. Loaders always populate
+ * `readOnly` and `removed`; an authored schema omits them. Such schemas render
+ * with broken/outdated inputs, so callers can use this to decide whether to
+ * reconcile against the live source on open instead of just flagging it stale.
+ */
+export const isResourceMapperSchemaIncomplete = (fields: ResourceMapperField[]): boolean => {
+	return fields.some((field) => field.readOnly === undefined || field.removed === undefined);
+};
+
 export const isMatchingField = (
 	field: string,
 	matchingFields: string[],

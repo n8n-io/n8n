@@ -14,7 +14,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isFullExecutionResponse } from '@/app/utils/typeGuards';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
@@ -48,7 +48,7 @@ export const useExecutionDebugging = () => {
 			return;
 		}
 
-		const { runData } = execution.data.resultData;
+		const { runData, pinData = {} } = execution.data.resultData;
 
 		const executionNodeNames = Object.keys(runData);
 		const missingNodeNames = executionNodeNames.filter(
@@ -58,7 +58,8 @@ export const useExecutionDebugging = () => {
 		// Using the pinned data of the workflow to check if the node is pinned
 		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
 		const workflowPinnedNodeNames = Object.keys(workflowDocumentStore.value.pinnedDataByNodeName);
-		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
+		const executionDataNodeNames = new Set([...executionNodeNames, ...Object.keys(pinData)]);
+		const matchingPinnedNodeNames = [...executionDataNodeNames].filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);
 

@@ -124,7 +124,7 @@ Then, **once**, trigger the nightly with `workflow_dispatch` and set `bootstrap_
 
 For a **genuine cold-start** (first run after the ledger is provisioned, the read-all returns `[]`), trigger with `bootstrap_packages: '*'` instead — it acknowledges the empty ledger and skips the per-package divergence check for every entry.
 
-Not yet covered: **jest** packages (need Stryker's jest-runner — different setup) and `@n8n/expression-runtime` (it _is_ the isolated-vm engine; blocked on the patch in DEVP-257).
+Not yet covered: `@n8n/expression-runtime` (it _is_ the isolated-vm engine; blocked on the patch in DEVP-257).
 
 ## State transitions
 

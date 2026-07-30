@@ -8,6 +8,7 @@ import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regula
 import { NoPlainErrorsRule } from './no-plain-errors.js';
 import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
 import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
+import { NoMisplacedTypeormImportDisableRule } from './no-misplaced-typeorm-import-disable.js';
 import { NoTypeUnsafeEventEmitterRule } from './no-type-unsafe-event-emitter.js';
 import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field.js';
 import { NoTopLevelRelativeImportsInBackendModuleRule } from './no-top-level-relative-imports-in-backend-module.js';
@@ -20,6 +21,13 @@ import { NoTypeOnlyImportInDiRule } from './no-type-only-import-in-di.js';
 import { NoErrorInstanceInToThrowRule } from './no-error-instance-in-to-throw.js';
 import { NoAwsCredentialDiscoveryImportsRule } from './no-aws-credential-discovery-imports.js';
 import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
+import { NoApplicationErrorRule } from './no-application-error.js';
+import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
+import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
+import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
+import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
+import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
+import { NoPublicApiGuardrailDisableRule } from './no-public-api-guardrail-disable.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -32,6 +40,7 @@ export const rules = {
 	'no-plain-errors': NoPlainErrorsRule,
 	'no-dynamic-import-template': NoDynamicImportTemplateRule,
 	'misplaced-n8n-typeorm-import': MisplacedN8nTypeormImportRule,
+	'no-misplaced-typeorm-import-disable': NoMisplacedTypeormImportDisableRule,
 	'no-type-unsafe-event-emitter': NoTypeUnsafeEventEmitterRule,
 	'no-untyped-config-class-field': NoUntypedConfigClassFieldRule,
 	'no-top-level-relative-imports-in-backend-module': NoTopLevelRelativeImportsInBackendModuleRule,
@@ -43,4 +52,11 @@ export const rules = {
 	'no-error-instance-in-to-throw': NoErrorInstanceInToThrowRule,
 	'no-aws-credential-discovery-imports': NoAwsCredentialDiscoveryImportsRule,
 	'no-uncentralized-http': NoUncentralizedHttpRule,
+	'no-application-error': NoApplicationErrorRule,
+	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
+	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
+	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
+	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
+	'require-public-api-controller': RequirePublicApiControllerRule,
+	'no-public-api-guardrail-disable': NoPublicApiGuardrailDisableRule,
 } satisfies Record<string, AnyRuleModule>;

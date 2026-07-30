@@ -44,34 +44,41 @@ export async function runBinaryChecks(
 		}
 		const message =
 			settled.reason instanceof Error ? settled.reason.message : String(settled.reason);
+		// A crashed check is a measurement failure, not a workflow failure —
+		// same category as a timeout, so it must not drag the pass rate down.
 		return {
 			name: check.name,
 			description: check.description,
 			kind: check.kind,
 			dimension: check.dimension,
-			status: 'fail',
+			status: 'error',
 			comment: `Error: ${message}`,
 		};
 	});
 
-	const feedback: Feedback[] = outcomes
-		.filter((o) => o.status !== 'n_a')
-		.map((o) => ({
-			evaluator: EVALUATOR_NAME,
-			metric: o.name,
-			score: o.status === 'pass' ? 1 : 0,
-			kind: 'metric' as const,
-			...(o.comment ? { comment: o.comment } : {}),
-		}));
+	// Only measured checks (pass/fail) emit per-check feedback and count toward
+	// the pass rate; n_a and error stay out of the denominator.
+	const scoredOutcomes = outcomes.filter((o) => o.status === 'pass' || o.status === 'fail');
+	const feedback: Feedback[] = scoredOutcomes.map((o) => ({
+		evaluator: EVALUATOR_NAME,
+		metric: o.name,
+		score: o.status === 'pass' ? 1 : 0,
+		kind: 'metric' as const,
+		...(o.comment ? { comment: o.comment } : {}),
+	}));
 
-	const scoredOutcomes = outcomes.filter((o) => o.status !== 'n_a');
 	const totalScored = scoredOutcomes.length;
 	const passCount = scoredOutcomes.filter((o) => o.status === 'pass').length;
 	const passRate = totalScored > 0 ? passCount / totalScored : 0;
-	const naCount = outcomes.length - totalScored;
+	const naCount = outcomes.filter((o) => o.status === 'n_a').length;
+	const erroredCount = outcomes.filter((o) => o.status === 'error').length;
 
+	const skippedParts = [
+		...(naCount > 0 ? [`${String(naCount)} N/A`] : []),
+		...(erroredCount > 0 ? [`${String(erroredCount)} errored`] : []),
+	];
 	const passRateComment = `${String(passCount)}/${String(totalScored)} checks passed${
-		naCount > 0 ? ` (${String(naCount)} N/A)` : ''
+		skippedParts.length > 0 ? ` (${skippedParts.join(', ')})` : ''
 	}`;
 
 	feedback.push({
@@ -90,7 +97,13 @@ export async function runBinaryChecks(
 // ---------------------------------------------------------------------------
 
 function toOutcome(check: BinaryCheck, result: BinaryCheckResult): CheckOutcome {
-	const status: CheckStatus = result.applicable === false ? 'n_a' : result.pass ? 'pass' : 'fail';
+	const status: CheckStatus = result.errored
+		? 'error'
+		: result.applicable === false
+			? 'n_a'
+			: result.pass
+				? 'pass'
+				: 'fail';
 	return {
 		name: check.name,
 		description: check.description,

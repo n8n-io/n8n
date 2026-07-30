@@ -1,14 +1,13 @@
 import type { SsrfBridge } from '@n8n/backend-network';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type * as express from 'express';
 import { type IncomingHttpHeaders } from 'http';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
-import { PollContext, returnJsonArray } from 'n8n-core';
+import { PollContext, returnJsonArray, ScheduledTaskManager } from 'n8n-core';
 import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
-import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
 import {
-	createDeferredPromise,
 	type IBinaryData,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
@@ -19,7 +18,7 @@ import {
 	type ITriggerFunctions,
 	type IWebhookFunctions,
 	type IWorkflowExecuteAdditionalData,
-	type Logger,
+	type Logger as WorkflowLogger,
 	type NodeTypeAndVersion,
 	type VersionedNodeType,
 	type Workflow,
@@ -29,15 +28,17 @@ import {
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-const logger = mock({
-	scoped: vi.fn().mockReturnValue(
-		mock({
-			debug: vi.fn(),
-			info: vi.fn(),
-			warn: vi.fn(),
-			error: vi.fn(),
-		}),
-	),
+type SchedulerLogger = ConstructorParameters<typeof ScheduledTaskManager>[1];
+
+const schedulerScopedLogger = mock<SchedulerLogger>({
+	debug: vi.fn(),
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+});
+
+const schedulerLogger = mock<SchedulerLogger>({
+	scoped: vi.fn().mockReturnValue(schedulerScopedLogger),
 });
 
 type MockDeepPartial<T> = Parameters<typeof mock<T>>[0];
@@ -81,18 +82,21 @@ export async function testTriggerNode(
 	const version = trigger.description.version;
 	const node = merge(
 		{
+			id: options.node?.id ?? '1',
 			type: trigger.description.name,
 			name: trigger.description.defaults.name ?? `Test Node (${trigger.description.name})`,
 			typeVersion: typeof version === 'number' ? version : version.at(-1),
 		} satisfies Partial<INode>,
 		options.node,
 	) as INode;
-	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
+	const workflow = mock<Workflow>({
+		id: options.workflow?.id ?? 'workflow-1',
+		timezone: options.timezone ?? 'Europe/Berlin',
+	});
 
 	const scheduledTaskManager = new ScheduledTaskManager(
-		mock<InstanceSettings>(),
-		logger as any,
-		mock(),
+		mock<InstanceSettings>({ isLeader: true }),
+		schedulerLogger,
 		mock(),
 	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
@@ -106,7 +110,16 @@ export async function testTriggerNode(
 				workflowId: workflow.id,
 				timezone: workflow.timezone,
 			};
-			scheduledTaskManager.registerCron(ctx, onTick);
+			scheduledTaskManager.register(
+				{
+					group: { type: 'workflow', id: ctx.workflowId },
+					targetId: ctx.nodeId,
+					timezone: ctx.timezone,
+					expression: ctx.expression,
+					recurrence: ctx.recurrence,
+				},
+				onTick,
+			);
 		},
 	});
 
@@ -115,7 +128,7 @@ export async function testTriggerNode(
 		name: options.workflow?.name,
 		active: options.workflow?.active ?? false,
 	};
-	const triggerLogger = mock<Logger>({
+	const triggerLogger = mock<WorkflowLogger>({
 		debug: vi.fn(),
 		info: vi.fn(),
 		warn: vi.fn(),
@@ -177,12 +190,16 @@ export async function testWebhookTriggerNode(
 		} satisfies Partial<INode>,
 		options.node,
 	) as INode;
-	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
+	const workflow =
+		options.workflow ??
+		mock<Workflow>({
+			id: 'workflow-1',
+			timezone: options.timezone ?? 'Europe/Berlin',
+		});
 
 	const scheduledTaskManager = new ScheduledTaskManager(
-		mock<InstanceSettings>(),
-		logger as any,
-		mock(),
+		mock<InstanceSettings>({ isLeader: true }),
+		schedulerLogger,
 		mock(),
 	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
@@ -195,7 +212,16 @@ export async function testWebhookTriggerNode(
 				workflowId: workflow.id,
 				timezone: workflow.timezone,
 			};
-			scheduledTaskManager.registerCron(ctx, onTick);
+			scheduledTaskManager.register(
+				{
+					group: { type: 'workflow', id: ctx.workflowId },
+					targetId: ctx.nodeId,
+					timezone: ctx.timezone,
+					expression: ctx.expression,
+					recurrence: ctx.recurrence,
+				},
+				onTick,
+			);
 		},
 		prepareBinaryData: options.helpers?.prepareBinaryData ?? vi.fn(),
 	});
