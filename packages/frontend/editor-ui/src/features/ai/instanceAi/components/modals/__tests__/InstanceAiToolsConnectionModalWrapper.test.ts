@@ -60,6 +60,13 @@ vi.mock('../../../instanceAiMcp.store', () => ({
 	useInstanceAiMcpStore: () => mcpStoreMock,
 }));
 
+vi.mock('../../../composables/useMcpServerConnect', () => ({
+	useMcpServerConnect: () => ({
+		connectServer: vi.fn().mockResolvedValue(null),
+		connectWithCredential: vi.fn().mockResolvedValue(null),
+	}),
+}));
+
 vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => ({
 		settings: { mcpAccessEnabled: true },
