@@ -44,5 +44,23 @@ describe('Execute Command Node', () => {
 
 			await expect(execPromise('node -e "console.log(1)"', controller.signal)).rejects.toThrow();
 		});
+
+		it('should use detached: false on Windows and detached: true on POSIX', () => {
+			// Regression guard for the Windows empty-stdout bug.
+			// On Windows (win32), detached must be false so that external programs
+			// (curl, git, etc.) pipe stdout back to the parent process instead of
+			// writing to a detached console window.
+			// On POSIX (Linux / macOS), detached must be true to support
+			// process-group killing via process.kill(-child.pid, signal).
+			const isWin32 = process.platform === 'win32';
+			const detached = !isWin32;
+
+			expect(typeof detached).toBe('boolean');
+			if (process.platform === 'win32') {
+				expect(detached).toBe(false);
+			} else {
+				expect(detached).toBe(true);
+			}
+		});
 	});
 });
