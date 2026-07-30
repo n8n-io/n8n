@@ -1,9 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
-import type { INode, INodeExecutionData, Workflow } from 'n8n-workflow';
+import type { INode, INodeExecutionData, IPollFunctions, Workflow } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { ErrorReporter } from '@/errors/error-reporter';
 import { Tracing } from '@/observability';
 
 import type { PollContext } from '../node-execution-context';
@@ -18,6 +19,7 @@ describe('PollTriggerExecutor', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	const triggersAndPollers = mock<TriggersAndPollers>();
+	const errorReporter = mock<ErrorReporter>();
 	const node = mock<INode>({ id: 'poll-node', name: 'Poll Node' });
 	const pollFunctions = mock<PollContext>();
 
@@ -35,7 +37,7 @@ describe('PollTriggerExecutor', () => {
 		workflow = mock<Workflow>({ id: 'wf-id', name: 'My Workflow' });
 		// @ts-expect-error -- minimal expression stub for isolate-acquisition tests
 		workflow.expression = { acquireIsolate, releaseIsolate };
-		executor = new PollTriggerExecutor(logger, triggersAndPollers, tracing);
+		executor = new PollTriggerExecutor(logger, triggersAndPollers, tracing, errorReporter);
 	});
 
 	it('uses a logger scoped to "poll-trigger"', () => {
@@ -137,6 +139,26 @@ describe('PollTriggerExecutor', () => {
 
 			expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(1);
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		it('logs a failing cursor commit instead of routing it to the error workflow', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null);
+			const commitError = new Error('poller state write failed');
+			pollFunctions.__commitCursor.mockRejectedValueOnce(commitError);
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute();
+
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to commit the poll cursor'),
+				expect.objectContaining({ workflowId: 'wf-id', nodeId: 'poll-node', error: commitError }),
+			);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				commitError,
+				expect.objectContaining({ extra: { workflowId: 'wf-id', nodeId: 'poll-node' } }),
+			);
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
@@ -260,6 +282,29 @@ describe('PollTriggerExecutor', () => {
 
 			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('poll functions missing the durable-cursor members', () => {
+		it('still runs the poll when __runPoll and __commitCursor are undefined', async () => {
+			const bareWorkflow = mock<Workflow>({ id: 'wf-id', name: 'My Workflow' });
+			// @ts-expect-error -- minimal expression stub for isolate-acquisition tests
+			bareWorkflow.expression = { acquireIsolate, releaseIsolate };
+			const barePollFunctions = mock<IPollFunctions>({
+				__runPoll: undefined,
+				__commitCursor: undefined,
+			});
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null);
+
+			const execute = executor.create(bareWorkflow, node, barePollFunctions, () => true);
+			await execute();
+
+			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
+				bareWorkflow,
+				node,
+				barePollFunctions,
+			);
+			expect(logger.error).not.toHaveBeenCalled();
 		});
 	});
 });
