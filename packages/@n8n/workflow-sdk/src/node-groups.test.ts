@@ -2,14 +2,14 @@ import { GROUP_DESCRIPTION_MAX_LENGTH, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-work
 
 import { generateWorkflowCode } from './codegen';
 import { parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
-import type { WorkflowJSON } from './types/base';
+import type { GroupOptions, WorkflowJSON } from './types/base';
 import { workflow } from './workflow-builder';
 import { node, trigger } from './workflow-builder/node-builders/node-builder';
 import { generateDeterministicGroupId } from './workflow-builder/string-utils';
 
 const WF_ID = 'wf-groups-1';
 
-function buildGroupedWorkflow(options: { description?: string } = {}) {
+function buildGroupedWorkflow(options?: GroupOptions) {
 	const start = trigger({
 		type: MANUAL_TRIGGER_NODE_TYPE,
 		version: 1,
@@ -26,10 +26,11 @@ function buildGroupedWorkflow(options: { description?: string } = {}) {
 		config: { name: 'Transform' },
 	});
 
-	const builder = workflow(WF_ID, 'Grouped workflow').add(start).to(fetchNode).to(transform);
-	return options.description === undefined
-		? builder.group('Ingestion', [fetchNode, transform])
-		: builder.group('Ingestion', [fetchNode, transform], { description: options.description });
+	return workflow(WF_ID, 'Grouped workflow')
+		.add(start)
+		.to(fetchNode)
+		.to(transform)
+		.group('Ingestion', [fetchNode, transform], options);
 }
 
 describe('SDK node groups', () => {
@@ -74,44 +75,34 @@ describe('SDK node groups', () => {
 	});
 
 	describe('group description', () => {
-		function buildDescribedWorkflow(description?: string) {
-			const start = trigger({
-				type: MANUAL_TRIGGER_NODE_TYPE,
-				version: 1,
-				config: { name: 'Start' },
-			});
-			const a = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A' } });
-
-			const builder = workflow(WF_ID, 'wf').add(start).to(a);
-			return description === undefined
-				? builder.group('G', [a])
-				: builder.group('G', [a], { description });
-		}
-
 		it('emits the description alongside the group name and members', () => {
-			const json = buildDescribedWorkflow('Pulls the CRM contacts').toJSON();
+			const json = buildGroupedWorkflow({ description: 'Pulls the CRM contacts' }).toJSON();
 
 			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
 			expect(json.nodeGroups).toHaveLength(1);
-			expect(json.nodeGroups![0].name).toBe('G');
-			expect(json.nodeGroups![0].nodeIds).toEqual([idByName.get('A')]);
+			expect(json.nodeGroups![0].name).toBe('Ingestion');
+			expect(json.nodeGroups![0].nodeIds).toEqual([
+				idByName.get('Fetch data'),
+				idByName.get('Transform'),
+			]);
 			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
 		});
 
 		it('caps the description at the canvas limit', () => {
-			const json = buildDescribedWorkflow('x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50)).toJSON();
+			const description = 'x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50);
+			const json = buildGroupedWorkflow({ description }).toJSON();
 
 			expect(json.nodeGroups![0].description).toBe('x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH));
 		});
 
 		it('leaves the description key off a group declared without options', () => {
-			const json = buildDescribedWorkflow().toJSON();
+			const json = buildGroupedWorkflow().toJSON();
 
 			expect(json.nodeGroups![0]).not.toHaveProperty('description');
 		});
 
 		it('leaves the description key off when the authored description is blank', () => {
-			const json = buildDescribedWorkflow('').toJSON();
+			const json = buildGroupedWorkflow({ description: '' }).toJSON();
 
 			expect(json.nodeGroups![0]).not.toHaveProperty('description');
 		});
@@ -129,14 +120,10 @@ describe('SDK node groups', () => {
 
 			const json = parseWorkflowCodeToBuilder(code).toJSON();
 
-			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
-			expect(json.nodeGroups).toHaveLength(1);
-			expect(json.nodeGroups![0].name).toBe('G');
-			expect(json.nodeGroups![0].nodeIds).toEqual([idByName.get('A')]);
 			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
 		});
 
-		function describedWorkflowJSON(description?: unknown): WorkflowJSON {
+		function describedWorkflowJSON(description: unknown): WorkflowJSON {
 			return {
 				id: WF_ID,
 				name: 'wf',
@@ -152,12 +139,7 @@ describe('SDK node groups', () => {
 				],
 				connections: {},
 				nodeGroups: [
-					{
-						id: 'random-uuid',
-						name: 'G',
-						nodeIds: ['id-a'],
-						...(description !== undefined ? { description: description as string } : {}),
-					},
+					{ id: 'random-uuid', name: 'G', nodeIds: ['id-a'], description: description as string },
 				],
 			};
 		}

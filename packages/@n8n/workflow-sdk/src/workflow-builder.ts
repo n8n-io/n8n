@@ -7,6 +7,7 @@ import type {
 	NodeInstance,
 	ConnectionTarget,
 	GraphNode,
+	AuthoredNodeGroup,
 	GroupMember,
 	GroupOptions,
 	IDataObject,
@@ -31,6 +32,7 @@ import { jsonSerializer } from './workflow-builder/plugins/serializers';
 import type {
 	PluginContext,
 	MutablePluginContext,
+	ResolvedNodeGroup,
 	ValidationIssue,
 	SerializerContext,
 } from './workflow-builder/plugins/types';
@@ -40,13 +42,6 @@ import { parseWorkflowJSON } from './workflow-builder/workflow-import';
 
 // Ensure default plugins are registered on module load
 registerDefaultPlugins(pluginRegistry);
-
-type InternalNodeGroup = {
-	id?: string;
-	name: string;
-	members: GroupMember[];
-	description?: string;
-};
 
 /**
  * Internal workflow builder implementation
@@ -66,7 +61,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _dispatchedComposites = new WeakSet<object>();
 	private static readonly MAX_BRANCH_DEPTH = 500;
 	/** Node groups, carried by member node handle and resolved to IDs in toJSON(). */
-	private _nodeGroups: InternalNodeGroup[];
+	private _nodeGroups: AuthoredNodeGroup[];
 
 	constructor(
 		id: string,
@@ -77,7 +72,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		pinData?: Record<string, IDataObject[]>,
 		meta?: { templateId?: string; instanceId?: string; [key: string]: unknown },
 		registry?: PluginRegistry,
-		nodeGroups?: InternalNodeGroup[],
+		nodeGroups?: AuthoredNodeGroup[],
 	) {
 		this.id = id;
 		this.name = name;
@@ -88,14 +83,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		this._pinData = pinData;
 		this._meta = meta;
 		this._registry = registry;
-		this._nodeGroups = nodeGroups
-			? nodeGroups.map((g) => ({
-					id: g.id,
-					name: g.name,
-					members: [...g.members],
-					...(g.description !== undefined ? { description: g.description } : {}),
-				}))
-			: [];
+		this._nodeGroups = nodeGroups ? nodeGroups.map((g) => ({ ...g, members: [...g.members] })) : [];
 	}
 
 	/**
@@ -513,11 +501,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	group(name: string, members: GroupMember[], options?: GroupOptions): WorkflowBuilder {
-		this._nodeGroups.push({
-			name,
-			members: [...members],
-			...(options?.description !== undefined ? { description: options.description } : {}),
-		});
+		this._nodeGroups.push({ ...options, name, members: [...members] });
 		return this;
 	}
 
@@ -527,27 +511,17 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * _staleIdToKeyMap, exactly as connection targets do); the live instance under that
 	 * key holds the ID the serializer emits. Unresolvable members are dropped.
 	 */
-	private resolveNodeGroups(): Array<{
-		id?: string;
-		name: string;
-		memberIds: string[];
-		description?: string;
-	}> {
-		return this._nodeGroups.map((group) => {
+	private resolveNodeGroups(): ResolvedNodeGroup[] {
+		return this._nodeGroups.map(({ members, ...group }) => {
 			const memberIds: string[] = [];
-			for (const member of group.members) {
+			for (const member of members) {
 				const key = this.resolveTargetNodeName(member, this._staleIdToKeyMap);
 				const id = key ? this._nodes.get(key)?.instance.id : undefined;
 				if (id && !memberIds.includes(id)) {
 					memberIds.push(id);
 				}
 			}
-			return {
-				id: group.id,
-				name: group.name,
-				memberIds,
-				...(group.description !== undefined ? { description: group.description } : {}),
-			};
+			return { ...group, memberIds };
 		});
 	}
 

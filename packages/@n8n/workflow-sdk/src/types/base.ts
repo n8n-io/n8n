@@ -1034,6 +1034,16 @@ export type GroupOptions = {
 	description?: string;
 };
 
+/**
+ * A node group as authored: members are node handles, resolved to the emitted node
+ * IDs only at serialization. `id` is present for a group carried in from JSON.
+ */
+export type AuthoredNodeGroup = GroupOptions & {
+	id?: string;
+	name: string;
+	members: GroupMember[];
+};
+
 export interface WorkflowBuilder {
 	readonly id: string;
 	readonly name: string;

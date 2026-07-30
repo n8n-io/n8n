@@ -290,7 +290,7 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 				return {
 					id,
 					name: group.name,
-					nodeIds: group.memberIds.filter((id) => emittedIds.has(id)),
+					nodeIds: group.memberIds.filter((memberId) => emittedIds.has(memberId)),
 					...(description ? { description } : {}),
 				};
 			});
