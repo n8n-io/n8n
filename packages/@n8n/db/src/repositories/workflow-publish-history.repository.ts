@@ -69,33 +69,38 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			return states;
 		}
 
-		const versions = await this.manager.find(WorkflowHistory, {
-			where: { workflowId, versionId: In(requested) },
-			select: ['versionId', 'createdAt'],
-		});
+		const [versions, activatedVersions, newestActivated] = await Promise.all([
+			this.manager.find(WorkflowHistory, {
+				where: { workflowId, versionId: In(requested) },
+				select: ['versionId', 'createdAt'],
+			}),
+			this.manager.find(WorkflowPublishHistory, {
+				where: { workflowId, versionId: In(requested), event: 'activated' },
+				select: ['versionId'],
+			}),
+			this.manager
+				.createQueryBuilder(WorkflowHistory, 'history')
+				.innerJoin(
+					WorkflowPublishHistory,
+					'publishHistory',
+					'publishHistory.workflowId = history.workflowId AND publishHistory.versionId = history.versionId',
+				)
+				.where('history.workflowId = :workflowId', { workflowId })
+				.andWhere('publishHistory.event = :event', { event: 'activated' })
+				.select(['history.versionId', 'history.createdAt'])
+				.orderBy('history.createdAt', 'DESC')
+				.take(1)
+				.getOne(),
+		]);
 		const createdAtByVersionId = new Map(
 			versions.map((version) => [version.versionId, version.createdAt]),
 		);
 
-		// One pass over the workflow's publishes (bounded by how often it was
-		// published) answers both "was this version live" and "was a newer one".
-		// Covered by the (workflowId, versionId) index.
-		const activated = await this.manager.find(WorkflowPublishHistory, {
-			where: { workflowId, event: 'activated' },
-			select: ['versionId'],
-		});
-		const activatedVersionIds = activated
+		const activatedVersionIds = activatedVersions
 			.map((record) => record.versionId)
 			.filter((id): id is string => id !== null);
 
-		// Pruned publishes (`versionId` nulled) drop out here, as they always have
-		const newestActivated = activatedVersionIds.length
-			? await this.manager.findOne(WorkflowHistory, {
-					where: { workflowId, versionId: In(activatedVersionIds) },
-					order: { createdAt: 'DESC' },
-					select: ['createdAt'],
-				})
-			: null;
+		// Pruned publishes (`versionId` nulled) are excluded by the history join.
 		const activatedVersionIdSet = new Set(activatedVersionIds);
 
 		for (const versionId of requested) {
