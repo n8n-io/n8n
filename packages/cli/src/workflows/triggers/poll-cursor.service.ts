@@ -43,7 +43,7 @@ export class PollCursorService {
 
 		const cursor = stored as PollCursor;
 
-		this.syncNodeStaticData(nodeStaticData, cursor);
+		this.syncNodeStaticData(nodeStaticData, cursor, {});
 
 		return Object.keys(cursor).length === 0 ? null : cursor;
 	}
@@ -53,12 +53,13 @@ export class PollCursorService {
 		nodeId: string;
 		cursor: PollCursor;
 		payload: CreateExecutionPayload;
-	}): Promise<string> {
+	}): Promise<{ executionId: string; previousCursor: PollCursor }> {
 		const { workflowId, nodeId, cursor, payload } = args;
 
 		return await this.transactionRunner.run({}, async (ctx) => {
-			await this.stageCursor(workflowId, nodeId, cursor, ctx);
-			return await this.executionPersistence.create(payload, ctx);
+			const previousCursor = await this.stageCursor(workflowId, nodeId, cursor, ctx);
+			const executionId = await this.executionPersistence.create(payload, ctx);
+			return { executionId, previousCursor };
 		});
 	}
 
@@ -73,12 +74,20 @@ export class PollCursorService {
 		nodeName: string,
 		cursor: PollCursor,
 		nodeStaticData: PollCursor,
+		previousCursor: PollCursor,
 	): Promise<void> {
-		this.syncNodeStaticData(nodeStaticData, cursor);
+		this.syncNodeStaticData(nodeStaticData, cursor, previousCursor);
 
 		try {
 			const staticData = await this.workflowStaticDataService.getStaticDataById(workflowId);
-			const updated: IDataObject = { ...staticData, [`node:${nodeName}`]: cursor };
+			const nodeKey = `node:${nodeName}`;
+			const bucket = this.toBucket(staticData[nodeKey]);
+
+			for (const key of Object.keys(previousCursor)) {
+				if (!(key in cursor)) delete bucket[key];
+			}
+
+			const updated: IDataObject = { ...staticData, [nodeKey]: { ...bucket, ...cursor } };
 			await this.workflowStaticDataService.saveStaticDataById(workflowId, updated);
 		} catch (error) {
 			this.errorReporter.error(error, { extra: { workflowId, nodeName } });
@@ -89,9 +98,19 @@ export class PollCursorService {
 		}
 	}
 
-	private syncNodeStaticData(nodeStaticData: PollCursor, cursor: PollCursor): void {
-		for (const key of Object.keys(nodeStaticData)) {
-			if (!(key in cursor)) delete nodeStaticData[key];
+	private toBucket(value: IDataObject[string]): PollCursor {
+		return typeof value === 'object' && value !== null && !Array.isArray(value)
+			? { ...value }
+			: {};
+	}
+
+	private syncNodeStaticData(
+		nodeStaticData: PollCursor,
+		cursor: PollCursor,
+		previousCursor: PollCursor,
+	): void {
+		for (const key of Object.keys(previousCursor)) {
+			if (!(key in cursor) && key in nodeStaticData) delete nodeStaticData[key];
 		}
 
 		for (const [key, value] of Object.entries(cursor)) {
@@ -104,8 +123,14 @@ export class PollCursorService {
 		nodeId: string,
 		cursor: PollCursor,
 		ctx: OperationContext,
-	): Promise<void> {
-		await this.pollerStateRepository.ensureCursor(workflowId, nodeId, cursor as PollerCursor, ctx);
+	): Promise<PollCursor> {
+		const previousCursor = await this.pollerStateRepository.ensureCursor(
+			workflowId,
+			nodeId,
+			cursor as PollerCursor,
+			ctx,
+		);
 		await this.pollerStateRepository.advanceCursor(workflowId, nodeId, cursor as PollerCursor, ctx);
+		return previousCursor as PollCursor;
 	}
 }

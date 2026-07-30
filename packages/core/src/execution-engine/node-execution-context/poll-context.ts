@@ -27,6 +27,8 @@ const throwOnEmitError = () => {
 export class PollContext extends NodeExecutionContext implements IPollFunctions {
 	readonly helpers: IPollFunctions['helpers'];
 
+	private stagedCursorKeys: string[] = [];
+
 	constructor(
 		workflow: Workflow,
 		node: INode,
@@ -37,18 +39,19 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		readonly __emitError: IPollFunctions['__emitError'] = throwOnEmitError,
 		readonly getCursor: IPollFunctions['getCursor'] = async () => {
 			const nodeStaticData = this.getWorkflowStaticData('node');
-			return Object.keys(nodeStaticData).length === 0 ? null : nodeStaticData;
+			return Object.keys(nodeStaticData).length === 0 ? null : { ...nodeStaticData };
 		},
 		readonly setCursor: IPollFunctions['setCursor'] = (cursor) => {
 			if (Object.keys(cursor).length === 0) return;
 			const nodeStaticData = this.getWorkflowStaticData('node');
-			for (const key of Object.keys(nodeStaticData)) {
+			for (const key of this.stagedCursorKeys) {
 				if (!(key in cursor)) delete nodeStaticData[key];
 			}
+			this.stagedCursorKeys = Object.keys(cursor);
 			Object.assign(nodeStaticData, cursor);
 		},
-		readonly __commitCursor: IPollFunctions['__commitCursor'] = async () => {},
-		readonly __runPoll: IPollFunctions['__runPoll'] = async (poll) => await poll(),
+		readonly __commitCursor: NonNullable<IPollFunctions['__commitCursor']> = async () => {},
+		readonly __runPoll: NonNullable<IPollFunctions['__runPoll']> = async (poll) => await poll(),
 	) {
 		super(workflow, node, additionalData, mode);
 

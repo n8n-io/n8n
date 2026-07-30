@@ -195,7 +195,10 @@ describe('WorkflowExecutionService', () => {
 			vi.clearAllMocks();
 			liveWorkflow = mock<Workflow>();
 			liveWorkflow.getStaticData.mockReturnValue({});
-			pollCursorService.commitWithExecution.mockResolvedValue('exec-9');
+			pollCursorService.commitWithExecution.mockResolvedValue({
+				executionId: 'exec-9',
+				previousCursor: {},
+			});
 			pollCursorService.mirrorToStaticData.mockResolvedValue(undefined);
 			workflowRunner.run.mockResolvedValue('exec-9');
 			workflowRunner.establishContextForPersistence.mockResolvedValue(undefined);
@@ -271,7 +274,71 @@ describe('WorkflowExecutionService', () => {
 				'Poll Node',
 				cursor,
 				nodeStaticData,
+				{},
 			);
+		});
+
+		test('hands the mirror the cursor the commit replaced', async () => {
+			pollCursorService.commitWithExecution.mockResolvedValue({
+				executionId: 'exec-9',
+				previousCursor: { lastItemId: 'previous' },
+			});
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+				liveWorkflow,
+			);
+
+			expect(pollCursorService.mirrorToStaticData).toHaveBeenCalledWith(
+				'wf-1',
+				'Poll Node',
+				cursor,
+				{},
+				{ lastItemId: 'previous' },
+			);
+		});
+
+		test('starts the committed execution and returns its id even when mirroring the cursor to static data fails', async () => {
+			pollCursorService.mirrorToStaticData.mockRejectedValue(new Error('static data write failed'));
+
+			const returned = await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+				liveWorkflow,
+			);
+
+			expect(returned).toBe('exec-9');
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		});
+
+		test('reports a failing mirror of the cursor to static data', async () => {
+			const mirrorError = new Error('static data write failed');
+			pollCursorService.mirrorToStaticData.mockRejectedValue(mirrorError);
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+				liveWorkflow,
+			);
+
+			expect(errorReporter.error).toHaveBeenCalledWith(mirrorError, {
+				executionId: 'exec-9',
+				shouldBeLogged: false,
+			});
+			expect(logger.error).toHaveBeenCalled();
 		});
 
 		test('neither mirrors nor starts a run when the commit is rejected as a duplicate', async () => {

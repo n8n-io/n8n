@@ -62,31 +62,19 @@ describe('PollCursorService', () => {
 	});
 
 	describe('readCursor', () => {
-		it('seeds the cursor from the static-data blob when the node has no row', async () => {
+		it('seeds ensureCursor from the static-data blob and returns the stored cursor rather than the seed', async () => {
 			const service = buildService();
-			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-static-data' });
+			let seenSeed: unknown;
+			pollerStateRepository.ensureCursor.mockImplementationOnce(async (_wf, _node, seed) => {
+				seenSeed = { ...seed };
+				return { lastItemId: 'from-db' };
+			});
 
 			const cursor = await service.readCursor('wf-1', 'node-1', {
 				lastItemId: 'from-static-data',
 			});
 
-			expect(pollerStateRepository.ensureCursor).toHaveBeenCalledWith(
-				'wf-1',
-				'node-1',
-				{ lastItemId: 'from-static-data' },
-				expect.anything(),
-			);
-			expect(cursor).toEqual({ lastItemId: 'from-static-data' });
-		});
-
-		it('returns the stored cursor rather than the seed when a row exists', async () => {
-			const service = buildService();
-			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-db' });
-
-			const cursor = await service.readCursor('wf-1', 'node-1', {
-				lastItemId: 'from-static-data',
-			});
-
+			expect(seenSeed).toEqual({ lastItemId: 'from-static-data' });
 			expect(cursor).toEqual({ lastItemId: 'from-db' });
 		});
 
@@ -116,14 +104,14 @@ describe('PollCursorService', () => {
 			expect(nodeStaticData).toEqual({ lastItemId: 'from-db' });
 		});
 
-		it('drops static-data keys the stored cursor no longer carries', async () => {
+		it('keeps static-data keys the stored cursor does not carry', async () => {
 			const service = buildService();
 			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-db' });
-			const nodeStaticData = { lastItemId: 'stale', lastTimeChecked: '2026-07-28T10:00:00.000Z' };
+			const nodeStaticData = { lastItemId: 'stale', seenIds: ['x'] };
 
 			await service.readCursor('wf-1', 'node-1', nodeStaticData);
 
-			expect(nodeStaticData).toEqual({ lastItemId: 'from-db' });
+			expect(nodeStaticData).toEqual({ lastItemId: 'from-db', seenIds: ['x'] });
 		});
 
 		it('leaves the static data untouched when it already matches the stored cursor', async () => {
@@ -163,7 +151,7 @@ describe('PollCursorService', () => {
 			executionPersistence.create.mockResolvedValue('exec-1');
 			const createPayload = payload();
 
-			const executionId = await service.commitWithExecution({
+			const { executionId } = await service.commitWithExecution({
 				workflowId: 'wf-1',
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
@@ -187,6 +175,21 @@ describe('PollCursorService', () => {
 				ctx,
 			);
 			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, ctx);
+		});
+
+		it('returns the cursor the row held before the advance', async () => {
+			const service = buildService();
+			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'a', etag: 'v1' });
+			executionPersistence.create.mockResolvedValue('exec-1');
+
+			const { previousCursor } = await service.commitWithExecution({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor: { lastItemId: 'b' },
+				payload: payload(),
+			});
+
+			expect(previousCursor).toEqual({ lastItemId: 'a', etag: 'v1' });
 		});
 
 		it('does not create the execution when the cursor advance fails', async () => {
@@ -237,8 +240,6 @@ describe('PollCursorService', () => {
 					payload: payload(),
 				}),
 			).rejects.toBe(duplicateError);
-
-			expect(workflowStaticDataService.saveStaticDataById).not.toHaveBeenCalled();
 		});
 	});
 
@@ -279,7 +280,7 @@ describe('PollCursorService', () => {
 				'node:Other Poll Node': { lastItemId: 'x' },
 			});
 
-			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {});
+			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {}, {});
 
 			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
 				'node:Other Poll Node': { lastItemId: 'x' },
@@ -287,16 +288,41 @@ describe('PollCursorService', () => {
 			});
 		});
 
-		it("replaces the node's previous entry rather than merging into it", async () => {
+		it("replaces the keys the previous cursor carried in the node's own entry", async () => {
 			const service = buildService();
 			workflowStaticDataService.getStaticDataById.mockResolvedValue({
 				'node:Poll Node': { lastItemId: 'a', lastTimeChecked: '2026-07-28T10:00:00.000Z' },
 			});
 
-			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {});
+			await service.mirrorToStaticData(
+				'wf-1',
+				'Poll Node',
+				{ lastItemId: 'b' },
+				{},
+				{ lastItemId: 'a', lastTimeChecked: '2026-07-28T10:00:00.000Z' },
+			);
 
 			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
 				'node:Poll Node': { lastItemId: 'b' },
+			});
+		});
+
+		it("keeps the keys of the node's own entry that no cursor put there", async () => {
+			const service = buildService();
+			workflowStaticDataService.getStaticDataById.mockResolvedValue({
+				'node:Poll Node': { lastItemId: 'a', seenIds: ['x'] },
+			});
+
+			await service.mirrorToStaticData(
+				'wf-1',
+				'Poll Node',
+				{ lastItemId: 'b' },
+				{},
+				{ lastItemId: 'a' },
+			);
+
+			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
+				'node:Poll Node': { lastItemId: 'b', seenIds: ['x'] },
 			});
 		});
 
@@ -307,7 +333,7 @@ describe('PollCursorService', () => {
 			workflowStaticDataService.saveStaticDataById.mockRejectedValue(writeError);
 
 			await expect(
-				service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {}),
+				service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {}, {}),
 			).resolves.toBeUndefined();
 
 			expect(errorReporter.error).toHaveBeenCalledWith(writeError, expect.anything());
@@ -320,7 +346,7 @@ describe('PollCursorService', () => {
 			workflowStaticDataService.getStaticDataById.mockRejectedValue(readError);
 
 			await expect(
-				service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {}),
+				service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, {}, {}),
 			).resolves.toBeUndefined();
 
 			expect(errorReporter.error).toHaveBeenCalledWith(readError, expect.anything());
@@ -332,19 +358,40 @@ describe('PollCursorService', () => {
 			workflowStaticDataService.saveStaticDataById.mockRejectedValue(new Error('write failed'));
 			const nodeStaticData = { lastItemId: 'stale' };
 
-			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, nodeStaticData);
+			await service.mirrorToStaticData(
+				'wf-1',
+				'Poll Node',
+				{ lastItemId: 'b' },
+				nodeStaticData,
+				{},
+			);
 
 			expect(nodeStaticData).toEqual({ lastItemId: 'b' });
 		});
 
-		it('drops live static-data keys the committed cursor no longer carries', async () => {
+		it('drops live static-data keys the previous cursor carried and the committed one does not', async () => {
 			const service = buildService();
 			workflowStaticDataService.getStaticDataById.mockResolvedValue({});
 			const nodeStaticData = { lastItemId: 'a', lastTimeChecked: '2026-07-28T10:00:00.000Z' };
 
-			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, nodeStaticData);
+			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, nodeStaticData, {
+				lastItemId: 'a',
+				lastTimeChecked: '2026-07-28T10:00:00.000Z',
+			});
 
 			expect(nodeStaticData).toEqual({ lastItemId: 'b' });
+		});
+
+		it('keeps live static-data keys that no cursor put there', async () => {
+			const service = buildService();
+			workflowStaticDataService.getStaticDataById.mockResolvedValue({});
+			const nodeStaticData = { lastItemId: 'a', seenIds: ['x'] };
+
+			await service.mirrorToStaticData('wf-1', 'Poll Node', { lastItemId: 'b' }, nodeStaticData, {
+				lastItemId: 'a',
+			});
+
+			expect(nodeStaticData).toEqual({ lastItemId: 'b', seenIds: ['x'] });
 		});
 	});
 });
