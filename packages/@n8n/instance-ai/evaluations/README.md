@@ -715,8 +715,9 @@ Write the turns as a screenplay of what the user wants, keeping concrete values 
 | Withhold a value until asked | `[Don't bring up the channel unless the agent asks where to post; then say 'Slack #growth.']` |
 | Refuse and hold firm on re-ask | `[The user has no channel and won't provide one. If asked — question or setup card, even repeatedly — skip it; never invent one.]` |
 | Keep the conversation going | `[After each change lands, send the next one from the list, one at a time, until done.]` |
+| Refuse network access | `[Deny the web-search request — the user doesn't want it searching the web.]` |
 
-A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
+A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Network-access prompts (`web-search`, `fetch-url`) are the one gate that's granted **without** consulting the proxy LLM, so they cost nothing by default — but while any stage direction is still pending the decision goes to the LLM, which is what makes the refusal above reachable. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
 
 **Prompt / conversation tips**
 

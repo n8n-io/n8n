@@ -560,6 +560,42 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(0);
 	});
 
+	it('defers an access gate to the LLM while a stage direction is pending, so a case can deny', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'respond_to_domain_access', response: 'deny' });
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'go' },
+				{
+					role: 'user',
+					text: '[Refuse the web-search request — the user does not want it searching.]',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(webSearchEvent('req-deny'));
+
+		expect(agent.callCount).toBe(1);
+		expect(response.kind).toBe('domainAccessDeny');
+	});
+
+	it('still grants an access gate deterministically when the pending script has no stage direction', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'go' },
+				{ role: 'user', text: 'also add a retry' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(webSearchEvent('req-allow'));
+
+		expect(response.kind).toBe('domainAccessApprove');
+		expect(agent.callCount).toBe(0);
+	});
+
 	it('handles resource-decision events deterministically with first allow option', async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
