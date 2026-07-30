@@ -268,6 +268,66 @@ describe('WorkflowExecutionService', () => {
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
+		test('fails the committed execution and skips the run when establishing context errors', async () => {
+			const contextError = mock<ExecutionError>({ message: 'masking failed' });
+			workflowRunner.establishContextForPersistence.mockResolvedValue(contextError);
+
+			const returned = await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+			);
+
+			expect(returned).toBe('exec-9');
+			expect(workflowRunner.registerAndFailExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowData: workflow }),
+				contextError,
+				{ executionId: 'exec-9', expectedStatus: 'new' },
+				undefined,
+			);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		test('hands the response promise to the failed execution when establishing context errors', async () => {
+			const contextError = mock<ExecutionError>({ message: 'masking failed' });
+			workflowRunner.establishContextForPersistence.mockResolvedValue(contextError);
+			const responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+			);
+
+			expect(workflowRunner.registerAndFailExecution).toHaveBeenCalledWith(
+				expect.anything(),
+				contextError,
+				{ executionId: 'exec-9', expectedStatus: 'new' },
+				responsePromise,
+			);
+		});
+
+		test('starts the run and fails nothing when establishing context succeeds', async () => {
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				cursor,
+			);
+
+			expect(workflowRunner.registerAndFailExecution).not.toHaveBeenCalled();
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		});
+
 		test('hands the response promise to the runner', async () => {
 			const responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
 

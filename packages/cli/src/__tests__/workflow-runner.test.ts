@@ -8,11 +8,13 @@ import {
 	ExecutionRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
 import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
+	type IExecuteResponsePromiseData,
 	type INode,
 	type IRun,
 	type IRunExecutionData,
@@ -440,6 +442,47 @@ describe('run', () => {
 			expect(processError).toHaveBeenCalled();
 			expect(failExecution).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('registerAndFailExecution', () => {
+	it('registers the execution and fails it, returning the execution id', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		// @ts-expect-error Private method
+		const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], id: 'workflow-id', staticData: {} },
+			executionData: createRunExecutionData({}),
+		});
+		const error = new Error('masking failed') as ExecutionError;
+		const existingExecution = { executionId: '1', expectedStatus: 'new' as const };
+
+		await expect(runner.registerAndFailExecution(data, error, existingExecution)).resolves.toBe(
+			'1',
+		);
+
+		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
+		expect(failExecution).toHaveBeenCalledWith(data, '1', error, undefined);
+	});
+
+	it('forwards the response promise to the failed execution', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		// @ts-expect-error Private method
+		const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], id: 'workflow-id', staticData: {} },
+			executionData: createRunExecutionData({}),
+		});
+		const error = new Error('masking failed') as ExecutionError;
+		const responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
+
+		await runner.registerAndFailExecution(data, error, undefined, responsePromise);
+
+		expect(failExecution).toHaveBeenCalledWith(data, '1', error, responsePromise);
 	});
 });
 

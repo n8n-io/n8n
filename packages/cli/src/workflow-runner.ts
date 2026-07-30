@@ -230,6 +230,19 @@ export class WorkflowRunner {
 		return establishContextError;
 	}
 
+	async registerAndFailExecution(
+		data: IWorkflowExecutionDataProcess,
+		error: ExecutionError & { node?: INode },
+		existingExecution?: ResumableExecution,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<string> {
+		const executionId = await this.activeExecutions.add(data, existingExecution);
+
+		await this.failExecution(data, executionId, error, responsePromise);
+
+		return executionId;
+	}
+
 	/** Run the workflow
 	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
 	 */
