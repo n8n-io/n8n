@@ -39,6 +39,7 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { snapshotLedgerBody } from './ledger-snapshot';
 import {
 	createMcpMockFetch,
 	type McpMockCanonicalTool,
@@ -533,7 +534,7 @@ export class EvalAgentExecutionService {
 				method: requestOptions.method ?? 'GET',
 				nodeType: node.type,
 				requestBody: requestOptions.body,
-				mockResponse: response?.body,
+				mockResponse: snapshotLedgerBody(response?.body),
 			});
 			this.logger.debug(
 				`[EvalAgentMock] Intercepted ${requestOptions.method ?? 'GET'} ${requestOptions.url} from tool "${toolName}" (${node.type})`,
