@@ -218,15 +218,6 @@ function hasActiveToolCall(): boolean {
 						:hide-error-callout="showFix && tc.state === TOOL_CALL_STATE.ERROR"
 						:has-content="view.expandable"
 					>
-						<N8nMarkdownEditor
-							v-if="view.details"
-							:model-value="view.details"
-							readonly
-							variant="ghost"
-							show-toolbar="never"
-							max-height="240px"
-							:class="$style.answer"
-						/>
 						<div
 							v-if="tc.childProgress"
 							:class="$style.childProgress"
@@ -244,7 +235,7 @@ function hasActiveToolCall(): boolean {
 								:streaming="segment.endTime === undefined"
 							/>
 							<N8nMarkdownEditor
-								v-if="tc.childProgress.text"
+								v-if="tc.childProgress.text && !view.details"
 								:model-value="tc.childProgress.text"
 								readonly
 								variant="ghost"
@@ -253,6 +244,15 @@ function hasActiveToolCall(): boolean {
 								:class="$style.answer"
 							/>
 						</div>
+						<N8nMarkdownEditor
+							v-if="view.details"
+							:model-value="view.details"
+							readonly
+							variant="ghost"
+							show-toolbar="never"
+							max-height="240px"
+							:class="$style.answer"
+						/>
 						<div v-if="view.hasRawData" :class="$style.toolDataList">
 							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
@@ -288,15 +288,6 @@ function hasActiveToolCall(): boolean {
 					:has-content="toolStepView(tc).expandable"
 				>
 					<template v-for="view in [toolStepView(tc)]" :key="view.label">
-						<N8nMarkdownEditor
-							v-if="view.details"
-							:model-value="view.details"
-							readonly
-							variant="ghost"
-							show-toolbar="never"
-							max-height="240px"
-							:class="$style.answer"
-						/>
 						<div
 							v-if="tc.childProgress"
 							:class="$style.childProgress"
@@ -314,7 +305,7 @@ function hasActiveToolCall(): boolean {
 								:streaming="segment.endTime === undefined"
 							/>
 							<N8nMarkdownEditor
-								v-if="tc.childProgress.text"
+								v-if="tc.childProgress.text && !view.details"
 								:model-value="tc.childProgress.text"
 								readonly
 								variant="ghost"
@@ -323,6 +314,15 @@ function hasActiveToolCall(): boolean {
 								:class="$style.answer"
 							/>
 						</div>
+						<N8nMarkdownEditor
+							v-if="view.details"
+							:model-value="view.details"
+							readonly
+							variant="ghost"
+							show-toolbar="never"
+							max-height="240px"
+							:class="$style.answer"
+						/>
 						<div v-if="view.hasRawData" :class="$style.toolDataList">
 							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
@@ -359,6 +359,12 @@ function hasActiveToolCall(): boolean {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--xs);
+}
+
+/* Nested in a delegate row the flex gap already spaces the child's steps, so
+   the standalone bottom margin would double up. */
+.childProgress .toolSteps {
+	margin-bottom: 0;
 }
 
 .answer {

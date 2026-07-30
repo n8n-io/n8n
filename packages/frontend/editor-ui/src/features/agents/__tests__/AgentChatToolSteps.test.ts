@@ -395,7 +395,7 @@ describe('AgentChatToolSteps', () => {
 		);
 	});
 
-	it('renders both the answer and the child trace on a settled delegate row', async () => {
+	it('renders the answer once alongside the child trace on a settled delegate row', async () => {
 		const wrapper = mountSteps([
 			{
 				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
@@ -407,7 +407,7 @@ describe('AgentChatToolSteps', () => {
 					answer: 'Final child answer',
 				},
 				childProgress: {
-					text: 'Looking things up',
+					text: 'Final child answer',
 					reasoningSegments: [],
 					steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
 				},
@@ -415,9 +415,52 @@ describe('AgentChatToolSteps', () => {
 		]);
 
 		await wrapper.find('button').trigger('click');
+		// The child's streamed text is what becomes the delegate answer, so a
+		// settled row renders it once — not again from the trace.
+		expect(wrapper.findAll('[data-test-id="tool-step-details"]')).toHaveLength(1);
 		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Final child answer');
 		expect(wrapper.find('[data-test-id="agent-chat-delegate-child-progress"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('Web search');
 		expect(wrapper.text()).not.toContain('subAgentId');
+	});
+
+	it('renders the child tool calls above the answer', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.DONE,
+				input: { subAgentId: 'inline', taskName: 'research_api' },
+				output: { status: 'completed', answer: 'Final child answer' },
+				childProgress: {
+					text: '',
+					reasoningSegments: [],
+					steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		const text = wrapper.text();
+		expect(text.indexOf('Web search')).toBeLessThan(text.indexOf('Final child answer'));
+	});
+
+	it('still renders the child text when a failed delegation has no answer', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.RUNNING,
+				input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+				childProgress: {
+					text: 'Partial work before it died',
+					reasoningSegments: [],
+					steps: [],
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.text()).toContain('Partial work before it died');
 	});
 });

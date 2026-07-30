@@ -874,15 +874,24 @@ describe('ExecutionRecorder — subagent-chunk', () => {
 		});
 	});
 
-	it('stops persisting child text past the 4000 character budget', () => {
+	it('caps persisted child text at 4000 characters, trimming a delta that straddles it', () => {
 		const recorder = new ExecutionRecorder();
 		recorder.record(makeToolCallChunk('delegate_subagent', {}, 'tc-parent'));
+		// Neither delta lands on the boundary, so the second must be trimmed
+		// rather than persisted whole.
 		recorder.record({
 			type: 'subagent-chunk',
 			taskName: 'research',
 			taskPath: '/root/research_0',
 			parentToolCallId: 'tc-parent',
-			chunk: { type: 'text-delta', id: 't-1', delta: 'a'.repeat(4_000) },
+			chunk: { type: 'text-delta', id: 't-1', delta: 'a'.repeat(3_000) },
+		} as StreamChunk);
+		recorder.record({
+			type: 'subagent-chunk',
+			taskName: 'research',
+			taskPath: '/root/research_0',
+			parentToolCallId: 'tc-parent',
+			chunk: { type: 'text-delta', id: 't-1', delta: 'b'.repeat(3_000) },
 		} as StreamChunk);
 		recorder.record({
 			type: 'subagent-chunk',

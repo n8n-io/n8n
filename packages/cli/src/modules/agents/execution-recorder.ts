@@ -329,17 +329,19 @@ export class ExecutionRecorder {
 				if (chunk.parentToolCallId === undefined) break;
 				const entry = this.findOpenTimelineToolCall(chunk.parentToolCallId);
 				if (!entry) break;
-				const delta =
-					chunk.chunk.type === 'text-delta' || chunk.chunk.type === 'reasoning-delta'
-						? chunk.chunk.delta.length
-						: 0;
-				if (delta > 0) {
+				let inner = chunk.chunk;
+				if (inner.type === 'text-delta' || inner.type === 'reasoning-delta') {
+					// Trim rather than skip whole: a delta straddling the cap would
+					// otherwise be persisted in full and overshoot it.
 					const used = this.childTraceChars.get(chunk.parentToolCallId) ?? 0;
-					if (used >= CHILD_TRACE_PERSIST_CHAR_BUDGET) break;
-					this.childTraceChars.set(chunk.parentToolCallId, used + delta);
+					const remaining = CHILD_TRACE_PERSIST_CHAR_BUDGET - used;
+					if (remaining <= 0) break;
+					const delta = inner.delta.slice(0, remaining);
+					this.childTraceChars.set(chunk.parentToolCallId, used + delta.length);
+					inner = { ...inner, delta };
 				}
 				entry.childTrace ??= emptyChildTrace();
-				applyForwardedChildChunk(entry.childTrace, chunk.chunk);
+				applyForwardedChildChunk(entry.childTrace, inner);
 				break;
 			}
 			case 'tool-result':

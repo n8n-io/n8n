@@ -214,15 +214,21 @@ function createEmitChunkHelper(
 		if (request.parentToolCallId === undefined) return;
 		if (!isForwardedChildChunk(chunk)) return;
 
+		let forwarded: ForwardedChildChunk = chunk;
 		if (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta') {
-			if (forwardedChars >= SUB_AGENT_FORWARD_CHAR_BUDGET) return;
-			forwardedChars += chunk.delta.length;
+			// Trim rather than pass through whole: a single provider delta can be
+			// arbitrarily large, and forwarding it intact would blow the budget.
+			const remaining = SUB_AGENT_FORWARD_CHAR_BUDGET - forwardedChars;
+			if (remaining <= 0) return;
+			const delta = chunk.delta.slice(0, remaining);
+			forwardedChars += delta.length;
+			forwarded = { ...chunk, delta };
 		}
 
 		ctx.emitEvent?.({
 			type: AgentEvent.SubAgentChunk,
 			...subAgentLifecycleBase(request),
-			chunk,
+			chunk: forwarded,
 		});
 	};
 }

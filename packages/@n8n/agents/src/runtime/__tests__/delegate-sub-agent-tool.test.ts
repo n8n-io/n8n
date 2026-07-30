@@ -572,13 +572,15 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
-	it('stops forwarding child text past the character budget but keeps tool lifecycle', async () => {
+	it('caps forwarded child text at the budget but keeps tool lifecycle flowing', async () => {
 		const events: AgentEventData[] = [];
 		const tool = createDelegateSubAgentTool({
 			runSubAgent: async (_request, helpers) => {
-				helpers.emitChunk({ type: 'text-delta', id: 't-1', delta: 'a'.repeat(20_000) });
-				helpers.emitChunk({ type: 'text-delta', id: 't-1', delta: 'over budget' });
-				helpers.emitChunk({ type: 'reasoning-delta', id: 'r-1', delta: 'over budget too' });
+				// Neither delta lands on the boundary, so the second must be trimmed
+				// rather than forwarded whole.
+				helpers.emitChunk({ type: 'text-delta', id: 't-1', delta: 'a'.repeat(15_000) });
+				helpers.emitChunk({ type: 'text-delta', id: 't-1', delta: 'b'.repeat(15_000) });
+				helpers.emitChunk({ type: 'reasoning-delta', id: 'r-1', delta: 'over budget' });
 				helpers.emitChunk({
 					type: 'tool-execution-end',
 					toolCallId: 'child-tc-1',
@@ -603,8 +605,14 @@ describe('createDelegateSubAgentTool', () => {
 		const forwarded = events.filter((event) => event.type === AgentEvent.SubAgentChunk);
 		expect(forwarded.map((event) => event.chunk.type)).toEqual([
 			'text-delta',
+			'text-delta',
 			'tool-execution-end',
 		]);
+		const forwardedChars = forwarded.reduce(
+			(total, event) => total + ('delta' in event.chunk ? event.chunk.delta.length : 0),
+			0,
+		);
+		expect(forwardedChars).toBe(20_000);
 	});
 
 	it('defaults maxChildren to 10 when policy is omitted', () => {
