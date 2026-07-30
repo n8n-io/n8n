@@ -106,6 +106,47 @@ describe('PollCursorService', () => {
 			expect(cursor).toEqual({ lastItemId: 'from-the-other-poll' });
 		});
 
+		it('writes the stored cursor into the static data it was given', async () => {
+			const service = buildService();
+			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-db' });
+			const nodeStaticData = { lastItemId: 'stale' };
+
+			await service.readCursor('wf-1', 'node-1', nodeStaticData);
+
+			expect(nodeStaticData).toEqual({ lastItemId: 'from-db' });
+		});
+
+		it('drops static-data keys the stored cursor no longer carries', async () => {
+			const service = buildService();
+			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-db' });
+			const nodeStaticData = { lastItemId: 'stale', lastTimeChecked: '2026-07-28T10:00:00.000Z' };
+
+			await service.readCursor('wf-1', 'node-1', nodeStaticData);
+
+			expect(nodeStaticData).toEqual({ lastItemId: 'from-db' });
+		});
+
+		it('leaves the static data untouched when it already matches the stored cursor', async () => {
+			const service = buildService();
+			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'a' });
+			const nodeStaticData = { lastItemId: 'a' };
+			const observed: string[] = [];
+			const observable = new Proxy(nodeStaticData, {
+				set(target, key: string, value: string) {
+					observed.push(key);
+					return Reflect.set(target, key, value);
+				},
+				deleteProperty(target, key: string) {
+					observed.push(key);
+					return Reflect.deleteProperty(target, key);
+				},
+			});
+
+			await service.readCursor('wf-1', 'node-1', observable);
+
+			expect(observed).toEqual([]);
+		});
+
 		it('propagates a failing read so the poll does not run against an unknown cursor', async () => {
 			const service = buildService();
 			const readError = new Error('poller state read failed');
