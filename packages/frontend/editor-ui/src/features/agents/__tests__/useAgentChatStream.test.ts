@@ -899,6 +899,31 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(hook.isStreaming.value).toBe(false);
 	});
 
+	it('collects streamed reasoning as a timed segment', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'reasoning-start', id: 'reasoning-1' },
+			{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'Check the inputs. ' },
+			{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'Then answer.' },
+			{ type: 'reasoning-end', id: 'reasoning-1' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('think about this');
+		await nextTick();
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.thinkingSegments).toEqual([
+			{
+				id: 'reasoning-1',
+				content: 'Check the inputs. Then answer.',
+				startTime: expect.any(Number),
+				endTime: expect.any(Number),
+			},
+		]);
+	});
+
 	it('marks active messages and tool calls as failed when the stream closes prematurely', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'start-step' },
@@ -980,6 +1005,14 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistantMessages).toHaveLength(2);
 		expect(assistantMessages[0]).toMatchObject({
 			thinking: 'Checking the workflow',
+			thinkingSegments: [
+				expect.objectContaining({
+					id: 'r-1',
+					content: 'Checking the workflow',
+					startTime: expect.any(Number),
+					endTime: expect.any(Number),
+				}),
+			],
 			status: 'error',
 		});
 		expect(assistantMessages[1].content).toBe('agents.chat.streamInterrupted');
@@ -1217,6 +1250,30 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const assistantMsgs = hook.messages.value.filter((m) => m.role === 'assistant');
 		expect(assistantMsgs).toHaveLength(2);
 		expect(assistantMsgs[0].content).toBe('partial answer');
+		expect(assistantMsgs[1].status).toBe('error');
+	});
+
+	it('keeps partial reasoning when an error arrives', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'reasoning-start', id: 'reasoning-1' },
+			{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'Partial analysis' },
+			{ type: 'error', message: 'Downstream failure', errorCode: 'runtime_error' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('tell me');
+		await nextTick();
+
+		const assistantMsgs = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistantMsgs).toHaveLength(2);
+		expect(assistantMsgs[0].thinkingSegments?.[0]).toEqual(
+			expect.objectContaining({
+				id: 'reasoning-1',
+				content: 'Partial analysis',
+				endTime: expect.any(Number),
+			}),
+		);
 		expect(assistantMsgs[1].status).toBe('error');
 	});
 

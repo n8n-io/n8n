@@ -8,7 +8,7 @@ import { computed } from 'vue';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import { useI18n } from '@n8n/i18n';
 import { N8nTabs } from '@n8n/design-system';

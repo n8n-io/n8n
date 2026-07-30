@@ -20,7 +20,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	}),
 }));
 
-// Numeric/thinking sub-controls debounce — execute synchronously in the test.
+// Numeric/reasoning sub-controls debounce — execute synchronously in the test.
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<typeof VueUse>();
 	return {
@@ -32,7 +32,6 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 const globalStubs = {
 	N8nIcon: { template: '<span v-bind="$attrs" />', props: ['icon', 'size'] },
 	N8nText: { template: '<span><slot /></span>' },
-	N8nTooltip: { template: '<div><slot /></div>' },
 	N8nInputNumber2: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision', 'placeholder'],
 		emits: ['update:modelValue'],
@@ -45,7 +44,15 @@ const globalStubs = {
 		template:
 			'<select v-bind="$attrs" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
 	},
-	N8nOption: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
+	N8nOption: {
+		name: 'N8nOption',
+		props: ['value', 'label'],
+		template: '<option :value="value">{{ label }}</option>',
+	},
+	Option: {
+		props: ['value', 'label'],
+		template: '<option :value="value">{{ label }}</option>',
+	},
 	N8nSwitch2: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
@@ -288,55 +295,71 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.providerTools).toEqual({ 'openai.image_generation': {} });
 	});
 
-	it('shows the budget-tokens sub-control for Anthropic when thinking is on', async () => {
+	it('shows generic reasoning effort for any provider when reasoning is enabled', async () => {
 		const config = makeConfig({
-			config: { thinking: { provider: 'anthropic', budgetTokens: 1024 } },
+			model: 'google/gemini-pro',
+			config: { reasoning: 'high' },
 		} as Partial<AgentJsonConfig>);
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
 		await nextTick();
-		expect(wrapper.find('[data-testid="agent-budget-tokens-input"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-reasoning-effort-select"]').exists()).toBe(false);
-	});
-
-	it('shows the reasoning-effort sub-control for OpenAI when thinking is on', async () => {
-		const config = makeConfig({
-			model: 'openai/gpt-4o',
-			config: { thinking: { provider: 'openai', reasoningEffort: 'high' } },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-		await nextTick();
-		expect(wrapper.find('[data-testid="agent-reasoning-effort-select"]').exists()).toBe(true);
+		const effort = findStubComponent(wrapper, 'agent-reasoning-effort-select');
+		expect(effort.exists()).toBe(true);
+		expect(effort.props('modelValue')).toBe('high');
 		expect(wrapper.find('[data-testid="agent-budget-tokens-input"]').exists()).toBe(false);
 	});
 
-	it('disables the thinking toggle for providers that do not support it', () => {
+	it('keeps the reasoning toggle available for every provider', () => {
 		const config = makeConfig({ model: 'google/gemini-pro' });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
-		const toggle = wrapper.find('[data-testid="agent-thinking-toggle"]');
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
 		expect(toggle.exists()).toBe(true);
-		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(toggle.attributes('disabled')).toBeUndefined();
 	});
 
-	it('emits update:config with the thinking subtree when the toggle flips on', async () => {
-		const config = makeConfig();
+	it('enables generic medium reasoning when the toggle flips on', async () => {
+		const config = makeConfig({ model: 'google/gemini-pro' });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
-		await wrapper.find('[data-testid="agent-thinking-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="agent-reasoning-toggle"]').trigger('click');
 		const events = wrapper.emitted('update:config') ?? [];
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect((last.config as { thinking: { provider: string } }).thinking.provider).toBe('anthropic');
+		expect(last.config?.reasoning).toBe('medium');
+	});
+
+	it('updates the generic reasoning effort', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ config: { reasoning: 'medium' } }) },
+			global: { stubs: { ...globalStubs, Select: globalStubs.N8nSelect } },
+		});
+
+		emitSelectValue(wrapper, 'agent-reasoning-effort-select', 'low');
+		await nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.reasoning).toBe('low');
+	});
+
+	it('removes reasoning when the toggle flips off', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ config: { reasoning: 'medium' } }) },
+			global: { stubs: globalStubs },
+		});
+
+		await wrapper.find('[data-testid="agent-reasoning-toggle"]').trigger('click');
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.reasoning).toBeUndefined();
 	});
 
 	it('shows the Anthropic ttl dropdown, defaulting to 1h, with no on/off toggle', async () => {
@@ -394,7 +417,7 @@ describe('AgentAdvancedPanel', () => {
 		const webSearchMethod = findStubComponent(wrapper, 'agent-web-search-method');
 		expect(webSearchMethod.props('disabled')).toBe(true);
 		expect(
-			wrapper.find('[data-testid="agent-thinking-toggle"]').attributes('disabled'),
+			wrapper.find('[data-testid="agent-reasoning-toggle"]').attributes('disabled'),
 		).toBeDefined();
 		expect(
 			wrapper.find('[data-testid="agent-concurrency-input"]').attributes('disabled'),

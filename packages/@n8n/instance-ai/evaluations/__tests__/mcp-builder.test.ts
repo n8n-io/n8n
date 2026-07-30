@@ -140,7 +140,13 @@ describe('unsupportedMcpBuildSetupFields', () => {
 			{
 				conversationSeed: {
 					messages: [
-						{ id: 'm1', type: 'llm', role: 'user', content: [{ type: 'text', text: 'build it' }] },
+						{
+							id: 'm1',
+							type: 'llm',
+							role: 'user',
+							createdAt: '2026-06-29T09:00:00.000Z',
+							content: [{ type: 'text', text: 'build it' }],
+						},
 					],
 					workflows: [],
 					dataTables: [],

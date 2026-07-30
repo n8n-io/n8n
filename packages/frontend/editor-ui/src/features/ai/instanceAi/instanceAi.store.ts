@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed, inject, provide, shallowReactive, type InjectionKey } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
 import {
 	ensureThread,

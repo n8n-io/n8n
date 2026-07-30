@@ -1513,6 +1513,49 @@ describe('ParameterInput.vue', () => {
 		});
 	});
 
+	describe('multi-line masked (password) fields', () => {
+		test('renders a masked textarea (not a single-line password input) for a multi-line secret', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'privateKey',
+					parameter: createTestNodeProperties({
+						displayName: 'Private Key',
+						name: 'privateKey',
+						type: 'string',
+						typeOptions: { rows: 4, password: true },
+					}),
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			// A single-line <input type="password"> strips newlines and corrupts keys.
+			expect(container.querySelector('input[type="password"]')).not.toBeInTheDocument();
+			expect(container.querySelector('textarea')).toBeInTheDocument();
+			// Kept out of PostHog capture even in a node (non-credential) context.
+			expect(container.querySelector('.ph-no-capture')).toBeInTheDocument();
+		});
+
+		test('still renders a single-line password input for a single-line secret', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'passphrase',
+					parameter: createTestNodeProperties({
+						displayName: 'Passphrase',
+						name: 'passphrase',
+						type: 'string',
+						typeOptions: { password: true },
+					}),
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			expect(container.querySelector('input[type="password"]')).toBeInTheDocument();
+			expect(container.querySelector('textarea')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('sqlEditor sizing (ADO-5553)', () => {
 		// Converts a CSS length ('40vh' | '53.3em' | '120px') to pixels using the
 		// current jsdom viewport, so a min-height in `em` can be compared against a

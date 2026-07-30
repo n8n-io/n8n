@@ -70,7 +70,7 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/app/event-bus';
@@ -547,12 +547,16 @@ const dependentParametersValues = computedAsync(async () => {
 }, null);
 
 const getStringInputType = computed(() => {
+	const rows = editorRows.value;
+	const isMultiline = rows !== undefined && rows > 1;
+
 	if (getTypeOption('password') === true) {
-		return 'password';
+		// A multiline masked field must be a textarea: a single-line
+		// <input type="password"> strips newlines and corrupts pasted keys.
+		return isMultiline ? 'textarea' : 'password';
 	}
 
-	const rows = editorRows.value;
-	if (rows !== undefined && rows > 1) {
+	if (isMultiline) {
 		return 'textarea';
 	}
 
@@ -562,6 +566,12 @@ const getStringInputType = computed(() => {
 
 	return 'text';
 });
+
+// A password field rendered as a textarea (multiline secret) still needs to be
+// visually masked and kept out of PostHog capture.
+const isMaskedTextarea = computed(
+	() => getStringInputType.value === 'textarea' && getTypeOption('password') === true,
+);
 
 const getIssues = computed<string[]>(() => {
 	const validationError = jsonValidationError.value;
@@ -741,7 +751,9 @@ const remoteParameterOptionsKeys = computed<string[]>(() => {
 });
 
 const shouldRedactValue = computed<boolean>(() => {
-	return getStringInputType.value === 'password' || props.isForCredential;
+	// Keyed off the field being a password (not the rendered control type) so a
+	// multiline masked field stays redacted even outside credential contexts.
+	return getTypeOption('password') === true || props.isForCredential;
 });
 
 const isCodeNode = computed(
@@ -1843,6 +1855,7 @@ onUpdated(async () => {
 					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
 					:size="parameterInputSize"
 					:type="getStringInputType"
+					:masked="isMaskedTextarea"
 					:rows="editorRows"
 					:disabled="
 						isReadOnly ||
