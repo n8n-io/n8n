@@ -66,7 +66,7 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			name: 'docsUrl',
 			type: 'string',
 			description:
-				'Provider page where the user creates/copies the secret (e.g. the API-keys dashboard). Not shown in the form — the AI Assistant help thread points the user there.',
+				'Provider page where the user creates/copies the secret (e.g. the API-keys dashboard). The AI Assistant help thread points the user there.',
 			default: '',
 		},
 		{

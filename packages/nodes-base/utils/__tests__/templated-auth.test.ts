@@ -79,6 +79,33 @@ describe('resolveTemplatedAuth', () => {
 		);
 	});
 
+	it.each([
+		['array', []],
+		['string', 'headers'],
+	])('should reject a template parsed as a %s', (_, template) => {
+		expect(() =>
+			resolveTemplatedAuth({ template: JSON.stringify(template), placeholderValues: '{}' }),
+		).toThrow('Simplified Custom Auth template must be a JSON object');
+	});
+
+	it.each(['headers', 'body', 'qs'])('should reject non-object template %s', (partName) => {
+		expect(() => resolveTemplatedAuth(credentialData({ [partName]: 'invalid' }))).toThrow(
+			`Simplified Custom Auth template ${partName} must be a JSON object`,
+		);
+	});
+
+	it.each([
+		['array', []],
+		['string', 'secret'],
+	])('should reject placeholder values parsed as a %s', (_, placeholderValues) => {
+		expect(() =>
+			resolveTemplatedAuth({
+				template: '{}',
+				placeholderValues: JSON.stringify(placeholderValues),
+			}),
+		).toThrow('Simplified Custom Auth placeholder values must be a JSON object');
+	});
+
 	it('should keep reserved JSON keys as plain own properties', () => {
 		const result = resolveTemplatedAuth({
 			template: '{"headers":{"__proto__":{"polluted":"{{value}}"}}}',

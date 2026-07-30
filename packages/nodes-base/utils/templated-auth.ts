@@ -27,6 +27,19 @@ function isPlainDataObject(value: unknown): value is IDataObject {
 	return isPlainObject(value);
 }
 
+function assertTemplatedAuthParts(value: unknown): asserts value is TemplatedAuthParts {
+	if (!isPlainDataObject(value)) {
+		throw new UserError('Simplified Custom Auth template must be a JSON object');
+	}
+
+	for (const partName of ['headers', 'body', 'qs'] satisfies Array<keyof TemplatedAuthParts>) {
+		const part = value[partName];
+		if (part !== undefined && !isPlainDataObject(part)) {
+			throw new UserError(`Simplified Custom Auth template ${partName} must be a JSON object`);
+		}
+	}
+}
+
 /** Marker names whose placeholder def declares `optional: true`. */
 function optionalMarkerNames(credentialData: ICredentialDataDecryptedObject): Set<string> {
 	const parsed = jsonParse<unknown>((credentialData.placeholderDefs as string) || '[]', {
@@ -61,12 +74,17 @@ function optionalMarkerNames(credentialData: ICredentialDataDecryptedObject): Se
 export function resolveTemplatedAuth(
 	credentialData: ICredentialDataDecryptedObject,
 ): TemplatedAuthParts {
-	const template = jsonParse<TemplatedAuthParts>((credentialData.template as string) || '{}', {
+	const template = jsonParse<unknown>((credentialData.template as string) || '{}', {
 		errorMessage: 'Invalid Simplified Custom Auth template JSON',
 	});
-	const values = jsonParse<IDataObject>((credentialData.placeholderValues as string) || '{}', {
+	assertTemplatedAuthParts(template);
+
+	const values = jsonParse<unknown>((credentialData.placeholderValues as string) || '{}', {
 		errorMessage: 'Invalid Simplified Custom Auth placeholder values JSON',
 	});
+	if (!isPlainDataObject(values)) {
+		throw new UserError('Simplified Custom Auth placeholder values must be a JSON object');
+	}
 	const optionalMarkers = optionalMarkerNames(credentialData);
 
 	const resolve = <T>(part: T): T | typeof OMIT => {
