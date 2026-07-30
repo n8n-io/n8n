@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { INode, IPollFunctions, Workflow } from 'n8n-workflow';
 
+import { ErrorReporter } from '@/errors/error-reporter';
 import { SpanStatus, Tracing } from '@/observability';
 
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -20,6 +21,7 @@ export class PollTriggerExecutor {
 		private readonly logger: Logger,
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly tracing: Tracing,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = logger.scoped('poll-trigger');
 	}
@@ -39,6 +41,12 @@ export class PollTriggerExecutor {
 		pollFunctions: IPollFunctions,
 		isCurrent: () => boolean,
 	): PollTriggerExecuteFn {
+		const runPoll = async <T>(poll: () => Promise<T>): Promise<T> =>
+			pollFunctions.__runPoll ? await pollFunctions.__runPoll(poll) : await poll();
+		const commitCursor = async () => {
+			if (pollFunctions.__commitCursor) await pollFunctions.__commitCursor();
+		};
+
 		return async (testingTrigger = false) => {
 			// Scheduled polls start their own root trace so they don't attach to the
 			// publication transaction whose async context the poller was created in.
@@ -80,7 +88,7 @@ export class PollTriggerExecutor {
 						return;
 					}
 
-					await pollFunctions.__runPoll(async () => {
+					await runPoll(async () => {
 						try {
 							if (ownsIsolate) await workflow.expression.acquireIsolate();
 
@@ -110,8 +118,11 @@ export class PollTriggerExecutor {
 								pollFunctions.__emit(pollResponse);
 							} else if (!testingTrigger) {
 								try {
-									await pollFunctions.__commitCursor();
+									await commitCursor();
 								} catch (error) {
+									this.errorReporter.error(error, {
+										extra: { workflowId: workflow.id, nodeId: node.id },
+									});
 									this.logger.error(
 										`Failed to commit the poll cursor for workflow "${workflow.name}"; the next poll repeats the same window`,
 										{ workflowId: workflow.id, nodeId: node.id, error },
