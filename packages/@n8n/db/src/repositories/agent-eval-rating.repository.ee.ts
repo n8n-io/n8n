@@ -1,9 +1,13 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import type { JsonObject } from 'n8n-workflow';
 
 import { AgentEvalRating, AgentEvalResult } from '../entities';
 import type { AgentEvalVote } from '../entities/agent-eval-rating.ee';
+
+// Matches the seeding chunk size: keeps an id lookup under the bound parameter
+// limit when a run has many rated results.
+const ID_LOOKUP_CHUNK_SIZE = 100;
 
 type CreateAgentEvalRatingAttrs = {
 	resultId: string;
@@ -46,19 +50,40 @@ export class AgentEvalRatingRepository extends Repository<AgentEvalRating> {
 	 * winner deterministic in that tie.
 	 */
 	async findLatestByRunId(runId: string): Promise<AgentEvalRating[]> {
-		const ratings = await this.createQueryBuilder('rating')
+		// Pass one selects ids only. Loading whole rows here would materialize every
+		// superseded rating — each carrying a `correction` blob — just to discard most
+		// of them, and a run can hold hundreds of results with unbounded history.
+		const rows = await this.createQueryBuilder('rating')
+			.select('rating.id', 'id')
+			.addSelect('rating.resultId', 'resultId')
 			.innerJoin(AgentEvalResult, 'result', 'result.id = rating.resultId')
 			.where('result.runId = :runId', { runId })
 			.orderBy('rating.resultId', 'ASC')
 			.addOrderBy('rating.createdAt', 'DESC')
 			.addOrderBy('rating.id', 'DESC')
-			.getMany();
+			.getRawMany<{ id: string; resultId: string }>();
 
 		const seen = new Set<string>();
-		return ratings.filter((rating) => {
-			if (seen.has(rating.resultId)) return false;
-			seen.add(rating.resultId);
-			return true;
-		});
+		const latestIds = rows
+			.filter((row) => {
+				if (seen.has(row.resultId)) return false;
+				seen.add(row.resultId);
+				return true;
+			})
+			.map((row) => row.id);
+		if (latestIds.length === 0) return [];
+
+		// Pass two fetches only the winners, chunked to stay under the driver's bound
+		// parameter limit (SQLite in particular), then restored to pass one's order.
+		const found: AgentEvalRating[] = [];
+		for (let i = 0; i < latestIds.length; i += ID_LOOKUP_CHUNK_SIZE) {
+			const chunk = latestIds.slice(i, i + ID_LOOKUP_CHUNK_SIZE);
+			found.push(...(await this.find({ where: { id: In(chunk) } })));
+		}
+
+		const byId = new Map(found.map((rating) => [rating.id, rating]));
+		return latestIds
+			.map((id) => byId.get(id))
+			.filter((rating): rating is AgentEvalRating => rating !== undefined);
 	}
 }

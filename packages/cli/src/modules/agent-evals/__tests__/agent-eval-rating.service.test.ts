@@ -17,7 +17,6 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { PostHogClient } from '@/posthog';
@@ -46,10 +45,9 @@ describe('AgentEvalRatingService', () => {
 	let agentRepository: Mocked<AgentRepository>;
 	let postHogClient: Mocked<PostHogClient>;
 
-	const result = mock<AgentEvalResult>({ id: 'res-1', runId: 'run-1' });
+	const result = mock<AgentEvalResult>({ id: 'res-1', runId: 'run-1', status: 'success' });
 	const run = mock<AgentEvalRun>({ id: 'run-1', datasetId: 'ds-1' });
 	const dataset = mock<AgentEvalDataset>({ id: 'ds-1', agentId: 'agent-1' });
-	const agent = mock<Agent>({ id: 'agent-1' });
 
 	beforeEach(() => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
@@ -66,9 +64,9 @@ describe('AgentEvalRatingService', () => {
 		resultRepository.findById.mockResolvedValue(result);
 		runRepository.findById.mockResolvedValue(run);
 		datasetRepository.findById.mockResolvedValue(dataset);
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		ratingRepository.createRating.mockImplementation((attrs) =>
-			Promise.resolve(mock<AgentEvalRating>({ id: 'rating-1', ...attrs })),
+		agentRepository.existsByIdAndProjectId.mockResolvedValue(true);
+		ratingRepository.createRating.mockImplementation(async (attrs) =>
+			mock<AgentEvalRating>({ id: 'rating-1', ...attrs }),
 		);
 
 		service = new AgentEvalRatingService(
@@ -92,7 +90,7 @@ describe('AgentEvalRatingService', () => {
 			expect(ratingRepository.createRating).not.toHaveBeenCalled();
 		});
 
-		it('rejects a caller lacking agent:update, without touching the eval tables', async () => {
+		it('rejects a caller lacking the rating scope, without touching the eval tables', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(false);
 
 			await expect(
@@ -102,9 +100,11 @@ describe('AgentEvalRatingService', () => {
 			expect(resultRepository.findById).not.toHaveBeenCalled();
 		});
 
-		it('requires agent:update to rate and agent:read to read', async () => {
+		// A project viewer holds execute but not update, and is exactly the kind of
+		// reviewer this feature is for.
+		it('requires agent:execute to rate and agent:read to read', async () => {
 			await service.rateResult(user, PROJECT_ID, 'res-1', { vote: 'up' });
-			expect(vi.mocked(userHasScopes)).toHaveBeenCalledWith(user, ['agent:update'], false, {
+			expect(vi.mocked(userHasScopes)).toHaveBeenCalledWith(user, ['agent:execute'], false, {
 				projectId: PROJECT_ID,
 			});
 
@@ -125,7 +125,7 @@ describe('AgentEvalRatingService', () => {
 		});
 
 		it('rejects a result whose agent lives in another project (as not-found)', async () => {
-			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+			agentRepository.existsByIdAndProjectId.mockResolvedValue(false);
 
 			await expect(
 				service.rateResult(user, PROJECT_ID, 'res-1', { vote: 'up' }),
@@ -162,6 +162,32 @@ describe('AgentEvalRatingService', () => {
 				ratedById: 'user-1',
 			});
 		});
+
+		it.each(['new', 'running'] as const)('refuses to rate a %s case', async (status) => {
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ id: 'res-1', runId: 'run-1', status }),
+			);
+
+			await expect(
+				service.rateResult(user, PROJECT_ID, 'res-1', { vote: 'up' }),
+			).rejects.toThrowError(BadRequestError);
+			expect(ratingRepository.createRating).not.toHaveBeenCalled();
+		});
+
+		it.each(['error', 'cancelled'] as const)(
+			'allows rating a %s case — "it failed" is a judgment',
+			async (status) => {
+				resultRepository.findById.mockResolvedValue(
+					mock<AgentEvalResult>({ id: 'res-1', runId: 'run-1', status }),
+				);
+
+				await service.rateResult(user, PROJECT_ID, 'res-1', { vote: 'down' });
+
+				expect(ratingRepository.createRating).toHaveBeenCalledWith(
+					expect.objectContaining({ vote: 'down' }),
+				);
+			},
+		);
 
 		it('appends on re-vote rather than overwriting the earlier rating', async () => {
 			await service.rateResult(user, PROJECT_ID, 'res-1', { vote: 'down' });
@@ -235,7 +261,7 @@ describe('AgentEvalRatingService', () => {
 		});
 
 		it('rejects a run from another project (as not-found)', async () => {
-			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+			agentRepository.existsByIdAndProjectId.mockResolvedValue(false);
 
 			await expect(service.listLatestRatingsForRun(user, PROJECT_ID, 'run-1')).rejects.toThrowError(
 				NotFoundError,

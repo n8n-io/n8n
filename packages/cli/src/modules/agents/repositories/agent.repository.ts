@@ -78,6 +78,15 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
+	/**
+	 * Whether the agent belongs to the project, without loading it. For callers that
+	 * only need the ownership check and would otherwise pay for
+	 * {@link findByIdAndProjectId}'s `activeVersion` snapshot.
+	 */
+	async existsByIdAndProjectId(id: string, projectId: string): Promise<boolean> {
+		return await this.exists({ where: { id, projectId } });
+	}
+
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,

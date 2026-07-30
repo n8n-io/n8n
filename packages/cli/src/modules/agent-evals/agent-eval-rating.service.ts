@@ -65,10 +65,20 @@ export class AgentEvalRatingService {
 		payload: CreateAgentEvalRatingPayload,
 	): Promise<AgentEvalRating> {
 		await this.assertFeatureEnabled(user);
-		await this.assertProjectScopes(user, projectId, ['agent:update']);
+		// `agent:execute`, not `agent:update`: a project viewer holds execute (so the
+		// runner lets them test-drive an agent) but not update, and the reviewer of a
+		// result is often not its builder. Matches how the runner gates a run, and how
+		// execution annotations treat a vote as metadata rather than a mutation.
+		await this.assertProjectScopes(user, projectId, ['agent:execute']);
 		assertPayloadWithinBounds(payload);
 
 		const result = await this.resolveResultInProject(projectId, resultId);
+		// A pending case has no output to judge, so a vote on it would seed
+		// calibration with a verdict about nothing. Errored and cancelled cases stay
+		// rateable — "it failed" is a legitimate judgment.
+		if (result.status === 'new' || result.status === 'running') {
+			throw new BadRequestError('This case has not finished running yet.');
+		}
 
 		const rating = await this.ratingRepository.createRating({
 			resultId: result.id,
@@ -168,8 +178,10 @@ export class AgentEvalRatingService {
 		const dataset = await this.datasetRepository.findById(run.datasetId);
 		if (!dataset) throw notFound();
 
-		const agent = await this.agentRepository.findByIdAndProjectId(dataset.agentId, projectId);
-		if (!agent) throw notFound();
+		// Existence only — `findByIdAndProjectId` eagerly loads `activeVersion` for the
+		// frontend's publish state, which this path would pull on every rating.
+		const inProject = await this.agentRepository.existsByIdAndProjectId(dataset.agentId, projectId);
+		if (!inProject) throw notFound();
 	}
 }
 
