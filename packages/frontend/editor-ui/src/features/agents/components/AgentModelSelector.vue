@@ -470,7 +470,9 @@ async function onSelect(id: string) {
 	}
 
 	if (action === 'n8nConnect') {
-		toggleN8nCredits(providerId, credentials?.[providerId] !== AI_GATEWAY_MANAGED_TAG);
+		// Radio-style: selecting n8n credits always picks the managed tag. There's no
+		// toggle-off — you switch away by choosing another credential.
+		emit('selectCredential', providerId, AI_GATEWAY_MANAGED_TAG);
 		return;
 	}
 
@@ -492,11 +494,6 @@ async function onSelect(id: string) {
 	if (action === 'model') {
 		emit('change', { provider: providerId, model: value });
 	}
-}
-
-function toggleN8nCredits(provider: AgentModelProvider, enabled: boolean) {
-	if (disabled) return;
-	emit('selectCredential', provider, enabled ? AI_GATEWAY_MANAGED_TAG : null);
 }
 
 defineExpose({

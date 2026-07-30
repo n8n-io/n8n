@@ -326,14 +326,14 @@ describe('AgentModelSelector', () => {
 		expect(item?.data?.description).toBeUndefined();
 	});
 
-	it('untoggles n8n credits (clears the selection) when it is already selected', async () => {
+	it('re-selects the managed tag (radio-style, no toggle-off) when already selected', async () => {
 		aiGatewayState.isEnabled.value = true;
 		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
 
 		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
 		getDropdown(wrapper).vm.$emit('select', 'anthropic::n8nConnect::anthropicApi');
 
-		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', null]]);
+		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', AI_GATEWAY_MANAGED_TAG]]);
 	});
 
 	it('lists models when the managed tag is the selected credential', async () => {
