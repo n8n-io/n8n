@@ -343,4 +343,81 @@ describe('AgentChatToolSteps', () => {
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Child answer');
 	});
+
+	it('renders live child progress instead of raw input while delegate_subagent is running', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.RUNNING,
+				input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+				childProgress: {
+					text: 'Looking things up',
+					reasoningSegments: [],
+					steps: [
+						{ toolCallId: 'child-tc-1', toolName: 'web_search', running: true },
+						{ toolCallId: 'child-tc-2', toolName: 'search_nodes', running: false },
+					],
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.find('[data-test-id="agent-chat-delegate-child-progress"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Looking things up');
+		expect(wrapper.text()).not.toContain('subAgentId');
+
+		// The child's steps render through this same component, so they get the
+		// parent chat's tool labels and its multi-step grouping.
+		expect(wrapper.find('[data-test-id="n8n-ai-activity-step-group"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Web search');
+		expect(wrapper.text()).toContain('Search nodes');
+	});
+
+	it('renders the settled answer when child progress has been cleared', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.DONE,
+				input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+				output: {
+					status: 'completed',
+					answer: 'Final child answer',
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Final child answer');
+		expect(wrapper.find('[data-test-id="agent-chat-delegate-child-progress"]').exists()).toBe(
+			false,
+		);
+	});
+
+	it('renders both the answer and the child trace on a settled delegate row', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.DONE,
+				input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+				output: {
+					status: 'completed',
+					answer: 'Final child answer',
+				},
+				childProgress: {
+					text: 'Looking things up',
+					reasoningSegments: [],
+					steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Final child answer');
+		expect(wrapper.find('[data-test-id="agent-chat-delegate-child-progress"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Web search');
+		expect(wrapper.text()).not.toContain('subAgentId');
+	});
 });

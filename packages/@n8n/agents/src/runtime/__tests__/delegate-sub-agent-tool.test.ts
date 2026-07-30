@@ -527,6 +527,86 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
+	it('forwards only allowlisted child chunks, keeping args, results and nesting out', async () => {
+		const events: AgentEventData[] = [];
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async (_request, helpers) => {
+				helpers.emitChunk({ type: 'text-delta', id: 't-1', delta: 'hello' });
+				helpers.emitChunk({
+					type: 'tool-call',
+					toolCallId: 'child-tc-1',
+					toolName: 'web_search',
+					input: { query: 'x'.repeat(5_000) },
+				});
+				helpers.emitChunk({
+					type: 'tool-result',
+					toolCallId: 'child-tc-1',
+					toolName: 'web_search',
+					output: { body: 'y'.repeat(5_000) },
+				});
+				helpers.emitChunk({
+					type: 'subagent-started',
+					taskName: 'nested',
+					taskPath: '/root/research_api_0/nested_0',
+					startedAt: 1,
+				});
+				return await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				});
+			},
+		});
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'tool-call-1',
+			emitEvent: (event) => events.push(event),
+		});
+
+		const forwarded = events.filter((event) => event.type === AgentEvent.SubAgentChunk);
+		expect(forwarded).toHaveLength(1);
+		expect(forwarded[0]).toMatchObject({
+			parentToolCallId: 'tool-call-1',
+			chunk: { type: 'text-delta', delta: 'hello' },
+		});
+	});
+
+	it('stops forwarding child text past the character budget but keeps tool lifecycle', async () => {
+		const events: AgentEventData[] = [];
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async (_request, helpers) => {
+				helpers.emitChunk({ type: 'text-delta', id: 't-1', delta: 'a'.repeat(20_000) });
+				helpers.emitChunk({ type: 'text-delta', id: 't-1', delta: 'over budget' });
+				helpers.emitChunk({ type: 'reasoning-delta', id: 'r-1', delta: 'over budget too' });
+				helpers.emitChunk({
+					type: 'tool-execution-end',
+					toolCallId: 'child-tc-1',
+					toolName: 'web_search',
+					isError: false,
+					endTime: 1,
+				});
+				return await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				});
+			},
+		});
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'tool-call-1',
+			emitEvent: (event) => events.push(event),
+		});
+
+		const forwarded = events.filter((event) => event.type === AgentEvent.SubAgentChunk);
+		expect(forwarded.map((event) => event.chunk.type)).toEqual([
+			'text-delta',
+			'tool-execution-end',
+		]);
+	});
+
 	it('defaults maxChildren to 10 when policy is omitted', () => {
 		const tool = createDelegateSubAgentTool({
 			runSubAgent: async () =>

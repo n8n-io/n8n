@@ -11,11 +11,13 @@ import { isAbortError } from '../../sdk/abort';
 import { filterLlmMessages } from '../../sdk/message';
 import { Tool } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
+import type { ForwardedChildChunk } from '../../types/runtime/event';
 import type {
 	AgentExecutionCounter,
 	FinishReason,
 	GenerateResult,
 	ModelConfig,
+	StreamChunk,
 	TokenUsage,
 } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
@@ -178,6 +180,51 @@ export interface DelegateSubAgentToolOutput {
 export interface DelegateSubAgentRunnerHelpers {
 	/** Run a one-off inline child using the parent agent's inherited local/deferred tool set. */
 	runInlineSubAgent: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
+	/**
+	 * Forward a child stream chunk into the parent run's event bus (allowlisted
+	 * types only, with a per-delegation character budget). No-op when the
+	 * parent tool call id is missing.
+	 */
+	emitChunk: (chunk: StreamChunk) => void;
+}
+
+/** Cap on forwarded text+reasoning characters per delegation. */
+const SUB_AGENT_FORWARD_CHAR_BUDGET = 20_000;
+
+const FORWARDED_CHILD_CHUNK_TYPES = new Set<ForwardedChildChunk['type']>([
+	'text-delta',
+	'reasoning-start',
+	'reasoning-delta',
+	'reasoning-end',
+	'tool-input-start',
+	'tool-execution-start',
+	'tool-execution-end',
+]);
+
+function isForwardedChildChunk(chunk: StreamChunk): chunk is ForwardedChildChunk {
+	return FORWARDED_CHILD_CHUNK_TYPES.has(chunk.type as ForwardedChildChunk['type']);
+}
+
+function createEmitChunkHelper(
+	ctx: ToolContext,
+	request: DelegateSubAgentRequest,
+): (chunk: StreamChunk) => void {
+	let forwardedChars = 0;
+	return (chunk) => {
+		if (request.parentToolCallId === undefined) return;
+		if (!isForwardedChildChunk(chunk)) return;
+
+		if (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta') {
+			if (forwardedChars >= SUB_AGENT_FORWARD_CHAR_BUDGET) return;
+			forwardedChars += chunk.delta.length;
+		}
+
+		ctx.emitEvent?.({
+			type: AgentEvent.SubAgentChunk,
+			...subAgentLifecycleBase(request),
+			chunk,
+		});
+	};
 }
 
 export type InlineSubAgentProviderToolsResolver = (
@@ -487,6 +534,7 @@ async function handleDelegateSubAgent(
 					`${toolName} host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.`,
 				);
 			},
+			emitChunk: createEmitChunkHelper(ctx, request),
 		});
 		emitSubAgentCompleted(ctx, request, output, startedAt);
 		return output;

@@ -7,6 +7,7 @@ import type {
 	AgentSseEvent,
 	CancellationResumeData,
 } from '@n8n/api-types';
+import { applyForwardedChildChunk, emptyChildTrace } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
@@ -530,6 +531,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
 				session.terminalEventReceived = true;
+				break;
+			}
+			case 'subagent-chunk': {
+				const found = findToolCallById(event.parentToolCallId);
+				if (!found) break;
+				found.tc.childProgress ??= emptyChildTrace();
+				applyForwardedChildChunk(found.tc.childProgress, event.chunk);
 				break;
 			}
 			case 'message':

@@ -314,3 +314,39 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 		]);
 	});
 });
+
+describe('agent-sse-stream — subagent-chunk', () => {
+	it('forwards allowlisted subagent-chunk events with parentToolCallId', async () => {
+		const events = await collectEvents([
+			{
+				type: 'subagent-chunk',
+				taskName: 'research',
+				taskPath: '/root/research_0',
+				parentToolCallId: 'tc-parent',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'hello' },
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-parent',
+				taskPath: '/root/research_0',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'hello' },
+			},
+		]);
+	});
+
+	it('drops subagent-chunk events without parentToolCallId', async () => {
+		const events = await collectEvents([
+			{
+				type: 'subagent-chunk',
+				taskName: 'research',
+				taskPath: '/root/research_0',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'hello' },
+			},
+		]);
+
+		expect(events).toEqual([]);
+	});
+});
