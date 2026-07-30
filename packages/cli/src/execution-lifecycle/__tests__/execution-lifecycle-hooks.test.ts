@@ -481,9 +481,12 @@ describe('Execution Lifecycle Hooks', () => {
 	};
 
 	describe('getLifecycleHooksForRegularMain', () => {
-		const createHooks = (executionMode: WorkflowExecuteMode = 'manual') =>
+		const createHooks = (
+			executionMode: WorkflowExecuteMode = 'manual',
+			suppressErrorWorkflow?: boolean,
+		) =>
 			getLifecycleHooksForRegularMain(
-				{ executionMode, workflowData, pushRef, retryOf, userId },
+				{ executionMode, workflowData, pushRef, retryOf, userId, suppressErrorWorkflow },
 				executionId,
 			);
 
@@ -1118,6 +1121,19 @@ describe('Execution Lifecycle Hooks', () => {
 						project,
 					);
 				});
+
+				it('should not execute error workflow when the run opts out of it', async () => {
+					lifecycleHooks = createHooks('trigger', true);
+
+					workflowData.settings = { errorWorkflow: 'error-workflow-id' };
+					ownershipService.getWorkflowProjectCached
+						.calledWith(workflowId)
+						.mockResolvedValue(mock<Project>());
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+					expect(workflowExecutionService.executeErrorWorkflow).not.toHaveBeenCalled();
+				});
 			});
 
 			it('should restore binary data IDs after workflow execution for webhooks', async () => {
@@ -1379,9 +1395,12 @@ describe('Execution Lifecycle Hooks', () => {
 	});
 
 	describe('getLifecycleHooksForScalingWorker', () => {
-		const createHooks = (executionMode: WorkflowExecuteMode = 'manual') =>
+		const createHooks = (
+			executionMode: WorkflowExecuteMode = 'manual',
+			suppressErrorWorkflow?: boolean,
+		) =>
 			getLifecycleHooksForScalingWorker(
-				{ executionMode, workflowData, pushRef, retryOf },
+				{ executionMode, workflowData, pushRef, retryOf, suppressErrorWorkflow },
 				executionId,
 			);
 
@@ -1473,6 +1492,18 @@ describe('Execution Lifecycle Hooks', () => {
 					},
 					project,
 				);
+			});
+
+			it('should not execute error workflow when the run opts out of it', async () => {
+				lifecycleHooks = createHooks('trigger', true);
+				workflowData.settings = { errorWorkflow: 'error-workflow-id' };
+				ownershipService.getWorkflowProjectCached
+					.calledWith(workflowId)
+					.mockResolvedValue(mock<Project>());
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+				expect(workflowExecutionService.executeErrorWorkflow).not.toHaveBeenCalled();
 			});
 		});
 

@@ -387,6 +387,13 @@ export interface InstanceAiExecutionService {
 			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
+			/**
+			 * Marks the run as a build verification rather than a run the user asked
+			 * for. Verification uses a production execution mode so triggers behave
+			 * realistically, which would otherwise make a failed attempt dispatch the
+			 * workflow's error workflow as if production had broken.
+			 */
+			isVerificationRun?: boolean;
 			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;

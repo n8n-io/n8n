@@ -3484,6 +3484,13 @@ export interface IWorkflowExecutionDataProcess {
 	 * apart) and by telemetry.
 	 */
 	source?: WorkflowExecutionSource;
+	/**
+	 * When true, a failure in this run must not dispatch the workflow's error
+	 * workflow (or its own Error Trigger). Set for runs that are a test of the
+	 * workflow rather than a real one, but that still need a production
+	 * execution mode for realistic trigger semantics
+	 */
+	suppressErrorWorkflow?: boolean;
 	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
