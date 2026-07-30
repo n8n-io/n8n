@@ -42,6 +42,27 @@ const createServer = ({
 		globalConfig,
 	);
 
+const wsMessage = (message: unknown) => Buffer.from(JSON.stringify(message));
+
+const messageHandlerOf = (ws: WebSocket) => {
+	// `on` is overloaded, so its mock calls are unreachable through the ws types
+	const onCalls = (ws.on as unknown as { mock: { calls: Array<[string, unknown]> } }).mock.calls;
+	return onCalls.find(([event]) => event === 'message')?.[1] as (
+		data: WebSocket.RawData,
+	) => Promise<void>;
+};
+
+const registerOverWs = async (server: TaskBrokerWsServer, id: string, ws: WebSocket) => {
+	server.add(id, ws);
+
+	const onMessage = messageHandlerOf(ws);
+	await onMessage(
+		wsMessage({ type: 'runner:info', name: 'JS Task Runner', types: ['javascript'] }),
+	);
+
+	return onMessage;
+};
+
 const pendingAnalysis = () => {
 	let complete: (error: Error) => void = () => {};
 	const disconnectAnalyzer = mock<DefaultTaskRunnerDisconnectAnalyzer>();
@@ -138,31 +159,18 @@ describe('TaskBrokerWsServer', () => {
 	});
 
 	describe('runner reachability', () => {
-		const registerOverWs = async (ws: WebSocket) => {
+		const registerAndGetReachability = async (ws: WebSocket) => {
 			const taskBroker = mock<TaskBroker>();
 			const server = createServer({ taskBroker });
 
-			server.add('test-runner', ws);
-
-			// `on` is overloaded, so its mock calls are unreachable through the ws types
-			const onCalls = (ws.on as unknown as { mock: { calls: Array<[string, unknown]> } }).mock
-				.calls;
-			const onMessage = onCalls.find(([event]) => event === 'message')?.[1] as (
-				data: WebSocket.RawData,
-			) => Promise<void>;
-
-			await onMessage(
-				Buffer.from(
-					JSON.stringify({ type: 'runner:info', name: 'JS Task Runner', types: ['javascript'] }),
-				),
-			);
+			await registerOverWs(server, 'test-runner', ws);
 
 			return { server, isRunnerReachable: taskBroker.registerRunner.mock.calls[0][2]! };
 		};
 
 		it('should report the runner as unreachable once its connection stops being open', async () => {
 			const ws = mockWs();
-			const { isRunnerReachable } = await registerOverWs(ws);
+			const { isRunnerReachable } = await registerAndGetReachability(ws);
 
 			expect(isRunnerReachable()).toBe(true);
 
@@ -172,11 +180,42 @@ describe('TaskBrokerWsServer', () => {
 		});
 
 		it('should report the runner as unreachable once its connection is replaced', async () => {
-			const { server, isRunnerReachable } = await registerOverWs(mockWs());
+			const { server, isRunnerReachable } = await registerAndGetReachability(mockWs());
 
 			server.runnerConnections.set('test-runner', mockWs());
 
 			expect(isRunnerReachable()).toBe(false);
+		});
+	});
+
+	describe('incoming runner messages', () => {
+		const offer = {
+			type: 'runner:taskoffer',
+			offerId: 'offer1',
+			taskType: 'javascript',
+			validFor: 5000,
+		};
+
+		it('should forward a message from the connection the runner is registered with', async () => {
+			const taskBroker = mock<TaskBroker>();
+			const server = createServer({ taskBroker });
+
+			const onMessage = await registerOverWs(server, 'test-runner', mockWs());
+			await onMessage(wsMessage(offer));
+
+			expect(taskBroker.onRunnerMessage).toHaveBeenCalledWith('test-runner', offer);
+		});
+
+		it('should drop a message buffered on a connection that was replaced', async () => {
+			const taskBroker = mock<TaskBroker>();
+			const server = createServer({ taskBroker });
+
+			const onStaleMessage = await registerOverWs(server, 'test-runner', mockWs());
+			await registerOverWs(server, 'test-runner', mockWs());
+
+			await onStaleMessage(wsMessage(offer));
+
+			expect(taskBroker.onRunnerMessage).not.toHaveBeenCalled();
 		});
 	});
 

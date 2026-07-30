@@ -123,30 +123,29 @@ export class TaskBrokerWsServer {
 					buffer.toString('utf8'),
 				) as RunnerMessage.ToBroker.All;
 
-				if (!isConnected && message.type !== 'runner:info') {
-					return;
-				} else if (!isConnected && message.type === 'runner:info') {
-					await this.removeConnection(id);
-					isConnected = true;
+				if (!isConnected) {
+					if (message.type === 'runner:info') {
+						await this.removeConnection(id);
+						isConnected = true;
 
-					this.runnerConnections.set(id, connection);
+						this.runnerConnections.set(id, connection);
 
-					this.taskBroker.registerRunner(
-						{
-							id,
-							taskTypes: message.types,
-							lastSeen: new Date(),
-							name: message.name,
-						},
-						this.sendMessage.bind(this, id) as MessageCallback,
-						() => this.isRunnerReachable(id, connection),
-					);
+						this.taskBroker.registerRunner(
+							{
+								id,
+								taskTypes: message.types,
+								lastSeen: new Date(),
+								name: message.name,
+							},
+							this.sendMessage.bind(this, id) as MessageCallback,
+							() => this.isRunnerReachable(id, connection),
+						);
 
-					this.logger.info(`Registered runner "${message.name}" (${id}) `);
-					return;
+						this.logger.info(`Registered runner "${message.name}" (${id}) `);
+					}
+				} else if (this.isCurrentConnection(id, connection)) {
+					void this.taskBroker.onRunnerMessage(id, message);
 				}
-
-				void this.taskBroker.onRunnerMessage(id, message);
 			} catch (error) {
 				this.logger.error(`Couldn't parse message from runner "${id}"`, {
 					error: error as unknown,
@@ -176,7 +175,8 @@ export class TaskBrokerWsServer {
 		expectedConnection?: WebSocket,
 	) {
 		const connection = this.runnerConnections.get(id);
-		const isStaleRemoval = expectedConnection !== undefined && connection !== expectedConnection;
+		const isStaleRemoval =
+			expectedConnection !== undefined && !this.isCurrentConnection(id, expectedConnection);
 
 		if (connection && !isStaleRemoval) {
 			// Stop routing to the runner before the disconnect analysis, which may be slow.
@@ -207,13 +207,21 @@ export class TaskBrokerWsServer {
 	}
 
 	/**
+	 * Whether `connection` is the connection the runner is currently registered with. A
+	 * replaced connection keeps delivering the frames it already buffered, and nothing in
+	 * those frames distinguishes them from the current connection's, since both speak for
+	 * the same runner id.
+	 */
+	private isCurrentConnection(id: TaskRunner['id'], connection: WebSocket) {
+		return this.runnerConnections.get(id) === connection;
+	}
+
+	/**
 	 * Whether the runner behind `connection` can still be sent messages. A socket leaves
 	 * `OPEN` as soon as it starts closing, while frames it already buffered keep arriving.
 	 */
 	private isRunnerReachable(id: TaskRunner['id'], connection: WebSocket) {
-		return (
-			this.runnerConnections.get(id) === connection && connection.readyState === connection.OPEN
-		);
+		return this.isCurrentConnection(id, connection) && connection.readyState === connection.OPEN;
 	}
 
 	private async stopConnectedRunners() {
