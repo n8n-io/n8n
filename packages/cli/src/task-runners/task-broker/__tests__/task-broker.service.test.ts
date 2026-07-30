@@ -1077,6 +1077,36 @@ describe('TaskBroker', () => {
 			);
 		});
 
+		it('should discard the unresponsive runner remaining offers and retry the request', async () => {
+			const deadRunnerCallback = vi.fn();
+			const liveRunnerCallback = vi.fn();
+
+			taskBroker = new TaskBroker(mock<Logger>(), mock(), mock(), mock());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'deadRunner' }), deadRunnerCallback);
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'liveRunner' }), liveRunnerCallback);
+
+			const matchedOffer = offerFor('deadRunner', 'deadOffer1');
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				acceptInProgress: true,
+			};
+
+			taskBroker.setPendingTaskRequests([request]);
+			taskBroker.setPendingTaskOffers([
+				offerFor('deadRunner', 'deadOffer2'),
+				offerFor('liveRunner', 'liveOffer1'),
+			]);
+
+			await expectAcceptTimeout(matchedOffer, request);
+
+			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
+			expect(liveRunnerCallback).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'broker:taskofferaccept', offerId: 'liveOffer1' }),
+			);
+		});
+
 		it('should stop tracking the acknowledgment that timed out', async () => {
 			taskBroker = new TaskBroker(mock<Logger>(), mock(), mock(), mock());
 			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());

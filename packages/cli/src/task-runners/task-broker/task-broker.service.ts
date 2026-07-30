@@ -593,6 +593,7 @@ export class TaskBroker {
 			request.acceptInProgress = false;
 			if (e instanceof TaskRejectError) {
 				this.logger.info(`Task (${taskId}) rejected by Runner with reason "${e.reason}"`);
+				this.settleTasks();
 				return;
 			}
 			if (e instanceof TaskDeferredError) {
@@ -604,6 +605,10 @@ export class TaskBroker {
 			if (e instanceof TaskRunnerAcceptTimeoutError) {
 				this.logger.warn(e.message);
 				this.runnerAcceptRejects.delete(taskId);
+				// A runner missing the acknowledgement window may be gone without its transport
+				// having reported it yet, so its remaining offers cannot be trusted either.
+				this.discardOffersFrom(offer.runnerId);
+				this.settleTasks();
 				return;
 			}
 			throw e;
