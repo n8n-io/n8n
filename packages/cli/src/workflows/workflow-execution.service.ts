@@ -114,6 +114,10 @@ export class WorkflowExecutionService {
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
 	}
 
+	/**
+	 * Starts an execution for polled items, committing its row in the same transaction
+	 * as the poll's cursor advance so neither can exist without the other.
+	 */
 	async runPolledWorkflow(
 		workflowData: IWorkflowBase,
 		node: INode,
@@ -154,6 +158,9 @@ export class WorkflowExecutionService {
 			projectName,
 		};
 
+		// Mask the trigger items before the payload is committed, so the persisted row
+		// never holds raw header data. `run` below establishes the context again, which
+		// early-exits once it is in place.
 		const establishContextError = await this.workflowRunner.establishContextForPersistence(runData);
 
 		const payload: CreateExecutionPayload = {
@@ -174,6 +181,8 @@ export class WorkflowExecutionService {
 			payload,
 		});
 
+		// The row is already committed, so a mirror failure is reported and the run
+		// proceeds regardless.
 		try {
 			await this.pollCursorService.mirrorToStaticData(
 				workflowData.id,
@@ -192,6 +201,8 @@ export class WorkflowExecutionService {
 			});
 		}
 
+		// Masking failed, and the row exists either way, so report the failure against it
+		// rather than dropping the run silently.
 		if (establishContextError) {
 			await this.workflowRunner.registerAndFailExecution(
 				runData,
@@ -203,6 +214,8 @@ export class WorkflowExecutionService {
 			return executionId;
 		}
 
+		// The row was committed at `new`; `expectedStatus` claims it and moves it to
+		// running, so a concurrent starter cannot run it a second time.
 		try {
 			await this.workflowRunner.run(
 				runData,
@@ -218,6 +231,11 @@ export class WorkflowExecutionService {
 		return executionId;
 	}
 
+	/**
+	 * Marks a committed row that never started as crashed, so it does not sit at `new`
+	 * indefinitely. A row claimed by another starter is left alone: that starter owns
+	 * its outcome.
+	 */
 	private async crashUnstartablePolledExecution(
 		executionId: string,
 		error: unknown,

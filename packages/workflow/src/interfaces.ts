@@ -1405,9 +1405,20 @@ export interface IPollFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	/** Resolves to `null` when the node has never polled. */
 	getCursor(): Promise<PollCursor | null>;
+	/**
+	 * Stages the complete cursor for the current poll, dropping any key a previous
+	 * cursor carried. It is persisted once the poll's items are handed off.
+	 */
 	setCursor(cursor: PollCursor): void;
+	/** Persists a cursor staged by a poll that emitted no items. Called by the tick engines, never by a node. */
 	__commitCursor?(): Promise<void>;
+	/**
+	 * Runs a poll and the hand-off that follows it in one staging scope, so a cursor
+	 * can only be committed by the poll that staged it. Called by the tick engines,
+	 * never by a node.
+	 */
 	__runPoll?<T>(poll: () => Promise<T>): Promise<T>;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &

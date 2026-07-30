@@ -27,6 +27,7 @@ const throwOnEmitError = () => {
 export class PollContext extends NodeExecutionContext implements IPollFunctions {
 	readonly helpers: IPollFunctions['helpers'];
 
+	/** Keys the last cursor carried, so the next one can clear the ones it drops. */
 	private stagedCursorKeys: string[] = [];
 
 	constructor(
@@ -37,6 +38,8 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		private readonly activation: WorkflowActivateMode,
 		readonly __emit: IPollFunctions['__emit'] = throwOnEmit,
 		readonly __emitError: IPollFunctions['__emitError'] = throwOnEmitError,
+		// The cursor accessors default to the node's static data, so a node written
+		// against them keeps its state even when no durable cursor store is injected.
 		readonly getCursor: IPollFunctions['getCursor'] = async () => {
 			const nodeStaticData = this.getWorkflowStaticData('node');
 			return Object.keys(nodeStaticData).length === 0 ? null : { ...nodeStaticData };
@@ -50,6 +53,8 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 			this.stagedCursorKeys = Object.keys(cursor);
 			Object.assign(nodeStaticData, cursor);
 		},
+		// Nothing to commit by default: `setCursor` has already written the static data
+		// that the caller's own static-data save persists.
 		readonly __commitCursor: NonNullable<IPollFunctions['__commitCursor']> = async () => {},
 		readonly __runPoll: NonNullable<IPollFunctions['__runPoll']> = async (poll) => await poll(),
 	) {

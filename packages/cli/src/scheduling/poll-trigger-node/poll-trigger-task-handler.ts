@@ -22,7 +22,7 @@ import {
  *
  * Carries no `deduplicationKey`, so it forgoes the execution-level duplicate
  * backstop: under the scheduler's at-least-once contract, a poll occurrence
- * can run twice and race the fire-and-forget cursor save. Accepted: two polls
+ * can run twice, with the later cursor write winning. Accepted: two polls
  * at the same instant can legitimately return different data anyway, so a
  * repeated poll is tolerable.
  */
@@ -61,6 +61,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			if (pollFunctions.__commitCursor) await pollFunctions.__commitCursor();
 		};
 
+		// Poll and hand-off share one staging scope, so a cursor staged here can only
+		// be committed by this poll and never by a later occurrence.
 		return await runPoll(async () => {
 			// Scheduled polls run outside any activation isolate window, so acquire and
 			// release one per tick; the finally releases even when poll() throws.
@@ -86,7 +88,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 						return report.notDispatched();
 					}
 
-					// __emit saves the cursor and starts the run without waiting on it.
+					// __emit persists the cursor and starts the run without waiting on either.
 					pollFunctions.__emit(pollResponse);
 					this.logger.debug('Poll returned new data; handed off to a new execution', {
 						taskId: task.id,
@@ -97,10 +99,16 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					return report.dispatched();
 				}
 
+				// A poll that found nothing may still have moved its cursor, and the advance
+				// is committed on its own. The stored active state is re-read first, since a
+				// workflow deactivated mid-poll must not have its cursor advanced; the flag
+				// check keeps that query off the path that stores no cursor.
 				if (this.pollCursorService.enabled && (await this.workflowRepository.isActive(workflowId))) {
 					try {
 						await commitCursor();
 					} catch (error) {
+						// The poll itself succeeded, so a failed cursor write is logged rather
+						// than routed to the error workflow.
 						this.errorReporter.error(error, {
 							extra: { taskId: task.id, jobId: task.jobId, workflowId, nodeId },
 						});
@@ -120,8 +128,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				return report.notDispatched();
 			} catch (error) {
 				// Routed to the error workflow instead of rethrown, which would retry and
-				// dead-letter without ever running it. __emitError skips saveStaticData, so
-				// the cursor holds and the next tick retries the same window.
+				// dead-letter without ever running it. A failed poll commits no cursor, so
+				// the next tick retries the same window.
 				pollFunctions.__emitError(ensureError(error));
 				this.logger.debug('Poll failed at runtime; routed to the error workflow', {
 					taskId: task.id,

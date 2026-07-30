@@ -180,6 +180,10 @@ export class WorkflowRunner {
 		this.activeExecutions.finalizeExecution(executionId);
 	}
 
+	/**
+	 * Prepares `data.executionData` for any caller that is about to persist it. Returns
+	 * the masking error if there was one, having already emptied the trigger-item stack.
+	 */
 	async establishContextForPersistence(
 		data: IWorkflowExecutionDataProcess,
 	): Promise<(ExecutionError & { node?: INode }) | undefined> {
