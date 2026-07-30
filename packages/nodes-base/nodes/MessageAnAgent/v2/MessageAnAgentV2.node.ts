@@ -15,8 +15,21 @@ export class MessageAnAgentV2 implements INodeType {
 		this.description = {
 			...thisBaseDescription,
 			...sharedVersionDescription,
-			version: 2,
+			// v3 adds schema-from-example for structured output; the differences
+			// are gated via `@version` displayOptions and typeVersion checks in
+			// the shared execute, so one class serves both versions.
+			version: [2, 3],
 			properties: [
+				// Set by the node-creator agent picker ('referenced' | 'inline'), not
+				// editable in the NDV. Kept hidden with no displayOptions so saves
+				// never strip it. Existing workflows have no stored agentSource, so
+				// the default must keep them on the referenced path.
+				{
+					displayName: 'Agent Source',
+					name: 'agentSource',
+					type: 'hidden',
+					default: 'referenced',
+				},
 				{
 					displayName: 'Agent',
 					name: 'agentId',
@@ -24,6 +37,21 @@ export class MessageAnAgentV2 implements INodeType {
 					default: { __rl: true, mode: 'list', value: '' },
 					required: true,
 					description: 'The agent to send the message to',
+					displayOptions: {
+						show: {
+							agentSource: ['referenced'],
+						},
+					},
+				},
+				// The NDV edits this through a dedicated inline-agent editor. Kept
+				// hidden with no displayOptions: displayed-parameter filtering would
+				// otherwise strip the config whenever the node is saved in
+				// referenced mode, making mode toggling destructive.
+				{
+					displayName: 'Inline Agent',
+					name: 'inlineAgent',
+					type: 'hidden',
+					default: {},
 				},
 				messageProperty,
 				...commonProperties,

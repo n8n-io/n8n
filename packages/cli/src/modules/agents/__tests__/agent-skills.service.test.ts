@@ -109,6 +109,88 @@ describe('AgentSkillsService', () => {
 		);
 	});
 
+	describe('createSkills', () => {
+		const skillTwo = {
+			name: 'Draft Follow-up',
+			description: 'Drafts a follow-up email',
+			instructions: 'Summarize next steps and send a draft.',
+		};
+
+		it('creates multiple skills with one load, save, and cache clear, preserving input order', async () => {
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+					skills: [],
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const results = await service.createSkills(agentId, projectId, [skill, skillTwo]);
+
+			expect(results).toHaveLength(2);
+			expect(results[0].skill).toEqual(skill);
+			expect(results[1].skill).toEqual(skillTwo);
+			expect(results[0].id).not.toEqual(results[1].id);
+			expect(results.map((r) => r.versionId)).toEqual([agent.versionId, agent.versionId]);
+
+			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledTimes(1);
+			expect(agentRepository.save).toHaveBeenCalledTimes(1);
+			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
+				[results[0].id]: skill,
+				[results[1].id]: skillTwo,
+			});
+			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledTimes(1);
+			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('rejects an empty batch before loading or writing anything', async () => {
+			await expect(service.createSkills(agentId, projectId, [])).rejects.toThrow(
+				'At least one skill is required.',
+			);
+
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+		});
+
+		it('rejects the whole batch without saving when a name collides with an existing skill', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ skills: { summarize_notes: skill } }),
+			);
+
+			await expect(
+				service.createSkills(agentId, projectId, [skillTwo, { ...skill }]),
+			).rejects.toThrow('Agent already has a skill named "Summarize Notes".');
+
+			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+		});
+
+		it('rejects the whole batch without saving when two items in the batch share a name', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await expect(
+				service.createSkills(agentId, projectId, [skill, { ...skill, name: '  summarize notes ' }]),
+			).rejects.toThrow('Duplicate skill name in batch: "summarize notes".');
+
+			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+		});
+
+		it('rejects the whole batch without saving when one item is invalid', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await expect(
+				service.createSkills(agentId, projectId, [skill, { ...skillTwo, name: '' }]),
+			).rejects.toThrow('Invalid agent skill');
+
+			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+		});
+	});
+
 	it('creates and attaches a skill on the agent when requested', async () => {
 		const agent = makeAgent({
 			schema: {

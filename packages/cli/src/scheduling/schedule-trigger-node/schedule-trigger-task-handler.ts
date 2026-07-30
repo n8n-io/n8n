@@ -2,15 +2,17 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ClaimedTask, TaskHandler } from '@n8n/scheduler';
+import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
+import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import {
@@ -39,18 +41,25 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		private readonly eventService: EventService,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly workflowExecutionService: WorkflowExecutionService,
+		private readonly ownershipService: OwnershipService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
 
-	async execute(task: ClaimedTask): Promise<void> {
+	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
 		const { workflowId, nodeId } = this.parsePayload(task);
 		const workflowData =
 			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(workflowId);
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
 		const deduplicationKey = scheduleTriggerDeduplicationKey(task);
-		const timezone = workflowData.settings?.timezone ?? this.globalConfig.generic.timezone;
+		// `''`/`'DEFAULT'` are the instance-default sentinels, not Moment zones:
+		// resolve them to the instance timezone so the item carries valid metadata.
+		const settingsTimezone = workflowData.settings?.timezone;
+		const timezone =
+			settingsTimezone && settingsTimezone !== 'DEFAULT'
+				? settingsTimezone
+				: this.globalConfig.generic.timezone;
 		const item = buildScheduleTriggerItem(task.scheduledFor, timezone);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
@@ -58,9 +67,8 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 			workflowSettings: workflowData.settings,
 		});
 
-		let executionId: string;
 		try {
-			executionId = await this.workflowExecutionService.runWorkflow(
+			const executionId = await this.workflowExecutionService.runWorkflow(
 				workflowData,
 				node,
 				[[item]],
@@ -70,10 +78,19 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 				deduplicationKey,
 			);
 
+			const decision = report.dispatched();
+
+			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+				this.ownershipService,
+				workflowData.id,
+			);
+
 			this.eventService.emit('workflow-executed', {
 				workflowId,
 				workflowName: workflowData.name,
 				executionId,
+				projectId,
+				projectName,
 				source: 'trigger',
 			});
 
@@ -84,11 +101,16 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 				executionId,
 				deduplicationKey,
 			});
+
+			return decision;
 		} catch (error) {
 			if (!(error instanceof DuplicateExecutionError)) {
 				throw error;
 			}
+			// The effect already exists from a prior delivery; this occurrence hands off
+			// nothing new, so it reports no dispatch and the executor writes no marker.
 			await this.recordExistingHandoff(task, error);
+			return report.notDispatched();
 		}
 	}
 

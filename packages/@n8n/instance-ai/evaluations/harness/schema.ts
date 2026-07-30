@@ -1,5 +1,7 @@
+import { instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
+import { ConversationSeedSchema } from './conversation-seed';
 import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
 
 /** Default `datasets` grouping for a case that omits the field — the single
@@ -26,6 +28,12 @@ const ExecutionScenarioSchema = z.object({
 	dataSetup: z.string(),
 	successCriteria: z.string(),
 	requires: z.string().optional(),
+	/** Typed data tables to seed before this scenario executes (TRUST-311).
+	 *  Unlike free-text `dataSetup`, this declares each column's type, so a string
+	 *  id (`row_001`) can be seeded into a `string` column rather than being
+	 *  rejected by a `number` column. Reuses the api-types seed-table schema
+	 *  (extended with optional `rows`). */
+	seedDataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
 });
 
 const evalTestCaseObjectSchema = z
@@ -43,8 +51,9 @@ const evalTestCaseObjectSchema = z
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
 		processExpectations: z.array(z.string().min(1)).optional(),
-		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
-		 *  so they also run in prebuilt/MCP runs. Counted as units in the pass rate. */
+		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow
+		 *  and from the rendered agent/config-eval context when the build produced one, so they also
+		 *  cover artifact existence/absence/content. Also run in prebuilt/MCP runs. Counted as units. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
@@ -78,9 +87,9 @@ const evalTestCaseObjectSchema = z
 				}),
 			)
 			.optional(),
-		/** Synthetic seed file (relative path), resolved + validated at case load.
+		/** Prior messages + the workflows they reference, restored before the live turn.
 		 *  Synthetic fixtures only; real conversations use `seedThread`. */
-		seedFile: z.string().min(1).optional(),
+		conversationSeed: ConversationSeedSchema.optional(),
 		/** Prose turns seeded as plain-text history (no tool calls / workflows). */
 		priorConversation: z.array(ConversationTurnSchema).min(1).optional(),
 		/** Reproduce a real conversation from its LangSmith trace at run time (seed =
@@ -122,24 +131,37 @@ export const WORKFLOW_TEST_CASE_KEYS = Object.keys(evalTestCaseObjectSchema.shap
 
 // At most one seeding mode, and a source for the live turn.
 export const EvalTestCaseSchema = evalTestCaseObjectSchema
-	.refine((c) => [c.seedFile, c.priorConversation, c.seedThread].filter(Boolean).length <= 1, {
-		message:
-			'seedFile, priorConversation and seedThread are mutually exclusive — pick one seeding mode',
-	})
+	.refine(
+		(c) => [c.conversationSeed, c.priorConversation, c.seedThread].filter(Boolean).length <= 1,
+		{
+			message:
+				'conversationSeed, priorConversation and seedThread are mutually exclusive — pick one seeding mode',
+		},
+	)
 	.refine((c) => c.seedThread !== undefined || c.conversation !== undefined, {
 		message:
 			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
 	})
-	.refine(
-		(c) =>
-			(c.executionScenarios?.length ?? 0) > 0 ||
-			(c.processExpectations?.length ?? 0) > 0 ||
-			(c.outcomeExpectations?.length ?? 0) > 0,
-		{
-			message:
-				'a case needs at least one executionScenario, or a process/outcome expectation to grade',
-		},
-	);
+	.superRefine((c, ctx) => {
+		// Note: this message avoids double quotes — ZodError.message is a JSON.stringify of
+		// the issue list, which would otherwise backslash-escape them and break substring/regex
+		// matching against the raw error message in callers and tests.
+		//
+		// A case needs at least one gradable unit. Execution scenarios grade the built workflow;
+		// process/outcome expectations grade the conversation, the workflow, and any non-workflow
+		// artifact (agent, config-eval) rendered into the judge context.
+		if (
+			(c.executionScenarios?.length ?? 0) === 0 &&
+			(c.processExpectations?.length ?? 0) === 0 &&
+			(c.outcomeExpectations?.length ?? 0) === 0
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					'a case needs at least one executionScenario, or a process/outcome expectation to grade it',
+			});
+		}
+	});
 
 // Inferred from the pre-`.refine()` object schema, not `EvalTestCaseSchema`.
 // `.refine()` doesn't alter the inferred type, so this is identical — but resolving

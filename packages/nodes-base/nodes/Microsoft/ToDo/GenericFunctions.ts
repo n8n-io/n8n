@@ -56,15 +56,18 @@ export function getServicePrincipalResourceRoot(rawId: string, node: INode): str
 
 /**
  * Resolves the app-only `/users/{id}` root for the current node context, or `undefined`
- * for the OAuth2 credentials (which use the `/me` path). The `userTarget` RLC value is
- * extracted manually (not via `{ extractValue: true }`) so the single call shape works in
- * both execute (`0` = itemIndex) and load-options (`0` = ignored fallback) contexts; an
+ * for the OAuth2 credentials (which use the `/me` path). The `userTarget` RLC accepts
+ * expressions and is resolved per item: execute call sites pass the loop's item index;
+ * load-options call sites pass a literal 0 — there `getNodeParameter`'s 2nd arg is a
+ * fallback, not an index. The RLC value is extracted manually (not via
+ * `{ extractValue: true }`) so the single call shape works in both contexts; an
  * unpersisted/empty target coalesces to `''`, which yields the intended "target ID
- * required" error rather than a malformed `/users/` URL.
+ * required" error rather than a malformed `/users/` URL. A validation error gets its
+ * item index stamped in the node's execute catch.
  */
 export function resolveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	itemIndex = 0,
+	itemIndex: number,
 ): string | undefined {
 	if (getToDoCredentialType.call(this) !== 'microsoftEntraServicePrincipalApi') {
 		return undefined;
@@ -77,14 +80,18 @@ export function resolveScopeRoot(
 	return getServicePrincipalResourceRoot(id, this.getNode());
 }
 
+// `itemIndex` is REQUIRED (and placed before the defaulted params so call sites
+// need no positional padding): execute call sites pass the loop index; loadOptions
+// call sites pass a literal 0, where `getNodeParameter`'s 2nd arg is a fallback,
+// not an index.
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
+	itemIndex: number,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
-	_headers: IDataObject = {},
 	option: IDataObject = { json: true },
 ) {
 	const credentialType = getToDoCredentialType.call(this);
@@ -96,13 +103,13 @@ export async function microsoftApiRequest(
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
-	// App-only Service Principal has no `/me`; rebase the request onto the chosen user.
-	// `userTarget` is `noDataExpression` (a node-level value, identical for every item), so
-	// resolving it once here is correct. Only page-1 (relative) requests are scoped —
-	// paginated follow-ups pass an absolute `@odata.nextLink` as `uri`, used verbatim.
+	// App-only Service Principal has no `/me`; rebase the request onto the chosen user,
+	// resolved per item (`userTarget` accepts expressions). Only page-1 (relative)
+	// requests are scoped — paginated follow-ups pass an absolute `@odata.nextLink` as
+	// `uri`, used verbatim.
 	let uriToUse = uri || `${baseUrl}/v1.0/me${resource}`;
 	if (!uri && isServicePrincipal) {
-		const scopeRoot = resolveScopeRoot.call(this);
+		const scopeRoot = resolveScopeRoot.call(this, itemIndex);
 		if (scopeRoot) {
 			uriToUse = `${baseUrl}/v1.0${scopeRoot}${resource}`;
 		}
@@ -133,6 +140,7 @@ export async function microsoftApiRequest(
 		}
 		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
+		// The node's execute catch stamps the failing item's index.
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -142,6 +150,7 @@ export async function microsoftApiRequestAllItems(
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
+	itemIndex: number,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
@@ -152,36 +161,21 @@ export async function microsoftApiRequestAllItems(
 	query.$top = 100;
 
 	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
+		responseData = await microsoftApiRequest.call(
+			this,
+			method,
+			endpoint,
+			itemIndex,
+			body,
+			query,
+			uri,
+		);
 		uri = responseData['@odata.nextLink'];
 		if (uri?.includes('$top')) {
 			delete query.$top;
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData['@odata.nextLink'] !== undefined);
-
-	return returnData;
-}
-
-export async function microsoftApiRequestAllItemsSkip(
-	this: IExecuteFunctions,
-	propertyName: string,
-	method: IHttpRequestMethods,
-	endpoint: string,
-	body: IDataObject = {},
-	query: IDataObject = {},
-) {
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-	query.$top = 100;
-	query.$skip = 0;
-
-	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
-		query.$skip += query.$top;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-	} while (responseData.value.length !== 0);
 
 	return returnData;
 }

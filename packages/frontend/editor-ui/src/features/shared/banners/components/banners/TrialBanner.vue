@@ -174,6 +174,7 @@ function onCtaClick() {
 		:dismissible="cloudPlanStore.bannerDismissible"
 		dismiss-permanently
 		:custom-icon="bannerIcon"
+		:icon-tooltip="locale.baseText('banners.trial.tooltip')"
 	>
 		<template #mainContent>
 			<div :class="$style.content">

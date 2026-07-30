@@ -169,6 +169,8 @@ test.describe(
 			});
 			const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
 
+			await n8n.ndv.credentials.selectByName(credentialName);
+
 			await n8n.ndv.execute();
 			await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();
 
@@ -189,7 +191,10 @@ test.describe(
 
 		test('should listen for a GET request with Header Authentication', async ({ n8n }) => {
 			const credentialName = `test-${nanoid()}`;
-			const name = `test-${nanoid()}`;
+			// Keep the header NAME underscore-free: proxies commonly drop request headers
+			// with underscores in the name (the multi-main CI stack's Caddy LB does), and
+			// nanoid's default alphabet includes '_'. Values are unaffected.
+			const name = `test-${nanoid().replaceAll('_', '-')}`;
 			const value = `test-${nanoid()}`;
 			await n8n.credentialsComposer.createFromApi({
 				type: 'httpHeaderAuth',
@@ -206,6 +211,8 @@ test.describe(
 				authentication: 'Header Auth',
 			});
 			const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
+
+			await n8n.ndv.credentials.selectByName(credentialName);
 
 			await n8n.ndv.execute();
 			await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();

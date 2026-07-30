@@ -12,7 +12,7 @@ import { test, expect } from '../../../fixtures/base';
  * - search_workflows: Search for workflows available in MCP
  * - get_workflow_details: Get detailed information about a workflow
  * - execute_workflow: Execute a workflow and get results
- * - get_execution: Get full execution details by ID
+ * - get_workflow_execution: Get full workflow execution details by ID
  * - publish_workflow: Publish (activate) a workflow
  * - unpublish_workflow: Unpublish (deactivate) a workflow
  *
@@ -299,7 +299,7 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production');
 
 				expect(result.status).toBe('started');
 				expect(result.executionId).toBeTruthy();
@@ -309,7 +309,11 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const fakeWorkflowId = 'nonexistent-workflow-id-12345';
 
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, fakeWorkflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					fakeWorkflowId,
+					'production',
+				);
 
 				expect(result.status).toBe('error');
 				expect(result.error).toBeTruthy();
@@ -322,7 +326,7 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production');
 
 				expect(result.status).toBe('error');
 				expect(result.error).toBeTruthy();
@@ -335,7 +339,7 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, {
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production', {
 					type: 'webhook',
 					webhookData: {
 						method: 'POST',
@@ -348,7 +352,7 @@ test.describe(
 			});
 		});
 
-		test.describe('get_execution', () => {
+		test.describe('get_workflow_execution', () => {
 			test('should return full execution data after workflow execution', async ({ api }) => {
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',
@@ -357,7 +361,11 @@ test.describe(
 
 				const { apiKey } = await api.rotateMcpApiKey();
 
-				const execResult = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const execResult = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					workflowId,
+					'production',
+				);
 				expect(execResult.status).toBe('started');
 				expect(execResult.executionId).toBeTruthy();
 

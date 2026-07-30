@@ -2223,7 +2223,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-imported` event with params and counts', () => {
 			const event: RelayEventMap['n8n-package-imported'] = {
 				user: { id: 'user123' },
-				projectId: 'project123',
+				projectIds: ['project123'],
 				folderId: 'folder123',
 				workflowIds: ['wf1', 'wf2', 'wf3'],
 				options: {
@@ -2232,6 +2232,14 @@ describe('TelemetryEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					missingNodeTypeMode: 'fail',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'create',
+					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingMode: 'create-stub',
+					variableParentPolicy: 'global',
+					tagMissingMode: 'create',
+					tagConflictPolicy: 'rename',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -2251,6 +2259,24 @@ describe('TelemetryEventRelay', () => {
 						created: 1,
 						requirements: 3,
 					},
+					dataTables: {
+						matched: 1,
+						created: 1,
+						requirements: 2,
+					},
+					variables: {
+						matched: 1,
+						missing: 1,
+						created: 3,
+						requirements: 2,
+					},
+					tags: {
+						matched: 6,
+						created: 7,
+						renamed: 8,
+						skipped: 9,
+						requirements: 10,
+					},
 				},
 			};
 
@@ -2263,12 +2289,32 @@ describe('TelemetryEventRelay', () => {
 				credential_matching_mode: 'id-only',
 				credential_missing_mode: 'must-preexist',
 				workflow_publishing_policy: 'preserve-published-state',
+				missing_node_type_mode: 'fail',
+				data_table_matching_mode: 'by-id',
+				data_table_missing_mode: 'create',
+				data_table_schema_conflict_policy: 'keep-existing',
+				variable_missing_mode: 'create-stub',
+				variable_parent_policy: 'global',
+				tag_missing_mode: 'create',
+				tag_conflict_policy: 'rename',
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
 				credentials_required: 3,
+				data_tables_matched: 1,
+				data_tables_created: 1,
+				data_tables_required: 2,
+				variables_matched: 1,
+				variables_missing: 1,
+				variables_created: 3,
+				variables_required: 2,
+				tags_matched: 6,
+				tags_created: 7,
+				tags_renamed: 8,
+				tags_skipped: 9,
+				tags_required: 10,
 			});
 		});
 
@@ -2282,6 +2328,8 @@ describe('TelemetryEventRelay', () => {
 					folders: 1,
 					credentials: 2,
 					dataTables: 1,
+					variables: 4,
+					tags: 2,
 				},
 			};
 
@@ -2293,6 +2341,8 @@ describe('TelemetryEventRelay', () => {
 				folder_count: 1,
 				credential_count: 2,
 				data_table_count: 1,
+				variable_count: 4,
+				tag_count: 2,
 			});
 		});
 
@@ -3681,6 +3731,26 @@ describe('TelemetryEventRelay', () => {
 			expect(typeof result.major).toBe('number');
 			expect(typeof result.minor).toBe('number');
 			expect(typeof result.patch).toBe('number');
+		});
+	});
+
+	describe('HITL events', () => {
+		it('should track on `hitl-response-actioned` event', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.slack',
+				approved: true,
+				authorized: false,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Advanced HITL response actioned', {
+				node_type: 'n8n-nodes-base.slack',
+				is_approved: true,
+				is_authorized: false,
+			});
 		});
 	});
 });

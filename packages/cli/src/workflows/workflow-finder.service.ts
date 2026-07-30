@@ -2,9 +2,7 @@ import type { SharedWorkflow, User, WorkflowEntity } from '@n8n/db';
 import { SharedWorkflowRepository, FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull } from '@n8n/typeorm';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -63,6 +61,7 @@ export class WorkflowFinderService {
 			relations: { workflow: true },
 			select: {
 				workflowId: true,
+				projectId: true,
 				workflow: { id: true, versionId: true, updatedAt: true },
 			},
 		});
@@ -166,14 +165,16 @@ export class WorkflowFinderService {
 		workflowIds: string[],
 		user: User,
 		scopes: Scope[],
-		options: { includeParentFolder?: boolean } = {},
+		options: { includeParentFolder?: boolean; includeTags?: boolean } = {},
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) return [];
 
 		const where = await this.findAllWhere(user, scopes);
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { ...where, workflowId: In(workflowIds) },
-			relations: { workflow: { parentFolder: options.includeParentFolder } },
+			relations: {
+				workflow: { parentFolder: options.includeParentFolder, tags: options.includeTags },
+			},
 		});
 
 		// A workflow may appear via several share paths (project membership +

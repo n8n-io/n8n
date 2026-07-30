@@ -26,7 +26,7 @@ import {
 
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
@@ -43,6 +43,7 @@ import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
+import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
@@ -79,6 +80,12 @@ type Props = {
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
 	 *  Used by surfaces (e.g. agents) where the assistant flow isn't wired up. */
 	hideAskAssistant?: boolean;
+	/** Skip the component's own credential fetch on mount. Hosts with a
+	 *  synthetic workflow document (e.g. the tool config modal) own the fetch
+	 *  themselves — the component's own fetch would query the synthetic
+	 *  document's nonexistent workflow id and replace the credential store
+	 *  with the empty result. */
+	skipCredentialsFetch?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -88,6 +95,7 @@ const props = withDefaults(defineProps<Props>(), {
 	hideIssues: false,
 	skipAutoSelect: false,
 	standalone: false,
+	skipCredentialsFetch: false,
 });
 
 const emit = defineEmits<{
@@ -168,7 +176,7 @@ const {
 } = useNodeCredentialOptions(
 	node,
 	nodeType,
-	computed(() => props.overrideCredType),
+	() => props.overrideCredType,
 	() => props.showAll,
 );
 
@@ -311,38 +319,31 @@ watch(
 
 		if (!isEmpty(selected.value)) return;
 
-		const allOptions = types.map((type) => type.options).flat();
-
-		if (allOptions.length === 0) {
-			// No credentials configured — auto-enable AI Gateway for supported types,
-			// but only on the initial setup so a later action change doesn't redirect
-			// the user onto n8n credits. The experiment variant leaves it unselected.
-			if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
-				for (const { type } of types) {
-					if (
-						aiGateway.isCredentialTypeSupported(type.name) &&
-						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
-						isCurrentActionSupported.value
-					) {
-						onAiGatewaySelector(type.name, true, false);
-					}
-				}
-			}
+		const autoSelected = getAutoSelectedCredential(node.value, props.overrideCredType);
+		if (autoSelected) {
+			onCredentialSelected(
+				autoSelected.credentialType,
+				autoSelected.credential.id,
+				false, // showAuthOptions
+				false, // isUserAction
+			);
 			return;
 		}
 
-		const mostRecentCredential = allOptions.reduce(
-			(mostRecent, current) =>
-				mostRecent && mostRecent.updatedAt > current.updatedAt ? mostRecent : current,
-			allOptions[0],
-		);
-
-		onCredentialSelected(
-			mostRecentCredential.type,
-			mostRecentCredential.id,
-			false, // showAuthOptions
-			false, // isUserAction
-		);
+		// No credentials available to select — auto-enable AI Gateway for supported
+		// types, but only on the initial setup so a later action change doesn't
+		// redirect the user onto n8n credits. The experiment variant leaves it unselected.
+		if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
+			for (const { type } of types) {
+				if (
+					aiGateway.isCredentialTypeSupported(type.name) &&
+					aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
+					isCurrentActionSupported.value
+				) {
+					onAiGatewaySelector(type.name, true, false);
+				}
+			}
+		}
 	},
 	{ immediate: true },
 );
@@ -428,7 +429,7 @@ onMounted(() => {
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
 
-	const scope = getCredentialFetchScope();
+	const scope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
 	if (scope) {
 		void credentialsStore.fetchAllCredentialsForWorkflow(scope);
 	}
@@ -802,19 +803,36 @@ function getServiceName(credentialTypeName: string): string {
 	return getAppNameFromCredType(displayName);
 }
 
-const quickConnectCredentialType = computed(() => {
-	return credentialTypesNodeDescriptions.value.find(
-		(t) =>
-			!!getQuickConnectOption(t.name, props.node.type) || canOAuthCredentialQuickConnect(t.name),
-	)?.name;
-});
+function getRelatedCredentialTypes(type: INodeCredentialDescription): INodeCredentialDescription[] {
+	const authFieldName = mainNodeAuthField.value?.name;
+	// if not the main auth field, return the type itself
+	if (!authFieldName || !type.displayOptions?.show?.[authFieldName]) {
+		return [type];
+	}
+
+	// otherwise, return all credential types that show the main auth field
+	return credentialTypesNodeDescriptions.value.filter(
+		(credentialType) => credentialType.displayOptions?.show?.[authFieldName],
+	);
+}
+
+function canQuickConnect(credentialType: INodeCredentialDescription): boolean {
+	return (
+		!!getQuickConnectOption(credentialType.name, props.node.type) ||
+		canOAuthCredentialQuickConnect(credentialType.name)
+	);
+}
+
+function getQuickConnectCredentialType(type: INodeCredentialDescription): string | undefined {
+	return getRelatedCredentialTypes(type).find(canQuickConnect)?.name;
+}
 
 function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
-	return !isCredentialExisting(type) && !!quickConnectCredentialType.value;
+	return !isCredentialExisting(type) && !!getQuickConnectCredentialType(type);
 }
 
 function showStandardEmptyState(type: INodeCredentialDescription): boolean {
-	return !isCredentialExisting(type) && !quickConnectCredentialType.value;
+	return !isCredentialExisting(type) && !getQuickConnectCredentialType(type);
 }
 
 function canManuallySetUpCredential(credentialTypeName: string): boolean {
@@ -908,7 +926,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					v-else-if="
 						options.length === 0 &&
 						showQuickConnectEmptyState(type) &&
-						quickConnectCredentialType &&
+						getQuickConnectCredentialType(type) &&
 						!isAiGatewayManagedCredentials(type.name)
 					"
 					:class="[$style.quickConnectContainer]"
@@ -917,9 +935,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					<QuickConnectButton
 						size="small"
 						:disabled="quickConnectLoading"
-						:credential-type-name="quickConnectCredentialType"
-						:service-name="getServiceName(quickConnectCredentialType)"
-						@click="onQuickConnectSignIn(quickConnectCredentialType)"
+						:credential-type-name="getQuickConnectCredentialType(type) ?? type.name"
+						:service-name="getServiceName(getQuickConnectCredentialType(type) ?? type.name)"
+						@click="onQuickConnectSignIn(getQuickConnectCredentialType(type) ?? type.name)"
 					/>
 					<span v-if="canManuallySetUpCredential(type.name)" :class="$style.setupManuallyContainer">
 						<N8nText size="small" :class="$style.setupManuallyOr">
@@ -944,11 +962,27 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					data-test-id="node-credentials-empty-state"
 				>
 					<N8nSelect
+						ref="selectRefs"
 						:class="$style.emptySelect"
 						size="small"
-						disabled
+						:disabled="!canCreateCredentials"
 						:placeholder="i18n.baseText('nodeCredentials.emptyState.noCredentials')"
-					/>
+						:popper-class="$style.selectPopper"
+					>
+						<template #empty> </template>
+						<template #footer>
+							<button
+								type="button"
+								data-test-id="node-credentials-select-item-new"
+								:class="[$style.newCredential]"
+								:disabled="!canCreateCredentials"
+								@click="onClickCreateCredential(type)"
+							>
+								<N8nIcon size="xsmall" icon="plus" />
+								{{ NEW_CREDENTIALS_TEXT }}
+							</button>
+						</template>
+					</N8nSelect>
 					<N8nButton
 						v-if="canCreateCredentials"
 						variant="subtle"
@@ -1080,12 +1114,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:credential-name="getServiceName(type.name)"
 					:is-connected="isPrivateConnected(type.name)"
 					:connected-account-name="usersStore.currentUser?.email ?? undefined"
-					:can-modify="canEditPrivateCredential(type.name)"
 					:can-connect="canConnectPrivateCredential(type.name)"
-					:readonly="readonly"
 					data-test-id="node-credential-private-row"
 					@connect="onConnectFromRow(type.name)"
-					@modify="editCredential(type.name)"
+					@switch-account="onConnectFromRow(type.name)"
 					@disconnect="onDisconnectFromRow(type.name)"
 				/>
 			</N8nInputLabel>

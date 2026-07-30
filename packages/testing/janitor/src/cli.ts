@@ -79,7 +79,7 @@ import {
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
 import { readLockfileImporters } from './core/read-lockfile-importers.js';
-import { readManifestDiffs } from './core/read-manifest-diffs.js';
+import { readManifestDiffs, readTsconfigDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
@@ -620,6 +620,33 @@ function readChangedFiles(options: CliOptions): string[] | null {
 	return files.length > 0 ? files : null;
 }
 
+/** Read a package's own name from its package.json, or undefined if unreadable. */
+function readPackageName(packageDir: string): string | undefined {
+	try {
+		const pkg = JSON.parse(fs.readFileSync(path.join(packageDir, 'package.json'), 'utf-8')) as {
+			name?: unknown;
+		};
+		return typeof pkg.name === 'string' ? pkg.name : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Resolve the affected-package set for scoping by recomputing from
+ * CHANGED_FILES. Never let a graph-analysis failure break scoping for every
+ * package — degrade to "no signal" (skip on no local changes).
+ */
+function resolveAffectedPackages(rootDir: string, changedFiles: string[] | null): string[] | null {
+	if (changedFiles === null) return null;
+	try {
+		return affectedPackages({ rootDir, changedFiles });
+	} catch (error) {
+		console.warn(`[janitor] Could not compute affected packages: ${(error as Error).message}`);
+		return null;
+	}
+}
+
 function runAffectedPackages(options: CliOptions): void {
 	const result = affectedPackages({
 		rootDir: findWorkspaceRoot(process.cwd()),
@@ -630,21 +657,29 @@ function runAffectedPackages(options: CliOptions): void {
 
 function runTestScopedCmd(options: CliOptions): void {
 	const packageDir = options.packageDir ?? process.cwd();
+	const rootDir = findWorkspaceRoot(process.cwd());
 	const changedFiles = readChangedFiles(options);
 	const exitCode = runTestScoped({
 		packageDir,
-		rootDir: findWorkspaceRoot(process.cwd()),
+		rootDir,
 		changedFiles,
+		packageName: readPackageName(packageDir),
+		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
 		passthroughArgs: options.passthroughArgs,
 	});
 	process.exit(exitCode);
 }
 
 function runScope(options: CliOptions): void {
+	const packageDir = options.packageDir ?? process.cwd();
+	const rootDir = findWorkspaceRoot(process.cwd());
+	const changedFiles = readChangedFiles(options);
 	const result = computeScope({
-		packageDir: options.packageDir ?? process.cwd(),
-		changedFiles: readChangedFiles(options),
-		rootDir: findWorkspaceRoot(process.cwd()),
+		packageDir,
+		changedFiles,
+		rootDir,
+		packageName: readPackageName(packageDir),
+		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
 	});
 	console.log(formatScope(result));
 }
@@ -686,6 +721,8 @@ function runSelect(options: CliOptions): void {
 	// devDependency-only classifier can drop a devDep-only lockfile change.
 	// No base (local dev) → omit manifests → conservative (keep lockfile broad).
 	const manifests = options.baseRef ? readManifestDiffs(changedFiles, options.baseRef) : undefined;
+	// Same for tsconfig diffs, feeding the resolution-key classifier.
+	const tsconfigs = options.baseRef ? readTsconfigDiffs(changedFiles, options.baseRef) : undefined;
 	// Only parse the (large) lockfile when a RUNTIME dependency actually changed —
 	// the only case the dep-graph selector (389) acts on. A devDep-only manifest
 	// change would parse it for nothing.
@@ -698,6 +735,7 @@ function runSelect(options: CliOptions): void {
 		mapFile: options.mapFile,
 		allSpecsFile: options.allSpecsFile,
 		manifests,
+		tsconfigs,
 		lockfileImporters,
 	});
 	console.log(JSON.stringify(result));

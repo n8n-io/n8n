@@ -21,7 +21,7 @@ import ProjectCardBadge from '@/features/collaboration/projects/components/Proje
 import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { UserAction, WorkflowResource } from '@/Interface';
@@ -619,28 +619,18 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
-				<span
-					v-if="hasDynamicCredentials"
-					class="ml-3xs"
-					data-test-id="workflow-card-private-credential"
-				>
-					<PrivateCredentialIcon
-						:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
-						:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
-						size="small"
-					/>
-				</span>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<span v-show="data"
-				>{{ locale.baseText('workflows.item.updated') }}
-				<TimeAgo :date="String(data.updatedAt)" /> |
+			<span v-show="data">
+				{{ locale.baseText('workflows.item.updated') }}
+				<TimeAgo :date="String(data.updatedAt)" />
 			</span>
+			<span v-show="data" :class="$style.divider">|</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="showLegacyMcpIndicator">|</span>
 			</span>
+			<span v-if="showLegacyMcpIndicator" :class="$style.divider">|</span>
 			<span
 				v-show="showLegacyMcpIndicator"
 				:class="$style.legacyMcpIndicator"
@@ -649,6 +639,18 @@ const tags = computed(
 				<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
 					<N8nIcon icon="mcp" size="medium" />
 				</N8nTooltip>
+			</span>
+			<span v-if="hasDynamicCredentials" :class="$style.divider">|</span>
+			<span
+				v-if="hasDynamicCredentials"
+				:class="$style.privateCredentialIndicator"
+				data-test-id="workflow-card-private-credential"
+			>
+				<PrivateCredentialIcon
+					:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
+					:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
+					size="small"
+				/>
 			</span>
 			<span
 				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
@@ -786,6 +788,16 @@ const tags = computed(
 }
 
 .legacyMcpIndicator {
+	display: inline-flex;
+	align-items: center;
+}
+
+.divider {
+	// Standalone flex item so the row `gap` applies evenly on both sides.
+	user-select: none;
+}
+
+.privateCredentialIndicator {
 	display: inline-flex;
 	align-items: center;
 }

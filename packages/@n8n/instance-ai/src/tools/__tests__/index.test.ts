@@ -138,6 +138,7 @@ describe('domain tool construction', () => {
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(domainTools.has('templates')).toBe(false);
 	});
 
 	it('creates the native orchestrator domain tool map', async () => {
@@ -158,6 +159,7 @@ describe('domain tool construction', () => {
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(orchestratorTools.has('templates')).toBe(false);
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
 		const { createNodesTool } = await import('../nodes.tool.js');
@@ -233,5 +235,22 @@ describe('domain tool construction', () => {
 		expect(Object.fromEntries(withDelegate)).toMatchObject({
 			'build-agent': { id: 'build-agent' },
 		});
+	});
+
+	it('registers get-session only when a preview session and resolver are present', () => {
+		const withoutSession = createOrchestrationTools(
+			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
+		);
+		expect(withoutSession.has('get-session')).toBe(false);
+
+		const withSession = createOrchestrationTools(
+			makeContext({
+				domainContext: {
+					agentPreviewSession: { agentId: 'agent-1', threadId: 'preview-1' },
+					resolvePreviewSession: async () => await Promise.resolve(null),
+				},
+			} as Partial<InstanceAiContext>) as never,
+		);
+		expect(withSession.has('get-session')).toBe(true);
 	});
 });

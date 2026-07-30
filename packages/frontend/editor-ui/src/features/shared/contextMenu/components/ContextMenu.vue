@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useContextMenu } from '../composables/useContextMenu';
 import { isFocusHandoffAction, type ContextMenuAction } from '../composables/useContextMenuItems';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 import { nextTick, ref, watch } from 'vue';
 import {
 	ContextMenuContent,

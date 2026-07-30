@@ -20,9 +20,9 @@ import { useNdvLayout } from '../../panel/composables/useNdvLayout';
 import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	APP_MODALS_ELEMENT_ID,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
@@ -73,11 +73,10 @@ const nodeHelpers = useNodeHelpers();
 const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
 
-// Orchestrates the referenced agent's config for the AI Agent node's NDV. Owned
-// here (the stable container) so it survives node switches and `close()` can
-// flush a pending draft save before the NDV tears down. No-ops for other nodes.
-const ndvAgentConfig = useNdvAgentConfig(activeNode);
-provide(NdvAgentConfigKey, ndvAgentConfig);
+// The AI Agent node's NDV data facade (referenced summary + inline editing).
+// Owned here (the stable container) so it survives node switches. No-ops for
+// other nodes.
+provide(NdvAgentConfigKey, useNdvAgentConfig(activeNode));
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -510,10 +509,6 @@ const close = async () => {
 		workflow_id: workflowId.value,
 	});
 	triggerWaitingWarningEnabled.value = false;
-	// Persist any pending agent-config edit before the panel unmounts. Awaited
-	// here because Vue does not await async unmount hooks — relying on
-	// onBeforeUnmount would drop sub-debounce edits to the shared agent.
-	await ndvAgentConfig.flush().catch(() => {});
 	ndvStore.value.unsetActiveNodeName();
 	ndvStore.value.resetNDVPushRef();
 };

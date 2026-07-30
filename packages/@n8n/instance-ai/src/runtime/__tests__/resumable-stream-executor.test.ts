@@ -1,3 +1,5 @@
+import type { InstanceAiEvent } from '@n8n/api-types';
+
 import type { SuspensionInfo } from '../../utils/stream-helpers';
 import { executeResumableStream, normalizeStreamSource } from '../resumable-stream-executor';
 
@@ -177,6 +179,42 @@ describe('executeResumableStream', () => {
 		expect(result.status).toBe('errored');
 		expect(result.agentRunId).toBe('agent-run-1');
 		expect(result.error).toBe(error);
+	});
+
+	it('publishes only the quota error when a follow-on error chunk arrives', async () => {
+		const eventBus = createEventBus();
+		const quotaError = Object.assign(new Error('Have reached end of quota'), {
+			statusCode: 403,
+			errorCode: 'quota_exhausted',
+		});
+		const followOn = new Error('No output generated. Check the stream for errors.');
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([errorChunk(quotaError), errorChunk(followOn)]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		const errorEvents = eventBus.publish.mock.calls
+			.map(([, event]) => event as InstanceAiEvent)
+			.filter((event) => event.type === 'error');
+
+		expect(errorEvents).toHaveLength(1);
+		expect(errorEvents[0].payload).toMatchObject({ code: 'quota_exhausted' });
+		// The swallowed follow-on chunk must not overwrite result.error, or telemetry
+		// would log the generic "No output generated" while the user saw the quota error.
+		expect(result.error).toBe(quotaError);
 	});
 
 	it('captures terminal usage on an aborted run so cancelled runs are billed', async () => {

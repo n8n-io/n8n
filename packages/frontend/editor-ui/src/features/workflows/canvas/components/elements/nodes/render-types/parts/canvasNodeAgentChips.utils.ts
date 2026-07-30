@@ -103,7 +103,8 @@ function buildToolChips(
 
 /**
  * Flattens an agent's capability summary into the ordered chip list shown on the
- * canvas card: tools first, then skills. Channels and tasks are intentionally
+ * canvas card: tools first, then MCP servers, then skills — the order the
+ * capabilities section lists them. Channels and tasks are intentionally
  * omitted. Node tools resolve their friendly
  * node-type names (and group) via {@link resolveNodeTypeLabel}.
  */
@@ -114,6 +115,14 @@ export function buildAgentCardChips(
 	const chips: AgentCardChip[] = [];
 
 	chips.push(...buildToolChips(summary.tools, resolveNodeTypeLabel));
+
+	for (const server of summary.mcpServers ?? []) {
+		chips.push({
+			key: `mcp:${server.name}`,
+			icon: 'mcp',
+			label: formatToolNameForDisplay(server.name),
+		});
+	}
 
 	for (const skill of summary.skills) {
 		chips.push({ key: `skill:${skill.id}`, icon: 'sparkles', label: skill.name });

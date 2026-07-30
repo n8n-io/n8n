@@ -23,8 +23,7 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 
 import { createNodeTypes, logger, node } from './trigger-test-utils';
 
-vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn(),
 }));
 
@@ -140,6 +139,29 @@ describe('WorkflowTriggerActivator', () => {
 			]);
 
 			expect(result).toEqual(new Set());
+		});
+	});
+
+	describe('getTriggerKinds', () => {
+		test('classifies poll/trigger nodes as in-memory and webhook-only nodes as persisted', () => {
+			const activator = buildActivator();
+
+			const kinds = activator.getTriggerKinds([
+				node('p', 'poll'),
+				node('t', 'trigger'),
+				node('w', 'webhook'),
+				node('pw', 'poll-webhook'),
+				node('tw', 'trigger-webhook'),
+			]);
+
+			expect(kinds.get('p')).toBe('in-memory');
+			expect(kinds.get('t')).toBe('in-memory');
+			expect(kinds.get('w')).toBe('persisted');
+			// Hybrid nodes register in memory, so in-memory must win: classifying
+			// them 'persisted' would hide them from reconciliation.
+			expect(kinds.get('pw')).toBe('in-memory');
+			expect(kinds.get('tw')).toBe('in-memory');
+			expect(kinds.size).toBe(5);
 		});
 	});
 

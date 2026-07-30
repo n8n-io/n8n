@@ -1,7 +1,7 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
 	const { WorkflowSaveConflictError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error'
+		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js'
 	);
 	return {
 		WorkflowSaveConflictError,
@@ -65,9 +65,11 @@ import {
 	extractNodeOutput,
 	formatExecutionError,
 	resolveDataTableByIdOrName,
+	resolveMetricProviders,
 	truncateNodeOutput,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
+import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1214,11 +1216,14 @@ vi.mock('@/permissions.ee/check-access', () => ({
 import type {
 	AiBuilderTemporaryWorkflowRepository,
 	User,
+	CredentialsEntity,
 	ExecutionRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { UserError, UnexpectedError } from 'n8n-workflow';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
@@ -1230,8 +1235,11 @@ import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
+import { ModuleRegistry } from '@n8n/backend-common';
+import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -2972,7 +2980,48 @@ describe('createExecutionAdapter run()', () => {
 			saveManualExecutions: true,
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
+			executionTimeout: 300,
 		});
+	});
+
+	it('bounds the execution inside the engine with the wait budget, capped at the max', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [],
+		});
+
+		await adapter.run('wf-1', undefined, { timeout: 60_000 });
+		await adapter.run('wf-1', undefined, { timeout: 60 * 60 * 1000 });
+
+		const [firstRun, secondRun] = mockWorkflowRunner.run.mock.calls.map((call) => call[0]);
+		expect(firstRun.workflowData.settings?.executionTimeout).toBe(60);
+		expect(secondRun.workflowData.settings?.executionTimeout).toBe(600);
+	});
+
+	it('omits the listed connections on the ephemeral run copy only', async () => {
+		const workflow = {
+			id: 'wf-1',
+			nodes: [],
+			connections: {
+				Revise: { main: [[{ node: 'Format', type: 'main', index: 0 }]] },
+				Format: { main: [[{ node: 'Gate', type: 'main', index: 0 }]] },
+			},
+		};
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflow);
+
+		await adapter.run('wf-1', undefined, {
+			omitConnections: [{ source: 'Revise', target: 'Format' }],
+		});
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.connections.Revise.main).toEqual([[]]);
+		expect(runData.workflowData.connections.Format.main).toEqual([
+			[{ node: 'Gate', type: 'main', index: 0 }],
+		]);
+		// The saved workflow object is untouched.
+		expect(workflow.connections.Revise.main).toEqual([
+			[{ node: 'Format', type: 'main', index: 0 }],
+		]);
 	});
 
 	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
@@ -3126,13 +3175,55 @@ describe('createExecutionAdapter run()', () => {
 			status: 'error',
 		});
 
-		expect(mockActiveExecutions.stopExecution).toHaveBeenCalled();
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalledWith(
+			'exec-1',
+			expect.objectContaining({ name: 'TimeoutExecutionCancelledError' }),
+		);
 		expect(mockTelemetry.track).toHaveBeenCalledWith(
 			'Builder executed workflow',
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
 				error: expect.stringContaining('timed out'),
+			}),
+		);
+	});
+
+	it('tracks abort cancellation as a manual cancel, not a timeout', async () => {
+		const { adapter, mockActiveExecutions, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				activeExecution: true,
+				postExecutePromise: new Promise(() => {}),
+				threadId: 'thread-1',
+			},
+		);
+		const abortController = new AbortController();
+
+		const runPromise = adapter.run('wf-1', undefined, {
+			timeout: 60_000,
+			abortSignal: abortController.signal,
+		});
+		abortController.abort();
+
+		await expect(runPromise).resolves.toMatchObject({
+			status: 'error',
+			error: 'Execution was cancelled',
+		});
+
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalledWith(
+			'exec-1',
+			expect.objectContaining({ name: 'ManualExecutionCancelledError' }),
+		);
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+				error: 'Execution was cancelled',
 			}),
 		);
 	});
@@ -3545,5 +3636,208 @@ describe('isConfigEvalsEnabled', () => {
 		} as unknown as PostHogClient);
 
 		expect(await adapter.isConfigEvalsEnabled(user)).toBe(false);
+	});
+});
+
+describe('resolveMetricProviders', () => {
+	const registry = new LlmJudgeProviderRegistry();
+	const user = mock<User>();
+
+	const baseInput = (metricOverrides: Record<string, unknown> = {}) => ({
+		name: 'Eval',
+		startNodeName: 'Chat',
+		endNodeName: 'Agent',
+		dataTableId: 'dt1',
+		metrics: [
+			{
+				name: 'Helpfulness',
+				preset: 'helpfulness' as const,
+				credentialId: 'cred1',
+				model: 'gpt-4o',
+				outputType: 'numeric' as const,
+				actualAnswer: '={{ $json.output }}',
+				userQuery: '={{ $json.input }}',
+				...metricOverrides,
+			},
+		],
+	});
+
+	it('derives the provider node type from the credential type', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(
+			mock<CredentialsEntity>({ type: 'openAiApi' }),
+		);
+
+		const result = await resolveMetricProviders(baseInput(), {
+			user,
+			credentialsFinderService,
+			llmJudgeProviderRegistry: registry,
+		});
+
+		expect(result.metrics[0].provider).toBe('@n8n/n8n-nodes-langchain.lmChatOpenAi');
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred1', user, [
+			'credential:read',
+		]);
+	});
+
+	it('leaves an explicitly supplied provider untouched (no credential lookup)', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+
+		const result = await resolveMetricProviders(
+			baseInput({ provider: '@n8n/n8n-nodes-langchain.lmChatAnthropic' }),
+			{ user, credentialsFinderService, llmJudgeProviderRegistry: registry },
+		);
+
+		expect(result.metrics[0].provider).toBe('@n8n/n8n-nodes-langchain.lmChatAnthropic');
+		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+	});
+
+	it('throws a UserError when the credential is not found or inaccessible', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+		await expect(
+			resolveMetricProviders(baseInput(), {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry: registry,
+			}),
+		).rejects.toThrow(UserError);
+	});
+
+	it('throws a UserError when the credential type is not a supported provider', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(
+			mock<CredentialsEntity>({ type: 'httpBasicAuth' }),
+		);
+
+		await expect(
+			resolveMetricProviders(baseInput(), {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry: registry,
+			}),
+		).rejects.toThrow(UserError);
+	});
+
+	it('throws an UnexpectedError when the provider registry is unavailable', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+
+		await expect(
+			resolveMetricProviders(baseInput(), {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry: undefined,
+			}),
+		).rejects.toThrow(UnexpectedError);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — builder delegate telemetry ("Builder created agent")
+// ---------------------------------------------------------------------------
+
+describe('createContext — builder delegate telemetry', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	afterEach(() => {
+		// Container.get is globally spied below (multiple tokens routed through
+		// one mockImplementation) — restore it so later tests keep the real,
+		// module-inactive-by-default ModuleRegistry.
+		vi.restoreAllMocks();
+	});
+
+	/** Route Container.get for the two tokens createContext resolves when wiring the builder delegate. */
+	function mockBuilderModuleActive(delegate: InstanceAiBuilderDelegate) {
+		const moduleRegistry = { isActive: vi.fn().mockReturnValue(true) };
+		const builderDelegateAdapter = { createDelegate: vi.fn().mockReturnValue(delegate) };
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return moduleRegistry;
+			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+	}
+
+	it('tracks "Builder created agent" after a successful delegate createAgent, in a thread context', async () => {
+		const mockTelemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: mockTelemetry });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		delegate.createAgent.mockResolvedValue({ agentId: 'agent-9', projectId: 'proj-1' });
+		mockBuilderModuleActive(delegate);
+
+		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+		const created = await context.builderDelegate?.createAgent('New agent');
+
+		expect(created).toEqual({ agentId: 'agent-9', projectId: 'proj-1' });
+		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder created agent', {
+			thread_id: 'thread-1',
+			agent_id: 'agent-9',
+			project_id: 'proj-1',
+		});
+	});
+
+	it('does not track when the context has no threadId', async () => {
+		const mockTelemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: mockTelemetry });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		delegate.createAgent.mockResolvedValue({ agentId: 'agent-9', projectId: 'proj-1' });
+		mockBuilderModuleActive(delegate);
+
+		const context = service.createContext(mockUser, { projectId: 'proj-1' });
+		await context.builderDelegate?.createAgent('New agent');
+
+		expect(mockTelemetry.track).not.toHaveBeenCalledWith(
+			'Builder created agent',
+			expect.anything(),
+		);
+	});
+
+	it('passes listAgents through to the underlying delegate unchanged', async () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		const agents = [
+			{ agentId: 'agent-1', name: 'Agent', published: true, updatedAt: '2026-07-14T00:00:00.000Z' },
+		];
+		delegate.listAgents.mockResolvedValue(agents);
+		mockBuilderModuleActive(delegate);
+
+		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+		const result = await context.builderDelegate?.listAgents();
+
+		expect(result).toEqual(agents);
+		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — run model wiring
+// ---------------------------------------------------------------------------
+
+describe('createContext — run model wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	// Guards the one link of the INS-948 fix that instance-ai's own unit tests
+	// cannot see: the run's resolved (proxy-aware) model must land on the domain
+	// context, where simulation fixture/classifier LLM calls read it as their
+	// fallback on deployments without env model keys (cloud). Dropping this
+	// wiring regresses silently — every simulated node degrades back to a
+	// single empty pinned item.
+	it('copies the host-resolved modelId onto the context', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+		const modelId = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+
+		const context = service.createContext(mockUser, { modelId });
+
+		expect(context.modelId).toEqual(modelId);
+	});
+
+	it('leaves modelId undefined when the host does not resolve one', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		expect(service.createContext(mockUser).modelId).toBeUndefined();
 	});
 });

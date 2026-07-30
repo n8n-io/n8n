@@ -1,6 +1,10 @@
-import { StartTestRunRequestDto } from '@n8n/api-types';
-import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
-import type { User } from '@n8n/db';
+import { StartTestRunRequestDto, type MetricScale } from '@n8n/api-types';
+import {
+	EvaluationConfigRepository,
+	TestCaseExecutionRepository,
+	TestRunRepository,
+} from '@n8n/db';
+import type { TestRun, User } from '@n8n/db';
 import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
 import { type Scope } from '@n8n/permissions';
 import express from 'express';
@@ -14,6 +18,8 @@ import { listQueryMiddleware } from '@/middlewares';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
+
 @RestController('/workflows')
 export class TestRunsController {
 	constructor(
@@ -22,6 +28,7 @@ export class TestRunsController {
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly telemetry: Telemetry,
+		private readonly evaluationConfigRepository: EvaluationConfigRepository,
 	) {}
 
 	private async assertUserHasAccessToWorkflow(
@@ -64,22 +71,61 @@ export class TestRunsController {
 		return testRun;
 	}
 
+	/**
+	 * Attach each run's metric scales so the runs page normalizes scores the same
+	 * way the compare view does — a 1–5 judge metric renders as 100%, not 5%. Each
+	 * run prefers its own frozen config snapshot, falling back to the live config's
+	 * scales (a run started without `compileFromConfig` never froze a snapshot).
+	 * Distinct configs are resolved once — a workflow has only a handful.
+	 */
+	private async attachMetricScales<
+		T extends Pick<TestRun, 'evaluationConfigId' | 'evaluationConfigSnapshot'>,
+	>(runs: T[], workflowId: string) {
+		const configIds = [
+			...new Set(
+				runs
+					.map((run) => run.evaluationConfigId)
+					.filter((id): id is string => typeof id === 'string'),
+			),
+		];
+		const scalesByConfig = new Map<string, Record<string, MetricScale>>();
+		for (const configId of configIds) {
+			scalesByConfig.set(
+				configId,
+				await resolveConfigMetricScales(this.evaluationConfigRepository, configId, workflowId),
+			);
+		}
+
+		return runs.map((run) => {
+			const scales = runMetricScales(
+				run,
+				run.evaluationConfigId ? (scalesByConfig.get(run.evaluationConfigId) ?? {}) : {},
+			);
+			// Omit the field for runs with no resolvable scale (no snapshot, no
+			// config) — the FE then uses its name-based heuristic.
+			return Object.keys(scales).length > 0 ? { ...run, metricScales: scales } : { ...run };
+		});
+	}
+
 	@Get('/:workflowId/test-runs', { middlewares: listQueryMiddleware })
 	async getMany(req: TestRunsRequest.GetMany) {
 		const { workflowId } = req.params;
 
 		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
 
-		return await this.testRunRepository.getMany(workflowId, req.listQueryOptions);
+		const testRuns = await this.testRunRepository.getMany(workflowId, req.listQueryOptions);
+		return await this.attachMetricScales(testRuns, workflowId);
 	}
 
 	@Get('/:workflowId/test-runs/:id')
 	async getOne(req: TestRunsRequest.GetOne) {
-		const { id } = req.params;
+		const { id, workflowId } = req.params;
 
 		try {
-			await this.getTestRun(req.params.id, req.params.workflowId, req.user); // FIXME: do not fetch test run twice
-			return await this.testRunRepository.getTestRunSummaryById(id);
+			await this.getTestRun(id, workflowId, req.user); // FIXME: do not fetch test run twice
+			const summary = await this.testRunRepository.getTestRunSummaryById(id);
+			const [withScales] = await this.attachMetricScales([summary], workflowId);
+			return withScales;
 		} catch (error) {
 			if (error instanceof UnexpectedError) throw new NotFoundError(error.message);
 			throw error;
@@ -163,18 +209,28 @@ export class TestRunsController {
 
 		const concurrency = payload.concurrency ?? 1;
 
+		const options: {
+			evaluationConfigId?: string;
+			compileFromConfig?: boolean;
+			rowIndices?: number[];
+		} = {};
+		if (payload.evaluationConfigId) {
+			options.evaluationConfigId = payload.evaluationConfigId;
+			options.compileFromConfig = payload.compileFromConfig === true;
+		}
+		if (payload.rowIndices && payload.rowIndices.length > 0) {
+			options.rowIndices = payload.rowIndices;
+		}
+
 		// Await sync setup so the 202 carries testRunId; case execution is
-		// detached inside startTestRun via `finished` (discarded here).
+		// detached inside startTestRun via `finished` (discarded here). Pass
+		// `undefined` (not `{}`) when there are no options so the service applies
+		// its own defaults (e.g. `via: 'ui'`).
 		const { testRun } = await this.testRunnerService.startTestRun(
 			req.user,
 			workflowId,
 			concurrency,
-			payload.evaluationConfigId
-				? {
-						evaluationConfigId: payload.evaluationConfigId,
-						compileFromConfig: payload.compileFromConfig === true,
-					}
-				: undefined,
+			Object.keys(options).length > 0 ? options : undefined,
 		);
 
 		res.status(202).json({ success: true, testRunId: testRun.id });

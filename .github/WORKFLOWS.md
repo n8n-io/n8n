@@ -179,7 +179,7 @@ These only run if specific files changed:
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
-| `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-sync-api-docs.yml`    | master     |
+| `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-publish-api-schema.yml` | master   |
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 
 ### On PR Review
@@ -196,7 +196,10 @@ on every push made cost untenable; firing on every review approval cascaded
 through the dismiss-stale-on-push → re-approve loop, which also blew up.
 The current trigger fires once per `opened` / `reopened` / `ready_for_review`
 on a non-fork PR touching the eval surface, and runs the `pr` test-case dataset
-(~6 high-reliability, capability-diverse cases) instead of the full ~14. To
+(a small set of high-reliability, capability-diverse cases) instead of the full
+suite. Test cases are pulled at run time from the LangTracer suite
+`baseline` — the source of truth; CI has no disk fallback (local runs
+keep `--source disk` for authoring). To
 re-run after pushing a fix, dispatch `ci-instance-ai-evals.yml` with the PR
 number (optionally `tier: full` for broader coverage) — results post back to
 the PR. The lighter `test-evals-discovery.yml` still runs on every push as part
@@ -206,8 +209,8 @@ of `ci-pull-requests.yml`.
 the lab bench.** The gate deliberately exposes only PR re-runs. Anything that
 isn't PR gating — baselines, model experiments, arbitrary branch runs — goes
 through `test-evals-instance-ai.yml`'s own dispatch form ("Instance AI
-Evals: Experiments"): full knob set (branch, filter, tier, iterations, experiment-name,
-model), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
+Evals: Experiments"): full knob set (branch, filter, tier, suite,
+iterations, experiment-name, model), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
 model-comparison arms), and SHA-keyed docker cache hits on master. Evals never
 run on fork PRs: the event trigger gates on `head.repo.fork`, and the `pr`
 re-run path refuses fork PRs in `resolve` (dispatched runs carry secrets).

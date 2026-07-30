@@ -8,6 +8,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
 import {
 	getExcelCredentialType,
 	microsoftApiRequest,
@@ -100,6 +101,7 @@ export async function execute(
 					"/drive/root/search(q='.xlsx')",
 					{},
 					qs,
+					i,
 				);
 			} else {
 				qs.$top = this.getNodeParameter('limit', i);
@@ -109,6 +111,9 @@ export async function execute(
 					"/drive/root/search(q='.xlsx')",
 					{},
 					qs,
+					undefined,
+					undefined,
+					i,
 				);
 				responseData = responseData.value;
 			}
@@ -137,7 +142,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

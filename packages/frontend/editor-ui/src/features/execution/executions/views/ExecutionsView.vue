@@ -6,7 +6,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
@@ -153,7 +153,7 @@ async function onExecutionStop() {
 		</template>
 		<div>
 			<ResourcesListEmptyState
-				resource-key="workflows"
+				resource-key="executions"
 				:button-disabled="readOnlyEnv || !projectPermissions.workflow.create"
 				:disabled-tooltip-text="
 					readOnlyEnv ? i18n.baseText('readOnlyEnv.cantAdd.workflow') : undefined

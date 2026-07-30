@@ -29,12 +29,15 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useHistoryStore } from '@/app/stores/history.store';
+import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
+	createMockNodeTypes,
 	createTestNode,
 	createTestNodeProperties,
 	createTestWorkflow,
 	createTestWorkflowObject,
+	mockLoadedNodeType,
 	mockNode,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
@@ -53,7 +56,9 @@ import {
 	AGENT_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -67,7 +72,7 @@ import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 import { isVNode, nextTick, reactive, ref } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowsApi from '@/app/api/workflows';
@@ -111,7 +116,12 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
-import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
+import {
+	AGENT_NODE_SIZE,
+	DEFAULT_NODE_SIZE,
+	GRID_SIZE,
+	HORIZONTAL_NODE_STEP,
+} from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
@@ -140,7 +150,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({ track }),
@@ -161,6 +171,11 @@ vi.mock('@/app/composables/useToast', () => {
 		},
 	};
 });
+
+const getAutoSelectedCredentialMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/credentials/credentials.utils', () => ({
+	getAutoSelectedCredential: getAutoSelectedCredentialMock,
+}));
 
 const canPinNodeMock = vi.fn();
 const setDataMock = vi.fn();
@@ -336,6 +351,25 @@ describe('useCanvasOperations', () => {
 			);
 
 			expect(result.position).toEqual([32, 32]);
+		});
+
+		it('records the intended center until a new agent is measured', () => {
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			const { addNode } = useCanvasOperations();
+			const result = addNode(
+				{
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					position: [112, 112],
+				},
+				mockNodeTypeDescription({ name: MESSAGE_AN_AGENT_NODE_TYPE, version: 2 }),
+			);
+
+			expect(geometryStore.setPendingCenterY).toHaveBeenCalledWith(
+				workflowDocumentStoreInstance.workflowId,
+				result.id,
+				result.position[1] + AGENT_NODE_SIZE[1] / 2,
+			);
 		});
 
 		it('should not assign credentials when multiple credentials are available', () => {
@@ -524,7 +558,69 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([320, 112]);
+			// 112 + HORIZONTAL_NODE_STEP (224) = 336, matching the auto-layout step
+			expect(position).toEqual([336, 112]);
+		});
+
+		it('should place the node clear of the agent card when added after a message an agent node', () => {
+			const uiStore = mockedStore(useUIStore);
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			const lastInteracted = createTestNode({
+				position: [112, 112],
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+			});
+			uiStore.lastInteractedWithNodeId = lastInteracted.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+			geometryStore.getNodeHeight.mockReturnValue(DEFAULT_NODE_SIZE[1]);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			// The new node keeps a constant NODE_X_SPACING gap past the agent card's
+			// right edge: HORIZONTAL_NODE_STEP + (agent width - default width).
+			expect(position).toEqual([
+				lastInteracted.position[0] +
+					HORIZONTAL_NODE_STEP +
+					(AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]),
+				lastInteracted.position[1],
+			]);
+		});
+
+		it('centers a node after an agent using the agent measured height', () => {
+			const uiStore = mockedStore(useUIStore);
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const node = createTestNode({ id: 'target', type: SET_NODE_TYPE, typeVersion: 1 });
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE, version: 1 });
+			const agent = createTestNode({
+				id: 'agent',
+				position: [112, 57],
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+			});
+
+			uiStore.lastInteractedWithNodeId = agent.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(agent as INodeUi);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(agent as INodeUi);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			geometryStore.getNodeHeight.mockReturnValue(206);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			expect(position[1] + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.position[1] + 206 / 2);
 		});
 
 		it('should place the node below the last interacted with node if it has non-main outputs', () => {
@@ -558,7 +654,7 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([448, 96]);
+			expect(position).toEqual([464, 96]);
 		});
 
 		it('should place the node at the last clicked position if no other position is set', () => {
@@ -1439,7 +1535,7 @@ describe('useCanvasOperations', () => {
 				name: nodes[1].name,
 				type: nodeTypeName,
 				typeVersion: 1,
-				position: [32 + PUSH_NODES_OFFSET + 2 * GRID_SIZE, 32 + GRID_SIZE],
+				position: [32 + HORIZONTAL_NODE_STEP + 2 * GRID_SIZE, 32 + GRID_SIZE],
 				parameters: {},
 			});
 		});
@@ -5240,6 +5336,118 @@ describe('useCanvasOperations', () => {
 			nodes: [], //buildImportNodes(),
 			connections: {},
 		};
+
+		it('should auto-select a credential for an imported node and toast its name', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue({
+				credentialType: 'cred',
+				credential: { id: '1', name: 'credA' },
+			});
+
+			const nodes = [createTestNode({ name: 'Set', type: SET_NODE_TYPE })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({ nodes, connections: {} }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(result.nodes?.[0]?.credentials).toEqual({ cred: { id: '1', name: 'credA' } });
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'info',
+				title: 'Credentials auto-added',
+				message:
+					'We selected "credA" credentials for the "Set" node. Please check it\'s the right one.',
+			});
+		});
+
+		it('should show a generic toast when credentials are auto-selected for multiple nodes', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue({
+				credentialType: 'cred',
+				credential: { id: '1', name: 'credA' },
+			});
+
+			const nodes = [
+				createTestNode({ id: '1', name: 'Set', type: SET_NODE_TYPE }),
+				createTestNode({ id: '2', name: 'Set 2', type: SET_NODE_TYPE }),
+			];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({ nodes, connections: {} }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'info',
+				title: 'Credentials auto-added',
+				message:
+					"We added existing credentials to the pasted node(s). Please check they're the right ones.",
+			});
+		});
+
+		it('should not toast when there is nothing to auto-select', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue(undefined);
+
+			const nodes = [createTestNode({ name: 'Set', type: SET_NODE_TYPE })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({ nodes, connections: {} }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(result.nodes?.[0]?.credentials).toBeUndefined();
+			expect(toast.showMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Credentials auto-added' }),
+			);
+		});
+
+		it('should not auto-select credentials for HTTP Request nodes', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[HTTP_REQUEST_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: HTTP_REQUEST_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue({
+				credentialType: 'cred',
+				credential: { id: '1', name: 'credA' },
+			});
+
+			const nodes = [createTestNode({ name: 'HTTP Request', type: HTTP_REQUEST_NODE_TYPE })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({
+					nodes,
+					connections: {},
+					nodeTypes: createMockNodeTypes({
+						[HTTP_REQUEST_NODE_TYPE]: mockLoadedNodeType(HTTP_REQUEST_NODE_TYPE),
+					}),
+				}),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(getAutoSelectedCredentialMock).not.toHaveBeenCalled();
+			expect(result.nodes?.[0]?.credentials).toBeUndefined();
+			expect(toast.showMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Credentials auto-added' }),
+			);
+		});
 
 		it('should show an error and import nothing when data is not a valid workflow', async () => {
 			const toast = useToast();

@@ -33,7 +33,7 @@ const trackMock = vi.hoisted(() => vi.fn());
 const authorizeMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 const n8nCreditsCredentialSelectionEnabled = vi.hoisted(() => ({ value: false }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 
@@ -279,6 +279,18 @@ describe('NodeCredentials', () => {
 		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
 			workflowId: '1',
 		});
+	});
+
+	it('should not fetch credentials on mount when skipCredentialsFetch is set', () => {
+		// Hosts with a synthetic workflow document (e.g. the tool config modal)
+		// own the credential fetch themselves; the component's own fetch would
+		// query a nonexistent workflow id and wipe the store with its empty result.
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {};
+
+		renderComponent({ props: { skipCredentialsFetch: true } });
+
+		expect(credentialsStore.fetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('should fetch credentials scoped to the project for an unsaved workflow', () => {
@@ -1049,6 +1061,179 @@ describe('NodeCredentials', () => {
 			expect(screen.getByText('Connect to Dropbox')).toBeInTheDocument();
 		});
 
+		it('should show sibling OAuth quick connect when the auth field is kept in NDV', () => {
+			setupQuickConnectStores();
+
+			const discordOAuth2ApiType: ICredentialType = {
+				...slackOAuth2ApiType,
+				name: 'discordOAuth2Api',
+				displayName: 'Discord OAuth2 API',
+			};
+			const discordNode: INodeUi = {
+				parameters: { authentication: 'botToken' },
+				type: 'n8n-nodes-base.discord',
+				typeVersion: 2,
+				position: [0, 0],
+				id: 'discord-node-id',
+				name: 'Discord',
+				credentials: {},
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				discordOAuth2Api: discordOAuth2ApiType,
+				discordBotApi: {
+					name: 'discordBotApi',
+					displayName: 'Discord Bot API',
+					properties: [],
+				},
+			};
+			mockedStore(useNodeTypesStore).setNodeTypes([
+				{
+					displayName: 'Discord',
+					name: 'n8n-nodes-base.discord',
+					group: ['output'],
+					version: 2,
+					description: '',
+					defaults: { name: 'Discord' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'discordBotApi',
+							required: true,
+							displayOptions: { show: { authentication: ['botToken'] } },
+						},
+						{
+							name: 'discordOAuth2Api',
+							required: true,
+							displayOptions: { show: { authentication: ['oAuth2'] } },
+						},
+					],
+					properties: [
+						{
+							displayName: 'Connection Type',
+							name: 'authentication',
+							type: 'options',
+							options: [
+								{ name: 'Bot Token', value: 'botToken' },
+								{ name: 'OAuth2', value: 'oAuth2' },
+							],
+							default: 'botToken',
+						},
+					],
+				} as unknown as INodeTypeDescription,
+			]);
+			ndvStore.activeNode = discordNode;
+
+			renderComponent(
+				{
+					props: {
+						node: discordNode,
+						overrideCredType: '',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+			expect(screen.getByText('Connect to Discord')).toBeInTheDocument();
+		});
+
+		it('should not show sibling OAuth quick connect for an independent credential field', () => {
+			setupQuickConnectStores();
+
+			const pipedriveOAuth2ApiType: ICredentialType = {
+				...slackOAuth2ApiType,
+				name: 'pipedriveOAuth2Api',
+				displayName: 'Pipedrive OAuth2 API',
+			};
+			const pipedriveNode: INodeUi = {
+				parameters: {
+					authentication: 'apiToken',
+					incomingAuthentication: 'basicAuth',
+				},
+				type: 'n8n-nodes-base.pipedriveTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'pipedrive-trigger-node-id',
+				name: 'Pipedrive Trigger',
+				credentials: {},
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				pipedriveOAuth2Api: pipedriveOAuth2ApiType,
+				pipedriveApi: {
+					name: 'pipedriveApi',
+					displayName: 'Pipedrive API',
+					properties: [],
+				},
+				httpBasicAuth: {
+					name: 'httpBasicAuth',
+					displayName: 'Basic Auth',
+					properties: [],
+				},
+			};
+			mockedStore(useNodeTypesStore).setNodeTypes([
+				{
+					displayName: 'Pipedrive Trigger',
+					name: 'n8n-nodes-base.pipedriveTrigger',
+					group: ['trigger'],
+					version: 1,
+					description: '',
+					defaults: { name: 'Pipedrive Trigger' },
+					inputs: [],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'pipedriveApi',
+							required: true,
+							displayOptions: { show: { authentication: ['apiToken'] } },
+						},
+						{
+							name: 'pipedriveOAuth2Api',
+							required: true,
+							displayOptions: { show: { authentication: ['oAuth2'] } },
+						},
+						{
+							name: 'httpBasicAuth',
+							required: true,
+							displayOptions: { show: { incomingAuthentication: ['basicAuth'] } },
+						},
+					],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							required: true,
+							options: [
+								{ name: 'API Token', value: 'apiToken' },
+								{ name: 'OAuth2', value: 'oAuth2' },
+							],
+							default: 'apiToken',
+						},
+					],
+				} as unknown as INodeTypeDescription,
+			]);
+			ndvStore.activeNode = pipedriveNode;
+
+			renderComponent(
+				{
+					props: {
+						node: pipedriveNode,
+						overrideCredType: '',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.getAllByTestId('quick-connect-empty-state')).toHaveLength(1);
+			expect(screen.getAllByTestId('node-credentials-empty-state')).toHaveLength(1);
+		});
+
 		it('should show standard dropdown when credential already exists', () => {
 			setupQuickConnectStores();
 
@@ -1167,6 +1352,42 @@ describe('NodeCredentials', () => {
 			);
 
 			expect(emitted('credentialSelected')).toBeFalsy();
+		});
+	});
+
+	describe('credential auto-select', () => {
+		it('should auto-select a credential of the overridden type on mount', () => {
+			const httpNodeNoCreds: INodeUi = { ...httpNode, credentials: {} };
+			ndvStore.activeNode = httpNodeNoCreds;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					node: httpNodeNoCreds,
+					overrideCredType: 'openAiApi',
+					readonly: false,
+					showAll: false,
+					hideIssues: false,
+				},
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+					},
+				},
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				name: string;
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.name).toBe(httpNodeNoCreds.name);
+			expect(payload.properties.credentials['openAiApi']).toEqual({
+				id: 'c8vqdPpPClh4TgIO',
+				name: 'OpenAi account',
+			});
 		});
 	});
 
@@ -2054,7 +2275,9 @@ describe('NodeCredentials', () => {
 			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
 		});
 
-		it('disables the Connect button in readonly (execution view) mode', async () => {
+		it('keeps the Connect button enabled in readonly mode for a user who can connect', async () => {
+			// Connecting your own account is a personal action gated by the connect
+			// scope, not by the node's readonly state (mirrors the credentials list).
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
@@ -2062,10 +2285,10 @@ describe('NodeCredentials', () => {
 				props: { node: notionNode, overrideCredType: 'openAiApi', readonly: true },
 			});
 
-			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
+			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
 		});
 
-		it('disables the Connected actions dropdown in readonly (execution view) mode', async () => {
+		it('keeps the Connected actions dropdown usable in readonly mode', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: true },
 			};
@@ -2076,8 +2299,7 @@ describe('NodeCredentials', () => {
 			const dropdown = screen.getByTestId('node-credential-private-connected-actions');
 			await userEvent.click(dropdown);
 
-			// The connected/disconnect actions menu must not open while readonly
-			expect(screen.queryByText('Disconnect')).not.toBeInTheDocument();
+			expect(screen.getByText('Disconnect')).toBeInTheDocument();
 		});
 
 		it('clicking the Connect button runs the OAuth flow without opening the edit modal', async () => {

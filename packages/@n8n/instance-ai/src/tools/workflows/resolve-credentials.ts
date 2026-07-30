@@ -11,6 +11,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { AI_GATEWAY_CREDENTIAL, N8N_CONNECT_DISPLAY_NAME } from './credential-utils';
 import type { ResolvedCredential } from './resolved-credential.schema';
+import { getValidCredentialTypes } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
 
 export type { ResolvedCredential };
@@ -89,11 +90,18 @@ export function buildCredentialResolutionNote(
 		sentences.push(`Connected existing credential(s) automatically: ${storedParts.join('; ')}.`);
 	}
 	if (gatewayParts.length > 0) {
-		sentences.push(`Using n8n Connect (zero-setup) for: ${gatewayParts.join('; ')}.`);
+		sentences.push(
+			`Set up automatically with n8n credits (no API key required) for: ${gatewayParts.join('; ')}.`,
+		);
 	}
 	sentences.push(
 		'These are already set up — do not ask the user to connect or create them, and do not route them to credential setup.',
 	);
+	if (gatewayParts.length > 0) {
+		sentences.push(
+			'Briefly let the user know these run on n8n credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
+		);
+	}
 	return sentences.join(' ');
 }
 
@@ -119,7 +127,7 @@ export async function resolveCredentials(
 	const mockedCredentialsByNode: Record<string, string[]> = {};
 	const resolvedCredentialsByNode: Record<string, ResolvedCredential[]> = {};
 
-	// n8n Connect support is process-global config; memoize per type for this call.
+	// n8n credits support is process-global config; memoize per type for this call.
 	const gatewaySupportCache = new Map<string, boolean>();
 	const isGatewayCredentialType = async (credType: string): Promise<boolean> => {
 		if (!ctx.credentialService.isAiGatewayCredentialType) return false;
@@ -214,7 +222,7 @@ export async function resolveCredentials(
 				}
 			};
 
-			// Prefer n8n Connect over mocking when the type is gateway-supported and
+			// Prefer n8n credits over mocking when the type is gateway-supported and
 			// the user has no stored credential of their own for it.
 			const mockOrAttachGateway = async () => {
 				const hasStored = (availableCredentials?.get(key)?.length ?? 0) > 0;
@@ -258,6 +266,43 @@ export async function resolveCredentials(
 
 		if (nodeMocked && node.name) {
 			mockedNodeNames.push(node.name);
+		}
+	}
+
+	// Second pass — required-but-omitted credentials. The first pass only visits
+	// slots the LLM actually wrote in `node.credentials`; a node built with no
+	// slot for a type it requires is skipped there, then reaches post-build setup
+	// analysis credential-less and surfaces a setup card. Here the required types
+	// come from the node description (getValidCredentialTypes), and we silently
+	// attach n8n credits when, in guard order: (1) the node has no entry for the
+	// type, (2) the user has no stored credential for it, and (3) the type is
+	// supported by n8n credits. Any guard failing leaves the node untouched so the
+	// setup card can collect a real credential.
+	for (const node of json.nodes ?? []) {
+		if (!node.name) continue;
+		const requiredTypes = await getValidCredentialTypes(ctx, node);
+		for (const credType of requiredTypes) {
+			const creds = (node.credentials ?? {}) as Record<string, unknown>;
+			const existing = creds[credType];
+			if (existing !== undefined && existing !== null) continue;
+			const hasStored = (availableCredentials?.get(credType)?.length ?? 0) > 0;
+			if (hasStored) continue;
+			if (!(await isGatewayCredentialType(credType))) continue;
+
+			node.credentials ??= {};
+			(node.credentials as Record<string, unknown>)[credType] = {
+				...AI_GATEWAY_CREDENTIAL,
+				name: N8N_CONNECT_DISPLAY_NAME,
+			};
+			resolvedCredentialsByNode[node.name] ??= [];
+			resolvedCredentialsByNode[node.name].push({
+				type: credType,
+				id: null,
+				name: N8N_CONNECT_DISPLAY_NAME,
+				__aiGatewayManaged: true,
+			});
+			// Simulate during verification instead of spending gateway quota.
+			if (!mockedNodeNames.includes(node.name)) mockedNodeNames.push(node.name);
 		}
 	}
 

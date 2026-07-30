@@ -17,16 +17,18 @@ import { Container } from '@n8n/di';
 })
 export class LogStreamingModule implements ModuleInterface {
 	async init() {
-		await import('./log-streaming.controller');
+		await import('./log-streaming.controller.js');
 
-		const { LogStreamingDestinationService } = await import('./log-streaming-destination.service');
+		const { LogStreamingDestinationService } = await import(
+			'./log-streaming-destination.service.js'
+		);
 		const destinationService = Container.get(LogStreamingDestinationService);
 		await destinationService.loadDestinationsFromDb();
 		await destinationService.initialize();
 	}
 
 	async entities() {
-		const { EventDestinations } = await import('./database/entities/event-destination.entity');
+		const { EventDestinations } = await import('./database/entities/event-destination.entity.js');
 		return [EventDestinations];
 	}
 }

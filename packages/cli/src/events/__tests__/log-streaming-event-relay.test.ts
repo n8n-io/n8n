@@ -63,7 +63,7 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: 'global:admin' },
 				},
-				projectId: 'proj-brie',
+				projectIds: ['proj-brie', 'proj-stilton'],
 				folderId: 'folder-cheese',
 				workflowIds: ['wf-cheddar', 'wf-brie'],
 				options: {
@@ -72,6 +72,14 @@ describe('LogStreamingEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					missingNodeTypeMode: 'fail',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'create',
+					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingMode: 'create-stub',
+					variableParentPolicy: 'project',
+					tagMissingMode: 'create',
+					tagConflictPolicy: 'skip',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -92,6 +100,24 @@ describe('LogStreamingEventRelay', () => {
 						created: 0,
 						requirements: 1,
 					},
+					dataTables: {
+						matched: 0,
+						created: 1,
+						requirements: 1,
+					},
+					variables: {
+						matched: 0,
+						missing: 1,
+						created: 0,
+						requirements: 1,
+					},
+					tags: {
+						matched: 1,
+						created: 0,
+						renamed: 0,
+						skipped: 0,
+						requirements: 1,
+					},
 				},
 			};
 
@@ -105,7 +131,7 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Import',
 					_lastName: 'User',
 					globalRole: 'global:admin',
-					projectId: 'proj-brie',
+					projectIds: ['proj-brie', 'proj-stilton'],
 					folderId: 'folder-cheese',
 					workflowIds: ['wf-cheddar', 'wf-brie'],
 					options: {
@@ -114,6 +140,14 @@ describe('LogStreamingEventRelay', () => {
 						credentialMatchingMode: 'id-only',
 						credentialMissingMode: 'must-preexist',
 						workflowPublishingPolicy: 'preserve-published-state',
+						missingNodeTypeMode: 'fail',
+						dataTableMatchingMode: 'by-id',
+						dataTableMissingMode: 'create',
+						dataTableSchemaConflictPolicy: 'keep-existing',
+						variableMissingMode: 'create-stub',
+						variableParentPolicy: 'project',
+						tagMissingMode: 'create',
+						tagConflictPolicy: 'skip',
 					},
 					packageSourceId: 'source-instance-1',
 					packageVersion: '1',
@@ -144,6 +178,8 @@ describe('LogStreamingEventRelay', () => {
 					folders: 1,
 					credentials: 1,
 					dataTables: 1,
+					variables: 1,
+					tags: 1,
 				},
 			};
 
@@ -2072,6 +2108,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-manual',
 				workflowName: 'Manual Test Workflow',
 				executionId: 'exec-manual-123',
+				projectId: 'project-manual',
+				projectName: 'Manual Project',
 				source: 'user-manual',
 			};
 
@@ -2088,6 +2126,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-manual',
 					workflowName: 'Manual Test Workflow',
 					executionId: 'exec-manual-123',
+					projectId: 'project-manual',
+					projectName: 'Manual Project',
 					source: 'user-manual',
 				},
 			});
@@ -2144,6 +2184,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-retry',
 				workflowName: 'Retry Test Workflow',
 				executionId: 'exec-retry-456',
+				projectId: 'project-retry',
+				projectName: 'Retry Project',
 				source: 'user-retry',
 			};
 
@@ -2160,6 +2202,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-retry',
 					workflowName: 'Retry Test Workflow',
 					executionId: 'exec-retry-456',
+					projectId: 'project-retry',
+					projectName: 'Retry Project',
 					source: 'user-retry',
 				},
 			});
@@ -2170,6 +2214,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-webhook',
 				workflowName: 'Webhook Test Workflow',
 				executionId: 'exec-webhook-123',
+				projectId: 'project-webhook',
+				projectName: 'Webhook Project',
 				source: 'webhook',
 			};
 
@@ -2181,6 +2227,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-webhook',
 					workflowName: 'Webhook Test Workflow',
 					executionId: 'exec-webhook-123',
+					projectId: 'project-webhook',
+					projectName: 'Webhook Project',
 					source: 'webhook',
 				},
 			});
@@ -2191,6 +2239,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-trigger',
 				workflowName: 'Trigger Test Workflow',
 				executionId: 'exec-trigger-123',
+				projectId: 'project-trigger',
+				projectName: 'Trigger Project',
 				source: 'trigger',
 			};
 
@@ -2202,6 +2252,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-trigger',
 					workflowName: 'Trigger Test Workflow',
 					executionId: 'exec-trigger-123',
+					projectId: 'project-trigger',
+					projectName: 'Trigger Project',
 					source: 'trigger',
 				},
 			});
@@ -2212,6 +2264,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-error',
 				workflowName: 'Error Test Workflow',
 				executionId: 'exec-error-123',
+				projectId: 'project-error',
+				projectName: 'Error Project',
 				source: 'error',
 			};
 
@@ -2223,6 +2277,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-error',
 					workflowName: 'Error Test Workflow',
 					executionId: 'exec-error-123',
+					projectId: 'project-error',
+					projectName: 'Error Project',
 					source: 'error',
 				},
 			});
@@ -2236,6 +2292,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-cli',
 				workflowName: 'CLI Test Workflow',
 				executionId: 'exec-cli-123',
+				projectId: 'project-cli',
+				projectName: 'CLI Project',
 				source: 'cli',
 			};
 
@@ -2248,6 +2306,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-cli',
 					workflowName: 'CLI Test Workflow',
 					executionId: 'exec-cli-123',
+					projectId: 'project-cli',
+					projectName: 'CLI Project',
 					source: 'cli',
 				},
 			});
@@ -2261,6 +2321,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-integrated',
 				workflowName: 'Integrated Test Workflow',
 				executionId: 'exec-integrated-123',
+				projectId: 'project-integrated',
+				projectName: 'Integrated Project',
 				source: 'integrated',
 			};
 
@@ -2273,6 +2335,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-integrated',
 					workflowName: 'Integrated Test Workflow',
 					executionId: 'exec-integrated-123',
+					projectId: 'project-integrated',
+					projectName: 'Integrated Project',
 					source: 'integrated',
 				},
 			});
@@ -2286,6 +2350,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-evaluation',
 				workflowName: 'Evaluation Test Workflow',
 				executionId: 'exec-evaluation-123',
+				projectId: 'project-evaluation',
+				projectName: 'Evaluation Project',
 				source: 'evaluation',
 			};
 
@@ -2298,6 +2364,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-evaluation',
 					workflowName: 'Evaluation Test Workflow',
 					executionId: 'exec-evaluation-123',
+					projectId: 'project-evaluation',
+					projectName: 'Evaluation Project',
 					source: 'evaluation',
 				},
 			});
@@ -2311,6 +2379,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-chat',
 				workflowName: 'Chat Test Workflow',
 				executionId: 'exec-chat-123',
+				projectId: 'project-chat',
+				projectName: 'Chat Project',
 				source: 'chat',
 			};
 
@@ -2323,6 +2393,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-chat',
 					workflowName: 'Chat Test Workflow',
 					executionId: 'exec-chat-123',
+					projectId: 'project-chat',
+					projectName: 'Chat Project',
 					source: 'chat',
 				},
 			});

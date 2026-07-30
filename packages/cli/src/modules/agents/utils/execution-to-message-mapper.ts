@@ -4,7 +4,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
 
-type ExecutionTranscript = Pick<AgentExecution, 'id' | 'userMessage' | 'timeline'>;
+type ExecutionTranscript = Pick<AgentExecution, 'id' | 'userMessage' | 'timeline' | 'status'>;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
 type ToolCallContentPart = AgentPersistedMessageContentPart & {
@@ -21,6 +21,7 @@ function textMessageDto(
 	id: string,
 	role: AgentPersistedMessageDto['role'],
 	text: string | null,
+	executionId: string,
 ): AgentPersistedMessageDto | null {
 	if (!text) return null;
 	const contentPart = textPart(text);
@@ -30,6 +31,7 @@ function textMessageDto(
 		id,
 		role,
 		content: [contentPart],
+		executionId,
 	};
 }
 
@@ -124,6 +126,14 @@ function assistantContentFromExecution(
 			if (!part) continue;
 
 			content.push(part);
+		} else if (event.type === 'reasoning') {
+			if (!event.content.trim()) continue;
+			content.push({
+				type: 'reasoning',
+				text: event.content,
+				startTime: event.timestamp,
+				...(event.endTime !== undefined && { endTime: event.endTime }),
+			});
 		} else if (event.type === 'tool-call') {
 			content.push(timelineToolCallToPart(event));
 		}
@@ -135,7 +145,15 @@ function assistantContentFromExecution(
 export function executionToMessagesDto(execution: ExecutionTranscript): AgentPersistedMessageDto[] {
 	const messages: AgentPersistedMessageDto[] = [];
 
-	const userMessage = textMessageDto(`${execution.id}:user`, 'user', execution.userMessage);
+	// Message `id` stays `${execution.id}:role` for stable client keys. Turn
+	// scope for handoff/history is the explicit `executionId` field — do not
+	// make consumers parse it back out of `id`.
+	const userMessage = textMessageDto(
+		`${execution.id}:user`,
+		'user',
+		execution.userMessage,
+		execution.id,
+	);
 	if (userMessage) messages.push(userMessage);
 
 	const assistantContent = assistantContentFromExecution(execution);
@@ -144,6 +162,8 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 			id: `${execution.id}:assistant`,
 			role: 'assistant',
 			content: assistantContent,
+			executionId: execution.id,
+			...(execution.status ? { executionStatus: execution.status } : {}),
 		});
 	}
 

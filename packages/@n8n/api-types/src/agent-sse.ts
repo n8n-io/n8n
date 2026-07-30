@@ -29,11 +29,11 @@ import type { AgentPersistedMessageContentPart } from './agents';
 
 export interface ToolSuspendedPayload {
 	toolCallId: string;
-	/** Run id of the suspended turn; FE echoes this back on `POST /build/resume`. */
+	/** Run id of the suspended turn; FE echoes this back on `POST /:agentId/chat/:threadId/resume`. */
 	runId: string;
 	/** Also the discriminator on the wire (no separate interactionType field). */
 	toolName: string;
-	/** Shape determined by toolName via the corresponding Ask*InputSchema. */
+	/** The tool's suspend payload; shape determined by toolName via the shared interaction-contract suspend schemas (`agents/agent-interaction.schema.ts`). */
 	input: unknown;
 }
 
@@ -95,9 +95,14 @@ export type AgentSseEvent =
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
 	| { type: 'message'; message: AgentSseMessage }
-	| { type: 'code-delta'; delta: string }
-	| { type: 'config-updated' }
-	| { type: 'tool-updated' }
+	| {
+			/** A warning message from the MCP server when it fails to connect or initialize. */
+			type: 'warning';
+			message: string;
+			code?: string;
+			source?: 'mcp';
+			server?: string;
+	  }
 	| {
 			type: 'error';
 			message: string;
@@ -108,4 +113,4 @@ export type AgentSseEvent =
 			/** Backend-emitted ids of the missing config slots; only set when `errorCode` is `agent_misconfigured`. */
 			missing?: string[];
 	  }
-	| { type: 'done'; sessionId?: string };
+	| { type: 'done'; sessionId?: string; executionId?: string };

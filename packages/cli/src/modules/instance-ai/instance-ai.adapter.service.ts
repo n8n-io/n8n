@@ -39,7 +39,10 @@ import type {
 	CredentialHostInfo,
 	InstanceAiEvaluationConfigService,
 	EvaluationConfigSummary,
+	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
+	InstanceAiBuilderDelegate,
+	ModelConfig,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
@@ -85,7 +88,6 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
 import {
 	type ICredentialsDecrypted,
@@ -109,8 +111,11 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
+	UserError,
+	isTriggerNodeType,
 	jsonParse,
 	createRunExecutionData,
 	calculateWorkflowChecksum,
@@ -121,6 +126,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
+import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
@@ -267,6 +273,7 @@ export class InstanceAiAdapterService {
 		// Optional: absent only in package/test contexts constructed without DI.
 		// DI (by type, not position) always provides it in a running instance.
 		private readonly evaluationConfigService?: EvaluationConfigService,
+		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -290,6 +297,9 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
+			/** Host-resolved model for the run — fallback for utility LLM calls
+			 *  (simulation fixtures, destructiveness classification). */
+			modelId?: ModelConfig;
 		},
 	): InstanceAiContext {
 		const {
@@ -300,6 +310,7 @@ export class InstanceAiAdapterService {
 			credentialIdAllowlist,
 			agentId,
 			configEvalsEnabled,
+			modelId,
 		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
@@ -311,6 +322,7 @@ export class InstanceAiAdapterService {
 		return {
 			userId: user.id,
 			projectId,
+			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
@@ -331,19 +343,46 @@ export class InstanceAiAdapterService {
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
+			// Optional call for the same reason as addPostProcessor?.() above:
+			// adapter tests construct the service with placeholder deps.
+			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup?.(),
 			allowSendingParameterValues: this.allowSendingParameterValues,
 			...(builderDelegateAdapter && agentId && projectId
 				? { agentBuilderTarget: { agentId, projectId } }
 				: {}),
 			...(builderDelegateAdapter && projectId
 				? {
-						builderDelegate: builderDelegateAdapter.createDelegate(
-							user,
-							projectId,
-							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+						builderDelegate: this.withBuilderCreateTelemetry(
+							builderDelegateAdapter.createDelegate(
+								user,
+								projectId,
+								new AgentsCredentialProvider(this.credentialsService, projectId, user),
+							),
+							threadId,
 						),
 					}
 				: {}),
+		};
+	}
+
+	/** Mirror of the workflow-adapter telemetry: track agent creation via the
+	 *  builder sub-agent at the delegate boundary, only in a thread context. */
+	private withBuilderCreateTelemetry(
+		delegate: InstanceAiBuilderDelegate,
+		threadId: string | undefined,
+	): InstanceAiBuilderDelegate {
+		if (!threadId) return delegate;
+		return {
+			...delegate,
+			createAgent: async (name) => {
+				const created = await delegate.createAgent(name);
+				this.telemetry.track('Builder created agent', {
+					thread_id: threadId,
+					agent_id: created.agentId,
+					project_id: created.projectId,
+				});
+				return created;
+			},
 		};
 	}
 
@@ -359,7 +398,10 @@ export class InstanceAiAdapterService {
 		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
 		try {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
-		} catch {
+		} catch (error) {
+			this.logger.warn('Failed to resolve builder delegate adapter; agent building disabled', {
+				error: error instanceof Error ? error.message : String(error),
+			});
 			return null;
 		}
 	}
@@ -1094,6 +1136,14 @@ export class InstanceAiAdapterService {
 					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
 					: findTriggerNode(nodes);
 
+				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+
+				// Sever the listed edges on this run's ephemeral copy only — used by
+				// scripted wait-gate verification to keep each pass acyclic.
+				const connections = options?.omitConnections?.length
+					? omitWorkflowConnections(workflow.connections, options.omitConnections)
+					: workflow.connections;
+
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
 				// instance-wide or per-workflow save settings. Manual mode is gated by
@@ -1105,11 +1155,15 @@ export class InstanceAiAdapterService {
 						: ('manual' as WorkflowExecuteMode),
 					workflowData: {
 						...workflow,
+						connections,
 						settings: {
 							...workflow.settings,
 							saveManualExecutions: true,
 							saveDataSuccessExecution: 'all',
 							saveDataErrorExecution: 'all',
+							// Engine-side bound: checked between node executions, so it fires
+							// even when a fast pinned loop starves the timer-based cancel below.
+							executionTimeout: Math.ceil(timeoutMs / 1000),
 						},
 					},
 					userId: user.id,
@@ -1144,6 +1198,17 @@ export class InstanceAiAdapterService {
 					mockDataSources: pinDataPlan.mockDataSources,
 				};
 
+				// In queue mode the worker rebuilds the run from persisted `execution.data`,
+				// where top-level `runData.source` doesn't survive. Persist it in
+				// `manualData` so worker-side statistics can classify IAI runs.
+				if (runData.executionData) {
+					runData.executionData.manualData = {
+						...runData.executionData.manualData,
+						userId: user.id,
+						source: runData.source,
+					};
+				}
+
 				// When manual executions are offloaded to workers (queue mode), the worker
 				// rebuilds the run from the persisted `execution.data`. The adapter's manual
 				// run details otherwise live in transient top-level fields that don't survive
@@ -1164,6 +1229,7 @@ export class InstanceAiAdapterService {
 						manualData: {
 							userId: runData.userId,
 							triggerToStartFrom: runData.triggerToStartFrom,
+							source: runData.source,
 						},
 						executionData: null,
 					});
@@ -1204,8 +1270,8 @@ export class InstanceAiAdapterService {
 						}
 					};
 
-					// Wait for completion with timeout protection
-					const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+					// Wait for completion with timeout / abort protection
+					const abortSignal = options?.abortSignal;
 
 					if (activeExecutions.has(executionId)) {
 						let timeoutId: NodeJS.Timeout | undefined;
@@ -1215,28 +1281,60 @@ export class InstanceAiAdapterService {
 							}, timeoutMs);
 						});
 
+						let onAbort: (() => void) | undefined;
+						const abortPromise =
+							abortSignal === undefined
+								? undefined
+								: new Promise<never>((_, reject) => {
+										onAbort = () => {
+											const error = new Error(
+												typeof abortSignal.reason === 'string'
+													? abortSignal.reason
+													: 'This operation was aborted',
+											);
+											error.name = 'AbortError';
+											reject(error);
+										};
+										if (abortSignal.aborted) {
+											onAbort();
+											return;
+										}
+										abortSignal.addEventListener('abort', onAbort, { once: true });
+									});
+
 						try {
 							await Promise.race([
 								activeExecutions.getPostExecutePromise(executionId),
 								timeoutPromise,
+								...(abortPromise ? [abortPromise] : []),
 							]);
 							clearTimeout(timeoutId);
+							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
 						} catch (error) {
 							clearTimeout(timeoutId);
-							// On timeout, cancel the execution
-							if (error instanceof Error && error.message.includes('timed out')) {
+							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
+							const isTimeout = error instanceof Error && error.message.includes('timed out');
+							const isAbort =
+								error instanceof Error &&
+								(error.name === 'AbortError' || abortSignal?.aborted === true);
+							// On timeout or abort, cancel the execution with the matching reason
+							if (isTimeout || isAbort) {
 								try {
 									activeExecutions.stopExecution(
 										executionId,
-										new TimeoutExecutionCancelledError(executionId),
+										isAbort
+											? new ManualExecutionCancelledError(executionId)
+											: new TimeoutExecutionCancelledError(executionId),
 									);
 								} catch {
-									// Execution may have completed between timeout and cancel
+									// Execution may have completed between timeout/abort and cancel
 								}
 								const result = {
 									executionId,
 									status: 'error',
-									error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+									error: isAbort
+										? 'Execution was cancelled'
+										: `Execution timed out after ${timeoutMs}ms and was cancelled`,
 								} satisfies ExecutionResult;
 								await pruneVerificationPins();
 								trackBuilderExecutedWorkflow(result.status, result.error);
@@ -1655,7 +1753,7 @@ export class InstanceAiAdapterService {
 					const raw = await credentialsService.decrypt(credential, true);
 					const tokenData = raw.oauthTokenData;
 					if (tokenData && typeof tokenData === 'object') {
-						const { OauthService } = await import('@/oauth/oauth.service');
+						const { OauthService } = await import('@/oauth/oauth.service.js');
 						const identifier = OauthService.extractAccountIdentifier(
 							tokenData as Record<string, unknown>,
 						);
@@ -1700,7 +1798,7 @@ export class InstanceAiAdapterService {
 		evaluationConfigService: EvaluationConfigService,
 		user: User,
 	): InstanceAiEvaluationConfigService {
-		const { workflowFinderService } = this;
+		const { workflowFinderService, credentialsFinderService, llmJudgeProviderRegistry } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('evaluations');
 
 		const findWorkflow = async (
@@ -1714,6 +1812,17 @@ export class InstanceAiAdapterService {
 			return workflow;
 		};
 
+		// The judge `provider` is the chat-model node type, which the caller often
+		// doesn't know — but the credential they pick determines it (each credential
+		// type maps to exactly one provider). Fill any missing provider from the
+		// credential so the agent only needs to supply a credential + model.
+		const resolveProviders = async (input: UpsertEvaluationConfigInput) =>
+			await resolveMetricProviders(input, {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry,
+			});
+
 		return {
 			async list(workflowId) {
 				await findWorkflow(workflowId, 'workflow:read');
@@ -1725,26 +1834,33 @@ export class InstanceAiAdapterService {
 				const config = await evaluationConfigService.get(workflowId, configId);
 				return config ? evaluationConfigToSummary(config) : null;
 			},
+			async describe(workflowId, configId) {
+				await findWorkflow(workflowId, 'workflow:read');
+				const config = await evaluationConfigService.get(workflowId, configId);
+				return config ? evaluationConfigToDetail(config) : null;
+			},
 			async create(workflowId, input) {
 				assertNotReadOnly();
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
+				const resolved = await resolveProviders(input);
 				const config = await evaluationConfigService.create(
 					workflowId,
 					workflow,
 					user,
-					buildEvaluationConfigDto(input),
+					buildEvaluationConfigDto(resolved),
 				);
 				return evaluationConfigToSummary(config);
 			},
 			async update(workflowId, configId, input) {
 				assertNotReadOnly();
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
+				const resolved = await resolveProviders(input);
 				const config = await evaluationConfigService.update(
 					workflowId,
 					configId,
 					workflow,
 					user,
-					buildEvaluationConfigDto(input),
+					buildEvaluationConfigDto(resolved),
 				);
 				return evaluationConfigToSummary(config);
 			},
@@ -2051,7 +2167,7 @@ export class InstanceAiAdapterService {
 		let searchResolved = false;
 		const lazySearch: InstanceAiWebResearchService['search'] = async (query, options) => {
 			if (!searchResolved) {
-				const config = await settingsService.resolveSearchConfig(user);
+				const config = await settingsService.resolveSearchConfig();
 				resolvedSearchMethod = this.buildSearchMethod(
 					config.braveApiKey ?? '',
 					config.searxngUrl ?? '',
@@ -2074,6 +2190,7 @@ export class InstanceAiAdapterService {
 					maxContentLength?: number;
 					maxResponseBytes?: number;
 					timeoutMs?: number;
+					abortSignal?: AbortSignal;
 					authorizeUrl?: (targetUrl: string) => Promise<void>;
 				},
 			) {
@@ -2108,6 +2225,7 @@ export class InstanceAiAdapterService {
 					maxContentLength: options?.maxContentLength,
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
+					abortSignal: options?.abortSignal,
 					transport,
 				});
 
@@ -2139,16 +2257,21 @@ export class InstanceAiAdapterService {
 			maxResults?: number;
 			includeDomains?: string[];
 			excludeDomains?: string[];
+			abortSignal?: AbortSignal;
 		};
 
 		const keyPrefix = userId ? `${userId}:` : '';
+		const searchCacheKey = (query: string, options?: SearchOptions) => {
+			const { abortSignal: _abortSignal, ...cacheable } = options ?? {};
+			return `${keyPrefix}${JSON.stringify([query, cacheable])}`;
+		};
 
 		// When the AI service proxy is enabled (licensed instance), search always goes
 		// through the proxy which provides managed Brave Search with credit tracking.
 		// This intentionally takes priority over local SearXNG or API key configuration.
 		if (searchProxyConfig) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -2163,7 +2286,7 @@ export class InstanceAiAdapterService {
 
 		if (apiKey) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -2175,7 +2298,7 @@ export class InstanceAiAdapterService {
 
 		if (searxngUrl) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -2832,6 +2955,53 @@ export type ResolveDataTableResult =
 	| { kind: 'miss' }
 	| { kind: 'ambiguous'; candidates: DataTableRecord[] };
 
+interface ResolveMetricProvidersDeps {
+	user: User;
+	credentialsFinderService: CredentialsFinderService;
+	llmJudgeProviderRegistry?: LlmJudgeProviderRegistry;
+}
+
+/**
+ * Fill each metric's `provider` (the chat-model node type) from its credential
+ * when the caller didn't supply one. Each credential type maps to exactly one
+ * provider, so the agent only needs to pass a credential id + model. Metrics
+ * that already carry a provider are left untouched.
+ */
+export async function resolveMetricProviders(
+	input: UpsertEvaluationConfigInput,
+	deps: ResolveMetricProvidersDeps,
+): Promise<UpsertEvaluationConfigInput> {
+	const { user, credentialsFinderService, llmJudgeProviderRegistry } = deps;
+	const metrics = await Promise.all(
+		input.metrics.map(async (metric) => {
+			if (metric.provider) return metric;
+			if (!llmJudgeProviderRegistry) {
+				throw new UnexpectedError(
+					'Cannot derive the judge provider: provider registry is unavailable.',
+				);
+			}
+			const credential = await credentialsFinderService.findCredentialForUser(
+				metric.credentialId,
+				user,
+				['credential:read'],
+			);
+			if (!credential) {
+				throw new UserError(
+					`Credential "${metric.credentialId}" for metric "${metric.name}" was not found or is not accessible.`,
+				);
+			}
+			const provider = llmJudgeProviderRegistry.getByCredentialType(credential.type);
+			if (!provider) {
+				throw new UserError(
+					`Credential type "${credential.type}" for metric "${metric.name}" is not a supported LLM judge provider.`,
+				);
+			}
+			return { ...metric, provider: provider.nodeType };
+		}),
+	);
+	return { ...input, metrics };
+}
+
 /**
  * Map the tool's focused LLM-judge input onto the full evaluation-config DTO,
  * validating it against the api-types schema before it reaches the service.
@@ -2883,6 +3053,28 @@ export function evaluationConfigToSummary(config: EvaluationConfig): EvaluationC
 			name: metric.name,
 			type: metric.type,
 		})),
+		datasetSource: config.datasetSource,
+		...(dataTableId !== undefined ? { dataTableId } : {}),
+	};
+}
+
+/** Like {@link evaluationConfigToSummary} but keeps the full metric bodies
+ *  (expression strings, judge model, prompt) so the agent can read a config
+ *  before an `update` replaces it wholesale. */
+export function evaluationConfigToDetail(config: EvaluationConfig): EvaluationConfigDetail {
+	const dataTableId =
+		config.datasetSource === 'data_table' && 'dataTableId' in config.datasetRef
+			? config.datasetRef.dataTableId
+			: undefined;
+	return {
+		id: config.id,
+		workflowId: config.workflowId,
+		name: config.name,
+		status: config.status,
+		invalidReason: config.invalidReason,
+		startNodeName: config.startNodeName,
+		endNodeName: config.endNodeName,
+		metrics: config.metrics,
 		datasetSource: config.datasetSource,
 		...(dataTableId !== undefined ? { dataTableId } : {}),
 	};
@@ -3263,16 +3455,36 @@ const KNOWN_TRIGGER_TYPES = new Set([
 	SCHEDULE_TRIGGER_NODE_TYPE,
 ]);
 
-/** Find the trigger node: known types first, then fall back to naive string matching. */
+/**
+ * Find the trigger node: known types first (priority among multiple triggers),
+ * then the canonical n8n-workflow detection — the same detection the
+ * instance-ai simulation planner uses, so a trigger the planner simulates
+ * (e.g. suffix-less cron/emailReadImap) is always found here too.
+ */
 function findTriggerNode(nodes: INode[]): INode | undefined {
-	// Prefer known trigger types
 	const known = nodes.find((n) => KNOWN_TRIGGER_TYPES.has(n.type));
 	if (known) return known;
 
-	// Fall back to any node with "Trigger" or "webhook" in its type
-	return nodes.find(
-		(n) => n.type.includes('Trigger') || n.type.includes('trigger') || n.type.includes('webhook'),
-	);
+	return nodes.find((n) => isTriggerNodeType(n.type));
+}
+
+/** Copy of `connections` minus every listed source→target edge (any type). */
+function omitWorkflowConnections(
+	connections: IConnections,
+	omit: Array<{ source: string; target: string }>,
+): IConnections {
+	const omitted = new Set(omit.map((edge) => `${edge.source}→${edge.target}`));
+	const result: IConnections = {};
+	for (const [source, byType] of Object.entries(connections)) {
+		const nextByType: IConnections[string] = {};
+		for (const [type, groups] of Object.entries(byType)) {
+			nextByType[type] = (groups ?? []).map((group) =>
+				group ? group.filter((connection) => !omitted.has(`${source}→${connection.node}`)) : group,
+			);
+		}
+		result[source] = nextByType;
+	}
+	return result;
 }
 
 /** Get the execution mode based on the trigger node type. */

@@ -1,7 +1,6 @@
 import type { TagEntity, ITagWithCountDb } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, QueryFailedError } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
@@ -102,10 +101,38 @@ export class TagService {
 		}) as Promise<GetAllResult<T>>);
 	}
 
+	async getPaginated({ offset, limit }: { offset: number; limit: number }): Promise<{
+		data: TagEntity[];
+		count: number;
+	}> {
+		const [data, count] = await this.tagRepository.findAndCount({
+			skip: offset,
+			take: limit,
+			select: ['id', 'name', 'createdAt', 'updatedAt'],
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+		return { data, count };
+	}
+
 	async getById(id: string) {
 		return await this.tagRepository.findOneOrFail({
 			where: { id },
 		});
+	}
+
+	async getByIds(ids: string[]): Promise<TagEntity[]> {
+		if (ids.length === 0) return [];
+		return await this.tagRepository.findMany(ids);
+	}
+
+	/**
+	 * Exact (case-sensitive) name lookup. Unlike `findByNames`, the input list
+	 * is passed through verbatim: case-variant names are distinct tags and must
+	 * all be looked up.
+	 */
+	async getByNames(names: string[]): Promise<TagEntity[]> {
+		if (names.length === 0) return [];
+		return await this.tagRepository.findManyByName(names);
 	}
 
 	/**

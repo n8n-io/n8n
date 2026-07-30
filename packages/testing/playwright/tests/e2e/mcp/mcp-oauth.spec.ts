@@ -459,6 +459,83 @@ test.describe(
 				});
 				expect(mcpResponse.status()).toBeLessThan(300);
 			});
+
+			test('should only expose read tools when the user grants read-only scopes', async ({
+				n8n,
+				api,
+			}) => {
+				const redirectUri = `http://localhost/${CALLBACK_PATH}`;
+				const pkce = api.mcpOauth.createPkcePair();
+
+				const client = await api.mcpOauth.registerClientOrFail({
+					client_name: `e2e read-only client ${nanoid(8)}`,
+					redirect_uris: [redirectUri],
+					grant_types: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_method: 'none',
+				});
+
+				await n8n.page.route(`**/${CALLBACK_PATH}*`, async (route) => {
+					await route.fulfill({
+						status: 200,
+						contentType: 'text/html',
+						body: '<html><body>OAuth callback received</body></html>',
+					});
+				});
+
+				await n8n.oauthConsent.goto(
+					api.mcpOauth.buildAuthorizeUrl({
+						clientId: client.client_id,
+						redirectUri,
+						challenge: pkce.challenge,
+					}),
+				);
+
+				await expect(n8n.oauthConsent.getScopesSelector()).toBeVisible();
+				await n8n.oauthConsent.selectReadOnlyScopes();
+				await n8n.oauthConsent.allow();
+				await n8n.page.waitForURL(`**/${CALLBACK_PATH}*`);
+
+				const code = new URL(n8n.page.url()).searchParams.get('code');
+				const tokens = await api.mcpOauth.exchangeAuthorizationCodeOrFail({
+					code: code!,
+					clientId: client.client_id,
+					codeVerifier: pkce.verifier,
+					redirectUri,
+				});
+
+				// The token response echoes the granted (read-only) scopes
+				expect(tokens.scope).toContain('workflow:read');
+				expect(tokens.scope).not.toContain('workflow:write');
+
+				// tools/list only exposes tools covered by the read scopes
+				const listResponse = await api.mcp.internalMcpSendMessageNoAuth(
+					api.mcp.createMessage('tools/list'),
+					{ Authorization: `Bearer ${tokens.access_token}` },
+				);
+				const { tools } = await api.mcp.parseResponse<{ tools: Array<{ name: string }> }>(
+					listResponse,
+				);
+				const toolNames = tools.map((tool) => tool.name);
+				expect(toolNames).toContain('search_workflows');
+				expect(toolNames).not.toContain('execute_workflow');
+				expect(toolNames).not.toContain('create_data_table');
+				expect(toolNames).not.toContain('publish_workflow');
+
+				// Calling a write tool is rejected because it is not registered
+				const callResponse = await api.mcp.internalMcpSendMessageNoAuth(
+					api.mcp.createMessage('tools/call', {
+						name: 'create_data_table',
+						arguments: { name: `e2e table ${nanoid(8)}`, columns: [] },
+					}),
+					{ Authorization: `Bearer ${tokens.access_token}` },
+				);
+				const callResult = await api.mcp.parseResponse<{
+					isError?: boolean;
+					content: Array<{ text: string }>;
+				}>(callResponse);
+				expect(callResult.isError).toBe(true);
+				expect(callResult.content[0].text).toContain('Tool create_data_table not found');
+			});
 		});
 	},
 );

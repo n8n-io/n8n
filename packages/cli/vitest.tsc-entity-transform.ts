@@ -1,5 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
+// tsgo (typescript 7) ships no programmatic API, so this LanguageService-based
+// transform needs the real JS compiler. Under the `typescript-tooling` catalog
+// `typescript` resolves to the TS6 API (while `tsc` stays tsgo via @typescript/native).
 import ts from 'typescript';
 import type { Plugin } from 'vite';
 

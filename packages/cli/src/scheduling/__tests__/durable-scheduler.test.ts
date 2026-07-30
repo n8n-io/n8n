@@ -9,10 +9,12 @@ import { mock } from 'vitest-mock-extended';
 import type { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { DurableScheduler } from '../durable-scheduler';
+import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-node/poll-trigger-task';
+import type { PollTriggerTaskHandler } from '../poll-trigger-node/poll-trigger-task-handler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
 
-// Keep the real exports (e.g. executorLookaheadSeconds) so the wiring is tested
+// Keep the real exports (e.g. pollLookaheadSeconds) so the wiring is tested
 // against the actual formula; only the scheduler factory is stubbed.
 vi.mock('@n8n/scheduler', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/scheduler')>()),
@@ -20,30 +22,53 @@ vi.mock('@n8n/scheduler', async (importOriginal) => ({
 }));
 
 describe('DurableScheduler', () => {
-	function makeScheduler({ enabled = true, instanceType = 'main', dbType = 'sqlite' } = {}) {
+	function makeScheduler({
+		enabled = true,
+		instanceType = 'main',
+		dbType = 'sqlite',
+		materializationIntervalSeconds = 10,
+		minIntervalSeconds = 0,
+		executorIntervalSeconds = 5,
+		materializationWindowSeconds = 60,
+		misfireGraceSeconds = 60,
+	} = {}) {
 		const inner = mock<Scheduler & SchedulerPasses>();
 		vi.mocked(createScheduler).mockReturnValue(inner);
 		const logger = mockLogger();
 		const scheduleTriggerTaskHandler = mock<ScheduleTriggerTaskHandler>({
 			taskType: SCHEDULE_TRIGGER_TASK_TYPE,
 		});
+		const pollTriggerTaskHandler = mock<PollTriggerTaskHandler>({
+			taskType: POLL_TRIGGER_TASK_TYPE,
+		});
 		const tracing = mock<Tracing>();
+		const tasks = mock<ScheduledTaskRepository>();
+		tasks.readDbTime.mockResolvedValue(new Date());
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
 			mock<ScheduledJobRepository>(),
-			mock<ScheduledTaskRepository>(),
+			tasks,
 			mock<InstanceSettings>({ instanceType: instanceType as 'main' | 'worker' | 'webhook' }),
 			mock<GlobalConfig>({
 				generic: { timezone: 'UTC' },
 				database: { type: dbType as 'sqlite' | 'postgresdb' },
-				scheduler: { enabled, executorIntervalSeconds: 5, jitterRatio: 0.1 },
+				scheduler: {
+					enabled,
+					executorIntervalSeconds,
+					jitterRatio: 0.1,
+					materializationIntervalSeconds,
+					minIntervalSeconds,
+					materializationWindowSeconds,
+					misfireGraceSeconds,
+				},
 			}),
 			tracing,
 			scheduleTriggerTaskHandler,
+			pollTriggerTaskHandler,
 			mock<PrometheusSchedulerMetricsService>(),
 		);
-		return { scheduler, inner, logger, tracing };
+		return { scheduler, inner, logger, tracing, tasks };
 	}
 
 	describe('composition', () => {
@@ -69,6 +94,74 @@ describe('DurableScheduler', () => {
 
 			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
 			expect(deps?.lifecycle?.concurrencyMode).toBe('sequential');
+		});
+	});
+
+	describe('drain rate warning', () => {
+		it('warns when a pass cannot drain the fastest possible schedule before the next one is due', () => {
+			// maxPerJob is 1000: a schedule as fast as this instance allows (the default
+			// floor of one second) can outrun a 1001s materialization interval.
+			const { logger } = makeScheduler({ materializationIntervalSeconds: 1001 });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.objectContaining({ materializationIntervalSeconds: 1001 }),
+			);
+		});
+
+		it('does not warn at the default materialization interval', () => {
+			const { logger } = makeScheduler();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.anything(),
+			);
+		});
+
+		it('scales the threshold by an operator-configured minimum interval floor', () => {
+			// A 60s floor makes 1001s safe again: even the fastest schedule now
+			// produces at most one occurrence per 60s, well within maxPerJob's reach.
+			const { logger } = makeScheduler({
+				materializationIntervalSeconds: 1001,
+				minIntervalSeconds: 60,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('misfire grace warning', () => {
+		it('warns when the grace is at or below the executor interval', () => {
+			const { logger } = makeScheduler({ misfireGraceSeconds: 5, executorIntervalSeconds: 5 });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('executor interval'),
+				expect.objectContaining({ misfireGraceSeconds: 5, executorIntervalSeconds: 5 }),
+			);
+		});
+
+		it('warns when the grace is below the materialization window', () => {
+			const { logger } = makeScheduler({
+				misfireGraceSeconds: 30,
+				materializationWindowSeconds: 60,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('materialization window'),
+				expect.objectContaining({ misfireGraceSeconds: 30, materializationWindowSeconds: 60 }),
+			);
+		});
+
+		it('does not warn at the default grace', () => {
+			const { logger } = makeScheduler();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('misfire grace'),
+				expect.anything(),
+			);
 		});
 	});
 
@@ -108,6 +201,19 @@ describe('DurableScheduler', () => {
 
 			expect(inner.registerTaskHandler).toHaveBeenCalledWith('some-task', handler);
 		});
+
+		it('registers the schedule- and poll-trigger handlers at construction', () => {
+			const { inner } = makeScheduler();
+
+			expect(inner.registerTaskHandler).toHaveBeenCalledWith(
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				expect.objectContaining({ taskType: SCHEDULE_TRIGGER_TASK_TYPE }),
+			);
+			expect(inner.registerTaskHandler).toHaveBeenCalledWith(
+				POLL_TRIGGER_TASK_TYPE,
+				expect.objectContaining({ taskType: POLL_TRIGGER_TASK_TYPE }),
+			);
+		});
 	});
 
 	describe('start', () => {
@@ -133,6 +239,17 @@ describe('DurableScheduler', () => {
 			scheduler.start();
 
 			expect(inner.start).not.toHaveBeenCalled();
+		});
+
+		// The skew detection itself lives in the scheduler package (behind the event
+		// sink); the host only supplies the clock read, which here is the database.
+		it('wires the coordination clock reader to the repository', async () => {
+			const { tasks } = makeScheduler();
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+
+			await deps?.now?.();
+
+			expect(tasks.readDbTime).toHaveBeenCalledTimes(1);
 		});
 	});
 

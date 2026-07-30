@@ -22,9 +22,7 @@ import {
 	PROJECT_ADMIN_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
@@ -67,6 +65,7 @@ class ProjectNotFoundError extends NotFoundError {
 export interface ProjectCreateOverrides {
 	id?: string;
 	description?: string | null;
+	customTelemetryTags?: Array<{ key: string; value: string }>;
 }
 
 @Service()
@@ -84,49 +83,55 @@ export class ProjectService {
 	) {}
 
 	private get workflowService() {
-		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
+		return import('@/workflows/workflow.service.js').then(({ WorkflowService }) =>
 			Container.get(WorkflowService),
 		);
 	}
 
 	private get credentialsService() {
-		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
+		return import('@/credentials/credentials.service.js').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
 		);
 	}
 
 	private get folderService() {
-		return import('@/services/folder.service').then(({ FolderService }) =>
+		return import('@/services/folder.service.js').then(({ FolderService }) =>
 			Container.get(FolderService),
 		);
 	}
 
 	private get dataTableService() {
-		return import('@/modules/data-table/data-table.service').then(({ DataTableService }) =>
+		return import('@/modules/data-table/data-table.service.js').then(({ DataTableService }) =>
 			Container.get(DataTableService),
 		);
 	}
 
 	private get secretsProvidersConnectionsService() {
-		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee').then(
+		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee.js').then(
 			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
 		);
 	}
 
 	private get agentRepository() {
-		return import('@/modules/agents/repositories/agent.repository').then(({ AgentRepository }) =>
+		return import('@/modules/agents/repositories/agent.repository.js').then(({ AgentRepository }) =>
 			Container.get(AgentRepository),
 		);
 	}
 
 	private get agentKnowledgeService() {
-		return import('@/modules/agents/agent-knowledge.service').then(({ AgentKnowledgeService }) =>
+		return import('@/modules/agents/agent-knowledge.service.js').then(({ AgentKnowledgeService }) =>
 			Container.get(AgentKnowledgeService),
 		);
 	}
 
+	private get agentExecutionService() {
+		return import('@/modules/agents/agent-execution.service.js').then(({ AgentExecutionService }) =>
+			Container.get(AgentExecutionService),
+		);
+	}
+
 	private get connectionStatusProxy() {
-		return import('@/credentials/credential-connection-status-proxy').then(
+		return import('@/credentials/credential-connection-status-proxy.js').then(
 			({ CredentialConnectionStatusProxy }) => Container.get(CredentialConnectionStatusProxy),
 		);
 	}
@@ -234,9 +239,10 @@ export class ProjectService {
 
 		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
 		if (this.moduleRegistry.isActive('agents')) {
-			const [agentRepository, agentKnowledgeService] = await Promise.all([
+			const [agentRepository, agentKnowledgeService, agentExecutionService] = await Promise.all([
 				this.agentRepository,
 				this.agentKnowledgeService,
+				this.agentExecutionService,
 			]);
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
@@ -251,6 +257,7 @@ export class ProjectService {
 				}
 
 				await agentKnowledgeService.destroySandbox(project.id, agent.id);
+				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
 			}
 		}
 

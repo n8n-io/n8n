@@ -536,6 +536,18 @@ describe('instanceAi.reducer', () => {
 			expect(state.messages[0].agentTree!.error).toContain('root fallback');
 		});
 
+		test('propagates a structured error code into errorDetails', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { content: 'Have reached end of quota', code: 'quota_exhausted' },
+			});
+
+			expect(state.messages[0].agentTree!.errorDetails?.code).toBe('quota_exhausted');
+		});
+
 		test('falls back to msg.content when no agentTree', () => {
 			const state = makeState({
 				messages: [

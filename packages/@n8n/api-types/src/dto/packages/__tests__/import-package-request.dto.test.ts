@@ -1,4 +1,7 @@
-import { ImportPackageRequestDto } from '../import-package-request.dto';
+import {
+	ImportPackageRequestDto,
+	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+} from '../import-package-request.dto';
 
 describe('ImportPackageRequestDto', () => {
 	it('accepts omitted routing fields and defaults credential modes', () => {
@@ -11,8 +14,15 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
+				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingMode: 'do-nothing',
+				tagMissingMode: 'create',
+				tagConflictPolicy: 'skip',
 			});
 		}
 	});
@@ -31,8 +41,15 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
+				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingMode: 'do-nothing',
+				tagMissingMode: 'create',
+				tagConflictPolicy: 'skip',
 			});
 		}
 	});
@@ -53,8 +70,15 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'new-version',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
+				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingMode: 'do-nothing',
+				tagMissingMode: 'create',
+				tagConflictPolicy: 'skip',
 			});
 		}
 	});
@@ -74,8 +98,15 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'skip',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
+				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingMode: 'do-nothing',
+				tagMissingMode: 'create',
+				tagConflictPolicy: 'skip',
 			});
 		}
 	});
@@ -107,6 +138,61 @@ describe('ImportPackageRequestDto', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
 				credentialMissingMode: 'auto-create',
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
+	it.each(['create', 'must-preexist', 'do-nothing'] as const)(
+		'accepts %s as a dataTableMissingMode value',
+		(dataTableMissingMode) => {
+			const result = ImportPackageRequestDto.safeParse({
+				dataTableMissingMode,
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.dataTableMissingMode).toBe(dataTableMissingMode);
+			}
+		},
+	);
+
+	it('rejects unsupported dataTableMissingMode values', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				dataTableMissingMode: 'recreate',
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
+	it('rejects unsupported dataTableMatchingMode values', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				dataTableMatchingMode: 'by-name',
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
+	it.each(['keep-existing', 'fail'] as const)(
+		'accepts %s as a dataTableSchemaConflictPolicy value',
+		(dataTableSchemaConflictPolicy) => {
+			const result = ImportPackageRequestDto.safeParse({
+				dataTableSchemaConflictPolicy,
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.dataTableSchemaConflictPolicy).toBe(dataTableSchemaConflictPolicy);
+			}
+		},
+	);
+
+	it('rejects unsupported dataTableSchemaConflictPolicy values', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				dataTableSchemaConflictPolicy: 'merge',
 				workflowConflictPolicy: 'fail',
 			}).success,
 		).toBe(false);
@@ -171,16 +257,20 @@ describe('ImportPackageRequestDto', () => {
 		}
 	});
 
-	it('rejects omitted workflowConflictPolicy', () => {
-		expect(ImportPackageRequestDto.safeParse({}).success).toBe(false);
+	it('defaults workflowConflictPolicy to "new-version" when omitted', () => {
+		const result = ImportPackageRequestDto.safeParse({});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.workflowConflictPolicy).toBe('new-version');
+		}
 	});
 
 	describe('workflowIdPolicy', () => {
-		it('defaults to "new" when omitted', () => {
+		it('defaults to "source" when omitted', () => {
 			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.workflowIdPolicy).toBe('new');
+				expect(result.data.workflowIdPolicy).toBe('source');
 			}
 		});
 
@@ -205,11 +295,261 @@ describe('ImportPackageRequestDto', () => {
 		});
 	});
 
+	describe('missingNodeTypeMode', () => {
+		it('defaults to "fail" when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.missingNodeTypeMode).toBe('fail');
+			}
+		});
+
+		it('accepts "import-anyway"', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				workflowConflictPolicy: 'fail',
+				missingNodeTypeMode: 'import-anyway',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.missingNodeTypeMode).toBe('import-anyway');
+			}
+		});
+
+		it('rejects unsupported missingNodeTypeMode values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					workflowConflictPolicy: 'fail',
+					missingNodeTypeMode: 'skip',
+				}).success,
+			).toBe(false);
+		});
+
+		it('is accepted as a multipart form field', () => {
+			expect(IMPORT_PACKAGE_REQUEST_FORM_FIELDS).toContain('missingNodeTypeMode');
+		});
+	});
+
 	it.each([
 		{ name: 'non-string projectId', request: { projectId: 1, workflowConflictPolicy: 'fail' } },
 		{ name: 'non-string folderId', request: { folderId: false, workflowConflictPolicy: 'fail' } },
 		{ name: 'unknown workflowConflictPolicy', request: { workflowConflictPolicy: 'overwrite' } },
 	])('rejects $name', ({ request }) => {
 		expect(ImportPackageRequestDto.safeParse(request).success).toBe(false);
+	});
+
+	describe('blank enum fields fall back to their defaults', () => {
+		it('treats an empty-string credentialMatchingMode as unset and defaults it', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				credentialMatchingMode: '',
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialMatchingMode).toBe('id-only');
+			}
+		});
+
+		it('treats a whitespace-only credentialMatchingMode as unset and defaults it', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				credentialMatchingMode: '   ',
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialMatchingMode).toBe('id-only');
+			}
+		});
+
+		it('defaults credentialMatchingMode when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialMatchingMode).toBe('id-only');
+			}
+		});
+
+		it('preserves an explicit credentialMatchingMode value', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				credentialMatchingMode: 'type-only',
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialMatchingMode).toBe('type-only');
+			}
+		});
+
+		it('still rejects a non-empty invalid credentialMatchingMode value', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					credentialMatchingMode: 'fuzzy-match',
+					workflowConflictPolicy: 'fail',
+				}).success,
+			).toBe(false);
+		});
+
+		// Every optional enum field must treat a blank value as unset and fall back to its default.
+		it.each([
+			{ field: 'credentialMatchingMode', expected: 'id-only' },
+			{ field: 'credentialMissingMode', expected: 'create-stub' },
+			{ field: 'workflowConflictPolicy', expected: 'new-version' },
+			{ field: 'workflowPublishingPolicy', expected: 'preserve-published-state' },
+			{ field: 'workflowIdPolicy', expected: 'source' },
+			{ field: 'missingNodeTypeMode', expected: 'fail' },
+			{ field: 'folderConflictPolicy', expected: 'merge' },
+			{ field: 'dataTableMatchingMode', expected: 'by-id' },
+			{ field: 'dataTableMissingMode', expected: 'create' },
+			{ field: 'dataTableSchemaConflictPolicy', expected: 'keep-existing' },
+			{ field: 'variableMissingMode', expected: 'do-nothing' },
+			{ field: 'tagMissingMode', expected: 'create' },
+			{ field: 'tagConflictPolicy', expected: 'skip' },
+		] as const)('defaults $field when the value is an empty string', ({ field, expected }) => {
+			const result = ImportPackageRequestDto.safeParse({ [field]: '' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data[field]).toBe(expected);
+			}
+		});
+
+		it('still rejects a non-empty invalid value for a blank-coercing enum field', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({ workflowPublishingPolicy: 'not-a-policy' }).success,
+			).toBe(false);
+		});
+	});
+
+	describe('variableMissingMode', () => {
+		it('defaults variableMissingMode to do-nothing when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.variableMissingMode).toBe('do-nothing');
+			}
+		});
+
+		it.each(['do-nothing', 'must-preexist', 'create-stub'] as const)(
+			'accepts %s as a variableMissingMode value',
+			(variableMissingMode) => {
+				const result = ImportPackageRequestDto.safeParse({
+					variableMissingMode,
+					workflowConflictPolicy: 'fail',
+				});
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.data.variableMissingMode).toBe(variableMissingMode);
+				}
+			},
+		);
+
+		it('rejects unsupported variableMissingMode values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					variableMissingMode: 'invent-variables',
+					workflowConflictPolicy: 'fail',
+				}).success,
+			).toBe(false);
+		});
+	});
+
+	describe('tagMissingMode', () => {
+		it('defaults tagMissingMode to create when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.tagMissingMode).toBe('create');
+			}
+		});
+
+		it.each(['create', 'do-nothing'] as const)(
+			'accepts %s as a tagMissingMode value',
+			(tagMissingMode) => {
+				const result = ImportPackageRequestDto.safeParse({
+					tagMissingMode,
+					workflowConflictPolicy: 'fail',
+				});
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.data.tagMissingMode).toBe(tagMissingMode);
+				}
+			},
+		);
+
+		it('rejects unsupported tagMissingMode values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					tagMissingMode: 'must-preexist',
+					workflowConflictPolicy: 'fail',
+				}).success,
+			).toBe(false);
+		});
+	});
+
+	describe('tagConflictPolicy', () => {
+		it('defaults tagConflictPolicy to skip when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.tagConflictPolicy).toBe('skip');
+			}
+		});
+
+		it.each(['skip', 'fail', 'rename'] as const)(
+			'accepts %s as a tagConflictPolicy value',
+			(tagConflictPolicy) => {
+				const result = ImportPackageRequestDto.safeParse({
+					tagConflictPolicy,
+					workflowConflictPolicy: 'fail',
+				});
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.data.tagConflictPolicy).toBe(tagConflictPolicy);
+				}
+			},
+		);
+
+		it('rejects unsupported tagConflictPolicy values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					tagConflictPolicy: 'overwrite',
+					workflowConflictPolicy: 'fail',
+				}).success,
+			).toBe(false);
+		});
+	});
+
+	describe('variableParentPolicy', () => {
+		it.each([
+			{ workflowConflictPolicy: 'fail' },
+			{ workflowConflictPolicy: 'fail', variableParentPolicy: '  ' },
+		])('leaves variableParentPolicy undefined rather than defaulting it: %o', (input) => {
+			const result = ImportPackageRequestDto.safeParse(input);
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.variableParentPolicy).toBeUndefined();
+			}
+		});
+
+		it.each(['project', 'global'] as const)(
+			'accepts %s as a variableParentPolicy value',
+			(variableParentPolicy) => {
+				const result = ImportPackageRequestDto.safeParse({
+					variableParentPolicy,
+					workflowConflictPolicy: 'fail',
+				});
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.data.variableParentPolicy).toBe(variableParentPolicy);
+				}
+			},
+		);
+
+		it('rejects unsupported variableParentPolicy values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					variableParentPolicy: 'owner-project',
+					workflowConflictPolicy: 'fail',
+				}).success,
+			).toBe(false);
+		});
 	});
 });

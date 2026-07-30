@@ -16,7 +16,6 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 	'n8n-nodes-base.manualTrigger': 'manual',
 	'n8n-nodes-base.executeWorkflowTrigger': 'executeWorkflow',
 	'n8n-nodes-base.chatTrigger': 'chat',
-	'n8n-nodes-base.scheduleTrigger': 'schedule',
 	'n8n-nodes-base.formTrigger': 'form',
 };
 

@@ -45,6 +45,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import type {
@@ -183,6 +184,7 @@ export class JobProcessor {
 				retryOf: execution.retryOf,
 				pushRef,
 				userId: execution.data.manualData?.userId,
+				source: execution.data.manualData?.source,
 			},
 			executionId,
 		);
@@ -355,16 +357,23 @@ export class JobProcessor {
 
 			let toolResult: unknown;
 			try {
-				toolResult = await this.invokeTool(
+				// The execution's isolate window closed when the run finished, but the
+				// tool's parameters may still contain expressions (e.g. $fromAI), so
+				// the tool call needs its own isolate window.
+				toolResult = await withExpressionIsolate(
 					workflow,
-					sourceNodeName,
-					toolArgs,
-					additionalData,
-					run.data,
-					// The execution context (e.g. the OAuth identity for private credentials)
-					// is established on the main and loaded with the execution here; pass it
-					// through so the tool node can resolve dynamic credentials on the worker.
-					execution.data?.executionData?.runtimeData,
+					async () =>
+						await this.invokeTool(
+							workflow,
+							sourceNodeName,
+							toolArgs,
+							additionalData,
+							run.data,
+							// The execution context (e.g. the OAuth identity for private credentials)
+							// is established on the main and loaded with the execution here; pass it
+							// through so the tool node can resolve dynamic credentials on the worker.
+							execution.data?.executionData?.runtimeData,
+						),
 				);
 			} catch (error) {
 				this.logger.error('Tool node execution failed for MCP Trigger', {

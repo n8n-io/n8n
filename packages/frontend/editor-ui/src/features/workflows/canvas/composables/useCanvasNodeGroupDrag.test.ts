@@ -10,6 +10,7 @@ import {
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 const snapToGrid = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 
@@ -126,6 +127,41 @@ describe('useCanvasNodeGroupDrag', () => {
 		expect(moves).toEqual([
 			{ id: 'a', position: { x: 150, y: 180 } },
 			{ id: 'b', position: { x: 350, y: 180 } },
+		]);
+	});
+
+	it('moves a sticky member with the title bar like any other member', () => {
+		updateNodeMock.mockClear();
+		findNodeMock.mockReset();
+		const store = new Map<string, INodeUi>([
+			['a', makeStoredNode('a', 100, 200)],
+			[
+				'sticky',
+				{
+					...makeStoredNode('sticky', 60, 120),
+					type: STICKY_NODE_TYPE,
+					parameters: { width: 400, height: 300 },
+				} as INodeUi,
+			],
+		]);
+		const groups = [{ id: 'g1', nodeIds: ['a', 'sticky'] }];
+		const drag = useCanvasNodeGroupDrag({
+			getNodeById: (id) => store.get(id),
+			getGroupById: (id) => groups.find((g) => g.id === id),
+			getGroupForNode: (id) => groups.find((g) => g.nodeIds.includes(id)),
+			isNodeInGroup: (id) => groups.some((g) => g.nodeIds.includes(id)),
+		});
+
+		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
+		drag.onNodeDragStart(makeEvent(groupNode));
+		groupNode.position = { x: 50, y: -20 };
+		drag.onNodeDrag(makeEvent(groupNode));
+		expect(updateNodeMock).toHaveBeenCalledWith('sticky', { position: { x: 110, y: 100 } });
+
+		const moves = drag.processNodeDragStop(makeEvent(groupNode));
+		expect(moves).toEqual([
+			{ id: 'a', position: { x: 150, y: 180 } },
+			{ id: 'sticky', position: { x: 110, y: 100 } },
 		]);
 	});
 

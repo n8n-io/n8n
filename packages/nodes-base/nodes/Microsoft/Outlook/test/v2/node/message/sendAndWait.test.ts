@@ -64,7 +64,7 @@ describe('Test MicrosoftOutlookV2, message => sendAndWait', () => {
 		expect(transport.microsoftApiRequest).toHaveBeenCalledTimes(1);
 		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
 
-		expect(transport.microsoftApiRequest).toHaveBeenCalledWith('POST', '/sendMail', {
+		expect(transport.microsoftApiRequest).toHaveBeenCalledWith('POST', '/sendMail', 0, {
 			message: {
 				body: {
 					content: expect.stringContaining(

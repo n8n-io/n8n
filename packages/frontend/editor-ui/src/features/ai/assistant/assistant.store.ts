@@ -22,7 +22,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { ICredentialType, NodeError, INode } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';

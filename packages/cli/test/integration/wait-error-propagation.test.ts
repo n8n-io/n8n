@@ -161,7 +161,7 @@ describe('sub-workflow error propagation to parent after Wait resume', () => {
 		// changes the module evaluation order and trips a circular import — WorkflowRunner
 		// is still undefined when DI constructs WorkflowExecutionService, and
 		// `executeManually` then fails with "Cannot read properties of undefined (reading 'run')".
-		const { WaitTracker } = await import('@/wait-tracker');
+		const { WaitTracker } = await import('@/wait-tracker.js');
 		await Container.get(WaitTracker).startExecution(subExecution.id);
 
 		// The sub-workflow errors

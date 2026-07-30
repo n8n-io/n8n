@@ -8,8 +8,10 @@ import {
 	getLatestDeletedDataTableId,
 	getLatestWorkflowUpdateResult,
 	getLatestAgentArtifactResult,
+	getLatestAgentConfigMutation,
 	getExecutionResultsByWorkflow,
 	isAgentEditingWorkflow,
+	isAgentEditingAgent,
 } from '../canvasPreview.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -362,7 +364,7 @@ describe('getLatestAgentArtifactResult', () => {
 		const builderChild = makeAgentNode({
 			agentId: 'builder-child',
 			role: 'agent-builder',
-			kind: 'builder',
+			kind: 'agent-builder',
 			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'New Agent' },
 		});
 		const orchestrator = makeAgentNode({
@@ -407,6 +409,28 @@ describe('getLatestAgentArtifactResult', () => {
 		});
 	});
 
+	test('mutates on a failed turn that still updated the config', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-mutate-fail',
+					toolName: 'build-agent',
+					args: { message: 'add a skill' },
+					result: { ok: false, error: 'The agent builder run errored.', configUpdated: true },
+				}),
+			],
+		});
+
+		expect(
+			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
+		).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-mutate-fail',
+			kind: 'mutated',
+		});
+	});
+
 	test('returns undefined for a reply-only turn (ok but no name and no configUpdated)', () => {
 		const orchestrator = makeAgentNode({
 			toolCalls: [
@@ -437,6 +461,67 @@ describe('getLatestAgentArtifactResult', () => {
 		});
 
 		expect(getLatestAgentArtifactResult(orchestrator)).toBeUndefined();
+	});
+});
+
+describe('getLatestAgentConfigMutation', () => {
+	test('returns the latest stamped mutation with agentId and toolCallId', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-write',
+					toolName: 'write_config',
+					isLoading: false,
+					result: { ok: true, configMutated: true, agentId: 'agent-1' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-patch',
+					toolName: 'patch_config',
+					isLoading: false,
+					result: { ok: true, configMutated: true, agentId: 'agent-1' },
+				}),
+			],
+		});
+
+		expect(getLatestAgentConfigMutation(node)).toEqual({
+			agentId: 'agent-1',
+			toolCallId: 'tc-patch',
+		});
+	});
+
+	test('ignores loading calls and results without the configMutated marker', () => {
+		const inFlight = makeAgentNode({
+			toolCalls: [makeToolCall({ toolName: 'write_config', isLoading: true })],
+		});
+		expect(getLatestAgentConfigMutation(inFlight)).toBeUndefined();
+
+		const unstamped = makeAgentNode({
+			toolCalls: [
+				makeToolCall({ toolName: 'write_config', isLoading: false, result: { ok: true } }),
+				makeToolCall({ toolName: 'read_config', isLoading: false, result: { ok: true } }),
+			],
+		});
+		expect(getLatestAgentConfigMutation(unstamped)).toBeUndefined();
+	});
+
+	test('finds stamped mutations in nested children, most recent last', () => {
+		const nestedChild = makeAgentNode({
+			agentId: 'nested-child',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-nested',
+					toolName: 'patch_config',
+					isLoading: false,
+					result: { ok: true, configMutated: true, agentId: 'agent-1' },
+				}),
+			],
+		});
+		const parent = makeAgentNode({ children: [nestedChild] });
+
+		expect(getLatestAgentConfigMutation(parent)).toEqual({
+			agentId: 'agent-1',
+			toolCallId: 'tc-nested',
+		});
 	});
 });
 
@@ -1189,5 +1274,70 @@ describe('isAgentEditingWorkflow', () => {
 			],
 		});
 		expect(isAgentEditingWorkflow(node, 'wf-9')).toBe(true);
+	});
+});
+
+describe('isAgentEditingAgent', () => {
+	test('locks while an active agent-builder child targets the agent', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			kind: 'agent-builder',
+			status: 'active',
+			targetResource: { type: 'agent', id: 'agent-1' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(true);
+	});
+
+	test('does not lock once the agent-builder child has completed', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			kind: 'agent-builder',
+			status: 'completed',
+			targetResource: { type: 'agent', id: 'agent-1' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(false);
+	});
+
+	test('locks while an active agent run has a successful build-agent result for the agent', () => {
+		const node = makeAgentNode({
+			status: 'active',
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-agent',
+					args: { message: 'add a skill' },
+					result: { ok: true, configUpdated: true },
+				}),
+			],
+		});
+		expect(isAgentEditingAgent(node, 'agent-1')).toBe(true);
+	});
+
+	test('does not lock the same tree once the root node is no longer active', () => {
+		const node = makeAgentNode({
+			status: 'completed',
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-agent',
+					args: { message: 'add a skill' },
+					result: { ok: true, configUpdated: true },
+				}),
+			],
+		});
+		expect(isAgentEditingAgent(node, 'agent-1')).toBe(false);
+	});
+
+	test('does not lock when the active builder targets a different agent id', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			kind: 'agent-builder',
+			status: 'active',
+			targetResource: { type: 'agent', id: 'agent-other' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(false);
 	});
 });

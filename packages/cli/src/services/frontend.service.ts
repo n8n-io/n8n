@@ -146,7 +146,7 @@ export class FrontendService {
 		void this.generateTypes();
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
-			void import('@/modules/community-packages/community-packages.service').then(
+			void import('@/modules/community-packages/community-packages.service.js').then(
 				({ CommunityPackagesService }) => {
 					this.communityPackagesService = Container.get(CommunityPackagesService);
 				},
@@ -409,6 +409,22 @@ export class FrontendService {
 			},
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
+				postMessageAllowedOrigins: this.securityConfig.postMessageAllowedOrigins
+					.split(',')
+					.map((origin) => origin.trim())
+					.filter((origin) => origin !== '')
+					// Normalize to a serialized origin (lowercase scheme/host, no trailing
+					// slash or default port) so config values match `MessageEvent.origin`.
+					// URLs with an opaque origin serialize to 'null', which would match any
+					// opaque-origin sender — keep the raw value for those instead.
+					.map((origin) => {
+						try {
+							const normalized = new URL(origin).origin;
+							return normalized === 'null' ? origin : normalized;
+						} catch {
+							return origin;
+						}
+					}),
 			},
 			chatTrigger: {
 				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,
@@ -419,6 +435,9 @@ export class FrontendService {
 			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
+				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
+				configEvalsEnabled: this.globalConfig.evaluation.configEvalsEnabled,
+				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,

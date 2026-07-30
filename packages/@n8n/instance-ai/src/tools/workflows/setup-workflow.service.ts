@@ -337,7 +337,7 @@ async function resolveCredentialState(
 	let isAutoApplied = false;
 	let autoAppliedGateway: true | undefined;
 
-	// Auto-apply n8n Connect only when the user has no credentials of their own
+	// Auto-apply n8n credits only when the user has no credentials of their own
 	// for this type: none assigned on the node (`hasExistingOnNode`) and none
 	// stored (`existingCredentials`). Any user-defined credential wins — we never
 	// override a saved key with the managed gateway.
@@ -355,7 +355,7 @@ async function resolveCredentialState(
 		}
 	}
 
-	// Fall back to auto-applying the sole stored credential when n8n Connect
+	// Fall back to auto-applying the sole stored credential when n8n credits
 	// is not available. With multiple candidates, picking the first is a
 	// silent guess — surface the list so the setup wizard can prompt.
 	if (!isAutoApplied) {

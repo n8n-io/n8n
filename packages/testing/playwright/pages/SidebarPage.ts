@@ -1,12 +1,8 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
-export class SidebarPage {
-	readonly page: Page;
+import { BasePage } from './BasePage';
 
-	constructor(page: Page) {
-		this.page = page;
-	}
-
+export class SidebarPage extends BasePage {
 	get container() {
 		return this.page.locator('#side-menu');
 	}
@@ -25,7 +21,7 @@ export class SidebarPage {
 	}
 
 	get visibleNavigationMenu() {
-		return this.page.locator('.el-popper:visible');
+		return this.getVisiblePopper();
 	}
 
 	getVisibleNavigationSubmenu(label: string): Locator {
@@ -45,10 +41,13 @@ export class SidebarPage {
 	}
 
 	async clickWorkflowsLink(): Promise<void> {
+		// Not scoped to `this.container` (#side-menu): after selecting a project these
+		// links render as project-header tabs in the main content area, outside the sidebar.
 		await this.page.getByRole('link', { name: 'Workflows' }).click();
 	}
 
 	async clickCredentialsLink(): Promise<void> {
+		// See clickWorkflowsLink: the link can live in the project header, not the sidebar.
 		await this.page.getByRole('link', { name: 'Credentials' }).click();
 	}
 

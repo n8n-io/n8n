@@ -1,15 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
-
-import { MicrosoftExcelSharePoint } from '../MicrosoftExcelSharePoint.node';
 import { MicrosoftExcel } from '../../Excel/MicrosoftExcel.node';
+import { MicrosoftExcelSharePoint } from '../MicrosoftExcelSharePoint.node';
 
-describe('MicrosoftExcelSharePoint (hidden shell)', () => {
+describe('MicrosoftExcelSharePoint', () => {
 	const node = new MicrosoftExcelSharePoint();
 
-	it('should be hidden from the nodes panel', () => {
+	it('should be visible in the nodes panel', () => {
 		// `hidden` is the flag the editor's visibleNodeTypes filters on
-		expect(node.description.hidden).toBe(true);
+		expect(node.description.hidden).toBeUndefined();
 	});
 
 	it('should not collide with the OneDrive Excel node', () => {
@@ -23,20 +20,26 @@ describe('MicrosoftExcelSharePoint (hidden shell)', () => {
 		expect(node.description.displayName).not.toBe(oneDriveNode.description.displayName);
 	});
 
-	it('should be a blank shell — no credentials, no properties', () => {
+	it('should be exposed as an AI tool', () => {
 		expect(node.description.version).toBe(1);
-		expect(node.description.properties).toHaveLength(0);
-		expect(node.description.credentials).toBeUndefined();
-		expect(node.description.usableAsTool).toBeUndefined();
+		expect(node.description.usableAsTool).toBe(true);
 	});
 
-	it('should pass input through unchanged when executed', async () => {
-		const ctx = mock<IExecuteFunctions>();
-		const items = [{ json: { a: 1 } }, { json: { b: 2 } }];
-		ctx.getInputData.mockReturnValue(items);
+	it('describes every operation for a model choosing between tools', () => {
+		const operationProperties = node.description.properties.filter(
+			(property) => property.name === 'operation',
+		);
 
-		const result = await node.execute.call(ctx);
-
-		expect(result).toEqual([items]);
+		expect(operationProperties.length).toBeGreaterThan(0);
+		for (const property of operationProperties) {
+			for (const option of property.options ?? []) {
+				if (!('value' in option)) continue;
+				expect(option.description, `operation ${String(option.value)}`).toMatch(/\w+/);
+				expect(
+					(option as { action?: string }).action,
+					`operation ${String(option.value)} action`,
+				).toMatch(/\w+/);
+			}
+		}
 	});
 });
