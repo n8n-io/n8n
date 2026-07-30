@@ -25,7 +25,7 @@ export class TagsPublicController {
 	@ApiSummary('Retrieve all tags')
 	@ApiDescription('Retrieve all tags from your instance.')
 	@ApiTags(['Tags'])
-	@ApiResponse(TagListPublicDto)
+	@ApiResponse(200, TagListPublicDto)
 	async getTags(
 		_req: AuthenticatedRequest,
 		_res: Response,

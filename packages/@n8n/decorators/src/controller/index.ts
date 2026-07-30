@@ -24,6 +24,7 @@ export type {
 	ResponseDtoClass,
 	RouteMetadata,
 	StaticRouterMetadata,
+	SuccessStatus,
 } from './types';
 export {
 	type RateLimiterLimits,

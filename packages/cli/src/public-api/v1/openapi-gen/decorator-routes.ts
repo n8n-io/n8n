@@ -160,7 +160,8 @@ function buildRequestBody(
 
 /**
  * Response set is derived from what `PublicApiControllerRegistry` actually does at runtime, not
- * invented: auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
+ * invented: the success status is the one `@ApiResponse` declares (and the same one the registry
+ * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
  * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
  * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`. Error
  * response *bodies* (schemas) stay hand-written $refs — generating those is out of scope for this
@@ -171,7 +172,7 @@ function buildResponses(
 	resolveSchema: SchemaResolver,
 ): RouteConfig['responses'] {
 	const responses: RouteConfig['responses'] = {
-		200: {
+		[route.successStatus]: {
 			description: 'Operation successful.',
 			...(route.responseDto && hasNamedSchema(route.responseDto)
 				? {

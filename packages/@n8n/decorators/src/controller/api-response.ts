@@ -1,28 +1,25 @@
 import { Container } from '@n8n/di';
 
 import { ControllerRegistryMetadata } from './controller-registry-metadata';
-import type { Controller, ResponseDtoClass } from './types';
+import type { Controller, ResponseDtoClass, SuccessStatus } from './types';
 
 /**
- * Declares the public output DTO for a route.
- *
- * PublicApiControllerRegistry `.parse()`s the handler return value through this
- * schema before sending, stripping undeclared/internal fields. The same schema
- * feeds the generated OpenAPI response.
- *
- * @example
- * ```ts
- * @Get('/')
- * @ApiResponse(TagListPublicDto)
- * async getTags() { ... }
- * ```
+ * Declares what a route returns on success: its HTTP status, and its public output DTO if it sends a
+ * body.
  */
-export const ApiResponse =
-	(dto: ResponseDtoClass): MethodDecorator =>
-	(target, handlerName) => {
+export function ApiResponse(
+	status: Exclude<SuccessStatus, 204>,
+	dto: ResponseDtoClass,
+): MethodDecorator;
+export function ApiResponse(status: SuccessStatus): MethodDecorator;
+export function ApiResponse(status: SuccessStatus, dto?: ResponseDtoClass): MethodDecorator {
+	return (target, handlerName) => {
 		const routeMetadata = Container.get(ControllerRegistryMetadata).getRouteMetadata(
 			target.constructor as Controller,
 			String(handlerName),
 		);
-		routeMetadata.responseDto = dto;
+
+		routeMetadata.successStatus = status;
+		if (dto !== undefined) routeMetadata.responseDto = dto;
 	};
+}
