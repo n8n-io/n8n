@@ -20,6 +20,8 @@
  * data before the normalizer falls back to a minimal envelope.
  */
 
+import { evalCanvasPng } from 'n8n-core';
+
 /** The subset of the mock response spec these normalizers read/mutate. */
 interface NormalizableSpec {
 	type: 'json' | 'text' | 'binary' | 'error';
@@ -33,10 +35,16 @@ export interface ProviderRequestInfo {
 	hostname?: string;
 }
 
-// A short, non-decodable base64 placeholder. The eval harness never decodes the
-// image bytes — it only needs `Buffer.from(b64_json, 'base64')` to receive a
-// string. Same literal the OpenAI quirk guidance suggests.
-const PLACEHOLDER_B64 = 'iVBORw0KGgo';
+// Generated image bytes must be REAL: workflows routinely pipe them into
+// image-processing nodes (Edit Image → GraphicsMagick), which crash on a
+// truncated or 1×1 placeholder ("Insufficient image data"). The model cannot
+// author valid image bytes, so every b64_json is substituted with a decodable
+// drawable canvas.
+let canvasPngB64: string | undefined;
+function placeholderImageB64(): string {
+	canvasPngB64 ??= evalCanvasPng().toString('base64');
+	return canvasPngB64;
+}
 
 // A deterministic numeric HubSpot contact id used when the model didn't supply
 // one — the node interpolates it into a follow-up `/contact/vid/{vid}/profile`
@@ -141,10 +149,10 @@ function normalizeOpenAiImages(spec: NormalizableSpec): void {
 }
 
 function coerceImageEntry(entry: unknown): Record<string, unknown> {
-	if (typeof entry === 'string') return { b64_json: entry };
-	if (!isPlainObject(entry)) return { b64_json: PLACEHOLDER_B64 };
-	if (typeof entry.b64_json === 'string' && entry.b64_json.length > 0) return entry;
-	return { ...entry, b64_json: PLACEHOLDER_B64 };
+	// Every entry gets real bytes (the node's default b64_json mode crashes on a
+	// missing field even when the model answered url-style); `url` is preserved.
+	const base = isPlainObject(entry) ? entry : {};
+	return { ...base, b64_json: placeholderImageB64() };
 }
 
 // ---------------------------------------------------------------------------

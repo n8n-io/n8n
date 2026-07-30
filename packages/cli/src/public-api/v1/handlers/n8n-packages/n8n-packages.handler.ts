@@ -211,6 +211,8 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,
 					variableMissingMode: payload.data.variableMissingMode,
 					variableParentPolicy: payload.data.variableParentPolicy,
+					tagMissingMode: payload.data.tagMissingMode,
+					tagConflictPolicy: payload.data.tagConflictPolicy,
 					packageBuffer: packageFile.buffer,
 				});
 				return res.status(200).json(result);

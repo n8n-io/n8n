@@ -467,6 +467,7 @@ describe('GlobalConfig', () => {
 			enabledForPollTriggers: false,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
+			misfireGraceSeconds: 60,
 		},
 		evaluation: {
 			collectionsEnabled: false,
