@@ -115,6 +115,62 @@ describe('TaskBroker', () => {
 		});
 	});
 
+	describe('unreachable runners', () => {
+		const offerFrom = (runnerId: string): TaskOffer => ({
+			offerId: `offer-${runnerId}`,
+			runnerId,
+			taskType: 'taskType1',
+			validFor: 1000,
+			validUntil: createValidUntil(1000),
+		});
+
+		const requestTaskFrom = (runnerId: string, isRunnerReachable: () => boolean) => {
+			const messageCallback = vi.fn();
+			taskBroker.registerRunner(
+				mock<TaskRunner>({ id: runnerId }),
+				messageCallback,
+				isRunnerReachable,
+			);
+			messageCallback.mockClear();
+			taskBroker.setPendingTaskOffers([offerFrom(runnerId)]);
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+			};
+
+			taskBroker.taskRequested(request);
+
+			return { request, messageCallback };
+		};
+
+		it('should not match an offer from a registered but unreachable runner', () => {
+			const { request, messageCallback } = requestTaskFrom('deadRunner', () => false);
+
+			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
+			expect(request.acceptInProgress).toBeUndefined();
+			expect(messageCallback).not.toHaveBeenCalled();
+		});
+
+		it('should still match an offer from a reachable runner', () => {
+			const { request, messageCallback } = requestTaskFrom('liveRunner', () => true);
+
+			expect(request.acceptInProgress).toBe(true);
+			expect(messageCallback).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'broker:taskofferaccept' }),
+			);
+		});
+
+		it('should keep offers from runners that are not registered', () => {
+			taskBroker.setPendingTaskOffers([offerFrom('unregisteredRunner')]);
+
+			taskBroker.settleTasks();
+
+			expect(taskBroker.getPendingTaskOffers()).toHaveLength(1);
+		});
+	});
+
 	describe('registerRequester', () => {
 		it('should add a requester to known requesters', () => {
 			const requesterId = 'requester1';

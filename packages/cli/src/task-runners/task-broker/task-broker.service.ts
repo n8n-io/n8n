@@ -61,11 +61,17 @@ type RequesterAcceptCallback = (
 ) => void;
 type TaskRejectCallback = (reason: TaskRejectError | TaskDeferredError) => void;
 
+export type RunnerReachabilityCheck = () => boolean;
+
 @Service()
 export class TaskBroker {
 	private knownRunners: Map<
 		TaskRunner['id'],
-		{ runner: TaskRunner; messageCallback: MessageCallback }
+		{
+			runner: TaskRunner;
+			messageCallback: MessageCallback;
+			isRunnerReachable: RunnerReachabilityCheck;
+		}
 	> = new Map();
 
 	private requesters: Map<string, RequesterMessageCallback> = new Map();
@@ -145,8 +151,29 @@ export class TaskBroker {
 		this.discardOffers((offer) => offer.runnerId === runnerId);
 	}
 
-	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
-		this.knownRunners.set(runner.id, { runner, messageCallback });
+	/**
+	 * Discards offers from runners that are registered but no longer reachable, as matching
+	 * one burns a task request on a runner that can never acknowledge it. Offers from
+	 * unregistered runners are kept, since deregistration already discards them.
+	 */
+	private discardOffersFromUnreachableRunners() {
+		this.discardOffers(
+			(offer) => this.knownRunners.get(offer.runnerId)?.isRunnerReachable() === false,
+		);
+	}
+
+	/**
+	 * Registers a runner as eligible for task offers. `isRunnerReachable` is consulted
+	 * before matching any of its offers, and defaults to always reachable. Registration
+	 * outlives reachability: a transport can die while messages it already buffered are
+	 * still being delivered, so offers can enter the pool after the runner is gone.
+	 */
+	registerRunner(
+		runner: TaskRunner,
+		messageCallback: MessageCallback,
+		isRunnerReachable: RunnerReachabilityCheck = () => true,
+	) {
+		this.knownRunners.set(runner.id, { runner, messageCallback, isRunnerReachable });
 		void this.knownRunners.get(runner.id)!.messageCallback({ type: 'broker:runnerregistered' });
 	}
 
@@ -648,6 +675,7 @@ export class TaskBroker {
 	// lists
 	settleTasks() {
 		this.expireTasks();
+		this.discardOffersFromUnreachableRunners();
 
 		for (const request of this.pendingTaskRequests) {
 			if (request.acceptInProgress) {

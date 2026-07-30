@@ -139,6 +139,7 @@ export class TaskBrokerWsServer {
 							name: message.name,
 						},
 						this.sendMessage.bind(this, id) as MessageCallback,
+						() => this.isRunnerReachable(id, connection),
 					);
 
 					this.logger.info(`Registered runner "${message.name}" (${id}) `);
@@ -199,6 +200,16 @@ export class TaskBrokerWsServer {
 
 	handleRequest(req: TaskBrokerServerInitRequest, _res: TaskBrokerServerInitResponse) {
 		this.add(req.query.id, req.ws);
+	}
+
+	/**
+	 * Whether the runner behind `connection` can still be sent messages. A socket leaves
+	 * `OPEN` as soon as it starts closing, while frames it already buffered keep arriving.
+	 */
+	private isRunnerReachable(id: TaskRunner['id'], connection: WebSocket) {
+		return (
+			this.runnerConnections.get(id) === connection && connection.readyState === connection.OPEN
+		);
 	}
 
 	private async stopConnectedRunners() {
