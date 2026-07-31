@@ -2,10 +2,11 @@ import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 import { PollerState } from '../entities';
+import type { PollerCursor } from '../entities/poller-state';
 import { BaseRepository } from './base-repository';
 import type { OperationContext } from '../services/transaction';
 
-export type PollerCursor = Record<string, unknown>;
+export type { PollerCursor } from '../entities/poller-state';
 
 @Service()
 export class PollerStateRepository extends BaseRepository<PollerState> {
@@ -13,6 +14,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		super(PollerState, dataSource.manager);
 	}
 
+	/** The node's stored cursor, or `null` if it has never polled. */
 	async findCursor(
 		workflowId: string,
 		nodeId: string,
