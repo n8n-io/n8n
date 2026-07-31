@@ -13,6 +13,7 @@ import { v4 as uuid } from 'uuid';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
@@ -34,6 +35,7 @@ export class AgentsService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
@@ -43,7 +45,11 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
-	async create(projectId: string, name: string): Promise<Agent> {
+	async create(
+		projectId: string,
+		name: string,
+		{ availableInMCP = false }: { availableInMCP?: boolean } = {},
+	): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
 			model: '',
@@ -57,6 +63,7 @@ export class AgentsService {
 			projectId,
 			schema: defaultConfig,
 			versionId: uuid(),
+			availableInMCP,
 		});
 
 		const saved = await this.agentRepository.save(agent);
@@ -171,7 +178,7 @@ export class AgentsService {
 	 * filters and limit applied in the database.
 	 */
 	async findSummariesInProjects(
-		projectIds: string[],
+		projectIds: string[] | null,
 		options: AgentSummaryFilters = {},
 	): Promise<AgentSummary[]> {
 		return await this.agentRepository.findSummariesByProjectIds(projectIds, options);
@@ -240,6 +247,15 @@ export class AgentsService {
 		}
 
 		await this.agentKnowledgeService.destroySandbox(projectId, agentId);
+
+		try {
+			await this.agentChatAttachmentService.deleteByAgent(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to delete chat attachments on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {

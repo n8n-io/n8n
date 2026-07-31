@@ -16,6 +16,8 @@ export const MCP_APPS_VARIANT_ENABLED = 'variant';
 // current behaviour.
 export const MCP_CANVAS_GROUPS_FLAG = '102_mcp_canvas_groups';
 
+export const MCP_AGENT_SCOPES = ['agent:read', 'agent:write'] as const;
+
 /**
  * OAuth scopes a user can grant to an MCP client on the consent screen for
  * the instance-level MCP server. Each scope gates a set of MCP tools; the
@@ -27,6 +29,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'workflow:write',
 	'workflow:execute',
 	'execution:read',
+	...MCP_AGENT_SCOPES,
 	'credential:read',
 	'dataTable:read',
 	'dataTable:write',
