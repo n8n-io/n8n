@@ -455,6 +455,102 @@ describe('integration tools', () => {
 		expect(actionExecutor.execute).not.toHaveBeenCalled();
 	});
 
+	it('keeps the reply expectation through same-thread context rebuilds in a batch', async () => {
+		const inboundContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread' as const, threadId: 'slack:C1:1.1', channelId: 'slack:C1' },
+			replyExpectation: 'optional' as const,
+			updatedAt: '2026-07-31T10:00:00.000Z',
+		};
+		const rebuiltContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread' as const, threadId: 'slack:C1:1.1', channelId: 'slack:C1' },
+			messageId: '1.2',
+			updatedAt: '2026-07-31T10:00:01.000Z',
+		};
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.getLatest.mockResolvedValue(inboundContext);
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockImplementation(async ({ action }) =>
+			action === 'respond'
+				? { ok: true, messageContext: rebuiltContext }
+				: { ok: true, silent: true },
+		);
+
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
+				actions: ['respond', 'do_not_respond'],
+			}))[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+
+		await tool.handler!(
+			{
+				actions: [
+					{ action: 'respond', input: { message: { text: 'card summary' } } },
+					{ action: 'do_not_respond' },
+				],
+			},
+			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		);
+
+		expect(actionExecutor.execute).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				action: 'do_not_respond',
+				currentMessageContext: expect.objectContaining({ replyExpectation: 'optional' }),
+			}),
+		);
+		expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+			'thread-1',
+			'resource-1',
+			expect.objectContaining({ replyExpectation: 'optional' }),
+		);
+	});
+
+	it('drops the reply expectation when a rebuilt context targets another thread', async () => {
+		const inboundContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread' as const, threadId: 'slack:C1:1.1', channelId: 'slack:C1' },
+			replyExpectation: 'optional' as const,
+			updatedAt: '2026-07-31T10:00:00.000Z',
+		};
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.getLatest.mockResolvedValue(inboundContext);
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockResolvedValue({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: { type: 'dm' as const, userId: 'U2', threadId: 'slack:D2:2.2' },
+				updatedAt: '2026-07-31T10:00:01.000Z',
+			},
+		});
+
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
+				actions: ['respond', 'send_dm', 'do_not_respond'],
+			}))[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+
+		await tool.handler!(
+			{ action: 'send_dm', input: { userId: 'U2', message: { text: 'hi' } } },
+			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		);
+
+		expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+			'thread-1',
+			'resource-1',
+			expect.not.objectContaining({ replyExpectation: expect.anything() }),
+		);
+	});
+
 	it('validates the opt-in edit_message action shape', () => {
 		const telegramTool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
