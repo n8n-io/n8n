@@ -1330,10 +1330,20 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it("credentials(action='setup') gate: a credential-engagement stage direction does not leak into unrelated domain-access events", async () => {
 		const agent = new FakeAgent();
+		// The credential-engagement direction is IN THE OPENER turn, which the
+		// constructor immediately marks "sent" (the harness already delivered
+		// it) — so `remainingUserScriptTurns()` is empty and the unrelated
+		// `deferAccessGateToScript` (pending-stage-direction) check can't fire,
+		// isolating what this test actually asserts: `allowCredentialEngagement`
+		// being true (from `hasCredentialEngagementDirection`, which scans the
+		// whole script, sent or not) does not by itself route domain-access
+		// events through the LLM.
 		const proxy = new UserProxyLlm({
 			conversation: [
-				{ role: 'user', text: 'Research competitors.' },
-				{ role: 'user', text: '[Set up the credential now using the existing one shown.]' },
+				{
+					role: 'user',
+					text: 'Research competitors. [Set up the credential now using the existing one shown.]',
+				},
 			],
 			agent,
 		});
