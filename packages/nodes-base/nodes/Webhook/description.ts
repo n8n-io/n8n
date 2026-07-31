@@ -110,6 +110,22 @@ export const authenticationProperty = (
 	description: 'The way to authenticate',
 });
 
+// Toggle deciding whether `workflow:execute` is enforced on top of the n8n User
+// Auth (OAuth2) mode. Mirrors the MCP trigger's equivalent parameter, including
+// its on-by-default semantics (`node.parameters.requireExecuteAccess !== false`).
+// Only relevant while the n8nOAuth2 mode is selected, so it inherits that mode's
+// N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS gating and is hidden otherwise.
+export const requireExecuteAccessProperty = (propertyName = 'authentication'): INodeProperties => ({
+	displayName: 'Require Workflow Execute Permission',
+	name: 'requireExecuteAccess',
+	type: 'boolean',
+	default: true,
+	displayOptions: { show: { [propertyName]: ['n8nOAuth2'] } },
+	envFeatureFlag: 'WEBHOOK_PRIVATE_CREDENTIALS',
+	description:
+		'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+});
+
 export const httpMethodsProperty: INodeProperties = {
 	displayName: 'HTTP Method',
 	name: 'httpMethod',

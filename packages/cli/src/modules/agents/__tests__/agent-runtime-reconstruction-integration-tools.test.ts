@@ -27,11 +27,13 @@ import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -132,6 +134,7 @@ function makeRuntimeReconstructionService(
 		mock<SsrfProtectionService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
+		mock<AgentChatAttachmentService>(),
 	);
 }
 
@@ -278,6 +281,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<NodeTypes>(),
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
+			mock<AiGatewayService>(),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
@@ -292,11 +296,12 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			telemetry,
 		);
-		agentTestChatService = new AgentTestChatService(n8nMemory);
+		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,
 			projectRelationRepository,
+			mock<AgentChatAttachmentService>(),
 			agentKnowledgeService,
 			runtimeCacheService,
 			agentTestChatService,
@@ -351,6 +356,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				on: vi.fn(),
 				hasCheckpointStorage: vi.fn().mockReturnValue(true),
 				checkpoint: vi.fn(),
+				fileStore: vi.fn(),
 			};
 
 			const reconstructionService = makeRuntimeReconstructionService();

@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
@@ -307,6 +308,7 @@ export class ScheduleTriggerJobRegistrar {
 			SCHEDULE_TRIGGER_TASK_TYPE,
 			{ ...payload },
 			desired,
+			ScheduledJobMisfirePolicy.Coalesce,
 		);
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {

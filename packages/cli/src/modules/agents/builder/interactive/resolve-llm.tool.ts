@@ -1,6 +1,7 @@
 import type { BuiltTool, CredentialListItem, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { BUILDER_TOOLS } from '../builder-tool-names';
@@ -9,6 +10,9 @@ import {
 	LLM_PROVIDER_PRIORITY,
 	type LlmProviderDefault,
 } from '../../llm-provider-defaults';
+
+/** User-facing name written for an n8n credits (AI Gateway managed) model credential. */
+const N8N_CONNECT_CREDENTIAL_NAME = 'n8n credits';
 
 export interface ModelLookup {
 	list(
@@ -27,6 +31,12 @@ export interface FreeCreditsProvisioner {
 export interface ResolveLlmToolDeps {
 	credentialProvider: CredentialProvider;
 	modelLookup: ModelLookup;
+	/**
+	 * Whether n8n Connect (AI Gateway) serves the given model provider (e.g.
+	 * `openai`). When provided, the tool offers n8n Connect as an additional
+	 * credential for served providers the user has no own credential for.
+	 */
+	isProviderServedByGateway?(provider: string): Promise<boolean>;
 	freeCredits: FreeCreditsProvisioner;
 }
 
@@ -119,6 +129,46 @@ async function resolveModelAgainstLookup(
 	};
 }
 
+async function resolveDefaultModelForCredential(
+	credential: CredentialListItem,
+	defaults: LlmProviderDefault,
+	modelLookup: ModelLookup,
+) {
+	// Managed credential: no fallback key, and gateway discovery is authoritative — the
+	// static default may not be on the allowlist — so pick the default (or first served)
+	// model from the gateway's list. Own credentials keep the static default.
+	if (credential.id !== AI_GATEWAY_MANAGED_TAG || !isModelDiscoveryProvider(defaults.provider)) {
+		return toLlmResolution(credential, defaults);
+	}
+
+	let availableModels: Array<{ name: string; value: string }>;
+	try {
+		availableModels = await modelLookup.list(credential.id, credential.type, defaults.provider);
+	} catch (error) {
+		return {
+			ok: false as const,
+			reason: 'model_lookup_failed' as const,
+			provider: defaults.provider,
+			requestedModel: defaults.defaultModel,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+
+	if (availableModels.length === 0) {
+		return {
+			ok: false as const,
+			reason: 'unknown_model' as const,
+			provider: defaults.provider,
+			requestedModel: defaults.defaultModel,
+			availableModels,
+		};
+	}
+
+	const preferred =
+		availableModels.find((m) => m.value === defaults.defaultModel) ?? availableModels[0];
+	return toLlmResolution(credential, defaults, preferred.value);
+}
+
 export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.RESOLVE_LLM)
 		.description(
@@ -135,7 +185,10 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'change on an existing agent, ask immediately and keep the current model and credential until the new one resolves. ' +
 				'When no matching credential exists and the user is eligible for free OpenAI credits, the tool ' +
 				'claims them automatically and resolves to openai/gpt-5-mini — the result carries ' +
-				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When multiple ' +
+				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When the ' +
+				'provider has no own credential but n8n credits (the managed option) serves it, the tool ' +
+				'resolves to the managed credential — the result credentialName is "n8n credits"; persist it ' +
+				'like any credential and tell the user the model runs on n8n credits. When multiple ' +
 				'providers each have one credential, the tool auto-picks the recommended provider — the result ' +
 				'carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it. ' +
 				'When the user picks between multiple credentials of one provider, pass the picked credentialId ' +
@@ -172,11 +225,31 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				credentialId?: string;
 			}) => {
 				const all = await deps.credentialProvider.list();
-				const llmCredentials = all.filter((credential) => LLM_PROVIDER_DEFAULTS[credential.type]);
+				const ownCredentials = all.filter((credential) => LLM_PROVIDER_DEFAULTS[credential.type]);
+
+				// Offer n8n Connect as an additional credential for each gateway-served
+				// provider the user has no own credential for. It then flows through the same
+				// resolution below as any credential: single → auto-use, several → ask, none →
+				// missing (a legitimate setup prompt, e.g. a provider n8n Connect does not serve).
+				const managedCredentials: CredentialListItem[] = [];
+				for (const [credentialType, defaults] of Object.entries(LLM_PROVIDER_DEFAULTS)) {
+					const hasOwnCredential = ownCredentials.some((c) => c.type === credentialType);
+					if (
+						!hasOwnCredential &&
+						((await deps.isProviderServedByGateway?.(defaults.provider)) ?? false)
+					) {
+						managedCredentials.push({
+							id: AI_GATEWAY_MANAGED_TAG,
+							name: N8N_CONNECT_CREDENTIAL_NAME,
+							type: credentialType,
+						});
+					}
+				}
+				const llmCredentials = [...ownCredentials, ...managedCredentials];
 
 				if (credentialId) {
-					const credential = llmCredentials.find((c) => c.id === credentialId);
-					if (!credential) {
+					const matchingCredentials = llmCredentials.filter((c) => c.id === credentialId);
+					if (matchingCredentials.length === 0) {
 						return {
 							ok: false as const,
 							reason: 'unknown_credential' as const,
@@ -188,11 +261,49 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 							})),
 						};
 					}
+
+					let credential = matchingCredentials.length === 1 ? matchingCredentials[0] : undefined;
+					if (!credential && provider) {
+						const providerEntry = findProviderDefault(provider);
+						if (!providerEntry) {
+							return {
+								ok: false as const,
+								reason: 'unsupported_provider' as const,
+								provider,
+								supportedProviders: Object.values(LLM_PROVIDER_DEFAULTS).map(
+									(defaults) => defaults.provider,
+								),
+							};
+						}
+
+						const [credentialType] = providerEntry;
+						const providerMatches = matchingCredentials.filter((c) => c.type === credentialType);
+						if (providerMatches.length === 1) {
+							credential = providerMatches[0];
+						}
+					}
+
+					if (!credential) {
+						return {
+							ok: false as const,
+							reason: 'ambiguous_credential' as const,
+							credentials: matchingCredentials.map((c) => {
+								const defaults = LLM_PROVIDER_DEFAULTS[c.type];
+								return {
+									id: c.id,
+									name: c.name,
+									type: c.type,
+									provider: defaults.provider,
+								};
+							}),
+						};
+					}
+
 					const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
 					if (model?.trim()) {
 						return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
 					}
-					return toLlmResolution(credential, defaults);
+					return await resolveDefaultModelForCredential(credential, defaults, deps.modelLookup);
 				}
 
 				if (provider) {
@@ -218,7 +329,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 						if (model?.trim()) {
 							return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
 						}
-						return toLlmResolution(credential, defaults);
+						return await resolveDefaultModelForCredential(credential, defaults, deps.modelLookup);
 					}
 
 					if (
@@ -251,7 +362,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					if (model?.trim()) {
 						return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
 					}
-					return toLlmResolution(credential, defaults);
+					return await resolveDefaultModelForCredential(credential, defaults, deps.modelLookup);
 				}
 
 				if (llmCredentials.length === 0 && !model?.trim()) {
@@ -269,8 +380,14 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					const topProvider = LLM_PROVIDER_PRIORITY.find((candidate) => byProvider.has(candidate));
 					const topCredentials = topProvider ? byProvider.get(topProvider) : undefined;
 					if (topProvider && topCredentials?.length === 1) {
+						const resolved = await resolveDefaultModelForCredential(
+							topCredentials[0],
+							LLM_PROVIDER_DEFAULTS[topCredentials[0].type],
+							deps.modelLookup,
+						);
+						if (!resolved.ok) return resolved;
 						return {
-							...toLlmResolution(topCredentials[0], LLM_PROVIDER_DEFAULTS[topCredentials[0].type]),
+							...resolved,
 							autoPicked: true as const,
 							otherProviders: [...byProvider.keys()].filter((other) => other !== topProvider),
 						};

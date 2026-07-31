@@ -12,6 +12,7 @@ import { computed, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import { useToast } from '@/app/composables/useToast';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { updateWorkflowReviewRequestVersion } from '@/features/workflow-reviews/workflowReviews.api';
 
@@ -114,7 +115,10 @@ const submit = async () => {
 				<template #review>
 					<N8nLink
 						v-if="workflowReviewRequestId"
-						:to="`/workflow-review-requests/${workflowReviewRequestId}`"
+						:to="{
+							name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+							params: { reviewRequestId: workflowReviewRequestId },
+						}"
 					>
 						{{ i18n.baseText('workflowReviews.updateReview.description.review') }}
 					</N8nLink>

@@ -16,6 +16,23 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
+const deletionListeners = new Set<(credentialId: string) => void>();
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({}),
+	listenForCredentialChanges: ({
+		onCredentialDeleted,
+	}: {
+		onCredentialDeleted: (credentialId: string) => void;
+	}) => {
+		deletionListeners.add(onCredentialDeleted);
+		return () => deletionListeners.delete(onCredentialDeleted);
+	},
+}));
+
+function emitCredentialDeleted(id: string): void {
+	for (const listener of deletionListeners) listener(id);
+}
+
 vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: (key: string) => key },
 }));
@@ -81,6 +98,7 @@ describe('useInstanceAiMcpStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		deletionListeners.clear();
 		setActivePinia(createPinia());
 		store = useInstanceAiMcpStore();
 	});
@@ -211,6 +229,31 @@ describe('useInstanceAiMcpStore', () => {
 
 			expect(store.connectionsByServerSlug.get('linear')).toHaveLength(2);
 			expect(store.connectionsByServerSlug.get('notion')).toHaveLength(1);
+		});
+	});
+
+	describe('credential deletion', () => {
+		beforeEach(async () => {
+			mockFetchMcpConnections.mockResolvedValue([
+				makeConnection({ id: 'conn-1', serverSlug: 'linear', credentialId: 'cred-1' }),
+				makeConnection({ id: 'conn-2', serverSlug: 'notion', credentialId: 'cred-2' }),
+			]);
+			await store.fetchConnections();
+			store.connectionToolsById.set('conn-1', [{ name: 'search' }]);
+		});
+
+		it('drops connections that used the deleted credential', () => {
+			emitCredentialDeleted('cred-1');
+
+			expect(store.connections.map((c) => c.id)).toEqual(['conn-2']);
+			expect(store.connectionToolsById.get('conn-1')).toBeUndefined();
+		});
+
+		it('leaves connections alone when an unrelated credential is deleted', () => {
+			emitCredentialDeleted('cred-other');
+
+			expect(store.connections.map((c) => c.id)).toEqual(['conn-1', 'conn-2']);
+			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'search' }]);
 		});
 	});
 });

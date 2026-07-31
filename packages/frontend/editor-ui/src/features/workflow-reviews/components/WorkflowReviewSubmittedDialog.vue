@@ -11,6 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 
 import { useWorkflowReviewDialogPreferences } from '@/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 
 defineProps<{
 	open: boolean;
@@ -38,7 +39,12 @@ const { submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
 		>
 			<I18nT keypath="workflowReviews.submitted.description" tag="span" scope="global">
 				<template #submission>
-					<N8nLink :to="`/workflow-review-requests/${workflowReviewRequestId}`">
+					<N8nLink
+						:to="{
+							name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+							params: { reviewRequestId: workflowReviewRequestId },
+						}"
+					>
 						{{ i18n.baseText('workflowReviews.submitted.description.submission') }}
 					</N8nLink>
 				</template>

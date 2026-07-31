@@ -73,6 +73,8 @@ export interface InstanceAiBuilderSessionOptions {
 	 * after the host trace's root finalizes.
 	 */
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
+	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only the host's consumption of it. */
+	abortSignal: AbortSignal;
 }
 
 @Service()
@@ -113,6 +115,9 @@ export class AgentsBuilderService {
 		const resourceId = user.id;
 		const resultStream = await builder.stream(message, {
 			persistence: { threadId: session.threadId, resourceId },
+			abortSignal: session.abortSignal,
+			// Keep billing a stopped builder turn for the tokens it already spent.
+			recoverUsageOnAbort: true,
 		});
 
 		yield* this.streamFromAgent(resultStream);
@@ -168,6 +173,9 @@ export class AgentsBuilderService {
 		const resultStream = await builder.resume('stream', resumeData, {
 			runId,
 			toolCallId,
+			abortSignal: session.abortSignal,
+			// Keep billing a stopped builder turn for the tokens it already spent.
+			recoverUsageOnAbort: true,
 		});
 
 		yield* this.streamFromAgent(resultStream);

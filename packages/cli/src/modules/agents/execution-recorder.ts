@@ -1,9 +1,19 @@
 import type { StreamChunk } from '@n8n/agents';
+import {
+	applyForwardedChildChunk,
+	emptyChildTrace,
+	settleChildTrace,
+	type PersistedChildTrace,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
 import type { ToolRegistry } from './tool-registry';
+
+/** Cap on child trace characters persisted per delegation. Tighter than the
+ *  live forwarding budget because this is written into every parent execution row. */
+const CHILD_TRACE_PERSIST_CHAR_BUDGET = 4_000;
 
 /**
  * Walk a nodeParameters tree and substitute templated values with what the
@@ -225,6 +235,7 @@ export type TimelineEvent =
 			 * detail viewer can show what the node was set up to do.
 			 */
 			nodeParameters?: Record<string, unknown>;
+			childTrace?: PersistedChildTrace;
 	  }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
 
@@ -281,6 +292,8 @@ export class ExecutionRecorder {
 
 	private readonly startTime = Date.now();
 
+	private childTraceChars = new Map<string, number>();
+
 	/** Feed a stream chunk into the recorder. */
 	record(chunk: StreamChunk): void {
 		switch (chunk.type) {
@@ -312,6 +325,25 @@ export class ExecutionRecorder {
 			case 'tool-execution-end':
 				this.recordToolExecutionEnd(chunk.toolCallId, chunk.isError, chunk.endTime);
 				break;
+			case 'subagent-chunk': {
+				if (chunk.parentToolCallId === undefined) break;
+				const entry = this.findOpenTimelineToolCall(chunk.parentToolCallId);
+				if (!entry) break;
+				let inner = chunk.chunk;
+				if (inner.type === 'text-delta' || inner.type === 'reasoning-delta') {
+					// Trim rather than skip whole: a delta straddling the cap would
+					// otherwise be persisted in full and overshoot it.
+					const used = this.childTraceChars.get(chunk.parentToolCallId) ?? 0;
+					const remaining = CHILD_TRACE_PERSIST_CHAR_BUDGET - used;
+					if (remaining <= 0) break;
+					const delta = inner.delta.slice(0, remaining);
+					this.childTraceChars.set(chunk.parentToolCallId, used + delta.length);
+					inner = { ...inner, delta };
+				}
+				entry.childTrace ??= emptyChildTrace();
+				applyForwardedChildChunk(entry.childTrace, inner);
+				break;
+			}
 			case 'tool-result':
 				this.recordToolResult(
 					chunk.toolCallId,
@@ -481,6 +513,7 @@ export class ExecutionRecorder {
 		if (entry) {
 			entry.endTime = endTime;
 			entry.success = !isError;
+			if (entry.childTrace) settleChildTrace(entry.childTrace);
 		}
 	}
 
@@ -531,6 +564,7 @@ export class ExecutionRecorder {
 			if (pendingTimeline.endTime === 0) {
 				pendingTimeline.endTime = Date.now();
 			}
+			if (pendingTimeline.childTrace) settleChildTrace(pendingTimeline.childTrace);
 
 			if (pendingTimeline.kind === 'workflow' && isRecord(recordedOutput)) {
 				const execId = recordedOutput.executionId;

@@ -1,13 +1,29 @@
 import { createPinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { LOCAL_STORAGE_WORKFLOW_REVIEW_SUBMITTED_DIALOG_HIDDEN } from '@/app/constants/localStorage';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import WorkflowReviewSubmittedDialog from './WorkflowReviewSubmittedDialog.vue';
+
+const router = createRouter({
+	history: createMemoryHistory(),
+	routes: [
+		{
+			path: '/workflow-review-requests/:reviewRequestId?',
+			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+			component: { template: '<div />' },
+		},
+	],
+});
 
 const renderComponent = createComponentRenderer(WorkflowReviewSubmittedDialog, {
 	props: { open: false, workflowReviewRequestId: 'review-1' },
+	// The real RouterLink resolves the named route, so the test asserts the URL
+	// the user actually lands on rather than the raw `to` object.
+	global: { plugins: [router], stubs: { RouterLink: false } },
 });
 
 const renderOpenDialog = async (pinia: ReturnType<typeof createPinia>) => {
@@ -27,7 +43,7 @@ describe('WorkflowReviewSubmittedDialog', () => {
 		const { getByRole } = await renderOpenDialog(pinia);
 
 		expect(getByRole('link', { name: 'your submission' })).toHaveAttribute(
-			'to',
+			'href',
 			'/workflow-review-requests/review-1',
 		);
 	});
