@@ -1490,18 +1490,6 @@ export const messageFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Include Deleted Users',
-				name: 'includeDeletedUsers',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to include deleted users in the results',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 2.7 } }],
-					},
-				},
-			},
-			{
 				displayName: 'Include Message Blocks',
 				name: 'includeMessageBlocks',
 				type: 'boolean',
@@ -1535,11 +1523,6 @@ export const messageFields: INodeProperties[] = [
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getChannelsName',
-				},
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { lte: 2.6 } }],
-					},
 				},
 			},
 		],

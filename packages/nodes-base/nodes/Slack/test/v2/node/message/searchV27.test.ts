@@ -73,7 +73,7 @@ const API_RESPONSE = {
 describe('Test SlackV2 v2.7, message => search', () => {
 	nock('https://slack.com')
 		.post('/api/assistant.search.context', {
-			query: 'test',
+			query: 'test in:test-002 in:test-003',
 			content_types: ['messages'],
 			sort: 'timestamp',
 			sort_dir: 'desc',
@@ -81,7 +81,6 @@ describe('Test SlackV2 v2.7, message => search', () => {
 			disable_semantic_search: true,
 			include_archived_channels: true,
 			include_bots: true,
-			include_deleted_users: true,
 			include_message_blocks: true,
 			limit: 2,
 		})

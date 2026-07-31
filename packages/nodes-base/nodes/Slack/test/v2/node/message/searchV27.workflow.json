@@ -15,11 +15,11 @@
 				"query": "test",
 				"limit": 2,
 				"options": {
+					"searchChannel": ["test-002", "test-003"],
 					"channelTypes": ["public_channel", "private_channel"],
 					"keywordSearchOnly": true,
 					"includeArchivedChannels": true,
 					"includeBots": true,
-					"includeDeletedUsers": true,
 					"includeMessageBlocks": true
 				}
 			},

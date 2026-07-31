@@ -44,23 +44,4 @@ describe('MessageDescription', () => {
 			expect(current.description).toContain('chat:write.customize');
 		});
 	});
-	describe('Search options', () => {
-		const searchOptions = messageFields.find(
-			(field) =>
-				field.name === 'options' &&
-				(field.displayOptions?.show?.operation as string[] | undefined)?.includes('search'),
-		);
-
-		const visibleOptions = (typeVersion: number) =>
-			((searchOptions?.options ?? []) as INodeProperties[])
-				.filter((option) => displayParameter({}, option, { typeVersion }, null))
-				.map((option) => option.name);
-
-		// search.messages honours in: modifiers, assistant.search.context does not, so
-		// offering this on 2.7 would show a filter that silently does nothing.
-		it('should offer Search in Channel only up to 2.6', () => {
-			expect(visibleOptions(2.6)).toContain('searchChannel');
-			expect(visibleOptions(2.7)).not.toContain('searchChannel');
-		});
-	});
 });

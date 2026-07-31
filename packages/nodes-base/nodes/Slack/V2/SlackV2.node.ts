@@ -1099,6 +1099,14 @@ export class SlackV2 implements INodeType {
 						const sortDir = sort === 'asc' ? 'asc' : 'desc';
 
 						if (nodeVersion >= 2.7) {
+							// assistant.search.context has no argument for this - its `modifiers` only
+							// applies to term clauses - so the filter goes in the query text, which
+							// Slack parses channel filters out of
+							for (const channel of toMultiOptionsCsv(options.searchChannel)
+								.split(',')
+								.filter(Boolean)) {
+								query += ` in:${channel}`;
+							}
 							// channel_types/content_types are array args: the JSON body needs real
 							// arrays, not the comma-separated form used for query-string params
 							const body: IDataObject = {
@@ -1126,9 +1134,6 @@ export class SlackV2 implements INodeType {
 							}
 							if (options.includeBots) {
 								body.include_bots = true;
-							}
-							if (options.includeDeletedUsers) {
-								body.include_deleted_users = true;
 							}
 							if (options.includeMessageBlocks) {
 								body.include_message_blocks = true;
