@@ -23,17 +23,11 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should drop a missed backlog instead of firing a stale poll', async ({
-			api,
-			services,
-		}) => {
+		test('drops a missed backlog instead of firing a stale poll', async ({ api, services }) => {
 			// Six hours between ticks: whatever fires in this test's short observation
 			// window can only be the backdated backlog, never the schedule's own next tick.
-			const { workflowId, nodeId } = await expectPollTriggerFires(
-				api,
-				services.proxy,
-				(path) => makeCronPollTriggerWorkflow(path, '0 0 */6 * * *'),
-				{ itemsAfterSeedPoll: [{ id: 1 }, { id: 2 }] },
+			const { workflowId, nodeId } = await expectPollTriggerFires(api, services.proxy, (path) =>
+				makeCronPollTriggerWorkflow(path, '0 0 */6 * * *'),
 			);
 
 			// A day of backlog, all past the 3s grace: a materializer walking the plain
