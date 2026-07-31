@@ -3,6 +3,7 @@ import SourceControlInitializationErrorMessage from '@/features/integrations/sou
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
@@ -47,6 +48,9 @@ export async function initializeCore() {
 	if (state.initialized) {
 		return;
 	}
+
+	// Register toast notifier first, so nothing that can toast runs unregistered
+	registerToastNotifier();
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
