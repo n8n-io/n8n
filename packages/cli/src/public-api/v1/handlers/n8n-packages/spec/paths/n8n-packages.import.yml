@@ -245,9 +245,10 @@ post:
                 the `variable:update` / `projectVariable:update` permission on
                 that scope, and, for API key callers, the `variable:update`
                 scope. `fail` rejects the import with a 409 instead. A package
-                exported without variable values bundles nothing to compare, so
-                every policy leaves resolved variables alone; so does a bundled
-                value identical to the target's.
+                with no value to write bundles nothing to compare, so every
+                policy leaves resolved variables alone: values excluded at
+                export, an exported value that was itself empty, or one
+                identical to the target's.
             variableParentPolicy:
               type: string
               enum:

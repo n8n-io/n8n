@@ -70,7 +70,8 @@ export class VariableImporter {
 				matched.push(requirement.name);
 
 				const packageValue = requirement.packageValue;
-				if (!comparesValues || packageValue === undefined || packageValue === picked.value) {
+				// An empty bundled value is nothing to write, the same way a creation treats it as a stub.
+				if (!comparesValues || !packageValue || packageValue === picked.value) {
 					continue;
 				}
 

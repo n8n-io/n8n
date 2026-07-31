@@ -1252,6 +1252,23 @@ describe('workflow package import — with variables', () => {
 				expect((await variablesInProject(targetProject.id))[0].value).toBe('from-target');
 			});
 
+			it('leaves the value alone when the package bundles an empty value', async () => {
+				const owner = await createOwner();
+				const targetProject = await createTeamProject('Target', owner);
+				const { packageBuffer } = await packageReferencing(owner, '');
+				await createProjectVariable('API_URL', 'from-target', targetProject);
+
+				const result = await importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer,
+					variableConflictPolicy: 'overwrite',
+				});
+
+				expect(result.variables).toMatchObject({ matched: ['API_URL'], updated: [] });
+				expect((await variablesInProject(targetProject.id))[0].value).toBe('from-target');
+			});
+
 			it('reports an identical value as matched rather than updated', async () => {
 				const owner = await createOwner();
 				const targetProject = await createTeamProject('Target', owner);
@@ -1358,6 +1375,24 @@ describe('workflow package import — with variables', () => {
 
 				expect(result.workflows[0].status).toBe('created');
 				expect(result.variables).toMatchObject({ matched: ['API_URL'], updated: [] });
+			});
+
+			it('imports when the package bundles an empty value', async () => {
+				const owner = await createOwner();
+				const targetProject = await createTeamProject('Target', owner);
+				const { packageBuffer } = await packageReferencing(owner, '');
+				await createProjectVariable('API_URL', 'from-target', targetProject);
+
+				const result = await importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer,
+					variableConflictPolicy: 'fail',
+				});
+
+				expect(result.workflows[0].status).toBe('created');
+				expect(result.variables).toMatchObject({ matched: ['API_URL'], updated: [] });
+				expect((await variablesInProject(targetProject.id))[0].value).toBe('from-target');
 			});
 		});
 

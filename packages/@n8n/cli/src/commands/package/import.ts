@@ -91,7 +91,7 @@ export default class PackageImport extends BaseCommand {
 		}),
 		variableConflictPolicy: Flags.string({
 			description:
-				'What to do when a referenced variable already resolves in the target project or global scope but the package bundles a different value for it (default: keep-existing). keep-existing leaves the target value alone; overwrite silently replaces the value of the existing variable at whichever scope it was found — including a global one other projects read — and needs a variables-enabled license plus variable:update (projectVariable:update for a project-scoped variable); fail rejects the import. A package exported without variable values has nothing to compare, so no policy touches resolved variables',
+				'What to do when a referenced variable already resolves in the target project or global scope but the package bundles a different value for it (default: keep-existing). keep-existing leaves the target value alone; overwrite silently replaces the value of the existing variable at whichever scope it was found — including a global one other projects read — and needs a variables-enabled license plus variable:update (projectVariable:update for a project-scoped variable); fail rejects the import. A package with no value to write has nothing to compare, so no policy touches resolved variables — values excluded at export, or an exported value that was itself empty',
 			options: ['keep-existing', 'overwrite', 'fail'],
 			aliases: ['variable-conflict-policy'],
 		}),
