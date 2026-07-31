@@ -98,6 +98,9 @@ interface MultiTurnDriverConfig {
 	 *  the allowlist endpoint isn't available in that case either. */
 	allowlistedCredentialIds?: string[];
 	createdCredentialIds?: Set<string>;
+	/** Shared with `createDeclaredCredentials`'s pre-run seeding — see
+	 *  `CredentialCreationConfig.nameCounts`. */
+	credentialNameCounts?: Map<string, number>;
 }
 
 async function driveMultiTurnConversation(
@@ -116,6 +119,7 @@ async function driveMultiTurnConversation(
 						threadId: config.threadId,
 						allowlistedCredentialIds: config.allowlistedCredentialIds,
 						createdCredentialIds: config.createdCredentialIds,
+						nameCounts: config.credentialNameCounts,
 					},
 				}
 			: {}),
@@ -340,9 +344,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// default) before the first message, so every build-workflow call inside
 		// the build sees the same deterministic environment.
 		const declaredCredentials = config.credentials ?? [];
+		// Shared with UserProxyLlm's mid-run credential creation (if any) so a
+		// credential created during the run doesn't collide on display name with
+		// one declared here — both would otherwise default to e.g. "[eval] Slack".
+		const credentialNameCounts = new Map<string, number>();
 		const createdCredentials = await createDeclaredCredentials(client, declaredCredentials, {
 			onCreated: (id) => config.createdCredentialIds?.add(id),
 			logger,
+			nameCounts: credentialNameCounts,
 		});
 		try {
 			await client.setThreadCredentialAllowlist(
@@ -455,6 +464,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					? {
 							allowlistedCredentialIds: createdCredentials.map((c) => c.id),
 							createdCredentialIds: config.createdCredentialIds,
+							credentialNameCounts,
 						}
 					: {}),
 				// The pre-seeded-table note goes to the agent, but the recorded turn

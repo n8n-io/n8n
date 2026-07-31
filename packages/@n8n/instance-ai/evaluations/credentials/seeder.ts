@@ -161,15 +161,26 @@ export async function createOneCredential(
  * `onCreated` fires per credential as it is created (not only on full
  * success), so the caller can register every ID for cleanup even when a later
  * creation throws.
+ *
+ * `nameCounts` defaults to a fresh, call-scoped `Map` — pass one in (and reuse
+ * it for a later `createOneCredential` call, e.g. `UserProxyLlm`'s mid-run
+ * credential creation) so a credential created mid-run doesn't collide on
+ * display name with one declared and seeded here (both would otherwise be
+ * "[eval] Slack" with no `#2` suffix, since the counters wouldn't know about
+ * each other — see TRUST-349 PR review).
  */
 export async function createDeclaredCredentials(
 	client: N8nClient,
 	declared: TestCaseCredential[],
-	options?: { onCreated?: (id: string) => void; logger?: EvalLogger },
+	options?: {
+		onCreated?: (id: string) => void;
+		logger?: EvalLogger;
+		nameCounts?: Map<string, number>;
+	},
 ): Promise<CreatedCredential[]> {
 	const logger = options?.logger;
 	const created: CreatedCredential[] = [];
-	const nameCounts = new Map<string, number>();
+	const nameCounts = options?.nameCounts ?? new Map<string, number>();
 
 	for (const decl of declared) {
 		const cred = await createOneCredential(client, decl.type, decl.name, nameCounts, { logger });

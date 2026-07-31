@@ -38,6 +38,13 @@ export interface CredentialCreationConfig {
 	allowlistedCredentialIds: string[];
 	/** Run-level registry newly-created ids are added to for end-of-run cleanup. */
 	createdCredentialIds?: Set<string>;
+	/** Shared with the same `Map` passed to `createDeclaredCredentials` for this
+	 *  build's pre-run seeding, so a mid-run-created credential's display name
+	 *  gets the right `#2`/`#3` suffix instead of silently colliding with a
+	 *  declared credential of the same default name (e.g. two "[eval] Slack"
+	 *  credentials with no way to tell which one an agent picked). Defaults to
+	 *  a fresh, unshared `Map` if omitted. */
+	nameCounts?: Map<string, number>;
 }
 
 /**
@@ -113,7 +120,9 @@ export class UserProxyLlm {
 	 *  grows as `createCredential` mints new ones, since the allowlist endpoint
 	 *  replaces the whole list rather than appending. */
 	private allowlistedCredentialIds: string[];
-	private readonly createdCredentialNameCounts = new Map<string, number>();
+	/** Defaults to a fresh Map when the caller doesn't share one from pre-run
+	 *  seeding — see `CredentialCreationConfig.nameCounts`. */
+	private readonly createdCredentialNameCounts: Map<string, number>;
 
 	constructor(config: UserProxyConfig) {
 		this.script = config.conversation;
@@ -123,6 +132,8 @@ export class UserProxyLlm {
 			config.agent ?? createUserProxyAgent({ modelId: config.modelId, logger: config.logger });
 		this.credentialCreation = config.credentialCreation;
 		this.allowlistedCredentialIds = config.credentialCreation?.allowlistedCredentialIds ?? [];
+		this.createdCredentialNameCounts =
+			config.credentialCreation?.nameCounts ?? new Map<string, number>();
 		// Seed with the opener — the harness has already sent it.
 		const opener = this.script[0];
 		this.actualTranscript = opener ? [{ role: opener.role, text: opener.text }] : [];
@@ -169,7 +180,7 @@ export class UserProxyLlm {
 		}
 
 		const det = tryDeterministicConfirmationResponse(event, {
-			allowCredentialEngagement: hasCredentialEngagementDirection(this.script),
+			allowCredentialEngagement: this.hasPendingStageDirection(),
 		});
 		if (det && !this.deferAccessGateToScript(event)) {
 			this.bumpStat('deterministic');
@@ -194,7 +205,7 @@ export class UserProxyLlm {
 			decision,
 			(raw, parseError) =>
 				this.logger?.warn(
-					`[user-proxy] nodeParametersJson failed to parse (${String(parseError)}); raw=${raw.slice(0, 200)}`,
+					`[user-proxy] action=${decision.action} failed to encode (${String(parseError)}); raw=${raw.slice(0, 200)}`,
 				),
 			extractSetupWizardParseContext(event),
 			extractCredentialSetupContext(event),
@@ -336,6 +347,25 @@ export class UserProxyLlm {
 	private deferAccessGateToScript(event: CapturedEvent): boolean {
 		const payload = getEventPayload(event);
 		if (!payload.domainAccess && !payload.webSearch) return false;
+		return this.hasPendingStageDirection();
+	}
+
+	/**
+	 * Any stage direction still pending delivery — the one signal the harness
+	 * uses everywhere to decide "consult the model instead of taking the
+	 * deterministic default" (domain access, web search, plan review, and — as
+	 * of TRUST-349 — credential-setup engagement below). Deliberately content-
+	 * agnostic: a keyword-scoped variant was tried and rejected after a corpus
+	 * audit found it both under- and over-fires (a note saying "don't provide
+	 * the API key, fill it in yourself later" matched on "API key"/"credential"
+	 * despite asking for the opposite of engagement — a word match can't tell
+	 * what a note means, but the model reading the actual text can). The
+	 * system prompt already instructs the model to keep deferring unless a
+	 * pending note says otherwise, so routing every pending-direction case
+	 * through it is the same bet already made for domain access and plan
+	 * review, not a new one.
+	 */
+	private hasPendingStageDirection(): boolean {
 		return this.remainingUserScriptTurns().some((turn) => hasStageDirection(turn.text));
 	}
 
@@ -407,25 +437,6 @@ function hasStageDirection(text: string): boolean {
 	return /\[[^\]]+\]/.test(text);
 }
 
-/**
- * Does any stage direction in the script ask the user to
- * engage with credential setup (rather than defer, which is the default)?
- * Deliberately narrower than `hasStageDirection` above — that generic bracket
- * check exists only to bump a low-consequence *scripted* fallback to the LLM.
- * Gating the entire credential-engagement action on it instead would mean any
- * of the ~250 existing cases carrying an unrelated stage direction (plan
- * pushback, withheld values, ...) could unintentionally route its credential
- * moment through the LLM for the first time, risking the ticket's
- * non-negotiable "default behavior stays exactly as today" requirement. A
- * credential-keyword-scoped match keeps that default airtight.
- */
-const CREDENTIAL_ENGAGEMENT_PATTERN =
-	/\[[^\]]*\b(credential|oauth|api[\s-]?key|sign[\s-]?in|connect|authoriz)/i;
-
-function hasCredentialEngagementDirection(script: ConversationTurn[]): boolean {
-	return script.some((turn) => CREDENTIAL_ENGAGEMENT_PATTERN.test(turn.text));
-}
-
 function extractTextDelta(event: CapturedEvent): string | undefined {
 	const directText = event.data.text;
 	if (typeof directText === 'string') return directText;
@@ -463,11 +474,14 @@ function extractSetupWizardParseContext(event: CapturedEvent): SetupWizardParseC
 
 		const nodeId = (node ? getString(node, 'id') : undefined) ?? getString(item, 'nodeId');
 		const existing = byNodeName.get(nodeName) ?? {
-			...(nodeId ? { nodeId } : {}),
 			nodeName,
 			parameterNames: [],
 			credentialRequests: [],
 		};
+		// A node can appear across multiple setupRequests[] entries (one per
+		// credential type, plus a param-only one); backfill nodeId from
+		// whichever entry actually carries it, not just the first one seen.
+		if (nodeId && !existing.nodeId) existing.nodeId = nodeId;
 
 		const parameterNames = [
 			...existing.parameterNames,

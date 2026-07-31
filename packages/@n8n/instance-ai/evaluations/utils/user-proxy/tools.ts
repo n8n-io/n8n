@@ -54,11 +54,15 @@ const pickResourceDecisionSchema = z.object({
 
 /**
  * Response to a standalone credential-setup card (`credentials(action='setup')`
- * suspending — TRUST-349). Only offered to the model when a stage direction
- * governs this exact moment; the deterministic default (no direction) never
- * reaches the LLM at all (see `confirmation-payload.ts`'s
- * `allowCredentialEngagement` gate), so `skip` here is for the case where a
- * direction explicitly asks the user to decline rather than the ambient default.
+ * suspending — TRUST-349). This action is always part of `confirmationDecisionSchema`
+ * and always listed in the tool descriptions, same as `approve_or_reject` —
+ * it isn't conditionally offered. What's gated is whether the *event* ever
+ * reaches the model at all: the deterministic default (no pending stage
+ * direction) short-circuits before the LLM is even called (see
+ * `confirmation-payload.ts`'s `allowCredentialEngagement`), so in practice the
+ * model only ever sees this event when a direction is already pending — `skip`
+ * exists for the case where that pending direction asks the user to decline
+ * rather than engage.
  *
  * A normal multi-node workflow BUILD never reaches this tool in practice — live
  * testing found the builder routes credential resolution through the workflow

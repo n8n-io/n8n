@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type { N8nClient } from '../clients/n8n-client';
+import type { EvalLogger } from '../harness/logger';
 import type { CapturedEvent } from '../types';
 import { UserProxyLlm } from '../utils/user-proxy';
 import type { UserProxyAgent } from '../utils/user-proxy/agent';
@@ -16,6 +17,19 @@ import {
 	type Decision,
 	type ProxyDecisionMode,
 } from '../utils/user-proxy/tools';
+
+/** Returns a fresh fake each call — tests assert on individual `vi.fn()` call
+ *  counts, so a single shared instance would leak state across tests. */
+function fakeLogger(): EvalLogger {
+	return {
+		warn: vi.fn(),
+		info: vi.fn(),
+		verbose: vi.fn(),
+		success: vi.fn(),
+		error: vi.fn(),
+		isVerbose: false,
+	};
+}
 
 /** Minimal fake satisfying only the two N8nClient methods credential creation uses. */
 function fakeCredentialClient(createdId: string): {
@@ -725,14 +739,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			nodeParametersJson: '{}',
 			nodeCredentialsJson: JSON.stringify({ 'Unknown Node': { slackApi: 'cred-team' } }),
 		});
-		const logger = {
-			warn: vi.fn(),
-			info: vi.fn(),
-			verbose: vi.fn(),
-			success: vi.fn(),
-			error: vi.fn(),
-			isVerbose: false,
-		};
+		const logger = fakeLogger();
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'Post to Slack every morning.' },
@@ -802,14 +809,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			nodeParametersJson: '{}',
 			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'cred-bogus' } }),
 		});
-		const logger = {
-			warn: vi.fn(),
-			info: vi.fn(),
-			verbose: vi.fn(),
-			success: vi.fn(),
-			error: vi.fn(),
-			isVerbose: false,
-		};
+		const logger = fakeLogger();
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'Post to Slack every morning.' },
@@ -930,14 +930,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			nodeParametersJson: '{}',
 			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
 		});
-		const logger = {
-			warn: vi.fn(),
-			info: vi.fn(),
-			verbose: vi.fn(),
-			success: vi.fn(),
-			error: vi.fn(),
-			isVerbose: false,
-		};
+		const logger = fakeLogger();
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'Post to Slack every morning.' },
@@ -988,24 +981,6 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	// decision to retain it in case some other flow (OAuth-specific, or a
 	// standalone "connect my X account" request) triggers it.
 	// -------------------------------------------------------------------------
-
-	it("credentials(action='setup'): still defers deterministically when the script has an unrelated stage direction", async () => {
-		const agent = new FakeAgent();
-		const proxy = new UserProxyLlm({
-			conversation: [
-				{ role: 'user', text: 'Build a Slack digest.' },
-				{ role: 'user', text: '[Reject the plan unless it sorts descending by count.]' },
-			],
-			agent,
-		});
-
-		const response = await proxy.respondToConfirmation(credentialEvent('req-cred-unrelated'));
-		expect(response.kind).toBe('credentialSelection');
-		if (response.kind === 'credentialSelection') {
-			expect(response.credentials).toEqual({});
-		}
-		expect(agent.callCount).toBe(0);
-	});
 
 	it("credentials(action='setup'): routes to the agent when a stage direction asks the user to engage", async () => {
 		const agent = new FakeAgent();
@@ -1105,14 +1080,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			option: 'manual',
 			existingCredentialId: 'cred-does-not-exist',
 		});
-		const logger = {
-			warn: vi.fn(),
-			info: vi.fn(),
-			verbose: vi.fn(),
-			success: vi.fn(),
-			error: vi.fn(),
-			isVerbose: false,
-		};
+		const logger = fakeLogger();
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'Post to Slack every morning.' },
@@ -1144,14 +1112,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	it("credentials(action='setup'): declines manual selection when several candidates exist and no existingCredentialId disambiguates", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
-		const logger = {
-			warn: vi.fn(),
-			info: vi.fn(),
-			verbose: vi.fn(),
-			success: vi.fn(),
-			error: vi.fn(),
-			isVerbose: false,
-		};
+		const logger = fakeLogger();
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'Post to Slack every morning.' },
@@ -1183,14 +1144,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	it("credentials(action='setup'): declines manual selection when the requested type has no existing credential and no credentialCreation is configured", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
-		const logger = {
-			warn: vi.fn(),
-			info: vi.fn(),
-			verbose: vi.fn(),
-			success: vi.fn(),
-			error: vi.fn(),
-			isVerbose: false,
-		};
+		const logger = fakeLogger();
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'Post to Slack every morning.' },
@@ -1271,14 +1225,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	it("credentials(action='setup'): declines auto setup when no credentialType can be resolved from context or the decision", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'auto' });
-		const logger = {
-			warn: vi.fn(),
-			info: vi.fn(),
-			verbose: vi.fn(),
-			success: vi.fn(),
-			error: vi.fn(),
-			isVerbose: false,
-		};
+		const logger = fakeLogger();
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'Summarize Notion pages to Slack.' },
@@ -1328,46 +1275,57 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("credentials(action='setup') gate: a credential-engagement stage direction does not leak into unrelated domain-access events", async () => {
+	// -------------------------------------------------------------------------
+	// TRUST-349 PR review: the engagement gate was originally a keyword-scoped
+	// regex (CREDENTIAL_ENGAGEMENT_PATTERN), rejected after a corpus audit found
+	// it both misfires (matches "API key"/"credential" inside a note that
+	// explicitly declines engagement) and can't be trusted to infer intent from
+	// keyword presence alone. Replaced with the same content-agnostic
+	// "any pending stage direction" check domain access and plan review already
+	// use (`hasPendingStageDirection`) — the model, not a regex, now decides
+	// whether a pending note means "engage" or "decline".
+	// -------------------------------------------------------------------------
+
+	it("credentials(action='setup'): routes to the agent whenever any stage direction is pending, regardless of content", async () => {
 		const agent = new FakeAgent();
-		// The credential-engagement direction is IN THE OPENER turn, which the
-		// constructor immediately marks "sent" (the harness already delivered
-		// it) — so `remainingUserScriptTurns()` is empty and the unrelated
-		// `deferAccessGateToScript` (pending-stage-direction) check can't fire,
-		// isolating what this test actually asserts: `allowCredentialEngagement`
-		// being true (from `hasCredentialEngagementDirection`, which scans the
-		// whole script, sent or not) does not by itself route domain-access
-		// events through the LLM.
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
 		const proxy = new UserProxyLlm({
 			conversation: [
-				{
-					role: 'user',
-					text: 'Research competitors. [Set up the credential now using the existing one shown.]',
-				},
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				// No credential/OAuth/connect vocabulary at all — the old
+				// keyword-scoped gate would have left this deterministic.
+				{ role: 'user', text: '[Reject the plan unless it sorts descending by count.]' },
 			],
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(domainAccessEvent('req-dom-2'));
-		expect(response.kind).toBe('domainAccessApprove');
+		await proxy.respondToConfirmation(credentialEvent('req-any-pending-direction'));
+		expect(agent.callCount).toBe(1);
+	});
+
+	it("credentials(action='setup'): stays fully deterministic when no stage direction is pending", async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'Post to Slack every morning.' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(credentialEvent('req-no-pending-direction'));
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({});
+		}
 		expect(agent.callCount).toBe(0);
 	});
 
 	it.each([
-		['[set up the credential now]', true],
-		['[connect the OAuth account]', true],
-		['[use automatic setup for the API key]', true],
-		['[sign in to Slack now]', true],
-		['[reject the plan unless it sorts descending]', false],
-		['[withhold the channel until asked]', false],
-		['[keep requesting changes until the list is exhausted]', false],
+		"[Stay impatient and hands-off for the whole conversation. If the agent asks you to choose or specify any detail — where to store the orders, the schema, field mappings, which service — don't engage with the specifics.]",
+		"[If the agent asks for the API key value: don't provide it — say you'll fill it into the credential yourself later. Approve plans/confirmations otherwise.]",
 	])(
-		"credentials(action='setup'): stage direction %j routes credential card to agent = %s",
-		async (note, shouldEngage) => {
+		"credentials(action='setup'): defers correctly on a real, unrelated-or-declining stage direction (%j) — the model is consulted (content-agnostic gate) but still ends up deferred",
+		async (note) => {
 			const agent = new FakeAgent();
-			if (shouldEngage) {
-				agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
-			}
+			agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
 			const proxy = new UserProxyLlm({
 				conversation: [
 					{ role: 'user', text: 'Post to Slack every morning.' },
@@ -1376,8 +1334,15 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 				agent,
 			});
 
-			await proxy.respondToConfirmation(credentialEvent(`req-note-${note}`));
-			expect(agent.callCount).toBe(shouldEngage ? 1 : 0);
+			const response = await proxy.respondToConfirmation(credentialEvent('req-defers-correctly'));
+			// The gate no longer filters on wording, so the model is consulted...
+			expect(agent.callCount).toBe(1);
+			// ...but correctly reads intent and defers, same end result the old
+			// keyword-scoped gate aimed for without the false-positive risk.
+			expect(response.kind).toBe('approval');
+			if (response.kind === 'approval') {
+				expect(response.approved).toBe(false);
+			}
 		},
 	);
 

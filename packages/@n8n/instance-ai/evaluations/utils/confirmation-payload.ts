@@ -13,10 +13,12 @@ export interface InfrastructureResponseOptions {
 	 * TRUST-349: when true, a standalone credential-request event is left
 	 * unhandled here (`undefined`) so the caller can route it to the LLM's
 	 * `choose_credential_setup_option` action instead of the default deferral.
-	 * Set only when a stage direction governs this exact moment — see
-	 * `hasCredentialEngagementDirection` in `user-proxy/index.ts`. Absent/false
-	 * reproduces today's behavior exactly, so every existing case (and every
-	 * other caller, e.g. `chat-loop.ts`'s `buildAutoApprovePayload`) is unaffected.
+	 * Set only when a stage direction is still pending delivery — see
+	 * `UserProxyLlm.hasPendingStageDirection` in `user-proxy/index.ts`, the
+	 * same content-agnostic check domain access and plan review already use.
+	 * Absent/false reproduces today's behavior exactly, so every existing case
+	 * (and every other caller, e.g. `chat-loop.ts`'s `buildAutoApprovePayload`)
+	 * is unaffected.
 	 */
 	allowCredentialEngagement?: boolean;
 }
