@@ -61,6 +61,14 @@ describe('isQuotaExhaustedError', () => {
 		expect(isQuotaExhaustedError(sdkError('rate limited', 429, 'rate_limit'))).toBe(false);
 		expect(isQuotaExhaustedError(undefined)).toBe(false);
 	});
+
+	it('stops walking a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(isQuotaExhaustedError(outer)).toBe(false);
+	});
 });
 
 describe('mapAgentChunkToEvent', () => {
@@ -511,6 +519,19 @@ describe('mapAgentChunkToEvent', () => {
 				provider: 'OpenAI',
 				technicalDetails: JSON.stringify({ error: { message: 'Rate limited' } }),
 			},
+		});
+	});
+
+	it('maps an error with a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(map({ type: 'error', error: outer })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'stream failed' },
 		});
 	});
 

@@ -1,6 +1,21 @@
 import type { Mock } from 'vitest';
 
-import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
+import {
+	getAgentErrorSeverity,
+	InstanceAiErrorReporterService,
+} from '../instance-ai-error-reporter.service';
+
+describe('getAgentErrorSeverity', () => {
+	it.each([
+		['observer', 'warning'],
+		['reflector', 'warning'],
+		['episodic-memory', 'warning'],
+		['input-persistence', undefined],
+		['turn-delta-persistence', undefined],
+	] as const)('classifies %s as %s', (source, expected) => {
+		expect(getAgentErrorSeverity(source)).toBe(expected);
+	});
+});
 
 describe('InstanceAiErrorReporterService', () => {
 	function createService(): {
@@ -120,14 +135,33 @@ describe('InstanceAiErrorReporterService', () => {
 		);
 	});
 
+	it('suppresses a message-only quota error in the cause chain', () => {
+		const { service, errorReporter } = createService();
+		const quotaError = new Error('No instance AI credits quota allotted');
+		const error = new Error('Workspace setup failed', { cause: quotaError });
+
+		service.report(error, { component: 'instance-ai-run', threadId: 't', runId: 'r' });
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+	});
+
+	it('stops walking a cyclic cause chain', () => {
+		const { service, errorReporter } = createService();
+		const outer = new Error('Workspace setup failed');
+		const inner = new Error('Command fallback failed', { cause: outer });
+		outer.cause = inner;
+
+		service.report(outer, { component: 'instance-ai-run', threadId: 't', runId: 'r' });
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
+	});
+
 	it('reports at warning level when the context declares warning severity', () => {
 		const { service, errorReporter, logger } = createService();
-		const error = Object.assign(new Error('No output generated. Check the stream for errors.'), {
-			name: 'AI_NoOutputGeneratedError',
-		});
+		const error = new Error('Observer failed');
 
 		service.report(error, {
-			component: 'instance-ai-stream',
+			component: 'instance-ai-observer',
 			severity: 'warning',
 			threadId: 't',
 			runId: 'r',
@@ -138,6 +172,25 @@ describe('InstanceAiErrorReporterService', () => {
 		expect(errorReporter.error).toHaveBeenCalledWith(
 			error,
 			expect.objectContaining({ level: 'warning' }),
+		);
+	});
+
+	it('reports unresolved masked stream failures at error level by default', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = Object.assign(new Error('No output generated. Check the stream for errors.'), {
+			name: 'AI_NoOutputGeneratedError',
+		});
+
+		service.report(error, {
+			component: 'instance-ai-stream',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(logger.error).toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.not.objectContaining({ level: 'warning' }),
 		);
 	});
 

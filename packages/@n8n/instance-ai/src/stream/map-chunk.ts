@@ -136,8 +136,10 @@ export function isQuotaExhaustedError(error: unknown): boolean {
 }
 
 /** Read the machine-readable code from the error, its ai-sdk `responseBody`, or its `cause`. */
-function readErrorCode(error: unknown): string | undefined {
+function readErrorCode(error: unknown, visited = new WeakSet<object>()): string | undefined {
 	if (typeof error !== 'object' || error === null) return undefined;
+	if (visited.has(error)) return undefined;
+	visited.add(error);
 
 	// SDK APIResponseError carries the parsed code directly.
 	if ('errorCode' in error && typeof error.errorCode === 'string') {
@@ -153,17 +155,19 @@ function readErrorCode(error: unknown): string | undefined {
 
 	// The SDK error can reach us wrapped (thrown inside the model fetch); unwrap the cause chain.
 	if ('cause' in error && error.cause !== error) {
-		return readErrorCode(error.cause);
+		return readErrorCode(error.cause, visited);
 	}
 
 	return undefined;
 }
 
 /** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */
-function readResponseBody(error: unknown): string | undefined {
+function readResponseBody(error: unknown, visited = new WeakSet<object>()): string | undefined {
 	if (typeof error !== 'object' || error === null) return undefined;
+	if (visited.has(error)) return undefined;
+	visited.add(error);
 	if ('responseBody' in error && typeof error.responseBody === 'string') return error.responseBody;
-	if ('cause' in error && error.cause !== error) return readResponseBody(error.cause);
+	if ('cause' in error && error.cause !== error) return readResponseBody(error.cause, visited);
 	return undefined;
 }
 

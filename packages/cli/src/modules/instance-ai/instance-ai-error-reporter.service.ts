@@ -1,3 +1,4 @@
+import type { AgentEventData } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isQuotaExhaustedError } from '@n8n/instance-ai';
@@ -10,16 +11,27 @@ import {
 
 export type InstanceAiErrorReportContext = {
 	component: string;
-	/** Report at warning level: known-benign failures that should not page. */
+	/** Report non-terminal, best-effort failures at warning level. */
 	severity?: 'warning';
 } & InstanceAiObservabilityContext;
 
 /** Quota rejections the proxy returns as message-only 403s, without a machine-readable code. */
 const QUOTA_MESSAGES = ['Have reached end of quota', 'No instance AI credits quota allotted'];
 
+type AgentErrorSource = NonNullable<Extract<AgentEventData, { error: unknown }>['source']>;
+
+export function getAgentErrorSeverity(source: AgentErrorSource): 'warning' | undefined {
+	if (source === 'observer' || source === 'reflector' || source === 'episodic-memory') {
+		return 'warning';
+	}
+	return undefined;
+}
+
 function hasQuotaExhaustedMessage(error: unknown): boolean {
 	let current: unknown = error;
-	while (current instanceof Error) {
+	const visited = new WeakSet<Error>();
+	while (current instanceof Error && !visited.has(current)) {
+		visited.add(current);
 		const { message } = current;
 		if (QUOTA_MESSAGES.some((quotaMessage) => message.includes(quotaMessage))) return true;
 		current = current.cause;
