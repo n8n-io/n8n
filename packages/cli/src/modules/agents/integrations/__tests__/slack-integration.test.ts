@@ -100,6 +100,16 @@ describe('SlackIntegration', () => {
 			).toBe('required');
 		});
 
+		it('requires a reply when the adapter flags the message as a mention, even without a bot user ID', () => {
+			expect(
+				integration.getReplyExpectation({
+					message: { text: 'hello', isMention: true, raw: { channel: 'C123' } } as never,
+					isNewMention: false,
+					platformAgentContext: {},
+				}),
+			).toBe('required');
+		});
+
 		it('makes the reply optional for unaddressed follow-ups in subscribed channels', () => {
 			expect(
 				integration.getReplyExpectation({

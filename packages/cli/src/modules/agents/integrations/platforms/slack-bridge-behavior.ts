@@ -58,7 +58,9 @@ export function getSlackReplyExpectation(params: {
 	isNewMention: boolean;
 	platformAgentContext: PlatformAgentContext;
 }): ReplyExpectation {
-	if (params.isNewMention) return 'required';
+	// `isMention` is set by the Slack adapter from the app_mention event type,
+	// so it works even when the bot user ID (best-effort auth.test) is unknown.
+	if (params.isNewMention || params.message.isMention === true) return 'required';
 
 	const raw = params.message.raw;
 	if (!isRecord(raw)) return 'required';
