@@ -8,16 +8,14 @@ const notion: McpRegistryServerSummary = {
 	slug: 'notion',
 	title: 'Notion',
 	description: 'Work with Notion pages and databases',
-	tools: [{ name: 'create_page', title: 'Create page' }],
-	isConnected: false,
+	tools: ['create_page', 'search_pages'],
 };
 
 const linear: McpRegistryServerSummary = {
 	slug: 'linear',
 	title: 'Linear',
 	description: 'Track issues in Linear',
-	tools: [{ name: 'create_issue' }],
-	isConnected: true,
+	tools: ['create_issue'],
 };
 
 function makeContext(mcpService?: InstanceAiMcpService): InstanceAiContext {
@@ -30,13 +28,30 @@ function makeService(servers: McpRegistryServerSummary[]): InstanceAiMcpService 
 	return { search: vi.fn().mockResolvedValue(servers) };
 }
 
+function makeServers(count: number): McpRegistryServerSummary[] {
+	return Array.from({ length: count }, (_, index) => ({
+		slug: `server-${index}`,
+		title: `Server ${index}`,
+		description: 'An API service',
+		tools: [`tool_${index}`],
+	}));
+}
+
 interface SearchOutput {
 	results: McpRegistryServerSummary[];
 	hint?: string;
 }
 
+async function search(
+	servers: McpRegistryServerSummary[],
+	queries: string[] = ['anything'],
+): Promise<SearchOutput> {
+	const tool = createMcpServersTool(makeContext(makeService(servers)));
+	return await executeTool<SearchOutput>(tool, { action: 'search', queries });
+}
+
 describe('mcp-servers tool', () => {
-	it('passes the queries through and returns the host-annotated results', async () => {
+	it('passes the queries through and returns the matching servers', async () => {
 		const mcpService = makeService([notion, linear]);
 		const tool = createMcpServersTool(makeContext(mcpService));
 
@@ -46,38 +61,42 @@ describe('mcp-servers tool', () => {
 		});
 
 		expect(mcpService.search).toHaveBeenCalledWith(['notion', 'linear']);
-		expect(output.results).toEqual([notion, linear]);
+		expect(output.results.map((result) => result.slug)).toEqual(['notion', 'linear']);
 	});
 
 	it('returns no results when nothing matches', async () => {
-		const tool = createMcpServersTool(makeContext(makeService([])));
-
-		const output = await executeTool<SearchOutput>(tool, {
-			action: 'search',
-			queries: ['nothing-like-this'],
-		});
+		const output = await search([]);
 
 		expect(output.results).toEqual([]);
 	});
 
-	it('hints how to connect while any result is unconnected', async () => {
-		const tool = createMcpServersTool(makeContext(makeService([notion, linear])));
+	it('passes each server through with its tool names', async () => {
+		const output = await search([notion, linear]);
 
-		const output = await executeTool<SearchOutput>(tool, {
-			action: 'search',
-			queries: ['notion'],
-		});
+		expect(output.results).toEqual([notion, linear]);
+	});
+
+	it('caps the results and says it truncated', async () => {
+		const output = await search(makeServers(8), ['api']);
+
+		expect(output.results).toHaveLength(5);
+		expect(output.hint).toContain('narrower query');
+	});
+
+	it('does not claim truncation when everything fits', async () => {
+		const output = await search(makeServers(5), ['api']);
+
+		expect(output.hint).not.toContain('narrower query');
+	});
+
+	it('hints how to connect whenever something was found', async () => {
+		const output = await search([notion]);
 
 		expect(output.hint).toContain('"Connections"');
 	});
 
-	it('omits the hint when everything found is already connected', async () => {
-		const tool = createMcpServersTool(makeContext(makeService([linear])));
-
-		const output = await executeTool<SearchOutput>(tool, {
-			action: 'search',
-			queries: ['linear'],
-		});
+	it('omits the hint when nothing was found', async () => {
+		const output = await search([]);
 
 		expect(output.hint).toBeUndefined();
 	});
@@ -92,7 +111,7 @@ describe('mcp-servers tool', () => {
 		const tool = createMcpServersTool(makeContext(undefined));
 
 		await expect(executeTool(tool, { action: 'search', queries: ['notion'] })).rejects.toThrow(
-			'MCP registry search is not available on this instance.',
+			'MCP server search is not available on this instance.',
 		);
 	});
 

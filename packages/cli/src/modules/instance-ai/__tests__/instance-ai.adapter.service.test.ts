@@ -3869,16 +3869,12 @@ describe('MCP registry discovery', () => {
 					slug: 'google-drive',
 					title: 'Google Drive',
 					description: 'Work with Drive files',
-					tools: [{ name: 'list_files', title: 'List files' }],
-					isConnected: false,
+					tools: ['list_files'],
 				},
 			]);
 		});
 
-		it('marks a server connected only when the run would actually load it', async () => {
-			// Two connection rows exist, but only Drive resolves to a usable server
-			// (the other's credential or OAuth token is unusable), so Notion — which
-			// has a row but no resolved server — must not read as connected.
+		it('drops a server the run would actually load', async () => {
 			const { getRegistryMcpServers } = stubContainer({
 				registrySearch: vi
 					.fn()
@@ -3895,13 +3891,10 @@ describe('MCP registry discovery', () => {
 			const results = await context.mcpService!.search(['drive', 'notion']);
 
 			expect(getRegistryMcpServers).toHaveBeenCalledWith(user);
-			expect(results.map((result) => [result.slug, result.isConnected])).toEqual([
-				['google-drive', true],
-				['notion', false],
-			]);
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
 		});
 
-		it('reports nothing connected when connection resolution fails', async () => {
+		it('offers everything when connection resolution fails', async () => {
 			stubContainer({
 				registrySearch: vi.fn().mockResolvedValue([registryHit]),
 				getRegistryMcpServers: vi.fn().mockRejectedValue(new Error('decrypt failed')),
@@ -3910,7 +3903,7 @@ describe('MCP registry discovery', () => {
 
 			const results = await context.mcpService!.search(['drive']);
 
-			expect(results[0].isConnected).toBe(false);
+			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
 		});
 	});
 });

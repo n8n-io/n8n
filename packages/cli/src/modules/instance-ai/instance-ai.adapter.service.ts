@@ -466,13 +466,14 @@ export class InstanceAiAdapterService {
 					Container.get(McpRegistryService).search(queries),
 					this.listUsableMcpRegistrySlugs(user),
 				]);
-				return servers.map((server) => ({
-					slug: server.slug,
-					title: server.title,
-					description: server.description,
-					tools: server.tools,
-					isConnected: connectedSlugs.has(server.slug),
-				}));
+				return servers
+					.filter((server) => !connectedSlugs.has(server.slug))
+					.map((server) => ({
+						slug: server.slug,
+						title: server.title,
+						description: server.description,
+						tools: server.tools.map((tool) => tool.name),
+					}));
 			},
 		};
 	}

@@ -82,12 +82,28 @@ function matchesQuery(server: McpRegistryServer, normalizedQueries: string[]): b
 	return normalizedQueries.some((query) => fields.some((field) => field.includes(query)));
 }
 
-/** Filter `servers` to those matching any query, mapped to the config-ready shape. */
+function relevance(server: McpRegistryServer, normalizedQueries: string[]): number {
+	const names = [server.slug, camelCase(server.slug), server.title]
+		.filter((name): name is string => typeof name === 'string')
+		.map((name) => name.toLowerCase());
+	if (normalizedQueries.some((query) => names.includes(query))) return 2;
+	if (normalizedQueries.some((query) => names.some((name) => name.includes(query)))) return 1;
+	return 0;
+}
+
+/** Filter `servers` to those matching any query, most relevant first, mapped to
+ *  the config-ready shape. */
 export function searchMcpRegistryServers(
 	servers: McpRegistryServer[],
 	queries: string[],
 ): McpRegistrySearchResult[] {
 	const normalized = normalizeQueries(queries);
 	if (normalized.length === 0) return [];
-	return listMcpRegistryServers(servers.filter((server) => matchesQuery(server, normalized)));
+	return listMcpRegistryServers(
+		servers
+			.filter((server) => matchesQuery(server, normalized))
+			.map((server) => ({ server, score: relevance(server, normalized) }))
+			.sort((left, right) => right.score - left.score)
+			.map(({ server }) => server),
+	);
 }

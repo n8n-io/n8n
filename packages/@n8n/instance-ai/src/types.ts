@@ -490,8 +490,7 @@ export interface McpRegistryServerSummary {
 	slug: string;
 	title: string;
 	description: string;
-	tools: Array<{ name: string; title?: string }>;
-	isConnected: boolean;
+	tools: string[];
 }
 
 export interface InstanceAiMcpService {

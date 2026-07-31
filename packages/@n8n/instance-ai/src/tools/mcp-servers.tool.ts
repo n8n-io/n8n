@@ -1,8 +1,3 @@
-/**
- * mcp-servers — discovery of the MCP registry. Without it the agent has no way
- * to learn that a hosted MCP server exists for a service the user asked about,
- * and falls back to nodes + credentials as if nothing else were on offer.
- */
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
@@ -10,7 +5,9 @@ import type { InstanceAiContext } from '../types';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 const mcpServersInputSchema = z.object({
-	action: z.literal('search').describe('Search the available MCP servers.'),
+	action: z
+		.literal('search')
+		.describe('Search the available MCP servers for connecting to a third party service.'),
 	queries: z
 		.array(z.string().min(1))
 		.min(1)
@@ -25,20 +22,24 @@ const mcpServersOutputSchema = z.object({
 			slug: z.string(),
 			title: z.string(),
 			description: z.string(),
-			tools: z.array(z.object({ name: z.string(), title: z.string().optional() })),
-			isConnected: z.boolean(),
+			tools: z.array(z.string()),
 		}),
 	),
 	hint: z.string().optional(),
 });
 
-const DESCRIPTION = `Search the MCP servers that connect the assistant to a third-party service (e.g. Notion, Linear, Slack).
-Use it when the user asks for a service you have no connected tool for, before saying the integration is unavailable.
-Read-only — only the user can connect a server. \`isConnected: true\` means its tools are already available to you, so do not offer to add it.`;
+const MAX_RESULTS = 5;
 
-const CONNECT_HINT = `Tell the user how to connect to the MCP server:
+const DESCRIPTION = `Find tools you can use in this conversation to work with a third-party service (e.g. Notion, Linear, Slack).
+Use it when the user asks for a service you have no connected tool for, before saying the integration is unavailable.
+Read-only — only the user can connect one. Only services that are *not* connected yet come back. Already-connected services' tools are already available to you.`;
+
+const CONNECT_HINT = `Not connected yet — tell the user how to connect it:
 open the right sidebar if it is hidden, then under "Connections" click the "+" button,
 find the service in the Tools dialog and click "Connect", picking an existing credential or creating one.`;
+
+const TRUNCATED_HINT =
+	'More services matched than are shown, search again with a narrower query if none of these fit.';
 
 export function createMcpServersTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.MCP_SERVERS)
@@ -49,12 +50,20 @@ export function createMcpServersTool(context: InstanceAiContext) {
 			const { queries } = mcpServersInputSchema.parse(input);
 			const mcpService = context.mcpService;
 			if (!mcpService) {
-				throw new Error('MCP registry search is not available on this instance.');
+				throw new Error('MCP server search is not available on this instance.');
 			}
 
-			const results = await mcpService.search(queries);
-			const anyUnconnected = results.some((result) => !result.isConnected);
-			return { results, hint: anyUnconnected ? CONNECT_HINT : undefined };
+			const matches = await mcpService.search(queries);
+			const results = matches.slice(0, MAX_RESULTS);
+
+			const hint = [
+				results.length > 0 && CONNECT_HINT,
+				matches.length > results.length && TRUNCATED_HINT,
+			]
+				.filter((line): line is string => typeof line === 'string')
+				.join('\n\n');
+
+			return { results, hint: hint || undefined };
 		})
 		.build();
 }

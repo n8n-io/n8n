@@ -67,6 +67,20 @@ describe('searchMcpRegistryServers', () => {
 		expect(result.credentialType).toBe('googleDriveMcpOAuth2Api');
 	});
 
+	it('ranks name matches above description matches', () => {
+		const servers = [
+			server({ slug: 'ci-bot', title: 'CI Bot', tagline: 'Mirrors issues to GitHub' }),
+			server({ slug: 'github-lite', title: 'GitHub Lite' }),
+			server(),
+		];
+
+		expect(searchMcpRegistryServers(servers, ['github']).map((result) => result.slug)).toEqual([
+			'github',
+			'github-lite',
+			'ci-bot',
+		]);
+	});
+
 	it('skips servers that have no usable remote', () => {
 		const noRemote = server({ slug: 'no-remote', remotes: [] });
 		expect(searchMcpRegistryServers([noRemote], ['no-remote'])).toEqual([]);

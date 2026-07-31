@@ -149,15 +149,20 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		it('nudges the orchestrator to search the registry when the tool is available', () => {
 			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
 
-			expect(prompt).toContain('## MCP Registry');
+			expect(prompt).toContain('## Connecting Services');
 			expect(prompt).toContain('mcp-servers');
 		});
 
+		it('keeps the nudge away from workflow building', () => {
+			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
+
+			expect(prompt).toContain('never call `mcp-servers` for a build request');
+		});
+
 		it('omits the section when the tool is not registered', () => {
-			// Naming a tool that is not in the run invites a hallucinated call.
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).not.toContain('## MCP Registry');
+			expect(prompt).not.toContain('## Connecting Services');
 			expect(prompt).not.toContain('mcp-servers');
 		});
 	});
