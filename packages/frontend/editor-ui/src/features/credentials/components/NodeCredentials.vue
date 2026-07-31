@@ -5,8 +5,10 @@ import type {
 	ICredentialType,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
+	INodeParameters,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { resolveSupportedCredentialActivation } from 'n8n-workflow';
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -100,7 +102,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	credentialSelected: [credential: INodeUpdatePropertiesInformation];
-	valueChanged: [value: { name: string; value: string }];
+	valueChanged: [value: { name: string; value: NodeParameterValueType }];
 	blur: [source: string];
 }>();
 
@@ -335,8 +337,12 @@ watch(
 		// redirect the user onto n8n credits. The experiment variant leaves it unselected.
 		if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
 			for (const { type } of types) {
+				// Same rule as showAiGatewaySelector: supported type, or a sibling fallback.
+				const gatewaySupported =
+					aiGateway.isCredentialTypeSupported(type.name) ||
+					resolveGatewayActivation(type.name) !== undefined;
 				if (
-					aiGateway.isCredentialTypeSupported(type.name) &&
+					gatewaySupported &&
 					aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
 					isCurrentActionSupported.value
 				) {
@@ -671,23 +677,79 @@ function isAiGatewayManagedCredentials(credentialType: string): boolean {
 	return aiGateway.isEnabled.value && selected.value[credentialType]?.__aiGatewayManaged === true;
 }
 
+// Credential type + activation parameters n8n credits should use for this row:
+// the shown type if supported, else a supported sibling (whose auth the node
+// switches to). See `resolveSupportedCredentialActivation`.
+//
+// The sibling fallback is limited to hosts consuming the full `credentialSelected`
+// payload and `valueChanged` (NDV, tool config). Setup-flow hosts (setup panel,
+// Instance AI — standalone or `overrideCredType`) key the payload by this row's
+// type, so a sibling switch reads as a deselect and the auth change is lost.
+function resolveGatewayActivation(credentialType: string) {
+	if (!nodeType.value) return undefined;
+	const activation = resolveSupportedCredentialActivation(
+		nodeType.value,
+		props.node,
+		aiGateway.isCredentialTypeSupported,
+		credentialType,
+	);
+	if (!activation) return undefined;
+	const isSetupFlowHost =
+		props.standalone ||
+		(typeof props.overrideCredType === 'string' && props.overrideCredType !== '');
+	if (activation.credentialType !== credentialType && isSetupFlowHost) return undefined;
+	return activation;
+}
+
 function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
 	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
-	if (!aiGateway.isCredentialTypeSupported(credentialType)) return false;
-	return true;
+	// Shown type supported → toggle directly; otherwise fall back to a sibling.
+	if (aiGateway.isCredentialTypeSupported(credentialType)) return true;
+	return resolveGatewayActivation(credentialType) !== undefined;
+}
+
+// Persist the parameters that activate the chosen credential type (e.g. switch
+// `authentication`): write through the workflow document, and emit so hosts that
+// keep their own parameter copy (NDV, setup panel) stay in sync.
+function applyActivationParameters(parameters: INodeParameters): void {
+	const changed = Object.entries(parameters).filter(
+		([name, value]) => props.node.parameters[name] !== value,
+	);
+	if (changed.length === 0) return;
+
+	if (!props.standalone && workflowDocumentStore?.value) {
+		workflowDocumentStore.value.updateNodeProperties({
+			name: props.node.name,
+			properties: { parameters: { ...props.node.parameters, ...Object.fromEntries(changed) } },
+		});
+	}
+	for (const [name, value] of changed) {
+		emit('valueChanged', { name: `parameters.${name}`, value });
+	}
 }
 
 function onAiGatewaySelector(credentialType: string, enable: boolean, isUserAction = true): void {
 	const credentials = { ...(props.node.credentials ?? {}) };
+
+	// When enabling n8n credits, the managed slot goes on the supported credential
+	// type — the shown one, or a supported sibling whose auth we switch the node to.
+	const activation = enable ? resolveGatewayActivation(credentialType) : undefined;
+	const effectiveType = activation?.credentialType ?? credentialType;
 
 	// Track the credential kind actually assigned, or null when the slot is cleared
 	// (toggle-off with no credential to restore) so no false assignment is recorded.
 	let assignedKind: 'n8n_connect' | 'own' | null = null;
 
 	if (enable) {
-		credentials[credentialType] = { id: null, name: '', __aiGatewayManaged: true };
+		// Moving the managed slot to a sibling: drop a stale managed sentinel from the
+		// shown type. A user credential stays (inactive), as manual auth switches do.
+		if (effectiveType !== credentialType && credentials[credentialType]?.__aiGatewayManaged) {
+			delete credentials[credentialType];
+		}
+		if (activation) applyActivationParameters(activation.parameters);
+		credentials[effectiveType] = { id: null, name: '', __aiGatewayManaged: true };
 		assignedKind = 'n8n_connect';
 	} else {
 		// Toggle OFF: restore the most recent available credential for THIS node only.
@@ -709,7 +771,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 
 	if (isUserAction) {
 		telemetry.track('User toggled n8n connect credential', {
-			credential_type: credentialType,
+			credential_type: effectiveType,
 			node_type: props.node.type,
 			mode: enable ? 'n8n_connect' : 'own',
 			workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
@@ -718,7 +780,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 		// (Instance AI) assignments are counted by the backend as `instance-ai-*`.
 		if (!props.standalone && assignedKind) {
 			telemetry.track('Node credential assigned', {
-				credential_type: credentialType,
+				credential_type: effectiveType,
 				node_type: props.node.type,
 				workflow_id: workflowDocumentStore?.value.workflowId,
 				credential_kind: assignedKind,
