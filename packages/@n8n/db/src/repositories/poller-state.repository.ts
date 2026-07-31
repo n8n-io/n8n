@@ -1,3 +1,4 @@
+import { ScheduledTaskStatus } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -97,11 +98,13 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 				.from(ScheduledTask, 'fenced_task')
 				.where('fenced_task.id = :fenceTaskId')
 				.andWhere('fenced_task.leaseEpoch = :fenceLeaseEpoch')
+				.andWhere('fenced_task.status != :fenceExcludedStatus')
 				.getQuery();
 
 			qb.andWhere(`EXISTS ${fenceExists}`, {
 				fenceTaskId: Number(fence.taskId),
 				fenceLeaseEpoch: fence.leaseEpoch,
+				fenceExcludedStatus: ScheduledTaskStatus.Pending,
 			});
 		}
 
