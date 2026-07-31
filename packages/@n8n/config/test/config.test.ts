@@ -473,6 +473,7 @@ describe('GlobalConfig', () => {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
 			agentEvalsEnabled: false,
+			agentEvalsRunTimeoutMinutes: 60,
 		},
 		generic: {
 			timezone: 'America/New_York',
