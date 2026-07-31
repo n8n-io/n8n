@@ -607,6 +607,7 @@ export type {
 	AgentEvalResultRecord,
 	AgentEvalRatingRecord,
 	AgentEvalRunDetail,
+	AgentEvalRunSummary,
 	AgentEvalDraftCase,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
