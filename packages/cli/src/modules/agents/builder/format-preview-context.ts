@@ -37,6 +37,9 @@ function formatTimelineEvent(event: TimelineEvent): string {
 	if (event.type === 'text') {
 		return `Assistant: ${truncate(event.content, MAX_TEXT_CHARS)}`;
 	}
+	if (event.type === 'reasoning') {
+		return `Reasoning: ${truncate(event.content, MAX_TEXT_CHARS)}`;
+	}
 	if (event.type === 'suspension') {
 		return `[suspended waiting on ${event.toolName}]`;
 	}

@@ -4,7 +4,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 
 const trackMock = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({

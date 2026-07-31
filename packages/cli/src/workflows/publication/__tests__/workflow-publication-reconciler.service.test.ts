@@ -262,6 +262,30 @@ describe('WorkflowPublicationReconciler', () => {
 			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
 		});
 
+		it('reports a failing ghost teardown and keeps reconciling', async () => {
+			// One ghost whose teardown throws must not take down the rest of the
+			// surplus pass — nor the missing/skew detections that run after it.
+			activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-bad', 'wf-good']);
+			activeWorkflowTriggers.remove.mockImplementation(async (workflowId) => {
+				if (workflowId === 'wf-bad') throw new Error('closeFunction failed');
+				return true;
+			});
+
+			await service.reconcile();
+
+			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-good');
+			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(Error), {
+				shouldBeLogged: true,
+			});
+			// The pass carried on into the later detections.
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalled();
+			expect(outboxRepository.findVersionSkewedWorkflowIds).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', surplusCount: 1 }),
+			);
+		});
+
 		it('re-checks under the lock and skips a workflow republished since detection', async () => {
 			setGhost('wf-ghost');
 			// By the time the lock is acquired, a publish has completed: the workflow

@@ -4,7 +4,7 @@ import { ref, computed, watch } from 'vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
 import { N8nButton, N8nIcon, N8nText, N8nCallout } from '@n8n/design-system';

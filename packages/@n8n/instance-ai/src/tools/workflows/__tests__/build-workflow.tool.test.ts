@@ -27,7 +27,7 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 });
 
 vi.mock('../workflow-validation-warnings', () => ({
-	partitionWarnings: vi.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
+	partitionWarnings: vi.fn((warnings: unknown[]) => ({ blocking: [], informational: warnings })),
 }));
 
 const generatedWorkflow = {
@@ -200,7 +200,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx',
 		});
 		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
-			errors: [],
+			blocking: [],
 			informational: warnings,
 		}));
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
@@ -1087,7 +1087,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx',
 		});
 		vi.mocked(partitionWarnings).mockReturnValueOnce({
-			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			blocking: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
 			informational: [],
 		});
 
@@ -1117,7 +1117,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx' as const,
 		};
 		const partitionedWarnings = {
-			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			blocking: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
 			informational: [],
 		};
 		vi.mocked(compileWorkflowSource)
@@ -1153,7 +1153,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx' as const,
 		};
 		const partitionedWarnings = {
-			errors: validationResult.warnings,
+			blocking: validationResult.warnings,
 			informational: [],
 		};
 		vi.mocked(compileWorkflowSource)

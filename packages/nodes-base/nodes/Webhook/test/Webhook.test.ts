@@ -47,6 +47,20 @@ describe('Test Webhook Node', () => {
 
 			expect(authParam?.options).toContainEqual(expect.objectContaining({ value: 'n8nOAuth2' }));
 		});
+
+		it('exposes the requireExecuteAccess toggle, on by default and scoped to the n8nOAuth2 mode', () => {
+			const node = new Webhook();
+			const requireExecuteParam = node.description.properties.find(
+				(property) => property.name === 'requireExecuteAccess',
+			);
+
+			expect(requireExecuteParam).toMatchObject({
+				type: 'boolean',
+				default: true,
+				displayOptions: { show: { authentication: ['n8nOAuth2'] } },
+				envFeatureFlag: 'WEBHOOK_PRIVATE_CREDENTIALS',
+			});
+		});
 	});
 
 	describe('handleFormData', () => {

@@ -47,7 +47,7 @@ import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const props = defineProps<{
