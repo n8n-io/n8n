@@ -267,7 +267,10 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		outerApproval.ctx.suspendPayload = outerSuspendPayload;
 		await wrapped.handler!({ id: 'parent-call' }, outerApproval.ctx);
 
-		expect(outerApproval.suspendMock).toHaveBeenCalledWith(childSuspendPayload);
+		expect(outerApproval.suspendMock).toHaveBeenCalledWith(
+			childSuspendPayload,
+			expect.objectContaining({ resumeSchema: childResumeSchema }),
+		);
 		expect(originalHandler).toHaveBeenLastCalledWith(
 			{ id: 'parent-call' },
 			expect.objectContaining({

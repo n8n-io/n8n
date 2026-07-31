@@ -131,6 +131,11 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			}
 			const initialInnerContext: InterruptibleToolContext = {
 				...interruptCtx,
+				suspend: async (payload, options) =>
+					await interruptCtx.suspend(payload, {
+						...options,
+						resumeSchema: options?.resumeSchema ?? tool.resumeSchema,
+					}),
 				resumeData: undefined,
 				suspendPayload: undefined,
 				continuation: undefined,
