@@ -481,6 +481,7 @@ describe('AgentRuntime — execution counters', () => {
 	it('persists dynamic suspension state privately and validates resume before claiming', async () => {
 		const continuation = { childRunId: 'child-run-1', taskPath: '/root/research_0' };
 		const dynamicResumeSchema = z.object({ decision: z.literal('continue') });
+		const repeatedResumeSchema = z.object({ decision: z.literal('continue-again') });
 		let observedCtx: InterruptibleToolContext | undefined;
 		let shouldResuspend = true;
 		const suspendTool: BuiltTool = {
@@ -489,6 +490,10 @@ describe('AgentRuntime — execution counters', () => {
 			inputSchema: z.object({}),
 			suspendSchema: z.object({ prompt: z.string() }),
 			resumeSchema: z.object({ fallback: z.string() }),
+			resolveResumeSchema: (payload) =>
+				(payload as { prompt?: string }).prompt === 'Continue waiting?'
+					? repeatedResumeSchema
+					: undefined,
 			handler: async (_input, ctx) => {
 				const interruptibleCtx = ctx as InterruptibleToolContext;
 				if (!interruptibleCtx.resumeData) {
@@ -550,8 +555,11 @@ describe('AgentRuntime — execution counters', () => {
 
 		expect(observedCtx?.continuation).toEqual(continuation);
 		expect(observedCtx?.resumeSchema).toEqual(publicSuspension?.resumeSchema);
-		expect(second.pendingSuspend?.[0]).toEqual(
-			expect.objectContaining({ resumeSchema: publicSuspension?.resumeSchema }),
+		expect(second.pendingSuspend?.[0].resumeSchema).toEqual(
+			expect.objectContaining({
+				type: 'object',
+				properties: { decision: expect.objectContaining({ const: 'continue-again' }) },
+			}),
 		);
 		const repeatedCheckpoint = await checkpointStore.load(first.runId);
 		expect(repeatedCheckpoint?.pendingToolCalls['tc-dynamic']).toEqual(
@@ -561,7 +569,7 @@ describe('AgentRuntime — execution counters', () => {
 		generateText.mockResolvedValueOnce(makeGenerateSuccess('resumed'));
 		await runtime.resume(
 			'generate',
-			{ decision: 'continue' },
+			{ decision: 'continue-again' },
 			{ runId: first.runId, toolCallId: 'tc-dynamic' },
 		);
 	});
@@ -4862,6 +4870,54 @@ describe('AgentRuntime — abort during a tool batch', () => {
 					type: 'object',
 					properties: { approved: expect.objectContaining({ type: 'boolean' }) },
 				}),
+			}),
+		);
+	});
+
+	it('cleans up suspended siblings when an unexecuted tool aborts during resume', async () => {
+		const bus = new AgentEventBus();
+		const onCancellation = vi
+			.fn<NonNullable<BuiltTool['onCancellation']>>()
+			.mockResolvedValue(undefined);
+		const suspendTool = {
+			...makeSuspendingTool('suspend_tool', async (rawInput, ctx) => {
+				if (ctx.resumeData) return { approved: true };
+				const { value } = rawInput as { value: string };
+				return await ctx.suspend(
+					{ reason: 'needs approval' },
+					{ continuation: { childRunId: `child-${value}` } },
+				);
+			}),
+			onCancellation,
+		};
+		const abortTool = makeMockTool('abort_tool', async () => {
+			bus.abort();
+			return await new Promise<never>(() => undefined);
+		});
+		const { runtime } = createRuntimeWithTools([suspendTool, abortTool], 2, bus);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+				{ toolCallId: 'tc-3', toolName: 'abort_tool', args: {} },
+			]),
+		);
+
+		const first = await runtime.generate('go');
+		const result = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId: first.runId, toolCallId: 'tc-1' },
+		);
+
+		expect(result.pendingSuspend).toBeUndefined();
+		expect(runtime.getState().status).toBe('cancelled');
+		expect(onCancellation).toHaveBeenCalledOnce();
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ value: 'b' },
+			expect.objectContaining({
+				continuation: { childRunId: 'child-b' },
+				toolCallId: 'tc-2',
 			}),
 		);
 	});

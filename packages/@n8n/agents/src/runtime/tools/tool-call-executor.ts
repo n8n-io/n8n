@@ -728,6 +728,10 @@ export class ToolCallExecutor {
 			results.push(...batch.results);
 			suspensions.push(...batch.suspensions);
 			errors.push(...batch.errors);
+			if (ctx.isAborted()) {
+				await this.cleanupSuspendedToolsOnAbort(pending, ctx);
+				return { results, suspensions: [], errors, pending: {} };
+			}
 			Object.assign(pending, batch.pending);
 		}
 

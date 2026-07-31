@@ -122,9 +122,12 @@ export async function executeTool(
 		const ctx: InterruptibleToolContext = {
 			suspend: async (payload: unknown, options?: ToolSuspendOptions): Promise<never> => {
 				const resolvedOptions: ToolSuspendOptions = {
-					resumeSchema: executionContext.resumeSchema,
 					continuation: executionContext.continuation,
 					...options,
+					resumeSchema:
+						options?.resumeSchema ??
+						builtTool.resolveResumeSchema?.(payload) ??
+						executionContext.resumeSchema,
 				};
 				executionContext.onSuspend?.(payload, resolvedOptions);
 				return await Promise.resolve({
