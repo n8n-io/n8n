@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@n8n/instance-ai', () => ({
 	createSandbox: vi.fn(),
@@ -120,9 +121,12 @@ describe('InstanceAiSandboxService', () => {
 				aiService: { isProxyEnabled: vi.fn(() => false) },
 			});
 
-			await expect(service.resolveSandboxConfig(fakeUser)).rejects.toThrow(
-				'no API key is configured',
-			);
+			const resolution = service.resolveSandboxConfig(fakeUser);
+			await expect(resolution).rejects.toBeInstanceOf(OperationalError);
+			await expect(resolution).rejects.toMatchObject({
+				message: expect.stringContaining('no API key is configured'),
+				shouldReport: false,
+			});
 		});
 
 		it('routes Daytona traffic through the assistant proxy when enabled', async () => {

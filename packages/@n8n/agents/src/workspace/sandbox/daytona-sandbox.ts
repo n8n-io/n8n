@@ -26,6 +26,9 @@ import type { ErrorReporter, Logger } from './logger';
 const SANDBOX_STATE_STARTED = 'started';
 const SANDBOX_STATE_STOPPED = 'stopped';
 const SANDBOX_STATE_ARCHIVED = 'archived';
+const SANDBOX_STATE_CREATING = 'creating';
+const SANDBOX_STATE_STARTING = 'starting';
+const SANDBOX_STATE_PENDING_BUILD = 'pending_build';
 const SANDBOX_STATE_DESTROYED = 'destroyed';
 const SANDBOX_STATE_DESTROYING = 'destroying';
 const SANDBOX_STATE_ERROR = 'error';
@@ -44,6 +47,12 @@ const SANDBOX_STATE_BUILD_FAILED = 'build_failed';
 const RECOVERABLE_SANDBOX_STATES: ReadonlySet<string> = new Set([
 	SANDBOX_STATE_STOPPED,
 	SANDBOX_STATE_ARCHIVED,
+]);
+
+const WAIT_FOR_STARTED_SANDBOX_STATES: ReadonlySet<string> = new Set([
+	SANDBOX_STATE_CREATING,
+	SANDBOX_STATE_STARTING,
+	SANDBOX_STATE_PENDING_BUILD,
 ]);
 
 export interface DaytonaSandboxOptions {
@@ -67,7 +76,7 @@ export interface DaytonaSandboxOptions {
 	target?: string;
 	timeout?: number;
 	createTimeoutSeconds?: number;
-	/** Base backoff for transient create retries. Defaults to 1s. */
+	/** Base backoff for sandbox acquisition retries. Defaults to 1s. */
 	createRetryBackoffBaseMs?: number;
 	language?: 'typescript' | 'javascript' | 'python';
 	resources?: Resources;
@@ -116,7 +125,8 @@ function isSandboxNameConflictError(error: unknown): boolean {
 }
 
 function isTransientCreateError(error: unknown): boolean {
-	const { DaytonaError } = loadDaytona();
+	const { DaytonaConnectionError, DaytonaError, DaytonaTimeoutError } = loadDaytona();
+	if (error instanceof DaytonaConnectionError || error instanceof DaytonaTimeoutError) return true;
 	if (!(error instanceof DaytonaError) || error.statusCode === undefined) return false;
 	return error.statusCode >= 500 || error.statusCode === 408 || error.statusCode === 429;
 }
@@ -193,7 +203,7 @@ export class DaytonaSandbox extends BaseSandbox {
 			return await this.createSandbox(client);
 		} catch (error) {
 			if (!isSandboxNameConflictError(error)) throw error;
-			const existing = await this.findExistingSandbox(client);
+			const existing = await this.findExistingSandboxAfterConflict(client);
 			if (!existing) throw error;
 			this.options.logger?.info('Sandbox name already exists; reattached to existing sandbox', {
 				sandboxName: this.sandboxName,
@@ -427,8 +437,12 @@ export class DaytonaSandbox extends BaseSandbox {
 				await sandbox.delete(Math.ceil(this.timeout / 1000));
 				return null;
 			}
-			if (sandbox.state !== SANDBOX_STATE_STARTED) {
+			if (sandbox.state && RECOVERABLE_SANDBOX_STATES.has(sandbox.state)) {
 				await sandbox.start(Math.ceil(this.timeout / 1000));
+			} else if (sandbox.state && WAIT_FOR_STARTED_SANDBOX_STATES.has(sandbox.state)) {
+				await sandbox.waitUntilStarted(Math.ceil(this.timeout / 1000));
+			} else if (sandbox.state !== SANDBOX_STATE_STARTED) {
+				return null;
 			}
 			return sandbox;
 		} catch (error) {
@@ -437,6 +451,15 @@ export class DaytonaSandbox extends BaseSandbox {
 			if (isDaytonaAuthError(error)) throw error;
 			return null;
 		}
+	}
+
+	private async findExistingSandboxAfterConflict(client: Daytona): Promise<Sandbox | null> {
+		for (let attempt = 0; attempt < 3; attempt++) {
+			const existing = await this.findExistingSandbox(client);
+			if (existing) return existing;
+			if (attempt < 2) await this.waitBeforeRetry(attempt);
+		}
+		return null;
 	}
 
 	private async createSandbox(client: Daytona): Promise<Sandbox> {
@@ -470,7 +493,7 @@ export class DaytonaSandbox extends BaseSandbox {
 	}
 
 	/**
-	 * Retry transient (5xx/408/429) create failures with a short backoff. A create
+	 * Retry transient (connection/timeout/5xx/408/429) create failures with a short backoff. A create
 	 * that succeeded server-side despite the failed response surfaces as a name
 	 * conflict on retry, which the caller resolves by reattaching.
 	 */
@@ -478,7 +501,6 @@ export class DaytonaSandbox extends BaseSandbox {
 		client: Daytona,
 		params: CreateSandboxFromImageParams | CreateSandboxFromSnapshotParams,
 	): Promise<Sandbox> {
-		const baseDelayMs = this.options.createRetryBackoffBaseMs ?? 1_000;
 		for (let attempt = 0; ; attempt++) {
 			try {
 				return this.options.createTimeoutSeconds
@@ -491,9 +513,14 @@ export class DaytonaSandbox extends BaseSandbox {
 					attempt: attempt + 1,
 					error: error instanceof Error ? error.message : String(error),
 				});
-				await new Promise((resolve) => setTimeout(resolve, baseDelayMs * 2 ** attempt));
+				await this.waitBeforeRetry(attempt);
 			}
 		}
+	}
+
+	private async waitBeforeRetry(attempt: number): Promise<void> {
+		const baseDelayMs = this.options.createRetryBackoffBaseMs ?? 1_000;
+		await new Promise((resolve) => setTimeout(resolve, baseDelayMs * 2 ** attempt));
 	}
 
 	private createSandboxParams(): Array<{
