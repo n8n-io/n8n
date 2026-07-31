@@ -42,11 +42,9 @@ const scope = (input: {
 		matched: number;
 		missing: number;
 		requirements: number;
-		/** How the scope's `missing` names were resolved: with a package value, as an empty stub, or already there. */
-		valued?: number;
+		createdWithValue?: number;
 		stubbed?: number;
 		existing?: number;
-		/** Resolved names whose value the import replaced with the package's. */
 		overwritten?: number;
 	};
 	/** Tag ids per resolution bucket; the same id may recur across scopes. */
@@ -67,12 +65,15 @@ const scope = (input: {
 	const dt = input.dataTable ?? { matched: 0, created: 0, requirements: 0 };
 	const vars = input.variables ?? { matched: 0, missing: 0, requirements: 0 };
 	const missingVariableNames = Array.from({ length: vars.missing }, (_, i) => `missing-var-${i}`);
-	const [valuedCount, stubbedCount] = [vars.valued ?? 0, vars.stubbed ?? 0];
-	const createdVariableNames = missingVariableNames.slice(0, valuedCount);
-	const stubbedVariableNames = missingVariableNames.slice(valuedCount, valuedCount + stubbedCount);
+	const [createdCount, stubbedCount] = [vars.createdWithValue ?? 0, vars.stubbed ?? 0];
+	const createdVariableNames = missingVariableNames.slice(0, createdCount);
+	const stubbedVariableNames = missingVariableNames.slice(
+		createdCount,
+		createdCount + stubbedCount,
+	);
 	const existingVariableNames = missingVariableNames.slice(
-		valuedCount + stubbedCount,
-		valuedCount + stubbedCount + (vars.existing ?? 0),
+		createdCount + stubbedCount,
+		createdCount + stubbedCount + (vars.existing ?? 0),
 	);
 	const overwrittenVariableNames = Array.from(
 		{ length: vars.overwritten ?? 0 },
@@ -212,7 +213,7 @@ describe('emitPackageImportedEvent', () => {
 						matched: 0,
 						missing: 2,
 						requirements: 3,
-						valued: 1,
+						createdWithValue: 1,
 						stubbed: 1,
 						overwritten: 1,
 					},
@@ -270,7 +271,7 @@ describe('emitPackageImportedEvent', () => {
 					outcomes: [outcome('wf1', 'WF1', 'created')],
 					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
 					// Of three missing requirements, one was created with a value and one already existed.
-					variables: { matched: 0, missing: 3, requirements: 3, valued: 1, existing: 1 },
+					variables: { matched: 0, missing: 3, requirements: 3, createdWithValue: 1, existing: 1 },
 				}),
 			],
 		});
@@ -300,7 +301,7 @@ describe('emitPackageImportedEvent', () => {
 					projectId: 'P1',
 					outcomes: [outcome('wf1', 'WF1', 'created')],
 					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
-					variables: { matched: 0, missing: 1, requirements: 1, valued: 1 },
+					variables: { matched: 0, missing: 1, requirements: 1, createdWithValue: 1 },
 				}),
 				scope({
 					projectId: 'P2',

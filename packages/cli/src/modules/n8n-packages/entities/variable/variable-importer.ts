@@ -21,7 +21,6 @@ import {
 	computeVariableLimitFailure,
 	createFailure,
 	dedupeCreationsByDestination,
-	dedupeOverwritesByVariableId,
 	destinationKey,
 } from './variable.types';
 import type {
@@ -174,26 +173,20 @@ export class VariableImporter {
 			}
 		}
 
-		return {
-			created: [...new Set(created)],
-			stubbed: [...new Set(stubbed)],
-			skippedExisting: [...new Set(skippedExisting)],
-			updated: [],
-		};
-	}
-
-	/** Replaces each matched variable's value with the package's, leaving its key, type, and scope alone. */
-	async applyOverwrites(context: ImportContext, plan: VariableImportPlan): Promise<string[]> {
 		const updated: string[] = [];
-
-		for (const overwrite of dedupeOverwritesByVariableId(plan.overwrites)) {
+		for (const overwrite of plan.overwrites) {
 			await this.variablesService.update(context.user, overwrite.variableId, {
 				value: overwrite.value,
 			});
 			updated.push(overwrite.name);
 		}
 
-		return updated;
+		return {
+			created: [...new Set(created)],
+			stubbed: [...new Set(stubbed)],
+			skippedExisting: [...new Set(skippedExisting)],
+			updated: [...new Set(updated)],
+		};
 	}
 
 	private async variableExistsAtDestination(creation: VariableCreation): Promise<boolean> {

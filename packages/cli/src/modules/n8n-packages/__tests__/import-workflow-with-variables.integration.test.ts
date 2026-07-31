@@ -737,7 +737,7 @@ describe('workflow package import — with variables', () => {
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
 		});
 
-		it('writes no workflow when the stub fails a quota the preflight had cleared', async () => {
+		it('fails the import, leaving the workflow, when the stub fails a quota the preflight had cleared', async () => {
 			const owner = await createOwner();
 			const sourceProject = await createTeamProject('Source', owner);
 			const targetProject = await createTeamProject('Target', owner);
@@ -750,8 +750,8 @@ describe('workflow package import — with variables', () => {
 
 			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
 			const workflowsBefore = await workflowRepository.count();
-			// Stands in for a concurrent writer taking the last slot after the preflight passed:
-			// variables are applied first precisely so this leaves nothing half-imported.
+			// Stands in for a concurrent writer taking the last slot after the preflight passed. The
+			// workflow survives the failure: an accepted trade for applying variables after it.
 			vi.spyOn(variablesService, 'create').mockRejectedValueOnce(
 				new VariableCountLimitReachedError('Variables limit reached'),
 			);
@@ -765,7 +765,7 @@ describe('workflow package import — with variables', () => {
 				}),
 			).rejects.toThrow('Variables limit reached');
 
-			expect(await workflowRepository.count()).toBe(workflowsBefore);
+			expect(await workflowRepository.count()).toBe(workflowsBefore + 1);
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
 		});
 	});

@@ -98,11 +98,6 @@ export function dedupeCreationsByDestination(creations: VariableCreation[]): Var
 	return [...byDestination.values()];
 }
 
-/** One update per row: two requirements can name the same variable, and both carry its one bundled value. */
-export function dedupeOverwritesByVariableId(overwrites: VariableOverwrite[]): VariableOverwrite[] {
-	return [...new Map(overwrites.map((overwrite) => [overwrite.variableId, overwrite])).values()];
-}
-
 /** Reports the planned creations that do not fit the remaining quota. `quota` of `null` means unlimited. */
 export function computeVariableLimitFailure(
 	creations: VariableCreation[],

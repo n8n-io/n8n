@@ -260,11 +260,7 @@ export class ImportOrchestrator {
 		} = plan;
 		const { context, credentialRequest } = input;
 
-		// Variables and tags go first: their creations are the apply steps that can still fail
-		// after the blocking-issue gate (a near-quota or unique-index race), and they depend on
-		// nothing below — applying them before any other write keeps a raced import from
-		// persisting anything else.
-		const variableResult = await this.variableImporter.apply(context, variablePlan);
+		// Tags go first because the workflow write attaches them by id.
 		await this.tagImporter.apply(context, tagPlan);
 
 		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
@@ -302,10 +298,10 @@ export class ImportOrchestrator {
 			}),
 		);
 
-		// Deliberately not with the creations above: an overwrite is the only step that rewrites
-		// pre-existing data, and nothing here reads a variable's value, so it goes after the writes
-		// that can still fail.
-		const updated = await this.variableImporter.applyOverwrites(context, variablePlan);
+		// Last of the writes: an overwrite is the only step that rewrites pre-existing data, and no
+		// step above reads a variable, since `$vars` resolves by name at runtime. Still ahead of the
+		// publish sweep, which evaluates trigger parameters against variable values.
+		const variableResult = await this.variableImporter.apply(context, variablePlan);
 
 		return {
 			workflowOutcomes: outcomes.map((outcome) =>
@@ -316,7 +312,7 @@ export class ImportOrchestrator {
 			credentialResult,
 			dataTablePlan,
 			variablePlan,
-			variableResult: { ...variableResult, updated },
+			variableResult,
 			tagPlan,
 		};
 	}
