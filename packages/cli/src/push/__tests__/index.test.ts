@@ -189,7 +189,10 @@ describe('Push', () => {
 			});
 
 			test('should only accept a missing origin header on SSE', () => {
-				req.headers = { host } as typeof req.headers;
+				req.headers = {
+					host,
+					'sec-fetch-site': 'same-origin',
+				} as typeof req.headers;
 				const emitSpy = vi.spyOn(push, 'emit');
 
 				push.handleRequest(req, res);

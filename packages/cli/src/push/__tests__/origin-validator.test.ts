@@ -437,12 +437,6 @@ describe('validateWebSocketOrigin', () => {
 describe('validateSseOrigin', () => {
 	const host = 'example.com';
 
-	test('should allow a fully absent origin', () => {
-		const result = validateSseOrigin({});
-
-		expect(result.isValid).toBe(true);
-	});
-
 	test('should allow a missing origin for a same-origin fetch', () => {
 		const result = validateSseOrigin({ 'sec-fetch-site': 'same-origin' });
 
@@ -453,6 +447,7 @@ describe('validateSseOrigin', () => {
 		{ name: 'an empty origin', headers: { origin: '' } },
 		{ name: 'an opaque origin', headers: { origin: 'null' } },
 		{ name: 'a malformed origin', headers: { origin: 'invalid-origin' } },
+		{ name: 'a missing sec-fetch-site', headers: {} },
 		{ name: 'a cross-site fetch', headers: { 'sec-fetch-site': 'cross-site' } },
 		{ name: 'a same-site fetch', headers: { 'sec-fetch-site': 'same-site' } },
 	])('should reject $name', ({ headers }) => {
