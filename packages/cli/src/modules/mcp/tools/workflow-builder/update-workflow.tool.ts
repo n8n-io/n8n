@@ -26,10 +26,13 @@ import {
 } from './version-metadata';
 import {
 	applyOperations,
+	NON_FATAL_OPERATION_TYPES,
 	partialUpdateOperationSchema,
 	toWorkflowSlice,
 	workflowSettingsObjectSchema,
+	type ApplyOperationsSuccess,
 	type PartialUpdateOperation,
+	type SkippedOperation,
 } from './workflow-operations';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -43,7 +46,11 @@ import type { TagService } from '@/services/tag.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
-import { resolveNodeWebhookIds } from '@/workflow-helpers';
+import {
+	dropInvalidNodeGroups,
+	makeGetNodeTypeForGrouping,
+	resolveNodeWebhookIds,
+} from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -282,9 +289,53 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 	return touched;
 }
 
+/**
+ * How many operations had no effect, so `appliedOperations` can discount them.
+ *
+ * An operation counts only if *all* the groups it produced were skipped or
+ * dropped: one `setNodeGroups` can define several groups and still apply the
+ * rest after losing one.
+ *
+ * Known imprecision: each group remembers only the last operation that touched
+ * it, so in an `addNodeGroup` + `updateNodeGroup` batch on the same dropped
+ * group only the second operation is discounted.
+ */
+const countOperationsWithNoEffect = (
+	skippedOperations: Array<Pick<SkippedOperation, 'opIndex'>>,
+	groupOperations: ApplyOperationsSuccess['groupOperations'],
+): number => {
+	const producedPerOp = new Map<number, number>();
+	for (const { opIndex } of Object.values(groupOperations)) {
+		producedPerOp.set(opIndex, (producedPerOp.get(opIndex) ?? 0) + 1);
+	}
+
+	const skippedPerOp = new Map<number, number>();
+	for (const { opIndex } of skippedOperations) {
+		skippedPerOp.set(opIndex, (skippedPerOp.get(opIndex) ?? 0) + 1);
+	}
+
+	let count = 0;
+	for (const [opIndex, skipped] of skippedPerOp) {
+		if (skipped >= (producedPerOp.get(opIndex) ?? 0)) {
+			count++;
+		}
+	}
+	return count;
+};
+
 // The concrete return type (not a widened z.ZodRawShape) keeps the tool's
 // generic coupled to the real schema shape, so the handler's argument
 // annotation is compile-checked against it via ToolCallback's parameter types.
+const NON_FATAL_OPERATION_TYPES_LIST = [...NON_FATAL_OPERATION_TYPES].join(', ');
+
+const buildToolDescription = (canvasGroupsEnabled: boolean) => {
+	const base =
+		'Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used.';
+	return canvasGroupsEnabled
+		? `${base} Node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}) are the one exception to "atomically": an invalid one is skipped and reported in skippedOperations instead of aborting the whole update. Separately, if other edits in the batch make an existing group invalid, that group is removed and reported in removedGroups.`
+		: base;
+};
+
 const buildInputSchema = (canvasGroupsEnabled: boolean) =>
 	({
 		workflowId: z.string().describe('The ID of the workflow to update.'),
@@ -294,7 +345,9 @@ const buildInputSchema = (canvasGroupsEnabled: boolean) =>
 			.min(1)
 			.max(MAX_OPERATIONS_PER_CALL)
 			.describe(
-				`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
+				canvasGroupsEnabled
+					? `Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved — except node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}): an invalid one is skipped and reported in skippedOperations, while the rest of the batch still saves. An existing group that these ops leave invalid is removed and reported in removedGroups.`
+					: `Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
 			),
 		versionName: versionNameInputSchema.describe(
 			'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
@@ -315,7 +368,12 @@ const outputSchema = {
 	name: z.string().optional(),
 	nodeCount: z.number().optional(),
 	url: z.string().optional(),
-	appliedOperations: z.number().optional().describe('Number of operations applied.'),
+	appliedOperations: z
+		.number()
+		.optional()
+		.describe(
+			'Number of submitted operations that were applied. See skippedOperations for any that were not.',
+		),
 	autoAssignedCredentials: z
 		.array(
 			z.object({
@@ -346,6 +404,26 @@ const outputSchema = {
 			'Graph and JSON validation warnings on the resulting workflow. Warnings marked preExisting (also tagged [pre-existing] in the message) were already present before this update; only self-correct the rest on the next call.',
 		),
 	note: z.string().optional(),
+	skippedOperations: z
+		.array(
+			z.object({
+				opIndex: z.number(),
+				type: z.string(),
+				reason: z.string(),
+			}),
+		)
+		.optional()
+		.describe(
+			'Submitted group operations that did not take effect: either invalid, or their group broke the group rules.',
+		),
+	removedGroups: z
+		.array(
+			z.object({
+				groupName: z.string(),
+				reason: z.string(),
+			}),
+		)
+		.optional(),
 	settings: z
 		.record(z.string(), z.unknown())
 		.optional()
@@ -545,8 +623,7 @@ export const createUpdateWorkflowTool = (
 ): ToolDefinition<ReturnType<typeof buildInputSchema>> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
-		description:
-			'Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used.',
+		description: buildToolDescription(options.canvasGroupsEnabled === true),
 		inputSchema: buildInputSchema(options.canvasGroupsEnabled === true),
 		outputSchema,
 		annotations: {
@@ -622,10 +699,57 @@ export const createUpdateWorkflowTool = (
 			const result = applyOperations(
 				toWorkflowSlice(existingWorkflow, { includeTags: hasTagOperations }),
 				strictOperations,
+				{ canvasGroupsEnabled: options.canvasGroupsEnabled },
 			);
 
 			if (!result.success) {
 				throw new Error(result.error);
+			}
+
+			// Group rules depend on how the workflow looks after the whole batch,
+			// so we check them here once rather than per operation. A broken group
+			// is dropped and reported; the update still goes through.
+			const skippedOperations: SkippedOperation[] = [...result.skippedOperations];
+			// Groups the batch never asked for, removed because these operations made
+			// them invalid. Reported apart from skippedOperations: no submitted
+			// operation failed here, an existing group was destroyed as a side effect.
+			const removedGroups: Array<{ groupName: string; reason: string }> = [];
+			let nodeGroupsNeedPersisting = result.nodeGroupsChanged;
+
+			if (options.canvasGroupsEnabled) {
+				const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
+
+				// Two passes, ordered by blame: an overlap between a new and an existing
+				// group makes the validator flag both, so the batch's own groups go first
+				// and the innocent existing one survives the re-check. `groupOperations`
+				// records which groups this batch touched, not which one caused a given
+				// violation — two group ops that collide take each other down.
+				const ownGroups = dropInvalidNodeGroups(
+					result.workflow,
+					getNodeType,
+					(violation) => result.groupOperations[violation.groupId] !== undefined,
+				);
+				const violations = [...ownGroups, ...dropInvalidNodeGroups(result.workflow, getNodeType)];
+
+				if (violations.length > 0) {
+					// A violation found here always changes what must be persisted, even if
+					// no group op ran this batch — otherwise the omitted `nodeGroups` key
+					// falls back to preserve-on-omit and the still-invalid stored groups get
+					// re-validated (and rejected) by WorkflowService.update right after.
+					nodeGroupsNeedPersisting = true;
+
+					for (const violation of violations) {
+						const requestedBy = result.groupOperations[violation.groupId];
+						if (requestedBy) {
+							skippedOperations.push({ ...requestedBy, reason: violation.message });
+						} else {
+							removedGroups.push({
+								groupName: violation.groupName,
+								reason: violation.message,
+							});
+						}
+					}
+				}
 			}
 
 			const credentialCheck = await validateCredentialReferences(
@@ -636,6 +760,7 @@ export const createUpdateWorkflowTool = (
 				nodeTypes,
 				{ workflowId: existingWorkflow.id },
 			);
+
 			if (!credentialCheck.ok) {
 				throw new Error(credentialCheck.error);
 			}
@@ -647,7 +772,10 @@ export const createUpdateWorkflowTool = (
 				telemetryPayload,
 				telemetry,
 			);
-			if (invalidToolSourceResponse) return invalidToolSourceResponse;
+
+			if (invalidToolSourceResponse) {
+				return invalidToolSourceResponse;
+			}
 
 			const { projectId: workflowProjectId } = await sharedWorkflowRepository.findOneOrFail({
 				where: { workflowId, role: 'workflow:owner' },
@@ -660,6 +788,7 @@ export const createUpdateWorkflowTool = (
 				workflowProjectId,
 				dataTableOps,
 			);
+
 			if (!dataTableCheck.ok) {
 				throw new Error(dataTableCheck.error);
 			}
@@ -670,6 +799,7 @@ export const createUpdateWorkflowTool = (
 			const setsErrorWorkflow = strictOperations.some(
 				(op) => op.type === 'setWorkflowSettings' && op.settings.errorWorkflow !== undefined,
 			);
+
 			if (setsErrorWorkflow) {
 				await assertErrorWorkflowIsUsable({
 					errorWorkflowId: result.workflow.settings?.errorWorkflow,
@@ -693,6 +823,7 @@ export const createUpdateWorkflowTool = (
 					op.type === 'setWorkflowSettings' &&
 					(op.settings.callerPolicy !== undefined || op.settings.callerIds !== undefined),
 			);
+
 			if (setsCallerConfig) {
 				assertCallerPolicyConsistent(result.workflow.settings);
 			}
@@ -700,6 +831,7 @@ export const createUpdateWorkflowTool = (
 			const setsExecutionTimeout = strictOperations.some(
 				(op) => op.type === 'setWorkflowSettings' && op.settings.executionTimeout !== undefined,
 			);
+
 			if (setsExecutionTimeout) {
 				assertExecutionTimeoutWithinMax(
 					result.workflow.settings?.executionTimeout,
@@ -731,6 +863,7 @@ export const createUpdateWorkflowTool = (
 				const canPublish = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
 					'workflow:publish',
 				]);
+
 				if (!canPublish) {
 					throw new Error(
 						'Changing settings on a published workflow reactivates it, which requires publish permission. Your account can edit but not publish this workflow. Ask the owner for publish access, or unpublish the workflow first.',
@@ -749,10 +882,11 @@ export const createUpdateWorkflowTool = (
 				// Only attach settings when a settings op ran, so node-only edits
 				// don't re-save (and re-clean) the existing settings object.
 				...(hasSettingsOperations ? { settings: result.workflow.settings } : {}),
-				// Only persist nodeGroups when the batch touched them (a group op ran
-				// or removing a node pruned a group); otherwise omit the key so
+				// Only persist nodeGroups when they actually need to change (a group op
+				// ran, removing a node pruned a group, or the structural check above
+				// dropped a group some other op invalidated); otherwise omit the key so
 				// WorkflowService preserves the existing groups (preserve-on-omit).
-				...(result.nodeGroupsChanged ? { nodeGroups: result.workflow.nodeGroups } : {}),
+				...(nodeGroupsNeedPersisting ? { nodeGroups: result.workflow.nodeGroups } : {}),
 				meta: hasNonTagOperations
 					? {
 							...(existingWorkflow.meta ?? {}),
@@ -893,17 +1027,24 @@ export const createUpdateWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const notAppliedCount = countOperationsWithNoEffect(
+				skippedOperations,
+				result.groupOperations,
+			);
+
 			const output = {
 				workflowId: updatedWorkflow.id,
 				name: updatedWorkflow.name,
 				nodeCount: updatedWorkflow.nodes.length,
 				url: workflowUrl,
-				appliedOperations: strictOperations.length,
+				appliedOperations: strictOperations.length - notAppliedCount,
 				autoAssignedCredentials: credentialAssignments,
 				validationWarnings,
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
+				skippedOperations: skippedOperations.length > 0 ? skippedOperations : undefined,
+				removedGroups: removedGroups.length > 0 ? removedGroups : undefined,
 				settings: hasSettingsOperations ? (updatedWorkflow.settings ?? {}) : undefined,
 			};
 

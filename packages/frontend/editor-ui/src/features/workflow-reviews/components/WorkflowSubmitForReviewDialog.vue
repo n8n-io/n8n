@@ -34,7 +34,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
-	submitted: [];
+	submitted: [workflowReviewRequestId: string];
 	conflict: [];
 }>();
 
@@ -144,7 +144,7 @@ const submit = async () => {
 		reviewStatusStore.setOpenReview(workflowId, reviewRequest);
 		reviewRequiredStore.setReviewRequired(workflowId, false);
 		emit('update:open', false);
-		emit('submitted');
+		emit('submitted', reviewRequest.id);
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
 			// The conflict proves an open review this client didn't know about — lock

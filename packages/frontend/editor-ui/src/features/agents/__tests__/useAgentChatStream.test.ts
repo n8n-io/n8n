@@ -1906,3 +1906,153 @@ describe('useAgentChatStream — done executionId', () => {
 		expect(assistant?.executionId).toBe('exec-live-1');
 	});
 });
+
+describe('useAgentChatStream — subagent-chunk', () => {
+	it('accumulates child text on the parent delegate tool call without minting a bubble', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-delegate',
+				toolName: 'delegate_subagent',
+				input: { subAgentId: 'inline', taskName: 'research', goal: 'Find it' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-delegate',
+				toolName: 'delegate_subagent',
+				startTime: 1_000,
+			},
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'Hello ' },
+			},
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'world' },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('delegate');
+		await nextTick();
+
+		const assistants = hook.messages.value.filter((m) => m.role === 'assistant');
+		expect(assistants).toHaveLength(1);
+		expect(assistants[0].toolCalls?.[0].childProgress?.text).toBe('Hello world');
+	});
+
+	it('accumulates child reasoning deltas into one segment by id', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-delegate',
+				toolName: 'delegate_subagent',
+				input: { subAgentId: 'inline', taskName: 'research', goal: 'Find it' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'reasoning-delta', id: 'r-1', delta: 'Think ' },
+			},
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'reasoning-delta', id: 'r-1', delta: 'hard' },
+			},
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'reasoning-end', id: 'r-1' },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('delegate');
+		await nextTick();
+
+		const segments = hook.messages.value[1].toolCalls?.[0].childProgress?.reasoningSegments;
+		expect(segments).toHaveLength(1);
+		expect(segments?.[0].content).toBe('Think hard');
+		expect(segments?.[0].endTime).toBeTypeOf('number');
+	});
+
+	it('ignores subagent-chunk events whose parentToolCallId matches nothing', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-other',
+				toolName: 'compute',
+				input: {},
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'missing',
+				taskPath: '/root/x_0',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'orphan' },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('hi');
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].childProgress).toBeUndefined();
+		expect(hook.messages.value).toHaveLength(2);
+	});
+
+	it('keeps childProgress after the delegate tool result arrives', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-delegate',
+				toolName: 'delegate_subagent',
+				input: { subAgentId: 'inline', taskName: 'research', goal: 'Find it' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'live' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-delegate',
+				toolName: 'delegate_subagent',
+				output: { status: 'completed', answer: 'done' },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('delegate');
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].childProgress?.text).toBe('live');
+		expect(hook.messages.value[1].toolCalls?.[0].output).toEqual({
+			status: 'completed',
+			answer: 'done',
+		});
+	});
+});

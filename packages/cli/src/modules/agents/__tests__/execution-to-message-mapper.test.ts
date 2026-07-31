@@ -40,6 +40,46 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
+	it('carries childTrace onto the persisted tool-call content part', () => {
+		const childTrace = {
+			text: 'child said this',
+			reasoningSegments: [{ id: 'r-1', content: 'thinking' }],
+			steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+		};
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'delegate_subagent',
+						toolCallId: 'tc-parent',
+						input: { goal: 'x' },
+						output: { status: 'completed', answer: 'done' },
+						startTime: 100,
+						endTime: 200,
+						success: true,
+						childTrace,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.content).toEqual([
+			{
+				type: 'tool-call',
+				toolName: 'delegate_subagent',
+				toolCallId: 'tc-parent',
+				input: { goal: 'x' },
+				startTime: 100,
+				endTime: 200,
+				state: 'resolved',
+				output: { status: 'completed', answer: 'done' },
+				childTrace,
+			},
+		]);
+	});
+
 	it('maps execution timeline text and tool calls into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({

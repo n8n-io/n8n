@@ -11,6 +11,7 @@ import {
 	type DelegateSubAgentRunnerHelpers,
 } from '../../runtime/tools/delegate-sub-agent-tool';
 import type {
+	AgentDbMessage,
 	BuiltTool,
 	GenerateResult,
 	InterruptibleToolContext,
@@ -29,6 +30,48 @@ const mockState = (): SerializableAgentState => ({
 	pendingToolCalls: {},
 });
 
+function chunksFromGenerateResult(result: GenerateResult): unknown[] {
+	const chunks: unknown[] = [];
+	for (const message of result.messages) {
+		if (!('content' in message) || !Array.isArray(message.content)) continue;
+		for (const part of message.content) {
+			if (part.type === 'text' && part.text) {
+				chunks.push({ type: 'text-delta', id: 't-1', delta: part.text });
+			}
+		}
+	}
+	for (const suspension of result.pendingSuspend ?? []) {
+		chunks.push({
+			type: 'tool-call-suspended',
+			runId: suspension.runId,
+			toolCallId: suspension.toolCallId,
+			toolName: suspension.toolName,
+			input: suspension.input,
+			suspendPayload: suspension.suspendPayload,
+		});
+	}
+	if (result.error !== undefined) {
+		chunks.push({ type: 'error', error: result.error });
+	}
+	chunks.push({
+		type: 'finish',
+		finishReason: result.finishReason ?? 'stop',
+		...(result.usage !== undefined ? { usage: result.usage } : {}),
+		...(result.model !== undefined ? { model: result.model } : {}),
+		...(result.structuredOutput !== undefined ? { structuredOutput: result.structuredOutput } : {}),
+	});
+	return chunks;
+}
+
+function readableFromChunks(chunks: unknown[]): ReadableStream<unknown> {
+	return new ReadableStream({
+		start(controller) {
+			for (const chunk of chunks) controller.enqueue(chunk);
+			controller.close();
+		},
+	});
+}
+
 vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 	const actual = await importOriginal<typeof AgentRuntimeModule>();
 	return {
@@ -38,23 +81,27 @@ vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 				runtimeConfigs.push(config);
 			}
 
-			async generate(_input: unknown, options?: Record<string, unknown>) {
+			async stream(_input: unknown, options?: Record<string, unknown>) {
 				runtimeGenerateOptions.push(options);
-				if (inlineChildGenerateResult !== undefined) {
-					return await Promise.resolve(inlineChildGenerateResult);
-				}
+				const result =
+					inlineChildGenerateResult ??
+					({
+						runId: 'child-run',
+						finishReason: 'stop',
+						messages: [
+							{
+								role: 'assistant',
+								type: 'llm',
+								content: [{ type: 'text', text: 'inline answer' }],
+							},
+						],
+						usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+						getState: mockState,
+					} as GenerateResult);
 				return await Promise.resolve({
-					runId: 'child-run',
-					finishReason: 'stop',
-					messages: [
-						{
-							role: 'assistant',
-							type: 'llm',
-							content: [{ type: 'text', text: 'inline answer' }],
-						},
-					],
-					usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-					getState: mockState,
+					runId: result.runId,
+					stream: readableFromChunks(chunksFromGenerateResult(result)),
+					getState: result.getState ?? mockState,
 				});
 			}
 
@@ -234,7 +281,7 @@ describe('delegate sub-agent routing', () => {
 		});
 	});
 
-	it('passes the parent execution counter to inline child generate options', async () => {
+	it('passes the parent execution counter to inline child stream options', async () => {
 		const executionCounter = {
 			incrementMessageCount: vi.fn(),
 			incrementToolCallCount: vi.fn(),
@@ -323,7 +370,7 @@ describe('delegate sub-agent routing', () => {
 					taskPath: '/root/research_api_0',
 					childCount: 0,
 				},
-				{ runInlineSubAgent },
+				{ runInlineSubAgent, emitChunk: () => undefined },
 			),
 		).resolves.toMatchObject({
 			status: 'completed',
@@ -374,6 +421,57 @@ describe('delegate sub-agent routing', () => {
 			status: 'failed',
 			answer: '',
 			error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+		});
+	});
+
+	it('answers with the final assistant turn, not every text block the child streamed', async () => {
+		const responseMessages: AgentDbMessage[] = [
+			{
+				id: 'm-1',
+				createdAt: new Date(1),
+				role: 'assistant',
+				type: 'llm',
+				content: [{ type: 'text', text: 'Let me look that up.' }],
+			},
+			{
+				id: 'm-2',
+				createdAt: new Date(2),
+				role: 'assistant',
+				type: 'llm',
+				content: [{ type: 'text', text: 'The capital is Paris.' }],
+			},
+		];
+		inlineChildGenerateResult = {
+			runId: 'child-run-multi-turn',
+			finishReason: 'stop',
+			messages: responseMessages,
+			getState: () => ({
+				status: 'success',
+				messageList: {
+					messages: responseMessages,
+					historyIds: [],
+					inputIds: [],
+					responseIds: ['m-1', 'm-2'],
+				},
+				pendingToolCalls: {},
+			}),
+		};
+
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.tool(createDelegateSubAgentTool());
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+
+		await expect(
+			delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' }),
+		).resolves.toMatchObject({
+			status: 'completed',
+			answer: 'The capital is Paris.',
 		});
 	});
 });

@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { Request, Response } from 'express';
 import { rm } from 'fs/promises';
 import isbot from 'isbot';
@@ -1105,7 +1106,9 @@ export async function formWebhook(
 	};
 }
 
-export function resolveRawData(context: IWebhookFunctions, rawData: string) {
+type ExpressionResolutionContext = Pick<IWebhookFunctions, 'evaluateExpression'>;
+
+export function resolveRawData(context: ExpressionResolutionContext, rawData: string) {
 	if (!rawData) return rawData;
 
 	const resolvables = getResolvables(rawData);
@@ -1136,21 +1139,16 @@ type ParseFormFieldsOptions = {
 	fieldsParameterName: string;
 	mode?: 'test' | 'production';
 };
+
 export function parseFormFields(context: IWebhookFunctions, options: ParseFormFieldsOptions) {
 	let fields: FormFieldsParameter = [];
 	if (options.defineForm === 'json') {
-		try {
-			const jsonOutput = context.getNodeParameter(options.fieldsParameterName, '', {
+		const getJsonOutput = () =>
+			context.getNodeParameter(options.fieldsParameterName, '', {
 				rawExpressions: true,
 			}) as string;
 
-			fields = tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
-		} catch (error) {
-			throw new NodeOperationError(context.getNode(), error.message, {
-				description: error.message,
-				type: options.mode === 'test' ? 'manual-form-test' : undefined,
-			});
-		}
+		fields = parseJsonFormFields(context, getJsonOutput, options.mode);
 	} else {
 		fields = context.getNodeParameter(options.fieldsParameterName, []) as FormFieldsParameter;
 		for (const field of fields) {
@@ -1164,4 +1162,27 @@ export function parseFormFields(context: IWebhookFunctions, options: ParseFormFi
 		}
 	}
 	return fields;
+}
+
+type ParseJsonFormFieldsCtx = Pick<IWebhookFunctions, 'evaluateExpression' | 'getNode'>;
+
+/**
+ * @throws {NodeOperationError} if the JSON is invalid or cannot be parsed into form fields
+ */
+export function parseJsonFormFields(
+	context: ParseJsonFormFieldsCtx,
+	getJsonOutput: () => string,
+	mode?: 'test' | 'production',
+) {
+	try {
+		const jsonOutput = getJsonOutput();
+
+		return tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
+	} catch (e) {
+		const error = ensureError(e);
+		throw new NodeOperationError(context.getNode(), error.message, {
+			description: error.message,
+			type: mode === 'test' ? 'manual-form-test' : undefined,
+		});
+	}
 }

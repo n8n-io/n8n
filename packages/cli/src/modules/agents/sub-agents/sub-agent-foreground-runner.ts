@@ -9,6 +9,7 @@ import {
 	type CredentialProvider,
 	type GenerateResult,
 	type SerializableAgentState,
+	type StreamChunk,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
@@ -52,6 +53,8 @@ export interface SubAgentForegroundRunContext {
 	 * (model fetch, MCP fetch, tool execution contexts).
 	 */
 	instrumentation?: AgentRuntimeInstrumentation;
+	/** Optional callback to forward child stream chunks to the parent chat. */
+	onChunk?: (chunk: StreamChunk) => void;
 }
 
 export interface SubAgentForegroundResult {
@@ -143,6 +146,7 @@ export class SubAgentForegroundRunner {
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				recorder.record(value);
+				context.onChunk?.(value);
 				if (value.type === 'tool-call-suspended') {
 					childSuspended = true;
 				}

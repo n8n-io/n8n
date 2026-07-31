@@ -12,6 +12,7 @@ import type { ProviderId, ProviderCredentials } from '../../runtime/model/provid
 import type {
 	AgentEvent,
 	AgentEventHandler,
+	SubAgentChunkPayload,
 	SubAgentCompletedPayload,
 	SubAgentStartedPayload,
 } from '../runtime/event';
@@ -142,6 +143,7 @@ export type StreamChunk = ContentMetadata &
 		| { type: 'message'; message: AgentMessage }
 		| ({ type: 'subagent-started' } & SubAgentStartedPayload)
 		| ({ type: 'subagent-completed' } & SubAgentCompletedPayload)
+		| ({ type: 'subagent-chunk' } & SubAgentChunkPayload)
 		| {
 				type: 'finish';
 				finishReason: FinishReason;

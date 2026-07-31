@@ -653,10 +653,6 @@ export type Modals = {
 
 export type ModalKey = keyof Modals;
 
-// The modal-opening injection contract moved to `@n8n/stores/modalOpeners`;
-// re-exported here so existing importers stay unchanged.
-export type { ModalOpeners } from '@n8n/stores/modalOpeners';
-
 // `ModalState` is owned by `@n8n/frontend-module-sdk`; re-exported here so existing
 // `@/Interface` importers stay unchanged.
 export type { ModalState };

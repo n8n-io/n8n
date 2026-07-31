@@ -235,6 +235,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					state,
 					...(part.startTime !== undefined && { startTime: part.startTime }),
 					...(part.endTime !== undefined && { endTime: part.endTime }),
+					...(part.childTrace && { childProgress: part.childTrace }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
 				toolCalls.push(toolCall);
