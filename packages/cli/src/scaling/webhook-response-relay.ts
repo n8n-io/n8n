@@ -479,8 +479,8 @@ function asOffloadablePayload(payload: unknown): OffloadablePayload | undefined 
 	if (typeof payload === 'string') {
 		return {
 			kind: 'string',
-			exceeds: (maxBytes) => Buffer.byteLength(payload) > maxBytes,
-			serialize: () => Buffer.from(payload),
+			exceeds: (maxBytes) => Buffer.byteLength(payload, 'utf8') > maxBytes,
+			serialize: () => Buffer.from(payload, 'utf8'),
 			inlineContentType: INLINE_STRING_CONTENT_TYPE,
 		};
 	}
@@ -489,7 +489,7 @@ function asOffloadablePayload(payload: unknown): OffloadablePayload | undefined 
 		return {
 			kind: 'json',
 			exceeds: (maxBytes) => jsonSizeExceeds(payload, maxBytes),
-			serialize: () => Buffer.from(JSON.stringify(payload)),
+			serialize: () => Buffer.from(JSON.stringify(payload), 'utf8'),
 			inlineContentType: INLINE_JSON_CONTENT_TYPE,
 		};
 	}
