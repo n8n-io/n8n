@@ -110,6 +110,23 @@ describe('AgentModelCatalogService', () => {
 		);
 	});
 
+	it('flags a failed managed lookup as unavailable instead of an empty allowlist', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.list.mockRejectedValue(new Error('gateway unreachable'));
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'anthropic',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		// No static-catalog fallback for a managed slot: it would offer models the
+		// gateway won't serve. But an outage must not read as "allowlist is empty".
+		expect(result.models).toEqual([]);
+		expect(result.unavailable).toBe(true);
+	});
+
 	it('uses the gateway exact (snapshot) id for the managed tag, not the catalog alias', async () => {
 		const { service, lookupService } = makeService();
 		fetchProviderCatalog.mockResolvedValue({

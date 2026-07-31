@@ -116,7 +116,6 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 			'projectId',
 			'warnMissingCredentials',
 			'disabled',
-			'isManagedCredential',
 		],
 		emits: ['change', 'selectCredential'],
 		template: '<div data-testid="agent-model-selector-stub" :data-disabled="disabled" />',
@@ -230,7 +229,7 @@ describe('AgentSubAgentsPanel', () => {
 		expect(wrapper.text()).not.toContain('Sub-agents description');
 	});
 
-	it('marks a difficulty selector as managed when its credential is the n8n Connect tag', async () => {
+	it('passes the managed tag as the difficulty selector credential', async () => {
 		const wrapper = await mountPanel({
 			...defaultConfig,
 			subAgents: {
@@ -245,10 +244,14 @@ describe('AgentSubAgentsPanel', () => {
 			.find('[data-testid="agent-sub-agents-difficulty-row-low"]')
 			.findComponent({ name: 'AgentModelSelector' });
 
-		expect(lowSelector.props('isManagedCredential')).toBe(true);
+		// The selector derives its managed state from this, so passing the tag through
+		// is the whole contract.
+		expect((lowSelector.props('credentials') as Record<string, string>).anthropic).toBe(
+			AI_GATEWAY_MANAGED_TAG,
+		);
 	});
 
-	it('stores the managed-tag selection for a difficulty', async () => {
+	it('keeps a difficulty managed-tag selection out of the shared selection', async () => {
 		const wrapper = await mountPanel();
 		await enableCustomModelRouting(wrapper);
 
@@ -258,7 +261,23 @@ describe('AgentSubAgentsPanel', () => {
 			AI_GATEWAY_MANAGED_TAG,
 		);
 
-		expect(selectCredentialMock).toHaveBeenCalledWith('anthropic', AI_GATEWAY_MANAGED_TAG);
+		// Writing the shared (localStorage) selection would leak the choice into the
+		// other difficulties and the main model selector, and outlive the session.
+		expect(selectCredentialMock).not.toHaveBeenCalled();
+
+		// A model picked for a different difficulty still gets the global credential.
+		emitDifficultyModelChange('agent-sub-agents-difficulty-medium-model', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+		});
+
+		const updates = wrapper.emitted('update:config') as
+			| Array<[{ subAgents?: unknown }]>
+			| undefined;
+		const last = updates?.at(-1)?.[0] as {
+			subAgents?: { modelsByDifficulty?: Record<string, { credential?: string }> };
+		};
+		expect(last?.subAgents?.modelsByDifficulty?.medium?.credential).toBe('anthropic-cred');
 	});
 
 	it('persists the managed tag when a difficulty model is chosen against it', async () => {
@@ -315,17 +334,13 @@ describe('AgentSubAgentsPanel', () => {
 			'anthropic',
 			'anthropic-cred-2',
 		);
-		// 2. Switch to n8n Connect before picking a model. The real selectCredential writes
-		// the shared selection (mocked here), so emulate that global write.
+		// 2. Switch to n8n Connect before picking a model — replaces the pending choice
+		// for this difficulty without touching the shared selection.
 		emitDifficultyCredentialChange(
 			'agent-sub-agents-difficulty-low-model',
 			'anthropic',
 			AI_GATEWAY_MANAGED_TAG,
 		);
-		credentialsByProviderRef.value = {
-			...credentialsByProviderRef.value,
-			anthropic: AI_GATEWAY_MANAGED_TAG,
-		};
 		// 3. Pick a model — the stale own credential must not shadow the managed tag.
 		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
 			provider: 'anthropic',

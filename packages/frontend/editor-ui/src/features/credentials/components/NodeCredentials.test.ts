@@ -52,6 +52,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: ref(false),
 		isCredentialTypeSupported: vi.fn(() => false),
+		canServeCredentialType: vi.fn(() => false),
 		balance: computed(() => undefined),
 		budget: computed(() => undefined),
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
@@ -1426,6 +1427,7 @@ describe('NodeCredentials', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -1502,6 +1504,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn(() => false),
+					canServeCredentialType: vi.fn(() => false),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1533,6 +1536,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => false),
 					isCredentialTypeSupported: vi.fn(() => false),
+					canServeCredentialType: vi.fn(() => false),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1619,6 +1623,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1654,6 +1659,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1689,6 +1695,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1729,6 +1736,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1872,6 +1880,7 @@ describe('NodeCredentials', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),

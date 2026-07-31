@@ -5057,6 +5057,7 @@
 	"agents.modelSelector.defaultLabel": "Select model",
 	"agents.modelSelector.noMatch": "No models found",
 	"agents.modelSelector.noModels": "No models available for this provider",
+	"agents.modelSelector.modelsUnavailable": "Couldn't load models, try again",
 	"agents.modelSelector.moreModels": "More {provider} models",
 	"agents.modelSelector.configureCredentials": "Create credential",
 	"agents.modelSelector.connectTo": "Connect to {provider}",

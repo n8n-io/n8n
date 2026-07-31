@@ -22,6 +22,34 @@ export function isAgentModelProvider(provider: string): provider is AgentModelPr
 	return AGENT_MODEL_PROVIDER_SET.has(provider);
 }
 
+/**
+ * The n8n credential types that can drive each model provider, in preference
+ * order. Single source of truth: the model picker, the n8n Connect support gate
+ * and the model catalog all answer "which credential type serves this provider?"
+ * from here. Deriving it separately (e.g. by parsing a gateway URL path) makes
+ * the answer depend on unrelated naming schemes agreeing by coincidence.
+ */
+export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
+	openai: ['openAiApi'],
+	anthropic: ['anthropicApi'],
+	google: ['googlePalmApi'],
+	'azure-openai': ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'],
+	'aws-bedrock': ['aws'],
+	xai: ['xAiApi'],
+	groq: ['groqApi'],
+	openrouter: ['openRouterApi'],
+	deepseek: ['deepSeekApi'],
+	cohere: ['cohereApi'],
+	mistral: ['mistralCloudApi'],
+	vercel: ['vercelAiGatewayApi'],
+	nvidia: ['nvidiaApi'],
+} as const satisfies Record<AgentModelProvider, readonly [string, ...string[]]>;
+
+/** Credential types for a provider prefix, or `[]` when it is not a model provider. */
+export function getAgentModelProviderCredentialTypes(provider: string): readonly string[] {
+	return isAgentModelProvider(provider) ? AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES[provider] : [];
+}
+
 /** A model offered in the agent model picker. Mirrors the catalog's `ModelInfo` shape. */
 export interface AgentCatalogModel {
 	id: string;
@@ -42,5 +70,11 @@ export interface AgentProviderModelsResponse {
 	 * catalog fallback, which may include models the provider has retired.
 	 */
 	verified: boolean;
+	/**
+	 * True when the provider's model list could not be retrieved at all (e.g. the
+	 * n8n Connect gateway was unreachable), as opposed to a list that is genuinely
+	 * empty. Lets the picker say "couldn't load" instead of "no models available".
+	 */
+	unavailable?: boolean;
 	models: AgentCatalogModel[];
 }

@@ -79,13 +79,7 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 	default: {
 		name: 'AgentModelSelector',
 		template: '<div data-testid="agent-model-selector" />',
-		props: [
-			'selectedModel',
-			'credentials',
-			'isManagedCredential',
-			'warnMissingCredentials',
-			'modelsByProvider',
-		],
+		props: ['selectedModel', 'credentials', 'warnMissingCredentials', 'modelsByProvider'],
 	},
 }));
 
@@ -174,7 +168,6 @@ describe('AgentInfoPanel', () => {
 
 			const props = selectorProps(wrapper);
 			expect((props.credentials as Record<string, string>).anthropic).toBe('real-cred-x');
-			expect(props.isManagedCredential).toBe(false);
 		});
 
 		it('marks the selection as managed when config uses the n8n Connect tag', () => {
@@ -187,7 +180,6 @@ describe('AgentInfoPanel', () => {
 
 			const props = selectorProps(wrapper);
 			expect((props.credentials as Record<string, string>).anthropic).toBe(AI_GATEWAY_MANAGED_TAG);
-			expect(props.isManagedCredential).toBe(true);
 		});
 
 		it('leaves the manual-selection state untouched when config has no credential', () => {
