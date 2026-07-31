@@ -514,6 +514,37 @@ describe('WebhookResponseRelay', () => {
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['database:abc']);
 		});
 
+		it('hands the body back without waiting for the storage to be reclaimed', async () => {
+			const { relay, binaryDataService } = buildRelay();
+			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('hello'));
+			binaryDataService.deleteManyByBinaryDataId.mockReturnValue(new Promise<void>(() => {}));
+
+			const restored = await relay.restoreOffloadedBody(offloadedResponse('string'), {
+				reclaim: true,
+				context: ctx,
+			});
+
+			expect(bodyOf(restored)).toEqual('hello');
+		});
+
+		it('logs a reclaim that fails once the body has been handed back', async () => {
+			const { relay, binaryDataService, logger } = buildRelay();
+			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('hello'));
+			binaryDataService.deleteManyByBinaryDataId.mockRejectedValue(new Error('store is down'));
+
+			const restored = await relay.restoreOffloadedBody(offloadedResponse('string'), {
+				reclaim: true,
+				context: ctx,
+			});
+			await new Promise(setImmediate);
+
+			expect(bodyOf(restored)).toEqual('hello');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to delete an offloaded webhook response body',
+				expect.objectContaining({ binaryDataId: 'database:abc' }),
+			);
+		});
+
 		it('leaves the storage in place for other readers when not reclaiming', async () => {
 			const { relay, binaryDataService } = buildRelay();
 			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('hello'));
