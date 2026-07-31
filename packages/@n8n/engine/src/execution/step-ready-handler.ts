@@ -103,6 +103,8 @@ export class StepReadyHandler {
 		const [predecessorId] = predecessorIds;
 		// The trigger's step row is recorded already-completed and carries no
 		// outputs, so its payload comes off the execution instead.
+		// NOTE: proper trigger handling has not been built yet. We'll clean this up
+		// when we get there.
 		if (isTrigger(execution.graph, predecessorId)) return execution.triggerPayload;
 
 		const outputsByNodeId = await this.stepStore.loadStepOutputs(execution.id, predecessorIds);
