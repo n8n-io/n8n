@@ -101,7 +101,7 @@ export default workflow('id', 'My workflow')
 When editing an existing workflow, **keep the \`.group(...)\` calls intact** unless
 the change is specifically about grouping.
 
-an invalid group is rejected on save, so these following rules MUST be followed when
+An invalid group is rejected on save, so these following rules MUST be followed when
 creating or editing groups.
 
 Rules:

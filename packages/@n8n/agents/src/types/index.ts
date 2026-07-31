@@ -9,6 +9,7 @@ export type {
 	ContentReasoning,
 	ContentReasoningFile,
 	ContentFile,
+	ContentFileRef,
 	ContentCustom,
 	ContentToolCall,
 	ContentInvalidToolCall,
@@ -20,6 +21,10 @@ export type {
 	AgentDbMessage,
 } from './sdk/message';
 
+export { stripHydratedFileData } from './sdk/message';
+
+export type { BuiltFileStore } from './sdk/file-store';
+
 export type {
 	Provider,
 	AnthropicThinkingConfig,
@@ -29,6 +34,7 @@ export type {
 	ThinkingConfigFor,
 	ThinkingConfig,
 } from './sdk/provider';
+export type { ReasoningLevel } from './sdk/reasoning';
 
 export type {
 	AgentResult,
@@ -176,6 +182,8 @@ export type {
 	AgentEventData,
 	AgentEventHandler,
 	AgentMiddleware,
+	ForwardedChildChunk,
+	SubAgentChunkPayload,
 } from './runtime/event';
 
 export type {

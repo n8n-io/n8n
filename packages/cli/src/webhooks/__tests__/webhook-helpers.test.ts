@@ -290,6 +290,28 @@ describe('setupResponseNodePromise', () => {
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
 	});
 
+	test('should apply the status code to binary data responses', async () => {
+		binaryDataService.getAsStream.mockResolvedValue(mock<Readable>());
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: {},
+			statusCode: 201,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.status).toHaveBeenCalledWith(201);
+	});
+
 	test('should not set sandbox CSP header on binary stream responses when sandboxing is disabled', async () => {
 		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
 		const mockStream = mock<Readable>();
@@ -336,6 +358,26 @@ describe('setupResponseNodePromise', () => {
 		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(res.end).toHaveBeenCalledWith(buffer);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should apply the status code to buffer responses', async () => {
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: Buffer.from('created'),
+			headers: {},
+			statusCode: 201,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.status).toHaveBeenCalledWith(201);
 	});
 
 	test('should not set sandbox CSP header on buffer responses when sandboxing is disabled', async () => {

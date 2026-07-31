@@ -126,21 +126,48 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(claimed.map((t) => t.id)).toEqual([soon.id]);
 		});
 
-		it('claims every due occurrence of a job (supersede is deferred to the reaper)', async () => {
-			// Two due occurrences of the same job: both are claimable. Skipping a
-			// superseded occurrence needs the misfire grace/policy and lands later.
-			const older = await createTask({
-				scheduledFor: new Date('2026-06-01T10:00:00.000Z'),
-				runAt: new Date(Date.now() - 40_000),
-			});
-			const newer = await createTask({
-				scheduledFor: new Date('2026-06-01T11:00:00.000Z'),
-				runAt: new Date(Date.now() - 20_000),
+		it('does not claim an occurrence past its deadline', async () => {
+			const stale = await createTask({
+				runAt: past(),
+				missedAfter: new Date(Date.now() - 30_000),
 			});
 
 			const claimed = await taskRepository.claimDueTasks(claimOpts());
 
-			expect(claimed.map((t) => t.id).sort()).toEqual([older.id, newer.id].sort());
+			expect(claimed.map((t) => t.id)).not.toContain(stale.id);
+			expect((await reload(stale.id)).status).toBe('pending');
+		});
+
+		it('claims an occurrence still inside its deadline', async () => {
+			const late = await createTask({
+				runAt: past(),
+				missedAfter: new Date(Date.now() + 30_000),
+			});
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(claimed.map((t) => t.id)).toContain(late.id);
+		});
+
+		it('claims an occurrence that carries no deadline', async () => {
+			const legacy = await createTask({ runAt: past(), missedAfter: null });
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(claimed.map((t) => t.id)).toContain(legacy.id);
+		});
+
+		it('still claims a retry whose deadline passed while it waited out its backoff', async () => {
+			const retry = await createTask({
+				runAt: past(),
+				missedAfter: new Date(Date.now() - 30_000),
+				attempts: 1,
+				maxAttempts: 3,
+			});
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(claimed.map((t) => t.id)).toContain(retry.id);
 		});
 
 		it('caps the claim at batchSize, taking the earliest by runAt', async () => {
@@ -377,6 +404,17 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(row.attempts).toBe(0);
 			expect(row.claimedBy).toBeNull();
 			expect(row.leaseExpiresAt).toBeNull();
+		});
+
+		it('releaseClaim keeps the deadline, so a released occurrence still expires', async () => {
+			const { id, epoch } = await claimOne();
+			await taskRepository.update(id, { missedAfter: past() });
+
+			expect(await taskRepository.releaseClaim({ host: HOST_A, id, claimedEpoch: epoch })).toBe(1);
+
+			expect(await taskRepository.claimDueTasks(claimOpts({ host: HOST_A }))).toHaveLength(0);
+			expect(await taskRepository.retireMissedPending(10)).toBe(1);
+			expect((await reload(id)).status).toBe('missed');
 		});
 
 		it('fences a stale epoch: the owner at a superseded epoch cannot transition', async () => {
@@ -865,6 +903,246 @@ describe('ScheduledTaskRepository executor methods', () => {
 				expect([a, b].sort()).toEqual([0, 1]); // exactly one call completed the row
 				expect((await reload(task.id)).status).toBe('succeeded');
 			});
+		});
+
+		describe('retireMissedPending', () => {
+			it('retires a pending occurrence the claim has stopped offering', async () => {
+				const stale = await createTask({
+					runAt: past(),
+					missedAfter: new Date(Date.now() - 30_000),
+				});
+
+				expect(await taskRepository.retireMissedPending(10)).toBe(1);
+
+				const row = await reload(stale.id);
+				expect(row.status).toBe('missed');
+				expect(row.finishedAt).not.toBeNull();
+			});
+
+			it('leaves alone what the claim would still offer', async () => {
+				// Mirrors the three cases `claimDueTasks` still accepts.
+				const live = await createTask({ missedAfter: new Date(Date.now() + 30_000) });
+				const noDeadline = await createTask({ missedAfter: null });
+				const retry = await createTask({
+					missedAfter: new Date(Date.now() - 30_000),
+					attempts: 1,
+					maxAttempts: 3,
+				});
+
+				expect(await taskRepository.retireMissedPending(10)).toBe(0);
+
+				for (const task of [live, noDeadline, retry]) {
+					expect((await reload(task.id)).status).toBe('pending');
+				}
+			});
+
+			it('leaves a claimed occurrence alone', async () => {
+				const running = await createTask({
+					status: 'running',
+					claimedBy: HOST_A,
+					leaseExpiresAt: new Date(Date.now() + 60_000),
+					missedAfter: new Date(Date.now() - 30_000),
+				});
+
+				expect(await taskRepository.retireMissedPending(10)).toBe(0);
+				expect((await reload(running.id)).status).toBe('running');
+			});
+
+			it('caps the sweep at the given limit', async () => {
+				await createTask({ missedAfter: new Date(Date.now() - 30_000) });
+				await createTask({ missedAfter: new Date(Date.now() - 60_000) });
+
+				expect(await taskRepository.retireMissedPending(1)).toBe(1);
+			});
+		});
+	});
+
+	describe('updateToMissed', () => {
+		it('retires the pending occurrences older than the catch-up run that replaces them', async () => {
+			const older = await createTask();
+			const newer = await createTask();
+			const catchUp = await createTask();
+
+			const retired = await taskRepository.updateToMissed(taskRepository.manager, [
+				{ jobId: job.id, before: catchUp.scheduledFor },
+			]);
+
+			expect(retired).toBe(2);
+			for (const task of [older, newer]) {
+				expect((await reload(task.id)).status).toBe('missed');
+			}
+			expect((await reload(catchUp.id)).status).toBe('pending');
+		});
+
+		it('leaves an occurrence that is already running or finished', async () => {
+			const running = await createTask({
+				status: 'running',
+				claimedBy: HOST_A,
+				leaseExpiresAt: new Date(Date.now() + 60_000),
+			});
+			const done = await createTask({ status: 'succeeded', finishedAt: past() });
+			const catchUp = await createTask();
+
+			const retired = await taskRepository.updateToMissed(taskRepository.manager, [
+				{ jobId: job.id, before: catchUp.scheduledFor },
+			]);
+
+			expect(retired).toBe(0);
+			expect((await reload(running.id)).status).toBe('running');
+			expect((await reload(done.id)).status).toBe('succeeded');
+		});
+
+		it('retires nothing when given nothing', async () => {
+			await createTask();
+
+			expect(await taskRepository.updateToMissed(taskRepository.manager, [])).toBe(0);
+		});
+
+		it('retires an occurrence whose retry is already scheduled, same as one never attempted', async () => {
+			// Coalesce means at most one run for the backlog: a failed attempt awaiting
+			// retry is still a second run alongside the catch-up if left alone.
+			const retrying = await createTask({ attempts: 1 });
+			const catchUp = await createTask();
+
+			const retired = await taskRepository.updateToMissed(taskRepository.manager, [
+				{ jobId: job.id, before: catchUp.scheduledFor },
+			]);
+
+			expect(retired).toBe(1);
+			expect((await reload(retrying.id)).status).toBe('missed');
+		});
+
+		it('applies each job its own cutoff in a single call, without crossing jobs', async () => {
+			const otherJob = await jobRepository.save(
+				jobRepository.create({
+					name: `job-${Math.random().toString(36).slice(2)}`,
+					workflowId: null,
+					nodeId: null,
+					taskType: TASK_TYPE,
+					payload: {},
+					kind: 'interval',
+					intervalSeconds: 60,
+					enabled: true,
+					nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+					maxAttempts: 1,
+				}),
+			);
+			const superseded = await createTask();
+			const catchUp = await createTask();
+			const otherSuperseded = await createTask({ jobId: otherJob.id });
+			// Older than otherCatchUp, so it would match otherJob's bracket by jobId and
+			// scheduledFor alone: proves the status filter still applies to every job's
+			// bracket, not only the first.
+			const otherRunning = await createTask({
+				jobId: otherJob.id,
+				status: 'running',
+				claimedBy: HOST_A,
+				leaseExpiresAt: new Date(Date.now() + 60_000),
+			});
+			const otherCatchUp = await createTask({ jobId: otherJob.id });
+
+			const retired = await taskRepository.updateToMissed(taskRepository.manager, [
+				{ jobId: job.id, before: catchUp.scheduledFor },
+				{ jobId: otherJob.id, before: otherCatchUp.scheduledFor },
+			]);
+
+			expect(retired).toBe(2);
+			expect((await reload(superseded.id)).status).toBe('missed');
+			expect((await reload(catchUp.id)).status).toBe('pending');
+			expect((await reload(otherSuperseded.id)).status).toBe('missed');
+			expect((await reload(otherRunning.id)).status).toBe('running');
+			expect((await reload(otherCatchUp.id)).status).toBe('pending');
+		});
+	});
+
+	describe('updateMissedAfterForJobs', () => {
+		it("recomputes a pending row's deadline from its own future runAt", async () => {
+			const runAt = new Date(Date.now() + 60_000);
+			const task = await createTask({ runAt, missedAfter: new Date(runAt.getTime() + 30_000) });
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			const reloaded = await reload(task.id);
+			expect(reloaded.missedAfter!.getTime()).toBe(runAt.getTime() + 90_000);
+		});
+
+		it("clamps an overdue row's recomputed deadline to now", async () => {
+			const runAt = past();
+			const task = await createTask({ runAt, missedAfter: new Date(runAt.getTime() + 30_000) });
+
+			// DB-clock brackets, not `Date.now()`: a container's clock can drift from
+			// the test runner's host clock.
+			const before = await taskRepository.readDbTime();
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+			const after = await taskRepository.readDbTime();
+
+			const reloaded = await reload(task.id);
+			const deadline = reloaded.missedAfter!.getTime();
+			expect(deadline).toBeGreaterThanOrEqual(before.getTime() + 90_000);
+			expect(deadline).toBeLessThanOrEqual(after.getTime() + 90_000);
+		});
+
+		it('leaves a row with no deadline without one', async () => {
+			const task = await createTask({ missedAfter: null });
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			expect((await reload(task.id)).missedAfter).toBeNull();
+		});
+
+		it('leaves a running or finished row alone', async () => {
+			const runAt = past();
+			const running = await createTask({
+				status: 'running',
+				claimedBy: HOST_A,
+				leaseExpiresAt: new Date(Date.now() + 60_000),
+				runAt,
+				missedAfter: new Date(runAt.getTime() + 30_000),
+			});
+			const done = await createTask({
+				status: 'succeeded',
+				finishedAt: past(),
+				runAt,
+				missedAfter: new Date(runAt.getTime() + 30_000),
+			});
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			expect((await reload(running.id)).missedAfter!.getTime()).toBe(runAt.getTime() + 30_000);
+			expect((await reload(done.id)).missedAfter!.getTime()).toBe(runAt.getTime() + 30_000);
+		});
+
+		it("leaves another job's rows alone", async () => {
+			const otherJob = await jobRepository.save(
+				jobRepository.create({ ...job, id: undefined, name: 'other-job' }),
+			);
+			const runAt = past();
+			const otherTask = await taskRepository.save(
+				taskRepository.create({
+					jobId: otherJob.id,
+					taskType: TASK_TYPE,
+					payload: {},
+					scheduledFor: new Date(),
+					runAt,
+					status: 'pending',
+					attempts: 0,
+					maxAttempts: 1,
+					missedAfter: new Date(runAt.getTime() + 30_000),
+				}),
+			);
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			expect((await reload(otherTask.id)).missedAfter!.getTime()).toBe(runAt.getTime() + 30_000);
+		});
+
+		it('is a no-op when given no jobs', async () => {
+			const runAt = past();
+			const task = await createTask({ runAt, missedAfter: new Date(runAt.getTime() + 30_000) });
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [], 90);
+
+			expect((await reload(task.id)).missedAfter!.getTime()).toBe(runAt.getTime() + 30_000);
 		});
 	});
 });

@@ -8,6 +8,7 @@ required:
   - prompt
   - authenticationContextClassReference
   - additionalScopes
+  - rpInitiatedLogoutEnabled
 properties:
   clientId:
     type: string
@@ -47,3 +48,9 @@ properties:
       Additional scopes to request, space separated. n8n always requests `openid`, `profile`
       and `email`.
     example: groups roles
+  rpInitiatedLogoutEnabled:
+    type: boolean
+    description: >
+      Whether signing out of n8n also ends the session at the OIDC provider via RP-Initiated
+      Logout. When disabled, sign-out is local to n8n only.
+    example: false

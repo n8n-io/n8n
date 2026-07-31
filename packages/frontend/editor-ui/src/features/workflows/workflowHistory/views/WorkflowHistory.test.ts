@@ -18,6 +18,7 @@ import { workflowHistoryDataFactory, workflowVersionDataFactory } from '../__tes
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import type { IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -108,6 +109,11 @@ let windowOpenSpy: MockInstance;
 
 describe('WorkflowHistory', () => {
 	beforeEach(() => {
+		// This suite asserts on rendered toast content, which needs the notifier the
+		// app registers at bootstrap. Explicit here because it no longer arrives as a
+		// side effect of importing `@/app/composables/useToast` (N8N-104).
+		registerToastNotifier();
+
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,

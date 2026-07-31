@@ -350,6 +350,39 @@ describe('research tool', () => {
 			expect(tracker.approveWebSearchOnce).not.toHaveBeenCalled();
 		});
 
+		// The payload both the UI's approval widget and the eval user-proxy send.
+		it('should grant persistent approval and run the search on resume with allow_all', async () => {
+			const tracker = {
+				isHostAllowed: vi.fn(),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
+				isWebSearchAllowed: vi.fn().mockReturnValue(false),
+				approveWebSearch: vi.fn(),
+				approveWebSearchOnce: vi.fn(),
+			};
+			const context = createMockContext({ domainAccessTracker: tracker as never });
+			context.webResearchService!.search = vi.fn().mockResolvedValue({
+				query: 'q',
+				results: [{ title: 'T', url: 'https://example.com/a', snippet: 'S' }],
+			});
+			const suspend = vi.fn();
+
+			const tool = createResearchTool(context);
+			const result = (await tool.handler!(
+				{ action: 'web-search' as const, query: 'q' },
+				createAgentCtx({
+					resumeData: { approved: true, domainAccessAction: 'allow_all' },
+					suspend,
+				}) as never,
+			)) as { results: unknown[] };
+
+			expect(tracker.approveWebSearch).toHaveBeenCalled();
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.webResearchService!.search).toHaveBeenCalledWith('q', expect.anything());
+			expect(result.results).toHaveLength(1);
+		});
+
 		it('should return empty results when resumed with denial', async () => {
 			const tracker = {
 				isHostAllowed: vi.fn(),

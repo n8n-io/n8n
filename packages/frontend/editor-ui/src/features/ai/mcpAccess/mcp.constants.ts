@@ -10,6 +10,7 @@ export const MCP_DOCS_PAGE_URL = 'https://docs.n8n.io/connect/connect-to-n8n-mcp
 export const MCP_SCOPE_GROUPS: ScopeGroupDefinition[] = [
 	{ key: 'workflows', resources: ['workflow', 'tag'] },
 	{ key: 'executions', resources: ['execution'] },
+	{ key: 'agents', resources: ['agent'] },
 	{ key: 'credentials', resources: ['credential'] },
 	{ key: 'dataTables', resources: ['dataTable'] },
 	{ key: 'projectsAndFolders', resources: ['project'] },
@@ -19,6 +20,7 @@ export const MCP_SCOPE_GROUPS: ScopeGroupDefinition[] = [
 export const MCP_SCOPE_RESOURCE_ICONS: Record<string, IconName> = {
 	workflow: 'workflow',
 	execution: 'history',
+	agent: 'robot',
 	credential: 'key-round',
 	dataTable: 'table',
 	project: 'folder',
@@ -28,6 +30,7 @@ export const ELIGIBLE_WORKFLOWS_DOCS_SECTION = 'workflow-eligibility';
 
 export const MCP_SETTINGS_VIEW = 'McpSettings';
 export const MCP_WORKFLOWS_VIEW = 'McpSettingsWorkflows';
+export const MCP_AGENTS_VIEW = 'McpSettingsAgents';
 export const MCP_CLIENTS_VIEW = 'McpSettingsClients';
 export const MCP_STORE = 'mcp';
 
@@ -37,3 +40,4 @@ export const MCP_TOOLTIP_DELAY = 100;
 export const MCP_CONNECT_POPOVER_WIDTH = 460;
 
 export const MCP_CONNECT_WORKFLOWS_MODAL_KEY = 'mcpConnectWorkflowsModal';
+export const MCP_CONNECT_AGENTS_MODAL_KEY = 'mcpConnectAgentsModal';
