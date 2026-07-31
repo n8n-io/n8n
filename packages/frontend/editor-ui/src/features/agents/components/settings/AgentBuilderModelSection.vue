@@ -198,7 +198,6 @@ function onCancel() {
 			<N8nSegmentControl
 				:model-value="store.mode"
 				:options="modeOptions"
-				size="medium"
 				@update:model-value="onModeChange"
 			/>
 		</div>
