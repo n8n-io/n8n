@@ -104,7 +104,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		expect(reviewRequiredStore.isReviewRequired('workflow-1')).toBe(false);
 		expect(reviewStatusStore.hasOpenReview('workflow-1')).toBe(true);
 		expect(reviewStatusStore.openReviewRequest('workflow-1')?.id).toBe('review-1');
-		expect(emitted('submitted')).toHaveLength(1);
+		expect(emitted('submitted')).toEqual([['review-1']]);
 		expect(emitted('update:open')).toContainEqual([false]);
 	});
 

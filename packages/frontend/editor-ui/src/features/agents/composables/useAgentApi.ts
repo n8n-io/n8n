@@ -36,6 +36,7 @@ export type ListAgentsOptions = {
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
+		availableInMCP?: boolean;
 	};
 };
 

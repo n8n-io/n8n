@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia';
 import type {
 	ListWorkflowReviewInboxResponse,
+	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestState,
 	WorkflowReviewInboxItem,
 } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { computed, ref } from 'vue';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -12,6 +14,7 @@ import {
 	decideWorkflowReviewRequest,
 	fetchWorkflowReviewInbox,
 	fetchWorkflowReviewInboxSummary,
+	fetchWorkflowReviewRequestDetail,
 	type WorkflowReviewDecisionInput,
 } from './workflowReviews.api';
 
@@ -29,7 +32,10 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	const openCount = ref(0);
 	const closedCount = ref(0);
 	const items = ref<WorkflowReviewInboxItem[]>([]);
-	const selectedId = ref<string | null>(null);
+	const detail = ref<WorkflowReviewRequestDetail | null>(null);
+	const detailLoading = ref(false);
+	const detailNotFound = ref(false);
+	// The view hydrates this from `?state=` before probing so the first list fetch uses the URL state.
 	const activeTab = ref<WorkflowReviewRequestState>('open');
 	const nextCursor = ref<string | null>(null);
 	const hasMore = ref(false);
@@ -39,10 +45,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 
 	let listRequestSeq = 0;
 	let probeRequestSeq = 0;
-
-	const selectedItem = computed(
-		() => items.value.find((item) => item.id === selectedId.value) ?? null,
-	);
+	let detailRequestSeq = 0;
 	const showSidebar = computed(() => probeSettled.value && hasAnyReviews.value);
 	const isEmpty = computed(
 		() => showSidebar.value && !loading.value && error.value === null && items.value.length === 0,
@@ -101,7 +104,6 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 			items.value = [];
 			nextCursor.value = null;
 			hasMore.value = false;
-			selectedId.value = null;
 			// Invalidate any in-flight loadMore so pagination is not stuck.
 			loadingMore.value = false;
 		}
@@ -163,6 +165,44 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		await fetchList({ reset: true });
 	}
 
+	async function fetchDetail(id: string) {
+		const requestSeq = ++detailRequestSeq;
+		detail.value = null;
+		detailLoading.value = true;
+		detailNotFound.value = false;
+
+		try {
+			const response = await fetchWorkflowReviewRequestDetail(rootStore.restApiContext, id);
+			if (requestSeq !== detailRequestSeq) {
+				return;
+			}
+			detail.value = response;
+		} catch (e) {
+			if (requestSeq !== detailRequestSeq) {
+				return;
+			}
+			if (e instanceof ResponseError && e.httpStatusCode === 404) {
+				detailNotFound.value = true;
+				return;
+			}
+			// deliberately not `toError(e)`: that ref is list-scoped and gates
+			// `isEmpty`, so a detail failure would suppress the list empty state
+			// for the rest of the session.
+			throw e;
+		} finally {
+			if (requestSeq === detailRequestSeq) {
+				detailLoading.value = false;
+			}
+		}
+	}
+
+	function clearDetail() {
+		detailRequestSeq += 1;
+		detail.value = null;
+		detailLoading.value = false;
+		detailNotFound.value = false;
+	}
+
 	/**
 	 * Submit a decision and patch the affected item in place. Approving closes
 	 * the request; the closed tab refetches on activation and picks it up there.
@@ -177,6 +217,12 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 			item.updatedAt = summary.updatedAt;
 		}
 
+		if (detail.value?.id === id) {
+			detail.value.decision = summary.decision;
+			detail.value.state = summary.state;
+			detail.value.updatedAt = summary.updatedAt;
+		}
+
 		if (summary.state === 'closed') {
 			openCount.value = Math.max(0, openCount.value - 1);
 			closedCount.value += 1;
@@ -185,29 +231,21 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		// The list only shows items matching the active tab filter.
 		if (item && item.state !== activeTab.value) {
 			items.value = items.value.filter((candidate) => candidate.id !== item.id);
-			if (selectedId.value === item.id) {
-				selectedId.value = null;
-			}
 		}
-	}
-
-	function selectItem(id: string) {
-		selectedId.value = id;
-	}
-
-	function clearSelection() {
-		selectedId.value = null;
 	}
 
 	function reset() {
 		probeRequestSeq += 1;
 		listRequestSeq += 1;
+		detailRequestSeq += 1;
 		probeSettled.value = false;
 		hasAnyReviews.value = false;
 		openCount.value = 0;
 		closedCount.value = 0;
 		items.value = [];
-		selectedId.value = null;
+		detail.value = null;
+		detailLoading.value = false;
+		detailNotFound.value = false;
 		activeTab.value = 'open';
 		nextCursor.value = null;
 		hasMore.value = false;
@@ -222,8 +260,9 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		openCount,
 		closedCount,
 		items,
-		selectedId,
-		selectedItem,
+		detail,
+		detailLoading,
+		detailNotFound,
 		activeTab,
 		nextCursor,
 		hasMore,
@@ -236,9 +275,9 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		fetchList,
 		loadMore,
 		setActiveTab,
+		fetchDetail,
+		clearDetail,
 		decideOnReview,
-		selectItem,
-		clearSelection,
 		reset,
 	};
 });

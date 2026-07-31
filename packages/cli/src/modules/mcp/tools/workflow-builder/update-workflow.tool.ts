@@ -219,6 +219,24 @@ type OperationInput = {
 
 const strictOperationsSchema = z.array(partialUpdateOperationSchema);
 
+// LLM-supplied tag batches routinely repeat a name in different casings; collapse
+// those (first-seen case wins) before hitting the tag API. Tag names are
+// case-sensitively unique, so this is an MCP-only semantic — the service itself
+// treats case-variant names as distinct tags.
+function dedupeNamesPreservingCase(names: string[]): string[] {
+	const seen = new Set<string>();
+	const result: string[] = [];
+	for (const raw of names) {
+		const trimmed = raw.trim();
+		if (trimmed.length === 0) continue;
+		const key = trimmed.toLowerCase();
+		if (seen.has(key)) continue;
+		seen.add(key);
+		result.push(trimmed);
+	}
+	return result;
+}
+
 function parseStrictOperations(operations: OperationInput[]): PartialUpdateOperation[] {
 	const parsed = strictOperationsSchema.safeParse(operations);
 	if (parsed.success) return parsed.data;
@@ -814,15 +832,14 @@ export const createUpdateWorkflowTool = (
 
 			let tagIds: string[] | undefined;
 			if (result.tagNames !== undefined) {
+				const uniqueTagNames = dedupeNamesPreservingCase(result.tagNames);
 				if (hasGlobalScope(user, 'tag:create')) {
-					const resolvedTags = await tagService.findOrCreateByNames(result.tagNames);
+					const resolvedTags = await tagService.findOrCreateByNames(uniqueTagNames);
 					tagIds = resolvedTags.map((t) => t.id);
 				} else {
-					const resolvedTags = await tagService.findByNames(result.tagNames);
+					const resolvedTags = await tagService.getByNames(uniqueTagNames);
 					const resolvedNames = new Set(resolvedTags.map((t) => t.name));
-					const missing = result.tagNames
-						.map((n) => n.trim())
-						.filter((name) => name.length > 0 && !resolvedNames.has(name));
+					const missing = uniqueTagNames.filter((name) => !resolvedNames.has(name));
 					if (missing.length > 0) {
 						throw new Error(
 							`Cannot apply the following tags because they don't exist and your account does not have permission to create them: ${missing.join(', ')}`,

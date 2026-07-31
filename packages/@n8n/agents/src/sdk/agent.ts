@@ -13,6 +13,7 @@ import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-run
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
+import { AgentMessageList } from '../runtime/model/message-list';
 import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
@@ -50,6 +51,7 @@ import type {
 	AgentMiddleware,
 	BuiltAgent,
 	BuiltEval,
+	BuiltFileStore,
 	BuiltGuardrail,
 	BuiltMemory,
 	BuiltProviderTool,
@@ -57,6 +59,7 @@ import type {
 	BuiltTelemetry,
 	CheckpointStore,
 	ExecutionOptions,
+	FinishReason,
 	GenerateResult,
 	MemoryConfig,
 	ModelConfig,
@@ -67,6 +70,7 @@ import type {
 	StreamResult,
 	ThinkingConfig,
 	ThinkingConfigFor,
+	TokenUsage,
 	ResumeOptions,
 	McpConnectionFailedEvent,
 } from '../types';
@@ -167,6 +171,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private hasRuntimeSkillTool = false;
 
 	private memoryConfig?: MemoryConfig;
+
+	private fileStoreValue?: BuiltFileStore;
 
 	private onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 
@@ -361,6 +367,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	/** Observe observational-memory background task lifecycle (observer/reflector). */
 	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this {
 		this.onMemoryTaskEvent = observer;
+		return this;
+	}
+
+	/** Inject the host store that hydrates file-reference content parts before LLM calls. */
+	fileStore(store: BuiltFileStore): this {
+		this.fileStoreValue = store;
 		return this;
 	}
 
@@ -1085,6 +1097,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: memoryConfig?.memory,
+			...(this.fileStoreValue !== undefined ? { fileStore: this.fileStoreValue } : {}),
 			observationLog: memoryConfig?.observationLog,
 			observationalMemory: memoryConfig?.observationalMemory,
 			episodicMemory: memoryConfig?.episodicMemory,
@@ -1127,13 +1140,17 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			const hostRunner = delegateOptions.runSubAgent;
 			const completedTool = createDelegateSubAgentTool({
 				...delegateOptions,
-				runSubAgent: async (request, _helpersFromHandler) => {
-					const helpers = { runInlineSubAgent };
+				runSubAgent: async (request, helpersFromHandler) => {
+					const helpers = {
+						runInlineSubAgent: async (req: DelegateSubAgentRequest) =>
+							await runInlineSubAgent(req, helpersFromHandler.emitChunk),
+						emitChunk: helpersFromHandler.emitChunk,
+					};
 					if (hostRunner) {
 						return await hostRunner(request, helpers);
 					}
 					if (request.subAgentId === INLINE_SUB_AGENT_ID) {
-						return await runInlineSubAgent(request);
+						return await runInlineSubAgent(request, helpersFromHandler.emitChunk);
 					}
 					return {
 						status: 'failed',
@@ -1161,8 +1178,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		inlineSubAgentBlockedTools?: string[];
 		inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 		resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
-	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
-		return async (request) => {
+	}): (
+		request: DelegateSubAgentRequest,
+		onChunk?: (chunk: StreamChunk) => void,
+	) => Promise<DelegateSubAgentToolOutput> {
+		return async (request, onChunk) => {
 			const tools = filterInlineSubAgentTools(options.tools, options.inlineSubAgentBlockedTools);
 			const deferredTools = filterInlineSubAgentTools(
 				options.deferredTools,
@@ -1204,7 +1224,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			});
 
 			try {
-				const result = await childRuntime.generate(renderDelegateSubAgentPrompt(request), {
+				const resultStream = await childRuntime.stream(renderDelegateSubAgentPrompt(request), {
 					...(request.parentAbortSignal !== undefined
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
@@ -1213,14 +1233,75 @@ export class Agent implements BuiltAgent, AgentBuilder {
 						? { executionCounter: request.parentExecutionCounter }
 						: {}),
 				});
-				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
-					return failedDelegatedChildSuspendOutput(request.taskPath, result.model ?? childModelId);
+
+				let text = '';
+				let model: string | undefined;
+				let usage: TokenUsage | undefined;
+				let finishReason: FinishReason | undefined;
+				let structuredOutput: unknown;
+				let error: unknown;
+				let suspended = false;
+
+				const reader = resultStream.stream.getReader();
+				try {
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						const chunk = value;
+						onChunk?.(chunk);
+						switch (chunk.type) {
+							case 'text-delta':
+								text += chunk.delta;
+								break;
+							case 'tool-call-suspended':
+								suspended = true;
+								break;
+							case 'error':
+								error = chunk.error;
+								break;
+							case 'finish':
+								finishReason = chunk.finishReason;
+								if (chunk.usage !== undefined) usage = chunk.usage;
+								if (chunk.model !== undefined) model = chunk.model;
+								if (chunk.structuredOutput !== undefined) {
+									structuredOutput = chunk.structuredOutput;
+								}
+								break;
+							default:
+								break;
+						}
+					}
+				} finally {
+					reader.releaseLock();
 				}
-				const resultWithModel =
-					result.model === undefined && childModelId !== undefined
-						? { ...result, model: childModelId }
-						: result;
-				return generateResultToDelegateSubAgentOutput(request.taskPath, resultWithModel);
+
+				if (suspended) {
+					return failedDelegatedChildSuspendOutput(request.taskPath, model ?? childModelId);
+				}
+
+				// The runtime only serializes its message list into state on success
+				// and on suspend, so an errored child falls back to the streamed text.
+				const responseMessages = AgentMessageList.deserialize(
+					resultStream.getState().messageList,
+				).responseDelta();
+				const messages: AgentMessage[] =
+					responseMessages.length > 0
+						? responseMessages
+						: text.trim()
+							? [{ role: 'assistant', content: [{ type: 'text', text }] }]
+							: [];
+
+				const result: GenerateResult = {
+					runId: resultStream.runId,
+					messages,
+					...((model ?? childModelId) ? { model: model ?? childModelId } : {}),
+					...(finishReason !== undefined ? { finishReason } : {}),
+					...(usage !== undefined ? { usage } : {}),
+					...(structuredOutput !== undefined ? { structuredOutput } : {}),
+					...(error !== undefined ? { error } : {}),
+					getState: () => resultStream.getState(),
+				};
+				return generateResultToDelegateSubAgentOutput(request.taskPath, result);
 			} finally {
 				await childRuntime.dispose();
 			}

@@ -3978,6 +3978,9 @@ importers:
       '@dagrejs/dagre':
         specifier: ^1.1.4
         version: 1.1.4
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../constants
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -4291,6 +4294,9 @@ importers:
       fflate:
         specifier: 'catalog:'
         version: 0.8.3
+      file-type:
+        specifier: 21.3.3
+        version: 21.3.3
       flat:
         specifier: 5.0.2
         version: 5.0.2
@@ -4619,9 +4625,6 @@ importers:
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
-      file-type:
-        specifier: 21.3.3
-        version: 21.3.3
       form-data:
         specifier: 4.0.6
         version: 4.0.6
