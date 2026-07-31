@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_558da949c3ee4b::t_d355301e0d3823 87-92
+packages/nodes-base/nodes/Slack/test/v2/GenericFunctions.test.ts
+  s_558da949c3ee4b::t_0de778c2d463f4 92-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "0420e13d656463677a3961769ea3616e63d7049e",
+  "prompts": {},
+  "sessions": {
+    "s_558da949c3ee4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7593febb-f1db-4d1b-b072-abcbeed8e6b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
