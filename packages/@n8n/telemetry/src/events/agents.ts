@@ -70,6 +70,20 @@ const toolIdentity = {
 // agent_id is only attached when the tools modal can resolve the hosting agent.
 const optionalAgentId = z.string().optional();
 
+// Mirrors `agentCapabilityKindSchema` in @n8n/api-types minus 'agent', which
+// covers the core identity primitives (instructions, model, credential) —
+// required fields rather than capabilities. Inlined because this package
+// deliberately depends on zod alone.
+const agentCapabilityKind = z.enum([
+	'channel',
+	'tool',
+	'mcpServer',
+	'skill',
+	'task',
+	'subAgent',
+	'vectorStore',
+]);
+
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_PUBLISHED: {
 		name: 'Agent published',
@@ -81,6 +95,31 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			user_id: z.string(),
 			source: agentPublishSource,
 			version_id: z.string().describe('AgentHistory versionId that became active'),
+		}),
+	},
+	AGENT_SETUP_COMPLETED: {
+		name: 'Agent setup completed',
+		description:
+			'The first time an agent reached a complete setup: it passes the same validation the Publish button requires, and has at least one configured capability. Fires at most once per agent, guarded by the persisted `agents.setupCompletedAt`. Emitted from the config-save path, with the publish path as a backstop so a published agent is always marked first.',
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z
+				.string()
+				.optional()
+				.describe('Absent for builder writes made without an acting user'),
+			capability_kinds: z
+				.array(agentCapabilityKind)
+				.describe('Capability kinds with at least one configured entry'),
+			capability_count: z.number().describe('Total configured capabilities across all kinds'),
+			tool_count: z.number(),
+			skill_count: z.number(),
+			sub_agent_count: z.number(),
+			mcp_server_count: z.number().describe('MCP servers with a URL set'),
+			vector_store_count: z.number(),
+			task_count: z.number(),
+			trigger_count: z.number().describe('Connected chat integrations; draft channels excluded'),
+			status: agentStatus,
 		}),
 	},
 	AGENT_UNPUBLISHED: {
