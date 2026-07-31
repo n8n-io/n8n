@@ -6,7 +6,12 @@ import { z } from 'zod';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
-import { assertAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
+import {
+	AUDIENCE_NOT_DECLARED_MESSAGE,
+	checkAudience,
+	OAuth2OptionsSchema,
+	sha256,
+} from './oauth2-utils';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -147,6 +152,34 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		return options.expectedAudience ?? options.clientId;
 	}
 
+	/**
+	 * Some providers omit audience claims from introspection responses entirely. That
+	 * is only rejected when the admin configured an expected audience and so asked for
+	 * enforcement; otherwise the resolver predates the check and keeps working with a
+	 * warning, rather than breaking on upgrade.
+	 */
+	private assertAudience(
+		claims: Record<string, unknown>,
+		options: OAuth2IntrospectionOptions,
+		metadata: OAuth2Metadata,
+	): void {
+		if (checkAudience(claims, this.expectedAudience(options)) === 'matched') {
+			return;
+		}
+
+		if (options.expectedAudience) {
+			this.logger.error('Introspection response declares no audience', {
+				issuer: metadata.issuer,
+			});
+			throw new IdentifierValidationError(AUDIENCE_NOT_DECLARED_MESSAGE);
+		}
+
+		this.logger.warn(
+			'Token introspection response declares no audience, so access tokens are not bound to this instance. Set an expected audience on the resolver.',
+			{ issuer: metadata.issuer },
+		);
+	}
+
 	private parseOptions(options: Record<string, unknown>): OAuth2IntrospectionOptions {
 		try {
 			return OAuth2IntrospectionOptionsSchema.parse(options);
@@ -264,7 +297,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 		// Client authentication proves the IdP will answer us; `active` proves the token
 		// is live. Neither says it was minted for us, so bind it before trusting a subject.
-		assertAudience(introspectionData, this.expectedAudience(options));
+		this.assertAudience(introspectionData, options, metadata);
 
 		const subject = introspectionData[options.subjectClaim];
 		if (!subject) {

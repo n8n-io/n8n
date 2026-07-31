@@ -9,7 +9,12 @@ import { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
-import { assertAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
+import {
+	AUDIENCE_NOT_DECLARED_MESSAGE,
+	checkAudience,
+	OAuth2OptionsSchema,
+	sha256,
+} from './oauth2-utils';
 
 // Use minimum of 30 seconds to avoid cache thrashing
 // Cap at 5 minutes to ensure periodic revalidation
@@ -249,8 +254,12 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 		}
 
 		// Checked outside the catch so an audience mismatch is not relabelled as a
-		// verification failure, and so both validation modes apply the same rule.
-		assertAudience(payload, expectedAudience);
+		// verification failure. Strict here, unlike introspection's fallback: this mode
+		// requires an expected audience, so there is no configuration to grandfather.
+		if (checkAudience(payload, expectedAudience) === 'not-declared') {
+			this.logger.error('Access token declares no audience', { issuer: metadata.issuer });
+			throw new IdentifierValidationError(AUDIENCE_NOT_DECLARED_MESSAGE);
+		}
 
 		return payload;
 	}

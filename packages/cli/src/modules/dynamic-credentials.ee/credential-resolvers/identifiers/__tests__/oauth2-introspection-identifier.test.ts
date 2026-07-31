@@ -245,11 +245,22 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			);
 		});
 
-		test('should reject a token that declares no audience at all', async () => {
+		test('should keep resolving and warn when the provider declares no audience', async () => {
 			const response = { active: true, sub: 'user-123' };
 			stubFlow(validMetadata, response);
 
-			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
+			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('declares no audience'),
+				expect.any(Object),
+			);
+		});
+
+		test('should reject an undeclared audience once expectedAudience is configured', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123' });
+
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
 				'Token declares no audience',
 			);
 		});

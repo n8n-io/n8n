@@ -39,26 +39,42 @@ function collectAudienceClaims(claims: Record<string, unknown>): string[] {
 	return values;
 }
 
+export const AUDIENCE_NOT_DECLARED_MESSAGE =
+	'Token declares no audience, so it cannot be confirmed as issued for this instance';
+
+/** Outcome of an audience check that did not name a different party. */
+export type AudienceCheckResult =
+	/** The claims name us as the intended relying party. */
+	| 'matched'
+	/** The provider reported no audience at all, so there was nothing to compare. */
+	| 'not-declared';
+
 /**
- * Asserts that a token was issued for this instance.
+ * Checks that a token was issued for this instance.
  *
  * An IdP recognising a token says only that the token is one of its own. Identity is
  * only trustworthy once the token is also bound to us as the intended relying party.
  *
- * @throws {IdentifierValidationError} When the claims name a different party, or name
- * no party at all. An absent audience is a rejection, not a pass: the IdP told us
- * nothing about who the token was for, so there is nothing to trust.
+ * Not every provider reports an audience, and a token we cannot check is not the same
+ * as a token we checked and rejected. The two are reported separately so callers can
+ * enforce strictly where an audience was explicitly configured, and stay lenient for
+ * configurations that predate the check.
+ *
+ * @throws {IdentifierValidationError} When the claims name a different party.
  */
-export function assertAudience(claims: Record<string, unknown>, expectedAudience: string): void {
+export function checkAudience(
+	claims: Record<string, unknown>,
+	expectedAudience: string,
+): AudienceCheckResult {
 	const audiences = collectAudienceClaims(claims);
 
 	if (audiences.length === 0) {
-		throw new IdentifierValidationError(
-			'Token declares no audience, so it cannot be confirmed as issued for this instance',
-		);
+		return 'not-declared';
 	}
 
 	if (!audiences.includes(expectedAudience)) {
 		throw new IdentifierValidationError('Token was not issued for the expected audience');
 	}
+
+	return 'matched';
 }
