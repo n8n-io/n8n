@@ -26,7 +26,7 @@ export function validateWebSocketOrigin(headers: Request['headers']): OriginVali
 export function validateSseOrigin(headers: Request['headers']): OriginValidationResult {
 	// Only a fully absent header qualifies — an empty or opaque (`null`) origin
 	// still fails, so sandboxed-iframe and cross-origin requests cannot use this path.
-	if (headers.origin === undefined && isSameOriginFetch(headers)) {
+	if (headers.origin === undefined && isSameOriginFetchOrSecFetchSiteAbsent(headers)) {
 		return { isValid: true };
 	}
 
@@ -175,7 +175,7 @@ function getFirstHeaderValue(header: string | string[] | undefined): string | un
  * as allowed. `same-site` is deliberately not accepted: SameSite=Lax cookies
  * reach sibling subdomains, so a same-site attacker would otherwise qualify.
  */
-function isSameOriginFetch(headers: Request['headers']): boolean {
+function isSameOriginFetchOrSecFetchSiteAbsent(headers: Request['headers']): boolean {
 	const secFetchSite = getFirstHeaderValue(headers['sec-fetch-site']);
 	return secFetchSite === undefined || secFetchSite === 'same-origin';
 }
