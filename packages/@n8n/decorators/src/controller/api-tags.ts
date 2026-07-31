@@ -13,5 +13,5 @@ export const ApiTags =
 			target.constructor as Controller,
 			String(handlerName),
 		);
-		routeMetadata.tags = tags.sort((a, b) => a.localeCompare(b));
+		routeMetadata.tags = [...tags].sort((a, b) => a.localeCompare(b));
 	};
