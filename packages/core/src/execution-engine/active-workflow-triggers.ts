@@ -471,7 +471,7 @@ export class ActiveWorkflowTriggers {
 		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
 		if (!triggers) return hadRegisteredCrons;
 
-		let lastError: Error | null = null;
+		const errors: Error[] = [];
 
 		// Best-effort: every close is attempted; a failing close keeps its node
 		// tracked (a possibly still-live trigger must stay visible to later
@@ -481,12 +481,17 @@ export class ActiveWorkflowTriggers {
 				await this.closeTrigger(response, workflowId);
 				triggers.delete(nodeId);
 			} catch (error) {
-				lastError = ensureError(error);
+				errors.push(ensureError(error));
 			}
 		}
 
-		if (lastError) {
-			throw lastError;
+		const toThrow = errors.pop();
+		for (const error of errors) {
+			this.errorReporter.error(error, { shouldBeLogged: true });
+		}
+
+		if (toThrow) {
+			throw toThrow;
 		}
 
 		this.activeTriggersByWorkflowId.delete(workflowId);
