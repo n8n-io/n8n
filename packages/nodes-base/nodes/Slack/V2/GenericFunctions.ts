@@ -84,6 +84,12 @@ export function throwOnSlackApiError(
 				level: 'warning',
 			},
 		);
+	} else if (responseData.error === 'ratelimited' || responseData.error === 'rate_limited') {
+		throw new NodeOperationError(this.getNode(), 'Slack rate limited this request', {
+			description:
+				'Wait before running this again, or ask for fewer results. Search is limited far more tightly than the rest of the Slack API - https://docs.slack.dev/reference/methods/assistant.search.context/#rate-limiting',
+			level: 'warning',
+		});
 	} else if (responseData.error === 'missing_scope') {
 		throw new NodeOperationError(
 			this.getNode(),

@@ -89,6 +89,19 @@ describe('Slack V2 > GenericFunctions', () => {
 			});
 		});
 
+		it.each(['ratelimited', 'rate_limited'])('should handle %s error', async (error) => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValue({ ok: false, error });
+
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'POST', '/assistant.search.context'),
+			).rejects.toMatchObject({
+				message: 'Slack rate limited this request',
+				level: 'warning',
+			});
+		});
+
 		it.each(['not_allowed_token_type', 'invalid_action_token'])(
 			'should handle %s error',
 			async (error) => {
