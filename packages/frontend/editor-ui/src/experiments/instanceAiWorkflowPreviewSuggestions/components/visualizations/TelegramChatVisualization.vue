@@ -214,7 +214,7 @@ onUnmounted(clearTimers);
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--xs) var(--spacing--md);
-	background: light-dark(#ffffff, #17212b);
+	background: light-dark(#fff, #17212b);
 	border-bottom: 1px solid light-dark(#e3e6e8, #101921);
 	flex-shrink: 0;
 }
@@ -226,7 +226,7 @@ onUnmounted(clearTimers);
 	width: 42px;
 	height: 42px;
 	border-radius: 50%;
-	background: #ffffff;
+	background: #fff;
 	overflow: hidden;
 	flex-shrink: 0;
 }
@@ -240,7 +240,7 @@ onUnmounted(clearTimers);
 .headerName {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	color: light-dark(#000000, #f5f5f5);
+	color: light-dark(#000, #f5f5f5);
 	line-height: 1.25;
 }
 
@@ -278,7 +278,7 @@ onUnmounted(clearTimers);
 }
 
 .bubbleIncoming {
-	background: light-dark(#ffffff, #182533);
+	background: light-dark(#fff, #182533);
 	border-bottom-left-radius: 4px;
 }
 
@@ -291,7 +291,7 @@ onUnmounted(clearTimers);
 	margin: 0;
 	font-size: var(--font-size--sm);
 	line-height: 1.45;
-	color: light-dark(#000000, #f5f5f5);
+	color: light-dark(#000, #f5f5f5);
 }
 
 .bubbleMeta {
@@ -340,7 +340,7 @@ onUnmounted(clearTimers);
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	background: light-dark(#ffffff, #17212b);
+	background: light-dark(#fff, #17212b);
 	border-top: 1px solid light-dark(#e3e6e8, #101921);
 	flex-shrink: 0;
 }
