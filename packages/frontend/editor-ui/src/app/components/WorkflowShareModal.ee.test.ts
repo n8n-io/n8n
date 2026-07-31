@@ -16,7 +16,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 const mockWorkflowDocumentState = reactive({

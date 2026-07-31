@@ -15,7 +15,7 @@ import { DEBOUNCE_TIME, VIEWS } from '@/app/constants';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { ROLE } from '@n8n/api-types';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSettingsStore } from '@/app/stores/settings.store';

@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/vue';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRolesView from './ProjectRolesView.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';

@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { VIEWS } from '@/app/constants';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import InstanceRoleView from './InstanceRoleView.vue';
 
