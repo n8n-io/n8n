@@ -95,13 +95,10 @@ export class PollTriggerExecutor {
 								pollFunctions,
 							);
 
-							// Same as the above `isCurrent` check; last chance to check before
-							// potentially starting the execution. Emitting now if superseded would run
-							// an execution against the old version of the workflow, so drop it.
-							// Bailing out here is safe even though `poll()` may have already advanced
-							// its state in the in-memory static data: persistence only happens inside
-							// `__emit` (`saveStaticData`) or `__commitCursor`, so the dropped call
-							// leaves the stored state untouched and the newly registered poller
+							// Same as the above `isCurrent` check: emitting now would run an execution
+							// against the old workflow version, so drop it. Safe even if `poll()`
+							// already advanced in-memory static data, since persistence only happens
+							// inside `__emit` or `__commitCursor`; the newly registered poller
 							// re-fetches the same events.
 							if (!testingTrigger && !isCurrent()) {
 								this.logger.debug(
@@ -115,9 +112,9 @@ export class PollTriggerExecutor {
 							if (pollResponse !== null) {
 								pollFunctions.__emit(pollResponse);
 							} else if (!testingTrigger) {
-								// A poll that found nothing may still have moved its cursor, and the
-								// advance is committed on its own. The activation poll is left out
-								// because an activation poll that emits nothing persists nothing.
+								// A poll with no items may still have moved its cursor, committed here
+								// on its own. Left out for the activation poll, which persists nothing
+								// when it emits nothing.
 								try {
 									await commitStagedCursor(pollFunctions);
 								} catch (error) {

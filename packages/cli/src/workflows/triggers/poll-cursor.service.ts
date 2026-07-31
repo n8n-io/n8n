@@ -29,9 +29,9 @@ export class PollCursorService {
 	}
 
 	/**
-	 * Reads the node's stored cursor, seeding it from the node's static data the first
-	 * time, so a node that polled before durable cursors were enabled resumes where it
-	 * left off. `null` means the node has no cursor, which is stored as an empty one.
+	 * Seeds the cursor from the node's static data the first time, so a node that
+	 * polled before durable cursors were enabled resumes where it left off. Returns
+	 * `null` when the node has no cursor (stored internally as an empty one).
 	 */
 	async readCursor(
 		workflowId: string,
@@ -112,8 +112,8 @@ export class PollCursorService {
 			const nodeKey = `node:${nodeName}`;
 			const bucket = this.toBucket(staticData[nodeKey]);
 
-			// Only the keys the previous cursor owned are cleared, so anything else the
-			// node keeps in its static data survives a cursor write.
+			// Clears only keys the previous cursor owned, so other static data on the
+			// node survives a cursor write.
 			for (const key of Object.keys(previousCursor)) {
 				if (!(key in cursor)) delete bucket[key];
 			}
@@ -154,8 +154,9 @@ export class PollCursorService {
 
 	/**
 	 * Advances the node's stored cursor and returns the one it replaced, so a caller
-	 * knows which keys this cursor drops. A row is inserted first, since a node can
-	 * stage a cursor without ever having read one and the advance matches by row.
+	 * knows which keys this cursor drops. Ensures the row first, since a node can
+	 * stage a cursor without ever having read one and `advanceCursor` needs a row
+	 * to match.
 	 */
 	private async stageCursor(
 		workflowId: string,
