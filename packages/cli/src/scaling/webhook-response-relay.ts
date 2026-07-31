@@ -1,9 +1,12 @@
 /**
  * Moves response bodies from a worker back to main in scaling mode.
  *
- * A small body travels inline inside the queue message. A larger one is stored
- * in the binary-data store and replaced with a reference, so the size of a
- * response no longer bounds what the queue must hold.
+ * A small body travels inline inside the queue message.
+ *
+ * Where offload is enabled:
+ * - a larger one is stored in the binary-data store
+ * - and replaced with a reference
+ * So the size of a response no longer bounds what the queue must hold.
  */
 
 import { Logger } from '@n8n/backend-common';
@@ -52,6 +55,9 @@ const INLINE_STRING_CONTENT_TYPE = 'text/html; charset=utf-8';
 
 /** What Express sets on a JSON body sent inline through `res.json`. */
 const INLINE_JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
+
+const OFFLOAD_DISABLED_GUIDANCE =
+	'In scaling mode a response over this size can be stored for the main instance to stream instead of failing. Set N8N_WEBHOOK_RESPONSE_RELAY_OFFLOAD_ENABLED to true on every worker, once every main instance runs a version that reads a stored body, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX.';
 
 const NO_STORE_GUIDANCE =
 	'In scaling mode a response over this size is stored for the main instance to stream, which the in-memory binary-data mode cannot do. Set N8N_DEFAULT_BINARY_DATA_MODE to a mode with a store, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX.';
@@ -112,7 +118,8 @@ export class WebhookResponseRelay {
 
 	/**
 	 * Prepares a worker's response to travel inside a queue message:
-	 * - the body of a response over the size limit is stored and replaced with a reference
+	 * - the body of a response over the size limit is stored and replaced with a
+	 *   reference, where offload is enabled
 	 * - a Buffer body staying inline is base64-encoded
 	 * - and any other body passes through.
 	 *
@@ -120,7 +127,7 @@ export class WebhookResponseRelay {
 	 * @returns The same `response`.
 	 *
 	 * @throws WebhookResponseTooLargeError When:
-	 * - the response is over the limit and there is no store to hold its body,
+	 * - the response is over the limit and its body cannot be offloaded,
 	 * - or when what is left once the body is offloaded is over the limit on its own,
 	 * - or when the response has no offload path and is over the limit as a whole.
 	 *
@@ -150,11 +157,7 @@ export class WebhookResponseRelay {
 			return encodeBufferBody(response);
 		}
 
-		if (this.binaryDataConfig.mode === IN_MEMORY_MODE) {
-			throw new WebhookResponseTooLargeError(this.tooLargeMessage(), {
-				description: NO_STORE_GUIDANCE,
-			});
-		}
+		this.assertOffloadAvailable();
 
 		return await this.offload(response, offloadable, context);
 	}
@@ -238,6 +241,26 @@ export class WebhookResponseRelay {
 		if (exceedsInlineSize(payload, this.maxInlineBytes)) {
 			throw new WebhookResponseTooLargeError(this.tooLargeMessage(), {
 				description: NOT_OFFLOADABLE_GUIDANCE,
+			});
+		}
+	}
+
+	/**
+	 * Asserts that a body over the limit has somewhere to be offloaded to.
+	 *
+	 * @throws WebhookResponseTooLargeError When offload is turned off, or when the
+	 * binary-data mode keeps bytes in memory.
+	 */
+	private assertOffloadAvailable(): void {
+		if (!this.executionsConfig.webhookResponseRelayOffloadEnabled) {
+			throw new WebhookResponseTooLargeError(this.tooLargeMessage(), {
+				description: OFFLOAD_DISABLED_GUIDANCE,
+			});
+		}
+
+		if (this.binaryDataConfig.mode === IN_MEMORY_MODE) {
+			throw new WebhookResponseTooLargeError(this.tooLargeMessage(), {
+				description: NO_STORE_GUIDANCE,
 			});
 		}
 	}
