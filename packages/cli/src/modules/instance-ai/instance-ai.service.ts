@@ -331,6 +331,11 @@ export function getUserFacingErrorMessage(error: unknown): string {
 		return error.message;
 	}
 
+	// Name check instead of instanceof: the class crosses the @n8n/agents package boundary.
+	if (error instanceof Error && error.name === 'StaleResumeError') {
+		return "This approval was already handled. If the assistant isn't responding, send a new message to continue.";
+	}
+
 	if (isSandboxEndpointNotAllowedError(error)) {
 		return "I couldn't finish preparing the workspace sandbox. Please try again in a moment.";
 	}

@@ -64,7 +64,7 @@ import {
 } from '../model/prompt-cache';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
-import { generateRunId, RunStateManager } from '../state/run-state';
+import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
 import { startStreamSession } from '../streaming/stream-session';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
@@ -348,7 +348,9 @@ export class AgentRuntime {
 		if (!state) throw new Error(`No suspended run found for runId: ${this.runId}`);
 
 		const toolCall = state.pendingToolCalls[options.toolCallId];
-		if (!toolCall) throw new Error(`No tool call found for toolCallId: ${options.toolCallId}`);
+		if (!toolCall) {
+			throw new StaleResumeError(`No tool call found for toolCallId: ${options.toolCallId}`);
+		}
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
@@ -420,7 +422,7 @@ export class AgentRuntime {
 
 			const claimed = await this.runState.claimResume(this.runId, state);
 			if (!claimed) {
-				throw new Error(`Run ${this.runId} is not suspended. Cannot resume.`);
+				throw new StaleResumeError(`Run ${this.runId} is not suspended. Cannot resume.`);
 			}
 
 			if (method === 'generate') {

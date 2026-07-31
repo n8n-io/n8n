@@ -26,6 +26,27 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 	}
 
 	/**
+	 * Atomically flip a suspended checkpoint to 'running'. Single-winner across
+	 * concurrent resumes (e.g. two mains claiming the same approval): all but
+	 * one caller return false. Mirrors the pending-confirmation `claim()`.
+	 */
+	async claimSuspendedForResume(key: string): Promise<boolean> {
+		return await this.manager.transaction(async (manager) => {
+			const repo = manager.getRepository(InstanceAiCheckpoint);
+			const row = await repo.findOne({
+				where: { key, expiredAt: IsNull() },
+				...(manager.connection.options.type === 'postgres'
+					? { lock: { mode: 'pessimistic_write' as const } }
+					: {}),
+			});
+			if (!row?.state || row.state.status !== 'suspended') return false;
+
+			await repo.update({ key }, { state: { ...row.state, status: 'running' } });
+			return true;
+		});
+	}
+
+	/**
 	 * Find the most recent active (non-expired) checkpoint for a given
 	 * resourceId. Sub-agent resourceIds are deterministically derived from the
 	 * parent thread and agent kind, so callers can compute the resourceId
