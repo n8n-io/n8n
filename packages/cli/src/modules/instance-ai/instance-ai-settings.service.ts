@@ -359,13 +359,24 @@ export class InstanceAiSettingsService {
 	// ── Admin settings ────────────────────────────────────────────────────
 
 	async getAdminSettings(): Promise<InstanceAiAdminSettingsResponse> {
-		const isManaged = this.isCloud || this.aiService.isProxyEnabled();
-		if (isManaged) {
+		if (this.isCloud) {
 			return this.buildAdminSettingsResponse({
 				modelCredentialId: null,
 				modelName: null,
 				daytonaCredentialId: null,
 				n8nSandboxCredentialId: null,
+				searchCredentialId: null,
+			});
+		}
+		if (this.aiService.isProxyEnabled()) {
+			const n8nSandboxCredentialId = await this.instanceCredentialBroker.getAssignedCredentialId(
+				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+			);
+			return this.buildAdminSettingsResponse({
+				modelCredentialId: null,
+				modelName: null,
+				daytonaCredentialId: null,
+				n8nSandboxCredentialId,
 				searchCredentialId: null,
 			});
 		}
@@ -394,17 +405,17 @@ export class InstanceAiSettingsService {
 	): InstanceAiAdminSettingsResponse {
 		const c = this.config;
 		const modelProviderApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(c.model.split('/', 1)[0] ?? '');
-		const isManaged = this.isCloud || this.aiService.isProxyEnabled();
+		const isProxyEnabled = this.aiService.isProxyEnabled();
+		const isManaged = this.isCloud || isProxyEnabled;
+		const sandboxProvider = normalizeSandboxProvider(c.sandboxProvider);
 		return {
 			enabled: this.enabled,
 			permissions: { ...this.permissions },
 			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
-			sandboxProvider: this.aiService.isProxyEnabled()
-				? 'daytona'
-				: normalizeSandboxProvider(c.sandboxProvider),
+			sandboxProvider,
 			daytonaCredentialId: isManaged ? null : credentialSelection.daytonaCredentialId,
-			n8nSandboxCredentialId: isManaged ? null : credentialSelection.n8nSandboxCredentialId,
+			n8nSandboxCredentialId: this.isCloud ? null : credentialSelection.n8nSandboxCredentialId,
 			searchCredentialId: isManaged ? null : credentialSelection.searchCredentialId,
 			modelCredentialId: isManaged ? null : credentialSelection.modelCredentialId,
 			modelName: isManaged ? null : credentialSelection.modelName,
@@ -415,8 +426,8 @@ export class InstanceAiSettingsService {
 			),
 			// n8n-sandbox needs only the URL; the service accepts keyless clients.
 			sandboxEnvConfigured:
-				this.environmentSandboxProvider === 'daytona'
-					? Boolean(c.daytonaApiKey.trim())
+				sandboxProvider === 'daytona'
+					? isProxyEnabled || Boolean(c.daytonaApiKey.trim())
 					: Boolean(c.n8nSandboxServiceUrl.trim()),
 			searchEnvConfigured: Boolean(c.braveSearchApiKey.trim() || c.searxngUrl.trim()),
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
@@ -433,13 +444,26 @@ export class InstanceAiSettingsService {
 			InstanceAiSettingsService.MANAGED_ADMIN_FIELDS,
 			this.deploymentLabel(),
 		);
-		if (this.isCloud || this.aiService.isProxyEnabled()) {
+		if (this.isCloud) {
 			this.rejectManagedFields(
 				update,
 				InstanceAiSettingsService.INSTANCE_CREDENTIAL_FIELDS,
 				this.deploymentLabel(),
 			);
 			this.rejectManagedFields(update, ['modelName', 'sandboxProvider'], this.deploymentLabel());
+		} else if (this.aiService.isProxyEnabled()) {
+			this.rejectManagedFields(
+				update,
+				['modelCredentialId', 'searchCredentialId', 'modelConnection', 'searchConnection'],
+				this.deploymentLabel(),
+			);
+			this.rejectManagedFields(update, ['modelName'], this.deploymentLabel());
+			if (update.daytonaCredentialId !== null) {
+				this.rejectManagedFields(update, ['daytonaCredentialId'], this.deploymentLabel());
+			}
+			if (update.sandboxConnection?.type === 'daytonaApi') {
+				this.rejectManagedFields(update, ['sandboxConnection'], this.deploymentLabel());
+			}
 		}
 		const {
 			modelCredentialId: initialModelCredentialId,
@@ -976,12 +1000,17 @@ export class InstanceAiSettingsService {
 	}
 
 	async listInstanceServiceCredentials(): Promise<InstanceAiProviderConnection[]> {
-		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
-		const credentials = await Promise.all([
-			this.instanceCredentialBroker.listForUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY),
-			this.instanceCredentialBroker.listForUse(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY),
-			this.instanceCredentialBroker.listForUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY),
-		]);
+		if (this.isCloud) return [];
+		const policies = this.aiService.isProxyEnabled()
+			? [INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY]
+			: [
+					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+					INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+				];
+		const credentials = await Promise.all(
+			policies.map(async (policy) => await this.instanceCredentialBroker.listForUse(policy)),
+		);
 		return credentials.flat().map((c) => ({
 			id: c.id,
 			name: c.name,
@@ -1088,7 +1117,12 @@ export class InstanceAiSettingsService {
 		service: string,
 		ctx?: OperationContext,
 	): Promise<ResolvedInstanceCredential | null> {
-		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
+		if (
+			this.isCloud ||
+			(this.aiService.isProxyEnabled() &&
+				policy.id !== INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id)
+		)
+			return null;
 		const resolved = ctx
 			? this.instanceCredentialBroker.resolveForUse(policy, ctx)
 			: this.instanceCredentialBroker.resolveForUse(policy);
@@ -1142,9 +1176,7 @@ export class InstanceAiSettingsService {
 
 	/** Whether workflow building can use the required sandbox workspace. */
 	getSandboxStatus(): InstanceAiSandboxStatus {
-		const provider = this.aiService.isProxyEnabled()
-			? 'daytona'
-			: normalizeSandboxProvider(this.config.sandboxProvider);
+		const provider = normalizeSandboxProvider(this.config.sandboxProvider);
 		const unavailableReason = this.getSandboxUnavailableReason(
 			this.config.sandboxEnabled,
 			provider,
@@ -1387,14 +1419,11 @@ export class InstanceAiSettingsService {
 		if (persisted.mcpAccessEnabled !== undefined)
 			this.mcpAccessEnabled = persisted.mcpAccessEnabled;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
-		const isProxyEnabled = this.aiService.isProxyEnabled();
 		this.sandboxProviderOverride =
-			this.isCloud || isProxyEnabled || !persisted.sandboxProvider
+			this.isCloud || !persisted.sandboxProvider
 				? undefined
 				: normalizeSandboxProvider(persisted.sandboxProvider);
-		c.sandboxProvider = isProxyEnabled
-			? 'daytona'
-			: (this.sandboxProviderOverride ?? this.environmentSandboxProvider);
+		c.sandboxProvider = this.sandboxProviderOverride ?? this.environmentSandboxProvider;
 		if (persisted.sandboxImage !== undefined) c.sandboxImage = persisted.sandboxImage;
 		if (persisted.sandboxTimeout !== undefined) c.sandboxTimeout = persisted.sandboxTimeout;
 		if (persisted.modelName !== undefined) this.adminModelName = persisted.modelName;

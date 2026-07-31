@@ -142,4 +142,72 @@ describe('AgentExecutionRepository', () => {
 			expect(result.has(thread.id)).toBe(false);
 		});
 	});
+
+	describe('findFirstSourceByThreadIds', () => {
+		it('returns the earliest non-null source per thread', async () => {
+			const threadA = await createThread({ sessionNumber: 1 });
+			const threadB = await createThread({ id: uuid(), sessionNumber: 2 });
+
+			await createExecution({
+				threadId: threadA.id,
+				source: 'slack',
+				createdAt: new Date('2024-01-01T00:00:00Z'),
+			});
+			await createExecution({
+				threadId: threadA.id,
+				source: 'telegram',
+				createdAt: new Date('2024-01-02T00:00:00Z'),
+			});
+			await createExecution({
+				threadId: threadB.id,
+				source: 'telegram',
+				createdAt: new Date('2024-01-03T00:00:00Z'),
+			});
+
+			const result = await repository.findFirstSourceByThreadIds([threadA.id, threadB.id]);
+
+			expect(result.get(threadA.id)).toBe('slack');
+			expect(result.get(threadB.id)).toBe('telegram');
+			expect(result.size).toBe(2);
+		});
+
+		it('skips executions with null source when picking the earliest', async () => {
+			const thread = await createThread();
+
+			await createExecution({
+				threadId: thread.id,
+				source: null,
+				createdAt: new Date('2024-01-01T00:00:00Z'),
+			});
+			await createExecution({
+				threadId: thread.id,
+				source: 'slack',
+				createdAt: new Date('2024-01-02T00:00:00Z'),
+			});
+
+			const result = await repository.findFirstSourceByThreadIds([thread.id]);
+
+			expect(result.get(thread.id)).toBe('slack');
+		});
+
+		it('returns an empty map when no thread ids are provided', async () => {
+			const result = await repository.findFirstSourceByThreadIds([]);
+
+			expect(result.size).toBe(0);
+		});
+
+		it('omits threads that contain only null sources', async () => {
+			const thread = await createThread();
+
+			await createExecution({
+				threadId: thread.id,
+				source: null,
+				createdAt: new Date('2024-01-01T00:00:00Z'),
+			});
+
+			const result = await repository.findFirstSourceByThreadIds([thread.id]);
+
+			expect(result.has(thread.id)).toBe(false);
+		});
+	});
 });

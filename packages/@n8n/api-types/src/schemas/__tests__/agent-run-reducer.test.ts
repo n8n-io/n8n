@@ -642,6 +642,29 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['sub-1'].error).toBe('failed');
 		});
 
+		it('agent-completed with status cancelled yields cancelled without error', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, {
+				type: 'agent-completed',
+				runId: 'run-1',
+				agentId: 'sub-1',
+				payload: { role: 'sub-agent', result: '', status: 'cancelled' },
+			});
+
+			expect(state.agentsById['sub-1'].status).toBe('cancelled');
+			expect(state.agentsById['sub-1'].error).toBeUndefined();
+		});
+
+		it('agent-completed without status still derives error from legacy error field', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', '', 'Cancelled by user'));
+
+			expect(state.agentsById['sub-1'].status).toBe('error');
+			expect(state.agentsById['sub-1'].error).toBe('Cancelled by user');
+		});
+
 		it('agent-completed clears isLoading on agent tool calls', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));

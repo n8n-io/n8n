@@ -96,7 +96,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -1939,10 +1939,6 @@ onMounted(async () => {
 
 	try {
 		initializeRoute();
-
-		// Once view is initialized, pick up all toast notifications
-		// waiting in the store and display them
-		toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
 
 		if (route.query.settings) {
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);

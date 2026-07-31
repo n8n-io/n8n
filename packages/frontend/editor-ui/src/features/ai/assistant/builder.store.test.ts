@@ -21,7 +21,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import merge from 'lodash/merge';
 import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
-import * as telemetryModule from '@/app/composables/useTelemetry';
+import * as telemetryModule from '@n8n/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';

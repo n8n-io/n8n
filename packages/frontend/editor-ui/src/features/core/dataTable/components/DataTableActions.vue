@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import {
@@ -64,7 +64,7 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 		{
 			label: i18n.baseText('dataTable.download.csv'),
 			value: DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV,
-			disabled: false,
+			disabled: !dataTableStore.projectPermissions.dataTable.readRow,
 		},
 		{
 			label: favoritesStore.isFavorite(props.dataTable.id, 'dataTable')

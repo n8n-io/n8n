@@ -57,7 +57,7 @@ function ioResourceLabel(options?: SandboxIoRetryOptions): string {
 	return options?.resourceLabel ?? 'Sandbox file';
 }
 
-async function sleep(ms: number, abortSignal?: AbortSignal): Promise<void> {
+async function sleepUntilAbort(ms: number, abortSignal?: AbortSignal): Promise<void> {
 	throwIfAborted(abortSignal);
 	await new Promise<void>((resolve, reject) => {
 		const timer = setTimeout(() => {
@@ -96,7 +96,7 @@ export async function retryTransientSandboxIo<T>(
 				attempt,
 				error: formatErrorForLog(error),
 			});
-			await sleep(
+			await sleepUntilAbort(
 				Math.min(baseMs * 2 ** (attempt - 1), SANDBOX_IO_RETRY_BACKOFF_CAP_MS),
 				options?.abortSignal,
 			);

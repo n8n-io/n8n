@@ -21,7 +21,7 @@ import type { ProjectSharingData, Project } from '@/features/collaboration/proje
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
 import { telemetry } from '@/app/plugins/telemetry';

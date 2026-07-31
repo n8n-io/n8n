@@ -1,10 +1,12 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
 	slackApiRequestAllItemsWithRateLimit,
+	formatUserLabel,
 	processThreadOptions,
 	getMessageContent,
 } from '../../V2/GenericFunctions';
@@ -14,6 +16,9 @@ import type * as _importType0 from 'n8n-workflow';
 vi.mock('n8n-workflow', async () => ({
 	...(await vi.importActual<typeof _importType0>('n8n-workflow')),
 	NodeApiError: vi.fn(),
+}));
+
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -1462,6 +1467,22 @@ describe('Slack V2 > GenericFunctions', () => {
 			expect(() => {
 				getMessageContent.call(mockExecuteFunctions, 0, 2.1, 'instance-123');
 			}).toThrow('The message type "unknown-type" is not known!');
+		});
+	});
+
+	describe('formatUserLabel', () => {
+		it('should append the handle to the real name', () => {
+			expect(formatUserLabel({ name: 'john.doe', real_name: 'John Doe' })).toBe(
+				'John Doe (@john.doe)',
+			);
+		});
+
+		it('should fall back to the handle alone when real_name is missing', () => {
+			expect(formatUserLabel({ name: 'alertbot' })).toBe('alertbot');
+		});
+
+		it('should fall back to the handle alone when real_name is empty', () => {
+			expect(formatUserLabel({ name: 'alertbot', real_name: '' })).toBe('alertbot');
 		});
 	});
 });

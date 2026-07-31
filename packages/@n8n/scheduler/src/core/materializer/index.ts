@@ -1,8 +1,10 @@
 export {
 	materialize,
+	totalDiscarded,
 	type MaterializerHooks,
 	type MaterializerSummary,
 	type MaterializerOptions,
+	type MisfireCount,
 	type OnJobPlanError,
 } from './materialize';
 export { DEFAULT_MATERIALIZER_OPTIONS } from './options';
