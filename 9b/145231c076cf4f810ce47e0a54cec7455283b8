@@ -1,0 +1,41 @@
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_785d0fc4f80141::t_bbe7486bac4385 277-278
+  s_785d0fc4f80141::t_5b0c5dc35c82c6 196,198-199
+  s_785d0fc4f80141::t_9f7f34af6e3e9b 57,59-60
+  s_785d0fc4f80141::t_39b0709c49c3ac 123
+  s_785d0fc4f80141::t_14e1908286db7b 41-42,44-46,48
+  s_785d0fc4f80141::t_40931a8db76149 56,58
+  s_785d0fc4f80141::t_e05d672fce7edd 153
+  s_785d0fc4f80141::t_7a3d093c0da2df 155
+  s_785d0fc4f80141::t_68e178cc56cdce 40,43,47
+  s_785d0fc4f80141::t_1ac4e098ca994b 193,197
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_785d0fc4f80141::t_7c5b0539895628 2113
+  s_785d0fc4f80141::t_1ff842ca67811d 2192
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_785d0fc4f80141::t_41743f1fa03324 137
+  s_785d0fc4f80141::t_9d4e774167876c 320
+  s_785d0fc4f80141::t_00546e3e57bce6 198,203,210-212
+  s_785d0fc4f80141::t_7ef8fd26a717e3 506,514
+  s_785d0fc4f80141::t_f39715cd592cdc 293
+  s_785d0fc4f80141::t_933638797c2942 286,294,299,303
+  s_785d0fc4f80141::t_dca697c9ae8297 507-513,515-516
+packages/@n8n/config/src/configs/executions.config.ts
+  s_785d0fc4f80141::t_523046214ff450 172-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9b145231c076cf4f810ce47e0a54cec7455283b8",
+  "prompts": {},
+  "sessions": {
+    "s_785d0fc4f80141": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2be2c5ac-421e-465f-a960-5042d7d978bd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
