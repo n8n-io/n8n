@@ -1527,20 +1527,6 @@ export const messageFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Modifiers',
-				name: 'modifiers',
-				type: 'string',
-				default: '',
-				placeholder: 'has:pin before:yesterday',
-				description:
-					'Slack search filters to narrow the results, given as space-separated modifier:value pairs',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 2.7 } }],
-					},
-				},
-			},
-			{
 				displayName: 'Search in Channel',
 				name: 'searchChannel',
 				type: 'multiOptions',

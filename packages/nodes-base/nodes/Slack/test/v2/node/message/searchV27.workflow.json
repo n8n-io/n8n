@@ -15,7 +15,6 @@
 				"query": "test",
 				"limit": 2,
 				"options": {
-					"modifiers": "has:pin before:yesterday",
 					"channelTypes": ["public_channel", "private_channel"],
 					"keywordSearchOnly": true,
 					"includeArchivedChannels": true,

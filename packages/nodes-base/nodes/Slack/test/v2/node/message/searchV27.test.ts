@@ -77,7 +77,6 @@ describe('Test SlackV2 v2.7, message => search', () => {
 			content_types: ['messages'],
 			sort: 'timestamp',
 			sort_dir: 'desc',
-			modifiers: 'has:pin before:yesterday',
 			channel_types: ['public_channel', 'private_channel'],
 			disable_semantic_search: true,
 			include_archived_channels: true,

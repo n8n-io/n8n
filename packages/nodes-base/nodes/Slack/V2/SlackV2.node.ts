@@ -1107,9 +1107,6 @@ export class SlackV2 implements INodeType {
 								sort: sortBy,
 								sort_dir: sortDir,
 							};
-							if (options.modifiers) {
-								body.modifiers = options.modifiers as string;
-							}
 							const channelTypes = toMultiOptionsCsv(options.channelTypes);
 							if (channelTypes) {
 								body.channel_types = channelTypes.split(',');
