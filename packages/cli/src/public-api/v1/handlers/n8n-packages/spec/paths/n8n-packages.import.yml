@@ -151,21 +151,16 @@ post:
                 - overwrite
               default: merge
               description: >
-                Controls what happens when a project defined by the package
-                (matched by id) already exists on this instance, and — unless
-                `folderConflictPolicy` says otherwise — how its contents are treated
-                too. `merge` (default) is purely additive: the existing project's name,
-                description, icon and custom span attributes are left untouched and the
-                package's contents are added alongside what is already there.
-                `overwrite` makes the package authoritative: those details are replaced
-                with the package's (a detail the package omits is left as it is, not
-                cleared) and, through `folderConflictPolicy`, contents the package does
-                not carry are removed. `fail` rejects the import before anything is
-                written, reporting one `project-conflict` issue per existing project.
-                A package project id that belongs to a personal project, or to a team
-                project the caller cannot update, always rejects the import. Ignored
-                when importing loose workflows/folders, which target an existing
-                project.
+                What to do when a project the package defines already exists here
+                (matched by id), and — unless `folderConflictPolicy` overrides it — how
+                its contents are treated. `merge` (default) leaves the existing
+                project's name, description, icon and custom span attributes untouched
+                and adds the package's contents alongside. `overwrite` replaces those
+                details with the package's; a detail the package omits is left as it is,
+                not cleared. `fail` rejects the import before anything is written, with
+                one `project-conflict` issue per existing project. A package project id
+                belonging to a personal project, or to a team project the caller cannot
+                update, always rejects the import. Ignored for workflow packages.
             folderConflictPolicy:
               type: string
               enum:
@@ -173,35 +168,24 @@ post:
                 - fail
                 - overwrite
               description: >
-                Controls what happens when a package folder (matched by id in the
-                target project) already exists at the same position. **Defaults to
-                whatever `projectConflictPolicy` is** — the two express one intent at
-                two levels, so state it once and folders follow. For a workflow
-                package, which defines no projects, it defaults to `merge`.
+                What to do when a package folder already exists at the same position in
+                the target project. Defaults to whatever `projectConflictPolicy` is, so
+                the intent is stated once; a workflow package defines no projects, so it
+                defaults to `merge` there. `merge` reuses the existing folder and merges
+                the package's children into it. `fail` rejects the import. `overwrite`
+                reuses folders as `merge` does and additionally removes workflows the
+                package does not contain — at a project's root and in folders the
+                package defines, leaving target-only folders and their contents alone.
+                Removals are listed under `removedWorkflows`; see
+                `overwriteDeletionPolicy`. A folder whose id sits under a different
+                parent, or belongs to another project, always blocks the import.
 
 
-                `merge` reuses the existing folder as-is and merges the package's
-                children into it; `fail` rejects the import. A folder whose id exists
-                under a different parent, or belongs to another project, always blocks
-                the import. Requires the `folder:create` scope and a license that
-                supports folders when the package contains folders.
-
-
-                `overwrite` reuses existing folders exactly as `merge` does, and
-                additionally makes the package authoritative for the project scopes it
-                defines: a workflow at a project's root, or in a folder the package
-                defines, that the package does not contain is removed — see
-                `overwriteDeletionPolicy` for whether that means archived or deleted.
-                Removed workflows are listed under `removedWorkflows`, and a published
-                one is unpublished first. A workflow filed under a folder the package
-                does not define is left alone, so a target-only folder shelters its
-                contents from reconciliation. Requires the `workflow:delete` scope, and
-                the import is rejected up front if the caller lacks delete permission on
-                any workflow that would be removed. Setting it explicitly against a
-                `projectConflictPolicy` of `merge` or `fail` is rejected: removing
-                workflows takes both policies saying `overwrite`. Project packages only — a workflow package describes only the
-                workflows it carries, not the whole target scope, so `overwrite` is
-                rejected for one.
+                `overwrite` is project-packages-only, needs the `workflow:delete` scope,
+                is rejected against a `projectConflictPolicy` other than `overwrite`,
+                and blocks up front if the caller cannot delete something it would
+                remove. Folders need the `folder:create` scope and a folders-enabled
+                licence.
             overwriteDeletionPolicy:
               type: string
               enum:

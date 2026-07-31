@@ -299,101 +299,41 @@ describe('ImportPackageRequestDto', () => {
 		});
 	});
 
-	describe('folderConflictPolicy', () => {
-		it('stays undefined when omitted, so the module can follow projectConflictPolicy', () => {
+	// The three conflict policies this module added behave identically at the DTO layer; only
+	// `folderConflictPolicy` has no default, because omitting it means "follow projectConflictPolicy".
+	describe.each([
+		{ field: 'projectConflictPolicy', values: ['merge', 'fail', 'overwrite'], expected: 'merge' },
+		{ field: 'folderConflictPolicy', values: ['merge', 'fail', 'overwrite'], expected: undefined },
+		{ field: 'overwriteDeletionPolicy', values: ['archive', 'hard-delete'], expected: 'archive' },
+	] as const)('$field', ({ field, values, expected }) => {
+		it(`defaults to ${expected ?? 'undefined'} when omitted`, () => {
 			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
 			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.folderConflictPolicy).toBeUndefined();
+			if (result.success) expect(result.data[field]).toBe(expected);
+		});
+
+		it('accepts every supported value', () => {
+			for (const value of values) {
+				const result = ImportPackageRequestDto.safeParse({
+					workflowConflictPolicy: 'fail',
+					[field]: value,
+				});
+				expect(result.success).toBe(true);
+				if (result.success) expect(result.data[field]).toBe(value);
 			}
 		});
 
-		it.each(['merge', 'fail', 'overwrite'])('accepts "%s"', (policy) => {
-			const result = ImportPackageRequestDto.safeParse({
-				workflowConflictPolicy: 'fail',
-				folderConflictPolicy: policy,
-			});
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.folderConflictPolicy).toBe(policy);
-			}
-		});
-
-		it('rejects unsupported folderConflictPolicy values', () => {
+		it('rejects an unsupported value', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
 					workflowConflictPolicy: 'fail',
-					folderConflictPolicy: 'prune',
-				}).success,
-			).toBe(false);
-		});
-	});
-
-	describe('overwriteDeletionPolicy', () => {
-		it('defaults to "archive" when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.overwriteDeletionPolicy).toBe('archive');
-			}
-		});
-
-		it.each(['archive', 'hard-delete'])('accepts "%s"', (policy) => {
-			const result = ImportPackageRequestDto.safeParse({
-				workflowConflictPolicy: 'fail',
-				overwriteDeletionPolicy: policy,
-			});
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.overwriteDeletionPolicy).toBe(policy);
-			}
-		});
-
-		it('rejects unsupported overwriteDeletionPolicy values', () => {
-			expect(
-				ImportPackageRequestDto.safeParse({
-					workflowConflictPolicy: 'fail',
-					overwriteDeletionPolicy: 'delete',
+					[field]: 'not-a-policy',
 				}).success,
 			).toBe(false);
 		});
 
 		it('is accepted as a multipart form field', () => {
-			expect(IMPORT_PACKAGE_REQUEST_FORM_FIELDS).toContain('overwriteDeletionPolicy');
-		});
-	});
-
-	describe('projectConflictPolicy', () => {
-		it('defaults to "merge" when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.projectConflictPolicy).toBe('merge');
-			}
-		});
-
-		it.each(['merge', 'fail', 'overwrite'])('accepts "%s"', (policy) => {
-			const result = ImportPackageRequestDto.safeParse({
-				workflowConflictPolicy: 'fail',
-				projectConflictPolicy: policy,
-			});
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.projectConflictPolicy).toBe(policy);
-			}
-		});
-
-		it('rejects unsupported projectConflictPolicy values', () => {
-			expect(
-				ImportPackageRequestDto.safeParse({
-					workflowConflictPolicy: 'fail',
-					projectConflictPolicy: 'skip',
-				}).success,
-			).toBe(false);
-		});
-
-		it('is accepted as a multipart form field', () => {
-			expect(IMPORT_PACKAGE_REQUEST_FORM_FIELDS).toContain('projectConflictPolicy');
+			expect(IMPORT_PACKAGE_REQUEST_FORM_FIELDS).toContain(field);
 		});
 	});
 
