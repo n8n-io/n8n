@@ -318,6 +318,17 @@ describe('protected resource metadata for webhook triggers', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should resolve a static path containing a literal colon', async () => {
+		// no dynamic segment, so the row has no webhookId to prefix the resource URL with
+		const webhookPath = `orders:${randomUUID()}`;
+		await createPublishedWebhookWorkflow(webhookPath, webhookNode());
+
+		const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.resource).toBe(resourceUrlFor(webhookPath));
+	});
+
 	test('should not resolve a workflow without a published version', async () => {
 		const node = webhookNode();
 		const webhookPath = randomUUID();
@@ -415,6 +426,22 @@ describe('protected resource metadata for webhook triggers', () => {
 			const response = await testServer.restlessAgent.get(prmPathFor(`${webhookId}/user/42/extra`));
 
 			expect(response.statusCode).toBe(404);
+		});
+
+		test('should not let a static row for another method shadow the routed template', async () => {
+			// A static GET row sits on the concrete path a POST template also serves. The
+			// router picks by method first, so the POST must resolve to the template.
+			const webhookId = randomUUID();
+			const concretePath = `${webhookId}/orders/42`;
+			await createPublishedWebhookWorkflow(concretePath, webhookNode(), { methods: ['GET'] });
+			await createPublishedDynamicWebhookWorkflow(webhookId, 'orders/:id', webhookNode(), {
+				methods: ['POST'],
+			});
+
+			const response = await testServer.restlessAgent.get(prmPathFor(concretePath, 'POST'));
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.resource).toBe(resourceUrlFor(`${webhookId}/orders/:id`, 'POST'));
 		});
 
 		test('should mint a token whose audience is the template and reject another trigger', async () => {
