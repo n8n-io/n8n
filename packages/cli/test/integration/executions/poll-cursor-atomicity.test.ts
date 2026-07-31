@@ -384,6 +384,60 @@ describe('poll cursor atomicity', () => {
 			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toBeNull();
 		});
 
+		it('commits when the fence lease epoch is 0 and matches the claimed task', async () => {
+			const task = await seedRunningTask({ leaseEpoch: 0 });
+			await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', { lastItemId: 'a' });
+
+			const result = await pollCursorService.commitWithExecution({
+				workflowId: workflow.id,
+				nodeId,
+				cursor: { lastItemId: 'b' },
+				payload: buildPayload(),
+				fence: { taskId: task.id, leaseEpoch: 0 },
+			});
+
+			expect(result).not.toBeNull();
+			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
+				lastItemId: 'b',
+			});
+		});
+
+		it('does not commit when the fenced task id never existed', async () => {
+			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
+			const fence: PollLeaseFence = { taskId: '999999999', leaseEpoch: 1 };
+
+			const result = await pollCursorService.commitWithExecution({
+				workflowId: workflow.id,
+				nodeId,
+				cursor: { lastItemId: 'b' },
+				payload: buildPayload(),
+				fence,
+			});
+
+			expect(result).toBeNull();
+			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
+				lastItemId: 'a',
+			});
+		});
+
+		it('commits when the fence names a task claimed for a different workflow and node than the one being advanced', async () => {
+			const unrelatedTask = await seedRunningTask();
+			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
+
+			const result = await pollCursorService.commitWithExecution({
+				workflowId: workflow.id,
+				nodeId,
+				cursor: { lastItemId: 'b' },
+				payload: buildPayload(),
+				fence: { taskId: unrelatedTask.id, leaseEpoch: unrelatedTask.leaseEpoch },
+			});
+
+			expect(result).not.toBeNull();
+			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
+				lastItemId: 'b',
+			});
+		});
+
 		it('commits exactly as an unfenced call does today', async () => {
 			await seedRunningTask();
 			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
