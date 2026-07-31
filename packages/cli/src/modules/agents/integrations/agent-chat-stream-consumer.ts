@@ -226,11 +226,21 @@ export class AgentChatStreamConsumer {
 	 * returning a `silent` field cannot mute the reply.
 	 */
 	private isSilentOutcome(chunk: ToolResultChunk): boolean {
+		if (chunk.isError || !(this.options.isIntegrationActionTool?.(chunk.toolName) ?? false)) {
+			return false;
+		}
+		if (!isRecord(chunk.output)) return false;
+		if (chunk.output.silent === true) return true;
+		// Batched action calls nest per-operation results under `results`.
 		return (
-			!chunk.isError &&
-			(this.options.isIntegrationActionTool?.(chunk.toolName) ?? false) &&
-			isRecord(chunk.output) &&
-			chunk.output.silent === true
+			Array.isArray(chunk.output.results) &&
+			chunk.output.results.some(
+				(entry) =>
+					isRecord(entry) &&
+					isRecord(entry.result) &&
+					entry.result.ok === true &&
+					entry.result.silent === true,
+			)
 		);
 	}
 
