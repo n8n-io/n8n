@@ -1,8 +1,8 @@
 import { Repository } from '@n8n/typeorm';
-import type { EntityManager, ObjectLiteral } from '@n8n/typeorm';
+import type { EntityManager, EntityTarget, ObjectLiteral } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { OperationContext } from '../services/transaction';
+import type { OperationContext, TransactionRunner } from '../services/transaction';
 import { TypeOrmTransaction } from '../services/typeorm-transaction';
 
 /**
@@ -14,6 +14,14 @@ import { TypeOrmTransaction } from '../services/typeorm-transaction';
  * `Transaction` but never resolve it to a driver handle.
  */
 export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repository<Entity> {
+	constructor(
+		target: EntityTarget<Entity>,
+		manager: EntityManager,
+		private readonly transactionRunner: TransactionRunner,
+	) {
+		super(target, manager);
+	}
+
 	/**
 	 * The manager a query should run against: the context's active transaction if present,
 	 * otherwise this repository's default manager. `ctx` is always required — thread the one
@@ -28,5 +36,17 @@ export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repos
 		}
 
 		return trx.getEntityManager();
+	}
+
+	/**
+	 * Runs `fn` in a transaction, joining the one `ctx` already carries rather than
+	 * opening a nested one. Hands back the raw `EntityManager` so a multi-write body
+	 * can be reused as-is inside either transaction.
+	 */
+	async runInTransaction<T>(
+		ctx: OperationContext,
+		fn: (tx: EntityManager) => Promise<T>,
+	): Promise<T> {
+		return await this.transactionRunner.run(ctx, async (c) => await fn(this.managerFor(c)));
 	}
 }

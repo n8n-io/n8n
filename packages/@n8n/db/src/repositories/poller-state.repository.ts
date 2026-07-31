@@ -7,13 +7,14 @@ import { PollerState } from '../entities';
 import { BaseRepository } from './base-repository';
 import type { PollerCursor } from '../entities/poller-state';
 import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 
 export type { PollerCursor } from '../entities/poller-state';
 
 @Service()
 export class PollerStateRepository extends BaseRepository<PollerState> {
-	constructor(dataSource: DataSource) {
-		super(PollerState, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(PollerState, dataSource.manager, transactionRunner);
 	}
 
 	/** The node's stored cursor, or `null` if it has never polled. */

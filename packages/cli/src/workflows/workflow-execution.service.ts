@@ -214,29 +214,27 @@ export class WorkflowExecutionService {
 				responsePromise,
 			);
 		} catch (error) {
-			await this.crashUnstartablePolledExecution(executionId, error, responsePromise);
+			if (error instanceof ExecutionAlreadyResumingError) {
+				this.logger.debug('Polled execution was already claimed, leaving it to its owner', {
+					executionId,
+				});
+			} else {
+				await this.crashFailedPolledExecution(executionId, error, responsePromise);
+			}
 		}
 
 		return executionId;
 	}
 
 	/**
-	 * Marks a committed row that never started as crashed, so it does not sit at `new`
-	 * indefinitely. A row claimed by another starter is left alone: that starter owns
-	 * its outcome.
+	 * Marks a committed row that failed to start as crashed, so it does not sit at
+	 * `new` indefinitely.
 	 */
-	private async crashUnstartablePolledExecution(
+	private async crashFailedPolledExecution(
 		executionId: string,
 		error: unknown,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<void> {
-		if (error instanceof ExecutionAlreadyResumingError) {
-			this.logger.debug('Polled execution was already claimed, leaving it to its owner', {
-				executionId,
-			});
-			return;
-		}
-
 		this.errorReporter.error(error, { executionId, shouldBeLogged: false });
 		this.logger.error('Failed to start the execution committed for a poll', {
 			executionId,

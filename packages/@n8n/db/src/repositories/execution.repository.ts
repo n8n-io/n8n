@@ -3,7 +3,6 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type {
-	EntityManager,
 	FindManyOptions,
 	FindOneOptions,
 	FindOperator,
@@ -57,7 +56,6 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '../entities/types-db';
-import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { separate } from '../utils/separate';
@@ -164,21 +162,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		private readonly errorReporter: ErrorReporter,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly transactionRunner: TransactionRunner,
+		transactionRunner: TransactionRunner,
 	) {
-		super(ExecutionEntity, dataSource.manager);
-	}
-
-	/**
-	 * Runs `fn` in a transaction, joining the one `ctx` already carries rather than
-	 * opening a nested one. Hands back the raw `EntityManager` so a multi-write body
-	 * can be reused as-is inside either transaction.
-	 */
-	async runInTransaction<T>(
-		ctx: OperationContext,
-		fn: (tx: EntityManager) => Promise<T>,
-	): Promise<T> {
-		return await this.transactionRunner.run(ctx, async (c) => await fn(this.managerFor(c)));
+		super(ExecutionEntity, dataSource.manager, transactionRunner);
 	}
 
 	async findMultipleExecutions(

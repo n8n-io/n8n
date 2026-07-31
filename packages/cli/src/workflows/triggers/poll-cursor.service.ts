@@ -50,9 +50,9 @@ export class PollCursorService {
 		);
 
 		const cursor = toPollCursor(stored);
-		const repaired = this.syncNodeStaticData(nodeStaticData, cursor, {});
+		const wasRepaired = this.syncNodeStaticData(nodeStaticData, cursor, {});
 
-		if (repaired) await this.persistCursorToStaticData(workflowId, nodeName, cursor, {});
+		if (wasRepaired) await this.persistCursorToStaticData(workflowId, nodeName, cursor, {});
 
 		return Object.keys(cursor).length === 0 ? null : cursor;
 	}
