@@ -236,8 +236,8 @@ export abstract class ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
-		workflow: Workflow,
-		node: INode,
+		workflow?: Workflow,
+		node?: INode,
 	): Promise<IHttpRequestOptions>;
 
 	abstract preAuthentication(

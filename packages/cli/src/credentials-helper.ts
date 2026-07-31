@@ -103,8 +103,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		incomingRequestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
-		workflow: Workflow,
-		node: INode,
+		workflow?: Workflow,
+		node?: INode,
 	): Promise<IHttpRequestOptions> {
 		const requestOptions = incomingRequestOptions;
 		const credentialType = this.credentialTypes.getByName(typeName);
@@ -120,6 +120,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 			}
 
 			if (typeof credentialType.authenticate === 'object') {
+				if (!workflow || !node) {
+					throw new UnexpectedError(
+						'Workflow and node are required for declarative credential authentication',
+					);
+				}
 				// Predefined authentication method
 
 				let keyResolved: string;

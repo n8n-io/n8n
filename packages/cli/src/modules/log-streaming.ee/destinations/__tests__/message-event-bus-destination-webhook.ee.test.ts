@@ -118,6 +118,59 @@ describe('MessageEventBusDestinationWebhook', () => {
 			});
 		});
 
+		it('should apply Simplified Custom Auth credentials', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const credentialDetails = { id: 'credential-id', name: 'API credential' };
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpTemplatedCustomAuth',
+					credentials: { httpTemplatedCustomAuth: credentialDetails },
+				},
+				outboundHttp,
+			);
+			const credentialsHelper = mock<CredentialsHelper>();
+			const decrypted = {
+				template: JSON.stringify({ headers: { Authorization: 'Bearer {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'secret' }),
+			};
+			credentialsHelper.getDecrypted.mockResolvedValue(decrypted);
+			credentialsHelper.authenticate.mockImplementation((_credentials, _type, options) =>
+				Promise.resolve({
+					...options,
+					headers: { ...options.headers, Authorization: 'Bearer secret' },
+				}),
+			);
+			destination.credentialsHelper = credentialsHelper;
+
+			await destination.receiveFromEventBus({
+				msg: createMessage(),
+				confirmCallback: vi.fn(),
+			} as any);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'httpTemplatedCustomAuth',
+				'internal',
+				undefined,
+				false,
+			);
+			expect(credentialsHelper.authenticate).toHaveBeenCalledWith(
+				decrypted,
+				'httpTemplatedCustomAuth',
+				expect.objectContaining({ url: 'https://example.com/webhook' }),
+			);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer secret' }),
+				}),
+			);
+		});
+
 		it('should map the message payload to the JSON body', async () => {
 			const { sentOptions } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
