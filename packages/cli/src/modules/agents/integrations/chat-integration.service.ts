@@ -284,6 +284,20 @@ export class ChatIntegrationService {
 			bridge,
 			context: ctx,
 		});
+
+		// Runs on every main, never gated on `skipExternalHooks`: this builds
+		// local runtime state each main owns for itself (e.g. Discord's
+		// leader-gated Gateway socket), not cluster-wide external state.
+		if (integrationImpl.onConnected) {
+			try {
+				await integrationImpl.onConnected(ctx);
+			} catch (error) {
+				this.logger.warn(
+					`[ChatIntegrationService] onConnected failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+
 		this.logger.info(`[ChatIntegrationService] Connected: ${key}`);
 	}
 
@@ -648,6 +662,23 @@ export class ChatIntegrationService {
 		conn.bridge.dispose();
 
 		this.connections.delete(key);
+
+		// Mirror of the `onConnected` call in `connect()`: always runs, so every
+		// main releases the local runtime state it built for this connection.
+		const disconnectedType = this.connectionTypeFromKey(key);
+		const disconnectedImpl = disconnectedType
+			? this.integrationRegistry.get(disconnectedType)
+			: undefined;
+		if (disconnectedImpl?.onDisconnected) {
+			try {
+				await disconnectedImpl.onDisconnected(conn.context);
+			} catch (error) {
+				this.logger.warn(
+					`[ChatIntegrationService] onDisconnected failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+
 		this.logger.info(`[ChatIntegrationService] Disconnected: ${key}`);
 	}
 

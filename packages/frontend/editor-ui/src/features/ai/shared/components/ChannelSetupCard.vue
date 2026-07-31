@@ -20,6 +20,7 @@ import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '@/features/agents/composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
+import AgentChannelDiscordSetup from '@/features/agents/components/AgentChannelDiscordSetup.vue';
 import AgentChannelLinearSetup from '@/features/agents/components/AgentChannelLinearSetup.vue';
 import AgentChannelSlackSetup from '@/features/agents/components/AgentChannelSlackSetup.vue';
 import AgentChannelTelegramSetup from '@/features/agents/components/AgentChannelTelegramSetup.vue';
@@ -90,6 +91,7 @@ const integrationLabel = computed(() => currentIntegration.value?.label ?? props
 const connectedDescriptionKeys = {
 	telegram: 'agents.builder.addTrigger.connectedText.telegram',
 	linear: 'agents.builder.addTrigger.connectedText.linear',
+	discord: 'agents.builder.addTrigger.connectedText.discord',
 } as const;
 
 const connectedDescription = computed(() => {
@@ -106,10 +108,10 @@ const errorMessage = computed(() => errorMessages.value[props.integrationType] ?
 
 const hasUnsupportedIntegration = computed(() => {
 	if (props.integrationType === 'slack') return false;
-	if (!['telegram', 'linear'].includes(props.integrationType)) return true;
+	if (!['telegram', 'linear', 'discord'].includes(props.integrationType)) return true;
 	// Known type, but its catalog descriptor didn't load (e.g. catalog fetch
-	// failed) — the Linear/Telegram branches below need `currentIntegration`,
-	// so fall back here instead of rendering a blank body.
+	// failed) — the Linear/Telegram/Discord branches below need
+	// `currentIntegration`, so fall back here instead of rendering a blank body.
 	return !currentIntegration.value;
 });
 
@@ -262,6 +264,31 @@ watch(
 
 			<AgentChannelTelegramSetup
 				v-else-if="currentIntegration?.type === 'telegram'"
+				ref="channelSetupRef"
+				v-model="selectedCredentials[currentIntegration.type]"
+				mode="setup"
+				:integration="currentIntegration"
+				:credentials="currentCredentials"
+				:credential-permissions="credentialPermissions"
+				:credentials-loading="credentialsLoading"
+				:loading="isLoading"
+				:connected="isConnected"
+				:connected-description="connectedDescription"
+				:error-message="errorMessage"
+				:error-is-conflict="errorIsConflict[currentIntegration.type]"
+				:saved-settings="integrationSettings[currentIntegration.type]"
+				:is-published="false"
+				:agent-name="agent?.name ?? agentId"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:force-new-credential="true"
+				@create="createCredential"
+				@edit="editCredential"
+				@connect="saveChannelConfig"
+			/>
+
+			<AgentChannelDiscordSetup
+				v-else-if="currentIntegration?.type === 'discord'"
 				ref="channelSetupRef"
 				v-model="selectedCredentials[currentIntegration.type]"
 				mode="setup"

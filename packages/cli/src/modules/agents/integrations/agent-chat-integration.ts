@@ -271,6 +271,24 @@ export abstract class AgentChatIntegration {
 	onBeforeDisconnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/**
+	 * Optional hook run on EVERY main once the connection is live, regardless
+	 * of `skipExternalHooks`. Unlike `onAfterConnect`, this is for local runtime
+	 * state each main owns independently — e.g. Discord's leader-gated Gateway
+	 * socket, which must start on the leader even when a follower served the
+	 * user's connect request and the leader only sees the PubSub broadcast.
+	 *
+	 * Must not perform external side effects: it runs once per main, not once
+	 * per cluster. Errors are logged by the caller and swallowed.
+	 */
+	onConnected?(ctx: AgentChatIntegrationContext): Promise<void>;
+
+	/**
+	 * Mirror of {@link onConnected}: runs on every main during teardown so each
+	 * main releases the local runtime state it owns.
+	 */
+	onDisconnected?(ctx: AgentChatIntegrationContext): Promise<void>;
+
+	/**
 	 * Optional per-platform component normalization (applied before toCard).
 	 * Convert unsupported types into close-enough equivalents — e.g. Telegram
 	 * turns select options into individual buttons.

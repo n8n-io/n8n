@@ -131,6 +131,7 @@
     "@aws-sdk/client-secrets-manager": "3.808.0",
     "@azure/identity": "catalog:",
     "@azure/keyvault-secrets": "4.8.0",
+    "@chat-adapter/discord": "catalog:",
     "@chat-adapter/linear": "catalog:",
     "@chat-adapter/slack": "catalog:",
     "@chat-adapter/state-memory": "catalog:",
