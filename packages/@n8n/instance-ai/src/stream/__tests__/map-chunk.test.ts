@@ -554,6 +554,8 @@ describe('mapAgentChunkToEvent', () => {
 				content:
 					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
 				technicalDetails: responseBody,
+				// Unwrapped from the same cause as the body — a wrapped 429 must not lose it.
+				statusCode: 400,
 			},
 		});
 	});
