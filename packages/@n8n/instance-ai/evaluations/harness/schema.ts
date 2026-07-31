@@ -15,7 +15,15 @@ export const DEFAULT_DATASETS = ['full'];
  *  (e.g. the mcp-manifest builder) normalize identically. */
 export const conversationTurnTextSchema = z
 	.union([z.string(), z.array(z.string())])
-	.transform((t) => (Array.isArray(t) ? t.join('\n') : t));
+	.transform((t) => (Array.isArray(t) ? t.join('\n') : t))
+	// An unclosed `[` fails silently and expensively: the proxy stops seeing a
+	// stage direction, so it sends the text as dialogue and the case grades a
+	// conversation it was never meant to have. Easy to do in the array form,
+	// where the closing bracket lands on a different line from the opening one.
+	.refine((t) => !t.includes('[') || t.includes(']'), {
+		message:
+			'unbalanced stage direction — text opens `[` but never closes it, so the proxy would send it as dialogue instead of treating it as a direction',
+	});
 
 export const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),

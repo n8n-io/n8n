@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
@@ -26,7 +26,12 @@ import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
-import { getTrustedOAuthOrigins, parseOAuthCallbackMessage } from '../../composables/oauthCallback';
+import {
+	getTrustedOAuthOrigins,
+	hasOAuthTokenData,
+	isOAuthTokenDataSet,
+	waitForOAuthCallback,
+} from '../../composables/oauthCallback';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -164,6 +169,12 @@ const requiredCredentials = ref(false); // Are credentials required or optional 
 const contentRef = ref<HTMLDivElement>();
 const isSharedGlobally = ref(false);
 const pendingAuthType = ref<string | null>(null);
+// Pending OAuth connect flow; aborted on re-click and on unmount so its
+// listeners and backend polling don't outlive the modal.
+const oauthFlowAbortController = ref<AbortController | null>(null);
+onBeforeUnmount(() => {
+	oauthFlowAbortController.value?.abort();
+});
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
 
 // The credential editor can open outside the workflow editor (e.g. the
@@ -1073,38 +1084,18 @@ async function oAuthCredentialAuthorize() {
 		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
 	const oauthPopup = window.open(url, 'OAuth Authorization', params);
 
+	// Token presence in credential data can only confirm the flow when there was
+	// no token yet (a reconnect's old token would read as an immediate false
+	// success) and only for fixed credentials — end-user (resolvable)
+	// credentials store tokens per user outside the credential data.
+	const canVerifyConnected = !credential.isResolvable && !isOAuthTokenDataSet(credentialData.value);
+
 	credentialData.value = {
 		...credentialData.value,
 		oauthTokenData: null as unknown as CredentialInformation,
 	};
 
-	const oauthChannel = new BroadcastChannel('oauth-callback');
-	const trustedOrigins = getTrustedOAuthOrigins(rootStore.urlBaseEditor);
-	let oauthResultHandled = false;
-
-	// Fallback: if the popup is closed (or blocked) without ever delivering a
-	// callback message, no handler fires and the listeners below would leak —
-	// and stack up across attempts, so a later callback triggers duplicate side
-	// effects. Poll for the closed popup so the result is handled and cleaned up.
-	const popupClosedPoll = setInterval(() => {
-		if (!oauthPopup || oauthPopup.closed) {
-			handleOAuthResult(false);
-		}
-	}, 500);
-
-	const cleanupOAuthListeners = () => {
-		oauthChannel.removeEventListener('message', onChannelMessage);
-		window.removeEventListener('message', onWindowMessage);
-		oauthChannel.close();
-		clearInterval(popupClosedPoll);
-	};
-
 	const handleOAuthResult = (successfullyConnected: boolean) => {
-		if (oauthResultHandled) return;
-
-		oauthResultHandled = true;
-		cleanupOAuthListeners();
-
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
 			workflow_id: workflowDocumentStore.value.workflowId || null,
@@ -1147,19 +1138,35 @@ async function oAuthCredentialAuthorize() {
 		}
 	};
 
-	function onChannelMessage(event: MessageEvent) {
-		handleOAuthResult(event.data === 'success');
+	if (!oauthPopup) {
+		handleOAuthResult(false);
+		return;
 	}
 
-	// Cross-origin embed fallback: the callback page also posts to the opener.
-	function onWindowMessage(event: MessageEvent) {
-		const result = parseOAuthCallbackMessage(event, trustedOrigins);
-		if (result === null) return;
-		handleOAuthResult(result === 'success');
-	}
+	// Supersede any previous pending flow so a re-click doesn't leave a second
+	// set of listeners alive; unmounting the modal aborts too (onBeforeUnmount).
+	oauthFlowAbortController.value?.abort();
+	const abortController = new AbortController();
+	// Close the popup on teardown/supersession so it isn't left orphaned.
+	// No-op when the provider's COOP policy severed the opener relationship.
+	abortController.signal.addEventListener('abort', () => oauthPopup.close(), { once: true });
+	oauthFlowAbortController.value = abortController;
 
-	oauthChannel.addEventListener('message', onChannelMessage);
-	window.addEventListener('message', onWindowMessage);
+	const outcome = await waitForOAuthCallback({
+		popup: oauthPopup,
+		trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
+		signal: abortController.signal,
+		verifyConnected: canVerifyConnected
+			? async () =>
+					hasOAuthTokenData(await credentialsStore.getCredentialData({ id: credential.id }))
+			: undefined,
+	});
+
+	// A superseded or unmounted flow must not report a result: its telemetry
+	// and UI side effects would describe a flow the user is no longer running.
+	if (outcome === 'aborted') return;
+
+	handleOAuthResult(outcome === 'success');
 }
 
 async function onDisconnectMyConnection(): Promise<void> {

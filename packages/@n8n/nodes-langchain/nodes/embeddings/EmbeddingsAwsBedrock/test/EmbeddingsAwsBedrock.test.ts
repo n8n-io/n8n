@@ -43,6 +43,8 @@ const MockedNodeHttpHandler = vi.mocked(NodeHttpHandler);
 const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
 const mockedResolveAwsCredentials = vi.mocked(resolveAwsCredentials);
 
+const keepAliveAgentOptions = { keepAlive: true, keepAliveMsecs: 30_000 };
+
 describe('EmbeddingsAwsBedrock', () => {
 	const mockNode: INode = {
 		id: '1',
@@ -115,6 +117,7 @@ describe('EmbeddingsAwsBedrock', () => {
 		await node.supplyData.call(mockContext('amazon.titan-embed-text-v1'), 0);
 		expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
 			'https://bedrock-runtime.eu-west-2.amazonaws.com',
+			keepAliveAgentOptions,
 		);
 	});
 
@@ -127,6 +130,7 @@ describe('EmbeddingsAwsBedrock', () => {
 		await node.supplyData.call(mockContext('amazon.titan-embed-text-v1'), 0);
 		expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
 			'https://bedrock-runtime.cn-north-1.amazonaws.com.cn',
+			keepAliveAgentOptions,
 		);
 	});
 
@@ -208,13 +212,17 @@ describe('EmbeddingsAwsBedrock', () => {
 			);
 		});
 
-		it('leaves maxAttempts and request handler unset without options', async () => {
+		it('leaves maxAttempts unset and installs a keepalive handler without options', async () => {
 			const node = new EmbeddingsAwsBedrock();
 			await node.supplyData.call(mockContext('amazon.titan-embed-text-v1'), 0);
 
 			const lastConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0];
 			expect(lastConfig?.maxAttempts).toBeUndefined();
-			expect(lastConfig?.requestHandler).toBeUndefined();
+			expect(lastConfig?.requestHandler).toBe(MockedNodeHttpHandler.mock.instances.at(-1));
+			expect(MockedNodeHttpHandler).toHaveBeenCalledWith({
+				httpAgent: keepAliveAgentOptions,
+				httpsAgent: keepAliveAgentOptions,
+			});
 		});
 
 		it('passes parsed additional model request fields to the embeddings', async () => {
@@ -282,7 +290,7 @@ describe('EmbeddingsAwsBedrock', () => {
 			await node.supplyData.call(mockContext('amazon.titan-embed-text-v1'), 0);
 
 			const expected = 'https://vpce-abc.bedrock-runtime.us-east-1.vpce.amazonaws.com';
-			expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(expected);
+			expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(expected, keepAliveAgentOptions);
 			expect(MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0]?.endpoint).toBe(expected);
 		});
 
