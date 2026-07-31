@@ -4820,6 +4820,51 @@ describe('AgentRuntime — abort during a tool batch', () => {
 			}),
 		);
 	});
+
+	it('cleans up a resumed child suspension when the parent aborts before re-suspending', async () => {
+		const bus = new AgentEventBus();
+		const continuation = { childRunId: 'child-run-on-resume' };
+		const resumeSchema = z.object({ approved: z.boolean() });
+		const onCancellation = vi
+			.fn<NonNullable<BuiltTool['onCancellation']>>()
+			.mockResolvedValue(undefined);
+		const tool = {
+			...makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+				if (!ctx.resumeData) {
+					return await ctx.suspend({ reason: 'needs approval' }, { continuation, resumeSchema });
+				}
+				bus.abort();
+				return await new Promise<never>(() => undefined);
+			}),
+			onCancellation,
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1, bus);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+			]),
+		);
+
+		const first = await runtime.generate('go');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		const result = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(result.finishReason).toBe('error');
+		expect(runtime.getState().status).toBe('cancelled');
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ value: 'a' },
+			expect.objectContaining({
+				cancellation: { message: 'Run aborted' },
+				continuation,
+				toolCallId: 'tc-1',
+				suspendPayload: { reason: 'needs approval' },
+				resumeSchema: expect.objectContaining({
+					type: 'object',
+					properties: { approved: expect.objectContaining({ type: 'boolean' }) },
+				}),
+			}),
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------

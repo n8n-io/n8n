@@ -797,28 +797,30 @@ export class ToolCallExecutor {
 			});
 		} catch (error) {
 			if (isAbortError(error) || params.abortSignal?.aborted) {
+				let cleanupParams: ProcessToolCallParams | undefined;
 				if (didSuspend) {
 					const interruptedResumeSchema = getToolResumeJsonSchema(
 						builtTool,
 						interruptedSuspendPayload,
 						interruptedSuspendOptions?.resumeSchema,
 					);
+					cleanupParams = {
+						...params,
+						input,
+						suspendPayload: interruptedSuspendPayload,
+						...(interruptedSuspendOptions?.continuation !== undefined
+							? { continuation: interruptedSuspendOptions.continuation }
+							: {}),
+						...(interruptedResumeSchema !== undefined
+							? { resumeSchema: interruptedResumeSchema }
+							: {}),
+					};
+				} else if (params.suspendPayload !== undefined || params.continuation !== undefined) {
+					cleanupParams = { ...params, input };
+				}
+				if (cleanupParams) {
 					try {
-						await this.runCancellationCleanup(
-							{
-								...params,
-								input,
-								suspendPayload: interruptedSuspendPayload,
-								...(interruptedSuspendOptions?.continuation !== undefined
-									? { continuation: interruptedSuspendOptions.continuation }
-									: {}),
-								...(interruptedResumeSchema !== undefined
-									? { resumeSchema: interruptedResumeSchema }
-									: {}),
-							},
-							builtTool,
-							'Run aborted',
-						);
+						await this.runCancellationCleanup(cleanupParams, builtTool, 'Run aborted');
 					} catch {
 						// Parent shutdown must continue; persistent stores will prune stale checkpoints.
 					}
