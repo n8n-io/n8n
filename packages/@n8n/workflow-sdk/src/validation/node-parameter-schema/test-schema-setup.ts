@@ -12,7 +12,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { setSchemaBaseDirs, getSchemaBaseDirs } from './schema-validator';
-import { generateNodeDefinitions } from '../generate-types/generate-node-defs-cli';
+import { generateNodeDefinitions } from '../../generate-types/generate-node-defs-cli';
 
 // Use a worker-specific directory to prevent race conditions when multiple test
 // workers run schema-using tests in parallel (they would otherwise concurrently
@@ -31,7 +31,7 @@ let originalBaseDirs: string[] | undefined;
  * cached schemas in the temp directory are stale.
  */
 function computeGeneratorHash(): string {
-	const generatorPath = path.resolve(__dirname, '../generate-types/generate-zod-schemas.ts');
+	const generatorPath = path.resolve(__dirname, '../../generate-types/generate-zod-schemas.ts');
 	try {
 		const content = fs.readFileSync(generatorPath, 'utf-8');
 		return crypto.createHash('md5').update(content).digest('hex');
@@ -73,7 +73,7 @@ export async function setupTestSchemas(): Promise<void> {
 			fs.rmSync(SCHEMA_TEST_DIR, { recursive: true, force: true });
 		}
 
-		const repoRoot = path.resolve(__dirname, '../../../../..');
+		const repoRoot = path.resolve(__dirname, '../../../../../..');
 
 		const nodesBaseJson = path.join(repoRoot, 'packages/nodes-base/dist/types/nodes.json');
 		if (fs.existsSync(nodesBaseJson)) {

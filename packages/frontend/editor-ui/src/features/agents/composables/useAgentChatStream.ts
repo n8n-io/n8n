@@ -7,7 +7,9 @@ import type {
 	AgentSseEvent,
 	CancellationResumeData,
 } from '@n8n/api-types';
+import { applyForwardedChildChunk, emptyChildTrace } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	cancelAgentChatRun,
 	clearTestChatMessages,
@@ -531,6 +533,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.terminalEventReceived = true;
 				break;
 			}
+			case 'subagent-chunk': {
+				const found = findToolCallById(event.parentToolCallId);
+				if (!found) break;
+				found.tc.childProgress ??= emptyChildTrace();
+				applyForwardedChildChunk(found.tc.childProgress, event.chunk);
+				break;
+			}
 			case 'message':
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
@@ -704,12 +713,26 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		};
 	}
 
-	async function streamChat(message: string): Promise<void> {
+	async function streamChat(message: string, files?: File[]): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
 		if (params.continueSessionId?.value) {
 			body.sessionId = params.continueSessionId.value;
+		}
+		if (files?.length) {
+			body.attachments = await Promise.all(
+				files.map(async (file) => {
+					const encoded = await convertFileToBinaryData(file);
+					// Browsers report an empty type for unrecognized extensions; the
+					// backend requires a non-empty mime type and sniffs the real one.
+					return {
+						fileName: file.name,
+						mimeType: file.type || 'application/octet-stream',
+						data: encoded.data,
+					};
+				}),
+			);
 		}
 		await postAndConsume(url, body);
 	}
@@ -833,9 +856,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		});
 	}
 
-	async function sendMessage(text: string): Promise<void> {
+	async function sendMessage(text: string, files?: File[]): Promise<void> {
 		const trimmed = text.trim();
-		if (!trimmed || isStreaming.value || isCancelling.value) return;
+		if ((!trimmed && !files?.length) || isStreaming.value || isCancelling.value) return;
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
 		warnings.value = [];
@@ -844,8 +867,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			role: 'user',
 			content: trimmed,
 			status: 'success',
+			...(files?.length && {
+				attachments: files.map((file) => ({
+					fileName: file.name,
+					mimeType: file.type || 'application/octet-stream',
+					sizeBytes: file.size,
+					file,
+				})),
+			}),
 		});
-		await streamChat(trimmed);
+		await streamChat(trimmed, files);
 	}
 
 	function dismissFatalError(): void {

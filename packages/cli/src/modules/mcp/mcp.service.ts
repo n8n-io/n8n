@@ -52,6 +52,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
+import { areAgentToolsAvailable } from './mcp-tool-availability';
 import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
 import {
 	createAddDataTableColumnTool,
@@ -269,7 +270,7 @@ export class McpService {
 		const builderInstructionsEnabled =
 			builderEnabled &&
 			(allowedToolNames?.has(MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName) ?? true);
-		const agentsEnabled = builderEnabled && this.moduleRegistry.isActive('agents');
+		const agentsEnabled = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
 		// Same rationale as builderInstructionsEnabled: a grant that cannot call
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
@@ -468,7 +469,7 @@ export class McpService {
 
 		if (agentsEnabled) {
 			const { McpAgentToolsService } = await import('./tools/agents/agent-tools.service.js');
-			Container.get(McpAgentToolsService).registerTools(server, user);
+			Container.get(McpAgentToolsService).registerTools(server, user, allowedToolNames);
 		}
 
 		return server;

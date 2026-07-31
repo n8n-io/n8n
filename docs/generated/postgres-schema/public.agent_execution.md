@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| attachments | json |  | true |  |  | Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService |
 | completionTokens | integer |  | true |  |  |  |
 | cost | double precision |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -56,6 +57,7 @@ erDiagram
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
 "public.agent_execution" {
+  json attachments
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt

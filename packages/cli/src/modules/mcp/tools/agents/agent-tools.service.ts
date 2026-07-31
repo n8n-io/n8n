@@ -21,7 +21,7 @@ import {
 } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { ProjectRelationRepository, type User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
@@ -55,6 +55,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
@@ -362,24 +363,37 @@ export class McpAgentToolsService {
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly urlService: UrlService,
-		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
-	registerTools(server: McpServer, user: User): void {
-		this.register(server, this.searchAgentsTool(user));
-		this.register(server, this.getAgentTool(user));
-		this.register(server, this.createAgentTool(user));
-		this.register(server, this.mutateAgentTool(user));
-		this.register(server, this.validateAgentTool(user));
-		this.register(server, this.publishAgentTool(user));
-		this.register(server, this.unpublishAgentTool(user));
-		this.register(server, this.revertAgentTool(user));
-		this.register(server, this.listAgentVersionsTool(user));
-		this.register(server, this.deleteAgentTool(user));
-		this.register(server, this.discoverAssetsTool(user));
-		this.register(server, this.verifyMcpServerTool(user));
-		this.register(server, this.updateIntegrationTool(user));
-		this.register(server, this.referenceTool(user));
+	/**
+	 * `allowedToolNames` carries the OAuth grant's scope-derived allow-list
+	 * (undefined means a non-scope-bearing credential with full access).
+	 */
+	registerTools(server: McpServer, user: User, allowedToolNames?: Set<string>): void {
+		const registerIfAllowed = <Input extends z.ZodRawShape>(tool: ToolDefinition<Input>): void => {
+			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
+			this.register(server, tool);
+		};
+
+		registerIfAllowed(this.searchAgentsTool(user));
+		registerIfAllowed(this.getAgentTool(user));
+		registerIfAllowed(this.createAgentTool(user));
+		registerIfAllowed(this.mutateAgentTool(user));
+		registerIfAllowed(this.validateAgentTool(user));
+		registerIfAllowed(this.publishAgentTool(user));
+		registerIfAllowed(this.unpublishAgentTool(user));
+		registerIfAllowed(this.revertAgentTool(user));
+		registerIfAllowed(this.listAgentVersionsTool(user));
+		registerIfAllowed(this.deleteAgentTool(user));
+		registerIfAllowed(this.discoverAssetsTool(user));
+		registerIfAllowed(this.verifyMcpServerTool(user));
+		registerIfAllowed(this.updateIntegrationTool(user));
+		registerIfAllowed(this.referenceTool(user));
+
+		// The reference resource complements get_agent_builder_reference, so it
+		// follows that tool's scope gate.
+		if (allowedToolNames && !allowedToolNames.has('get_agent_builder_reference')) return;
 
 		server.resource(
 			'agent-builder-reference',
@@ -409,7 +423,7 @@ export class McpAgentToolsService {
 			name: 'search_agents',
 			config: {
 				description:
-					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents.',
+					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
 				inputSchema: searchAgentsInput,
 				annotations: {
 					title: 'Search Agents',
@@ -421,12 +435,12 @@ export class McpAgentToolsService {
 			},
 			handler: async (input: SearchAgentsInput) =>
 				await this.run(user, 'search_agents', { projectId: input.projectId }, async () => {
-					let projectIds: string[];
+					let projectIds: string[] | null;
 					if (input.projectId) {
 						await this.assertScope(user, input.projectId, 'agent:list');
 						projectIds = [input.projectId];
 					} else {
-						projectIds = await this.listProjectIdsWithAgentList(user);
+						projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 					}
 					const agents = await this.agentsService.findSummariesInProjects(projectIds, {
 						query: input.query?.trim() || undefined,
@@ -439,6 +453,7 @@ export class McpAgentToolsService {
 						name: agent.name,
 						projectId: agent.projectId,
 						published: agent.activeVersionId !== null,
+						availableInMCP: agent.availableInMCP,
 						updatedAt: agent.updatedAt.toISOString(),
 					}));
 					return { ok: true, data, count: data.length };
@@ -505,7 +520,10 @@ export class McpAgentToolsService {
 						await this.assertAccessibleCredentials(initialConfig, user, projectId);
 					}
 
-					const agent = await this.agentsService.create(projectId, name);
+					// Agents created over MCP stay operable over MCP.
+					const agent = await this.agentsService.create(projectId, name, {
+						availableInMCP: true,
+					});
 					let configHash: string | null;
 					let versionId = agent.versionId;
 					try {
@@ -919,18 +937,6 @@ export class McpAgentToolsService {
 					configSchema: AGENT_CONFIG_JSON_SCHEMA,
 				})),
 		};
-	}
-
-	/** Projects from the user's relations where the user holds agent:list. */
-	private async listProjectIdsWithAgentList(user: User): Promise<string[]> {
-		const relations = await this.projectRelationRepository.findAllByUser(user.id);
-		const projectIds = [...new Set(relations.map((relation) => relation.projectId))];
-		const allowed = await Promise.all(
-			projectIds.map(
-				async (projectId) => await userHasScopes(user, ['agent:list'], false, { projectId }),
-			),
-		);
-		return projectIds.filter((_, index) => allowed[index]);
 	}
 
 	private async getAgentSnapshot(user: User, agent: Agent) {
@@ -1376,6 +1382,11 @@ export class McpAgentToolsService {
 		const agent = await this.resolveAgent(user, input.agentId);
 		const projectId = agent.projectId;
 		await this.assertScope(user, projectId, 'agent:update');
+		if (input.action === 'connect') {
+			// Connecting publishes the current draft, so it needs the publish
+			// scope on top of update (mirrors the builder's connect flow).
+			await this.assertScope(user, projectId, 'agent:publish');
+		}
 		return input.action === 'disconnect'
 			? await this.disconnectIntegration(input, agent)
 			: await this.connectIntegration(user, input, agent, projectId);
@@ -1496,10 +1507,20 @@ export class McpAgentToolsService {
 	 * from the agentId rather than making the client supply it, scoped to the
 	 * projects the user can access. Returns the loaded entity so callers don't
 	 * re-fetch the same row.
+	 *
+	 * Mirrors the per-workflow `availableInMCP` guard in `getMcpWorkflow`: MCP
+	 * tools may only operate on agents explicitly made available in MCP.
+	 * `search_agents` intentionally still sees every accessible agent so
+	 * clients can tell the user what exists.
 	 */
 	private async resolveAgent(user: User, agentId: string): Promise<Agent> {
 		const agent = await this.agentsService.findByIdForUser(agentId, user);
 		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
+		if (!agent.availableInMCP) {
+			throw new UserError(
+				'Agent is not available in MCP. Enable MCP access from the agents list, or from the MCP settings page.',
+			);
+		}
 		return agent;
 	}
 

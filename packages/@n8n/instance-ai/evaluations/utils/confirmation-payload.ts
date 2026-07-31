@@ -23,9 +23,9 @@ export interface InfrastructureResponseOptions {
 
 /**
  * Handle confirmation events that carry no user-intent signal — domain access,
- * resource decisions, standalone credential requests. The eval grants all
- * access, has no credentials, and picks the most-permissive option for
- * resource gates. Returns `undefined` for events that need caller-specific
+ * web search, resource decisions, standalone credential requests. The eval
+ * grants all access, has no credentials, and picks the most-permissive option
+ * for resource gates. Returns `undefined` for events that need caller-specific
  * handling: setup wizards, ask-user questions, plan reviews.
  */
 export function tryInfrastructureResponse(
@@ -34,7 +34,8 @@ export function tryInfrastructureResponse(
 ): InstanceAiConfirmRequest | undefined {
 	const payload = getNestedRecord(event.data, 'payload') ?? {};
 
-	if (getNestedRecord(payload, 'domainAccess')) {
+	// Web search reuses domain access's approval shape.
+	if (getNestedRecord(payload, 'domainAccess') || getNestedRecord(payload, 'webSearch')) {
 		return { kind: 'domainAccessApprove', domainAccessAction: 'allow_all' };
 	}
 

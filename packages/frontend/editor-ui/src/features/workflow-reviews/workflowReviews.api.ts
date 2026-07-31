@@ -5,6 +5,7 @@ import type {
 	ListWorkflowReviewInboxResponse,
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestDecision,
+	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestSummary,
@@ -95,4 +96,15 @@ export async function fetchWorkflowReviewInbox(
 	params: FetchWorkflowReviewInboxParams,
 ): Promise<ListWorkflowReviewInboxResponse> {
 	return await makeRestApiRequest(context, 'GET', '/workflow-review-requests/inbox', params);
+}
+
+export async function fetchWorkflowReviewRequestDetail(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+): Promise<WorkflowReviewRequestDetail> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/workflow-review-requests/${workflowReviewRequestId}`,
+	);
 }

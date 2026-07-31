@@ -18,6 +18,7 @@ import { summariseToolCall } from './interactiveSummary';
 import type {
 	ApprovalInput,
 	ChatMessage,
+	ChatMessageAttachment,
 	ChatMessageRenderPart,
 	InteractivePayload,
 	ThinkingSegment,
@@ -178,6 +179,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		const toolCalls: ToolCall[] = [];
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
+		const attachments: ChatMessageAttachment[] = [];
 		let status: ChatMessage['status'] =
 			msg.executionStatus === 'error' ? CHAT_MESSAGE_STATUS.ERROR : undefined;
 
@@ -185,6 +187,13 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			if (part.type === 'text' && part.text) {
 				text += part.text;
 				renderParts.push({ type: 'text', text: part.text });
+			} else if (part.type === 'file' && part.fileId) {
+				attachments.push({
+					fileId: part.fileId,
+					fileName: part.fileName ?? 'attachment',
+					mimeType: part.mimeType ?? 'application/octet-stream',
+					sizeBytes: part.sizeBytes,
+				});
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
 				thinkingSegments.push({
@@ -226,6 +235,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					state,
 					...(part.startTime !== undefined && { startTime: part.startTime }),
 					...(part.endTime !== undefined && { endTime: part.endTime }),
+					...(part.childTrace && { childProgress: part.childTrace }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
 				toolCalls.push(toolCall);
@@ -249,6 +259,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			thinking: thinking || undefined,
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+			...(attachments.length > 0 && { attachments }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
 		};
