@@ -25,6 +25,7 @@ import type {
 import { STARTING_NODES } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { isFormOAuth2Enabled } from '@/modules/oauth-server/protected-resource-resolvers/utils';
 import type { NodeTypes } from '@/node-types';
 
 export interface WorkflowValidationResult {
@@ -355,16 +356,19 @@ export class WorkflowValidationService {
 		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
 
 		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
-			// System resolver: every trigger must establish the n8n user identity.
-			return allTriggersProvideN8nIdentity
-				? undefined
-				: `end-user credentials (${credNames}) are only supported in workflows triggered manually, via chat, or as a sub-workflow.`;
+			// System resolver: every trigger must establish the n8n user identity. The form is
+			// only listed while the instance has form-trigger OAuth2 enabled — without it a form
+			// establishes no identity, so listing it would advertise a fix that doesn't work.
+			if (allTriggersProvideN8nIdentity) return undefined;
+
+			const formOAuth2Enabled = isFormOAuth2Enabled();
+			const n8nUserAuthTriggers = formOAuth2Enabled ? 'form or webhook' : 'webhook';
+			return `end-user credentials (${credNames}) are only supported with manual, chat, MCP, sub-workflow, and ${n8nUserAuthTriggers} triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.`;
 		}
 
 		// Custom resolver: every trigger must provide an external identity.
-		return allTriggersProvideExternalIdentity
-			? undefined
-			: `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
+		if (allTriggersProvideExternalIdentity) return undefined;
+		return `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
@@ -399,10 +403,14 @@ export class WorkflowValidationService {
 	private classifyTriggerIdentities(
 		nodes: INode[],
 		nodeTypes: NodeTypes,
-	): { allTriggersProvideExternalIdentity: boolean; allTriggersProvideN8nIdentity: boolean } {
+	): {
+		allTriggersProvideExternalIdentity: boolean;
+		allTriggersProvideN8nIdentity: boolean;
+	} {
 		let allTriggersProvideExternalIdentity = true;
 		let allTriggersProvideN8nIdentity = true;
 		let hasTrigger = false;
+		const formOAuth2Enabled = isFormOAuth2Enabled();
 
 		for (const node of nodes) {
 			if (node.disabled) continue;
@@ -418,6 +426,7 @@ export class WorkflowValidationService {
 			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
 				node.type,
 				node.parameters,
+				{ isFormOAuth2Enabled: formOAuth2Enabled },
 			);
 			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
 			allTriggersProvideN8nIdentity &&= providesN8nIdentity;

@@ -3,10 +3,11 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
-import type { BinaryDataService, InstanceSettings } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { AiService } from '../../../services/ai.service';
 
+import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentFile } from '../entities/agent-file.entity';
 import { KNOWLEDGE_MIRROR_FILES_DIR } from '../agent-knowledge-storage';
@@ -92,20 +93,35 @@ function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	return Object.assign(aiService, overrides);
 }
 
-function makePublishedAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
+function makeProxyAiService(): AiService {
+	const client = mock<AiAssistantClient>();
+	client.getSandboxProxyConfig.mockResolvedValue({ image: 'proxy-image' });
+	client.getBuilderApiProxyToken.mockResolvedValue({
+		accessToken: 'proxy-token',
+		tokenType: 'Bearer',
+	});
+	client.getSandboxProxyBaseUrl.mockReturnValue('https://sandbox-proxy.example');
+	return makeAiService({
+		isProxyEnabled: vi.fn().mockReturnValue(true),
+		getClient: vi.fn().mockResolvedValue(client),
+	});
+}
+
+function makeAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 	const repository = mock<AgentRepository>();
+	// Unpublished on purpose: the knowledge sandbox must not require a published version.
 	repository.findByIdAndProjectId.mockResolvedValue({
 		id: agentId,
 		projectId,
-		activeVersionId: 'version-1',
+		activeVersionId: null,
 	} as Agent);
 	return repository;
 }
 
-function makeBinaryDataService(): Mocked<BinaryDataService> {
-	const service = mock<BinaryDataService>();
-	service.getAsBuffer.mockResolvedValue(Buffer.from('mock file content'));
-	return service;
+function makeKnowledgeFileStore(): Mocked<AgentKnowledgeFileStore> {
+	const store = mock<AgentKnowledgeFileStore>();
+	store.readAsBuffer.mockResolvedValue(Buffer.from('mock file content'));
+	return store;
 }
 
 function makeService(
@@ -114,8 +130,8 @@ function makeService(
 	aiService: AiService = makeAiService(),
 	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
 	agentFileRepository: AgentFileRepository = mock<AgentFileRepository>(),
-	agentRepository: AgentRepository = makePublishedAgentRepository(),
-	binaryDataService: BinaryDataService = makeBinaryDataService(),
+	agentRepository: AgentRepository = makeAgentRepository(),
+	agentKnowledgeFileStore: AgentKnowledgeFileStore = makeKnowledgeFileStore(),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -134,7 +150,7 @@ function makeService(
 		instanceSettings,
 		agentFileRepository,
 		agentRepository,
-		binaryDataService,
+		agentKnowledgeFileStore,
 	);
 }
 
@@ -144,7 +160,8 @@ function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 	return {
 		id,
 		agentId,
-		binaryDataId: `filesystem-v2:agents/${agentId}/knowledge-files/${id}/binary_data/uuid`,
+		storedAt: 'fs',
+		storageKey: `agents/${agentId}/knowledge-files/${id}/content`,
 		fileName,
 		mimeType: 'text/plain',
 		fileSizeBytes: 100,
@@ -331,7 +348,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(params.snapshot).toBeUndefined();
 	});
 
-	it('requests a proxy token scoped to the project id when the proxy is enabled, even without sandbox env vars', async () => {
+	it('requests a proxy token scoped to the project id when the proxy is enabled, even without sandbox enable/provider env vars', async () => {
 		const client = mock<AiAssistantClient>();
 		client.getSandboxProxyConfig.mockResolvedValue({ image: 'proxy-image' });
 		client.getBuilderApiProxyToken.mockResolvedValue({
@@ -344,7 +361,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			getClient: vi.fn().mockResolvedValue(client),
 		});
 		const service = makeService(
-			{ sandboxEnabled: false, sandboxProvider: '' },
+			{ sandboxEnabled: false, sandboxProvider: '', sandboxSnapshot: 'n8n/agent-knowledge:1.2.3' },
 			mock<Logger>(),
 			aiService,
 		);
@@ -355,6 +372,27 @@ describe('AgentKnowledgeSandboxService', () => {
 			{ id: projectId },
 			expect.anything(),
 		);
+	});
+
+	it('fails with an actionable error instead of creating from an image when the proxy is enabled', async () => {
+		const service = makeService({ sandboxSnapshot: '' }, mock<Logger>(), makeProxyAiService());
+
+		await expect(service.warmSandbox(projectId, agentId)).rejects.toThrow(
+			/requires a snapshot.*N8N_AGENTS_AI_SANDBOX_SNAPSHOT/s,
+		);
+		expect(createMock).not.toHaveBeenCalled();
+	});
+
+	it('surfaces the snapshot failure instead of falling back to an image when the proxy is enabled', async () => {
+		createMock.mockRejectedValueOnce(new Error('snapshot missing'));
+		const service = makeService(
+			{ sandboxSnapshot: 'n8n/agent-knowledge:missing' },
+			mock<Logger>(),
+			makeProxyAiService(),
+		);
+
+		await expect(service.warmSandbox(projectId, agentId)).rejects.toThrow('snapshot missing');
+		expect(createMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('retries transient proxy setup failures', async () => {
@@ -372,7 +410,11 @@ describe('AgentKnowledgeSandboxService', () => {
 			isProxyEnabled: vi.fn().mockReturnValue(true),
 			getClient: vi.fn().mockResolvedValue(client),
 		});
-		const service = makeService({}, mock<Logger>(), aiService);
+		const service = makeService(
+			{ sandboxSnapshot: 'n8n/agent-knowledge:1.2.3' },
+			mock<Logger>(),
+			aiService,
+		);
 
 		const promise = service.warmSandbox(projectId, agentId);
 		await vi.advanceTimersByTimeAsync(1000);
@@ -457,28 +499,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 	});
 
-	it('throws a published-only error when the agent has no active version', async () => {
-		const agentRepository = mock<AgentRepository>();
-		agentRepository.findByIdAndProjectId.mockResolvedValue({
-			id: agentId,
-			projectId,
-			activeVersionId: null,
-		} as Agent);
-		const service = makeService(
-			{},
-			mock<Logger>(),
-			makeAiService(),
-			mock<InstanceSettings>({ instanceId }),
-			mock<AgentFileRepository>(),
-			agentRepository,
-		);
-
-		await expect(service.warmSandbox(projectId, agentId)).rejects.toThrow(
-			'Knowledge base is only available for published agents. Publish the agent first.',
-		);
-		expect(createMock).not.toHaveBeenCalled();
-	});
-
 	describe('destroySandbox', () => {
 		it('deletes the sandbox by name', async () => {
 			const sandbox = makeSandbox('started');
@@ -545,9 +565,9 @@ describe('AgentKnowledgeSandboxService', () => {
 				makeMirrorFile('file-1', 'doc1.txt'),
 				makeMirrorFile('file-2', 'doc2.txt'),
 			]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
-			const binaryDataService = makeBinaryDataService();
+			const agentKnowledgeFileStore = makeKnowledgeFileStore();
 			const service = makeService(
 				{},
 				mock<Logger>(),
@@ -555,30 +575,30 @@ describe('AgentKnowledgeSandboxService', () => {
 				mock<InstanceSettings>({ instanceId }),
 				agentFileRepository,
 				agentRepository,
-				binaryDataService,
+				agentKnowledgeFileStore,
 			);
 
 			await service.searchKnowledge(projectId, agentId, { pattern: 'foo' });
 			let commands = sandbox.process.executeCommand.mock.calls.map(([command]) => command);
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(1);
 			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(1);
-			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(2);
+			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(2);
 			expect(sandbox.fs.uploadFiles).toHaveBeenCalledTimes(1);
 			manifestState = 'doc1.txt\ndoc2.txt\n';
 
 			sandbox.process.executeCommand.mockClear();
-			binaryDataService.getAsBuffer.mockClear();
+			agentKnowledgeFileStore.readAsBuffer.mockClear();
 			sandbox.fs.uploadFiles.mockClear();
 			await service.searchKnowledge(projectId, agentId, { pattern: 'bar' });
 			commands = sandbox.process.executeCommand.mock.calls.map(([command]) => command);
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(0);
 			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(0);
 			expect(commands).toHaveLength(1);
-			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+			expect(agentKnowledgeFileStore.readAsBuffer).not.toHaveBeenCalled();
 			expect(sandbox.fs.uploadFiles).not.toHaveBeenCalled();
 
 			sandbox.process.executeCommand.mockClear();
-			binaryDataService.getAsBuffer.mockClear();
+			agentKnowledgeFileStore.readAsBuffer.mockClear();
 			sandbox.fs.uploadFiles.mockClear();
 			agentFileRepository.findByAgentId.mockResolvedValue([
 				makeMirrorFile('file-1', 'doc1.txt'),
@@ -593,7 +613,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			// Only the newly-added name should be fetched and staged for move —
 			// the manifest rewrite (which always lists every expected name) is
 			// a separate, later part of the finalize command.
-			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(1);
+			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(1);
 			expect(syncCommands[0]).toContain('.tmp-doc3.txt');
 			expect(syncCommands[0]).not.toContain('.tmp-doc1.txt');
 			expect(syncCommands[0]).not.toContain('.tmp-doc2.txt');
@@ -612,10 +632,12 @@ describe('AgentKnowledgeSandboxService', () => {
 				makeMirrorFile('file-1', 'doc1.txt'),
 				makeMirrorFile('file-2', 'doc2.txt'),
 			]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
-			const binaryDataService = makeBinaryDataService();
-			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.alloc(MIRROR_UPLOAD_BATCH_BYTES));
+			const agentKnowledgeFileStore = makeKnowledgeFileStore();
+			agentKnowledgeFileStore.readAsBuffer.mockResolvedValue(
+				Buffer.alloc(MIRROR_UPLOAD_BATCH_BYTES),
+			);
 			const service = makeService(
 				{},
 				mock<Logger>(),
@@ -623,7 +645,7 @@ describe('AgentKnowledgeSandboxService', () => {
 				mock<InstanceSettings>({ instanceId }),
 				agentFileRepository,
 				agentRepository,
-				binaryDataService,
+				agentKnowledgeFileStore,
 			);
 
 			await service.searchKnowledge(projectId, agentId, { pattern: 'foo' });
@@ -645,7 +667,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			getMock.mockResolvedValue(sandbox);
 			const agentFileRepository = mock<AgentFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const service = makeService(
 				{},
@@ -675,7 +697,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			getMock.mockResolvedValue(sandbox);
 			const agentFileRepository = mock<AgentFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const service = makeService(
 				{},
@@ -691,7 +713,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			);
 		});
 
-		it('skips a file that fails to load from binary data storage and retries it next sync', async () => {
+		it('skips a file that fails to load from the knowledge file store and retries it next sync', async () => {
 			const sandbox = makeSandbox('started');
 			sandbox.process.executeCommand.mockResolvedValue({
 				exitCode: 0,
@@ -700,10 +722,10 @@ describe('AgentKnowledgeSandboxService', () => {
 			getMock.mockResolvedValue(sandbox);
 			const agentFileRepository = mock<AgentFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
-			const binaryDataService = makeBinaryDataService();
-			binaryDataService.getAsBuffer.mockRejectedValueOnce(new Error('missing on disk'));
+			const agentKnowledgeFileStore = makeKnowledgeFileStore();
+			agentKnowledgeFileStore.readAsBuffer.mockRejectedValueOnce(new Error('missing on disk'));
 			const logger = mock<Logger>();
 			const service = makeService(
 				{},
@@ -712,7 +734,7 @@ describe('AgentKnowledgeSandboxService', () => {
 				mock<InstanceSettings>({ instanceId }),
 				agentFileRepository,
 				agentRepository,
-				binaryDataService,
+				agentKnowledgeFileStore,
 			);
 
 			await expect(
@@ -727,12 +749,12 @@ describe('AgentKnowledgeSandboxService', () => {
 
 			// The failed file was left out of the cached manifest, so the next
 			// sync's expected hash mismatches and it retries — this time
-			// `getAsBuffer` succeeds (the mock's default resolves).
+			// `readAsBuffer` succeeds (the mock's default resolves).
 			await expect(
 				service.searchKnowledge(projectId, agentId, { pattern: 'bar' }),
 			).resolves.toBeDefined();
 
-			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(2);
+			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(2);
 			expect(sandbox.fs.uploadFiles).toHaveBeenCalledTimes(1);
 		});
 	});

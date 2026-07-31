@@ -121,6 +121,7 @@ export const versionDescription: INodeTypeDescription = {
 					addAllFields: true,
 					multiKeyMatch: false,
 					supportAutoMap: false,
+					refreshStaleSchemaOnOpen: true,
 				},
 			},
 			displayOptions: {

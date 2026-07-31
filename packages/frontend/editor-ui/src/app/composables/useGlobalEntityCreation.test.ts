@@ -7,9 +7,9 @@ import { flushPromises } from '@vue/test-utils';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import type { CloudPlanState } from '@/Interface';
+import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
 
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
@@ -63,7 +63,7 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 const trackMock = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 

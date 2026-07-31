@@ -21,8 +21,3 @@ export type WorkflowReviewRequestSummary = {
 	createdAt: Iso8601DateTimeString;
 	updatedAt: Iso8601DateTimeString;
 };
-
-export type WorkflowReviewRequestList = {
-	count: number;
-	data: WorkflowReviewRequestSummary[];
-};

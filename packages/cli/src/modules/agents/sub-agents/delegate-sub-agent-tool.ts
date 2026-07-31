@@ -84,6 +84,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
 					...(request.parentTelemetry !== undefined ? { telemetry: request.parentTelemetry } : {}),
+					onChunk: helpers.emitChunk,
 				},
 			);
 

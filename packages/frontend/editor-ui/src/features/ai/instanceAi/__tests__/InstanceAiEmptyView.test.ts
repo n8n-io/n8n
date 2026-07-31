@@ -273,11 +273,11 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
-vi.mock('@/app/stores/cloudPlan.store', () => ({
+vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: () => cloudPlanStoreMock,
 }));
 

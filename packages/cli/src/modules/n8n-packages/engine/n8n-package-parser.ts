@@ -113,6 +113,7 @@ export class N8nPackageParser {
 			sourceWorkflowId: entry.id,
 			sourcePublished: wire.isPublished,
 			parentFolderId,
+			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
 		};
 	}
 
@@ -203,6 +204,9 @@ export class N8nPackageParser {
 			name: project.name,
 			...(project.description !== undefined ? { description: project.description } : {}),
 			...(project.icon !== undefined ? { icon: project.icon } : {}),
+			...(project.customTelemetryTags !== undefined
+				? { customTelemetryTags: project.customTelemetryTags }
+				: {}),
 		};
 	}
 

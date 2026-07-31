@@ -23,8 +23,7 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 
 import { createNodeTypes, logger, node } from './trigger-test-utils';
 
-vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn(),
 }));
 
@@ -163,6 +162,26 @@ describe('WorkflowTriggerActivator', () => {
 			expect(kinds.get('pw')).toBe('in-memory');
 			expect(kinds.get('tw')).toBe('in-memory');
 			expect(kinds.size).toBe(5);
+		});
+
+		test('classifies the no-op pseudo triggers as persisted despite their trigger function', () => {
+			const activator = buildActivator();
+
+			const kinds = activator.getTriggerKinds([
+				node('manual', 'n8n-nodes-base.manualTrigger'),
+				node('sub-workflow', 'n8n-nodes-base.executeWorkflowTrigger'),
+				node('error', 'n8n-nodes-base.errorTrigger'),
+				node('t', 'trigger'),
+			]);
+
+			// Their trigger() is a no-op — manual runs, sub-workflow calls and error
+			// workflows are fired by the execution engine, never through the trigger
+			// registry — so the reconciler must not diff them against the registry.
+			expect(kinds.get('manual')).toBe('persisted');
+			expect(kinds.get('sub-workflow')).toBe('persisted');
+			expect(kinds.get('error')).toBe('persisted');
+			// A genuine trigger with the same capability shape stays in-memory.
+			expect(kinds.get('t')).toBe('in-memory');
 		});
 	});
 

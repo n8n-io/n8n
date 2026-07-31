@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
+import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
@@ -630,6 +631,209 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 	});
 
+	describe('when the inbound message carries attachments', () => {
+		function makeAttachmentService() {
+			let counter = 0;
+			return {
+				storeInbound: vi.fn(
+					async (params: { fileName: string; mimeType: string; data: Buffer }) => ({
+						id: `att-${++counter}`,
+						fileName: params.fileName,
+						mimeType: params.mimeType,
+						fileSizeBytes: params.data.byteLength,
+					}),
+				),
+				deleteByIds: vi.fn(async () => {}),
+			};
+		}
+
+		function makeBridge(
+			agentExecutor: ReturnType<typeof makeAgentExecutor>,
+			attachmentService: ReturnType<typeof makeAttachmentService>,
+		) {
+			const { bot, handlers } = makeBot();
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				undefined,
+				attachmentService as never,
+			);
+			return handlers;
+		}
+
+		// PNG magic bytes so the mime sniff confirms the declared type.
+		const pngBytes = Buffer.from([
+			0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+			0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
+			0x15, 0xc4, 0x89,
+		]);
+
+		it('downloads, stores, and passes attachment refs to the executor', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, {
+				text: 'look at this',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					threadId: 'agent-1:thread-1',
+					source: 'test-streaming',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+				}),
+			);
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'look at this',
+					attachments: [
+						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
+					],
+				}),
+			);
+		});
+
+		it('deletes stored attachments when execution setup fails before the stream is consumed', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+			const integrationImpl = registry.get('test-streaming')!;
+			// The test integration doesn't implement this optional hook; inject one.
+			integrationImpl.createBridgeExecutionContext = vi
+				.fn()
+				.mockRejectedValue(new Error('platform down'));
+
+			try {
+				await handlers.mention!(thread, {
+					text: 'look at this',
+					author: { userId: 'u1', userName: 'user1' },
+					attachments: [
+						{
+							type: 'image',
+							name: 'photo.png',
+							mimeType: 'image/png',
+							fetchData: vi.fn().mockResolvedValue(pngBytes),
+						},
+					],
+				});
+
+				expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+				expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+				// The mention handler swallows the re-thrown error and reports it to
+				// the platform thread — the awaited call above resolving (rather than
+				// rejecting) is by design.
+				expect(thread.post).toHaveBeenCalledWith(
+					'⚠️ Something went wrong while processing your request. Please try again.',
+				);
+			} finally {
+				delete integrationImpl.createBridgeExecutionContext;
+			}
+		});
+
+		it('truncates a platform file name to the fileName column width', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, {
+				text: 'look at this',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: `${'a'.repeat(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH + 10)}.png`,
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					fileName: 'a'.repeat(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH),
+				}),
+			);
+		});
+
+		it('executes attachment-only messages that have no text', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+
+			await handlers.mention!(makeThread(), {
+				text: '',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					attachments: [expect.objectContaining({ id: 'att-1' })],
+				}),
+			);
+		});
+
+		it('degrades failed downloads and oversize files to text notes without aborting', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+
+			await handlers.mention!(makeThread(), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'file',
+						name: 'broken.pdf',
+						mimeType: 'application/pdf',
+						fetchData: vi.fn().mockRejectedValue(new Error('download failed')),
+					},
+					{
+						type: 'file',
+						name: 'huge.pdf',
+						mimeType: 'application/pdf',
+						size: 50 * 1024 * 1024,
+						fetchData: vi.fn(),
+					},
+				],
+			});
+
+			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+			const config = agentExecutor.captured[0] as { message: string; attachments?: unknown };
+			expect(config.attachments).toBeUndefined();
+			expect(config.message).toContain('[Attachment "broken.pdf" could not be processed]');
+			expect(config.message).toContain('[Attachment "huge.pdf" was skipped: larger than 10 MB]');
+		});
+	});
+
 	describe('when integration keeps streaming enabled', () => {
 		it('posts an AsyncIterable whose drained content equals the concatenated deltas', async () => {
 			const { bot, handlers } = makeBot();
@@ -655,6 +859,21 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledTimes(1);
 			const received = await drainIterable(thread.post.mock.calls[0][0]);
 			expect(received).toBe('Hello world');
+		});
+
+		it('omits reasoning chunks from streamed external-channel responses', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{ type: 'reasoning-start', id: 'reasoning-1' },
+				{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The user is asking...' },
+				{ type: 'reasoning-end', id: 'reasoning-1' },
+				{ type: 'text-start', id: 'text-1' },
+				{ type: 'text-delta', id: 'text-1', delta: 'Final answer' },
+				{ type: 'text-end', id: 'text-1' },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe('Final answer');
 		});
 
 		it('posts an error message when the streaming post fails', async () => {
@@ -1078,10 +1297,14 @@ describe('AgentChatBridge — consumeStream', () => {
 		it('sets a thinking status and buffers the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
+			const deleteMessage = vi.fn().mockResolvedValue(undefined);
 			const agentExecutor = {
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() =>
 					toStream([
+						{ type: 'reasoning-start', id: 'reasoning-1' },
+						{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The tool was approved.' },
+						{ type: 'reasoning-end', id: 'reasoning-1' },
 						{ type: 'text-delta', id: 't1', delta: 'Approved ' },
 						{ type: 'text-delta', id: 't1', delta: 'response' },
 						{ type: 'finish', finishReason: 'stop' },
@@ -1106,9 +1329,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				thread,
 				threadId: 'thread-1',
 				user: { userId: 'u2', userName: 'user2' },
-				adapter: { deleteMessage: vi.fn().mockResolvedValue(undefined) },
+				adapter: { deleteMessage },
 			});
 
+			expect(deleteMessage).toHaveBeenCalledWith('thread-1', 'card-message-1');
 			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
 			expect(thread.startTyping.mock.invocationCallOrder[0]).toBeLessThan(
 				thread.post.mock.invocationCallOrder[0],
