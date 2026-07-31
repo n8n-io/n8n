@@ -267,7 +267,6 @@ export {
 export type { SubAgentTaskPath, SubAgentTaskPathPolicy } from './runtime/tools/sub-agent-task-path';
 export {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
-	DELEGATE_SUB_AGENT_CHILD_SUSPEND_PAYLOAD_KEY,
 	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	INLINE_SUB_AGENT_ID,
 	SUB_AGENT_TASK_DIFFICULTIES,
@@ -276,12 +275,14 @@ export {
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
+	parseDelegateSubAgentContinuation,
 	renderDelegateSubAgentPrompt,
 } from './runtime/tools/delegate-sub-agent-tool';
 export type {
 	CreateDelegateSubAgentToolOptions,
 	DelegateSubAgentCancelRequest,
 	DelegateSubAgentCancelRunner,
+	DelegateSubAgentContinuation,
 	DelegateSubAgentInput,
 	DelegateSubAgentPolicy,
 	DelegateSubAgentRequest,

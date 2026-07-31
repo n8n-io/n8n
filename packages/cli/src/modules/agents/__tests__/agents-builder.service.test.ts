@@ -14,26 +14,21 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
-function suspendedCheckpoint(threadId: string, resourceId = 'user-1'): SerializableAgentState {
+function suspendedCheckpoint(threadId: string): SerializableAgentState {
 	return {
 		status: 'suspended',
-		persistence: { threadId, resourceId },
+		persistence: { threadId, resourceId: 'user-1' },
 		pendingToolCalls: {},
 		messageList: { messages: [] },
 	} as unknown as SerializableAgentState;
 }
 
-function checkpointRow(
-	runId: string,
-	threadId: string,
-	agentId: string | null = 'agent-1',
-	resourceId = 'user-1',
-): AgentCheckpoint {
+function checkpointRow(runId: string, threadId: string): AgentCheckpoint {
 	return {
 		runId,
-		agentId,
+		agentId: 'agent-1',
 		expired: false,
-		state: JSON.stringify(suspendedCheckpoint(threadId, resourceId)),
+		state: JSON.stringify(suspendedCheckpoint(threadId)),
 	} as AgentCheckpoint;
 }
 
@@ -61,9 +56,7 @@ describe('AgentsBuilderService checkpoint lookup', () => {
 			checkpointRow('run-5', 'thread-newer-5'),
 			checkpointRow('run-target', 'thread-target'),
 		];
-		agentCheckpointRepository.findActiveByAgentId.mockImplementation(async (_agentId, take) =>
-			rows.slice(0, take ?? rows.length),
-		);
+		agentCheckpointRepository.findActiveForAgent.mockResolvedValue(rows);
 
 		const service = makeService(agentCheckpointRepository);
 
@@ -80,7 +73,7 @@ describe('AgentsBuilderService checkpoint lookup', () => {
 			resourceId: 'user-1',
 			delegated: true,
 		};
-		agentCheckpointRepository.findActiveByAgentId.mockResolvedValue([
+		agentCheckpointRepository.findActiveForAgent.mockResolvedValue([
 			{
 				...checkpointRow('child-run-1', 'thread-target'),
 				state: JSON.stringify(delegatedState),
@@ -91,66 +84,6 @@ describe('AgentsBuilderService checkpoint lookup', () => {
 
 		await expect(
 			service.findOpenCheckpointForThread('agent-1', 'thread-target'),
-		).resolves.toBeNull();
-	});
-
-	it('can find legacy unscoped checkpoints only when explicitly requested', async () => {
-		const agentCheckpointRepository = mock<AgentCheckpointRepository>();
-		const legacyRow = checkpointRow('run-legacy', 'thread-target', null);
-		agentCheckpointRepository.findActiveByAgentId.mockResolvedValue([]);
-		agentCheckpointRepository.findActiveLegacyUnscoped.mockResolvedValue([legacyRow]);
-		agentCheckpointRepository.adoptLegacyCheckpoint.mockResolvedValue(true);
-
-		const service = makeService(agentCheckpointRepository);
-
-		await expect(
-			service.findOpenCheckpointForThread('agent-1', 'thread-target'),
-		).resolves.toBeNull();
-		const result = await service.findOpenCheckpointForThread('agent-1', 'thread-target', {
-			includeUnscoped: true,
-		});
-
-		expect(result?.persistence?.threadId).toBe('thread-target');
-		expect(agentCheckpointRepository.adoptLegacyCheckpoint).toHaveBeenCalledWith(
-			'run-legacy',
-			'agent-1',
-			legacyRow.state,
-		);
-	});
-
-	it('does not adopt a legacy checkpoint until both thread and resource scopes are valid', async () => {
-		const agentCheckpointRepository = mock<AgentCheckpointRepository>();
-		agentCheckpointRepository.findActiveByAgentId.mockResolvedValue([]);
-		agentCheckpointRepository.findActiveLegacyUnscoped.mockResolvedValue([
-			checkpointRow('run-wrong-thread', 'thread-other', null),
-			checkpointRow('run-missing-resource', 'thread-target', null, ''),
-		]);
-
-		const service = makeService(agentCheckpointRepository);
-
-		await expect(
-			service.findOpenCheckpointForThread('agent-1', 'thread-target', {
-				includeUnscoped: true,
-			}),
-		).resolves.toBeNull();
-
-		expect(agentCheckpointRepository.adoptLegacyCheckpoint).not.toHaveBeenCalled();
-	});
-
-	it('returns no legacy checkpoint when another agent wins adoption', async () => {
-		const agentCheckpointRepository = mock<AgentCheckpointRepository>();
-		const legacyRow = checkpointRow('run-legacy', 'thread-target', null);
-		agentCheckpointRepository.findActiveByAgentId.mockResolvedValue([]);
-		agentCheckpointRepository.findActiveLegacyUnscoped.mockResolvedValue([legacyRow]);
-		agentCheckpointRepository.adoptLegacyCheckpoint.mockResolvedValue(false);
-		agentCheckpointRepository.findByRunIdAndAgentId.mockResolvedValue(null);
-
-		const service = makeService(agentCheckpointRepository);
-
-		await expect(
-			service.findOpenCheckpointForThread('agent-1', 'thread-target', {
-				includeUnscoped: true,
-			}),
 		).resolves.toBeNull();
 	});
 });

@@ -38,7 +38,7 @@ export interface ToolExecutionContext {
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: AgentExecutionCounter;
 	/** Internal runtime hook used to retain cleanup ownership if abort wins the suspend race. */
-	onSuspend?: (payload: unknown, options?: ToolSuspendOptions) => void;
+	onSuspend?: (payload: unknown, options?: ToolSuspendOptions) => void | Promise<void>;
 	/**
 	 * Checkpointed suspend payload for a resumed interruptible tool call,
 	 * restored from persistence. Only set when the tool is being resumed.
@@ -128,8 +128,6 @@ export interface BuiltTool {
 	readonly systemInstruction?: string;
 	readonly suspendSchema?: ZodType | JSONSchema7;
 	readonly resumeSchema?: ZodType | JSONSchema7;
-	/** Resolve a payload-specific resume schema for dynamically cascaded interactions. */
-	readonly resolveResumeSchema?: (suspendPayload: unknown) => ZodType | JSONSchema7 | undefined;
 	readonly approval?: {
 		readonly required: boolean;
 		readonly conditional?: boolean;

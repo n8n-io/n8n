@@ -16,7 +16,6 @@ import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentEventBus } from '../state/event-bus';
-import { RunStateManager } from '../state/run-state';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY,
@@ -76,6 +75,9 @@ const { embed, embedMany, generateText, streamText, jsonSchema } = aiModule as u
 	streamText: Mock;
 	jsonSchema: Mock;
 };
+
+const makeCancellationSpy = () =>
+	vi.fn<NonNullable<BuiltTool['onCancellation']>>().mockResolvedValue(undefined);
 
 /** Minimal successful generateText response. */
 function makeGenerateSuccess(text = 'OK') {
@@ -481,19 +483,13 @@ describe('AgentRuntime — execution counters', () => {
 	it('persists dynamic suspension state privately and validates resume before claiming', async () => {
 		const continuation = { childRunId: 'child-run-1', taskPath: '/root/research_0' };
 		const dynamicResumeSchema = z.object({ decision: z.literal('continue') });
-		const repeatedResumeSchema = z.object({ decision: z.literal('continue-again') });
 		let observedCtx: InterruptibleToolContext | undefined;
-		let shouldResuspend = true;
 		const suspendTool: BuiltTool = {
 			name: 'dynamic_suspend',
 			description: 'Suspends with invocation-specific state',
 			inputSchema: z.object({}),
 			suspendSchema: z.object({ prompt: z.string() }),
 			resumeSchema: z.object({ fallback: z.string() }),
-			resolveResumeSchema: (payload) =>
-				(payload as { prompt?: string }).prompt === 'Continue waiting?'
-					? repeatedResumeSchema
-					: undefined,
 			handler: async (_input, ctx) => {
 				const interruptibleCtx = ctx as InterruptibleToolContext;
 				if (!interruptibleCtx.resumeData) {
@@ -503,10 +499,6 @@ describe('AgentRuntime — execution counters', () => {
 					);
 				}
 				observedCtx = interruptibleCtx;
-				if (shouldResuspend) {
-					shouldResuspend = false;
-					return await interruptibleCtx.suspend({ prompt: 'Continue waiting?' });
-				}
 				return { resumed: true };
 			},
 		};
@@ -514,9 +506,7 @@ describe('AgentRuntime — execution counters', () => {
 		const runtime = createRuntimeWithCheckpointStore([suspendTool], checkpointStore);
 
 		generateText.mockResolvedValueOnce(
-			makeGenerateWithToolCalls([
-				{ toolCallId: 'tc-dynamic', toolName: 'dynamic_suspend', args: {} },
-			]),
+			makeGenerateWithToolCall('tc-dynamic', 'dynamic_suspend', {}),
 		);
 
 		const first = await runtime.generate('start');
@@ -547,7 +537,8 @@ describe('AgentRuntime — execution counters', () => {
 		).rejects.toThrow('Invalid resume payload');
 		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
 
-		const second = await runtime.resume(
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('resumed'));
+		await runtime.resume(
 			'generate',
 			{ decision: 'continue' },
 			{ runId: first.runId, toolCallId: 'tc-dynamic' },
@@ -555,23 +546,6 @@ describe('AgentRuntime — execution counters', () => {
 
 		expect(observedCtx?.continuation).toEqual(continuation);
 		expect(observedCtx?.resumeSchema).toEqual(publicSuspension?.resumeSchema);
-		expect(second.pendingSuspend?.[0].resumeSchema).toEqual(
-			expect.objectContaining({
-				type: 'object',
-				properties: { decision: expect.objectContaining({ const: 'continue-again' }) },
-			}),
-		);
-		const repeatedCheckpoint = await checkpointStore.load(first.runId);
-		expect(repeatedCheckpoint?.pendingToolCalls['tc-dynamic']).toEqual(
-			expect.objectContaining({ continuation }),
-		);
-
-		generateText.mockResolvedValueOnce(makeGenerateSuccess('resumed'));
-		await runtime.resume(
-			'generate',
-			{ decision: 'continue-again' },
-			{ runId: first.runId, toolCallId: 'tc-dynamic' },
-		);
 	});
 
 	it('keeps delegate_subagent output usage per tool call without adding it to generate result usage', async () => {
@@ -1696,6 +1670,7 @@ function makeMockTool(name: string, handler: (input: unknown) => Promise<unknown
 function makeSuspendingTool(
 	name: string,
 	handler: (input: unknown, ctx: InterruptibleToolContext) => Promise<unknown>,
+	onCancellation?: BuiltTool['onCancellation'],
 ): BuiltTool {
 	return {
 		name,
@@ -1704,6 +1679,7 @@ function makeSuspendingTool(
 		suspendSchema: z.object({ reason: z.string() }),
 		resumeSchema: z.object({ approved: z.boolean() }),
 		handler: async (input, ctx) => await handler(input, ctx as InterruptibleToolContext),
+		...(onCancellation ? { onCancellation } : {}),
 	};
 }
 
@@ -1735,6 +1711,7 @@ type ClaimingCheckpointStore = CheckpointStore & {
 function createRuntimeWithCheckpointStore(
 	tools: BuiltTool[],
 	checkpointStorage: CheckpointStore,
+	eventBus?: AgentEventBus,
 ): AgentRuntime {
 	return new AgentRuntime({
 		name: 'test',
@@ -1742,6 +1719,7 @@ function createRuntimeWithCheckpointStore(
 		instructions: 'You are a test assistant.',
 		tools,
 		checkpointStorage,
+		...(eventBus ? { eventBus } : {}),
 	});
 }
 
@@ -2356,8 +2334,6 @@ describe('AgentRuntime — concurrent tool execution', () => {
 					toolName: 'suspend_tool',
 					output: '[Tool call cancelled. User said: "Stop this action"]',
 					canceled: true,
-					suspendPayload: { reason: 'needs approval' },
-					resumeData: createCancellation('Stop this action'),
 				}),
 			]),
 		);
@@ -2372,13 +2348,8 @@ describe('AgentRuntime — concurrent tool execution', () => {
 				{ continuation: { cleanupKey: `cleanup-${value}` } },
 			);
 		});
-		const onCancellation = vi
-			.fn<NonNullable<BuiltTool['onCancellation']>>()
-			.mockResolvedValue(undefined);
-		const suspendTool = {
-			...makeSuspendingTool('suspend_tool', handler),
-			onCancellation,
-		};
+		const onCancellation = makeCancellationSpy();
+		const suspendTool = makeSuspendingTool('suspend_tool', handler, onCancellation);
 
 		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
 		generateText.mockResolvedValueOnce(
@@ -2433,13 +2404,8 @@ describe('AgentRuntime — concurrent tool execution', () => {
 			if (ctx.resumeData) return { approved: true };
 			return await ctx.suspend({ reason: 'needs approval' });
 		});
-		const onCancellation = vi
-			.fn<NonNullable<BuiltTool['onCancellation']>>()
-			.mockResolvedValue(undefined);
-		const suspendTool = {
-			...makeSuspendingTool('suspend_tool', handler),
-			onCancellation,
-		};
+		const onCancellation = makeCancellationSpy();
+		const suspendTool = makeSuspendingTool('suspend_tool', handler, onCancellation);
 
 		const { runtime } = createRuntimeWithTools([suspendTool], 1);
 		generateText.mockResolvedValueOnce(
@@ -2499,46 +2465,6 @@ describe('AgentRuntime — concurrent tool execution', () => {
 				suspendPayload: { reason: 'needs approval' },
 			}),
 		]);
-		expect(resumed.getState().status).toBe('suspended');
-	});
-
-	it('keeps a suspended sibling retryable when its cancellation cleanup fails', async () => {
-		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
-			return await ctx.suspend({ reason: 'needs approval' });
-		});
-		const onCancellation = vi.fn<NonNullable<BuiltTool['onCancellation']>>(async (input) => {
-			if ((input as { value?: string }).value === 'b') {
-				throw new Error('sibling checkpoint delete failed');
-			}
-			await Promise.resolve();
-		});
-		const suspendTool = {
-			...makeSuspendingTool('suspend_tool', handler),
-			onCancellation,
-		};
-
-		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
-		generateText.mockResolvedValueOnce(
-			makeGenerateWithToolCalls([
-				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
-				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
-			]),
-		);
-
-		const first = await runtime.generate('run tools');
-		const resumed = await runtime.resume('generate', createCancellation('Stop this action'), {
-			runId: first.runId,
-			toolCallId: 'tc-1',
-		});
-
-		expect(resumed.pendingSuspend).toEqual([
-			expect.objectContaining({
-				runId: first.runId,
-				toolCallId: 'tc-2',
-				suspendPayload: { reason: 'needs approval' },
-			}),
-		]);
-		expect(onCancellation).toHaveBeenCalledTimes(2);
 		expect(resumed.getState().status).toBe('suspended');
 	});
 
@@ -3021,32 +2947,6 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(result.pendingSuspend).toBeDefined();
 		expect(result.pendingSuspend![0].resumeSchema).toBeDefined();
 		expect(typeof result.pendingSuspend![0].resumeSchema).toBe('object');
-	});
-
-	it('uses a payload-specific resume schema for cascaded interactions', async () => {
-		const suspendTool = {
-			...makeSuspendingTool('suspend_tool', async (_input, ctx) => {
-				return await ctx.suspend({ reason: 'needs approval' });
-			}),
-			resumeSchema: z.unknown(),
-			resolveResumeSchema: () => z.object({ approved: z.boolean() }),
-		};
-		const { runtime } = createRuntimeWithTools([suspendTool], 1);
-		generateText.mockResolvedValueOnce(
-			makeGenerateWithToolCalls([
-				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
-			]),
-		);
-
-		const result = await runtime.generate('run tools');
-
-		expect(result.pendingSuspend?.[0].resumeSchema).toEqual(
-			expect.objectContaining({
-				type: 'object',
-				properties: { approved: expect.objectContaining({ type: 'boolean' }) },
-				required: ['approved'],
-			}),
-		);
 	});
 
 	it('stream mode emits multiple tool-call-suspended chunks for concurrent suspensions', async () => {
@@ -4785,46 +4685,90 @@ describe('AgentRuntime — abort during a tool batch', () => {
 		expect(secondHandler).not.toHaveBeenCalled();
 	});
 
-	it('cleans up a child suspension when the parent aborts before persisting it', async () => {
+	it('cleans up a child that suspends after the parent abort race settles', async () => {
 		const bus = new AgentEventBus();
-		const continuation = { childRunId: 'child-run-before-abort' };
-		const resumeSchema = z.object({ approved: z.boolean() });
-		const onCancellation = vi
-			.fn<NonNullable<BuiltTool['onCancellation']>>()
-			.mockResolvedValue(undefined);
-		const tool = {
-			...makeSuspendingTool('suspend_tool', async (_input, ctx) => {
-				const suspension = ctx.suspend(
+		let releaseHandler!: () => void;
+		let markHandlerStarted!: () => void;
+		const handlerGate = new Promise<void>((resolve) => (releaseHandler = resolve));
+		const handlerStarted = new Promise<void>((resolve) => (markHandlerStarted = resolve));
+		const onCancellation = makeCancellationSpy();
+		const tool = makeSuspendingTool(
+			'suspend_tool',
+			async (_input, ctx) => {
+				markHandlerStarted();
+				await handlerGate;
+				return await ctx.suspend(
 					{ reason: 'needs approval' },
-					{ continuation, resumeSchema },
+					{ continuation: { childRunId: 'late-child-run' } },
 				);
-				bus.abort();
-				return await suspension;
+			},
+			onCancellation,
+		);
+		const { runtime } = createRuntimeWithTools([tool], 1, bus);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'suspend_tool', { value: 'a' }),
+		);
+
+		const resultPromise = runtime.generate('go');
+		await handlerStarted;
+		bus.abort();
+		await expect(resultPromise).resolves.toMatchObject({ finishReason: 'error' });
+		releaseHandler();
+
+		await vi.waitFor(() =>
+			expect(onCancellation).toHaveBeenCalledWith(
+				{ value: 'a' },
+				expect.objectContaining({
+					continuation: { childRunId: 'late-child-run' },
+					suspendPayload: { reason: 'needs approval' },
+				}),
+			),
+		);
+	});
+
+	it('cleans up a repeated suspension when abort lands during schema validation', async () => {
+		const bus = new AgentEventBus();
+		let releaseParse!: () => void;
+		let markParseStarted!: () => void;
+		const parseGate = new Promise<void>((resolve) => (releaseParse = resolve));
+		const parseStarted = new Promise<void>((resolve) => (markParseStarted = resolve));
+		const onCancellation = makeCancellationSpy();
+		const tool: BuiltTool = {
+			name: 'suspend_tool',
+			description: 'Suspends twice',
+			inputSchema: z.object({ value: z.string().optional() }),
+			suspendSchema: z.object({ stage: z.string() }).superRefine(async ({ stage }) => {
+				if (stage !== 'second') return;
+				markParseStarted();
+				await parseGate;
 			}),
+			resumeSchema: z.object({ approved: z.boolean() }),
+			handler: async (_input, rawCtx) => {
+				const ctx = rawCtx as InterruptibleToolContext;
+				const stage = ctx.resumeData ? 'second' : 'first';
+				return await ctx.suspend({ stage }, { continuation: { childRunId: stage } });
+			},
 			onCancellation,
 		};
 		const { runtime } = createRuntimeWithTools([tool], 1, bus);
 		generateText.mockResolvedValueOnce(
-			makeGenerateWithToolCalls([
-				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
-			]),
+			makeGenerateWithToolCall('tc-1', 'suspend_tool', { value: 'a' }),
 		);
 
-		const result = await runtime.generate('go');
+		const first = await runtime.generate('go');
+		const resume = runtime.resume('generate', { approved: true }, first.pendingSuspend![0]);
+		await parseStarted;
+		bus.abort();
+		releaseParse();
+		const result = await resume;
 
-		expect(result.finishReason).toBe('error');
+		expect(result.pendingSuspend).toBeUndefined();
 		expect(runtime.getState().status).toBe('cancelled');
 		expect(onCancellation).toHaveBeenCalledWith(
 			{ value: 'a' },
 			expect.objectContaining({
-				cancellation: { message: 'Run aborted' },
-				continuation,
-				toolCallId: 'tc-1',
-				suspendPayload: { reason: 'needs approval' },
-				resumeSchema: expect.objectContaining({
-					type: 'object',
-					properties: { approved: expect.objectContaining({ type: 'boolean' }) },
-				}),
+				continuation: { childRunId: 'second' },
+				suspendPayload: { stage: 'second' },
 			}),
 		);
 	});
@@ -4833,24 +4777,21 @@ describe('AgentRuntime — abort during a tool batch', () => {
 		const bus = new AgentEventBus();
 		const continuation = { childRunId: 'child-run-on-resume' };
 		const resumeSchema = z.object({ approved: z.boolean() });
-		const onCancellation = vi
-			.fn<NonNullable<BuiltTool['onCancellation']>>()
-			.mockResolvedValue(undefined);
-		const tool = {
-			...makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+		const onCancellation = makeCancellationSpy();
+		const tool = makeSuspendingTool(
+			'suspend_tool',
+			async (_input, ctx) => {
 				if (!ctx.resumeData) {
 					return await ctx.suspend({ reason: 'needs approval' }, { continuation, resumeSchema });
 				}
 				bus.abort();
 				return await new Promise<never>(() => undefined);
-			}),
+			},
 			onCancellation,
-		};
+		);
 		const { runtime } = createRuntimeWithTools([tool], 1, bus);
 		generateText.mockResolvedValueOnce(
-			makeGenerateWithToolCalls([
-				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
-			]),
+			makeGenerateWithToolCall('tc-1', 'suspend_tool', { value: 'a' }),
 		);
 
 		const first = await runtime.generate('go');
@@ -4876,20 +4817,19 @@ describe('AgentRuntime — abort during a tool batch', () => {
 
 	it('cleans up suspended siblings when an unexecuted tool aborts during resume', async () => {
 		const bus = new AgentEventBus();
-		const onCancellation = vi
-			.fn<NonNullable<BuiltTool['onCancellation']>>()
-			.mockResolvedValue(undefined);
-		const suspendTool = {
-			...makeSuspendingTool('suspend_tool', async (rawInput, ctx) => {
+		const onCancellation = makeCancellationSpy();
+		const suspendTool = makeSuspendingTool(
+			'suspend_tool',
+			async (rawInput, ctx) => {
 				if (ctx.resumeData) return { approved: true };
 				const { value } = rawInput as { value: string };
 				return await ctx.suspend(
 					{ reason: 'needs approval' },
 					{ continuation: { childRunId: `child-${value}` } },
 				);
-			}),
+			},
 			onCancellation,
-		};
+		);
 		const abortTool = makeMockTool('abort_tool', async () => {
 			bus.abort();
 			return await new Promise<never>(() => undefined);
@@ -4921,6 +4861,76 @@ describe('AgentRuntime — abort during a tool batch', () => {
 			}),
 		);
 	});
+
+	it('rolls back a suspension when abort lands during checkpoint persistence', async () => {
+		const bus = new AgentEventBus();
+		let releaseSave!: () => void;
+		let markSaveStarted!: () => void;
+		const saveGate = new Promise<void>((resolve) => (releaseSave = resolve));
+		const saveStarted = new Promise<void>((resolve) => (markSaveStarted = resolve));
+		const checkpointStore: CheckpointStore = {
+			save: vi.fn(async () => {
+				markSaveStarted();
+				await saveGate;
+			}),
+			load: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(undefined),
+		};
+		const onCancellation = makeCancellationSpy();
+		const tool = makeSuspendingTool(
+			'suspend_tool',
+			async (_input, ctx) =>
+				await ctx.suspend(
+					{ reason: 'needs approval' },
+					{ continuation: { childRunId: 'child-during-save' } },
+				),
+			onCancellation,
+		);
+		const runtime = createRuntimeWithCheckpointStore([tool], checkpointStore, bus);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'suspend_tool', { value: 'a' }),
+		);
+
+		const resultPromise = runtime.generate('go');
+		await saveStarted;
+		bus.abort();
+		releaseSave();
+		const result = await resultPromise;
+
+		expect(result.pendingSuspend).toBeUndefined();
+		expect(runtime.getState().status).toBe('cancelled');
+		expect(onCancellation).toHaveBeenCalledOnce();
+		expect(checkpointStore.delete).toHaveBeenCalledWith(result.runId);
+	});
+
+	it('cleans up child continuations when checkpoint persistence fails', async () => {
+		const persistenceError = new Error('checkpoint unavailable');
+		const checkpointStore: CheckpointStore = {
+			save: vi.fn(async () => await Promise.reject(persistenceError)),
+			load: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(undefined),
+		};
+		const onCancellation = makeCancellationSpy();
+		const tool = makeSuspendingTool(
+			'suspend_tool',
+			async (_input, ctx) =>
+				await ctx.suspend(
+					{ reason: 'needs approval' },
+					{ continuation: { childRunId: 'child-on-save-error' } },
+				),
+			onCancellation,
+		);
+		const runtime = createRuntimeWithCheckpointStore([tool], checkpointStore);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'suspend_tool', { value: 'a' }),
+		);
+
+		const result = await runtime.generate('go');
+
+		expect(result.error).toBe(persistenceError);
+		expect(onCancellation).toHaveBeenCalledOnce();
+		expect(checkpointStore.delete).toHaveBeenCalledWith(result.runId);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -4939,18 +4949,6 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 			return await ctx.suspend({ reason: 'needs approval' });
 		});
 	}
-
-	it('surfaces strict cancellation cleanup failures', async () => {
-		const deleteError = new Error('checkpoint delete failed');
-		const store: CheckpointStore = {
-			save: async () => await Promise.resolve(),
-			load: async () => await Promise.resolve(undefined),
-			delete: async () => await Promise.reject(deleteError),
-		};
-		const runState = new RunStateManager(store);
-
-		await expect(runState.cancel('child-run-1')).rejects.toBe(deleteError);
-	});
 
 	it('deletes the checkpoint after a resumed generate run completes', async () => {
 		const { runtime } = createRuntimeWithTools([makeApprovalTool()], 1);
@@ -5061,27 +5059,6 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 			runtime.resume('generate', { approved: 'yes' }, { runId, toolCallId }),
 		).rejects.toThrow('Invalid resume payload');
 
-		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
-	});
-
-	it('validates a payload-specific resume schema before claiming the checkpoint', async () => {
-		const checkpointStore = makeClaimingCheckpointStore();
-		const dynamicTool = {
-			...makeApprovalTool(),
-			resumeSchema: z.unknown(),
-			resolveResumeSchema: () => z.object({ approved: z.boolean() }),
-		};
-		const runtime = createRuntimeWithCheckpointStore([dynamicTool], checkpointStore);
-
-		generateText.mockResolvedValueOnce(
-			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
-		);
-		const first = await runtime.generate('run tool');
-		const { runId, toolCallId } = first.pendingSuspend![0];
-
-		await expect(
-			runtime.resume('generate', { approved: 'yes' }, { runId, toolCallId }),
-		).rejects.toThrow('Invalid resume payload');
 		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
 	});
 
@@ -6636,6 +6613,7 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 	}
 
 	it('auto-bypass: does NOT call the tool handler on cancellation', async () => {
+		const onCancellation = makeCancellationSpy();
 		const handlerSpy = vi.fn().mockImplementation(async (_input: unknown, ctx: unknown) => {
 			const { suspend, resumeData } = ctx as InterruptibleToolContext;
 			if (!resumeData) {
@@ -6650,6 +6628,7 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 			suspendSchema: z.object({ prompt: z.string() }),
 			resumeSchema: z.object({ answer: z.string() }),
 			handler: handlerSpy,
+			onCancellation,
 		};
 
 		const { runtime } = createRuntimeWithTools([tool], 1);
@@ -6676,44 +6655,17 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 
 		// Handler should NOT have been called for the resume
 		expect(handlerSpy).not.toHaveBeenCalled();
-		// The generation should have continued after cancellation
-		expect(resumed.finishReason).toBe('stop');
-	});
-
-	it('runs cancellation cleanup before auto-bypassing the tool handler', async () => {
-		const onCancellation = vi
-			.fn<NonNullable<BuiltTool['onCancellation']>>()
-			.mockResolvedValue(undefined);
-		const tool = {
-			...makeSuspendToolForCancel(),
-			onCancellation,
-		} satisfies BuiltTool;
-		const { runtime } = createRuntimeWithTools([tool], 1);
-
-		generateText
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCalls([
-					{ toolCallId: 'tc-1', toolName: 'interactive_tool', args: { prompt: 'continue?' } },
-				]),
-			)
-			.mockResolvedValueOnce(makeGenerateSuccess('Changed direction'));
-
-		const first = await runtime.generate('start');
-		const { runId, toolCallId } = first.pendingSuspend![0];
-		await runtime.resume('generate', createCancellation('take another approach'), {
-			runId,
-			toolCallId,
-		});
-
 		expect(onCancellation).toHaveBeenCalledWith(
 			{ prompt: 'continue?' },
 			expect.objectContaining({
-				cancellation: { message: 'take another approach' },
+				cancellation: { message: 'do something else instead' },
 				runId,
 				toolCallId,
 				suspendPayload: { prompt: 'What should I do?' },
 			}),
 		);
+		// The generation should have continued after cancellation
+		expect(resumed.finishReason).toBe('stop');
 	});
 
 	it('auto-bypass: injects the steering message and the LLM sees it', async () => {

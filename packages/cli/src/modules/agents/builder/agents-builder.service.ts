@@ -37,10 +37,6 @@ import { N8nMemory } from '../integrations/n8n-memory';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { streamAgentChunks } from '../utils/agent-stream';
 
-interface FindSuspendedCheckpointOptions {
-	includeUnscoped?: boolean;
-}
-
 /**
  * Builder session options for the agent-builder sub-agent. `AgentsBuilderService`
  * only ever streams for Instance AI's build-agent tool, so every field the
@@ -316,74 +312,24 @@ export class AgentsBuilderService {
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * Return the parsed state of the most recent non-expired suspended
-	 * checkpoint for this agent, or `null` if there isn't one. Each pending
-	 * tool call inside the state already carries its own `runId`, so callers
-	 * don't need a separate runId from this helper.
-	 */
-	async findOpenCheckpoint(agentId: string): Promise<SerializableAgentState | null> {
-		return await this.findSuspendedCheckpoint(agentId);
-	}
-
-	/**
-	 * Like {@link findOpenCheckpoint}, but scoped to one chat thread. Used by
-	 * the chat history endpoints to rebuild open interactive cards (with
-	 * runIds) after a page refresh.
+	 * Find the latest open checkpoint for a chat thread so its interactive
+	 * cards can be rebuilt after a page refresh.
 	 */
 	async findOpenCheckpointForThread(
 		agentId: string,
 		threadId: string,
-		options: FindSuspendedCheckpointOptions = {},
 	): Promise<SerializableAgentState | null> {
-		return await this.findSuspendedCheckpoint(agentId, threadId, options);
-	}
-
-	private async findSuspendedCheckpoint(
-		agentId: string,
-		threadId?: string,
-		options: FindSuspendedCheckpointOptions = {},
-	): Promise<SerializableAgentState | null> {
-		const ownedRows = await this.agentCheckpointRepository.findActiveByAgentId(
-			agentId,
-			threadId === undefined ? 5 : undefined,
-		);
-		for (const row of ownedRows) {
+		const rows = await this.agentCheckpointRepository.findActiveForAgent(agentId);
+		for (const row of rows) {
 			const checkpoint = this.parseSuspendedCheckpoint(row.state, threadId);
 			if (checkpoint) return checkpoint;
-		}
-
-		// Legacy rows predate checkpoint ownership. Only the explicitly requested,
-		// thread-scoped history path may adopt one, after validating both memory scopes.
-		if (options.includeUnscoped !== true || threadId === undefined) return null;
-		const legacyRows = await this.agentCheckpointRepository.findActiveLegacyUnscoped();
-		for (const row of legacyRows) {
-			if (!row.state) continue;
-			const checkpoint = this.parseSuspendedCheckpoint(row.state, threadId, true);
-			if (!checkpoint) continue;
-
-			const adopted = await this.agentCheckpointRepository.adoptLegacyCheckpoint(
-				row.runId,
-				agentId,
-				row.state,
-			);
-			if (adopted) return checkpoint;
-
-			// A concurrent lookup for the same agent may have won the one-time adoption.
-			const concurrentlyAdopted = await this.agentCheckpointRepository.findByRunIdAndAgentId(
-				row.runId,
-				agentId,
-			);
-			if (concurrentlyAdopted?.state === row.state && !concurrentlyAdopted.expired) {
-				return checkpoint;
-			}
 		}
 		return null;
 	}
 
 	private parseSuspendedCheckpoint(
 		state: string | null,
-		threadId?: string,
-		requireResourceScope = false,
+		threadId: string,
 	): SerializableAgentState | null {
 		if (!state) return null;
 		let parsed: SerializableAgentState;
@@ -393,14 +339,7 @@ export class AgentsBuilderService {
 			return null;
 		}
 		if (parsed.status !== 'suspended' || parsed.persistence?.delegated === true) return null;
-		if (threadId !== undefined && parsed.persistence?.threadId !== threadId) return null;
-		if (
-			requireResourceScope &&
-			(typeof parsed.persistence?.resourceId !== 'string' ||
-				parsed.persistence.resourceId.trim().length === 0)
-		) {
-			return null;
-		}
+		if (parsed.persistence?.threadId !== threadId) return null;
 		return parsed;
 	}
 }

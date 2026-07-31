@@ -2,7 +2,6 @@ import type { SerializableAgentState } from '@n8n/agents';
 import type { AgentChatMessagesResponse, AgentPersistedMessageDto } from '@n8n/api-types';
 
 import { messagesToDto } from '../agent-message-mapper';
-import { toClientSuspendPayload } from './client-suspend-payload';
 
 type MessageContentPart = AgentPersistedMessageDto['content'][number];
 
@@ -97,7 +96,7 @@ export function withOpenSuspensions(
 		.map((tc) => ({
 			toolCallId: tc.toolCallId,
 			runId: tc.runId,
-			suspendPayload: toClientSuspendPayload(tc.suspendPayload),
+			suspendPayload: tc.suspendPayload,
 		}));
 
 	const openToolCallIds = new Set(openSuspensions.map((s) => s.toolCallId));

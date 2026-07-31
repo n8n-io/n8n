@@ -3,7 +3,6 @@ import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
-import { toClientSuspendPayload } from './client-suspend-payload';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,
@@ -84,11 +83,6 @@ function timelineToolCallToPart(event: ToolCallTimelineEvent): AgentPersistedMes
 		...(event.startTime > 0 ? { startTime: event.startTime } : {}),
 		...(event.endTime > 0 ? { endTime: event.endTime } : {}),
 		...(event.childTrace ? { childTrace: event.childTrace } : {}),
-		...(event.suspendPayload !== undefined
-			? { suspendPayload: toClientSuspendPayload(event.suspendPayload) }
-			: {}),
-		...(event.resumeData !== undefined ? { resumeData: event.resumeData } : {}),
-		...(event.canceled === true ? { canceled: true } : {}),
 	};
 
 	if (state === undefined) return base;

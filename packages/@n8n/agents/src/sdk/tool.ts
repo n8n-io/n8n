@@ -86,10 +86,6 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 		},
 		suspendSchema: combineInterruptSchemas(APPROVAL_SUSPEND_SCHEMA, tool.suspendSchema),
 		resumeSchema: combineInterruptSchemas(APPROVAL_RESUME_SCHEMA, tool.resumeSchema),
-		resolveResumeSchema(suspendPayload) {
-			if (isApprovalGatePayload(suspendPayload, tool.name)) return APPROVAL_RESUME_SCHEMA;
-			return tool.resolveResumeSchema?.(suspendPayload) ?? tool.resumeSchema;
-		},
 		async handler(this: BuiltTool | undefined, input, ctx) {
 			const currentTool = this ?? tool;
 			// This handler is always called with InterruptibleToolContext because
@@ -109,12 +105,15 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				}
 				if (needs) {
 					const displayName = getToolApprovalDisplayName(currentTool);
-					return await interruptCtx.suspend({
-						type: 'approval',
-						toolName: currentTool.name,
-						...(displayName ? { displayName } : {}),
-						args: input,
-					});
+					return await interruptCtx.suspend(
+						{
+							type: 'approval',
+							toolName: currentTool.name,
+							...(displayName ? { displayName } : {}),
+							args: input,
+						},
+						{ resumeSchema: APPROVAL_RESUME_SCHEMA },
+					);
 				}
 				if (hasConditionalApproval) {
 					emitToolExecutionStart(currentTool, input, interruptCtx);
@@ -134,8 +133,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				suspend: async (payload, options) =>
 					await interruptCtx.suspend(payload, {
 						...options,
-						resumeSchema:
-							options?.resumeSchema ?? tool.resolveResumeSchema?.(payload) ?? tool.resumeSchema,
+						resumeSchema: options?.resumeSchema ?? tool.resumeSchema,
 					}),
 				resumeData: undefined,
 				suspendPayload: undefined,

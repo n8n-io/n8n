@@ -112,12 +112,6 @@ function isDeclinedToolOutput(value: unknown): boolean {
 	return isRecord(value) && value.declined === true;
 }
 
-function parseApprovalResume(value: unknown): { approved: boolean } | undefined {
-	return isRecord(value) && typeof value.approved === 'boolean'
-		? { approved: value.approved }
-		: undefined;
-}
-
 /**
  * Given a tool call belonging to one of the interactive tools still rendered
  * in agents chat (`approval`, `chat_action`), reconstruct an
@@ -142,9 +136,7 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 			input: approvalInput,
 			...(resolved &&
 				tc.canceled !== true && {
-					resolvedValue: parseApprovalResume(tc.resumeData) ?? {
-						approved: !isDeclinedToolOutput(tc.output),
-					},
+					resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
 				}),
 		};
 	}
@@ -248,10 +240,6 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					...(part.startTime !== undefined && { startTime: part.startTime }),
 					...(part.endTime !== undefined && { endTime: part.endTime }),
 					...(part.childTrace && { childProgress: part.childTrace }),
-					...(part.suspendPayload !== undefined && {
-						suspendPayload: part.suspendPayload,
-					}),
-					...(part.resumeData !== undefined && { resumeData: part.resumeData }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
 				toolCalls.push(toolCall);

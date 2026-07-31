@@ -15,7 +15,6 @@ import {
 } from '../agent-chat-attachment.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
-import { toClientSuspendPayload } from '../utils/client-suspend-payload';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
 import type {
 	AgentChatIntegration,
@@ -490,12 +489,9 @@ export class AgentChatBridge {
 			return 'failed';
 		}
 
-		const clientSuspendPayload = toClientSuspendPayload(suspendPayload);
-		const cardPayload = buildSuspendCardPayload(clientSuspendPayload);
+		const cardPayload = buildSuspendCardPayload(suspendPayload);
 		if (!cardPayload) return 'skipped';
-		const callbackMetadata: CallbackMetadata | undefined = isApprovalSuspendPayload(
-			clientSuspendPayload,
-		)
+		const callbackMetadata: CallbackMetadata | undefined = isApprovalSuspendPayload(suspendPayload)
 			? { kind: 'approval', groupId: JSON.stringify([runId, toolCallId]) }
 			: undefined;
 

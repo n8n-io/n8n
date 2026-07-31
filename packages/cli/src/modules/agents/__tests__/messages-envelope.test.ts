@@ -33,7 +33,7 @@ describe('withOpenSuspensions', () => {
 		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
 	});
 
-	it('keeps delegated tool input while exposing a client-safe suspension payload separately', () => {
+	it('keeps delegated tool input while exposing its suspension payload separately', () => {
 		const delegateInput = {
 			subAgentId: 'inline',
 			taskName: 'research_api',
@@ -44,25 +44,15 @@ describe('withOpenSuspensions', () => {
 			type: 'approval',
 			toolName: 'http_request',
 			args: { url: 'https://example.com/data' },
-			delegateCheckpoint: {
-				runId: 'child-run-1',
-				toolCallId: 'child-tool-call-1',
-				taskPath: '/root/research_api_0',
-				subAgentId: 'inline',
-				childCount: 0,
-			},
 		};
 		const checkpoint = {
 			status: 'suspended',
 			pendingToolCalls: {
 				'parent-tool-call-1': {
 					toolCallId: 'parent-tool-call-1',
-					toolName: 'delegate_subagent',
-					input: delegateInput,
 					runId: 'parent-run-1',
 					suspended: true,
 					suspendPayload,
-					resumeSchema: {},
 				},
 			},
 			messageList: {
@@ -91,14 +81,9 @@ describe('withOpenSuspensions', () => {
 			{
 				toolCallId: 'parent-tool-call-1',
 				runId: 'parent-run-1',
-				suspendPayload: {
-					type: 'approval',
-					toolName: 'http_request',
-					args: { url: 'https://example.com/data' },
-				},
+				suspendPayload,
 			},
 		]);
-		expect(suspendPayload.delegateCheckpoint).toBeDefined();
 	});
 
 	it('does not append checkpoint-only display cards after persisted history', () => {

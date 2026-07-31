@@ -38,8 +38,6 @@ export interface ToolCall {
 	 * approval for a child tool.
 	 */
 	suspendPayload?: unknown;
-	/** Value submitted when this interaction was resolved, restored from history. */
-	resumeData?: unknown;
 	/** Live progress of a delegated child, streamed while the delegation runs
 	 *  and restored from history when a `childTrace` was persisted on the
 	 *  parent's execution timeline. */

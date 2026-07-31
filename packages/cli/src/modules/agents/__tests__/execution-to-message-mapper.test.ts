@@ -313,13 +313,6 @@ describe('execution-to-message-mapper', () => {
 						toolCallId: 'tc-action',
 						input: undefined,
 						output: { type: 'button', value: 'approve' },
-						suspendPayload: {
-							type: 'approval',
-							toolName: 'http_request',
-							args: { url: 'https://example.com' },
-							delegateCheckpoint: { runId: 'child-run-1', toolCallId: 'child-tool-1' },
-						},
-						resumeData: { approved: false },
 						startTime: 200,
 						endTime: 220,
 						success: true,
@@ -360,12 +353,6 @@ describe('execution-to-message-mapper', () => {
 						endTime: 220,
 						state: 'resolved',
 						output: { type: 'button', value: 'approve' },
-						suspendPayload: {
-							type: 'approval',
-							toolName: 'http_request',
-							args: { url: 'https://example.com' },
-						},
-						resumeData: { approved: false },
 					},
 				],
 				executionId: 'execution-suspended',
@@ -377,56 +364,5 @@ describe('execution-to-message-mapper', () => {
 				executionId: 'execution-resumed',
 			},
 		]);
-	});
-
-	it('preserves cancellation state for a resolved nested approval', () => {
-		const result = executionsToMessagesDto([
-			execution({
-				id: 'execution-cancelled',
-				userMessage: null,
-				timeline: [
-					{
-						type: 'tool-call',
-						kind: 'tool',
-						name: 'delegate_subagent',
-						toolCallId: 'tc-delegate',
-						input: { subAgentId: 'inline', taskName: 'research' },
-						output: 'Use another source',
-						suspendPayload: {
-							type: 'approval',
-							toolName: 'http_request',
-							args: { url: 'https://example.com' },
-							delegateCheckpoint: {
-								runId: 'child-run-1',
-								toolCallId: 'child-tool-1',
-							},
-						},
-						resumeData: { __n8nCancelTool: true, message: 'Use another source' },
-						startTime: 100,
-						endTime: 120,
-						success: true,
-						canceled: true,
-					},
-				],
-			}),
-		]);
-
-		expect(result[0]?.content).toContainEqual({
-			type: 'tool-call',
-			toolName: 'delegate_subagent',
-			toolCallId: 'tc-delegate',
-			input: { subAgentId: 'inline', taskName: 'research' },
-			output: 'Use another source',
-			state: 'resolved',
-			canceled: true,
-			suspendPayload: {
-				type: 'approval',
-				toolName: 'http_request',
-				args: { url: 'https://example.com' },
-			},
-			resumeData: { __n8nCancelTool: true, message: 'Use another source' },
-			startTime: 100,
-			endTime: 120,
-		});
 	});
 });

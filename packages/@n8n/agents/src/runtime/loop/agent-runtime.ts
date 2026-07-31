@@ -73,6 +73,7 @@ import {
 	ToolCallExecutor,
 	type PendingResume,
 	type ToolBatchContext,
+	type ToolCallBatchResult,
 } from '../tools/tool-call-executor';
 
 export interface AgentRuntimeConfig {
@@ -755,6 +756,55 @@ export class AgentRuntime {
 			abortSignal: abortScope.signal,
 			isAborted: () => abortScope.isAborted,
 		});
+		const finishToolBatch = async (
+			batch: ToolCallBatchResult,
+			toolMap: Map<string, BuiltTool>,
+			nextIteration: number,
+		) => {
+			const hasPending = Object.keys(batch.pending).length > 0;
+			let completed = false;
+			try {
+				this.assertNotAborted(abortScope);
+				await sink.emitToolBatch(batch);
+				this.assertNotAborted(abortScope);
+				if (!hasPending) {
+					completed = true;
+					return { suspended: false as const };
+				}
+
+				await this.persistSuspension(
+					batch.pending,
+					options,
+					list,
+					totalUsage,
+					maxIterations,
+					nextIteration,
+				);
+				this.assertNotAborted(abortScope);
+				const result = await sink.finishSuspended({
+					suspendRunId: this.runId,
+					list,
+					usage: totalUsage,
+					suspensions: batch.suspensions,
+				});
+				this.assertNotAborted(abortScope);
+				completed = true;
+				return { suspended: true as const, result };
+			} finally {
+				if (!completed && hasPending) {
+					await this.toolExecutor.cleanupPendingToolCalls(
+						batch.pending,
+						buildToolBatchContext(toolMap),
+						abortScope.isAborted ? 'Run aborted' : 'Parent run failed before suspension',
+					);
+					try {
+						await this.runState.cancel(this.runId);
+					} catch {
+						// Preserve the failure that interrupted suspension finalization.
+					}
+				}
+			}
+		};
 
 		if (pendingResume) {
 			const pendingLoopContext = this.context.buildToolLoopContext(
@@ -766,24 +816,8 @@ export class AgentRuntime {
 				...buildToolBatchContext(pendingLoopContext.toolMap),
 				pendingResume,
 			});
-			await sink.emitToolBatch(batch);
-
-			if (Object.keys(batch.pending).length > 0) {
-				const suspendRunId = await this.persistSuspension(
-					batch.pending,
-					options,
-					list,
-					totalUsage,
-					maxIterations,
-					iterationCount,
-				);
-				return await sink.finishSuspended({
-					suspendRunId,
-					list,
-					usage: totalUsage,
-					suspensions: batch.suspensions,
-				});
-			}
+			const finalized = await finishToolBatch(batch, pendingLoopContext.toolMap, iterationCount);
+			if (finalized.suspended) return finalized.result;
 		}
 
 		for (; iterationCount < maxIterations; iterationCount++) {
@@ -861,27 +895,8 @@ export class AgentRuntime {
 				...buildToolBatchContext(toolMap),
 				toolCalls: turn.toolCalls,
 			});
-
-			this.assertNotAborted(abortScope);
-
-			await sink.emitToolBatch(batch);
-
-			if (Object.keys(batch.pending).length > 0) {
-				const suspendRunId = await this.persistSuspension(
-					batch.pending,
-					options,
-					list,
-					totalUsage,
-					maxIterations,
-					iterationCount + 1,
-				);
-				return await sink.finishSuspended({
-					suspendRunId,
-					list,
-					usage: totalUsage,
-					suspensions: batch.suspensions,
-				});
-			}
+			const finalized = await finishToolBatch(batch, toolMap, iterationCount + 1);
+			if (finalized.suspended) return finalized.result;
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
 			this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(list.responseDelta()));
@@ -962,7 +977,7 @@ export class AgentRuntime {
 	/**
 	 * Persist a suspended run state and update the current state snapshot, and durably
 	 * save the turn-so-far to thread memory so a suspended turn that is later cancelled or
-	 * abandoned still leaves its assistant work behind. Returns the runtime's runId.
+	 * abandoned still leaves its assistant work behind.
 	 */
 	private async persistSuspension(
 		pendingToolCalls: Record<string, PendingToolCall>,
@@ -971,7 +986,7 @@ export class AgentRuntime {
 		totalUsage: TokenUsage | undefined,
 		maxIterations?: number,
 		iterationCount?: number,
-	): Promise<string> {
+	): Promise<void> {
 		// Persist loop controls only. providerOptions are intentionally excluded
 		// because they may contain sensitive data (API keys, auth headers).
 		const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
@@ -991,8 +1006,6 @@ export class AgentRuntime {
 		await this.runState.suspend(this.runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
 		await this.memory.persistTurnDelta(list, options);
-
-		return this.runId;
 	}
 
 	/**

@@ -1,4 +1,9 @@
-import type { Agent as RuntimeAgent, SerializableAgentState, StreamChunk } from '@n8n/agents';
+import type {
+	Agent as RuntimeAgent,
+	JSONValue,
+	SerializableAgentState,
+	StreamChunk,
+} from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
@@ -124,6 +129,37 @@ async function collect(generator: AsyncGenerator<StreamChunk>) {
 	const chunks: StreamChunk[] = [];
 	for await (const chunk of generator) chunks.push(chunk);
 	return chunks;
+}
+
+function makeCheckpoint(
+	pendingToolCalls: SerializableAgentState['pendingToolCalls'] = {},
+	persistence: SerializableAgentState['persistence'] = {
+		threadId: 'thread-1',
+		resourceId: 'draft-chat:user-1',
+	},
+): SerializableAgentState {
+	return {
+		status: 'suspended',
+		persistence,
+		messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+		pendingToolCalls,
+	};
+}
+
+function delegatedPending(
+	toolCallId: string,
+	continuation: JSONValue,
+): SerializableAgentState['pendingToolCalls'][string] {
+	return {
+		toolCallId,
+		toolName: 'delegate_subagent',
+		input: {},
+		suspended: true,
+		runId: 'run-1',
+		resumeSchema: { type: 'object' },
+		suspendPayload: { type: 'approval' },
+		continuation,
+	};
 }
 
 describe('AgentExecutionOrchestratorService', () => {
@@ -665,12 +701,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('atomically cancels only suspended checkpoints owned by the preview user', async () => {
 		const { service, checkpointStorage } = makeService();
-		const checkpoint: SerializableAgentState = {
-			status: 'suspended',
-			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-			pendingToolCalls: {},
-		};
+		const checkpoint = makeCheckpoint();
 		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
 		checkpointStorage.cancelSuspended.mockResolvedValue(true);
 
@@ -695,18 +726,16 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
 	});
 
-	it('does not directly cancel a delegated child checkpoint', async () => {
-		const { service, checkpointStorage } = makeService();
-		const checkpoint: SerializableAgentState = {
-			status: 'suspended',
-			persistence: {
+	it('does not directly cancel or resume a delegated child checkpoint', async () => {
+		const { service, checkpointStorage, runtimeCacheService } = makeService();
+		const checkpoint = makeCheckpoint(
+			{},
+			{
 				threadId: 'child-thread-1',
 				resourceId: 'draft-chat:user-1',
 				delegated: true,
 			},
-			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-			pendingToolCalls: {},
-		};
+		);
 		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
 
 		await expect(
@@ -718,23 +747,6 @@ describe('AgentExecutionOrchestratorService', () => {
 		).resolves.toBe(false);
 		expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
 		expect(checkpointStorage.delete).not.toHaveBeenCalled();
-	});
-
-	it('does not directly resume a delegated child checkpoint', async () => {
-		const { service, checkpointStorage, runtimeCacheService } = makeService();
-		checkpointStorage.getStatus.mockResolvedValue({
-			status: 'active',
-			checkpoint: {
-				status: 'suspended',
-				persistence: {
-					threadId: 'child-thread-1',
-					resourceId: 'draft-chat:user-1',
-					delegated: true,
-				},
-				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-				pendingToolCalls: {},
-			},
-		});
 
 		await expect(
 			collect(
@@ -752,72 +764,27 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('expires configured and inline child checkpoints when cancelling a suspended parent', async () => {
 		const { service, checkpointStorage } = makeService();
-		const checkpoint: SerializableAgentState = {
-			status: 'suspended',
-			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-			pendingToolCalls: {
-				configured: {
-					toolCallId: 'configured',
-					toolName: 'delegate_subagent',
-					input: {},
-					suspended: true,
-					runId: 'run-1',
-					resumeSchema: { type: 'object' },
-					suspendPayload: {
-						type: 'approval',
-						delegateCheckpoint: {
-							runId: 'configured-child-run',
-							toolCallId: 'configured-child-call',
-							taskPath: '/root/configured_0',
-							subAgentId: 'configured-agent',
-							childCount: 0,
-							threadId: 'configured-child-thread',
-							resumeContext: {
-								agentId: 'configured-agent',
-								versionId: 'configured-version',
-							},
-						},
-					},
+		const checkpoint = makeCheckpoint({
+			configured: delegatedPending('configured', {
+				runId: 'configured-child-run',
+				toolCallId: 'configured-child-call',
+				taskPath: '/root/configured_0',
+				subAgentId: 'configured-agent',
+				childCount: 0,
+				threadId: 'configured-child-thread',
+				resumeContext: {
+					agentId: 'configured-agent',
+					versionId: 'configured-version',
 				},
-				inline: {
-					toolCallId: 'inline',
-					toolName: 'delegate_subagent',
-					input: {},
-					suspended: true,
-					runId: 'run-1',
-					resumeSchema: { type: 'object' },
-					suspendPayload: {
-						type: 'approval',
-						delegateCheckpoint: {
-							runId: 'inline-child-run',
-							toolCallId: 'inline-child-call',
-							taskPath: '/root/inline_1',
-							subAgentId: 'inline',
-							childCount: 1,
-						},
-					},
-				},
-				invalid: {
-					toolCallId: 'invalid',
-					toolName: 'delegate_subagent',
-					input: {},
-					suspended: true,
-					runId: 'run-1',
-					resumeSchema: { type: 'object' },
-					suspendPayload: {
-						delegateCheckpoint: {
-							runId: 'invalid-child-run',
-							toolCallId: 'invalid-child-call',
-							taskPath: '/root/invalid_2',
-							subAgentId: 'configured-agent',
-							childCount: 2,
-							resumeContext: { agentId: 'configured-agent' },
-						},
-					},
-				},
-			},
-		};
+			}),
+			inline: delegatedPending('inline', {
+				runId: 'inline-child-run',
+				toolCallId: 'inline-child-call',
+				taskPath: '/root/inline_1',
+				subAgentId: 'inline',
+				childCount: 1,
+			}),
+		});
 		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
 		checkpointStorage.cancelSuspended.mockResolvedValue(true);
 
@@ -840,31 +807,15 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('retries child cleanup from retained parent checkpoint references', async () => {
 		const { service, checkpointStorage } = makeService();
-		const checkpoint: SerializableAgentState = {
-			status: 'suspended',
-			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-			pendingToolCalls: {
-				delegated: {
-					toolCallId: 'delegated',
-					toolName: 'delegate_subagent',
-					input: {},
-					suspended: true,
-					runId: 'run-1',
-					resumeSchema: { type: 'object' },
-					suspendPayload: {
-						type: 'approval',
-						delegateCheckpoint: {
-							runId: 'child-run-1',
-							toolCallId: 'child-tool-call-1',
-							taskPath: '/root/inline_0',
-							subAgentId: 'inline',
-							childCount: 0,
-						},
-					},
-				},
-			},
-		};
+		const checkpoint = makeCheckpoint({
+			delegated: delegatedPending('delegated', {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				taskPath: '/root/inline_0',
+				subAgentId: 'inline',
+				childCount: 0,
+			}),
+		});
 		checkpointStorage.getStatus
 			.mockResolvedValueOnce({ status: 'active', checkpoint })
 			.mockResolvedValueOnce({ status: 'expired', checkpoint });

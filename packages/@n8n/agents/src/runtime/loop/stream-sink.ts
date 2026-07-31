@@ -209,8 +209,6 @@ export class StreamSink implements RunOutputSink<void> {
 				toolName: r.toolName,
 				output: r.modelOutput,
 				...(r.toolEntry.canceled ? { canceled: true } : {}),
-				...(r.suspendPayload !== undefined ? { suspendPayload: r.suspendPayload } : {}),
-				...(r.resumeData !== undefined ? { resumeData: r.resumeData } : {}),
 			});
 			if (r.customMessage) {
 				await this.guard.write({ type: 'message', message: r.customMessage });

@@ -10,7 +10,6 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
 import type { ToolRegistry } from './tool-registry';
-import { toClientSuspendPayload } from './utils/client-suspend-payload';
 
 /** Cap on child trace characters persisted per delegation. Tighter than the
  *  live forwarding budget because this is written into every parent execution row. */
@@ -237,9 +236,6 @@ export type TimelineEvent =
 			 */
 			nodeParameters?: Record<string, unknown>;
 			childTrace?: PersistedChildTrace;
-			suspendPayload?: unknown;
-			resumeData?: unknown;
-			canceled?: boolean;
 	  }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
 
@@ -354,11 +350,6 @@ export class ExecutionRecorder {
 					chunk.toolName,
 					chunk.output,
 					chunk.isError === true,
-					{
-						suspendPayload: chunk.suspendPayload,
-						resumeData: chunk.resumeData,
-						canceled: chunk.canceled,
-					},
 				);
 				break;
 			case 'finish':
@@ -553,16 +544,10 @@ export class ExecutionRecorder {
 		name: string,
 		output: unknown,
 		isError: boolean,
-		interaction: { suspendPayload?: unknown; resumeData?: unknown; canceled?: boolean } = {},
 	): void {
 		const recordedOutput = sanitizeExecutionLogValue(
 			isError ? normaliseToolErrorOutput(output) : output,
 		);
-		const recordedSuspendPayload = sanitizeExecutionLogValue(
-			toClientSuspendPayload(interaction.suspendPayload),
-		);
-		const recordedResumeData = sanitizeExecutionLogValue(interaction.resumeData);
-		const canceled = interaction.canceled === true;
 
 		const pendingTimeline = [...this.timeline]
 			.reverse()
@@ -574,11 +559,6 @@ export class ExecutionRecorder {
 		if (pendingTimeline) {
 			pendingTimeline.output = recordedOutput;
 			pendingTimeline.success = !isError;
-			if (recordedSuspendPayload !== undefined) {
-				pendingTimeline.suspendPayload = recordedSuspendPayload;
-			}
-			if (recordedResumeData !== undefined) pendingTimeline.resumeData = recordedResumeData;
-			if (canceled) pendingTimeline.canceled = true;
 			// `tool-execution-end` (real per-tool finish) normally closed this entry
 			// already; only fall back to the batched result time if it never fired.
 			if (pendingTimeline.endTime === 0) {
@@ -606,9 +586,6 @@ export class ExecutionRecorder {
 			toolCallId,
 			input: undefined,
 			output: recordedOutput,
-			...(recordedSuspendPayload !== undefined ? { suspendPayload: recordedSuspendPayload } : {}),
-			...(recordedResumeData !== undefined ? { resumeData: recordedResumeData } : {}),
-			...(canceled ? { canceled: true } : {}),
 			startTime: now,
 			endTime: now,
 			success: !isError,

@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Repository } from '@n8n/typeorm';
+import { DataSource, Repository } from '@n8n/typeorm';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 
@@ -17,32 +17,11 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 		return await this.findOneBy({ runId, agentId });
 	}
 
-	async findActiveByAgentId(agentId: string, take?: number): Promise<AgentCheckpoint[]> {
+	async findActiveForAgent(agentId: string): Promise<AgentCheckpoint[]> {
 		return await this.find({
 			where: { agentId, expired: false },
 			order: { updatedAt: 'DESC' },
-			...(take !== undefined ? { take } : {}),
 		});
-	}
-
-	async findActiveLegacyUnscoped(): Promise<AgentCheckpoint[]> {
-		return await this.find({
-			where: { agentId: IsNull(), expired: false },
-			order: { updatedAt: 'DESC' },
-		});
-	}
-
-	async adoptLegacyCheckpoint(
-		runId: string,
-		agentId: string,
-		suspendedState: string,
-	): Promise<boolean> {
-		const result = await this.update(
-			{ runId, agentId: IsNull(), expired: false, state: suspendedState },
-			{ agentId },
-		);
-
-		return (result.affected ?? 0) > 0;
 	}
 
 	async claimForResume(
@@ -52,12 +31,7 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 		runningState: string,
 	): Promise<boolean> {
 		const result = await this.update(
-			{
-				runId,
-				agentId,
-				expired: false,
-				state: suspendedState,
-			},
+			{ runId, agentId, expired: false, state: suspendedState },
 			{ state: runningState },
 		);
 
@@ -66,12 +40,7 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 
 	async cancelSuspended(runId: string, agentId: string, suspendedState: string): Promise<boolean> {
 		const result = await this.update(
-			{
-				runId,
-				agentId,
-				expired: false,
-				state: suspendedState,
-			},
+			{ runId, agentId, expired: false, state: suspendedState },
 			{ expired: true },
 		);
 

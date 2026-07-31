@@ -93,7 +93,6 @@ describe('N8NCheckpointStorage', () => {
 			await expect(service.getStorage('agent-1').save('run-1', suspendedState)).rejects.toThrow(
 				'owned by a different agent',
 			);
-
 			expect(repository.save).not.toHaveBeenCalled();
 		},
 	);

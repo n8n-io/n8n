@@ -33,7 +33,7 @@ import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thin
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
-import { DELEGATE_SUB_AGENT_TOOL_NAME, isFailedDelegateOutput } from '../utils/delegate-tool';
+import { isFailedDelegateOutput } from '../utils/delegate-tool';
 
 export interface FatalAgentError {
 	message: string;
@@ -484,15 +484,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
-					// Preserve an optimistically recorded response: a delegated child can
-					// continue and return a normal parent result after its approval was denied.
 					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
 					const updated = rebuildInteractiveFromHistory(found.tc);
-					const preserveDelegateApproval =
-						found.tc.tool === DELEGATE_SUB_AGENT_TOOL_NAME &&
-						isApprovalSuspendInput(found.tc.suspendPayload) &&
-						currentInteractive?.resolvedAt !== undefined;
-					if (updated && !preserveDelegateApproval) {
+					if (updated && currentInteractive?.resolvedAt === undefined) {
 						upsertMessageInteractive(found.msg, updated);
 					}
 					markMessageSuccessIfSettled(found.msg);
@@ -513,7 +507,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					tc.state = TOOL_CALL_STATE.SUSPENDED;
 					tc.canceled = false;
 					tc.output = undefined;
-					tc.resumeData = undefined;
 					tc.endTime = undefined;
 					tc.displaySummary = undefined;
 					tc.runId = payload.runId;

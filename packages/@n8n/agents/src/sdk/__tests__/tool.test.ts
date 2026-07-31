@@ -2,7 +2,6 @@ import type { Mock } from 'vitest';
 import { z } from 'zod';
 
 import type { BuiltTelemetry, BuiltTool, InterruptibleToolContext, ToolContext } from '../../types';
-import { parseWithSchema } from '../../utils/parse';
 import { Tool, wrapToolForApproval } from '../tool';
 
 // ---------------------------------------------------------------------------
@@ -170,11 +169,10 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 
 		await wrapped.handler!({ id: '1' }, ctx);
 
-		expect(suspendMock).toHaveBeenCalledWith({
-			type: 'approval',
-			toolName: 'testTool',
-			args: { id: '1' },
-		});
+		expect(suspendMock).toHaveBeenCalledWith(
+			{ type: 'approval', toolName: 'testTool', args: { id: '1' } },
+			expect.objectContaining({ resumeSchema: expect.anything() }),
+		);
 	});
 
 	it('includes display metadata from the wrapped tool object when suspending', async () => {
@@ -187,12 +185,15 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 
 		await wrapped.handler!({ id: '1' }, ctx);
 
-		expect(suspendMock).toHaveBeenCalledWith({
-			type: 'approval',
-			toolName: 'testTool',
-			displayName: 'Display test tool',
-			args: { id: '1' },
-		});
+		expect(suspendMock).toHaveBeenCalledWith(
+			{
+				type: 'approval',
+				toolName: 'testTool',
+				displayName: 'Display test tool',
+				args: { id: '1' },
+			},
+			expect.objectContaining({ resumeSchema: expect.anything() }),
+		);
 	});
 
 	it('executes original handler when approved on resume', async () => {
@@ -213,79 +214,6 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		const result = await wrapped.handler!({ id: 'abc' }, ctx);
 
 		expect(result).toEqual({ declined: true, message: 'Tool "testTool" was not approved' });
-	});
-
-	it('composes its approval gate with an interruptible tool suspension', async () => {
-		const childSuspendPayload = {
-			type: 'approval',
-			toolName: 'childTool',
-			args: { id: 'child-call' },
-			delegateCheckpoint: {
-				runId: 'child-run-1',
-				toolCallId: 'child-tool-call-1',
-			},
-		};
-		const originalHandler = vi.fn(async (_input, ctx) => {
-			const interruptCtx = ctx as InterruptibleToolContext;
-			if (interruptCtx.resumeData === undefined) {
-				return await interruptCtx.suspend(childSuspendPayload);
-			}
-			return { childResumeData: interruptCtx.resumeData };
-		});
-		const dynamicChildResumeSchema = z.object({ childApproved: z.boolean() });
-		const wrapped = wrapToolForApproval(
-			makeBuiltTool({
-				suspendSchema: z.object({ delegateCheckpoint: z.object({}).passthrough() }).passthrough(),
-				resumeSchema: z.unknown(),
-				resolveResumeSchema: () => dynamicChildResumeSchema,
-				handler: originalHandler,
-			}),
-			{ requireApproval: true },
-		);
-		expect(wrapped.suspendSchema).toBeDefined();
-		if (!wrapped.suspendSchema) throw new Error('Expected a composed suspend schema');
-		const parsedChildSuspend = await parseWithSchema(wrapped.suspendSchema, childSuspendPayload);
-		expect(parsedChildSuspend).toEqual({ success: true, data: childSuspendPayload });
-		const outerSuspendPayload = {
-			type: 'approval',
-			toolName: 'testTool',
-			args: { id: 'parent-call' },
-		};
-		const outerResumeSchema = wrapped.resolveResumeSchema?.(outerSuspendPayload);
-		const childResumeSchema = wrapped.resolveResumeSchema?.(childSuspendPayload);
-		expect(outerResumeSchema).toBeDefined();
-		expect(childResumeSchema).toBeDefined();
-		if (!outerResumeSchema || !childResumeSchema) {
-			throw new Error('Expected payload-specific resume schemas');
-		}
-		expect(await parseWithSchema(outerResumeSchema, { approved: true })).toMatchObject({
-			success: true,
-		});
-		expect(await parseWithSchema(childResumeSchema, { childApproved: true })).toMatchObject({
-			success: true,
-		});
-
-		const outerApproval = makeCtx({ approved: true });
-		outerApproval.ctx.suspendPayload = outerSuspendPayload;
-		await wrapped.handler!({ id: 'parent-call' }, outerApproval.ctx);
-
-		expect(outerApproval.suspendMock).toHaveBeenCalledWith(
-			childSuspendPayload,
-			expect.objectContaining({ resumeSchema: childResumeSchema }),
-		);
-		expect(originalHandler).toHaveBeenLastCalledWith(
-			{ id: 'parent-call' },
-			expect.objectContaining({
-				resumeData: undefined,
-				suspendPayload: undefined,
-			}),
-		);
-
-		const childApproval = makeCtx({ childApproved: true });
-		childApproval.ctx.suspendPayload = childSuspendPayload;
-		await expect(wrapped.handler!({ id: 'parent-call' }, childApproval.ctx)).resolves.toEqual({
-			childResumeData: { childApproved: true },
-		});
 	});
 });
 
@@ -320,11 +248,10 @@ describe('wrapToolForApproval — needsApprovalFn', () => {
 
 		await wrapped.handler!({ id: 'secret' }, ctx);
 
-		expect(suspendMock).toHaveBeenCalledWith({
-			type: 'approval',
-			toolName: 'testTool',
-			args: { id: 'secret' },
-		});
+		expect(suspendMock).toHaveBeenCalledWith(
+			{ type: 'approval', toolName: 'testTool', args: { id: 'secret' } },
+			expect.objectContaining({ resumeSchema: expect.anything() }),
+		);
 	});
 
 	it('does not suspend when needsApprovalFn returns false for non-matching args', async () => {
@@ -386,11 +313,10 @@ describe('wrapToolForApproval — config: { requireApproval: true }', () => {
 
 		await wrapped.handler!({ id: 'any-id' }, ctx);
 
-		expect(suspendMock).toHaveBeenCalledWith({
-			type: 'approval',
-			toolName: 'testTool',
-			args: { id: 'any-id' },
-		});
+		expect(suspendMock).toHaveBeenCalledWith(
+			{ type: 'approval', toolName: 'testTool', args: { id: 'any-id' } },
+			expect.objectContaining({ resumeSchema: expect.anything() }),
+		);
 	});
 });
 

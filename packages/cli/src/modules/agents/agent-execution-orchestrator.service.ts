@@ -1,5 +1,6 @@
 import {
 	INLINE_SUB_AGENT_ID,
+	parseDelegateSubAgentContinuation,
 	type Agent as RuntimeAgent,
 	type SerializableAgentState,
 	type StreamChunk,
@@ -9,8 +10,8 @@ import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
@@ -173,30 +174,6 @@ function normalizeAbortedMessageRecord(
 	return { ...record, finishReason: 'cancelled', error: null };
 }
 
-const delegateCheckpointSchema = z
-	.object({
-		runId: z.string().min(1),
-		toolCallId: z.string().min(1),
-		taskPath: z.string().min(1),
-		subAgentId: z.string().min(1),
-		childCount: z.number().int().nonnegative(),
-		threadId: z.string().min(1).optional(),
-		resumeContext: z.unknown().optional(),
-		resumeSchema: z.unknown().optional(),
-	})
-	.strict();
-
-const configuredChildResumeContextSchema = z
-	.object({
-		agentId: z.string().min(1),
-		versionId: z.string().min(1),
-	})
-	.strict();
-
-const delegatedSuspendPayloadSchema = z
-	.object({ delegateCheckpoint: delegateCheckpointSchema })
-	.passthrough();
-
 function getDelegatedChildCheckpoints(
 	checkpoint: SerializableAgentState,
 	parentAgentId: string,
@@ -206,25 +183,23 @@ function getDelegatedChildCheckpoints(
 
 	for (const pendingToolCall of Object.values(checkpoint.pendingToolCalls)) {
 		if (!pendingToolCall.suspended) continue;
-		const parsedPayload = delegatedSuspendPayloadSchema.safeParse(pendingToolCall.suspendPayload);
-		if (!parsedPayload.success) continue;
+		const childCheckpoint = parseDelegateSubAgentContinuation(pendingToolCall.continuation);
+		if (!childCheckpoint) continue;
 
-		const childCheckpoint = parsedPayload.data.delegateCheckpoint;
 		let ownerAgentId: string;
 		if (childCheckpoint.subAgentId === INLINE_SUB_AGENT_ID) {
 			if (childCheckpoint.resumeContext !== undefined) continue;
 			ownerAgentId = parentAgentId;
 		} else {
-			const parsedResumeContext = configuredChildResumeContextSchema.safeParse(
-				childCheckpoint.resumeContext,
-			);
 			if (
-				!parsedResumeContext.success ||
-				parsedResumeContext.data.agentId !== childCheckpoint.subAgentId
+				!isRecord(childCheckpoint.resumeContext) ||
+				childCheckpoint.resumeContext.agentId !== childCheckpoint.subAgentId ||
+				typeof childCheckpoint.resumeContext.versionId !== 'string' ||
+				childCheckpoint.resumeContext.versionId.length === 0
 			) {
 				continue;
 			}
-			ownerAgentId = parsedResumeContext.data.agentId;
+			ownerAgentId = childCheckpoint.subAgentId;
 		}
 
 		const identity = `${ownerAgentId}\0${childCheckpoint.runId}`;

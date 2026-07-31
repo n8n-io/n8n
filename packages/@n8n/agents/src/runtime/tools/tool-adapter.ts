@@ -124,21 +124,13 @@ export async function executeTool(
 				const resolvedOptions: ToolSuspendOptions = {
 					continuation: executionContext.continuation,
 					...options,
-					resumeSchema:
-						options?.resumeSchema ??
-						builtTool.resolveResumeSchema?.(payload) ??
-						executionContext.resumeSchema,
+					resumeSchema: options?.resumeSchema ?? executionContext.resumeSchema,
 				};
-				executionContext.onSuspend?.(payload, resolvedOptions);
+				await executionContext.onSuspend?.(payload, resolvedOptions);
 				return await Promise.resolve({
 					[SUSPEND_BRAND]: true,
 					payload,
-					...(resolvedOptions.resumeSchema !== undefined
-						? { resumeSchema: resolvedOptions.resumeSchema }
-						: {}),
-					...(resolvedOptions.continuation !== undefined
-						? { continuation: resolvedOptions.continuation }
-						: {}),
+					...resolvedOptions,
 				} as never);
 			},
 			resumeData: isCancelled ? undefined : resumeData,

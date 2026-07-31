@@ -128,9 +128,6 @@ export type StreamChunk = ContentMetadata &
 				output: unknown;
 				isError?: boolean;
 				canceled?: boolean;
-				/** Original payload and submitted value for a resumed interaction. */
-				suspendPayload?: unknown;
-				resumeData?: unknown;
 		  }
 		| {
 				type: 'tool-call-suspended';

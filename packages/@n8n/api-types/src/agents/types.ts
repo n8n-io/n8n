@@ -220,9 +220,6 @@ export interface AgentPersistedMessageContentPart {
 	state?: string;
 	output?: unknown;
 	canceled?: boolean;
-	/** Resolved interaction metadata retained for history reconstruction. */
-	suspendPayload?: unknown;
-	resumeData?: unknown;
 	error?: string;
 	/** Epoch ms when this content part started. */
 	startTime?: number;

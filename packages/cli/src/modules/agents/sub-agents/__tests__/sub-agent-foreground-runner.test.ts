@@ -84,6 +84,16 @@ const spawnRequest: SubAgentSpawnRequest = {
 	taskPath: '/root/research_api_0',
 };
 
+const delegatedRequest = {
+	subAgentId: 'agent-1',
+	taskName: 'Research API',
+	goal: spawnRequest.goal,
+	context: spawnRequest.context,
+	expectedOutput: spawnRequest.expectedOutput,
+	taskPath: '/root/research_api_0' as const,
+	childCount: 0,
+};
+
 const defaultStreamChunks: StreamChunk[] = [
 	{ type: 'text-delta', id: 'text-1', delta: 'Child answer' },
 	{
@@ -291,7 +301,7 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
-	it('returns every child suspension with pinned resume context', async () => {
+	it('returns a child suspension with pinned resume context', async () => {
 		sourceResolver.resolveForRuntime.mockResolvedValue({
 			...runtimeSource,
 			source: { ...runtimeSource.source, versionId: 'version-7' },
@@ -310,14 +320,6 @@ describe('SubAgentForegroundRunner', () => {
 						type: 'object',
 						properties: { approved: { type: 'boolean' } },
 					},
-				},
-				{
-					type: 'tool-call-suspended',
-					runId: 'child-run-1',
-					toolCallId: 'tool-call-2',
-					toolName: 'confirm_action',
-					input: { action: 'notify' },
-					suspendPayload: { type: 'confirmation', action: 'notify' },
 				},
 				{ type: 'finish', finishReason: 'tool-calls' },
 			]),
@@ -346,13 +348,6 @@ describe('SubAgentForegroundRunner', () => {
 							properties: { approved: { type: 'boolean' } },
 						},
 					},
-					{
-						runId: 'child-run-1',
-						toolCallId: 'tool-call-2',
-						toolName: 'confirm_action',
-						input: { action: 'notify' },
-						suspendPayload: { type: 'confirmation', action: 'notify' },
-					},
 				],
 			},
 		});
@@ -367,10 +362,10 @@ describe('SubAgentForegroundRunner', () => {
 
 		const result = await runner.resumeForeground(
 			{
-				taskPath: '/root/research_api_0',
-				runId: 'child-run-1',
-				toolCallId: 'tool-call-1',
-				threadId: 'child-thread-1',
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				childThreadId: 'child-thread-1',
 				resumeData: { approved: true },
 				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
 				parentThreadId,
@@ -410,64 +405,17 @@ describe('SubAgentForegroundRunner', () => {
 
 	it('cancels the exact pinned child checkpoint without reconstructing the child', async () => {
 		await runner.cancelForeground({
-			taskPath: '/root/research_api_0',
-			runId: 'child-run-1',
+			...delegatedRequest,
+			childRunId: 'child-run-1',
+			childToolCallId: 'tool-call-1',
 			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+			reason: 'Parent run aborted',
 		});
 
 		expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', 'agent-1');
 		expect(sourceResolver.resolveForRuntime).not.toHaveBeenCalled();
 		expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
 		expect(childAgent.resume).not.toHaveBeenCalled();
-	});
-
-	it('keeps a resumed child suspended when it reaches another checkpoint', async () => {
-		sourceResolver.resolveForRuntime.mockResolvedValue({
-			...runtimeSource,
-			source: { ...runtimeSource.source, versionId: 'version-7' },
-		});
-		childAgent.resume.mockResolvedValue(
-			makeStreamResult([
-				{
-					type: 'tool-call-suspended',
-					runId: 'child-run-1',
-					toolCallId: 'tool-call-2',
-					toolName: 'confirm_action',
-					input: { action: 'notify' },
-					suspendPayload: { type: 'confirmation', action: 'notify' },
-				},
-				{ type: 'finish', finishReason: 'tool-calls' },
-			]),
-		);
-
-		const result = await runner.resumeForeground(
-			{
-				taskPath: '/root/research_api_0',
-				runId: 'child-run-1',
-				toolCallId: 'tool-call-1',
-				threadId: 'child-thread-1',
-				resumeData: { approved: true },
-				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
-			},
-			{ projectId, credentialProvider },
-		);
-
-		expect(result).toMatchObject({
-			status: 'suspended',
-			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
-			result: {
-				pendingSuspend: [
-					{
-						runId: 'child-run-1',
-						toolCallId: 'tool-call-2',
-						toolName: 'confirm_action',
-					},
-				],
-			},
-		});
-		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ userMessage: null, hitlStatus: 'suspended' }),
-		);
 	});
 
 	it('marks the run as failed when the child result contains an error', async () => {

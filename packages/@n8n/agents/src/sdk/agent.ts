@@ -95,6 +95,15 @@ const SDK_RESERVED_BUILTIN_TOOL_NAMES = new Set([
 	WRITE_TODOS_TOOL_NAME,
 ]);
 
+function configuredSubAgentNotFound(request: DelegateSubAgentRequest): DelegateSubAgentToolOutput {
+	return {
+		status: 'failed',
+		taskPath: request.taskPath,
+		answer: '',
+		error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
+	};
+}
+
 interface DeferredToolOptions {
 	search?: {
 		topK?: number;
@@ -1146,6 +1155,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			const inlineChildCanSuspend = [...tools, ...options.deferredTools].some(
 				(candidate) => !isDelegateSubAgentTool(candidate) && candidate.suspendSchema !== undefined,
 			);
+			const childCanSuspend = hostResumeRunner !== undefined || inlineChildCanSuspend;
 			const completedTool = createDelegateSubAgentTool({
 				...delegateOptions,
 				runSubAgent: async (request, helpersFromHandler) => {
@@ -1160,14 +1170,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					if (request.subAgentId === INLINE_SUB_AGENT_ID) {
 						return await runInlineSubAgent(request, helpersFromHandler.emitChunk);
 					}
-					return {
-						status: 'failed',
-						taskPath: request.taskPath,
-						answer: '',
-						error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
-					};
+					return configuredSubAgentNotFound(request);
 				},
-				...(hostResumeRunner !== undefined || inlineChildCanSuspend
+				...(childCanSuspend
 					? {
 							resumeSubAgent: async (
 								request: DelegateSubAgentResumeRequest,
@@ -1179,17 +1184,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 								if (hostResumeRunner !== undefined) {
 									return await hostResumeRunner(request, helpersFromHandler);
 								}
-								return {
-									status: 'failed' as const,
-									taskPath: request.taskPath,
-									answer: '',
-									error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
-								};
+								return configuredSubAgentNotFound(request);
 							},
-						}
-					: {}),
-				...(hostCancelRunner !== undefined || inlineChildCanSuspend
-					? {
 							cancelSubAgent: async (
 								request: DelegateSubAgentCancelRequest,
 								helpersFromHandler: DelegateSubAgentRunnerHelpers,

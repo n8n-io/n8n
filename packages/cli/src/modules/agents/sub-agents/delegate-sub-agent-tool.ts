@@ -108,27 +108,14 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				};
 			}
 
-			const result = await runner.resumeForeground(
-				{
-					taskPath: request.taskPath,
-					runId: request.childRunId,
-					toolCallId: request.childToolCallId,
-					threadId: request.childThreadId,
-					resumeData: request.resumeData,
-					resumeContext: request.resumeContext,
-					...(request.parentThreadId !== undefined
-						? { parentThreadId: request.parentThreadId }
-						: {}),
-				},
-				{
-					...runContext,
-					...(request.parentAbortSignal !== undefined
-						? { abortSignal: request.parentAbortSignal }
-						: {}),
-					...(request.parentTelemetry !== undefined ? { telemetry: request.parentTelemetry } : {}),
-					onChunk: helpers.emitChunk,
-				},
-			);
+			const result = await runner.resumeForeground(request, {
+				...runContext,
+				...(request.parentAbortSignal !== undefined
+					? { abortSignal: request.parentAbortSignal }
+					: {}),
+				...(request.parentTelemetry !== undefined ? { telemetry: request.parentTelemetry } : {}),
+				onChunk: helpers.emitChunk,
+			});
 
 			return formatSubAgentToolOutput(result);
 		},
@@ -141,11 +128,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			if (request.resumeContext === undefined) {
 				throw new Error('Configured sub-agent checkpoint metadata is missing or invalid.');
 			}
-			await runner.cancelForeground({
-				taskPath: request.taskPath,
-				runId: request.childRunId,
-				resumeContext: request.resumeContext,
-			});
+			await runner.cancelForeground(request);
 		},
 	});
 }
@@ -162,8 +145,15 @@ function selectSubAgentSource(options: {
 export function formatSubAgentToolOutput(
 	result: SubAgentForegroundResult,
 ): DelegateSubAgentToolOutput {
+	const output = generateResultToDelegateSubAgentOutput(
+		result.taskPath,
+		result.result,
+		result.threadId,
+	);
 	return {
-		...generateResultToDelegateSubAgentOutput(result.taskPath, result.result, result.threadId),
-		...(result.resumeContext !== undefined ? { resumeContext: result.resumeContext } : {}),
+		...output,
+		...(output.status === 'suspended' && result.resumeContext !== undefined
+			? { resumeContext: result.resumeContext }
+			: {}),
 	};
 }
