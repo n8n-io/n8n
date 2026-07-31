@@ -2100,7 +2100,10 @@ describe('JobProcessor', () => {
 				logger,
 				binaryDataService,
 				mock<BinaryDataConfig>({ mode }),
-				mock<ExecutionsConfig>({ webhookResponseRelaySizeMaxMiB }),
+				mock<ExecutionsConfig>({
+					webhookResponseRelaySizeMaxMiB,
+					webhookResponseRelayOffloadEnabled: true,
+				}),
 			);
 
 			return { relay, binaryDataService };
@@ -2228,6 +2231,21 @@ describe('JobProcessor', () => {
 		});
 
 		it('should not relay an MCP Service response, which main reads from stored data', async () => {
+			const { hooks, job } = await processJobAndCaptureHooks(1, {
+				isMcpExecution: true,
+				mcpSessionId: 'session-1',
+				mcpType: 'service',
+			});
+			const relayedBefore = (job.progress as Mock).mock.calls.length;
+
+			await hooks.runHook('sendResponse', [
+				{ body: Buffer.from('hello'), headers: {}, statusCode: 200 },
+			]);
+
+			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
+		});
+
+		it('should not store an MCP Service response over the size limit', async () => {
 			const { hooks, job, binaryDataService } = await processJobAndCaptureHooks(
 				1,
 				{ isMcpExecution: true, mcpSessionId: 'session-1', mcpType: 'service' },
@@ -2239,8 +2257,8 @@ describe('JobProcessor', () => {
 				{ body: { blob: 'x'.repeat(2 * 1024 * 1024) }, headers: {}, statusCode: 200 },
 			]);
 
-			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
 			expect(binaryDataService.store).not.toHaveBeenCalled();
+			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
 		});
 
 		it('should refuse to relay an oversized MCP payload with no body to offload', async () => {
