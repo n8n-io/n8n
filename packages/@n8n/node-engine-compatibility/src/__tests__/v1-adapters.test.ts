@@ -6,7 +6,13 @@ import { items, v1Workflow } from './fixtures';
 
 const converter = new V1WorkflowConverter();
 
-// Trigger -> A -o1-> B(i1), plus a Loop -> Body -> Loop (back) tail off B
+// The shared fixture graph, in the notation of the converter tests
+// (oN / iN mark output / input slots, (back) the loop-return edge):
+//
+// ┌───────┐    ┌─┐ o1    i1 ┌─┐    ┌────┐ o1    ┌────┐
+// │Trigger├───►│A├─────────►│B├───►│Loop├──────►│Body│
+// └───────┘    └─┘          └─┘    └─▲──┘       └──┬─┘
+//                                    └───(back)────┘
 const graph = converter.convert(
 	v1Workflow(
 		[
