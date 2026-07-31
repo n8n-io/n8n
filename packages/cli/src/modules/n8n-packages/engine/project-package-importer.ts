@@ -8,7 +8,6 @@ import type { CredentialBindingRequest } from '../entities/credential/credential
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
 import type { TagImportRequest } from '../entities/tag/tag.types';
-import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
@@ -22,9 +21,9 @@ import type {
 	ImportTagSummary,
 	PackageImportBindings,
 } from '../n8n-packages.types';
-import { mergeBindings, VariableConflictPolicy } from '../n8n-packages.types';
+import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
-import { placeByLayout } from './package-layout';
+import { needsBundledVariableValues, placeByLayout } from './package-layout';
 import {
 	ImportOrchestrator,
 	type ImportContentResult,
@@ -66,12 +65,12 @@ export class ProjectPackageImporter {
 
 		const projects = await this.packageParser.getProjects(reader);
 		const projectPlan = await this.projectImporter.plan(request.user, projects);
-		const bundledVariables =
-			(manifest.requirements?.variables?.length ?? 0) > 0 &&
-			(variableMissingModeUsesPackageValue(request.variableMissingMode) ||
-				request.variableConflictPolicy !== VariableConflictPolicy.KeepExisting)
-				? await this.packageParser.getVariables(reader)
-				: undefined;
+		const bundledVariables = needsBundledVariableValues(
+			request,
+			(manifest.requirements?.variables?.length ?? 0) > 0,
+		)
+			? await this.packageParser.getVariables(reader)
+			: undefined;
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
 		// so publish is always allowed and the project need not exist while its contents are planned.
 		const pendingCreateIds = new Set(
