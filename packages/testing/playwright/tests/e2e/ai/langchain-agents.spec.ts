@@ -34,11 +34,10 @@ async function addOpenAILanguageModelWithCredentials(
 
 async function executeChatAndWaitForResponse(n8n: n8nPage, message: string) {
 	await n8n.canvas.logsPanel.sendManualChatMessage(message);
-	// The first message registers the chat webhook and saves the workflow before the
-	// agent even starts, so this toast is slower than a plain execution's.
-	await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-		timeout: 15000,
-	});
+	// No execution-success toast is shown for a chat run started on an unsaved
+	// workflow, so the bot reply is the completion signal. The first message also
+	// has to register the chat webhook and save the workflow, hence the wide window.
+	await expect(n8n.canvas.getManualChatLatestBotMessage()).toBeVisible({ timeout: 15000 });
 }
 
 async function verifyChatMessages(n8n: n8nPage, expectedCount: number, inputMessage?: string) {

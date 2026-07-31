@@ -29,11 +29,10 @@ async function addOpenAILanguageModelWithCredentials(
 
 async function executeChatAndWaitForResponse(n8n: n8nPage, message: string) {
 	await n8n.canvas.logsPanel.sendManualChatMessage(message);
-	// Executing from the NDV pins the chain as the chat's partial-execution
-	// destination, so the run reports as a node execution, not a workflow one.
-	await n8n.notifications.waitForNotificationAndClose('Node executed successfully', {
-		timeout: 15000,
-	});
+	// No execution-success toast is shown for a chat run started on an unsaved
+	// workflow, so the bot reply is the completion signal. The first message also
+	// has to register the chat webhook and save the workflow, hence the wide window.
+	await expect(n8n.canvas.getManualChatLatestBotMessage()).toBeVisible({ timeout: 15000 });
 }
 
 test.use({ capability: 'proxy' });
