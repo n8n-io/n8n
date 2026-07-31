@@ -114,9 +114,16 @@ watch(
 	{ immediate: true },
 );
 
-const filteredModels = computed<AgentModelsByProvider>(() =>
-	getModelsForPicker(credentialsByProvider.value),
-);
+// Model lists are credential-scoped — n8n Connect serves an allowlist, a user's
+// own credential serves the provider's full catalog — so each difficulty has to
+// resolve its own list from the credential it actually uses.
+const modelsByDifficulty = computed(() => {
+	const entries = SUB_AGENT_TASK_DIFFICULTIES.map((difficulty) => [
+		difficulty,
+		getModelsForPicker(credentialsForDifficulty(difficulty)),
+	]);
+	return Object.fromEntries(entries) as Record<SubAgentTaskDifficulty, AgentModelsByProvider>;
+});
 
 function resolveMaxChildrenDisplay(value: number | undefined): number {
 	return value ?? SUB_AGENT_MAX_CHILDREN_DEFAULT;
@@ -174,7 +181,7 @@ function selectedModelForDifficulty(difficulty: SubAgentTaskDifficulty): AgentMo
 	const parsed = parseModelString(mapping.model);
 	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
 
-	const registryEntry = filteredModels.value[parsed.provider]?.models.find(
+	const registryEntry = modelsByDifficulty.value[difficulty][parsed.provider]?.models.find(
 		(model) => model.model === parsed.name,
 	);
 	if (registryEntry) return registryEntry;
@@ -377,7 +384,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 						<AgentModelSelector
 							:selected-model="selectedModelForDifficulty(difficulty)"
 							:credentials="credentialsForDifficulty(difficulty)"
-							:models-by-provider="filteredModels"
+							:models-by-provider="modelsByDifficulty[difficulty]"
 							:is-loading="isLoading"
 							:project-id="projectId"
 							:warn-missing-credentials="true"

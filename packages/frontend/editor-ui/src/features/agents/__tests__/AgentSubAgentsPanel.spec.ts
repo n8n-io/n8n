@@ -57,38 +57,48 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('../composables/useModelCatalog', () => ({
-	useModelCatalog: () => ({
-		ensureLoaded: ensureModelCatalogLoadedMock,
-		getModelsForPicker: () => ({
-			anthropic: {
-				models: [
-					{
-						provider: 'anthropic',
-						model: 'claude-sonnet-4-5',
-						name: 'Claude Sonnet 4.5',
-						description: null,
-						createdAt: null,
-						metadata: { functionCalling: true, available: true },
-					},
-				],
-			},
-			openai: {
-				models: [
-					{
-						provider: 'openai',
-						model: 'gpt-4o-mini',
-						name: 'GPT-4o mini',
-						description: null,
-						createdAt: null,
-						metadata: { functionCalling: true, available: true },
-					},
-				],
-			},
+vi.mock('../composables/useModelCatalog', async () => {
+	const { AI_GATEWAY_MANAGED_TAG: managedTag } = await import('@n8n/api-types');
+	const anthropicModel = (model: string, name: string) => ({
+		provider: 'anthropic',
+		model,
+		name,
+		description: null,
+		createdAt: null,
+		metadata: { functionCalling: true, available: true },
+	});
+
+	return {
+		useModelCatalog: () => ({
+			ensureLoaded: ensureModelCatalogLoadedMock,
+			getModelsForPicker: (credentials?: Record<string, string | null> | null) => ({
+				anthropic: {
+					models: [
+						anthropicModel('claude-sonnet-4-5', 'Claude Sonnet 4.5'),
+						// n8n Connect serves an allowlist; a user's own credential sees the
+						// provider's full catalog.
+						...(credentials?.anthropic === managedTag
+							? []
+							: [anthropicModel('claude-opus-5', 'Claude Opus 5')]),
+					],
+				},
+				openai: {
+					models: [
+						{
+							provider: 'openai',
+							model: 'gpt-4o-mini',
+							name: 'GPT-4o mini',
+							description: null,
+							createdAt: null,
+							metadata: { functionCalling: true, available: true },
+						},
+					],
+				},
+			}),
+			isLoading: ref(false),
 		}),
-		isLoading: ref(false),
-	}),
-}));
+	};
+});
 
 vi.mock('../composables/useAgentModelCredentials', () => ({
 	useAgentModelCredentials: () => ({
@@ -249,6 +259,30 @@ describe('AgentSubAgentsPanel', () => {
 		expect((lowSelector.props('credentials') as Record<string, string>).anthropic).toBe(
 			AI_GATEWAY_MANAGED_TAG,
 		);
+	});
+
+	it('offers each difficulty the models of the credential it uses', async () => {
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'anthropic/claude-sonnet-4-5', credential: AI_GATEWAY_MANAGED_TAG },
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+				},
+			},
+		} as AgentJsonConfig);
+		await flushPromises();
+
+		const anthropicModelIds = (difficulty: string) => {
+			const models = wrapper
+				.find(`[data-testid="agent-sub-agents-difficulty-row-${difficulty}"]`)
+				.findComponent({ name: 'AgentModelSelector' })
+				.props('modelsByProvider') as Record<string, { models: Array<{ model: string }> }>;
+			return models.anthropic.models.map((model) => model.model);
+		};
+
+		expect(anthropicModelIds('low')).not.toContain('claude-opus-5');
+		expect(anthropicModelIds('high')).toContain('claude-opus-5');
 	});
 
 	it('keeps a difficulty managed-tag selection out of the shared selection', async () => {
