@@ -137,7 +137,6 @@ watchEffect(async () => {
 				<N8nSegmentControl
 					v-model="selectedNode"
 					:options="nodes"
-					size="medium"
 					@update:model-value="onSelectedNodeChange"
 				>
 					<template #option="option">
