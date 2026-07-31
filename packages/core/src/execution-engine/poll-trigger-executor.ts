@@ -5,6 +5,7 @@ import type { INode, IPollFunctions, Workflow } from 'n8n-workflow';
 import { ErrorReporter } from '@/errors/error-reporter';
 import { SpanStatus, Tracing } from '@/observability';
 
+import { commitStagedCursor, runPollInStagingScope } from './poll-cursor-hooks';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
 /** Runs a poll trigger's `poll()` once. `testingTrigger` flags the initial activation poll. */
@@ -41,12 +42,6 @@ export class PollTriggerExecutor {
 		pollFunctions: IPollFunctions,
 		isCurrent: () => boolean,
 	): PollTriggerExecuteFn {
-		const runPoll = async <T>(poll: () => Promise<T>): Promise<T> =>
-			pollFunctions.__runPoll ? await pollFunctions.__runPoll(poll) : await poll();
-		const commitCursor = async () => {
-			if (pollFunctions.__commitCursor) await pollFunctions.__commitCursor();
-		};
-
 		return async (testingTrigger = false) => {
 			// Scheduled polls start their own root trace so they don't attach to the
 			// publication transaction whose async context the poller was created in.
@@ -90,7 +85,7 @@ export class PollTriggerExecutor {
 
 					// Poll and hand-off share one staging scope, so a cursor staged here can
 					// only be committed by this poll and never by a later tick.
-					await runPoll(async () => {
+					await runPollInStagingScope(pollFunctions, async () => {
 						try {
 							if (ownsIsolate) await workflow.expression.acquireIsolate();
 
@@ -124,7 +119,7 @@ export class PollTriggerExecutor {
 								// advance is committed on its own. The activation poll is left out
 								// because an activation poll that emits nothing persists nothing.
 								try {
-									await commitCursor();
+									await commitStagedCursor(pollFunctions);
 								} catch (error) {
 									// The poll itself succeeded, so a failed cursor write is logged rather
 									// than routed to the error workflow.
