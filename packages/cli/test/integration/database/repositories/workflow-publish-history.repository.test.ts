@@ -206,7 +206,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 		});
 	});
 
-	describe('getVersionPublicationState', () => {
+	describe('getVersionPublicationStates', () => {
 		const repository = () => Container.get(WorkflowPublishHistoryRepository);
 
 		/** Workflow-history createdAt drives the "later version" rule, so space the rows out. */
@@ -225,14 +225,17 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await repository().addRecord({ workflowId, versionId, event: 'deactivated', userId: null });
 		};
 
+		const stateOf = async (workflowId: string, versionId: string) => {
+			const states = await repository().getVersionPublicationStates(workflowId, [versionId]);
+			return states.get(versionId);
+		};
+
 		it('returns published when the version itself was activated', async () => {
 			const workflow = await createWorkflow();
 			const versionId = await addVersion(workflow);
 			await activate(workflow.id, versionId);
 
-			await expect(repository().getVersionPublicationState(workflow.id, versionId)).resolves.toBe(
-				'published',
-			);
+			await expect(stateOf(workflow.id, versionId)).resolves.toBe('published');
 		});
 
 		it('returns published even after a later deactivation', async () => {
@@ -241,18 +244,14 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await activate(workflow.id, versionId);
 			await deactivate(workflow.id, versionId);
 
-			await expect(repository().getVersionPublicationState(workflow.id, versionId)).resolves.toBe(
-				'published',
-			);
+			await expect(stateOf(workflow.id, versionId)).resolves.toBe('published');
 		});
 
 		it('returns not_published when nothing was ever activated', async () => {
 			const workflow = await createWorkflow();
 			const versionId = await addVersion(workflow);
 
-			await expect(repository().getVersionPublicationState(workflow.id, versionId)).resolves.toBe(
-				'not_published',
-			);
+			await expect(stateOf(workflow.id, versionId)).resolves.toBe('not_published');
 		});
 
 		it('returns superseded when a later-created version was activated', async () => {
@@ -261,9 +260,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			const laterVersionId = await addVersion(workflow);
 			await activate(workflow.id, laterVersionId);
 
-			await expect(repository().getVersionPublicationState(workflow.id, versionId)).resolves.toBe(
-				'superseded',
-			);
+			await expect(stateOf(workflow.id, versionId)).resolves.toBe('superseded');
 		});
 
 		it('returns superseded even after the later version was deactivated', async () => {
@@ -273,9 +270,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await activate(workflow.id, laterVersionId);
 			await deactivate(workflow.id, laterVersionId);
 
-			await expect(repository().getVersionPublicationState(workflow.id, versionId)).resolves.toBe(
-				'superseded',
-			);
+			await expect(stateOf(workflow.id, versionId)).resolves.toBe('superseded');
 		});
 
 		it('returns not_published when only an earlier-created version was activated', async () => {
@@ -284,9 +279,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			const versionId = await addVersion(workflow);
 			await activate(workflow.id, earlierVersionId);
 
-			await expect(repository().getVersionPublicationState(workflow.id, versionId)).resolves.toBe(
-				'not_published',
-			);
+			await expect(stateOf(workflow.id, versionId)).resolves.toBe('not_published');
 		});
 
 		it('ignores activations of another workflow', async () => {
@@ -296,17 +289,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			const otherVersionId = await addVersion(otherWorkflow);
 			await activate(otherWorkflow.id, otherVersionId);
 
-			await expect(repository().getVersionPublicationState(workflow.id, versionId)).resolves.toBe(
-				'not_published',
-			);
-		});
-
-		it('returns unknown without a pinned version', async () => {
-			const workflow = await createWorkflow();
-
-			await expect(repository().getVersionPublicationState(workflow.id, null)).resolves.toBe(
-				'unknown',
-			);
+			await expect(stateOf(workflow.id, versionId)).resolves.toBe('not_published');
 		});
 
 		it('returns unknown when the pinned history row was pruned', async () => {
@@ -314,9 +297,28 @@ describe('WorkflowPublishHistoryRepository', () => {
 			const versionId = await addVersion(workflow);
 			await Container.get(WorkflowHistoryRepository).delete({ versionId });
 
-			await expect(repository().getVersionPublicationState(workflow.id, versionId)).resolves.toBe(
-				'unknown',
-			);
+			await expect(stateOf(workflow.id, versionId)).resolves.toBe('unknown');
+		});
+
+		it('resolves each requested version independently in one call', async () => {
+			const workflow = await createWorkflow();
+			const publishedVersionId = await addVersion(workflow);
+			const supersededVersionId = await addVersion(workflow);
+			const activatedVersionId = await addVersion(workflow);
+			const prunedVersionId = await addVersion(workflow);
+			await activate(workflow.id, publishedVersionId);
+			await activate(workflow.id, activatedVersionId);
+			await Container.get(WorkflowHistoryRepository).delete({ versionId: prunedVersionId });
+
+			const states = await repository().getVersionPublicationStates(workflow.id, [
+				publishedVersionId,
+				supersededVersionId,
+				prunedVersionId,
+			]);
+
+			expect(states.get(publishedVersionId)).toBe('published');
+			expect(states.get(supersededVersionId)).toBe('superseded');
+			expect(states.get(prunedVersionId)).toBe('unknown');
 		});
 	});
 

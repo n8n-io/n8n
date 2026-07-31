@@ -41,24 +41,15 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 	}
 
 	/**
-	 * Whether a given version of a workflow ever reached production — used by the
+	 * Whether each given version of a workflow ever reached production — used by the
 	 * canvas review banner to decide if an approved version still needs publishing.
+	 * Answers many versions in a fixed number of queries, so listing reviews cannot
+	 * turn this into an N+1. Versions with no workflow-history row are reported as
+	 * `unknown` rather than omitted.
 	 *
 	 * "Later version" is workflow-history creation order, never UUID comparison. Only
 	 * `activated` records count, so a later deactivation cannot revive a stale banner.
 	 */
-	async getVersionPublicationState(
-		workflowId: string,
-		versionId: string | null,
-	): Promise<WorkflowReviewApprovedPublicationState> {
-		if (!versionId) {
-			return 'unknown';
-		}
-
-		const states = await this.getVersionPublicationStates(workflowId, [versionId]);
-		return states.get(versionId) ?? 'unknown';
-	}
-
 	async getVersionPublicationStates(
 		workflowId: string,
 		versionIds: string[],
@@ -111,7 +102,6 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			} else if (activatedVersionIdSet.has(versionId)) {
 				states.set(versionId, 'published');
 			} else if (newestActivated && newestActivated.createdAt > createdAt) {
-				// "Later version" is workflow-history creation order, never UUID comparison
 				states.set(versionId, 'superseded');
 			} else {
 				states.set(versionId, 'not_published');

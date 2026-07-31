@@ -529,6 +529,16 @@ describe('WorkflowReviewRequestService', () => {
 			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
 		});
 
+		it('reports unknown for an approved review whose pinned version was pruned', async () => {
+			mockLatestReview({ state: 'closed', decision: 'approved', workflowVersionId: null });
+
+			const { data } = await service.list(user, query);
+
+			// No version to reason about, so the state is settled without a lookup
+			expect(publishHistoryRepository.getVersionPublicationStates).not.toHaveBeenCalled();
+			expect(data[0]).toMatchObject({ approvedVersionPublicationState: 'unknown' });
+		});
+
 		it('derives neither field for a pending review', async () => {
 			mockLatestReview();
 
