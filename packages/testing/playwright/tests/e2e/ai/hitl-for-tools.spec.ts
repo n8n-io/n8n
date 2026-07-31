@@ -29,7 +29,8 @@ async function addOpenAILanguageModelWithCredentials(
 	await n8n.ndv.clickBackToCanvasButton();
 }
 
-async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 3000) {
+// Resuming the waiting execution re-runs the agent, so give the toast a wide window.
+async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 15000) {
 	await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
 		timeout,
 	});

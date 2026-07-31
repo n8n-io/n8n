@@ -27,15 +27,13 @@ async function addOpenAILanguageModelWithCredentials(
 	await n8n.ndv.clickBackToCanvasButton();
 }
 
-async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 3000) {
-	await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-		timeout,
-	});
-}
-
 async function executeChatAndWaitForResponse(n8n: n8nPage, message: string) {
 	await n8n.canvas.logsPanel.sendManualChatMessage(message);
-	await waitForWorkflowSuccess(n8n);
+	// Executing from the NDV pins the chain as the chat's partial-execution
+	// destination, so the run reports as a node execution, not a workflow one.
+	await n8n.notifications.waitForNotificationAndClose('Node executed successfully', {
+		timeout: 15000,
+	});
 }
 
 test.use({ capability: 'proxy' });
