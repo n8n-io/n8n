@@ -8,7 +8,6 @@ import type { CredentialBindingRequest } from '../entities/credential/credential
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
 import type { TagImportRequest } from '../entities/tag/tag.types';
-import { variableConflictPolicyUsesPackageValue } from '../entities/variable/variable-conflict-policy';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
@@ -23,7 +22,7 @@ import type {
 	ImportTagSummary,
 	PackageImportBindings,
 } from '../n8n-packages.types';
-import { mergeBindings } from '../n8n-packages.types';
+import { mergeBindings, VariableConflictPolicy } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
 import { placeByLayout } from './package-layout';
 import {
@@ -70,7 +69,7 @@ export class ProjectPackageImporter {
 		const bundledVariables =
 			(manifest.requirements?.variables?.length ?? 0) > 0 &&
 			(variableMissingModeUsesPackageValue(request.variableMissingMode) ||
-				variableConflictPolicyUsesPackageValue(request.variableConflictPolicy))
+				request.variableConflictPolicy !== VariableConflictPolicy.KeepExisting)
 				? await this.packageParser.getVariables(reader)
 				: undefined;
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,

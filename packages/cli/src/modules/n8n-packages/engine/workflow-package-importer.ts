@@ -13,12 +13,11 @@ import { ProjectService } from '@/services/project.service.ee';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
-import { variableConflictPolicyUsesPackageValue } from '../entities/variable/variable-conflict-policy';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
-import { VariableParentPolicy } from '../n8n-packages.types';
+import { VariableConflictPolicy, VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
@@ -96,7 +95,7 @@ export class WorkflowPackageImporter {
 		const bundledVariables =
 			(variableRequirements?.length ?? 0) > 0 &&
 			(variableMissingModeUsesPackageValue(request.variableMissingMode) ||
-				variableConflictPolicyUsesPackageValue(request.variableConflictPolicy))
+				request.variableConflictPolicy !== VariableConflictPolicy.KeepExisting)
 				? await this.packageParser.getVariables(reader)
 				: undefined;
 		const variableRequest: VariableImportRequest = {

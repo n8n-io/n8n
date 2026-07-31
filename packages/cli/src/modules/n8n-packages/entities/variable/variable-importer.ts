@@ -8,11 +8,6 @@ import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-re
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
-	variableConflictBlockingFailures,
-	variableConflictPolicyOverwrites,
-	variableConflictPolicyUsesPackageValue,
-} from './variable-conflict-policy';
-import {
 	variableBlockingFailures,
 	variableMissingModeCreates,
 	variableMissingModeUsesPackageValue,
@@ -33,6 +28,7 @@ import type {
 	VariableOverwrite,
 	VariableResolutionFailure,
 } from './variable.types';
+import { VariableConflictPolicy } from '../../n8n-packages.types';
 import type { ImportContext } from '../../n8n-packages.types';
 
 @Service()
@@ -61,8 +57,8 @@ export class VariableImporter {
 		const overwrites: VariableOverwrite[] = [];
 		const createsMissing = variableMissingModeCreates(request.missingMode);
 		const usesPackageValue = variableMissingModeUsesPackageValue(request.missingMode);
-		const comparesValues = variableConflictPolicyUsesPackageValue(request.conflictPolicy);
-		const overwritesConflicts = variableConflictPolicyOverwrites(request.conflictPolicy);
+		const comparesValues = request.conflictPolicy !== VariableConflictPolicy.KeepExisting;
+		const overwritesConflicts = request.conflictPolicy === VariableConflictPolicy.Overwrite;
 
 		for (const requirement of requirements) {
 			const picked = pickVariableForProject(
@@ -127,7 +123,7 @@ export class VariableImporter {
 	}
 
 	blockingConflicts(request: VariableImportRequest, plan: VariableImportPlan): VariableConflict[] {
-		return variableConflictBlockingFailures(request.conflictPolicy, plan);
+		return request.conflictPolicy === VariableConflictPolicy.Fail ? plan.conflicts : [];
 	}
 
 	/**
