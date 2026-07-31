@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -153,6 +154,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 						firstRunAt: NEXT_NINE,
 					},
 				],
+				ScheduledJobMisfirePolicy.Coalesce,
 			);
 		});
 
@@ -353,6 +355,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				SCHEDULE_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[],
+				ScheduledJobMisfirePolicy.Coalesce,
 			);
 		});
 

@@ -70,10 +70,6 @@ function focusOnInput() {
 	selectRef.value?.focusOnInput();
 }
 
-function removeOption(value: string) {
-	workflowOptions.value = workflowOptions.value.filter((option) => option.id !== value);
-}
-
 function onVisibleChange(visible: boolean) {
 	isDropdownVisible.value = visible;
 }
@@ -93,7 +89,6 @@ onMounted(async () => {
 
 defineExpose({
 	focusOnInput,
-	removeOption,
 });
 </script>
 

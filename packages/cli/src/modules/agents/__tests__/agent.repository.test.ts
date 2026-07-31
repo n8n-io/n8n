@@ -135,6 +135,7 @@ describe('AgentRepository', () => {
 				'agent.name',
 				'agent.projectId',
 				'agent.activeVersionId',
+				'agent.availableInMCP',
 				'agent.updatedAt',
 			]);
 			expect(mockQb.where).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
@@ -142,6 +143,15 @@ describe('AgentRepository', () => {
 			});
 			expect(mockQb.andWhere).not.toHaveBeenCalled();
 			expect(mockQb.take).not.toHaveBeenCalled();
+		});
+
+		it('omits the project filter when project access is global', async () => {
+			const mockQb = makeQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findSummariesByProjectIds(null);
+
+			expect(mockQb.where).not.toHaveBeenCalled();
 		});
 
 		it('pushes all filters and the limit into the query', async () => {
@@ -204,6 +214,27 @@ describe('AgentRepository', () => {
 			expect(result).toEqual({ count: 1, data: agents });
 		});
 
+		it('omits the project filter when project access is global', async () => {
+			const mockQb = {
+				leftJoinAndSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				skip: vi.fn().mockReturnThis(),
+				take: vi.fn().mockReturnThis(),
+				getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
+			};
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(null, {
+				skip: 0,
+				take: 25,
+			} as never);
+
+			expect(mockQb.where).not.toHaveBeenCalled();
+		});
+
 		it('applies the name search filter', async () => {
 			const mockQb = {
 				leftJoinAndSelect: vi.fn().mockReturnThis(),
@@ -225,6 +256,18 @@ describe('AgentRepository', () => {
 
 			expect(mockQb.andWhere).toHaveBeenCalledWith('LOWER(agent.name) LIKE LOWER(:query)', {
 				query: '%support%',
+			});
+		});
+	});
+
+	describe('findMcpAvailabilityCandidates', () => {
+		it('omits the where clause when all agents are requested', async () => {
+			const find = vi.spyOn(repository, 'find').mockResolvedValue([]);
+
+			await repository.findMcpAvailabilityCandidates({ all: true });
+
+			expect(find).toHaveBeenCalledWith({
+				select: ['id', 'projectId', 'availableInMCP'],
 			});
 		});
 	});
