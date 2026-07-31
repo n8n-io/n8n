@@ -64,7 +64,7 @@
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
-    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api": "catalog:",
     "@thednp/dommatrix": "^2.0.12",
     "ai": "catalog:",
     "csv-parse": "catalog:",

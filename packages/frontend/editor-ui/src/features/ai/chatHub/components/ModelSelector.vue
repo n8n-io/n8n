@@ -26,7 +26,7 @@ import {
 	fromStringToModel,
 	isLlmProviderModel,
 } from '@/features/ai/chatHub/chat.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';

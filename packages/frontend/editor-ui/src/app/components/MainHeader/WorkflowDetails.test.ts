@@ -64,7 +64,7 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
-	const showToast = vi.fn();
+	const showToast = vi.fn(() => ({ close: vi.fn() }));
 	return {
 		useToast: () => ({
 			showError,
@@ -600,6 +600,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
 			expect(toast.showToast).toHaveBeenCalledTimes(1);
+			const archiveToast = vi.mocked(toast.showToast).mock.results[0].value;
 			const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
 			expect(toastConfig.message).toContain('archive-toast-delete-permanently-link');
 			expect(toastConfig.onClick).toBeDefined();
@@ -611,6 +612,8 @@ describe('WorkflowDetails', () => {
 				expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
 			});
 			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
+			// Archive toast is dismissed immediately so its stale CTA doesn't linger.
+			expect(archiveToast.close).toHaveBeenCalledTimes(1);
 		});
 
 		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {

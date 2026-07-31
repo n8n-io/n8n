@@ -96,6 +96,7 @@ erDiagram
   varchar_36_ versionId
 }
 "agent_execution" {
+  TEXT attachments
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
@@ -109,7 +110,7 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
-  VARCHAR_2_ storedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
   INTEGER totalTokens

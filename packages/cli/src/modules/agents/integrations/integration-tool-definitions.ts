@@ -174,6 +174,19 @@ const sendChannelMessageActionInputSchema = z.object({
 		.strict(),
 });
 
+const editMessageActionInputSchema = z.object({
+	action: z.literal('edit_message'),
+	input: z
+		.object({
+			messageId: z
+				.string()
+				.min(1)
+				.describe('Message ID returned by a previous action or get_current_message_context.'),
+			message: messageSchema,
+		})
+		.strict(),
+});
+
 export const GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 	{
 		name: 'get_current_message_context',
@@ -246,6 +259,15 @@ export const GENERIC_ACTION_TOOL_DEFINITIONS = [
 	},
 ] satisfies IntegrationActionDefinition[];
 
+const EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS = [
+	{
+		name: 'edit_message',
+		inputSchema: editMessageActionInputSchema,
+		description:
+			"edit_message: input.messageId and input.message are required. Uses the latest message context to choose the conversation, so input.threadId isn't accepted.",
+	},
+] satisfies IntegrationActionDefinition[];
+
 export const DEFAULT_INTEGRATION_CONTEXT_TOOL_DEFINITIONS = GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS;
 
 export const DEFAULT_INTEGRATION_ACTION_TOOL_DEFINITIONS = GENERIC_ACTION_TOOL_DEFINITIONS;
@@ -257,6 +279,7 @@ const ALL_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 
 const ALL_ACTION_TOOL_DEFINITIONS = [
 	...GENERIC_ACTION_TOOL_DEFINITIONS,
+	...EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS,
 	...SLACK_ACTION_TOOL_DEFINITIONS,
 	...LINEAR_ACTION_TOOL_DEFINITIONS,
 ] satisfies IntegrationActionDefinition[];

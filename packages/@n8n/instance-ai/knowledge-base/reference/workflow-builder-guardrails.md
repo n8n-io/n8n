@@ -4,8 +4,10 @@ Use these guardrails for workflow builds with multiple external systems,
 multiple requested effects, digests or reports, non-trivial branching, or Code
 nodes. They are a runtime checklist, not extra user-facing output.
 
-Do not add sticky notes unless the user explicitly asks for them. Prefer chat
-explanations over canvas stickies.
+Code-node runtime limits (no network, forbidden imports, nested template
+literals) and unsolicited stickies are enforced by `workflow-sdk validate` —
+fix those findings before `build-workflow`. Prefer built-in nodes for simple
+split, map, filter, merge, and aggregate work.
 
 ## Preserve Source Data
 
@@ -116,22 +118,9 @@ node after a side-effect needs the original data, reference it by node name
 (`$('Compute Change').item.json.status`) or wire it in parallel from the
 data-producing node instead of chaining through the send.
 
-## Keep Code Nodes Parseable
+## Code Nodes
 
-Prefer built-in nodes for simple split, map, filter, merge, and aggregate work.
-When a Code node is necessary, use real n8n item APIs such as `$input.all()` and
-return explicit `json` objects.
-
-Code nodes run in a restricted runtime. Do not `require()` or `import`
-unavailable modules such as `luxon` or `openai`; use JavaScript `Date`, `Intl`,
-`$now`, `$today`, existing workflow data, or dedicated AI nodes.
-
-Code nodes have no network access. `fetch()`, `axios`, `XMLHttpRequest`, and
-`require` of http modules all fail at runtime, in JavaScript and Python alike.
-Make every HTTP/API call with the HTTP Request node and transform its output in
-the Code node, even when the user asks to fetch inside a Code node.
-
-Keep embedded Code node source parseable after saving. Avoid nested template
-literals, raw newlines inside quoted strings, and escape-heavy regex literals.
-Prefer arrays joined with a runtime separator such as
-`const LF = String.fromCharCode(10);`.
+When a Code node is necessary, use real n8n item APIs such as `$input.all()` /
+`$input.item` and return explicit `json` objects. Prefer arrays joined with a
+runtime separator (e.g. `const LF = String.fromCharCode(10);`) over escape-heavy
+multi-line string construction.
