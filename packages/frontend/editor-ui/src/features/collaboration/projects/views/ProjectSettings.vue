@@ -17,7 +17,7 @@ import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { ROLE } from '@n8n/api-types';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
