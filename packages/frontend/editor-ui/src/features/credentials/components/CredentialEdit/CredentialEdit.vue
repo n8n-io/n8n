@@ -1146,6 +1146,9 @@ async function oAuthCredentialAuthorize() {
 	// set of listeners alive; unmounting the modal aborts too (onBeforeUnmount).
 	oauthFlowAbortController.value?.abort();
 	const abortController = new AbortController();
+	// Close the popup on teardown/supersession so it isn't left orphaned.
+	// No-op when the provider's COOP policy severed the opener relationship.
+	abortController.signal.addEventListener('abort', () => oauthPopup.close(), { once: true });
 	oauthFlowAbortController.value = abortController;
 
 	const outcome = await waitForOAuthCallback({

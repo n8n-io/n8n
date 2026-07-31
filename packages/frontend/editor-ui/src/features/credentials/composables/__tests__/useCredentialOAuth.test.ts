@@ -978,6 +978,35 @@ describe('useCredentialOAuth', () => {
 			}
 		});
 
+		it('should keep the credential when cancelled after the callback already landed', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			// No callback message; cancel (e.g. NodeCredentials unmount) races the
+			// backend committing the token.
+			MockBroadcastChannel.silent = true;
+			credentialsStore.fetchAllCredentials.mockResolvedValue([]);
+			credentialsStore.getCredentialData
+				.mockResolvedValueOnce(undefined) // pre-flow snapshot: no token yet
+				.mockResolvedValue({
+					data: { oauthTokenData: '__n8n_BLANK_VALUE' },
+				} as unknown as ICredentialsResponse);
+
+			vi.useFakeTimers();
+			try {
+				const { createAndAuthorize, cancelAuthorize } = useCredentialOAuth();
+				const promise = createAndAuthorize('slackOAuth2Api');
+				await vi.advanceTimersByTimeAsync(1000);
+
+				cancelAuthorize();
+				await vi.advanceTimersByTimeAsync(100);
+
+				const credential = await promise;
+				expect(credential).toEqual(createdCredential);
+				expect(credentialsStore.deleteCredential).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('should track "User saved credentials" after OAuth completes, not before', async () => {
 			setupSuccessfulOAuthFlow();
 

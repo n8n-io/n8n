@@ -255,11 +255,17 @@ export function useCredentialOAuth() {
 				: undefined,
 		});
 
-		// The timeout can race the backend committing the token (authorization can
-		// legitimately take longer). Re-check before treating the flow as failed —
-		// a wrong failure deletes the credential in createAndAuthorize and would
-		// resurface "Credential not found" on the callback page.
-		if (outcome === 'timeout' && canVerifyConnected && (await isConnected(credential.id))) {
+		// Timeout and abort can race the backend committing the token: authorization
+		// can legitimately take longer than the timeout, and cancellation is not
+		// always explicit user intent (NodeCredentials also cancels on unmount).
+		// Re-check before treating the flow as failed — a wrong failure deletes the
+		// credential in createAndAuthorize and would resurface "Credential not
+		// found" on the callback page.
+		if (
+			(outcome === 'timeout' || outcome === 'aborted') &&
+			canVerifyConnected &&
+			(await isConnected(credential.id))
+		) {
 			outcome = 'success';
 		}
 
@@ -373,9 +379,18 @@ export function useCredentialOAuth() {
 		if (oauthAbortController.value) {
 			oauthAbortController.value.abort();
 		}
-		if (pendingCredentialId.value) {
-			void credentialsStore.deleteCredential({ id: pendingCredentialId.value });
-		}
+		const credentialId = pendingCredentialId.value;
+		if (!credentialId) return;
+		// Cancellation is not always explicit user intent — NodeCredentials also
+		// cancels on unmount — so keep the credential if the OAuth callback
+		// already landed and only delete when it really never connected.
+		void isConnected(credentialId).then((connected) => {
+			if (connected) {
+				void credentialsStore.fetchAllCredentials();
+			} else {
+				void credentialsStore.deleteCredential({ id: credentialId });
+			}
+		});
 	}
 
 	return {
