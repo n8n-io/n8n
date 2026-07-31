@@ -288,6 +288,10 @@ export function reshapeLangSmithRuns(
 						// it reaches lang-tracer category-less and defaults to a product
 						// failure.
 						attribution: 'verification_gap',
+						// …and unowned has to mean unscored too, or the row is visible as a
+						// gap while still counting against the builder. Same pairing as
+						// `sentinelOutcomeFromVerdicts` and `attributionFor`.
+						incomplete: true,
 					});
 					continue;
 				}
