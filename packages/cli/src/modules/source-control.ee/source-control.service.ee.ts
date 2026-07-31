@@ -579,12 +579,15 @@ export class SourceControlService {
 			statusResult.filter((item) => item.type === 'workflow').map((item) => [item.id, item]),
 		);
 
-		for (const { id, publishingError } of workflowImportResults) {
-			if (!publishingError) continue;
+		for (const { id, publishingError, publishingErrorDetails } of workflowImportResults) {
+			if (!publishingError && !publishingErrorDetails) continue;
 
 			const statusItem = statusByWorkflowId.get(id);
 			if (statusItem) {
 				statusItem.publishingError = publishingError;
+				if (publishingErrorDetails) {
+					statusItem.publishingErrorDetails = publishingErrorDetails;
+				}
 			}
 		}
 

@@ -8,8 +8,12 @@
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
-import type { IConnections, INode } from 'n8n-workflow';
-import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
+import type { IConnections, ICredentialsDisplayOptions, INode } from 'n8n-workflow';
+import {
+	getCredentialActivationParameters as getCredentialActivationParametersByDisplayOptions,
+	getParentNodes,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import {
@@ -126,6 +130,75 @@ export async function getValidCredentialTypes(
 	}
 
 	return types;
+}
+
+/**
+ * Adapter over the n8n-workflow helper of the same name for the loosely-typed
+ * descriptions the node service returns; see it for semantics.
+ */
+export function getCredentialActivationParameters(
+	displayOptions: Record<string, unknown> | undefined,
+): IDataObject {
+	return getCredentialActivationParametersByDisplayOptions(
+		displayOptions as ICredentialsDisplayOptions | undefined,
+	);
+}
+
+export type CredentialActivationState = 'active' | 'activatable' | 'unreachable';
+
+/**
+ * Whether a credential is the node's active slot (`active`), can become it by
+ * writing its activation parameters (`activatable`), or can't be reached from
+ * this node at all (`unreachable`, e.g. gated to another node version via
+ * `@version`).
+ */
+export function getCredentialActivationState(
+	node: NodeJSON,
+	credential: { displayOptions?: Record<string, unknown> },
+): CredentialActivationState {
+	if (!credential.displayOptions) return 'active';
+	const displayOptions = credential.displayOptions as DisplayOptions;
+	const nodeVersion = node.typeVersion ?? 1;
+	const parameters = (node.parameters as Record<string, unknown>) ?? {};
+	if (matchesDisplayOptions({ parameters, nodeVersion }, displayOptions)) return 'active';
+	const activated = {
+		...parameters,
+		...getCredentialActivationParameters(credential.displayOptions),
+	};
+	return matchesDisplayOptions({ parameters: activated, nodeVersion }, displayOptions)
+		? 'activatable'
+		: 'unreachable';
+}
+
+/**
+ * Fallback for a slot whose credential type n8n credits doesn't support: the
+ * first declared sibling type that is supported, unassigned, not backed by a
+ * stored user credential, and reachable by a parameter switch. The async/loosely-
+ * typed counterpart of the shared `resolveSupportedCredentialActivation`.
+ */
+export async function resolveSupportedSiblingCredentialType(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	unsupportedType: string,
+	isSupported: (credentialType: string) => Promise<boolean>,
+	hasStoredCredential: (credentialType: string) => boolean,
+): Promise<string | undefined> {
+	let nodeDesc: NodeDescription | undefined;
+	try {
+		nodeDesc = await context.nodeService.getDescription(node.type, node.typeVersion ?? 1);
+	} catch {
+		return undefined;
+	}
+	for (const credential of nodeDesc?.credentials ?? []) {
+		if (!credential.name || credential.name === unsupportedType) continue;
+		const assigned = (node.credentials as Record<string, unknown> | undefined)?.[credential.name];
+		if (assigned !== undefined && assigned !== null) continue;
+		if (hasStoredCredential(credential.name)) continue;
+		if (!(await isSupported(credential.name))) continue;
+		if (getCredentialActivationState(node, credential) === 'unreachable') continue;
+		return credential.name;
+	}
+	return undefined;
 }
 
 /**

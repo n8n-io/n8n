@@ -1,6 +1,7 @@
 import { Time } from '@n8n/constants';
 
 import type { ScheduledJob } from '../types';
+import { countMisfires, type MisfireCount } from './misfire';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
 import type {
@@ -9,9 +10,11 @@ import type {
 	PlannedJob,
 	RecordedOccurrence,
 	RunInTransaction,
+	SupersededOccurrences,
 } from './transaction';
 
 export type { MaterializerOptions } from './options';
+export type { MisfireCount } from './misfire';
 
 export interface MaterializerSummary {
 	/** How many due jobs this materialization claimed. */
@@ -26,6 +29,13 @@ export interface MaterializerSummary {
 	created: RecordedOccurrence[];
 	/** How many claimed jobs could not be planned and were deferred (see {@link OnJobPlanError}). */
 	deferredJobs: number;
+	/**
+	 * Due occurrences a misfire policy discarded rather than record, grouped by task
+	 * type and policy. Groups with nothing discarded are left out.
+	 */
+	misfires: MisfireCount[];
+	/** How many pending occurrences were retired because a catch-up run superseded them. */
+	retiredOccurrences: number;
 }
 
 /** Notified when a claimed job's schedule cannot be planned, before it is deferred. */
@@ -50,7 +60,8 @@ export interface MaterializerHooks {
  * 1) claim the jobs whose next run is due
  * 2) turn each into its upcoming occurrences (pure: {@link planOccurrences})
  * 3) record them all in one batch
- * 4) advance every job's clock in one batch
+ * 4) retire any pending occurrences a catch-up run superseded
+ * 5) advance every job's clock in one batch
  *
  * All in a single transaction, judged against database time. The claim and the
  * per-batch advance are one query each; the insert is chunked by the repository
@@ -64,10 +75,10 @@ export interface MaterializerHooks {
  * for all jobs. Deferring rather than dropping means a transient cause (a fixed
  * instance timezone, updated tzdata) heals on a later pass with no operator action.
  *
- * Materialization only produces candidates. Every due occurrence is recorded, including
- * a backlog accumulated during downtime (drained `maxPerJob` per pass, at their
- * original past instants); whether a stale candidate still runs or is marked missed
- * is the dispatcher's policy, not the materializer's.
+ * A backlog accumulated during downtime is drained `maxPerJob` per pass, at the
+ * occurrences' original past instants, minus whatever `planOccurrences` discards. The
+ * discarding commits with the job's clock advance, so no two instances disagree about
+ * what the backlog produced.
  *
  * Recording up to `windowSeconds` ahead means a frequent schedule doesn't need a
  * materialization per fire. The flip side: occurrences already materialized are not
@@ -95,15 +106,24 @@ export async function materialize(
 		const claimed = await tx.claimDueJobs(options.batchSize, lookaheadMs);
 		signal?.throwIfAborted();
 		if (claimed === undefined) {
-			return { claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 };
+			return {
+				claimedJobs: 0,
+				occurrences: 0,
+				created: [],
+				deferredJobs: 0,
+				misfires: [],
+				retiredOccurrences: 0,
+			};
 		}
 		const { occurrencesPlanned, numberOfJobsDeferred } = planOrDeferJobs(
 			claimed,
 			options,
 			hooks.onPlanError,
 		);
-		const rows = toNewOccurrences(occurrencesPlanned);
+		const rows = toNewOccurrences(occurrencesPlanned, claimed.now);
 		const { recorded, created } = await tx.recordOccurrences(rows);
+		signal?.throwIfAborted();
+		const retiredOccurrences = await tx.retireSuperseded(toSuperseded(occurrencesPlanned));
 		signal?.throwIfAborted();
 		if (recorded < rows.length) {
 			try {
@@ -119,20 +139,40 @@ export async function materialize(
 			occurrences: recorded,
 			created,
 			deferredJobs: numberOfJobsDeferred,
+			misfires: countMisfires(occurrencesPlanned),
+			retiredOccurrences,
 		};
 	});
 }
 
-function toNewOccurrences(planned: PlannedJob[]): NewOccurrence[] {
+export function totalDiscarded(misfires: MisfireCount[]): number {
+	return misfires.reduce((total, { discarded }) => total + discarded, 0);
+}
+
+/** Flattens every planned occurrence into the row the storage layer inserts. */
+function toNewOccurrences(planned: PlannedJob[], now: Date): NewOccurrence[] {
 	return planned.flatMap(({ job, plan }) =>
-		plan.occurrences.map((when) => ({
-			jobId: job.id,
-			taskType: job.taskType,
-			payload: job.payload,
-			scheduledFor: when,
-			runAt: when,
-			maxAttempts: job.maxAttempts,
-		})),
+		plan.occurrences.map((when) => {
+			const runAt = when.getTime() === plan.catchUpAt?.getTime() ? now : when;
+			// When the row actually becomes claimable, which is never before `now`.
+			const visibleAt = Math.max(runAt.getTime(), now.getTime());
+			return {
+				jobId: job.id,
+				taskType: job.taskType,
+				payload: job.payload,
+				scheduledFor: when,
+				runAt,
+				maxAttempts: job.maxAttempts,
+				missedAfter: new Date(visibleAt + job.misfireGraceSeconds * Time.seconds.toMilliseconds),
+			};
+		}),
+	);
+}
+
+/** The jobs whose plan recorded a catch-up run, paired with that instant. */
+function toSuperseded(planned: PlannedJob[]): SupersededOccurrences[] {
+	return planned.flatMap(({ job, plan }) =>
+		plan.catchUpAt === null ? [] : [{ jobId: job.id, before: plan.catchUpAt }],
 	);
 }
 
@@ -184,7 +224,13 @@ function planOrDeferJob(
 		return {
 			plannedJob: {
 				job,
-				plan: { occurrences: [], nextRunAt: retryAt, lastFiredAt: job.lastFiredAt },
+				plan: {
+					occurrences: [],
+					skippedOccurrences: 0,
+					catchUpAt: null,
+					nextRunAt: retryAt,
+					lastFiredAt: job.lastFiredAt,
+				},
 			},
 			deferred: true,
 		};

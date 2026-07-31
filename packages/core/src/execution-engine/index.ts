@@ -86,6 +86,8 @@ declare module 'n8n-workflow' {
 export * from './active-workflow-triggers';
 export {
 	synthesizeBinaryFixture,
+	evalCanvasPng,
+	buildPdfWithText,
 	type FixtureSizeHint,
 	type SynthesizeBinaryFixtureOptions,
 } from './eval-mock-fixtures';

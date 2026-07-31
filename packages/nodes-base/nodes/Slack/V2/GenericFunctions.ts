@@ -62,6 +62,13 @@ export function toMultiOptionsCsv(value: unknown): string {
 	return '';
 }
 
+// Display label for a Slack user in pickers. Real names are friendlier but aren't
+// unique in Slack, so the handle is appended to keep same-named users distinguishable.
+// `real_name` is optional, so bots and unconfigured accounts show the handle alone.
+export function formatUserLabel(user: { name: string; real_name?: string }): string {
+	return user.real_name ? `${user.real_name} (@${user.name})` : user.name;
+}
+
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,

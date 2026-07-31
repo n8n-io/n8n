@@ -226,12 +226,35 @@ echo(chalk.yellow('INFO: Stripping unused librdkafka source tree...'));
 await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/@confluentinc/kafka-javascript/deps" -exec rm -rf {} + 2>/dev/null || true`;
 echo(chalk.green('✅ librdkafka source tree stripped'));
 
-// Strip non-runtime files (Node never loads these) to cut the image's file count,
-// which dominates layer extraction time on constrained hosts. .js.map is kept —
+// Strip TypeScript declaration artifacts to cut the image's file count, which
+// dominates layer extraction time on constrained hosts. Only these two explicit
+// patterns are safe to remove by extension: several features read other
+// "source-looking" files off disk at request time (dist/node-definitions/**/*.ts
+// for AI node lookups, instance-ai skills/knowledge-base *.md), so broader globs
+// like '*.ts' or '*.md' must not come back here. .js.map is also kept —
 // source-map-support needs it for production stack traces.
-echo(chalk.yellow('INFO: Stripping non-runtime files (.ts/.d.ts/.md) from production closure...'));
-await $`find ${config.compiledAppDir} \\( -name '*.ts' -o -name '*.d.ts.map' -o -name '*.md' -o -name '*.test.js' -o -name '*.spec.js' \\) -type f -delete 2>/dev/null || true`;
-echo(chalk.green('✅ Non-runtime files stripped'));
+echo(chalk.yellow('INFO: Stripping TypeScript declaration files from production closure...'));
+await $`find ${config.compiledAppDir} -type f \\( -name '*.d.ts' -o -name '*.d.ts.map' \\) -delete 2>/dev/null || true`;
+echo(chalk.green('✅ Declaration files stripped'));
+
+// A build that loses these runtime-data trees (a strip regression, a package.json
+// `files` change, a pnpm deploy change) still boots, so the damage only surfaces
+// on the first AI request. Fail the build here instead.
+// `.nothrow()` because zx runs with `pipefail`: one unreadable path would
+// otherwise turn a healthy build into an unhandled rejection.
+const runtimeAssetGlobs = [
+	'*/@n8n/instance-ai/skills/*',
+	'*/@n8n/instance-ai/knowledge-base/*',
+	'*/dist/node-definitions/*',
+];
+for (const glob of runtimeAssetGlobs) {
+	const found = await $`find ${config.compiledAppDir} -type f -path ${glob}`.nothrow();
+	if (found.stdout.split('\n').filter(Boolean).length === 0) {
+		echo(chalk.red(`ERROR: no files left under ${glob} — runtime assets were stripped`));
+		process.exit(1);
+	}
+}
+echo(chalk.green('✅ Runtime assets intact'));
 
 await fs.ensureDir(config.compiledTaskRunnerDir);
 

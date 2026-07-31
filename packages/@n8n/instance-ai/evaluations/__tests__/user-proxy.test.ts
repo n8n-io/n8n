@@ -160,6 +160,25 @@ function domainAccessEvent(requestId: string): CapturedEvent {
 	};
 }
 
+function webSearchEvent(requestId: string): CapturedEvent {
+	return {
+		timestamp: 100,
+		type: 'confirmation-request',
+		data: {
+			type: 'confirmation-request',
+			payload: {
+				requestId,
+				toolCallId: 'tc-y',
+				toolName: 'research',
+				args: {},
+				severity: 'info',
+				message: 'n8n AI wants to search the web for: stripe webhook signing',
+				webSearch: { query: 'stripe webhook signing' },
+			},
+		},
+	};
+}
+
 function resourceDecisionEvent(requestId: string, options: string[]): CapturedEvent {
 	return {
 		timestamp: 100,
@@ -523,6 +542,57 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		if (response.kind === 'domainAccessApprove') {
 			expect(response.domainAccessAction).toBe('allow_all');
 		}
+		expect(agent.callCount).toBe(0);
+	});
+
+	it('handles web-search events deterministically with allow_all', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'go' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(webSearchEvent('req-search'));
+		expect(response.kind).toBe('domainAccessApprove');
+		if (response.kind === 'domainAccessApprove') {
+			expect(response.domainAccessAction).toBe('allow_all');
+		}
+		expect(agent.callCount).toBe(0);
+	});
+
+	it('defers an access gate to the LLM while a stage direction is pending, so a case can deny', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'respond_to_domain_access', response: 'deny' });
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'go' },
+				{
+					role: 'user',
+					text: '[Refuse the web-search request — the user does not want it searching.]',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(webSearchEvent('req-deny'));
+
+		expect(agent.callCount).toBe(1);
+		expect(response.kind).toBe('domainAccessDeny');
+	});
+
+	it('still grants an access gate deterministically when the pending script has no stage direction', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'go' },
+				{ role: 'user', text: 'also add a retry' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(webSearchEvent('req-allow'));
+
+		expect(response.kind).toBe('domainAccessApprove');
 		expect(agent.callCount).toBe(0);
 	});
 
