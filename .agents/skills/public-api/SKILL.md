@@ -76,13 +76,18 @@ Open these — they are the source of truth, not this skill:
   cursor) or `workflows.public.controller.ts` (`@Param` + `@ProjectScope`), and
   `index.ts` for the barrel.
 - Decorators in `packages/@n8n/decorators/src/controller/`:
-  `public-api-controller.ts`, `api-key-scope.ts`, `api-response.ts`, `route.ts`,
-  `scoped.ts`, `args.ts`, `licensed.ts`.
+  `public-api-controller.ts`, `api-key-scope.ts`, `api-response.ts`,
+  `api-error-response.ts`, `api-summary.ts`, `api-description.ts`, `api-tags.ts`,
+  `route.ts`, `scoped.ts`, `args.ts`, `licensed.ts`.
+- The OpenAPI generator (reads the decorators above, no hand-written YAML
+  needed for a controller route): `v1/openapi-gen/generate.ts`,
+  `v1/openapi-gen/decorator-routes.ts`.
 - Pagination helpers: `v1/shared/services/pagination.service.ts`
   (`decodeCursor`, `encodeNextCursor`).
 - DTOs: `packages/@n8n/api-types/src/dto/`.
 - Gating tests: `v1/__tests__/public-api-controllers.test.ts`,
-  `v1/__tests__/scope-parity.test.ts`.
+  `v1/__tests__/scope-parity.test.ts`,
+  `v1/openapi-gen/__tests__/generated-spec-drift.test.ts`.
 - The internal controller for this resource and its neighboring functional tests.
 
 ## Declaring a controller
@@ -98,9 +103,11 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
 | `@Get/@Post/@Put/@Patch/@Delete('/path')` | Route method. |
 | `@ApiKeyScope('res:action')` | API-key grant check. |
 | `@ProjectScope/@GlobalScope('res:action')` | User RBAC check. |
-| `@ApiResponse(Dto)` | Output DTO; registry `.parse()`s + strips the return value. |
+| `@ApiResponse(status)` / `@ApiResponse(status, Dto)` | Success status + (optional) output DTO; registry `.parse()`s + strips the return value. Exactly one per route — a second `@ApiResponse` throws. `204` can't carry a DTO — throws. |
+| `@ApiErrorResponse(status)` | Declares an additional documented non-2xx status (e.g. `404`, `409`). Stack multiple for more than one. `400`/`401`/`403` are added automatically (body/query present, always, and `@ApiKeyScope` present, respectively) — don't declare those yourself. |
+| `@ApiSummary(text)` / `@ApiDescription(text)` / `@ApiTags([...])` | OpenAPI summary/description/tags. `@ApiTags` sorts alphabetically regardless of the order you pass. All optional but expected on every real route. |
 | `@Query` / `@Body` / `@Param('name')` | Bind + validate via a `Z.class` DTO / path param. |
-| `@Licensed('feat')` | Gate an EE-only endpoint. |
+| `@Licensed('feat')` | **Not yet enforced for `@PublicApiController` routes** — `PublicApiControllerRegistry` doesn't read `licenseFeature` (only the internal `@RestController` registry does). If the endpoint gates an EE feature, check the license manually in the handler (`Container.get(License).isLicensed(LICENSE_FEATURES.X)`, throwing `ForbiddenError` on failure) instead of relying on this decorator alone. |
 
 ## Authorization (easy to get wrong)
 
@@ -139,8 +146,16 @@ existing endpoint's pagination as-is. Detail:
    `v1/controllers/index.ts`.
 2. Public DTO in `@n8n/api-types` + export from the barrel (`src/dto/`).
 3. `@ApiKeyScope` value exists in the permissions registry.
-4. OpenAPI path with `x-required-scope` matching `@ApiKeyScope`; do **not** set
-   `x-eov-operation-*` for controller routes; keep top-level `tags:` sorted A→Z.
+4. Don't hand-write the OpenAPI path or `x-required-scope` for a controller
+   route — the generator (`v1/openapi-gen/generate.ts`) builds it from your
+   decorators (`@ApiSummary`/`@ApiDescription`/`@ApiTags`/`@ApiKeyScope`/
+   `@ApiResponse`/`@ApiErrorResponse`). Run the full `pnpm build` and commit
+   the regenerated `handlers/<feature>/spec/paths/*.generated.yml` fragment(s)
+   and `openapi.decorator-routes.generated.yml` —
+   `generated-spec-drift.test.ts` fails CI if they're stale. `pnpm run
+   build:data` alone is **not** enough after touching a controller: it runs
+   the generator against the already-compiled `dist/`, so a new/changed
+   controller silently doesn't show up unless `tsc` ran first.
 5. Add the route to `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
 6. Tests.
 

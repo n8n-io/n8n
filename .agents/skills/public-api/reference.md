@@ -102,11 +102,29 @@ not templates.
 - Preserve the public contract: path, method, scopes, status codes, response
   shape, and pagination.
 - Move HTTP concerns into the controller and business orchestration into the
-  shared service; keep the controller a thin HTTP boundary.
+  shared service; keep the controller a thin HTTP boundary. If the legacy
+  handler was itself already just a thin wrapper around an internal
+  `@RestController` (calling its methods directly, e.g.
+  `Container.get(SomeController).createThing(req, res, payload)`), the new
+  public controller can call that same internal controller directly — no need
+  to duplicate its validation/business logic.
 - A route must be served by either the EOV handler or a controller, not both —
-  `scope-parity.test.ts` rejects a duplicated route. Remove the legacy wiring
-  (its `x-eov-operation-*` entry and handler middleware) only after the new
-  controller is registered and the spec + tests are updated.
+  the build's `mergeDecoratorDocument` (`v1/openapi-gen/generate.ts`) throws on
+  a path+method declared by both sides. Remove the legacy wiring (its path's
+  `$ref` entry in `openapi.yml`, the `x-eov-operation-*` handler, and its
+  `handler.ts`) only after the new controller is registered, `pnpm build`
+  regenerates the spec cleanly, and tests are updated.
+- Fully delete the migrated legacy files: the handler's `.ts`, its
+	`spec/paths/*.yml` and `spec/schemas/*.yml`, and any now-dead request type
+	in `packages/cli/src/public-api/types.ts`. Then check
+  `v1/shared/spec/schemas/_index.yml` and `v1/shared/spec/parameters/_index.yml`
+  for entries that `$ref` one of the deleted schema/parameter files — those are
+  separate from the path's own `$ref` in `openapi.yml` and are easy to miss;
+  left dangling, the next bundle fails on a broken `$ref`.
+- If the legacy handler gated on a license (`isLicensed('feat:x')` middleware),
+  `@Licensed` does not replicate that for a controller route (see the decorator
+  table in [SKILL.md](SKILL.md#declaring-a-controller)) — replicate the check
+  manually in the controller, don't drop it.
 - As a legacy file drops repository access / the `export =` tuple, remove its
   entry from the `off` allowlists for `no-repository-in-public-api-handler` and
   `require-public-api-controller` in `packages/cli/eslint.config.mjs` (shrink-only
