@@ -37,6 +37,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 import { Expression } from 'n8n-workflow';
 import type {
@@ -3956,7 +3957,7 @@ describe('createContext — builder delegate telemetry', () => {
 		const created = await context.builderDelegate?.createAgent('New agent');
 
 		expect(created).toEqual({ agentId: 'agent-9', projectId: 'proj-1' });
-		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder created agent', {
+		expect(mockTelemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
 			thread_id: 'thread-1',
 			agent_id: 'agent-9',
 			project_id: 'proj-1',
@@ -3974,7 +3975,7 @@ describe('createContext — builder delegate telemetry', () => {
 		await context.builderDelegate?.createAgent('New agent');
 
 		expect(mockTelemetry.track).not.toHaveBeenCalledWith(
-			'Builder created agent',
+			TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT,
 			expect.anything(),
 		);
 	});

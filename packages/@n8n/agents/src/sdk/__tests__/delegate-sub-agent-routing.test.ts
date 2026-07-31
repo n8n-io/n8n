@@ -281,7 +281,7 @@ describe('delegate sub-agent routing', () => {
 		});
 	});
 
-	it('passes the parent execution counter to inline child stream options', async () => {
+	it('rolls inline child tokens and tool calls up to the parent but not its message count', async () => {
 		const executionCounter = {
 			incrementMessageCount: vi.fn(),
 			incrementToolCallCount: vi.fn(),
@@ -304,7 +304,14 @@ describe('delegate sub-agent routing', () => {
 			executionCounter,
 		});
 
-		expect(runtimeGenerateOptions[0]).toEqual(expect.objectContaining({ executionCounter }));
+		const childCounter = runtimeGenerateOptions[0]?.executionCounter;
+		childCounter?.incrementMessageCount();
+		childCounter?.incrementToolCallCount();
+		childCounter?.incrementTokenCount(42);
+
+		expect(executionCounter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(executionCounter.incrementToolCallCount).toHaveBeenCalledOnce();
+		expect(executionCounter.incrementTokenCount).toHaveBeenCalledWith(42);
 	});
 
 	it('preserves required approval when completing inline delegate tools', async () => {
