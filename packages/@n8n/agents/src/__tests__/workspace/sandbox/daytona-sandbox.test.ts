@@ -346,6 +346,70 @@ describe('DaytonaSandbox (creation strategies)', () => {
 		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-stopped');
 	});
 
+	it('retries a transient 5xx create failure and succeeds', async () => {
+		const logger = makeLogger();
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Error 502: Bad gateway', 502),
+			makeMockSandbox('remote-after-retry'),
+		);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+			logger,
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].create).toHaveBeenCalledTimes(2);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-after-retry');
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Sandbox create failed transiently; retrying',
+			expect.objectContaining({ sandboxName: 'sandbox-name', attempt: 1 }),
+		);
+	});
+
+	it('does not retry non-transient create failures', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(new DaytonaError('Forbidden', 403));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await expect(sandbox.start()).rejects.toThrow('Forbidden');
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+	});
+
+	it('reattaches when a retried create collides with the sandbox the failed attempt created', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Error 502: Bad gateway', 502),
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queuedGetResults.push(makeMockSandbox('remote-created-despite-502'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await sandbox.start();
+
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-created-despite-502');
+	});
+
 	it('rethrows a name conflict without falling back to image when reattach finds nothing', async () => {
 		queueNotFound('not found');
 		queuedCreateResults.push(

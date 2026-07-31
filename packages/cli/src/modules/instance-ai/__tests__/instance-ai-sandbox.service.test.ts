@@ -49,7 +49,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		...overrides.backgroundTasks,
 	};
 	const settingsService: InstanceAiSandboxSettings = {
-		resolveDaytonaConfig: vi.fn(async () => ({})),
+		resolveDaytonaConfig: vi.fn(async () => ({ apiKey: 'test-daytona-key' })),
 		resolveN8nSandboxConfig: vi.fn(async () => ({})),
 		...overrides.settingsService,
 	};
@@ -110,6 +110,19 @@ describe('InstanceAiSandboxService', () => {
 				daytonaApiUrl: 'https://admin.daytona',
 				daytonaApiKey: 'admin-key',
 			});
+		});
+
+		it('fails with a setup error in direct mode when no Daytona API key is configured', async () => {
+			const resolveDaytonaConfig = vi.fn(async () => ({}));
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				settingsService: { resolveDaytonaConfig },
+				aiService: { isProxyEnabled: vi.fn(() => false) },
+			});
+
+			await expect(service.resolveSandboxConfig(fakeUser)).rejects.toThrow(
+				'no API key is configured',
+			);
 		});
 
 		it('routes Daytona traffic through the assistant proxy when enabled', async () => {

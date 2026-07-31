@@ -67,6 +67,8 @@ export interface DaytonaSandboxOptions {
 	target?: string;
 	timeout?: number;
 	createTimeoutSeconds?: number;
+	/** Base backoff for transient create retries. Defaults to 1s. */
+	createRetryBackoffBaseMs?: number;
 	language?: 'typescript' | 'javascript' | 'python';
 	resources?: Resources;
 	env?: Record<string, string>;
@@ -111,6 +113,12 @@ function isSandboxNameConflictError(error: unknown): boolean {
 	const { DaytonaError } = loadDaytona();
 	if (error instanceof DaytonaError && error.statusCode === 409) return true;
 	return /already exists/i.test(error.message);
+}
+
+function isTransientCreateError(error: unknown): boolean {
+	const { DaytonaError } = loadDaytona();
+	if (!(error instanceof DaytonaError) || error.statusCode === undefined) return false;
+	return error.statusCode >= 500 || error.statusCode === 408 || error.statusCode === 429;
 }
 
 export class DaytonaSandbox extends BaseSandbox {
@@ -437,9 +445,7 @@ export class DaytonaSandbox extends BaseSandbox {
 
 		for (const candidate of candidates) {
 			try {
-				return this.options.createTimeoutSeconds
-					? await client.create(candidate.params, { timeout: this.options.createTimeoutSeconds })
-					: await client.create(candidate.params);
+				return await this.createWithRetry(client, candidate.params);
 			} catch (error) {
 				// A name conflict is strategy-independent; let the caller reattach by name.
 				if (isSandboxNameConflictError(error)) throw error;
@@ -461,6 +467,33 @@ export class DaytonaSandbox extends BaseSandbox {
 		}
 
 		throw lastError instanceof Error ? lastError : new Error('Failed to create Daytona sandbox');
+	}
+
+	/**
+	 * Retry transient (5xx/408/429) create failures with a short backoff. A create
+	 * that succeeded server-side despite the failed response surfaces as a name
+	 * conflict on retry, which the caller resolves by reattaching.
+	 */
+	private async createWithRetry(
+		client: Daytona,
+		params: CreateSandboxFromImageParams | CreateSandboxFromSnapshotParams,
+	): Promise<Sandbox> {
+		const baseDelayMs = this.options.createRetryBackoffBaseMs ?? 1_000;
+		for (let attempt = 0; ; attempt++) {
+			try {
+				return this.options.createTimeoutSeconds
+					? await client.create(params, { timeout: this.options.createTimeoutSeconds })
+					: await client.create(params);
+			} catch (error) {
+				if (attempt >= 2 || !isTransientCreateError(error)) throw error;
+				this.options.logger?.warn('Sandbox create failed transiently; retrying', {
+					sandboxName: this.sandboxName,
+					attempt: attempt + 1,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				await new Promise((resolve) => setTimeout(resolve, baseDelayMs * 2 ** attempt));
+			}
+		}
 	}
 
 	private createSandboxParams(): Array<{
