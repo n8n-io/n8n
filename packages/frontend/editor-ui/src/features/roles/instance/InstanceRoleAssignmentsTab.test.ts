@@ -3,7 +3,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import type { RoleMember, RoleMembersResponse } from '@n8n/api-types';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 vi.mock('@/app/composables/useToast', () => ({
