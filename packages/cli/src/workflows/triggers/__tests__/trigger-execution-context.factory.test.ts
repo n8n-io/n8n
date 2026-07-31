@@ -784,7 +784,7 @@ describe('TriggerExecutionContextFactory', () => {
 					await expect(context.getCursor()).resolves.toEqual(stored);
 				});
 
-				expect(pollCursorService.readCursor).toHaveBeenCalledWith('wf-1', 'node-1', {
+				expect(pollCursorService.readCursor).toHaveBeenCalledWith('wf-1', 'node-1', 'Poll Node', {
 					lastItemId: 'from-static-data',
 				});
 			},

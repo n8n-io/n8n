@@ -32,10 +32,15 @@ export class PollCursorService {
 	 * Seeds the cursor from the node's static data the first time, so a node that
 	 * polled before durable cursors were enabled resumes where it left off. Returns
 	 * `null` when the node has no cursor (stored internally as an empty one).
+	 *
+	 * Persists the read when it repairs a static data that was out of step with the
+	 * stored cursor (e.g. the loser of a first-poll race), so the repair survives even
+	 * if this poll goes on to find nothing to advance.
 	 */
 	async readCursor(
 		workflowId: string,
 		nodeId: string,
+		nodeName: string,
 		nodeStaticData: PollCursor,
 	): Promise<PollCursor | null> {
 		const stored = await this.transactionRunner.run(
@@ -45,8 +50,9 @@ export class PollCursorService {
 		);
 
 		const cursor = toPollCursor(stored);
+		const repaired = this.syncNodeStaticData(nodeStaticData, cursor, {});
 
-		this.syncNodeStaticData(nodeStaticData, cursor, {});
+		if (repaired) await this.persistCursorToStaticData(workflowId, nodeName, cursor, {});
 
 		return Object.keys(cursor).length === 0 ? null : cursor;
 	}
@@ -106,7 +112,15 @@ export class PollCursorService {
 		previousCursor: PollCursor,
 	): Promise<void> {
 		this.syncNodeStaticData(nodeStaticData, cursor, previousCursor);
+		await this.persistCursorToStaticData(workflowId, nodeName, cursor, previousCursor);
+	}
 
+	private async persistCursorToStaticData(
+		workflowId: string,
+		nodeName: string,
+		cursor: PollCursor,
+		previousCursor: PollCursor,
+	): Promise<void> {
 		try {
 			const staticData = await this.workflowStaticDataService.getStaticDataById(workflowId);
 			const nodeKey = `node:${nodeName}`;
@@ -136,20 +150,30 @@ export class PollCursorService {
 	/**
 	 * Brings the node's live static data in line with the cursor, so that a whole-blob
 	 * save by any other node in the workflow writes the current cursor back, not a
-	 * stale one.
+	 * stale one. Returns whether anything actually changed.
 	 */
 	private syncNodeStaticData(
 		nodeStaticData: PollCursor,
 		cursor: PollCursor,
 		previousCursor: PollCursor,
-	): void {
+	): boolean {
+		let changed = false;
+
 		for (const key of Object.keys(previousCursor)) {
-			if (!(key in cursor) && key in nodeStaticData) delete nodeStaticData[key];
+			if (!(key in cursor) && key in nodeStaticData) {
+				delete nodeStaticData[key];
+				changed = true;
+			}
 		}
 
 		for (const [key, value] of Object.entries(cursor)) {
-			if (nodeStaticData[key] !== value) nodeStaticData[key] = value;
+			if (nodeStaticData[key] !== value) {
+				nodeStaticData[key] = value;
+				changed = true;
+			}
 		}
+
+		return changed;
 	}
 
 	/**

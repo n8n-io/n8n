@@ -61,7 +61,7 @@ describe('poll cursor atomicity', () => {
 	});
 
 	it('commits the cursor advance and the execution row together', async () => {
-		await pollCursorService.readCursor(workflow.id, nodeId, { lastItemId: 'a' });
+		await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', { lastItemId: 'a' });
 
 		const { executionId } = await pollCursorService.commitWithExecution({
 			workflowId: workflow.id,
@@ -80,7 +80,7 @@ describe('poll cursor atomicity', () => {
 	});
 
 	it('leaves the cursor unadvanced and writes no execution when the insert fails', async () => {
-		await pollCursorService.readCursor(workflow.id, nodeId, { lastItemId: 'a' });
+		await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', { lastItemId: 'a' });
 
 		const key = 'wf:node-1:t1';
 		// A dispatched execution already holds this key, so the insert violates the
@@ -107,7 +107,7 @@ describe('poll cursor atomicity', () => {
 	});
 
 	it('persists a standalone cursor advance with no execution row', async () => {
-		await pollCursorService.readCursor(workflow.id, nodeId, { lastItemId: 'a' });
+		await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', { lastItemId: 'a' });
 
 		await pollCursorService.commitCursorOnly({
 			workflowId: workflow.id,
@@ -124,13 +124,15 @@ describe('poll cursor atomicity', () => {
 	});
 
 	it('seeds the cursor from the given blob on the first read and keeps it afterwards', async () => {
-		const seeded = await pollCursorService.readCursor(workflow.id, nodeId, {
+		const seeded = await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', {
 			lastItemId: 'from-static-data',
 		});
 
 		expect(seeded).toEqual({ lastItemId: 'from-static-data' });
 		expect(
-			await pollCursorService.readCursor(workflow.id, nodeId, { lastItemId: 'ignored' }),
+			await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', {
+				lastItemId: 'ignored',
+			}),
 		).toEqual({ lastItemId: 'from-static-data' });
 	});
 
