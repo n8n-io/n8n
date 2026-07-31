@@ -6,25 +6,21 @@ import path from 'path';
 
 import {
 	apiKeyScopesSatisfy,
+	HTTP_METHODS,
 	resolvePublicApiRoutes,
 	scopeRequirementFromString,
 	scopesInRequirement,
+	toOpenApiPathTemplate,
 } from '../../../public-api-route-resolver';
 import { extractScopeFromEovHandlerChain } from '../../shared/public-api-scope-lookup';
 
 import '../../controllers';
-
-const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'] as const;
 
 interface EndpointInfo {
 	method: string;
 	path: string;
 	operationId: string;
 	tag: string;
-	/**
-	 * The route's whole API-key requirement, not a single scope - a route can require any/all of
-	 * several, and flattening that to one string made no caller ever match it.
-	 */
 	scope: ApiKeyScopeRequirement | null;
 	requestSchema?: Record<string, unknown>;
 }
@@ -79,9 +75,7 @@ function extractRequestSchema(
 }
 
 async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
-	if (!cachedEndpointsPromise) {
-		cachedEndpointsPromise = buildAllEndpoints();
-	}
+	cachedEndpointsPromise ??= buildAllEndpoints();
 	return await cachedEndpointsPromise;
 }
 
@@ -153,8 +147,7 @@ async function buildEovEndpoints(): Promise<EndpointInfo[]> {
 function buildDecoratorEndpoints(): EndpointInfo[] {
 	return resolvePublicApiRoutes().map((route) => ({
 		method: route.method.toUpperCase(),
-		// Mirror the OpenAPI path template: `:param` -> `{param}`.
-		path: `/api/v1${route.path.replace(/:([A-Za-z0-9_]+)/g, '{$1}')}`,
+		path: `/api/v1${toOpenApiPathTemplate(route.path)}`,
 		operationId: route.handlerName,
 		tag: route.tags?.[0] ?? 'Other',
 		scope: route.apiKeyScope ?? null,

@@ -14,6 +14,7 @@ import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resol
 import {
 	resolvePublicApiRoutes,
 	scopeRequirementToString,
+	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 
 /**
@@ -26,27 +27,19 @@ const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
 	offset: { $ref: '../../../../shared/spec/parameters/offset.yml' },
 };
 
-const UNAUTHORIZED_RESPONSE = { $ref: '../../../../shared/spec/responses/unauthorized.yml' };
-const FORBIDDEN_RESPONSE = { $ref: '../../../../shared/spec/responses/forbidden.yml' };
-const BAD_REQUEST_RESPONSE = { $ref: '../../../../shared/spec/responses/badRequest.yml' };
-
 /**
  * Status codes an `@ApiErrorResponse` can declare, each backed by the same shared, hand-written
  * response file the eov-routed handlers already `$ref`. Extending this to a new status code is
- * just adding its shared response file and a line here - no new decorator needed.
+ * just adding its shared response file and a line here.
  */
 const ERROR_RESPONSE_REFS: Record<number, { $ref: string }> = {
-	400: BAD_REQUEST_RESPONSE,
-	401: UNAUTHORIZED_RESPONSE,
+	400: { $ref: '../../../../shared/spec/responses/badRequest.yml' },
+	401: { $ref: '../../../../shared/spec/responses/unauthorized.yml' },
 	402: { $ref: '../../../../shared/spec/responses/paymentRequired.yml' },
-	403: FORBIDDEN_RESPONSE,
+	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
 };
-
-function toOpenApiPath(path: string): string {
-	return path.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
-}
 
 /** First non-empty path segment, used as the output directory. */
 function resourceSegment(path: string): string {
@@ -190,11 +183,11 @@ function buildResponses(
 	// Every @PublicApiController decorated route has an HTTP 401 response for missing or invalid API key
 	// If the route has an @ApiKeyScope decorator, we add an HTTP 403 as a possible response
 	if (route.requestBodyDto ?? route.requestQueryDto) {
-		responses[400] = BAD_REQUEST_RESPONSE;
+		responses[400] = ERROR_RESPONSE_REFS[400];
 	}
-	responses[401] = UNAUTHORIZED_RESPONSE;
+	responses[401] = ERROR_RESPONSE_REFS[401];
 	if (route.apiKeyScope) {
-		responses[403] = FORBIDDEN_RESPONSE;
+		responses[403] = ERROR_RESPONSE_REFS[403];
 	}
 
 	for (const status of route.errorResponses ?? []) {
@@ -233,7 +226,7 @@ export function getDecoratorGeneratedOperations(
 	const publicApiRoutes = resolvePublicApiRoutes();
 
 	return publicApiRoutes.map((route) => {
-		const pathKey = toOpenApiPath(route.path);
+		const pathKey = toOpenApiPathTemplate(route.path);
 		const { parameters, requestQuery } = buildQueryConfig(route);
 		const requestParams = buildPathParams(route);
 		const requestBody = buildRequestBody(route);
@@ -261,9 +254,7 @@ export function getDecoratorGeneratedOperations(
 				: {}),
 			responses: buildResponses(route, resolveSchema),
 			// Satisfies express-openapi-validator's operation-handler installer, which requires
-			// every operation in the spec to resolve to *something* — see decorator-routed.handler.ts
-			// for why. `x-decorator-routed` is the actual signal consumers (discover.service.ts,
-			// scope-parity.test.ts) use to tell this apart from a real eov-routed operation.
+			// every operation in the spec to resolve to something.
 			'x-eov-operation-id': 'unreachable',
 			'x-eov-operation-handler': 'v1/handlers/decorator-routed.handler',
 			'x-decorator-routed': true,

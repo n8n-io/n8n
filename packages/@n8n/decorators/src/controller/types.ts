@@ -13,7 +13,6 @@ export type ApiKeyScopeRequirement =
 
 export type ResponseDtoClass = Pick<ZodClass, 'parse'>;
 
-/** Success statuses a route may declare via `@ApiResponse`. */
 export type SuccessStatus = 200 | 201 | 202 | 204;
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
@@ -56,15 +55,15 @@ export interface RouteMetadata {
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;
-	/** HTTP status sent on success, and documented as such. Defaults to 200 when absent. */
+	/** OpenAPI HTTP status sent on success, and documented as such. */
 	successStatus?: SuccessStatus;
-	/** OpenAPI operation summary (short, one line). */
+	/** OpenAPI operation summary. */
 	summary?: string;
 	/** OpenAPI operation description. */
 	description?: string;
-	/** OpenAPI operation tags, declared explicitly - never inferred from the URL path. */
+	/** OpenAPI operation tags. */
 	tags?: string[];
-	/** Additional non-2xx status codes this route can return, beyond the ones inferred automatically. */
+	/** OpenAPI error responses. */
 	errorResponses?: number[];
 	args: Arg[];
 	router?: Router;

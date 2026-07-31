@@ -13,6 +13,18 @@ import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
+export const HTTP_METHODS = [
+	'get',
+	'post',
+	'put',
+	'patch',
+	'delete',
+	'options',
+	'head',
+	'trace',
+] as const;
+export type HttpMethod = (typeof HTTP_METHODS)[number];
+
 export type ResolvedRouteArg =
 	| { type: 'param'; key: string }
 	| { type: 'body' | 'query'; dto: ZodClass };
@@ -45,16 +57,11 @@ export interface ResolvedPublicApiRoute {
 }
 
 /**
- * Resolves each route argument's declared type via TypeScript's own `design:paramtypes`
- * reflection metadata. Reads off `controllerClass.prototype` rather than a DI-resolved instance —
- * decorator metadata lives on the prototype, and this lets doc generation (which has no DB,
- * config, or other business-service dependencies available) resolve routes without instantiating
- * the controller or any of its constructor dependencies.
+ * Iterates through every decorated (@Query/@Body/@Param) and non-decorated arguments of a route.
+ * For `@Query` and `@Body` arguments, attaches the Zod schema associated with the argument.
  *
- * Throws eagerly (matching what a request would eventually hit) when a `@Body`/`@Query` arg has
- * no resolvable Zod DTO — a controller like this errors on every request already, so surfacing it
- * at resolution time (route registration, or doc generation) catches the bug earlier than the
- * first live request would.
+ * Throws eagerly when a `@Body`/`@Query` arg has no resolvable Zod DTO or when a route includes an
+ * undecorated parameter after decorated parameters.
  */
 export function resolveRouteArgs(
 	controllerClass: Controller,
@@ -106,33 +113,16 @@ export function resolveRouteArgs(
 	return resolved;
 }
 
-/**
- * Every decorator route must state its success status via `@ApiResponse` - `@ApiResponse(200, Dto)`
- * for a route with a body, `@ApiResponse(204)` for one without.
- *
- * Also rejects a `204` paired with a response DTO. `@ApiResponse`'s overloads already make that
- * uncallable, but stacking two `@ApiResponse` decorators could otherwise reach it, and the two sides
- * would then disagree: the generator would document JSON content while the registry sends an empty
- * body.
- */
+/** Every decorator route must state its success status via `@ApiResponse`. */
 export function resolveSuccessStatus(
 	controllerName: string,
 	handlerName: HandlerName,
 	successStatus: SuccessStatus | undefined,
-	responseDto: ResponseDtoClass | undefined,
 ): SuccessStatus {
 	if (successStatus === undefined) {
 		throw new UnexpectedError(
 			`Public API route ${controllerName}.${handlerName} does not declare a success status. Add ` +
 				'`@ApiResponse(200, SomeDto)` if it returns a body, or `@ApiResponse(204)` if it does not.',
-		);
-	}
-
-	if (successStatus === 204 && responseDto !== undefined) {
-		throw new UnexpectedError(
-			`Public API route ${controllerName}.${handlerName} declares a 204 success status and a ` +
-				'response DTO, but a 204 sends no body. Declare `@ApiResponse(204)` on its own, or use a ' +
-				'status that carries a body.',
 		);
 	}
 
@@ -201,11 +191,16 @@ export function scopeRequirementToString(requirement: ApiKeyScopeRequirement): s
 }
 
 /**
- * Discovers every route registered on a `@PublicApiController`-decorated class, resolving its
+ * Renders an Express-style route path (`:param`) as the OpenAPI path template it documents (`{param}`)
+ */
+export function toOpenApiPathTemplate(path: string): string {
+	return path.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
+}
+
+/**
+ * Discovers every route registered on a `@PublicApiController` decorated class, resolving its
  * request/response DTOs and API-key scope from decorator metadata. This is the single source of
- * truth for "what does a decorator-routed public API endpoint look like" — both
- * `PublicApiControllerRegistry` (runtime routing) and the OpenAPI generator (`openapi-gen/`) call
- * this instead of maintaining separate copies of the same reflection logic.
+ * truth for "what does a decorator-routed public API endpoint look like".
  */
 export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 	const metadata = Container.get(ControllerRegistryMetadata);
@@ -237,12 +232,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				requestBodyDto,
 				requestQueryDto,
 				responseDto: route.responseDto,
-				successStatus: resolveSuccessStatus(
-					controllerClass.name,
-					handlerName,
-					route.successStatus,
-					route.responseDto,
-				),
+				successStatus: resolveSuccessStatus(controllerClass.name, handlerName, route.successStatus),
 				apiKeyScope: route.apiKeyScope,
 				summary: route.summary,
 				description: route.description,

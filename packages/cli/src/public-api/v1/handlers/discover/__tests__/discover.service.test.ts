@@ -131,9 +131,6 @@ describe('buildDiscoverResponse', () => {
 	});
 
 	describe('composite scope requirements', () => {
-		// `POST /n8n-packages/export` requires `project:export,workflow:export`. Collapsing that to a
-		// single comma-joined pseudo-scope meant no caller ever matched it, hiding the endpoint from
-		// everyone.
 		it('should include a composite-scope endpoint for a caller holding one of its scopes', async () => {
 			const result = await buildDiscoverResponse(['workflow:export'] as ApiKeyScope[]);
 

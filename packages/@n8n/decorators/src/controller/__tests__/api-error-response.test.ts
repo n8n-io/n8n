@@ -30,7 +30,7 @@ describe('@ApiErrorResponse Decorator', () => {
 		expect(route.errorResponses).toEqual([404]);
 	});
 
-	it('should accumulate multiple stacked status codes on the route', () => {
+	it('should accumulate multiple stacked status codes on the route in ASC order', () => {
 		class TestController {
 			@Get('/')
 			@ApiErrorResponse(404)
@@ -42,6 +42,6 @@ describe('@ApiErrorResponse Decorator', () => {
 			TestController as Controller,
 			'handler',
 		);
-		expect(route.errorResponses).toEqual([409, 404]);
+		expect(route.errorResponses).toEqual([404, 409]);
 	});
 });

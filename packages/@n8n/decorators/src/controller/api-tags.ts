@@ -4,9 +4,7 @@ import { ControllerRegistryMetadata } from './controller-registry-metadata';
 import type { Controller } from './types';
 
 /**
- * Declares the OpenAPI tags for a route explicitly, instead of guessing one from the URL path -
- * a route's resource segment doesn't reliably match the project's established tag names (e.g.
- * `/workflows` groups under the singular `Workflow`, not `Workflows`).
+ * Declares the OpenAPI tags for a route. These will be ordered alphabetically.
  */
 export const ApiTags =
 	(tags: string[]): MethodDecorator =>
@@ -15,5 +13,5 @@ export const ApiTags =
 			target.constructor as Controller,
 			String(handlerName),
 		);
-		routeMetadata.tags = tags;
+		routeMetadata.tags = tags.sort((a, b) => a.localeCompare(b));
 	};

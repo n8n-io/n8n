@@ -30,7 +30,7 @@ describe('@ApiTags Decorator', () => {
 		expect(route.tags).toEqual(['Widget']);
 	});
 
-	it('should store multiple tags on the route', () => {
+	it('should store multiple tags on the route in alphabetical order', () => {
 		class TestController {
 			@Get('/')
 			@ApiTags(['Widget', 'Gadget'])
@@ -41,6 +41,6 @@ describe('@ApiTags Decorator', () => {
 			TestController as Controller,
 			'handler',
 		);
-		expect(route.tags).toEqual(['Widget', 'Gadget']);
+		expect(route.tags).toEqual(['Gadget', 'Widget']);
 	});
 });

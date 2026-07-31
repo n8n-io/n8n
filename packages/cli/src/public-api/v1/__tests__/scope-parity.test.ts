@@ -4,7 +4,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'yaml';
 
-import { resolvePublicApiRoutes, scopeRequirementToString } from '../../public-api-route-resolver';
+import {
+	HTTP_METHODS,
+	type HttpMethod,
+	resolvePublicApiRoutes,
+	scopeRequirementToString,
+	toOpenApiPathTemplate,
+} from '../../public-api-route-resolver';
 import {
 	extractScopeFromEovHandlerChain,
 	loadPublicControllerScopeMap,
@@ -19,13 +25,9 @@ vi.unmock('node:fs');
 const PUBLIC_API_ROOT = path.resolve(__dirname, '..', '..');
 const OPENAPI_SPEC_PATH = path.join(PUBLIC_API_ROOT, 'v1', 'openapi.yml');
 
-const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
-
-type Method = (typeof HTTP_METHODS)[number];
-
 type Operation = {
 	pathStr: string;
-	method: Method;
+	method: HttpMethod;
 	operationId: string;
 	handlerPath: string | null;
 	requiredScope: string | null;
@@ -70,9 +72,8 @@ async function loadEovOperations(): Promise<Operation[]> {
 
 function loadDecoratorOperations(): Operation[] {
 	return resolvePublicApiRoutes().map((route) => ({
-		// Mirror the OpenAPI path template: `:param` -> `{param}`.
-		pathStr: route.path.replace(/:([A-Za-z0-9_]+)/g, '{$1}'),
-		method: route.method as Method,
+		pathStr: toOpenApiPathTemplate(route.path),
+		method: route.method,
 		operationId: route.handlerName,
 		handlerPath: null,
 		requiredScope: route.apiKeyScope ? scopeRequirementToString(route.apiKeyScope) : 'none',

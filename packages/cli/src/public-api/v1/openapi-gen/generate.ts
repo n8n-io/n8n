@@ -7,6 +7,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { stringify } from 'yaml';
 import type { z } from 'zod';
 
+import { HTTP_METHODS } from '@/public-api/public-api-route-resolver';
+
 import {
 	getDecoratorGeneratedOperations,
 	getSharedResponseSchemas,
@@ -28,8 +30,6 @@ export interface OpenApiDocument {
 	components?: Record<string, Record<string, unknown>>;
 	[key: string]: unknown;
 }
-
-const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'];
 
 export interface GeneratedArtifact {
 	/** Where to write the fragment, relative to the `v1` directory. */
@@ -183,6 +183,7 @@ export function getGeneratedArtifacts(): GeneratedArtifact[] {
 	const registry = new OpenAPIRegistry();
 	const sharedZodSchemas = registerSharedSchemas(registry, getSharedResponseSchemas());
 
+	// Look up an already-registered schema instead of re-registering it avoiding inlining the same schema
 	const resolveSchema: SchemaResolver = (dto, schema) => sharedZodSchemas.get(dto) ?? schema;
 
 	const operations = getDecoratorGeneratedOperations(resolveSchema);
@@ -262,7 +263,7 @@ export function mergeDecoratorDocument(
 		}
 		const combined = { ...existing };
 		for (const [method, operation] of Object.entries(methods)) {
-			if (HTTP_METHODS.includes(method) && combined[method] !== undefined) {
+			if (HTTP_METHODS.some((m) => m === method) && combined[method] !== undefined) {
 				throw new UnexpectedError(
 					`Duplicate OpenAPI operation ${method.toUpperCase()} ${pathKey}: it is declared by both a ` +
 						'hand-written (eov) path and a @PublicApiController route — remove the hand-written one.',

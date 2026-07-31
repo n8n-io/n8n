@@ -1,19 +1,84 @@
 import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { Z } from '@n8n/api-types';
+import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
-// Pulls in zod-extend (via the generate -> decorator-routes import chain) so `.openapi()`/registry
-// metadata is patched onto zod before we build schemas below.
-import { buildArtifactsFromRegistry, registerSharedSchemas } from '../generate';
+import {
+	buildArtifactsFromRegistry,
+	mergeDecoratorDocument,
+	registerSharedSchemas,
+	type OpenApiDocument,
+} from '../generate';
 
 function makeNamedResponseDto(className: string, shape: Parameters<typeof Z.class>[0]) {
 	return { [className]: class extends Z.class(shape) {} }[className];
 }
 
-/**
- * Proves the shared-schema registry: a schema referenced by more than one operation is emitted once
- * as its own fragment file and `$ref`d from each operation, rather than inlined into every one.
- */
+describe('mergeDecoratorDocument', () => {
+	it('adds a decorator-only path that the eov spec does not define', () => {
+		const eov: OpenApiDocument = { paths: { '/tags': { post: { operationId: 'createTag' } } } };
+		const decorator: OpenApiDocument = {
+			paths: { '/workflows/{id}/history': { get: { operationId: 'getWorkflowHistory' } } },
+		};
+
+		const merged = mergeDecoratorDocument(eov, decorator);
+
+		expect(merged.paths?.['/tags']).toEqual({ post: { operationId: 'createTag' } });
+		expect(merged.paths?.['/workflows/{id}/history']).toEqual({
+			get: { operationId: 'getWorkflowHistory' },
+		});
+	});
+
+	it('merges a decorator method into a path the eov spec also serves', () => {
+		const eov: OpenApiDocument = { paths: { '/tags': { post: { operationId: 'createTag' } } } };
+		const decorator: OpenApiDocument = { paths: { '/tags': { get: { operationId: 'getTags' } } } };
+
+		const merged = mergeDecoratorDocument(eov, decorator);
+
+		expect(merged.paths?.['/tags']).toEqual({
+			post: { operationId: 'createTag' },
+			get: { operationId: 'getTags' },
+		});
+	});
+
+	it('throws when the same path+method is declared by both sides', () => {
+		const eov: OpenApiDocument = { paths: { '/tags': { get: { operationId: 'listTagsEov' } } } };
+		const decorator: OpenApiDocument = { paths: { '/tags': { get: { operationId: 'getTags' } } } };
+
+		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(UnexpectedError);
+		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(/GET \/tags/);
+	});
+
+	it('dedupes an identical component that both sides hoisted from the same shared file', () => {
+		const unauthorized = { description: 'Unauthorized' };
+		const eov: OpenApiDocument = {
+			paths: {},
+			components: { responses: { Unauthorized: unauthorized } },
+		};
+		const decorator: OpenApiDocument = {
+			paths: {},
+			components: { responses: { Unauthorized: { ...unauthorized } } },
+		};
+
+		const merged = mergeDecoratorDocument(eov, decorator);
+
+		expect(merged.components?.responses).toEqual({ Unauthorized: unauthorized });
+	});
+
+	it('throws when a component name resolves to different definitions', () => {
+		const eov: OpenApiDocument = {
+			paths: {},
+			components: { schemas: { Tag: { type: 'object', properties: { id: {} } } } },
+		};
+		const decorator: OpenApiDocument = {
+			paths: {},
+			components: { schemas: { Tag: { type: 'string' } } },
+		};
+
+		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(/components\.schemas\.Tag/);
+	});
+});
+
 describe('shared schema registry', () => {
 	it('emits a reused schema once and references it by file path from each operation', () => {
 		const registry = new OpenAPIRegistry();
@@ -45,8 +110,7 @@ describe('shared schema registry', () => {
 		expect(schemaFile).toBeDefined();
 		expect(schemaFile?.content).toContain('label:');
 
-		// Both operations reference it by relative file path — not a dangling internal pointer, and
-		// not an inlined copy of the object.
+		// Both operations reference it by relative file path
 		const relRef = '$ref: ../../../../shared/spec/schemas/widget.generated.yml';
 		const [op1, op2] = ['getWidgets', 'getWidget'].map(
 			(name) => artifacts.find((a) => a.outputPath.endsWith(`${name}.generated.yml`))?.content,
@@ -55,9 +119,7 @@ describe('shared schema registry', () => {
 		expect(op2).toContain(relRef);
 		expect(op1).not.toContain('#/components/schemas');
 		expect(op1).not.toContain('label:');
-		// $ref must stay POSIX-style regardless of host OS - a backslash here (e.g. from the
-		// platform-dependent path.relative/dirname on Windows) would be an invalid $ref and would
-		// make the committed generated file differ depending on which OS regenerated it.
+		// $ref must stay POSIX-style regardless of host OS
 		expect(op1).not.toContain('\\');
 	});
 
@@ -87,8 +149,6 @@ describe('shared schema registry', () => {
 	});
 
 	it('throws if two different shared DTOs are both named the same', () => {
-		// Two distinct classes (different identity) that happen to share a `.name` - not the same
-		// DTO reused, which is the only case that's supposed to count as "shared".
 		const dtoA = makeNamedResponseDto('Widget', { id: z.string() });
 		const dtoB = makeNamedResponseDto('Widget', { label: z.string() });
 

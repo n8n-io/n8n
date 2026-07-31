@@ -46,17 +46,12 @@ export class PublicApiControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
-			// Resolved once per route at activation time (not per request) — also means a
-			// controller with a `@Body`/`@Query` arg missing its Zod DTO, or with no declared
-			// success status, fails at startup rather than on first request.
 			const resolvedArgs = resolveRouteArgs(controllerClass, handlerName, route.args);
-			// Same value the OpenAPI generator documents as the success response, so the two can't
-			// drift — see `@ApiResponse`.
+
 			const successStatus = resolveSuccessStatus(
 				controllerClass.name,
 				handlerName,
 				route.successStatus,
-				route.responseDto,
 			);
 
 			const handler = async (req: Request, res: Response) => {
