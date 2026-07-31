@@ -26,6 +26,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { WebhookResponseTooLargeError } from '@/errors/webhook-response-too-large.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ManualExecutionService } from '@/manual-execution.service';
@@ -39,6 +40,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { JobProcessor } from '../job-processor';
 import type { Job } from '../scaling.types';
+import { ENCODED_BUFFER_KEY } from '../webhook-response-relay';
 
 mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {
@@ -72,10 +74,14 @@ const logger = mock<Logger>({
 	scoped: vi.fn().mockImplementation(() => logger),
 });
 
-const executionsConfig = mock<ExecutionsConfig>({
-	timeout: -1,
-	maxTimeout: 3600,
-});
+const executionsConfigWith = (overrides: Partial<ExecutionsConfig> = {}) =>
+	mock<ExecutionsConfig>({
+		timeout: -1,
+		maxTimeout: 3600,
+		...overrides,
+	});
+
+const executionsConfig = executionsConfigWith();
 
 const successRun = (): IRun =>
 	mock<IRun>({
@@ -1965,6 +1971,94 @@ describe('JobProcessor', () => {
 			expect(startedCall![1].workflowId).toBe('wf-1');
 			expect(startedCall![1]).not.toHaveProperty('projectId');
 			expect(startedCall![1]).not.toHaveProperty('projectName');
+		});
+	});
+
+	describe('webhook response relay', () => {
+		const processJobAndCaptureHooks = async (
+			webhookResponseRelaySizeMaxMiB: number,
+			jobData: Partial<Job['data']> = {},
+		) => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				createManualExecutionServiceMock(),
+				executionsConfigWith({ webhookResponseRelaySizeMaxMiB }),
+				mock(),
+			);
+
+			const job = mock<Job>({
+				data: {
+					workflowId: 'wf-1',
+					executionId: 'exec-1',
+					loadStaticData: false,
+					isMcpExecution: undefined,
+					mcpSessionId: undefined,
+					...jobData,
+				},
+			});
+			await jobProcessor.processJob(job);
+
+			return { hooks: additionalData.hooks!, job };
+		};
+
+		it('should relay a response within the size limit, encoding a buffer body', async () => {
+			const { hooks, job } = await processJobAndCaptureHooks(1);
+
+			await hooks.runHook('sendResponse', [
+				{ body: Buffer.from('hello'), headers: {}, statusCode: 200 },
+			]);
+
+			expect(job.progress).toHaveBeenCalledWith(
+				expect.objectContaining({
+					kind: 'respond-to-webhook',
+					executionId: 'exec-1',
+					response: expect.objectContaining({ body: { [ENCODED_BUFFER_KEY]: 'aGVsbG8=' } }),
+				}),
+			);
+		});
+
+		it('should refuse to relay a response over the size limit', async () => {
+			const { hooks, job } = await processJobAndCaptureHooks(1);
+			const relayedBefore = (job.progress as Mock).mock.calls.length;
+
+			await expect(
+				hooks.runHook('sendResponse', [
+					{ body: { blob: 'x'.repeat(2 * 1024 * 1024) }, headers: {}, statusCode: 200 },
+				]),
+			).rejects.toThrow(WebhookResponseTooLargeError);
+
+			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
+		});
+
+		it('should refuse to relay an MCP response over the size limit', async () => {
+			const { hooks, job } = await processJobAndCaptureHooks(1, {
+				isMcpExecution: true,
+				mcpSessionId: 'session-1',
+			});
+			const relayedBefore = (job.progress as Mock).mock.calls.length;
+
+			await expect(
+				hooks.runHook('sendResponse', [{ toolResult: 'x'.repeat(2 * 1024 * 1024) }]),
+			).rejects.toThrow(WebhookResponseTooLargeError);
+
+			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
 		});
 	});
 });

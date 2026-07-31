@@ -28,4 +28,18 @@ describe('serializedWorkflowSchema', () => {
 	it('rejects a non-finite node typeVersion (JSON `1e999` parses to Infinity)', () => {
 		expect(() => serializedWorkflowSchema.parse(workflow(Infinity))).toThrow();
 	});
+
+	it('accepts a non-empty tagIds array', () => {
+		expect(() =>
+			serializedWorkflowSchema.parse({ ...workflow(1), tagIds: ['tag-1', 'tag-2'] }),
+		).not.toThrow();
+	});
+
+	it('accepts an empty tagIds array (an untagged workflow exported with tags)', () => {
+		expect(() => serializedWorkflowSchema.parse({ ...workflow(1), tagIds: [] })).not.toThrow();
+	});
+
+	it('rejects an empty-string tag id', () => {
+		expect(() => serializedWorkflowSchema.parse({ ...workflow(1), tagIds: [''] })).toThrow();
+	});
 });

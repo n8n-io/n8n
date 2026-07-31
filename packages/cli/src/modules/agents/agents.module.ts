@@ -21,6 +21,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-tasks.controller.js');
 		await import('./agent-sandbox.controller.js');
 		await import('./agents-list.controller.js');
+		await import('./agent-mcp-access.controller.js');
 		await import('./builder/agents-builder-settings.controller.js');
 
 		const { AgentsService } = await import('./agents.service.js');
@@ -34,32 +35,23 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
 
-		// Register blob backends for agent execution logs. The fs backend is always
-		// available; s3/az reuse the clients base-command already initialized
-		// (initBinaryDataService runs before module init in all commands) and are
-		// only registered when that init succeeded — mirroring ExecutionDataJsonStore,
-		// so a configured-but-unreachable backend degrades instead of throwing.
-		const { AzureByteStore, S3ByteStore } = await import('@n8n/blob-storage');
+		// Register blob backends for agent execution logs and knowledge files.
+		// The fs backend is always available; s3/az reuse the clients base-command
+		// already initialized (initBinaryDataService runs before module init in
+		// all commands), which exits the process when the configured execution
+		// data backend cannot be reached — so a live process in s3/az mode always
+		// has that location registered here.
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
+		const { AgentKnowledgeFileStore } = await import('./agent-knowledge-file-store.js');
 		const { ExecutionDataJsonStore } = await import(
 			'@/executions/execution-data/execution-data-json-store.js'
 		);
-		const agentExecutionLogStore = Container.get(AgentExecutionLogStore);
-		const executionDataJsonStore = Container.get(ExecutionDataJsonStore);
-		if (executionDataJsonStore.hasLocation('s3')) {
-			const { ObjectStoreService } = await import('@n8n/blob-storage/object-store');
-			agentExecutionLogStore.registerByteStore(
-				's3',
-				new S3ByteStore(Container.get(ObjectStoreService)),
-			);
-		}
-		if (executionDataJsonStore.hasLocation('az')) {
-			const { AzureBlobService } = await import('@n8n/blob-storage/azure-blob');
-			agentExecutionLogStore.registerByteStore(
-				'az',
-				new AzureByteStore(Container.get(AzureBlobService)),
-			);
-		}
+		const { registerAgentBlobByteStores } = await import('./register-blob-byte-stores.js');
+		await registerAgentBlobByteStores({
+			executionDataJsonStore: Container.get(ExecutionDataJsonStore),
+			agentExecutionLogStore: Container.get(AgentExecutionLogStore),
+			agentKnowledgeFileStore: Container.get(AgentKnowledgeFileStore),
+		});
 
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService);
@@ -137,6 +129,7 @@ export class AgentsModule implements ModuleInterface {
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity.js');
 		const { AgentFile } = await import('./entities/agent-file.entity.js');
+		const { AgentChatAttachment } = await import('./entities/agent-chat-attachment.entity.js');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity.js');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity.js');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity.js');
@@ -169,6 +162,7 @@ export class AgentsModule implements ModuleInterface {
 		return [
 			Agent,
 			AgentFile,
+			AgentChatAttachment,
 			AgentChatSubscription,
 			AgentCheckpoint,
 			AgentResourceEntity,

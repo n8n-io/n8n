@@ -1,4 +1,5 @@
 import type { Message, StreamChunk } from '@n8n/agents';
+import { sleep } from '@n8n/utils/sleep';
 import { z } from 'zod';
 
 import {
@@ -39,10 +40,6 @@ const VERIFIER_DEBUG = process.env.N8N_EVAL_VERIFIER_DEBUG === '1';
 
 function jitteredPauseMs(attempt: number): number {
 	return 1_000 * attempt + Math.random() * 1_000;
-}
-
-async function sleep(ms: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export interface VerifierAttemptDebug {

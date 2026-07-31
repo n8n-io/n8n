@@ -13,11 +13,12 @@ import type {
 import {
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	removeCircularRefs,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
+
+import { sleep } from '@n8n/utils/sleep';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {

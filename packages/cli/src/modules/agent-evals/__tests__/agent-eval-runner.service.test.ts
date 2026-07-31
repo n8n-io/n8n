@@ -12,6 +12,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import type { License } from '@/license';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
@@ -21,6 +22,7 @@ import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
+import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
 // Stub the cross-module specifiers the service statically imports so the unit
 // test doesn't pull in the real agents / data-table / instance-ai module graph.
@@ -102,6 +104,7 @@ describe('AgentEvalRunnerService', () => {
 	let evalAgentExecutionService: MockProxy<EvalAgentExecutionService>;
 	let concurrencyControl: MockProxy<ConcurrencyControlService>;
 	let license: MockProxy<License>;
+	let flagGate: MockProxy<AgentEvalsFlagGate>;
 	let service: AgentEvalRunnerService;
 
 	const dataset = mock<AgentEvalDataset>({
@@ -117,7 +120,8 @@ describe('AgentEvalRunnerService', () => {
 		vi.mocked(resolveEvaluationConcurrencyLimit).mockReturnValue(1); // serial by default
 
 		globalConfig = {
-			evaluation: { agentEvalsEnabled: true, agentEvalsRunTimeoutMinutes: 60 },
+			// `agentEvalsEnabled` is gone from here: the flag is the gate's business now.
+			evaluation: { agentEvalsRunTimeoutMinutes: 60 },
 			executions: { mode: 'regular' },
 		} as unknown as GlobalConfig;
 		instanceSettings = { hostId: 'main-1' } as unknown as InstanceSettings;
@@ -131,6 +135,7 @@ describe('AgentEvalRunnerService', () => {
 		evalAgentExecutionService = mock<EvalAgentExecutionService>();
 		concurrencyControl = mock<ConcurrencyControlService>();
 		license = mock<License>();
+		flagGate = mock<AgentEvalsFlagGate>();
 
 		datasetRepository.findById.mockResolvedValue(dataset);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -160,6 +165,7 @@ describe('AgentEvalRunnerService', () => {
 			evalAgentExecutionService,
 			concurrencyControl,
 			license,
+			flagGate,
 		);
 	});
 
@@ -176,11 +182,14 @@ describe('AgentEvalRunnerService', () => {
 	};
 
 	describe('gating', () => {
-		it('refuses when the flag is off', async () => {
-			globalConfig.evaluation.agentEvalsEnabled = false;
-			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(
-				'Agent evals are not enabled',
-			);
+		// The flag is resolved per requesting user (PostHog owns cohort rollout),
+		// not per instance — so the gate is asked about `user`, not a config value.
+		it('refuses when the flag is off for the requesting user', async () => {
+			flagGate.assertEnabled.mockRejectedValue(new NotFoundError('Not found'));
+
+			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(NotFoundError);
+
+			expect(flagGate.assertEnabled).toHaveBeenCalledWith(user);
 			expect(runRepository.createRun).not.toHaveBeenCalled();
 		});
 
@@ -727,17 +736,30 @@ describe('AgentEvalRunnerService', () => {
 
 	describe('getRunSummary', () => {
 		it('404s when the run is missing', async () => {
-			runRepository.findById.mockResolvedValue(null);
-			await expect(service.getRunSummary('run-x')).rejects.toThrow('not found');
+			runRepository.findByIdAndAgentId.mockResolvedValue(null);
+			await expect(service.getRunSummary('run-x', 'agent-1')).rejects.toThrow('not found');
+		});
+
+		it('404s a run belonging to a different agent, without counting its cases', async () => {
+			// The agent-scoped read is the whole permission check on this path: a
+			// caller authorized for one agent must not be able to poll another
+			// agent's run by id.
+			runRepository.findByIdAndAgentId.mockResolvedValue(null);
+
+			await expect(service.getRunSummary('run-1', 'other-agent')).rejects.toThrow('not found');
+			expect(runRepository.findByIdAndAgentId).toHaveBeenCalledWith('run-1', 'other-agent');
+			expect(resultRepository.countByStatus).not.toHaveBeenCalled();
 		});
 
 		it('reports status + per-status counts from the count query', async () => {
-			runRepository.findById.mockResolvedValue(mock({ id: 'run-1', status: 'completed' }));
+			runRepository.findByIdAndAgentId.mockResolvedValue(
+				mock({ id: 'run-1', status: 'completed' }),
+			);
 			resultRepository.countByStatus.mockResolvedValue(
 				counts({ success: 3, error: 1, running: 1 }),
 			);
 
-			const summary = await service.getRunSummary('run-1');
+			const summary = await service.getRunSummary('run-1', 'agent-1');
 
 			expect(summary).toEqual({
 				runId: 'run-1',

@@ -115,15 +115,14 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	},
 	google: {
 		build: (creds, model, fetch) => {
-			const { createGoogleGenerativeAI } =
-				require('@ai-sdk/google') as typeof import('@ai-sdk/google');
-			return createGoogleGenerativeAI({ ...creds, fetch })(model);
+			const { createGoogle } = require('@ai-sdk/google') as typeof import('@ai-sdk/google');
+			return createGoogle({ ...creds, fetch })(model);
 		},
 	},
 	xai: {
 		build: (creds, model, fetch) => {
 			const { createXai } = require('@ai-sdk/xai') as typeof import('@ai-sdk/xai');
-			return createXai({ ...creds, fetch })(model);
+			return createXai({ ...creds, fetch }).chat(model);
 		},
 	},
 	groq: {
@@ -283,7 +282,7 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
  */
 const EMBEDDING_PROVIDERS = {
 	openai: { pkg: '@ai-sdk/openai', factory: 'createOpenAI' },
-	google: { pkg: '@ai-sdk/google', factory: 'createGoogleGenerativeAI' },
+	google: { pkg: '@ai-sdk/google', factory: 'createGoogle' },
 	mistral: { pkg: '@ai-sdk/mistral', factory: 'createMistral' },
 	cohere: { pkg: '@ai-sdk/cohere', factory: 'createCohere' },
 	amazon: { pkg: '@ai-sdk/amazon-bedrock', factory: 'createAmazonBedrock' },

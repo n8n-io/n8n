@@ -20,7 +20,7 @@ import {
 import Modal from '@/app/components/Modal.vue';
 import { ADD_EXECUTION_TO_DATASET_MODAL_KEY } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useEvaluationStore } from '../../evaluation.store';
 import { stringifyValue } from '../../evaluation.utils';
 

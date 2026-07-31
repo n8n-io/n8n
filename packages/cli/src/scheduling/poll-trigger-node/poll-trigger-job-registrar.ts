@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DesiredJob, Schedule } from '@n8n/scheduler';
@@ -52,12 +53,15 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		const desired = this.toDesiredJobs(workflowId, node, pollTimes, seed, resolvedTimezone);
 
 		const payload: PollTriggerTaskPayload = { workflowId, nodeId: node.id };
+		// Skip, not coalesce: a poll fetches everything new since it last ran, so
+		// replaying missed polls would just repeat the same fetch.
 		const summary = await this.jobProvisioner.provision(
 			workflowId,
 			node.id,
 			POLL_TRIGGER_TASK_TYPE,
 			{ ...payload },
 			desired,
+			ScheduledJobMisfirePolicy.Skip,
 		);
 
 		this.logger.debug('Provisioned scheduler jobs for poll trigger node', {

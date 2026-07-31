@@ -22,6 +22,7 @@ import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent
 import { createUserShell } from '@test-integration/db/users';
 
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
+import { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
 // The agent under test runs through the real reconstruction + live-model path,
 // which needs credentials/network and is covered by the instance-ai eval suite;
@@ -58,6 +59,11 @@ const buildRunner = () =>
 		evalAgentExecutionService,
 		concurrencyControl,
 		Container.get(License),
+		// Real gate, not a mock: it resolves the flag through the real
+		// `PostHogClient`, which (uninitialized here, so no network) falls back to
+		// the env overrides — exercising the operator force-enable path the
+		// `agentEvalsEnabled` assignment in `beforeEach` relies on.
+		Container.get(AgentEvalsFlagGate),
 	);
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */
@@ -144,7 +150,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 		const { runId, finished } = await runner.startRun(dataset.id, project.id, owner);
 		await finished;
 
-		const summary = await runner.getRunSummary(runId);
+		const summary = await runner.getRunSummary(runId, agent.id);
 		expect(summary.status).toBe('completed');
 		expect(summary.counts).toMatchObject({ total: 2, success: 2, error: 0, cancelled: 0 });
 
@@ -207,7 +213,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 		const { runId, finished } = await runner.startRun(dataset.id, project.id, owner);
 		await finished;
 
-		const summary = await runner.getRunSummary(runId);
+		const summary = await runner.getRunSummary(runId, agent.id);
 		expect(summary.status).toBe('completed');
 		expect(summary.counts).toMatchObject({ total: 1, success: 0, error: 1 });
 

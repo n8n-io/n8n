@@ -90,6 +90,20 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		return await this.findOneBy({ id });
 	}
 
+	// A run has no agent column — the agent under test is its dataset's — so the
+	// ownership check walks the relation instead of trusting a bare run id.
+	async findByIdAndAgentId(id: string, agentId: string): Promise<AgentEvalRun | null> {
+		return await this.findOne({ where: { id, dataset: { agentId } } });
+	}
+
+	/** Runs of a dataset, scoped to the agent that dataset must belong to. */
+	async findByDatasetIdAndAgentId(datasetId: string, agentId: string): Promise<AgentEvalRun[]> {
+		return await this.find({
+			where: { datasetId, dataset: { agentId } },
+			order: { createdAt: 'DESC' },
+		});
+	}
+
 	/**
 	 * Mark every run still in an incomplete state as errored. Called on startup:
 	 * the runner has no resume mechanism, so a run interrupted by a process
