@@ -14,12 +14,14 @@ import type {
 } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { AiService } from '@/services/ai.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import type { Telemetry } from '@/telemetry';
@@ -40,7 +42,6 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
-import type { AiService } from '@/services/ai.service';
 import * as checkAccess from '@/permissions.ee/check-access';
 
 const ctx = {
@@ -114,6 +115,7 @@ function makeService() {
 		agentTaskService,
 		agentPublishService,
 		aiService,
+		mock<AiGatewayService>(),
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
@@ -1427,6 +1429,32 @@ describe('AgentsBuilderToolsService', () => {
 				id: 'seo_analyzer',
 				name: 'seo_analyzer',
 			});
+		});
+
+		it('soft-fails on a build error but rethrows when the run was aborted', async () => {
+			const { service, secureRuntime } = makeService();
+			secureRuntime.describeToolSecurely.mockRejectedValue(new Error('compile failed'));
+			const controller = new AbortController();
+			const abortableCtx = { ...ctx, abortSignal: controller.signal };
+
+			await expect(
+				getBuildCustomTool(service).handler!({ code: 'broken' }, abortableCtx),
+			).resolves.toEqual({ ok: false, errors: [{ message: 'compile failed' }] });
+
+			// The isolate compiles model-authored code, so an abort-shaped error from
+			// the generated tool must not be read as a cancellation of the run.
+			secureRuntime.describeToolSecurely.mockRejectedValue(new Error('Aborted'));
+
+			await expect(
+				getBuildCustomTool(service).handler!({ code: 'broken' }, abortableCtx),
+			).resolves.toEqual({ ok: false, errors: [{ message: 'Aborted' }] });
+
+			secureRuntime.describeToolSecurely.mockRejectedValue(new Error('compile failed'));
+			controller.abort();
+
+			await expect(
+				getBuildCustomTool(service).handler!({ code: 'broken' }, abortableCtx),
+			).rejects.toThrow('compile failed');
 		});
 	});
 

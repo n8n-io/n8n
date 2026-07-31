@@ -374,6 +374,34 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(tc?.state).toBe('done');
 	});
 
+	it('hydrates childProgress from a persisted childTrace', () => {
+		const childTrace = {
+			text: 'Looking things up',
+			reasoningSegments: [{ id: 'r-1', content: 'Checking schemas.' }],
+			steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+		};
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d-trace',
+						input: { subAgentId: 'inline' },
+						state: 'resolved',
+						output: { status: 'completed', answer: 'all good' },
+						childTrace,
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat[0].toolCalls?.[0].childProgress).toEqual(childTrace);
+	});
+
 	it('leaves delegate difficulty summary for render-time i18n on reload', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{

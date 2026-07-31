@@ -13,7 +13,6 @@ import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { DataTableExporter } from './entities/data-table/data-table.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
-import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { TagExporter } from './entities/tag/tag.exporter';
@@ -71,13 +70,9 @@ export class N8nPackagesService {
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<ExportPackageResult> {
-		// TODO: remove this once reference-only is supported
 		const { missingWorkflowDependencyPolicy } = request;
-		if (missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly) {
-			throw new PackageExportBlockedError(
-				'Reference-only static sub-workflow dependencies are not supported. Export aborted.',
-			);
-		}
+		const isReferenceOnly =
+			missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly;
 
 		const writer = new TarPackageWriter();
 		const workflowIds = request.workflowIds ?? [];
@@ -131,9 +126,13 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
+		// Reference-only keeps missing dependencies out of the package, so only the
+		// direct references of packaged workflows matter — a referenced workflow's
+		// own dependency closure is assumed to exist on the target alongside it.
 		const workflowRequirements = await this.workflowDependencyResolver.resolve({
 			user: request.user,
 			workflowIds: allWorkflowsBeforeAutoInclude.map(({ id }) => id),
+			traversal: isReferenceOnly ? 'direct' : 'transitive',
 		});
 
 		let autoIncludedExportResult: AutoIncludedWorkflowExportResult | undefined;
@@ -190,10 +189,13 @@ export class N8nPackagesService {
 			...(autoIncludedExportResult?.workflowEntries ?? []),
 		]);
 
-		assertStaticSubWorkflowsIncluded(
-			workflowRequirements,
-			new Set(allWorkflowsInPackage.map(({ id }) => id)),
-		);
+		// Reference-only records missing dependencies as requirements instead of aborting.
+		if (!isReferenceOnly) {
+			assertStaticSubWorkflowsIncluded(
+				workflowRequirements,
+				new Set(allWorkflowsInPackage.map(({ id }) => id)),
+			);
+		}
 
 		// The auto-include's projectTargetsById is a superset of the project targets from the project export result
 		// that's why it takes precedence when both are present.
@@ -216,7 +218,8 @@ export class N8nPackagesService {
 			projectTargetsById,
 		});
 
-		const workflowRequirementExportResult = this.workflowRequirementExporter.export({
+		const workflowRequirementExportResult = await this.workflowRequirementExporter.export({
+			user: request.user,
 			requirements: workflowRequirements,
 			workflows: allWorkflowsInPackage,
 		});

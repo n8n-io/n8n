@@ -31,7 +31,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 
@@ -70,6 +70,9 @@ type Props = {
 	activeId?: string;
 	mode?: 'new' | 'edit';
 };
+
+/** All a new credential needs of its owning project: where to save it, and what to call it in the toast. */
+type CredentialHomeProject = { id: string; name?: string | null };
 
 const props = withDefaults(defineProps<Props>(), { mode: 'new', activeId: undefined });
 
@@ -230,6 +233,7 @@ const {
 	isCredentialTestable,
 	credentialPermissions,
 	usesExternalSecrets,
+	homeProject,
 	setCredentialPropertyDefaults,
 	resetCredentialData,
 	testCredential,
@@ -667,7 +671,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		if (presetUsageScope.value) {
 			credentialDetails.usageScope = presetUsageScope.value;
 		}
-		credential = await createCredential(credentialDetails, projectsStore.currentProject);
+		credential = await createCredential(credentialDetails, homeProject.value);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
@@ -797,14 +801,11 @@ async function handleDynamicNotification(isValid: boolean) {
 	}
 }
 
-const createToastMessagingForNewCredentials = (project?: Project | null) => {
+const createToastMessagingForNewCredentials = (project?: CredentialHomeProject | null) => {
 	let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
 	let toastText = '';
 
-	if (
-		projectsStore.currentProject &&
-		projectsStore.currentProject.id !== projectsStore.personalProject?.id
-	) {
+	if (project && project.id !== projectsStore.personalProject?.id) {
 		toastTitle = i18n.baseText('credentials.create.project.toast.title', {
 			interpolate: { projectName: project?.name ?? '' },
 		});
@@ -822,7 +823,7 @@ const createToastMessagingForNewCredentials = (project?: Project | null) => {
 
 async function createCredential(
 	credentialDetails: ICredentialsDecrypted,
-	project?: Project | null,
+	project?: CredentialHomeProject | null,
 ): Promise<ICredentialsResponse | null> {
 	let credential;
 

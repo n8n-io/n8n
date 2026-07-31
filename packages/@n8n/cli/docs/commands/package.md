@@ -28,17 +28,20 @@ n8n-cli package export -w abc --include-tags=false -o export.n8np
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
 | `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
 | `--include-tags` | `true` (default) or `false`. Whether tags assigned to the exported workflows are bundled into the package. When `false`, no tag data is included in the package. |
-| `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` is reserved for a future export mode. |
+| `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` keeps them out of the package, listing them in the package requirements as workflows expected to already exist on the target. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
 the API key to hold `workflow:export` when exporting workflows or folders, or
 `project:export` when exporting projects.
 
-Statically referenced sub-workflows must also be included in the resulting
-package. How missing ones are handled depends on
+Statically referenced sub-workflows are dependencies of the package. How
+missing ones are handled depends on
 `--missing-workflow-dependency-policy`. With the default `fail` policy you include them yourself. With `include-in-package`, n8n resolves the static dependency graph and adds any
 missing sub-workflows to the package automatically, so you don't need to list
-them explicitly.
+them explicitly. With `reference-only`, missing sub-workflows stay out of the
+package and are only listed in the package requirements (by id, with a
+best-effort name), on the assumption that they and their own dependencies
+already exist on the target instance.
 
 ## `package import`
 
@@ -68,13 +71,17 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--data-table-schema-conflict-policy` | How strictly a matched data table's schema is compared. Every package column must exist on the matched target table with the same name and type — a missing column or a type mismatch always rejects. `keep-existing` (instance default) ignores additional columns the target table has of its own; `fail` is the strict drift-detection choice and rejects those too. Neither policy alters the matched target table — package columns are never added to it. |
 | `--variable-missing-mode` | What to do when a variable referenced by the package's workflows is absent from both the target project and the global scope (lookup order: project, then global): `do-nothing` (instance default) imports the workflows anyway and lists the unresolved variable names in the result, without creating anything; `must-preexist` rejects the import unless every referenced variable already resolves; `create-stub` creates each missing variable with an empty value at the placement scope (see `--variable-parent-policy`) and lists the created names under `variables.stubbed`. Matched variables are always used as-is — the import never overwrites variables. |
 | `--variable-parent-policy` | Where `create-stub` creates missing variables for workflow/folder packages (default `project`): `project` creates them in the target project; `global` creates them at global scope. Ignored for project packages, where placement follows the package layout (a variable bundled under a project is created in that project; one bundled at the top level is created globally). |
+| `--tag-missing-mode` | What to do when a tag referenced by the package's workflows is absent on the target instance — tags are matched by source id, never by name. `create` (instance default) creates the tag globally with its source id and name; `do-nothing` imports the workflows without the missing tags and lists them under `tags.skipped`. |
+| `--tag-conflict-policy` | What to do when a referenced tag conflicts on the target instance — the same-id target tag carries a different name (rename drift), or the tag's name is held by a different tag (name collision). `skip` (instance default) imports the workflows without the conflicted tags and lists them under `tags.skipped`; `fail` rejects the import; `rename` renames a drifted target tag to the package name — name collisions still reject the import. |
 | `--bindings` | Explicit source→target id bindings as a JSON object keyed by entity type, e.g. `{"credentials":{"<sourceId>":"<targetId>"}}`. Only `credentials` is honoured today; these bindings are applied before `--credential-matching-mode` resolution runs. |
 
 Requires the API key to hold:
 
 - `workflow:import` — always
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`
-- `variable:create` — when the package references variables and `--variable-missing-mode` is `create-stub`.
+- `variable:create` — when the package references variables and `--variable-missing-mode` is `create-stub`
+- `tag:create` — when the import would create a tag (under `--tag-missing-mode create`, the instance default; tags that match, are dropped, or belong only to skipped workflows need no scope)
+- `tag:update` — when the import would rename a tag (under `--tag-conflict-policy rename`).
 
 When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:

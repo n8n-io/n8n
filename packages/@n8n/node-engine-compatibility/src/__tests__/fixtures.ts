@@ -3,6 +3,7 @@ import type { ExecuteContext } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
 import type {
 	CloseFunction,
+	IConnections,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -90,6 +91,28 @@ class NewStyleEcho extends Node {
 	}
 }
 
+class TwoOutputs implements INodeType {
+	description = {
+		displayName: 'Two Outputs',
+		name: 'twoOutputs',
+		group: ['transform'],
+		version: 1,
+		description: 'Emits on two output slots',
+		defaults: { name: 'Two Outputs' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		return await Promise.resolve([
+			items,
+			items.map((item) => ({ json: { ...item.json, second: true } })),
+		]);
+	}
+}
+
 const pushCloseFunction = (context: IExecuteFunctions, close: CloseFunction) => {
 	(context as unknown as ExecuteContext).closeFunctions.push(close);
 };
@@ -163,6 +186,7 @@ const registry = new Map<string, INodeType>([
 	['test.alwaysFails', new AlwaysFails()],
 	['test.noExecute', new NoExecute()],
 	['test.newStyleEcho', new NewStyleEcho() as unknown as INodeType],
+	['test.twoOutputs', new TwoOutputs()],
 	['test.succeedsWithFailingCleanup', new SucceedsWithFailingCleanup()],
 	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
@@ -191,14 +215,21 @@ export const testAdditionalDataFactory = async (
 	} as unknown as IWorkflowExecuteAdditionalData);
 
 export const v1Workflow = (
-	nodes: Array<{ id: string; name: string; type: string; parameters?: IDataObject }>,
+	nodes: Array<{
+		id: string;
+		name: string;
+		type: string;
+		typeVersion?: number;
+		parameters?: IDataObject;
+	}>,
+	connections: IConnections = {},
 ): IWorkflowBase =>
 	({
 		id: 'wf-1',
 		name: 'fixture',
 		active: false,
 		nodes: nodes.map((n) => ({ typeVersion: 1, position: [0, 0], parameters: {}, ...n })),
-		connections: {},
+		connections,
 	}) as unknown as IWorkflowBase;
 
 export const stepRequest = (
