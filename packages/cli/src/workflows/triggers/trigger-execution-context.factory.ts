@@ -349,6 +349,7 @@ export class TriggerExecutionContextFactory {
 					fence,
 				});
 				if (!committed) {
+					// A miss can't tell a reclaimed lease apart from a cursor row that's genuinely gone.
 					this.logger.debug(
 						`Poll node "${node.name}" cursor-only commit skipped: the poll no longer holds its lease, or its cursor row is gone`,
 						{ workflowId: workflowData.id, nodeId: node.id },
