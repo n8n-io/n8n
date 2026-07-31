@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
+	CreateExecutionPayload,
 	ExecutionRepository,
 	Project,
 	User,
@@ -206,17 +207,34 @@ describe('WorkflowExecutionService', () => {
 				responsePromise,
 			);
 
+		let committedPayloads: CreateExecutionPayload[];
+
+		const capture = (payload: CreateExecutionPayload): CreateExecutionPayload => {
+			const inner = payload.data.executionData;
+
+			return {
+				...payload,
+				data: {
+					...payload.data,
+					executionData: inner
+						? { ...inner, nodeExecutionStack: [...inner.nodeExecutionStack] }
+						: inner,
+				},
+			};
+		};
+
 		/** The payload the service handed to the cursor commit. */
-		const committedPayload = () => pollCursorService.commitWithExecution.mock.calls[0][0].payload;
+		const committedPayload = () => committedPayloads[0];
 
 		beforeEach(() => {
 			vi.clearAllMocks();
 			liveWorkflow = mock<Workflow>();
 			liveWorkflow.getStaticData.mockReturnValue({});
 			responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
-			pollCursorService.commitWithExecution.mockResolvedValue({
-				executionId: 'exec-9',
-				previousCursor: { lastItemId: 'previous' },
+			committedPayloads = [];
+			pollCursorService.commitWithExecution.mockImplementation(async ({ payload }) => {
+				committedPayloads.push(capture(payload));
+				return { executionId: 'exec-9', previousCursor: { lastItemId: 'previous' } };
 			});
 			pollCursorService.mirrorToStaticData.mockResolvedValue(undefined);
 			workflowRunner.run.mockResolvedValue('exec-9');
@@ -264,7 +282,6 @@ describe('WorkflowExecutionService', () => {
 				{ executionId: 'exec-9', expectedStatus: 'new' },
 				responsePromise,
 			);
-			expect(workflowRunner.registerAndFailExecution).not.toHaveBeenCalled();
 		});
 
 		test('mirrors the cursor the commit replaced to the static data of the polled node', async () => {
@@ -306,20 +323,18 @@ describe('WorkflowExecutionService', () => {
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
-		test('fails the committed execution and skips the run when establishing context errors', async () => {
-			const contextError = mock<ExecutionError>({ message: 'masking failed' });
+		test('commits neither the cursor nor an execution when establishing context errors', async () => {
+			const contextError = new Error('masking failed') as ExecutionError;
 			workflowRunner.establishContextForPersistence.mockResolvedValue(contextError);
 
 			const returned = await runPolledWorkflow();
 
-			expect(returned).toBe('exec-9');
-			expect(workflowRunner.registerAndFailExecution).toHaveBeenCalledWith(
-				expect.objectContaining({ workflowData: workflow }),
-				contextError,
-				{ executionId: 'exec-9', expectedStatus: 'new' },
-				responsePromise,
-			);
+			expect(returned).toBeUndefined();
+			expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
+			expect(pollCursorService.mirrorToStaticData).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(responsePromise.reject).toHaveBeenCalledWith(contextError);
+			expect(errorReporter.error).toHaveBeenCalledWith(contextError, { shouldBeLogged: false });
 		});
 
 		test('crashes the committed execution when the runner refuses to start it', async () => {

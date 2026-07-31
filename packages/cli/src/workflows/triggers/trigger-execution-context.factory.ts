@@ -304,6 +304,11 @@ export class TriggerExecutionContextFactory {
 
 				if (donePromise) {
 					void executePromise.then((executionId) => {
+						if (executionId === undefined) {
+							donePromise.resolve(undefined);
+							return;
+						}
+
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
 							.then(donePromise.resolve)
@@ -369,7 +374,13 @@ export class TriggerExecutionContextFactory {
 			const __commitCursor = async () => {
 				const cursor = takeStagedCursor();
 				if (cursor === null) return;
-				await this.pollCursorService.commitCursorOnly(workflowData.id, node.id, cursor);
+				await this.pollCursorService.commitCursorOnly({
+					workflowId: workflowData.id,
+					nodeId: node.id,
+					nodeName: node.name,
+					cursor,
+					nodeStaticData: workflow.getStaticData('node', node),
+				});
 			};
 
 			return new PollContext(

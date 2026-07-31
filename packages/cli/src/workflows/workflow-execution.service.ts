@@ -127,7 +127,7 @@ export class WorkflowExecutionService {
 		cursor: PollCursor,
 		workflow: Workflow,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): Promise<string> {
+	): Promise<string | undefined> {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node,
@@ -162,6 +162,19 @@ export class WorkflowExecutionService {
 		// never holds raw header data. `run` below establishes the context again, which
 		// early-exits once it is in place.
 		const establishContextError = await this.workflowRunner.establishContextForPersistence(runData);
+
+		if (establishContextError) {
+			this.errorReporter.error(establishContextError, { shouldBeLogged: false });
+			this.logger.error('Failed to prepare a polled execution, so its cursor was not committed', {
+				workflowId: workflowData.id,
+				nodeName: node.name,
+				error: establishContextError,
+			});
+
+			responsePromise?.reject(ensureError(establishContextError));
+
+			return undefined;
+		}
 
 		const payload: CreateExecutionPayload = {
 			data: executionData,
@@ -199,19 +212,6 @@ export class WorkflowExecutionService {
 				nodeName: node.name,
 				error,
 			});
-		}
-
-		// Masking failed, and the row exists either way, so report the failure against it
-		// rather than dropping the run silently.
-		if (establishContextError) {
-			await this.workflowRunner.registerAndFailExecution(
-				runData,
-				establishContextError,
-				{ executionId, expectedStatus: 'new' },
-				responsePromise,
-			);
-
-			return executionId;
 		}
 
 		// The row was committed at `new`; `expectedStatus` claims it and moves it to
