@@ -45,12 +45,22 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		});
 	}
 
-	async markAsError(id: string, errorCode: string, errorDetails?: IDataObject | null) {
+	/**
+	 * `metrics` is optional: a run failing before any case ran has none, but one
+	 * failing partway keeps its counts where the other statuses put them.
+	 */
+	async markAsError(
+		id: string,
+		errorCode: string,
+		errorDetails?: IDataObject | null,
+		metrics?: IDataObject | null,
+	) {
 		return await this.update(id, {
 			status: 'error',
 			completedAt: new Date(),
 			errorCode,
 			errorDetails: errorDetails ?? null,
+			metrics: metrics ?? null,
 			runningInstanceId: null,
 		});
 	}
