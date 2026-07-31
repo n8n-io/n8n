@@ -56,7 +56,6 @@ export function getSlackPlatformAgentContext(chat: ChatInstance): PlatformAgentC
 export function getSlackReplyExpectation(params: {
 	message: Message<unknown>;
 	isNewMention: boolean;
-	platformAgentContext: PlatformAgentContext;
 }): ReplyExpectation {
 	// `isMention` is set by the Slack adapter from the app_mention event type,
 	// so it works even when the bot user ID (best-effort auth.test) is unknown.
@@ -69,12 +68,6 @@ export function getSlackReplyExpectation(params: {
 	const channelId = stringValue(raw.channel);
 	const isDm = channelType === 'im' || channelId?.startsWith('D') === true;
 	if (isDm) return 'required';
-
-	// Mentions inside an already-subscribed thread arrive as subscribed
-	// messages, so check the raw text for the bot mention as well.
-	const agentUserId = params.platformAgentContext.agentUserId;
-	const text = stringValue(raw.text) ?? params.message.text ?? '';
-	if (agentUserId && text.includes(`<@${agentUserId}>`)) return 'required';
 
 	return 'optional';
 }

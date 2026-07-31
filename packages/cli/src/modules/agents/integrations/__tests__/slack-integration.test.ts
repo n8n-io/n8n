@@ -90,14 +90,14 @@ describe('SlackIntegration', () => {
 			).toBe('required');
 		});
 
-		it('requires a reply when a subscribed-thread message mentions the bot', () => {
+		it('does not infer a mention from raw message text', () => {
 			expect(
 				integration.getReplyExpectation({
 					message: slackMessage({ channel: 'C123', text: '<@U_BOT> what do you think?' }),
 					isNewMention: false,
 					platformAgentContext,
 				}),
-			).toBe('required');
+			).toBe('optional');
 		});
 
 		it('requires a reply when the adapter flags the message as a mention, even without a bot user ID', () => {
