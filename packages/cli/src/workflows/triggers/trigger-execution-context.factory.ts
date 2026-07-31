@@ -380,6 +380,7 @@ export class TriggerExecutionContextFactory {
 				return await this.pollCursorService.readCursor(
 					workflowData.id,
 					node.id,
+					node.name,
 					workflow.getStaticData('node', node),
 				);
 			};
