@@ -97,7 +97,8 @@ describe('Slack V2 > GenericFunctions', () => {
 			await expect(
 				slackApiRequest.call(mockExecuteFunctions, 'POST', '/assistant.search.context'),
 			).rejects.toMatchObject({
-				message: 'Slack rate limited this request',
+				message: `Slack error response: "${error}"`,
+				description: expect.stringContaining('#rate-limiting'),
 				level: 'warning',
 			});
 		});
