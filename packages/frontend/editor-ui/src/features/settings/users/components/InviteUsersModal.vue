@@ -10,7 +10,7 @@ import { ROLE } from '@n8n/api-types';
 import { useUsersStore } from '../users.store';
 import { copyInviteLink } from '../invite-link.utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useClipboard } from '@n8n/composables/useClipboard';
