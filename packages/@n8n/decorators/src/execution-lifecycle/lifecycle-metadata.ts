@@ -7,6 +7,7 @@ import type {
 	ITaskStartedData,
 	IWorkflowBase,
 	Workflow,
+	WorkflowExecutionSource,
 } from 'n8n-workflow';
 
 import type { Class } from '../types';
@@ -47,6 +48,8 @@ export type WorkflowExecuteAfterContext = {
 	newStaticData: IDataObject;
 	executionId: string;
 	retryOf?: string;
+	/** Who initiated the run. Unset means a regular user-initiated run. */
+	source?: WorkflowExecutionSource;
 };
 
 export type WorkflowExecuteResumeContext = {
