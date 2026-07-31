@@ -439,11 +439,11 @@ describe('project shell import', () => {
 		expect(mappings).toHaveLength(2);
 	});
 
-	it('blocks a package where one project would adopt a manually-created tag that another project would rename', async () => {
+	it('blocks a package whose projects reconcile and rename the same target tag', async () => {
 		// Each project only resolves the tags its own workflows use, so neither project
 		// sees that the other one also wants to change this same tag; only a check across
 		// the whole package can catch the two projects disagreeing on what should happen to it.
-		const holder = await createTag({ name: 'prod' });
+		await createTag({ id: 'H', name: 'prod' });
 		const packageBuffer = await buildEntityPackageBuffer({
 			projects: [
 				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
@@ -452,18 +452,18 @@ describe('project shell import', () => {
 			workflows: [
 				{
 					target: 'projects/brie/workflows/wfa',
-					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa', tagIds: ['TAG-X'] }),
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa', tagIds: ['X'] }),
 				},
 				{
 					target: 'projects/stilton/workflows/wfb',
-					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb', tagIds: [holder.id] }),
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb', tagIds: ['H'] }),
 				},
 			],
 			manifestExtras: {
 				requirements: {
 					tags: [
-						{ id: 'TAG-X', name: 'prod', usedByWorkflows: ['WFA'] },
-						{ id: holder.id, name: 'staging', usedByWorkflows: ['WFB'] },
+						{ id: 'X', name: 'prod', usedByWorkflows: ['WFA'] },
+						{ id: 'H', name: 'staging', usedByWorkflows: ['WFB'] },
 					],
 				},
 			},
@@ -481,9 +481,9 @@ describe('project shell import', () => {
 					expect.objectContaining({
 						type: 'tag-unresolved',
 						kind: 'name-collision',
-						sourceId: 'TAG-X',
+						sourceId: 'X',
 						name: 'prod',
-						existingTagId: holder.id,
+						existingTagId: 'H',
 						usedByWorkflows: ['WFA'],
 					}),
 				],
@@ -492,7 +492,7 @@ describe('project shell import', () => {
 		expect(await findProject('P1')).toBeNull();
 		expect(await findProject('P2')).toBeNull();
 		expect(await Container.get(TagRepository).find()).toEqual([
-			expect.objectContaining({ id: holder.id, name: 'prod' }),
+			expect.objectContaining({ id: 'H', name: 'prod' }),
 		]);
 	});
 
