@@ -124,6 +124,20 @@ describe('parseWithSchema — JSON Schema', () => {
 		expect(valid.success).toBe(true);
 	});
 
+	it('tolerates patterns that are invalid under the regex u flag', async () => {
+		const schema = {
+			type: 'object' as const,
+			properties: { url: { type: 'string', pattern: '^https\\:\\/\\/' } },
+			required: ['url'],
+		} as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, { url: 'https://example.com' });
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, { url: 'ftp://example.com' });
+		expect(invalid.success).toBe(false);
+	});
+
 	it('validates nested object properties', async () => {
 		const schema = {
 			type: 'object' as const,

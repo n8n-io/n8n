@@ -14,7 +14,9 @@ function getAjv(): InstanceType<typeof AjvType> {
 	if (!ajvInstance) {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const { default: Ajv } = require('ajv') as { default: typeof AjvType };
-		ajvInstance = new Ajv({ strict: false });
+		// unicodeRegExp: false — external (MCP) schemas often carry patterns that
+		// are invalid under the regex `u` flag, e.g. `^https\:\/\/`.
+		ajvInstance = new Ajv({ strict: false, unicodeRegExp: false });
 	}
 	return ajvInstance;
 }
