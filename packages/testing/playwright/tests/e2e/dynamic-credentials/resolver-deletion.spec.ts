@@ -33,6 +33,7 @@ test.describe(
 				config: {
 					metadataUri: keycloak.internalDiscoveryUrl,
 					validation: 'oauth2-userinfo',
+					expectedAudience: keycloak.clientId,
 				},
 			});
 
@@ -69,6 +70,7 @@ test.describe(
 				config: {
 					metadataUri: keycloak.internalDiscoveryUrl,
 					validation: 'oauth2-userinfo',
+					expectedAudience: keycloak.clientId,
 				},
 			});
 
@@ -107,6 +109,7 @@ test.describe(
 				config: {
 					metadataUri: keycloak.internalDiscoveryUrl,
 					validation: 'oauth2-userinfo',
+					expectedAudience: keycloak.clientId,
 				},
 			});
 
