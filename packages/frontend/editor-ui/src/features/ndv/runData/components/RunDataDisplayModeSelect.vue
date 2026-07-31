@@ -57,7 +57,7 @@ watch(
 		:model-value="value"
 		:options="options"
 		data-test-id="ndv-run-data-display-mode"
-		:size="compact ? 'small' : 'medium'"
+		:size="compact ? 'small' : 'default'"
 		:square-buttons="compact"
 		@update:model-value="(selected) => emit('change', selected)"
 	>
