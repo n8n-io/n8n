@@ -570,6 +570,30 @@ describe('validateValueAgainstSchema', () => {
 
 				expect(result).toEqual({ known: 7, unknown: 'abc' });
 			});
+
+			// `isResourceMapperValue` only checks that `schema` is present, so a persisted
+			// `schema: null` reaches the lookup. Indexing now runs before the loop, where the
+			// previous `schema.find` only ran inside it — an empty value never touched it.
+			describe.each([
+				['null', null],
+				['undefined', undefined],
+				['empty', []],
+			])('when the stored schema is %s', (_label, schema) => {
+				test('resolves no field instead of throwing', () => {
+					const value = { anything: 'kept' };
+
+					const result = validateValueAgainstSchema(
+						makeNode(schema as unknown as unknown[], value),
+						nodeType,
+						value,
+						parameterName,
+						0,
+						0,
+					);
+
+					expect(result).toEqual({ anything: 'kept' });
+				});
+			});
 		});
 	});
 });

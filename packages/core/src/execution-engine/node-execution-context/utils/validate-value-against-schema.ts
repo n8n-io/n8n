@@ -20,7 +20,17 @@ import type { ExtendedValidationResult } from '@/interfaces';
 
 const schemaIndexCache = new WeakMap<ResourceMapperField[], Map<string, ResourceMapperField>>();
 
-const indexSchemaById = (schema: ResourceMapperField[]) => {
+const EMPTY_SCHEMA_INDEX: ReadonlyMap<string, ResourceMapperField> = new Map();
+
+const indexSchemaById = (
+	schema: ResourceMapperField[] | undefined,
+): ReadonlyMap<string, ResourceMapperField> => {
+	// `isResourceMapperValue` only checks that `schema` is present, so a persisted
+	// `schema: null` reaches this. Indexing runs before the loop now, where the previous
+	// `schema.find` only ran inside it, so bail out here instead of throwing on iteration.
+	if (!schema?.length) {
+		return EMPTY_SCHEMA_INDEX;
+	}
 	let index = schemaIndexCache.get(schema);
 	if (!index) {
 		index = new Map<string, ResourceMapperField>();
