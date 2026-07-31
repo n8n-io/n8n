@@ -18,7 +18,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';

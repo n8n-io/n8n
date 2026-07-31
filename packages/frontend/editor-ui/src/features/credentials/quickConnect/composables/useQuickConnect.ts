@@ -14,7 +14,7 @@ import { useI18n } from '@n8n/i18n';
 import { getQuickConnectApiKey } from '../quickConnect.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useMessage } from '@/app/composables/useMessage';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 export function useQuickConnect() {
 	const settingsStore = useSettingsStore();

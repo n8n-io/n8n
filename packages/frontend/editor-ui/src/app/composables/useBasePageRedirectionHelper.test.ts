@@ -3,7 +3,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import merge from 'lodash/merge';
 import { useBasePageRedirectionHelper } from './useBasePageRedirectionHelper';
 import { defaultSettings } from '@/__tests__/defaults';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createPinia, setActivePinia } from 'pinia';
 import * as cloudPlanApi from '@n8n/rest-api-client/api/cloudPlans';
 import { useVersionsStore } from '@n8n/stores/versions.store';

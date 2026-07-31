@@ -7,7 +7,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
@@ -29,7 +29,7 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),

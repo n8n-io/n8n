@@ -1,4 +1,4 @@
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';

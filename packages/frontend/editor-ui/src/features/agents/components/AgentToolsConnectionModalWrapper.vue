@@ -14,7 +14,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
 	isNodePreviewKey,

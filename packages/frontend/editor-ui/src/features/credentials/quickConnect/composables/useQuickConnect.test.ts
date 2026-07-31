@@ -96,7 +96,7 @@ const mockUsersState = vi.hoisted(() => ({
 		lastName?: string | null;
 	} | null,
 }));
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => mockUsersState,
 }));
 

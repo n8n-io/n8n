@@ -40,7 +40,7 @@ vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: () => settingsStore,
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => usersStore,
 }));
 

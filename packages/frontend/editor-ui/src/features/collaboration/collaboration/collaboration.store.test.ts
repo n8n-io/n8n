@@ -40,7 +40,7 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 	}),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
 		currentUserId: 'user-1',
 	}),

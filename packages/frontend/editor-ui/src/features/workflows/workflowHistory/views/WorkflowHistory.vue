@@ -42,7 +42,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowVersionFormModalEventBusEvents } from '../components/WorkflowVersionFormModal.vue';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { getPublishedVersionId } from '../utils';
 
 type WorkflowHistoryActionRecord = {

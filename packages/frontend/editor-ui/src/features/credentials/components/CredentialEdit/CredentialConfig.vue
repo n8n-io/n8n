@@ -27,7 +27,7 @@ import { useCredentialsStore } from '../../credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';

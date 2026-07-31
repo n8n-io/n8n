@@ -19,7 +19,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 export interface ITemplateState {

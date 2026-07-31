@@ -17,7 +17,7 @@ import {
 	MCP_SETTINGS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 const i18n = useI18n();
 const toast = useToast();
