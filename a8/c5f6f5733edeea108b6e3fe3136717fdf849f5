@@ -1,0 +1,57 @@
+packages/testing/playwright/tests/e2e/ai/langchain-agents.spec.ts
+  s_50c5bf987a3871::t_d557db306293f2 37-41
+packages/testing/playwright/tests/e2e/ai/assistant-code-help.spec.js
+  ai_agent 1-90
+packages/testing/playwright/tests/e2e/ai/langchain-chains.spec.ts
+  s_50c5bf987a3871::t_a2bebeb121eb1c 32-36
+packages/testing/playwright/tests/e2e/ai/ai-2505-pdf-embed.spec.js
+  ai_agent 1-21
+packages/testing/playwright/tests/e2e/ai/assistant-credential-help.spec.js
+  ai_agent 1-144
+packages/testing/playwright/tests/e2e/ai/assistant-support-chat.spec.js
+  ai_agent 1-102
+packages/testing/playwright/tests/e2e/ai/hitl-for-tools.spec.js
+  ai_agent 1-229
+packages/testing/playwright/tests/e2e/ai/langchain-chains.spec.js
+  ai_agent 1-116
+packages/testing/playwright/tests/e2e/ai/hitl-for-tools.spec.ts
+  s_50c5bf987a3871::t_2b313965ba6577 32-33
+packages/testing/playwright/tests/e2e/ai/langchain-tools.spec.js
+  ai_agent 1-90
+packages/testing/playwright/tests/e2e/ai/rag-callout.spec.js
+  ai_agent 1-43
+packages/testing/playwright/tests/e2e/ai/eval-collections-compare.spec.js
+  ai_agent 1-183
+packages/testing/playwright/tests/e2e/ai/langchain-agents.spec.js
+  ai_agent 1-218
+packages/testing/playwright/tests/e2e/ai/workflow-builder.spec.js
+  ai_agent 1-91
+packages/testing/playwright/tests/e2e/ai/chat-session.spec.js
+  ai_agent 1-39
+packages/testing/playwright/tests/e2e/ai/assistant-basic.spec.js
+  ai_agent 1-197
+packages/testing/playwright/tests/e2e/ai/langchain-vectorstores.spec.js
+  ai_agent 1-96
+packages/testing/playwright/tests/e2e/ai/evaluations.spec.js
+  ai_agent 1-94
+packages/testing/playwright/tests/e2e/ai/langchain-memory.spec.js
+  ai_agent 1-133
+packages/testing/playwright/tests/e2e/ai/builder-setup-wizard.spec.js
+  ai_agent 1-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8c5f6f5733edeea108b6e3fe3136717fdf849f5",
+  "prompts": {},
+  "sessions": {
+    "s_50c5bf987a3871": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c368939b-60fb-41d8-a3b6-a31af230f17d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
