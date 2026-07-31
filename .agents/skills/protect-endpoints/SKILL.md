@@ -69,11 +69,12 @@ Add the resource and ops in `packages/@n8n/permissions/`:
    - `PROJECT_CHAT_USER_SCOPES` → execute only (if applicable).
 4. **`src/roles/scopes/global-scopes.ee.ts`** — add to `GLOBAL_OWNER_SCOPES` (admin inherits via `concat()`). Do **not** add to member/chat-user globals — they get scopes via project relations.
 5. **Personal-space publishing**: if you add a `<resource>:publish` scope, also append it to `PERSONAL_SPACE_PUBLISHING_SETTING.scopes` in `constants.ee.ts` so personal-owner gating matches `workflow:publish`.
-6. **Frontend wiring** — three files in the editor; skipping any of them means the new scopes will not appear in the project-role configuration UI:
-   - `packages/frontend/editor-ui/src/app/stores/rbac.store.ts` — add `<resource>: {}` to `scopesByResourceId` (typecheck will fail otherwise).
-   - `packages/frontend/editor-ui/src/features/project-roles/projectRoleScopes.ts` — add the resource to `UI_OPERATIONS` (operations to render in the permissions matrix, in display order) **and** to `SCOPE_TYPES` (the order the resource group appears on the page).
+6. **`src/roles/custom-role-scopes.ee.ts`** — add the resource to `PROJECT_CUSTOM_ROLE_OPERATIONS` with the ops to render in the permissions matrix, in display order. The editor's `SCOPES`/`SCOPE_TYPES` and the save-time whitelist `PROJECT_CUSTOM_ROLE_SCOPES` both derive from it: a resource missing here cannot reach the UI, and a scope missing from it is rejected on save.
+7. **Frontend wiring** — three files; skipping any of them means the new scopes will not appear in the project-role configuration UI:
+   - `packages/frontend/@n8n/stores/src/rbac.store.ts` — add `<resource>: {}` to `scopesByResourceId` (typecheck will fail otherwise).
+   - `packages/frontend/editor-ui/src/features/roles/project/projectRoleScopes.ts` — add the resource to `SCOPE_TYPES` (the order the resource group appears on the page).
    - `packages/frontend/@n8n/i18n/src/locales/en.json` — add `projectRoles.<resource>:<op>` (column label) and `projectRoles.<resource>:<op>.tooltip` (hover description) for every op, plus `projectRoles.type.<resource>` (the group header).
-7. **Snapshot** — update `packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap` to include the new `<resource>:*` entries.
+8. **Snapshot** — update `packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap` to include the new `<resource>:*` entries.
 
 No DB migration needed — `AuthRolesService.init()` syncs scopes/roles on every startup. Custom team roles created in the UI are **not** auto-updated; mention this in the PR description.
 
