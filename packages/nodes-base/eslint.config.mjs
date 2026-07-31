@@ -3,9 +3,14 @@ import { nodeConfig } from '@n8n/eslint-config/node';
 import nodesBasePlugin from 'eslint-plugin-n8n-nodes-base';
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
+import { kafkaImportRestrictions } from './nodes/Kafka/eslint-import-restrictions.mjs';
+
 export default defineConfig(
 	nodeConfig,
-	globalIgnores(['scenarios/**', 'scripts/**']),
+	// This config fragment lives under nodes/ so it sits next to the code it
+	// governs, but it's not lintable TS source — same reason eslint.config.mjs
+	// itself is never linted.
+	globalIgnores(['scenarios/**', 'scripts/**', './nodes/Kafka/eslint-import-restrictions.mjs']),
 	{
 		plugins: {
 			'@n8n/community-nodes': n8nCommunityNodesPlugin,
@@ -187,4 +192,5 @@ export default defineConfig(
 			'n8n-nodes-base/node-filename-against-convention': 'off',
 		},
 	},
+	...kafkaImportRestrictions,
 );
