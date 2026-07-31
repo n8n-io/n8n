@@ -60,6 +60,7 @@ const REQUIRED_BOT_SCOPES = [
 	'mpim:history',
 	'mpim:read',
 	'mpim:write',
+	'reactions:write',
 	'search:read.public',
 	'users:read',
 	'users:read.email',

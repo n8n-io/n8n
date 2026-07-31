@@ -111,7 +111,7 @@ export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmatio
 
 - approve_or_reject(approved, userInput?): A plan-review or free-text confirmation widget is on screen (the event's inputType is plan-review or text). Approve if the plan matches user intent; reject with reason if it diverges. This action only exists as a response to such a widget.
 
-- respond_to_domain_access(response): The agent is asking for domain access permissions. Pick allow_once, allow_all, or deny. Default to allow_all unless the user would deny.
+- respond_to_domain_access(response): The agent is asking permission to reach the network — either a specific domain (fetch-url) or a web search. Pick allow_once, allow_all, or deny. Default to allow_all; pick deny ONLY when a [stage direction] tells the user to refuse this kind of access.
 
 - pick_resource_decision(decision): The agent is asking the user to pick a gateway resource access option. Pick the option the user would choose.`;
 

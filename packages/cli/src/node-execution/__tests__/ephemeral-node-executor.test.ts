@@ -28,9 +28,11 @@ import {
 	isUsableAsAgentTool,
 } from '../ephemeral-node-executor';
 
-// vitest-mock-extended's recursive DeepPartial narrows nested objects (e.g. `defaults`),
-// so a full INodeTypeDescription isn't assignable to the partial. Cast through this helper.
-const mockNodeType = (overrides: object = {}) => mock<INodeType>(overrides as never);
+// Assign overrides onto an empty mock instead of passing them to mock():
+// mock(overrides) deep-wraps nested objects in proxies and mutates shared
+// fixtures (e.g. `toolDescription`) in place, stacking a proxy layer per call.
+// Assigning also sidesteps DeepPartial narrowing of nested objects like `defaults`.
+const mockNodeType = (overrides: object = {}) => Object.assign(mock<INodeType>(), overrides);
 
 const mockGetBase = vi.fn();
 

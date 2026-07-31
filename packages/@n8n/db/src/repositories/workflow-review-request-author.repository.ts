@@ -34,14 +34,23 @@ export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowRe
 		},
 		trx?: EntityManager,
 	): Promise<void> {
+		if (await this.isAuthor(input, trx)) return;
+
+		await this.addAuthor(input, trx);
+	}
+
+	async isAuthor(
+		input: {
+			workflowReviewRequestId: string;
+			userId: string;
+		},
+		trx?: EntityManager,
+	): Promise<boolean> {
 		const manager = trx ?? this.manager;
-		const exists = await manager.existsBy(WorkflowReviewRequestAuthor, {
+		return await manager.existsBy(WorkflowReviewRequestAuthor, {
 			workflowReviewRequestId: input.workflowReviewRequestId,
 			userId: input.userId,
 		});
-		if (exists) return;
-
-		await this.addAuthor(input, trx);
 	}
 
 	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestAuthor[]> {

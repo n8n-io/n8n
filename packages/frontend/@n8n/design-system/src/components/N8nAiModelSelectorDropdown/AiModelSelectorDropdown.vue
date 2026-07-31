@@ -12,6 +12,7 @@ import type {
 	AiModelSelectorMenuItemData,
 } from './AiModelSelectorDropdown.types';
 import { useI18n } from '../../composables/useI18n';
+import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nBadge from '../N8nBadge';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
@@ -106,6 +107,7 @@ defineExpose({
 		teleported
 		searchable
 		width="var(--reka-dropdown-menu-trigger-width)"
+		:sub-menu-max-height="`calc(var(--spacing--5xl) * 2)`"
 		@select="handleSelect"
 	>
 		<template #trigger>
@@ -174,7 +176,9 @@ defineExpose({
 				</div>
 			</template>
 			<div v-else :class="[$style.labelWithBadge, ui.class]">
-				<N8nText size="medium" color="text-dark">{{ item.label }}</N8nText>
+				<N8nText size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">{{
+					item.label
+				}}</N8nText>
 				<N8nBadge
 					v-if="item.data?.badgeLabel"
 					:class="$style.badge"
@@ -184,6 +188,12 @@ defineExpose({
 				>
 					{{ item.data.badgeLabel }}
 				</N8nBadge>
+				<N8nActionPill
+					v-if="item.data?.actionPill"
+					size="small"
+					:type="item.data.actionPill.type ?? 'default'"
+					:text="item.data.actionPill.text"
+				/>
 			</div>
 		</template>
 
