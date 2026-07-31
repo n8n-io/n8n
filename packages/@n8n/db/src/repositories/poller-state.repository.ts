@@ -66,6 +66,9 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	 * neither can commit without the other. Throws when no row matched: the row was read
 	 * before `poll()` ran, so its absence means the workflow or node went away mid-poll
 	 * and the surrounding transaction must not commit.
+	 *
+	 * The write is unconditional, so when two polls of one node overlap the last
+	 * transaction to commit sets the cursor.
 	 */
 	async advanceCursor(
 		workflowId: string,

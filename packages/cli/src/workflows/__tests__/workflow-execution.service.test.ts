@@ -299,20 +299,6 @@ describe('WorkflowExecutionService', () => {
 			);
 		});
 
-		test('starts the run and reports the failure when mirroring the cursor fails', async () => {
-			const mirrorError = new Error('static data write failed');
-			pollCursorService.mirrorToStaticData.mockRejectedValue(mirrorError);
-
-			const returned = await runPolledWorkflow();
-
-			expect(returned).toBe('exec-9');
-			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).toHaveBeenCalledWith(mirrorError, {
-				executionId: 'exec-9',
-				shouldBeLogged: false,
-			});
-		});
-
 		test('neither mirrors nor starts a run when the commit is rejected as a duplicate', async () => {
 			const duplicateError = new DuplicateExecutionError('dedup-key');
 			pollCursorService.commitWithExecution.mockRejectedValue(duplicateError);

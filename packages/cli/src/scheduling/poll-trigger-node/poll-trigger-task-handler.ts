@@ -3,7 +3,12 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { ErrorReporter, TriggersAndPollers } from 'n8n-core';
+import {
+	commitStagedCursor,
+	ErrorReporter,
+	runPollInStagingScope,
+	TriggersAndPollers,
+} from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -55,15 +60,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const { workflow, pollFunctions } =
 			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node);
 
-		const runPoll = async <T>(poll: () => Promise<T>): Promise<T> =>
-			pollFunctions.__runPoll ? await pollFunctions.__runPoll(poll) : await poll();
-		const commitCursor = async () => {
-			if (pollFunctions.__commitCursor) await pollFunctions.__commitCursor();
-		};
-
 		// Poll and hand-off share one staging scope, so a cursor staged here can only
 		// be committed by this poll and never by a later occurrence.
-		return await runPoll(async () => {
+		return await runPollInStagingScope(pollFunctions, async () => {
 			// Scheduled polls run outside any activation isolate window, so acquire and
 			// release one per tick; the finally releases even when poll() throws.
 			await workflow.expression.acquireIsolate();
@@ -105,7 +104,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// check keeps that query off the path that stores no cursor.
 				if (this.pollCursorService.enabled) {
 					try {
-						if (await this.workflowRepository.isActive(workflowId)) await commitCursor();
+						if (await this.workflowRepository.isActive(workflowId))
+							await commitStagedCursor(pollFunctions);
 					} catch (error) {
 						// The poll itself succeeded, so a failed cursor write is logged rather
 						// than routed to the error workflow.

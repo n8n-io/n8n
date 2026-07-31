@@ -194,25 +194,14 @@ export class WorkflowExecutionService {
 			payload,
 		});
 
-		// The row is already committed, so a mirror failure is reported and the run
-		// proceeds regardless.
-		try {
-			await this.pollCursorService.mirrorToStaticData(
-				workflowData.id,
-				node.name,
-				cursor,
-				workflow.getStaticData('node', node),
-				previousCursor,
-			);
-		} catch (error) {
-			this.errorReporter.error(error, { executionId, shouldBeLogged: false });
-			this.logger.error('Failed to mirror the committed poll cursor to workflow static data', {
-				executionId,
-				workflowId: workflowData.id,
-				nodeName: node.name,
-				error,
-			});
-		}
+		// A mirror failure is reported inside and must not stop the committed execution.
+		await this.pollCursorService.mirrorToStaticData(
+			workflowData.id,
+			node.name,
+			cursor,
+			workflow.getStaticData('node', node),
+			previousCursor,
+		);
 
 		// The row was committed at `new`; `expectedStatus` claims it and moves it to
 		// running, so a concurrent starter cannot run it a second time.

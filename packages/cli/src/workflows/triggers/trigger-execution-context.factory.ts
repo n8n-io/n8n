@@ -303,17 +303,21 @@ export class TriggerExecutionContextFactory {
 				);
 
 				if (donePromise) {
-					void executePromise.then((executionId) => {
-						if (executionId === undefined) {
-							donePromise.resolve(undefined);
-							return;
-						}
+					void executePromise
+						.then((executionId) => {
+							if (executionId === undefined) {
+								donePromise.resolve(undefined);
+								return;
+							}
 
-						this.activeExecutions
-							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
-							.catch(donePromise.reject);
-					});
+							this.activeExecutions
+								.getPostExecutePromise(executionId)
+								.then(donePromise.resolve)
+								.catch(donePromise.reject);
+						})
+						// A committing poll can fail before it has an execution to wait on, so the
+						// caller waiting on the run is rejected rather than left hanging.
+						.catch(donePromise.reject);
 				} else {
 					void executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
 				}
@@ -368,6 +372,7 @@ export class TriggerExecutionContextFactory {
 					);
 					return;
 				}
+				// An empty cursor means the node has none, so it stages nothing to commit.
 				staged.cursor = Object.keys(cursor).length === 0 ? null : { ...cursor };
 			};
 
