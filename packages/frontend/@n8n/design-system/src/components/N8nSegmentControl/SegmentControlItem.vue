@@ -12,8 +12,6 @@ withDefaults(defineProps<SegmentControlItemProps>(), {
 	disabled: false,
 	square: false,
 });
-
-defineSlots<{ default?: {} }>();
 </script>
 
 <template>
@@ -21,7 +19,6 @@ defineSlots<{ default?: {} }>();
 		:value="value"
 		:disabled="disabled"
 		:aria-label="label"
-		:data-test-id="`radio-button-${value}`"
 		:class="{
 			'n8n-segment-control-item': true,
 			[$style.item]: true,
@@ -45,13 +42,11 @@ defineSlots<{ default?: {} }>();
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	margin: 0;
 	border: none;
 	border-radius: var(--radius--3xs);
 	background: transparent;
 	height: var(--segment-control--item-height);
 	padding: var(--segment-control--item-padding);
-	font-family: inherit;
 	font-size: var(--segment-control--font-size);
 	font-weight: var(--font-weight--medium);
 	line-height: 1;

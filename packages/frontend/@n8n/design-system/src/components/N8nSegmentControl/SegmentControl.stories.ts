@@ -1,11 +1,13 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { ref } from 'vue';
+import { defineComponent, ref } from 'vue';
 
-import type { SegmentControlSize } from './SegmentControl.types';
+import type { IconName } from '../N8nIcon/icons';
+import N8nIcon from '../N8nIcon';
+import type { SegmentControlSize, SegmentOption } from './SegmentControl.types';
 import N8nSegmentControl from './SegmentControl.vue';
 
-const sizeOptions: SegmentControlSize[] = ['mini', 'small', 'medium', 'large', 'xlarge'];
+const sizeOptions: SegmentControlSize[] = ['mini', 'small', 'default', 'large', 'xlarge'];
 
 export default {
 	title: 'Core/SegmentControl',
@@ -20,7 +22,7 @@ export default {
 		docs: {
 			description: {
 				component:
-					'A segmented single-choice control for switching between a small set of mutually exclusive options. Built on Reka UI RadioGroup with arrow-key navigation.',
+					'A segmented single-choice control for switching between a small set of mutually exclusive options. Built on Reka UI RadioGroup with arrow-key navigation. Supports controlled (`v-model`) and uncontrolled (`defaultValue`) usage.',
 			},
 		},
 		backgrounds: { default: '--color--background--light-3' },
@@ -53,20 +55,21 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	},
 });
 
-export const Example = Template.bind({});
-Example.args = {
+export const Default = Template.bind({});
+Default.args = {
 	options: defaultOptions,
 };
 
 export const Sizes: StoryFn = () => ({
 	components: { N8nSegmentControl },
 	setup() {
-		const values = ref(
-			Object.fromEntries(sizeOptions.map((size) => [size, 'test'])) as Record<
-				SegmentControlSize,
-				string
-			>,
-		);
+		const values = ref<Record<SegmentControlSize, string>>({
+			mini: 'test',
+			small: 'test',
+			default: 'test',
+			large: 'test',
+			xlarge: 'test',
+		});
 		return { values, sizeOptions, options: defaultOptions };
 	},
 	template: `
@@ -85,17 +88,31 @@ export const Sizes: StoryFn = () => ({
 
 export const Disabled = Template.bind({});
 Disabled.args = {
-	modelValue: 'enabled',
+	disabled: true,
+	options: defaultOptions,
+};
+
+export const DisabledOption: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nSegmentControl,
+	},
+	template: `<n8n-segment-control v-model="val" v-bind="args" @update:modelValue="onInput">
+		</n8n-segment-control>`,
+	methods,
+	data() {
+		return {
+			val: 'daily',
+		};
+	},
+});
+DisabledOption.args = {
 	options: [
-		{
-			label: 'Enabled',
-			value: 'enabled',
-		},
-		{
-			label: 'Disabled',
-			value: 'disabled',
-			disabled: true,
-		},
+		{ label: 'Daily', value: 'daily' },
+		{ label: 'Weekly', value: 'weekly' },
+		{ label: 'Monthly', value: 'monthly', disabled: true },
+		{ label: 'Yearly', value: 'yearly' },
 	],
 };
 
@@ -117,3 +134,110 @@ Square.args = {
 		},
 	],
 };
+
+const iconOptions: Array<SegmentOption<string> & { icon: IconName }> = [
+	{ label: 'Table', value: 'table', icon: 'table' },
+	{ label: 'JSON', value: 'json', icon: 'json' },
+	{ label: 'Schema', value: 'schema', icon: 'schema' },
+	{ label: 'Binary', value: 'binary', icon: 'binary' },
+];
+
+export const Icons: StoryFn = () => ({
+	components: { N8nSegmentControl, N8nIcon },
+	setup() {
+		const withLabels = ref('table');
+		const iconOnly = ref('table');
+		return { withLabels, iconOnly, iconOptions, onUpdate: action('update:modelValue') };
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 32px; align-items: flex-start;">
+			<section>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Icon + label</h3>
+				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
+					Use the <code>#option</code> slot to render an icon alongside the label.
+				</p>
+				<N8nSegmentControl
+					v-model="withLabels"
+					:options="iconOptions"
+					@update:model-value="onUpdate"
+				>
+					<template #option="option">
+						<span style="display: inline-flex; align-items: center; gap: var(--spacing--4xs);">
+							<N8nIcon :icon="option.icon" size="small" />
+							{{ option.label }}
+						</span>
+					</template>
+				</N8nSegmentControl>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Icon only</h3>
+				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
+					Combine <code>squareButtons</code> with the <code>#option</code> slot. Keep
+					<code>label</code> for accessibility (<code>aria-label</code>).
+				</p>
+				<N8nSegmentControl
+					v-model="iconOnly"
+					:options="iconOptions"
+					square-buttons
+					@update:model-value="onUpdate"
+				>
+					<template #option="option">
+						<N8nIcon :icon="option.icon" size="small" />
+					</template>
+				</N8nSegmentControl>
+			</section>
+		</div>
+	`,
+});
+
+const ControlledUncontrolledDemo = defineComponent({
+	name: 'SegmentControlControlledUncontrolledDemo',
+	components: { N8nSegmentControl },
+	setup() {
+		const value = ref('test');
+		return { value, options: defaultOptions, onUpdate: action('update:modelValue') };
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 32px; align-items: flex-start;">
+			<section>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Controlled</h3>
+				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
+					Parent-controlled selection via <code>v-model</code>. Use the buttons below to set the value externally.
+				</p>
+				<N8nSegmentControl
+					v-model="value"
+					:options="options"
+					@update:model-value="onUpdate"
+				/>
+				<div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+					<button
+						v-for="option in options"
+						:key="option.value"
+						type="button"
+						style="padding: 4px 12px; font-size: 13px; cursor: pointer;"
+						@click="value = option.value"
+					>
+						Set to "{{ option.label }}"
+					</button>
+				</div>
+				<p style="margin-top: 16px; font-size: 14px;">Selected: <strong>{{ value }}</strong></p>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Uncontrolled</h3>
+				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
+					Initial selection set with <code>defaultValue="world"</code>. The parent does not track changes.
+				</p>
+				<N8nSegmentControl
+					default-value="world"
+					:options="options"
+				/>
+			</section>
+		</div>
+	`,
+});
+
+export const ControlledUncontrolled: StoryFn = () => ({
+	components: { ControlledUncontrolledDemo },
+	template: '<ControlledUncontrolledDemo />',
+});
+ControlledUncontrolled.storyName = 'Controlled/Uncontrolled';
