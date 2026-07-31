@@ -318,6 +318,9 @@ export interface WorkflowTestCaseResult {
 	/** Per-tool `tool_use` counts across the `claude` build's attempts
 	 *  (--build-via-mcp only) — attributes `buildTurns` to specific MCP tools. */
 	buildToolCalls?: Record<string, number>;
+	/** Failed tool calls (tool + truncated error text) across the `claude`
+	 *  build's attempts (--build-via-mcp only) — failure subset of buildToolCalls. */
+	buildToolErrors?: Array<{ tool: string; message: string }>;
 	/** Per-expectation verdicts from the build-expectations judge. Aggregated as
 	 *  scoring units alongside execution scenarios. */
 	buildExpectationResults?: BuildExpectationResult[];

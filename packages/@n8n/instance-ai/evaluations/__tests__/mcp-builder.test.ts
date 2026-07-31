@@ -14,6 +14,7 @@ import {
 	sanitizeServerName,
 	stageLaneMcpConfig,
 	tailWorkflowId,
+	TOOL_ERROR_MESSAGE_CAP,
 	uniqueProjectScopes,
 	unsupportedMcpBuildSetupFields,
 } from '../cli/mcp-builder';
@@ -193,6 +194,23 @@ const assistantLine = (...toolNames: string[]): string =>
 		},
 	});
 
+/** A single-call assistant turn with an explicit `tool_use` id, for pairing
+ *  with toolResultLine in error-correlation fixtures. */
+const toolUseLine = (id: string, name: string): string =>
+	JSON.stringify({
+		type: 'assistant',
+		message: { content: [{ type: 'tool_use', id, name, input: {} }] },
+	});
+
+/** The `user` event closing a `tool_use` call, optionally as an error. */
+const toolResultLine = (toolUseId: string, content: unknown, isError = false): string =>
+	JSON.stringify({
+		type: 'user',
+		message: {
+			content: [{ type: 'tool_result', tool_use_id: toolUseId, is_error: isError, content }],
+		},
+	});
+
 const stream = (...lines: string[]): string => lines.join('\n') + '\n';
 
 describe('parseClaudeStream', () => {
@@ -253,6 +271,61 @@ describe('parseClaudeStream', () => {
 	it('returns no session for empty or non-JSON output', () => {
 		expect(parseClaudeStream('').session).toBeUndefined();
 		expect(parseClaudeStream('claude: command failed\n').session).toBeUndefined();
+	});
+
+	it('records errored tool calls with the error message, matched by tool_use_id', () => {
+		const { toolCalls, toolErrors } = parseClaudeStream(
+			stream(
+				toolUseLine('toolu_a', 'mcp__n8n-local__create_workflow_from_code'),
+				toolResultLine('toolu_a', 'Invalid workflow: node "Slack" is missing credentials', true),
+				toolUseLine('toolu_b', 'mcp__n8n-local__create_workflow_from_code'),
+				toolResultLine('toolu_b', 'Created workflow wf1'),
+				resultLine({ result: 'done\nWORKFLOW_ID=wf1' }),
+			),
+		);
+		// Errored calls still count as calls — errors are the failure subset.
+		expect(toolCalls).toEqual({ 'mcp__n8n-local__create_workflow_from_code': 2 });
+		expect(toolErrors).toEqual([
+			{
+				tool: 'mcp__n8n-local__create_workflow_from_code',
+				message: 'Invalid workflow: node "Slack" is missing credentials',
+			},
+		]);
+	});
+
+	it('flattens array-form tool_result content into the error message', () => {
+		const { toolErrors } = parseClaudeStream(
+			stream(
+				toolUseLine('toolu_a', 'mcp__n8n-local__search_nodes'),
+				toolResultLine(
+					'toolu_a',
+					[
+						{ type: 'text', text: 'MCP error -32603:' },
+						{ type: 'text', text: 'request timed out' },
+					],
+					true,
+				),
+			),
+		);
+		expect(toolErrors).toEqual([
+			{ tool: 'mcp__n8n-local__search_nodes', message: 'MCP error -32603:\nrequest timed out' },
+		]);
+	});
+
+	it('caps recorded error messages at TOOL_ERROR_MESSAGE_CAP', () => {
+		const { toolErrors } = parseClaudeStream(
+			stream(
+				toolUseLine('toolu_a', 'mcp__n8n-local__create_workflow_from_code'),
+				toolResultLine('toolu_a', 'x'.repeat(TOOL_ERROR_MESSAGE_CAP + 100), true),
+			),
+		);
+		expect(toolErrors[0].message).toHaveLength(TOOL_ERROR_MESSAGE_CAP + 1); // cap + ellipsis
+		expect(toolErrors[0].message.endsWith('…')).toBe(true);
+	});
+
+	it('attributes an error whose tool_use_id was never seen to "(unknown)"', () => {
+		const { toolErrors } = parseClaudeStream(stream(toolResultLine('toolu_orphan', 'boom', true)));
+		expect(toolErrors).toEqual([{ tool: '(unknown)', message: 'boom' }]);
 	});
 });
 
@@ -394,7 +467,8 @@ describe('buildWorkflowViaMcp', () => {
 			const events =
 				call === 1
 					? stream(
-							assistantLine('mcp__n8n-local__create_workflow_from_code'),
+							toolUseLine('toolu_a', 'mcp__n8n-local__create_workflow_from_code'),
+							toolResultLine('toolu_a', 'validation failed: unknown node type', true),
 							resultLine({
 								result: 'built something, forgot the id',
 								total_cost_usd: 0.1,
@@ -429,6 +503,13 @@ describe('buildWorkflowViaMcp', () => {
 			'mcp__n8n-local__create_workflow_from_code': 2,
 			'mcp__n8n-local__search_nodes': 1,
 		});
+		// The failed attempt's errored call is part of the build's record too.
+		expect(result.toolErrors).toEqual([
+			{
+				tool: 'mcp__n8n-local__create_workflow_from_code',
+				message: 'validation failed: unknown node type',
+			},
+		]);
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(2);
 	});
 });

@@ -184,6 +184,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					buildCostUsd: buildSpend.costUsd,
 					buildTurns: buildSpend.turns,
 					buildToolCalls: buildSpend.toolCalls,
+					buildToolErrors: buildSpend.toolErrors,
 				}
 			: {};
 

@@ -42,6 +42,7 @@ export function summarizeMcpBuildSpend(spend: McpBuildSpend[] | undefined):
 			totalCostUsd: number;
 			avgTurns: number;
 			toolCalls: Record<string, number>;
+			toolErrors: Record<string, number>;
 	  }
 	| undefined {
 	if (!spend || spend.length === 0) return undefined;
@@ -50,11 +51,17 @@ export function summarizeMcpBuildSpend(spend: McpBuildSpend[] | undefined):
 	// Per-tool call totals across every build — where the run's turns went.
 	const toolCalls: Record<string, number> = {};
 	for (const s of spend) mergeToolCalls(toolCalls, s.toolCalls);
+	// Per-tool error counts (messages stay per case in buildToolErrorsPerRun).
+	const toolErrors: Record<string, number> = {};
+	for (const s of spend) {
+		for (const { tool } of s.toolErrors) toolErrors[tool] = (toolErrors[tool] ?? 0) + 1;
+	}
 	return {
 		builds: spend.length,
 		totalCostUsd: Math.round(totalCost * 100) / 100,
 		avgTurns: Math.round((totalTurns / spend.length) * 10) / 10,
 		toolCalls,
+		toolErrors,
 	};
 }
 
@@ -452,6 +459,7 @@ export function writeEvalResults(
 						buildCostUsdPerRun: tc.runs.map((run) => run.buildCostUsd ?? null),
 						buildTurnsPerRun: tc.runs.map((run) => run.buildTurns ?? null),
 						buildToolCallsPerRun: tc.runs.map((run) => run.buildToolCalls ?? null),
+						buildToolErrorsPerRun: tc.runs.map((run) => run.buildToolErrors ?? null),
 					}
 				: {}),
 			scenarios: tc.executionScenarios.map((sa) => ({
