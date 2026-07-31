@@ -73,6 +73,12 @@ describe('resolveTemplatedAuth', () => {
 		).toThrow('must be a plain value');
 	});
 
+	it.each(['constructor', 'toString'])('should not resolve inherited %s values', (name) => {
+		expect(() =>
+			resolveTemplatedAuth(credentialData({ headers: { Authorization: `{{${name}}}` } })),
+		).toThrow(`No value set for placeholder {{${name}}}`);
+	});
+
 	it('should throw on invalid template JSON', () => {
 		expect(() => resolveTemplatedAuth({ template: 'not json', placeholderValues: '{}' })).toThrow(
 			'Invalid Simplified Custom Auth template JSON',
