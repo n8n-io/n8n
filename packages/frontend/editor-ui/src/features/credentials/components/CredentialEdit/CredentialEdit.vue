@@ -1235,9 +1235,20 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 
 		restoreOrReset();
 
+		// A freshly selected auth mode has no confirmed connection yet — without this,
+		// stale `oauthTokenData`/`connectedByMe` restored from a mode cached earlier in
+		// this session (or carried over from the loaded credential) makes the banner
+		// misreport "connected" for a mode that was never actually saved.
+		connectedByMe.value = false;
+		credentialData.value = {
+			...credentialData.value,
+			oauthTokenData: null as unknown as CredentialInformation,
+		};
+
 		pendingAuthType.value = payload.type;
+		hasUnsavedChanges.value = true;
 		// Also update credential name but only if the default name is still used
-		if (hasUnsavedChanges.value && !hasUserSpecifiedName.value) {
+		if (!hasUserSpecifiedName.value) {
 			const newDefaultName = await credentialsStore.getNewCredentialName({
 				credentialTypeName: defaultCredentialTypeName.value,
 			});
