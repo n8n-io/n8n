@@ -538,7 +538,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 		beforeEach(() => {
 			pollCursorService.resolveCursor.mockResolvedValue({ migrated: true, cursor: {} });
-			pollCursorService.commitCursorOnly.mockResolvedValue(undefined);
+			pollCursorService.commitCursorOnly.mockResolvedValue(true);
 			workflowExecutionService.runPolledWorkflow.mockResolvedValue('exec-polled');
 
 			workflow = buildWorkflow();
@@ -634,6 +634,7 @@ describe('TriggerExecutionContextFactory', () => {
 				mode,
 				{ lastItemId: 'a' },
 				responsePromise,
+				undefined,
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
@@ -764,6 +765,7 @@ describe('TriggerExecutionContextFactory', () => {
 				additionalData,
 				mode,
 				{ lastItemId: 'first-only' },
+				undefined,
 				undefined,
 			);
 		});
@@ -955,13 +957,15 @@ describe('TriggerExecutionContextFactory', () => {
 			});
 
 			// Built with the activation path's execution/activation modes ('trigger'/'update').
-			// Exactly five args: no per-occurrence deduplication key is threaded as a sixth.
+			// No per-occurrence deduplication key is threaded; the trailing argument is the
+			// lease fence, which this path has none of.
 			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
 				workflowData,
 				additionalData,
 				'trigger',
 				'update',
 				expect.any(Function),
+				undefined,
 			);
 
 			expect(getPollFunctions).toHaveBeenCalledWith(
