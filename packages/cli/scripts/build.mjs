@@ -64,27 +64,37 @@ function copySwaggerTheme() {
 }
 
 // Builds the v1 spec from two sources:
-// - the hand-written routes (eov) `openapi.yml`
-// - the `@PublicApiController` decorator routes (generated from their DTOs/decorators)
+// - the hand-written routes (eov) at `openapi.yml`
+// - the full `@PublicApiController` decorated routes at `openapi.decorator-routes.generated.yml`
 async function buildPublicApiSpec() {
 	const v1Dir = path.resolve(ROOT_DIR, 'src', 'public-api', 'v1');
 	const { generateDocs, mergeDecoratorDocument, DECORATOR_ROOT_FILENAME } =
 		await loadOpenApiGenerator();
 
-	// 1. Regenerate the committed fragments and the decorator-routes root that $refs them.
+	// 1. Generate decorated route OpenAPI specs from source.
 	generateDocs(v1Dir);
 
-	// 2. Bundle every hand-written spec into dist (resolving all $refs), as before.
-	bundleHandWrittenSpecs();
+	// 2. Bundle both sources.
+	const v1DistDir = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1');
 
-	// 3. Merge the decorator-routed operations into the bundled v1 spec.
-	const distV1Spec = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1', SPEC_FILENAME);
-	const eovDoc = parseYaml(readFileSync(distV1Spec, 'utf8'));
-	const decoratorDoc = bundleSpecToObject(path.join(v1Dir, DECORATOR_ROOT_FILENAME));
+	const eovDistSpec = path.join(v1DistDir, SPEC_FILENAME);
+	bundleSpec(path.join(v1Dir, SPEC_FILENAME), eovDistSpec);
+
+	const decoratorDistSpec = path.join(v1DistDir, DECORATOR_ROOT_FILENAME);
+	bundleSpec(path.join(v1Dir, DECORATOR_ROOT_FILENAME), decoratorDistSpec);
+
+	// 3. Merge the two specs into a single OpenAPI document, writing back to the eov spec path.
+	const eovDoc = parseYaml(readFileSync(eovDistSpec, 'utf8'));
+	const decoratorDoc = parseYaml(readFileSync(decoratorDistSpec, 'utf8'));
+
+	// 4. Merge the two specs and write back to the eov spec path.
 	writeFileSync(
-		distV1Spec,
+		eovDistSpec,
 		stringifyYaml(mergeDecoratorDocument(eovDoc, decoratorDoc), YAML_STRINGIFY_OPTS),
 	);
+
+	// 5. Cleanup the decorator spec.
+	rmSync(decoratorDistSpec);
 }
 
 // Imports the already-compiled generator from dist rather than the .ts source — by the time
@@ -115,34 +125,14 @@ async function loadOpenApiGenerator() {
 	return generator;
 }
 
-function bundleHandWrittenSpecs() {
-	const publicApiDir = path.resolve(ROOT_DIR, 'src', 'public-api');
-
-	shell
-		.find(publicApiDir)
-		.reduce((acc, cur) => {
-			return cur.endsWith(SPEC_FILENAME) ? [...acc, path.relative('./src', cur)] : acc;
-		}, [])
-		.forEach((specPath) => {
-			const distSpecPath = path.resolve(ROOT_DIR, 'dist', specPath);
-			const command = `pnpm openapi bundle "src/${specPath}" --output "${distSpecPath}"`;
-
-			shell.exec(command, { silent: true });
-		});
-}
-
-// Bundles a single spec through redocly and returns the resolved document as an object.
-function bundleSpecToObject(specPath) {
-	const tmpOutput = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1', '_bundle.tmp.yml');
-	const result = shell.exec(`pnpm openapi bundle "${specPath}" --output "${tmpOutput}"`, {
+// Bundles a spec through redocly, resolving all $refs into a single file at `distPath`.
+function bundleSpec(sourcePath, distPath) {
+	const result = shell.exec(`pnpm openapi bundle "${sourcePath}" --output "${distPath}"`, {
 		silent: true,
 	});
 	if (result.code !== 0) {
-		throw new Error(`redocly failed to bundle ${specPath}:\n${result.stderr || result.stdout}`);
+		throw new Error(`redocly failed to bundle ${sourcePath}:\n${result.stderr || result.stdout}`);
 	}
-	const doc = parseYaml(readFileSync(tmpOutput, 'utf8'));
-	rmSync(tmpOutput);
-	return doc;
 }
 
 // Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment.

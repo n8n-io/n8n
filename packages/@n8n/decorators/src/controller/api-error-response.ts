@@ -4,7 +4,7 @@ import { ControllerRegistryMetadata } from './controller-registry-metadata';
 import type { Controller } from './types';
 
 /**
- * Declares an additional non-2xx status code a route can return, beyond the ones already inferred
+ * Declares a non-2xx status code a route can return, beyond the ones already inferred
  * from other decorators. Stack multiple `@ApiErrorResponse` calls to declare more than one.
  */
 export const ApiErrorResponse =
@@ -14,5 +14,7 @@ export const ApiErrorResponse =
 			target.constructor as Controller,
 			String(handlerName),
 		);
-		routeMetadata.errorResponses = [...(routeMetadata.errorResponses ?? []), status];
+		routeMetadata.errorResponses = [...(routeMetadata.errorResponses ?? []), status].sort(
+			(a, b) => a - b,
+		);
 	};

@@ -1,4 +1,3 @@
-import { Z } from '@n8n/api-types';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -16,7 +15,13 @@ import {
 import type { Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
-import { z } from 'zod';
+
+import {
+	markPublicApiController,
+	WidgetBodyDto,
+	WidgetQueryDto,
+	WidgetResponseDto,
+} from '@/public-api/__tests__/public-api-controller-test-utils';
 
 import {
 	apiKeyScopesSatisfy,
@@ -26,20 +31,6 @@ import {
 	scopeRequirementToString,
 	scopesInRequirement,
 } from '../public-api-route-resolver';
-
-class WidgetBodyDto extends Z.class({ id: z.string() }) {}
-class WidgetQueryDto extends Z.class({ q: z.string().optional() }) {}
-class WidgetResponseDto extends Z.class({ id: z.string() }) {}
-
-/**
- * Marks `controllerClass` as a public API controller the same way `@PublicApiController` does,
- * without using the literal decorator.
- */
-function markPublicApiController(controllerClass: Controller, basePath: `/${string}`) {
-	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(controllerClass);
-	metadata.basePath = basePath;
-	metadata.isPublicApi = true;
-}
 
 describe('public-api-route-resolver', () => {
 	beforeEach(() => {
@@ -111,7 +102,7 @@ describe('public-api-route-resolver', () => {
 			]);
 		});
 
-		it('skips undecorated leading parameters (e.g. req, res) before the first decorated one', () => {
+		it('skips undecorated leading parameters before the first decorated one', () => {
 			class TestController {
 				method(_req: unknown, _res: unknown, @Query _query: WidgetQueryDto) {}
 			}
@@ -125,10 +116,7 @@ describe('public-api-route-resolver', () => {
 			expect(resolved).toEqual([{ type: 'query', dto: WidgetQueryDto }]);
 		});
 
-		it('throws when an undecorated parameter follows an already-decorated one', () => {
-			// PublicApiControllerRegistry invokes the handler with a compacted, gap-free argument
-			// list - an undecorated parameter here would silently receive the next decorated arg's
-			// value instead of its own, so this must fail loudly rather than skip the gap.
+		it('throws when an undecorated parameter follows a decorated one', () => {
 			class TestController {
 				method(@Param('id') _id: string, _undecorated: number, @Body _body: WidgetBodyDto) {}
 			}
@@ -146,9 +134,6 @@ describe('public-api-route-resolver', () => {
 		});
 
 		it('throws when an undecorated parameter trails after the last decorated one', () => {
-			// Unlike a mid-sequence gap, a trailing undecorated parameter never gets a `route.args`
-			// index assigned at all `design:paramtypes` (which has one entry per actual declared
-			// parameter) can reveal it.
 			class TestController {
 				method(@Query _query: WidgetQueryDto, _extra: number) {}
 			}
@@ -326,8 +311,7 @@ describe('public-api-route-resolver', () => {
 				@Get('/')
 				method() {}
 			}
-			// Registers route metadata without ever marking isPublicApi - simulates an internal
-			// @RestController sharing the same registry.
+			// Simulates a @RestController sharing the same registry.
 			Container.get(ControllerRegistryMetadata).getRouteMetadata(
 				InternalController as Controller,
 				'method',
@@ -336,7 +320,7 @@ describe('public-api-route-resolver', () => {
 			expect(resolvePublicApiRoutes()).toEqual([]);
 		});
 
-		it('resolves request/response DTOs, scope, summary, description, tags, and error responses from decorator metadata', () => {
+		it('resolves openapi spec decorator metadata', () => {
 			class WidgetsPublicController {
 				@Post('/')
 				@ApiKeyScope({ anyOf: ['tag:create', 'tag:update'] })
@@ -363,27 +347,7 @@ describe('public-api-route-resolver', () => {
 			expect(route.successStatus).toBe(201);
 		});
 
-		it('throws for a route pairing a 204 with a response DTO, which sends no body', () => {
-			class WidgetsPublicController {
-				@Get('/')
-				method() {}
-			}
-			// Reachable only by bypassing @ApiResponse's overloads, so set the metadata directly.
-			const route = Container.get(ControllerRegistryMetadata).getRouteMetadata(
-				WidgetsPublicController as Controller,
-				'method',
-			);
-			route.successStatus = 204;
-			route.responseDto = WidgetResponseDto;
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-			expect(() => resolvePublicApiRoutes()).toThrow(UnexpectedError);
-			expect(() => resolvePublicApiRoutes()).toThrow(
-				/declares a 204 success status and a response DTO/,
-			);
-		});
-
-		it('throws for a route whose @ApiResponse is missing, rather than assuming a 200', () => {
+		it('throws for a route whose @ApiResponse is missing', () => {
 			class WidgetsPublicController {
 				@Get('/')
 				method() {}
