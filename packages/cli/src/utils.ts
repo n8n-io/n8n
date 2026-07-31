@@ -1,5 +1,7 @@
 import { CliWorkflowOperationError, isHitlToolType, SubworkflowOperationError } from 'n8n-workflow';
-import type { INode, INodeType, Workflow } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
+
+export { withExpressionIsolate } from 'n8n-workflow/expression-sandboxing';
 
 import { STARTING_NODES } from '@/constants';
 
@@ -164,22 +166,4 @@ export function containsExpression(testString: string): boolean {
 
 export function isObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/**
- * When N8N_EXPRESSION_ENGINE=vm, expressions run in an isolate that must be acquired
- * for this workflow before any code resolves {{ }} in parameters or credentials.
- */
-export async function withExpressionIsolate<T>(
-	workflow: Workflow,
-	fn: () => Promise<T>,
-): Promise<T> {
-	// Release is not reference-counted: only release if this scope newly acquired
-	// the isolate, otherwise we'd return the outer caller's bridge to the pool mid-use.
-	const acquired = await workflow.expression.acquireIsolate();
-	try {
-		return await fn();
-	} finally {
-		if (acquired) await workflow.expression.releaseIsolate();
-	}
 }

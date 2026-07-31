@@ -1,4 +1,5 @@
 import {
+	appendSkillCatalogToInstructions,
 	sanitizeToolName as sanitizeMcpToolName,
 	type Agent as RuntimeAgent,
 	type GenerateResult,
@@ -28,7 +29,14 @@ import { CredentialsService } from '@/credentials/credentials.service';
 // Static agents-module imports are safe here: the ModuleRegistry gate decides
 // availability at runtime.
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
+import type { AgentRuntimeInstrumentation } from '@/modules/agents/agent-runtime-instrumentation';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import type { AgentExpressionContext } from '@/modules/agents/expression/agent-expression-context';
+import { AgentExpressionContextService } from '@/modules/agents/expression/agent-expression-context.service';
+import {
+	createAgentRunOverlayFactory,
+	type AgentRunOverlay,
+} from '@/modules/agents/expression/agent-run-overlay';
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
@@ -48,6 +56,21 @@ import {
 import { createLlmMockHandler } from './mock-handler';
 import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 import { createWebSearchMock } from './web-search-mock';
+
+function withResolvedNodeToolDescriptions(
+	config: AgentJsonConfig,
+	overlay: AgentRunOverlay,
+): AgentJsonConfig {
+	if (!config.tools) return config;
+	return {
+		...config,
+		tools: config.tools.map((tool) => {
+			if (tool.type !== 'node') return tool;
+			const description = overlay.toolOverrides?.get(nodeNameToToolName(tool.name))?.description;
+			return description === undefined ? tool : { ...tool, description };
+		}),
+	};
+}
 
 // ---------------------------------------------------------------------------
 // Runs a built first-class Agent for ONE scenario turn:
@@ -149,12 +172,38 @@ export class EvalAgentExecutionService {
 					'Chat integrations are not attached in eval runs — the harness drives the agent directly.',
 			});
 		}
-		// The entity is detached (never saved back); mutate the copy the
-		// runtime is built from so pruning applies to reconstruction too.
-		agentEntity.schema = config;
 		agentEntity.integrations = [];
 
-		const toolSummaries = summarizeTools(config, agentEntity.tools ?? {}, sanitizeToolName);
+		const reconstruction = Container.get(AgentRuntimeReconstructionService);
+		const expressionContextService = Container.get(AgentExpressionContextService);
+		let expressionContext: AgentExpressionContext;
+		let resolvedInstructions: string;
+		let toolSummaries: AgentSeedToolSummary[];
+		let seedOverlay: AgentRunOverlay;
+		try {
+			const seedConfig = await reconstruction.filterConfigToolsForUser(config, projectId, user);
+			expressionContext = await expressionContextService.createForProject(projectId);
+			const createRunOverlay = createAgentRunOverlayFactory({
+				config: seedConfig,
+				skills: agentEntity.skills ?? {},
+			});
+			seedOverlay = await createRunOverlay(expressionContext);
+			const runInstructions = seedOverlay.instructions ?? seedConfig.instructions;
+			resolvedInstructions = seedOverlay.skillSource
+				? appendSkillCatalogToInstructions(runInstructions, seedOverlay.skillSource.registry)
+				: runInstructions;
+			const resolvedConfig = withResolvedNodeToolDescriptions(seedConfig, seedOverlay);
+			// The entity is detached and never saved back.
+			agentEntity.schema = resolvedConfig;
+			toolSummaries = summarizeTools(resolvedConfig, agentEntity.tools ?? {}, sanitizeToolName);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return this.errorResult(
+				`Failed to resolve agent expressions: ${message}`,
+				undefined,
+				skippedFeatures,
+			);
+		}
 
 		// The scenario signal steers seed + mock generation. A fixed case input
 		// doubles as that signal (bounded) so the generated context, per-tool
@@ -172,7 +221,7 @@ export class EvalAgentExecutionService {
 		try {
 			seed = await generateAgentScenarioSeed({
 				agentName: config.name,
-				instructions: config.instructions,
+				instructions: resolvedInstructions,
 				tools: toolSummaries,
 				scenarioHints: scenarioSignal,
 			});
@@ -216,7 +265,7 @@ export class EvalAgentExecutionService {
 				url: server.url,
 				description: server.description,
 			})),
-			agentInstructions: config.instructions,
+			agentInstructions: resolvedInstructions,
 			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			serverHints: seed.toolHints,
@@ -256,7 +305,7 @@ export class EvalAgentExecutionService {
 		// Fallback web_search mock — always created (sub-agents may enable web
 		// search); with native search the tool is never built and this goes unused.
 		const webSearchMock = createWebSearchMock({
-			agentInstructions: config.instructions,
+			agentInstructions: resolvedInstructions,
 			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			searchHint: seed.toolHints?.web_search,
@@ -277,16 +326,32 @@ export class EvalAgentExecutionService {
 			},
 		});
 
-		const reconstruction = Container.get(AgentRuntimeReconstructionService);
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
 			projectId,
 			user,
 		);
+		const configureToolAdditionalData: NonNullable<
+			AgentRuntimeInstrumentation['configureToolAdditionalData']
+		> = (additionalData, toolContext) => {
+			additionalData.variables = structuredClone(expressionContext.variables);
+			const helper = new EvalMockedCredentialsHelper(
+				additionalData.credentialsHelper,
+				undefined,
+				this.logger,
+			);
+			credentialHelpers.push(helper);
+			additionalData.credentialsHelper = helper;
+			additionalData.evalLlmMockHandler = this.createRecordingMockHandler(
+				mockHandler,
+				toolContext.toolName,
+				toolLedger,
+			);
+		};
 
 		let agent: RuntimeAgent;
 		try {
-			({ agent } = await reconstruction.reconstructFromAgentEntity(
+			const reconstructed = await reconstruction.reconstructFromAgentEntity(
 				agentEntity,
 				credentialProvider,
 				undefined,
@@ -310,22 +375,10 @@ export class EvalAgentExecutionService {
 						);
 						return pruned.config;
 					},
-					configureToolAdditionalData: (additionalData, toolContext) => {
-						const helper = new EvalMockedCredentialsHelper(
-							additionalData.credentialsHelper,
-							undefined,
-							this.logger,
-						);
-						credentialHelpers.push(helper);
-						additionalData.credentialsHelper = helper;
-						additionalData.evalLlmMockHandler = this.createRecordingMockHandler(
-							mockHandler,
-							toolContext.toolName,
-							toolLedger,
-						);
-					},
+					configureToolAdditionalData,
 				},
-			));
+			);
+			agent = reconstructed.agent;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return this.errorResult(`Failed to build agent runtime: ${message}`, seed, skippedFeatures);
@@ -352,7 +405,12 @@ export class EvalAgentExecutionService {
 		};
 		try {
 			const abortSignal = AbortSignal.timeout(timeoutMs);
-			result = await agent.generate(seed.openingMessage, { abortSignal, maxIterations });
+			result = await agent.generate(seed.openingMessage, {
+				abortSignal,
+				maxIterations,
+				runtimeContext: expressionContext,
+				runtimeOverlay: seedOverlay,
+			});
 			collectToolCalls(result);
 
 			// Approval-gated tools suspend the run. In real usage the user
@@ -369,6 +427,8 @@ export class EvalAgentExecutionService {
 					toolCallId: pending.toolCallId,
 					abortSignal,
 					maxIterations,
+					runtimeContext: expressionContext,
+					runtimeOverlay: seedOverlay,
 				});
 				collectToolCalls(result);
 			}

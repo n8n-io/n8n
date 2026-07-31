@@ -749,6 +749,7 @@ export class AgentRuntime {
 			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
+			runtimeContext: options?.runtimeContext,
 			abortSignal: abortScope.signal,
 			isAborted: () => abortScope.isAborted,
 		});

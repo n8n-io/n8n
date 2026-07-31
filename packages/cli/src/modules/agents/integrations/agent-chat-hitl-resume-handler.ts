@@ -13,6 +13,7 @@ import type { AgentChatMessageContextBridge } from './agent-chat-message-context
 import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
 import type { InternalThread } from './types';
+import type { AgentExpressionContext } from '../expression/agent-expression-context';
 
 interface ResumeExecutor {
 	resumeForChat(config: {
@@ -22,6 +23,7 @@ interface ResumeExecutor {
 		toolCallId: string;
 		resumeData: unknown;
 		integrationType?: string;
+		expressionContext?: AgentExpressionContext;
 	}): AsyncGenerator<StreamChunk>;
 }
 
@@ -55,7 +57,7 @@ export class AgentChatHitlResumeHandler {
 	 * - `ri-sel:{selectId}:{runId}:{toolCallId}` — interactive card select
 	 * - `resume:{runId}:{toolCallId}:{index}` — generic per-tool resume button
 	 */
-	async handleAction(event: ActionEvent): Promise<void> {
+	async handleAction(event: ActionEvent, expressionContext: AgentExpressionContext): Promise<void> {
 		const { thread } = event;
 
 		if (!thread) {
@@ -86,7 +88,13 @@ export class AgentChatHitlResumeHandler {
 		});
 
 		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData.kind);
-		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);
+		await this.executeResume(
+			thread,
+			parsed.runId,
+			parsed.toolCallId,
+			parsed.resumeData,
+			expressionContext,
+		);
 	}
 
 	/** Parsed result from an action ID. */
@@ -205,6 +213,7 @@ export class AgentChatHitlResumeHandler {
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
+		expressionContext: AgentExpressionContext,
 	): Promise<void> {
 		if (this.activeResumedRuns.has(runId)) {
 			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
@@ -224,6 +233,7 @@ export class AgentChatHitlResumeHandler {
 					toolCallId,
 					resumeData,
 					integrationType: this.options.integration.type,
+					expressionContext,
 				});
 				await this.options.streamConsumer.consume(stream, thread, {
 					...resumeExecutionContext,

@@ -1,3 +1,4 @@
+import { isExpression } from 'n8n-workflow';
 import { z } from 'zod';
 
 const createCredIntegrationSchema = <
@@ -40,19 +41,21 @@ const createDraftSimpleIntegrationSchema = <Value extends string>(typeName: Valu
 
 export const AGENT_TELEGRAM_ACCESS_MODES = ['private', 'public'] as const;
 
+export const TELEGRAM_ALLOWED_USER_LITERAL_REGEX = /^@?[a-zA-Z0-9_]+$/;
+
+export const AgentTelegramAllowedUserSchema = z
+	.string()
+	.trim()
+	.refine(
+		(value) => TELEGRAM_ALLOWED_USER_LITERAL_REGEX.test(value) || isExpression(value),
+		'Enter a valid Telegram user ID, username, or expression',
+	);
+
 export const AgentTelegramSettingsSchema = z
 	.object({
 		accessMode: z.enum(AGENT_TELEGRAM_ACCESS_MODES),
 		allowedUsers: z
-			.array(
-				z
-					.string()
-					.trim()
-					.regex(
-						/^@?[a-zA-Z0-9_]+$/,
-						'Enter a valid Telegram user ID (numbers only) or username (letters, numbers, underscores)',
-					),
-			)
+			.array(AgentTelegramAllowedUserSchema)
 			.default([])
 			.transform((items) => [...new Set(items)]),
 	})
@@ -62,7 +65,7 @@ export const AgentTelegramSettingsSchema = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				path: ['allowedUsers'],
-				message: 'Add at least one Telegram user ID or username',
+				message: 'Add at least one Telegram user ID, username, or expression',
 			});
 		}
 	});

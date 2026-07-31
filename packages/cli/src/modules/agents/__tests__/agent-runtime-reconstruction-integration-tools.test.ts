@@ -46,6 +46,7 @@ import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
+import type { AgentExpressionContextService } from '../expression/agent-expression-context.service';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
@@ -267,6 +268,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<IntegrationMessageContextService>(),
 			mock<AgentRunTracingService>(),
 			mock<ExternalHooks>(),
+			mock<AgentExpressionContextService>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { withSdkOwnedBuiltInMetadata } from '../runtime/tools/sdk-owned-tool';
 import { Tool } from '../sdk/tool';
 import type { BuiltTool } from '../types';
 import {
@@ -98,7 +99,7 @@ type SkillLoadOutput = z.infer<typeof skillLoadOutputSchema>;
 type SkillLoadContentOutput = z.infer<typeof skillLoadContentOutputSchema>;
 
 export function createRuntimeSkillTools(source: RuntimeSkillSource): BuiltTool[] {
-	return [createSkillLoadTool(source)];
+	return [withSdkOwnedBuiltInMetadata(createSkillLoadTool(source))];
 }
 
 export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {

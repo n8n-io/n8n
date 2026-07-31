@@ -1,17 +1,21 @@
-import type { BuiltTool } from '@n8n/agents';
+import type { BuiltTool, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import type { AgentJsonToolConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import type { IDataObject, INodeParameters, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { isToolType, nodeNameToToolName } from 'n8n-workflow';
+import { isExpression, isFromAIOnlyExpression, isToolType, nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import {
+	isAgentExpressionContext,
+	type AgentExpressionContext,
+} from '../expression/agent-expression-context';
 
 type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 
@@ -60,6 +64,28 @@ function createNativeStringToolInputSchema(description: string): z.ZodType {
 	);
 }
 
+function containsRuntimeExpression(value: unknown): boolean {
+	if (typeof value === 'string') {
+		return isExpression(value) && !isFromAIOnlyExpression(value);
+	}
+	if (Array.isArray(value)) return value.some(containsRuntimeExpression);
+	if (typeof value !== 'object' || value === null) return false;
+	return Object.values(value).some(containsRuntimeExpression);
+}
+
+function createAdditionalDataConfigurator(
+	instrument: InstrumentToolAdditionalData | undefined,
+	toolName: string,
+	variables?: Readonly<IDataObject>,
+): ((additionalData: IWorkflowExecuteAdditionalData) => void) | undefined {
+	if (instrument === undefined && variables === undefined) return undefined;
+
+	return (additionalData) => {
+		instrument?.(additionalData, { toolName, toolKind: 'node' });
+		if (variables !== undefined) additionalData.variables = structuredClone(variables);
+	};
+}
+
 /**
  * Native tool nodes expose a LangChain tool via `supplyData`. The shape of its
  * schema depends on the class:
@@ -82,6 +108,7 @@ function createNativeStringToolInputSchema(description: string): z.ZodType {
 async function resolveInputSchema(
 	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
 	ctx: NodeToolFactoryContext,
+	expressionContext?: AgentExpressionContext,
 ): Promise<NodeToolInputSchema> {
 	const collectedArguments = extractFromAIParameters(
 		(toolSchema.node.nodeParameters ?? {}) as INodeParameters,
@@ -105,12 +132,20 @@ async function resolveInputSchema(
 	}
 
 	if (typeof nodeType.supplyData === 'function') {
+		const sanitizedName = nodeNameToToolName(toolSchema.name);
+		const configureAdditionalData = createAdditionalDataConfigurator(
+			ctx.instrumentToolAdditionalData,
+			sanitizedName,
+			expressionContext?.variables,
+		);
 		const introspected = await ctx.executor.introspectSupplyDataToolSchema({
 			projectId: ctx.projectId,
 			nodeType: nodeTypeName,
 			nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 			nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 			credentials: toExecutorCredentials(toolSchema.node.credentials) ?? null,
+			...(ctx.instrumentToolAdditionalData !== undefined ? { nodeName: sanitizedName } : {}),
+			...(configureAdditionalData !== undefined ? { configureAdditionalData } : {}),
 		});
 
 		if (introspected) return introspected as NodeToolInputSchema;
@@ -123,6 +158,18 @@ async function resolveInputSchema(
 	}
 
 	return { type: 'object', properties: {} };
+}
+
+/** Re-introspect dynamic native-node schemas against the current run's variable snapshot. */
+export async function resolveNodeToolInputSchemaForRun(
+	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
+	ctx: NodeToolFactoryContext,
+	expressionContext: AgentExpressionContext,
+): Promise<NodeToolInputSchema | undefined> {
+	if (!containsRuntimeExpression(toolSchema.node.nodeParameters)) {
+		return undefined;
+	}
+	return await resolveInputSchema(toolSchema, ctx, expressionContext);
 }
 
 /**
@@ -144,18 +191,19 @@ export async function resolveNodeTool(
 	// so hint lookup and request attribution key on the same identifier the
 	// model calls.
 	const instrument = ctx.instrumentToolAdditionalData;
-	const instrumentedExecution = instrument
-		? {
-				nodeName: sanitizedName,
-				configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) =>
-					instrument(additionalData, { toolName: sanitizedName, toolKind: 'node' }),
-			}
-		: {};
 
 	const built = new Tool(sanitizedName)
 		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
 		.input(await resolveInputSchema(toolSchema, ctx))
-		.handler(async (input: Record<string, unknown>) => {
+		.handler(async (input: Record<string, unknown>, toolContext: ToolContext) => {
+			const expressionContext = isAgentExpressionContext(toolContext.runtimeContext)
+				? toolContext.runtimeContext
+				: undefined;
+			const configureAdditionalData = createAdditionalDataConfigurator(
+				instrument,
+				sanitizedName,
+				expressionContext?.variables,
+			);
 			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
@@ -163,7 +211,8 @@ export async function resolveNodeTool(
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
 				inputData: [{ json: input as IDataObject }],
 				projectId: ctx.projectId,
-				...instrumentedExecution,
+				...(instrument !== undefined ? { nodeName: sanitizedName } : {}),
+				...(configureAdditionalData !== undefined ? { configureAdditionalData } : {}),
 			});
 			// Throw on the executor's structured error so the agent runtime
 			// flags the tool-result with `isError: true` and the recorder

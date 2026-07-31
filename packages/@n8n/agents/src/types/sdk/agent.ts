@@ -8,7 +8,9 @@ import type {
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
+import type { AgentToolRuntimeOverride } from './tool';
 import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
+import type { RuntimeSkillSource } from '../../skills/types';
 import type {
 	AgentEvent,
 	AgentEventHandler,
@@ -175,7 +177,18 @@ export interface AgentExecutionCounter {
 	incrementTokenCount(tokenCount: number): void;
 }
 
+export interface AgentRuntimeOverlay {
+	instructions?: string;
+	/** Skill catalog and loaders used together for this run. */
+	skillSource?: RuntimeSkillSource;
+	toolOverrides?: ReadonlyMap<string, AgentToolRuntimeOverride>;
+}
+
 export interface ExecutionOptions {
+	/** Opaque host-owned context forwarded to tool handlers for this run. */
+	runtimeContext?: unknown;
+	/** Per-run runtime configuration that never mutates the cached Agent. */
+	runtimeOverlay?: AgentRuntimeOverlay;
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;

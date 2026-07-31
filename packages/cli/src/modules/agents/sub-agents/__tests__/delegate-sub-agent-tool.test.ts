@@ -13,6 +13,7 @@ import {
 	createN8nDelegateSubAgentTool,
 	formatSubAgentToolOutput,
 } from '../delegate-sub-agent-tool';
+import { AgentExpressionContext } from '../../expression/agent-expression-context';
 import type {
 	SubAgentForegroundResult,
 	SubAgentForegroundRunner,
@@ -198,6 +199,42 @@ describe('createN8nDelegateSubAgentTool', () => {
 			expect.any(Object),
 			expect.objectContaining({ telemetry: parentTelemetry }),
 		);
+	});
+
+	it('forwards the exact parent expression context to the saved sub-agent runner', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+		});
+		const expressionContext = new AgentExpressionContext({ region: 'eu' }, async (value) => value);
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{ runId: 'parent-run-1', runtimeContext: expressionContext },
+		);
+
+		expect(runner.runForeground).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ runtimeContext: expressionContext }),
+		);
+	});
+
+	it('does not treat an unrelated opaque runtime context as an expression context', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+		});
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{ runId: 'parent-run-1', runtimeContext: { region: 'not-an-expression-context' } },
+		);
+
+		expect(runner.runForeground.mock.calls[0]?.[1]).not.toHaveProperty('runtimeContext');
 	});
 
 	it('omits telemetry from the runner context when the parent run has none', async () => {

@@ -1,4 +1,4 @@
-import { AgentIntegrationConfig } from '@n8n/api-types';
+import { AgentIntegrationConfig, TELEGRAM_ALLOWED_USER_LITERAL_REGEX } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
@@ -13,6 +13,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
+import type { AgentExpressionContext } from '../../expression/agent-expression-context';
 import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
@@ -215,7 +216,11 @@ export class TelegramIntegration extends AgentChatIntegration {
 	 * they are normalized by stripping "@" before comparison. The SDK delivers
 	 * both userId and userName without "@".
 	 */
-	isUserAllowed(author: Author, integration: AgentIntegrationConfig | undefined): boolean {
+	async isUserAllowed(
+		author: Author,
+		integration: AgentIntegrationConfig | undefined,
+		expressionContext: AgentExpressionContext,
+	): Promise<boolean> {
 		if (!integration) return true;
 		if (integration?.type !== 'telegram') {
 			throw new UnexpectedError(
@@ -225,10 +230,38 @@ export class TelegramIntegration extends AgentChatIntegration {
 		if (!integration.settings) return true;
 
 		if (integration.settings.accessMode === 'public') return true;
-		return integration.settings.allowedUsers.some((allowed) => {
+		const resolved = await expressionContext.resolveValue(
+			integration.settings.allowedUsers,
+			'integrations.telegram.settings.allowedUsers',
+		);
+		const allowedUsers = this.normalizeAllowedUsers(resolved);
+		if (!allowedUsers) return false;
+
+		return allowedUsers.some((allowed) => {
 			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;
 			return normalized === author.userId || normalized === author.userName;
 		});
+	}
+
+	private normalizeAllowedUsers(value: unknown): string[] | undefined {
+		if (!Array.isArray(value)) return undefined;
+		const allowedUsers = new Set<string>();
+		for (const entry of value) {
+			if (typeof entry !== 'string' && typeof entry !== 'number') {
+				return undefined;
+			}
+			if (typeof entry === 'number' && !Number.isFinite(entry)) {
+				return undefined;
+			}
+
+			const normalized = String(entry).trim();
+			if (!normalized || !TELEGRAM_ALLOWED_USER_LITERAL_REGEX.test(normalized)) {
+				return undefined;
+			}
+			allowedUsers.add(normalized);
+		}
+
+		return allowedUsers.size > 0 ? [...allowedUsers] : undefined;
 	}
 
 	async createBridgeExecutionContext(

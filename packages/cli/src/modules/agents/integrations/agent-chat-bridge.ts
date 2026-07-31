@@ -1,5 +1,6 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import {
+	type AgentIntegrationConfig,
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
@@ -14,15 +15,17 @@ import {
 	type StoredAttachmentRef,
 } from '../agent-chat-attachment.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import { AgentExpressionContext } from '../expression/agent-expression-context';
+import { AgentExpressionContextService } from '../expression/agent-expression-context.service';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
+import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import type {
 	AgentChatIntegration,
 	BridgeExecutionContext,
 	PlatformAgentContext,
 } from './agent-chat-integration';
 import { ChatIntegrationRegistry, onceStatusHandle } from './agent-chat-integration';
-import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import {
 	AgentChatStreamConsumer,
@@ -33,8 +36,6 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import type { ReplyExpectation } from './integration-tools';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
-
 import { type InternalThread, toInternalThreadId } from './types';
 
 interface AgentExecutor {
@@ -45,6 +46,7 @@ interface AgentExecutor {
 		attachments?: StoredAttachmentRef[];
 		memory: { threadId: InternalThread; resourceId: string };
 		integrationType?: string;
+		expressionContext?: AgentExpressionContext;
 	}): AsyncGenerator<StreamChunk>;
 
 	resumeForChat(config: {
@@ -54,8 +56,21 @@ interface AgentExecutor {
 		toolCallId: string;
 		resumeData: unknown;
 		integrationType?: string;
+		expressionContext?: AgentExpressionContext;
 	}): AsyncGenerator<StreamChunk>;
 }
+
+interface ExpressionContextFactory {
+	createForProject(projectId: string): Promise<AgentExpressionContext>;
+}
+
+// Direct construction is retained for isolated bridge tests; production uses `create()`.
+const passthroughExpressionContextFactory: ExpressionContextFactory = {
+	createForProject: async () =>
+		await Promise.resolve(
+			new AgentExpressionContext(Object.freeze({}), async (value) => await Promise.resolve(value)),
+		),
+};
 
 /**
  * Bridges Chat SDK events to the agent execution pipeline.
@@ -90,6 +105,7 @@ export class AgentChatBridge {
 
 	private readonly hitlResumeHandler: AgentChatHitlResumeHandler;
 
+	/** @internal Production callers must use `create()`, which injects the project context service. */
 	constructor(
 		private readonly chat: Chat,
 		private readonly agentId: string,
@@ -97,9 +113,10 @@ export class AgentChatBridge {
 		private readonly componentMapper: ComponentMapper,
 		private readonly logger: Logger,
 		private readonly n8nProjectId: string,
-		private readonly integration: AgentIntegrationConfig,
+		private integration: AgentIntegrationConfig,
 		messageContextStore?: IntegrationMessageContextService,
 		private readonly attachmentService?: AgentChatAttachmentService,
+		private readonly expressionContextFactory: ExpressionContextFactory = passthroughExpressionContextFactory,
 	) {
 		this.integrationImpl = Container.get(ChatIntegrationRegistry).get(integration.type);
 		this.messageContextBridge = new AgentChatMessageContextBridge(
@@ -176,6 +193,7 @@ export class AgentChatBridge {
 				message,
 				attachments,
 				integrationType,
+				expressionContext,
 			}) {
 				yield* agentService.executeForChatPublished({
 					agentId: aid,
@@ -190,6 +208,7 @@ export class AgentChatBridge {
 						}),
 					},
 					integrationType,
+					expressionContext,
 				});
 			},
 			async *resumeForChat(config) {
@@ -206,6 +225,7 @@ export class AgentChatBridge {
 			integration,
 			Container.get(IntegrationMessageContextService),
 			Container.get(AgentChatAttachmentService),
+			Container.get(AgentExpressionContextService),
 		);
 	}
 
@@ -216,9 +236,10 @@ export class AgentChatBridge {
 	private registerHandlers(): void {
 		this.chat.onNewMention(async (thread, message) => {
 			try {
-				if (!this.canUserAccess(message.author)) return;
+				const expressionContext = await this.authorize(message.author);
+				if (!expressionContext) return;
 				await thread.subscribe();
-				await this.executeAndStream(thread, message, { isNewMention: true });
+				await this.executeAndStream(thread, message, { isNewMention: true }, expressionContext);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -226,8 +247,9 @@ export class AgentChatBridge {
 
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
-				if (!this.canUserAccess(message.author)) return;
-				await this.executeAndStream(thread, message, { isNewMention: false });
+				const expressionContext = await this.authorize(message.author);
+				if (!expressionContext) return;
+				await this.executeAndStream(thread, message, { isNewMention: false }, expressionContext);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -235,8 +257,9 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
-				if (!this.canUserAccess(event.user)) return;
-				await this.hitlResumeHandler.handleAction(event);
+				const expressionContext = await this.authorize(event.user);
+				if (!expressionContext) return;
+				await this.hitlResumeHandler.handleAction(event, expressionContext);
 			} catch (error) {
 				await this.postErrorToThread(event.thread, error);
 			}
@@ -248,8 +271,30 @@ export class AgentChatBridge {
 		this.callbackStore?.dispose();
 	}
 
-	private canUserAccess(author: Author): boolean {
-		return this.integrationImpl?.isUserAllowed?.(author, this.integration) ?? true;
+	updateIntegration(integration: AgentIntegrationConfig): void {
+		this.integration = integration;
+	}
+
+	private async authorize(author: Author): Promise<AgentExpressionContext | undefined> {
+		const expressionContext = await this.expressionContextFactory.createForProject(
+			this.n8nProjectId,
+		);
+		try {
+			const allowed =
+				(await this.integrationImpl?.isUserAllowed?.(
+					author,
+					this.integration,
+					expressionContext,
+				)) ?? true;
+			return allowed ? expressionContext : undefined;
+		} catch {
+			this.logger.warn('[AgentChatBridge] Failed to evaluate integration authorization', {
+				agentId: this.agentId,
+				integrationType: this.integration.type,
+				fieldPath: `integrations.${this.integration.type}.settings`,
+			});
+			return undefined;
+		}
 	}
 
 	// ---------------------------------------------------------------------------
@@ -285,6 +330,7 @@ export class AgentChatBridge {
 		thread: Thread,
 		message: Message,
 		options: { isNewMention: boolean },
+		expressionContext: AgentExpressionContext,
 	): Promise<void> {
 		const { isNewMention } = options;
 		const platformAgentContext = this.getPlatformAgentContext();
@@ -351,6 +397,7 @@ export class AgentChatBridge {
 					resourceId,
 				},
 				integrationType: this.integration.type,
+				expressionContext,
 			});
 
 			consumeStarted = true;

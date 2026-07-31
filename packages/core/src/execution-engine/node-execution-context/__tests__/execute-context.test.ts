@@ -5,15 +5,21 @@ import type {
 	INodeExecutionData,
 	ITaskDataConnections,
 	IExecuteData,
-	Workflow,
 	WorkflowExecuteMode,
 	ICredentialsHelper,
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 	WorkflowExpression,
+	ExecuteAgentWorkflowContext,
 } from 'n8n-workflow';
-import { UnexpectedError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	ExpressionError,
+	NodeConnectionTypes,
+	Workflow,
+	createEmptyRunExecutionData,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
@@ -68,7 +74,7 @@ describe('ExecuteContext', () => {
 		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	});
 	const mode: WorkflowExecuteMode = 'manual';
-	const runExecutionData = mock<IRunExecutionData>();
+	const runExecutionData = mock<IRunExecutionData>({ resumeToken: undefined });
 	const connectionInputData: INodeExecutionData[] = [];
 	const inputData: ITaskDataConnections = { main: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
@@ -425,9 +431,11 @@ describe('ExecuteContext', () => {
 			nodeTypes,
 		});
 		agentWorkflow.nodes = { [node.name]: node, [webhookNode.name]: webhookNode } as never;
-		const agentAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+		const agentAdditionalData: IWorkflowExecuteAdditionalData = {
+			...mock<IWorkflowExecuteAdditionalData>(),
 			rootExecutionMode: undefined,
-		});
+			variables: {},
+		};
 
 		const agentExecuteContext = new ExecuteContext(
 			agentWorkflow,
@@ -477,8 +485,116 @@ describe('ExecuteContext', () => {
 						{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
 					],
 					runExecutionData,
+					expressionResolver: expect.objectContaining({
+						variables: expect.any(Object),
+						resolveParameterValue: expect.any(Function),
+					}),
 				},
 			);
+		});
+
+		it('provides an expression resolver for the current workflow item', async () => {
+			const expressionNodeTypes = mock<INodeTypes>();
+			expressionNodeTypes.getByNameAndVersion.mockReturnValue(undefined as never);
+			const expressionNode: INode = {
+				id: 'expression-node-id',
+				name: 'Expression Node',
+				type: 'testNodeType',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+			const expressionWorkflow = new Workflow({
+				id: 'expression-workflow-id',
+				name: 'Expression workflow',
+				nodes: [expressionNode],
+				connections: {},
+				active: false,
+				nodeTypes: expressionNodeTypes,
+			});
+			const inputItems: INodeExecutionData[] = [
+				{ json: { value: 'first item' } },
+				{ json: { value: 'current item' } },
+			];
+			const expressionInputData: ITaskDataConnections = { main: [inputItems] };
+			const expressionRunData = createEmptyRunExecutionData();
+			const expressionExecuteData: IExecuteData = {
+				node: expressionNode,
+				data: expressionInputData,
+				source: null,
+			};
+			const variables = {
+				agentVariable: 'snapshot value',
+				nested: { value: 'nested snapshot value' },
+			};
+			const executeAgent = vi.fn().mockResolvedValue({ response: 'ok' });
+			const expressionAdditionalData: IWorkflowExecuteAdditionalData = {
+				...mock<IWorkflowExecuteAdditionalData>(),
+				executionId: 'workflow-execution-id',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				rootExecutionMode: undefined,
+				variables,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+			};
+			expressionAdditionalData.executeAgent =
+				executeAgent as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const expressionContext = new ExecuteContext(
+				expressionWorkflow,
+				expressionNode,
+				expressionAdditionalData,
+				mode,
+				expressionRunData,
+				3,
+				inputItems,
+				expressionInputData,
+				expressionExecuteData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await expressionContext.executeAgent({ agentId: 'agent-1' }, 'hello', 'exec-1', 1);
+
+			const workflowContext = executeAgent.mock.calls[0]?.[7] as
+				| ExecuteAgentWorkflowContext
+				| undefined;
+			const resolver = workflowContext?.expressionResolver;
+			if (!resolver) throw new Error('Expected workflow expression resolver');
+
+			expect(Object.isFrozen(resolver.variables)).toBe(true);
+			expect(Object.isFrozen(resolver.variables.nested)).toBe(true);
+			expect(resolver.variables).not.toBe(variables);
+			const nestedVariables = resolver.variables.nested;
+			if (typeof nestedVariables !== 'object' || nestedVariables === null) {
+				throw new Error('Expected nested variables');
+			}
+			expect(Reflect.set(nestedVariables, 'value', 'mutated')).toBe(false);
+			variables.agentVariable = 'changed after capture';
+			variables.nested.value = 'changed after capture';
+
+			await expect(
+				resolver.resolveParameterValue({
+					json: '={{ $json.value }}',
+					input: '={{ $input.item.json.value }}',
+					workflowId: '={{ $workflow.id }}',
+					workflowName: '={{ $workflow.name }}',
+					executionId: '={{ $execution.id }}',
+					executionMode: '={{ $execution.mode }}',
+					variable: '={{ $vars.agentVariable }}',
+					nestedVariable: '={{ $vars.nested.value }}',
+					itemIndex: '={{ $itemIndex }}',
+				}),
+			).resolves.toEqual({
+				json: 'current item',
+				input: 'current item',
+				workflowId: 'expression-workflow-id',
+				workflowName: 'Expression workflow',
+				executionId: 'workflow-execution-id',
+				executionMode: 'test',
+				variable: 'snapshot value',
+				nestedVariable: 'nested snapshot value',
+				itemIndex: 1,
+			});
 		});
 
 		it('passes all input items when inputDataScope is all', async () => {

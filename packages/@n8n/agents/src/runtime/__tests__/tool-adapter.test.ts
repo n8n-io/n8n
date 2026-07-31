@@ -49,6 +49,11 @@ function makeZodSchemaTool(overrides: Partial<BuiltTool> = {}): BuiltTool {
 	};
 }
 
+function getRuntimeContext(value: unknown): unknown {
+	if (typeof value !== 'object' || value === null) return undefined;
+	return Reflect.get(value, 'runtimeContext');
+}
+
 // ---------------------------------------------------------------------------
 // toAiSdkTools — empty / missing input
 // ---------------------------------------------------------------------------
@@ -253,6 +258,31 @@ describe('executeTool — context propagation', () => {
 		await executeTool({}, tool, undefined, undefined, 'call-1', { abortSignal: signal });
 
 		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ abortSignal: signal }));
+	});
+
+	it('passes the opaque runtime context to the tool handler', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = { name: 'context-aware', description: 'd', handler };
+		const runtimeContext = { variables: { region: 'eu' } };
+
+		await executeTool({}, tool, undefined, undefined, 'call-1', { runtimeContext });
+
+		expect(getRuntimeContext(handler.mock.calls[0]?.[1])).toBe(runtimeContext);
+	});
+
+	it('passes the opaque runtime context to interruptible tool handlers', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = {
+			name: 'interruptible-context-aware',
+			description: 'd',
+			handler,
+			suspendSchema: z.object({}),
+		};
+		const runtimeContext = { variables: { region: 'us' } };
+
+		await executeTool({}, tool, undefined, undefined, 'call-1', { runtimeContext });
+
+		expect(getRuntimeContext(handler.mock.calls[0]?.[1])).toBe(runtimeContext);
 	});
 
 	it('passes the execution counter to the tool handler', async () => {

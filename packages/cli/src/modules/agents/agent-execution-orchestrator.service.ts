@@ -1,4 +1,4 @@
-import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
+import type { Agent as RuntimeAgent, AgentRuntimeOverlay, StreamChunk } from '@n8n/agents';
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -11,6 +11,9 @@ import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } fr
 import { Telemetry } from '@/telemetry';
 
 import { AgentExecutionService, type RecordMessageParams } from './agent-execution.service';
+import type { AgentExpressionContext } from './expression/agent-expression-context';
+import { AgentExpressionContextService } from './expression/agent-expression-context.service';
+import type { AgentRunOverlayFactory } from './expression/agent-run-overlay';
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
@@ -46,6 +49,8 @@ export interface ExecuteForChatConfig {
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
+	/** Reuses a caller-owned expression snapshot when the surrounding operation already created one. */
+	expressionContext?: AgentExpressionContext;
 }
 
 export interface ExecuteForChatPublishedConfig {
@@ -56,6 +61,8 @@ export interface ExecuteForChatPublishedConfig {
 	memory: AgentMemoryScope;
 	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
+	/** Reuses a caller-owned expression snapshot when the surrounding operation already created one. */
+	expressionContext?: AgentExpressionContext;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
 	// session — there is no n8n `User` to attach. This path keeps the
@@ -89,6 +96,8 @@ export interface ResumeForChatConfig {
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
+	/** Reuses a caller-owned expression snapshot when the surrounding operation already created one. */
+	expressionContext?: AgentExpressionContext;
 }
 
 export interface ExecuteForTaskPublishedConfig {
@@ -144,6 +153,8 @@ export interface StreamChatResponseConfig {
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
+	createRunOverlay?: AgentRunOverlayFactory;
+	expressionContext?: AgentExpressionContext;
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -185,7 +196,20 @@ export class AgentExecutionOrchestratorService {
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 		private readonly agentRunTracingService: AgentRunTracingService,
 		private readonly externalHooks: ExternalHooks,
+		private readonly agentExpressionContextService: AgentExpressionContextService,
 	) {}
+
+	private async createRunContext(params: {
+		projectId: string;
+		createRunOverlay?: AgentRunOverlayFactory;
+		expressionContext?: AgentExpressionContext;
+	}): Promise<{ expressionContext: AgentExpressionContext; runtimeOverlay?: AgentRuntimeOverlay }> {
+		const expressionContext =
+			params.expressionContext ??
+			(await this.agentExpressionContextService.createForProject(params.projectId));
+		const runtimeOverlay = await params.createRunOverlay?.(expressionContext);
+		return { expressionContext, runtimeOverlay };
+	}
 
 	/**
 	 * Return user-visible conversation history for a persisted chat thread.
@@ -245,6 +269,7 @@ export class AgentExecutionOrchestratorService {
 			usePublishedVersion = true,
 			onExecutionRecorded,
 			abortSignal,
+			expressionContext: suppliedExpressionContext,
 		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
@@ -279,6 +304,11 @@ export class AgentExecutionOrchestratorService {
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
+		const { expressionContext, runtimeOverlay } = await this.createRunContext({
+			projectId: runtime.projectId,
+			createRunOverlay: runtime.createRunOverlay,
+			expressionContext: suppliedExpressionContext,
+		});
 		const recorder = new ExecutionRecorder(toolRegistry);
 		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
 
@@ -309,6 +339,8 @@ export class AgentExecutionOrchestratorService {
 				}),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
+				runtimeContext: expressionContext,
+				...(runtimeOverlay ? { runtimeOverlay } : {}),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -357,6 +389,7 @@ export class AgentExecutionOrchestratorService {
 			attachments,
 			onExecutionRecorded,
 			abortSignal,
+			expressionContext: suppliedExpressionContext,
 		} = config;
 
 		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
@@ -367,7 +400,6 @@ export class AgentExecutionOrchestratorService {
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 			user,
 		});
-
 		await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
 			integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
 			platform: N8N_CHAT_INTEGRATION_TYPE,
@@ -391,6 +423,8 @@ export class AgentExecutionOrchestratorService {
 			},
 			onExecutionRecorded,
 			abortSignal,
+			createRunOverlay: runtime.createRunOverlay,
+			expressionContext: suppliedExpressionContext,
 		});
 	}
 
@@ -402,7 +436,15 @@ export class AgentExecutionOrchestratorService {
 	async *executeForChatPublished(
 		config: ExecuteForChatPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, memory, integrationType, attachments } = config;
+		const {
+			agentId,
+			projectId,
+			message,
+			memory,
+			integrationType,
+			attachments,
+			expressionContext: suppliedExpressionContext,
+		} = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
 		// No `user` (see ExecuteForChatPublishedConfig): this is the shared,
@@ -415,7 +457,6 @@ export class AgentExecutionOrchestratorService {
 			integrationType,
 			usePublishedVersion: true,
 		});
-
 		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
@@ -429,6 +470,8 @@ export class AgentExecutionOrchestratorService {
 				runType: 'production',
 				configuration: runtime.telemetryConfiguration,
 			},
+			createRunOverlay: runtime.createRunOverlay,
+			expressionContext: suppliedExpressionContext,
 		});
 	}
 
@@ -450,7 +493,6 @@ export class AgentExecutionOrchestratorService {
 			integrationType: 'task',
 			usePublishedVersion: true,
 		});
-
 		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
@@ -465,6 +507,7 @@ export class AgentExecutionOrchestratorService {
 				runType: 'production',
 				configuration: runtime.telemetryConfiguration,
 			},
+			createRunOverlay: runtime.createRunOverlay,
 		});
 	}
 
@@ -483,7 +526,6 @@ export class AgentExecutionOrchestratorService {
 			projectId,
 			user,
 		});
-
 		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
@@ -498,6 +540,7 @@ export class AgentExecutionOrchestratorService {
 				runType: 'test',
 				configuration: runtime.telemetryConfiguration,
 			},
+			createRunOverlay: runtime.createRunOverlay,
 		});
 	}
 
@@ -520,8 +563,15 @@ export class AgentExecutionOrchestratorService {
 			telemetry,
 			onExecutionRecorded,
 			abortSignal,
+			createRunOverlay,
+			expressionContext: suppliedExpressionContext,
 		} = config;
 		const { threadId, resourceId } = memory;
+		const { expressionContext, runtimeOverlay } = await this.createRunContext({
+			projectId,
+			createRunOverlay,
+			expressionContext: suppliedExpressionContext,
+		});
 
 		const recorder = new ExecutionRecorder(toolRegistry);
 
@@ -541,6 +591,8 @@ export class AgentExecutionOrchestratorService {
 				executionCounter: createAgentExecutionCounter(this.telemetry, { agentId, userId }),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
+				runtimeContext: expressionContext,
+				...(runtimeOverlay ? { runtimeOverlay } : {}),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {

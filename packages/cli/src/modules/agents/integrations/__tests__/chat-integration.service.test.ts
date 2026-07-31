@@ -24,6 +24,10 @@ import { ChatIntegrationService } from '../chat-integration.service';
 import * as esmLoader from '../esm-loader';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
+type TestConnection = {
+	bridge: { updateIntegration: Mock };
+};
+
 /**
  * Test double — exposes the registry without invoking the real Chat SDK
  * adapters. We never call `createAdapter()` in these tests because we stub
@@ -220,11 +224,80 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	it('does not reconnect an already-live integration when republishing', async () => {
 		const agent = makeAgent({ activeVersionId: 'published-version-1' });
 		const internal = service as unknown as { connections: Map<string, unknown> };
-		internal.connections.set('agent-1:slack:cred-1', {});
+		internal.connections.set('agent-1:slack:cred-1', {
+			bridge: { updateIntegration: vi.fn() },
+		});
 
 		await service.syncToConfig(agent, [], [slackIntegration]);
 
 		expect(connectSpy).not.toHaveBeenCalled();
+	});
+
+	it('updates and broadcasts settings for an existing integration', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+		const previous: AgentIntegrationConfig = {
+			type: 'telegram',
+			credentialId: 'cred-3',
+			settings: { accessMode: 'private', allowedUsers: ['123'] },
+		};
+		const next: AgentIntegrationConfig = {
+			type: 'telegram',
+			credentialId: 'cred-3',
+			settings: { accessMode: 'private', allowedUsers: ['456'] },
+		};
+		const updateIntegration = vi.fn();
+		const internal = service as unknown as {
+			connections: Map<string, TestConnection>;
+		};
+		internal.connections.set('agent-1:telegram:cred-3', {
+			bridge: { updateIntegration },
+		});
+
+		await service.syncToConfig(agent, [previous], [next]);
+
+		expect(disconnectSpy).not.toHaveBeenCalled();
+		expect(connectSpy).not.toHaveBeenCalled();
+		expect(updateIntegration).toHaveBeenCalledWith(next);
+		expect(broadcastSpy).toHaveBeenCalledWith('agent-1', next, 'connect');
+	});
+
+	it('broadcasts leader-only settings changes without connecting on a follower', async () => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('telegram', true));
+		const { service: followerService } = buildServiceWith({ isLeader: false, registry });
+		const followerConnectSpy = vi.spyOn(followerService, 'connect').mockResolvedValue();
+		const followerBroadcastSpy = vi
+			.spyOn(followerService, 'broadcastIntegrationChange')
+			.mockResolvedValue();
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+		const previous: AgentIntegrationConfig = {
+			...telegramIntegration,
+			settings: { accessMode: 'private', allowedUsers: ['123'] },
+		};
+		const next: AgentIntegrationConfig = {
+			...telegramIntegration,
+			settings: { accessMode: 'private', allowedUsers: ['456'] },
+		};
+
+		await followerService.syncToConfig(agent, [previous], [next]);
+
+		expect(followerConnectSpy).not.toHaveBeenCalled();
+		expect(followerBroadcastSpy).toHaveBeenCalledWith('agent-1', next, 'connect');
+	});
+
+	it('does not reconnect when the full integration config is deeply equal', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+		const previous: AgentIntegrationConfig = {
+			type: 'telegram',
+			credentialId: 'cred-3',
+			settings: { accessMode: 'private', allowedUsers: ['123'] },
+		};
+		const next: AgentIntegrationConfig = structuredClone(previous);
+
+		await service.syncToConfig(agent, [previous], [next]);
+
+		expect(connectSpy).not.toHaveBeenCalled();
+		expect(broadcastSpy).not.toHaveBeenCalled();
 	});
 });
 
@@ -690,13 +763,41 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			// former-follower).
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const internal = service as any;
-			internal.connections.set('agent-1:linear:c1', {});
+			internal.connections.set('agent-1:linear:c1', {
+				bridge: { updateIntegration: vi.fn() },
+			});
 
 			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
 
 			await service.reconnectAll();
 
 			expect(connectSpy).not.toHaveBeenCalled();
+		});
+
+		it('updates an existing connection from persisted config', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('telegram', false));
+			const persisted: AgentIntegrationConfig = {
+				type: 'telegram',
+				credentialId: 'c1',
+				settings: { accessMode: 'private', allowedUsers: ['456'] },
+			};
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.findPublished.mockResolvedValue([makeAgent({ integrations: [persisted] })]);
+			const { service } = buildServiceWith({ registry, agentRepository, isLeader: true });
+			const updateIntegration = vi.fn();
+			const internal = service as unknown as {
+				connections: Map<string, TestConnection>;
+			};
+			internal.connections.set('agent-1:telegram:c1', {
+				bridge: { updateIntegration },
+			});
+			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
+
+			await service.reconnectAll();
+
+			expect(connectSpy).not.toHaveBeenCalled();
+			expect(updateIntegration).toHaveBeenCalledWith(persisted);
 		});
 	});
 
@@ -849,7 +950,9 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const internal = service as any;
-			internal.connections.set('a1:linear:c1', {});
+			internal.connections.set('a1:linear:c1', {
+				bridge: { updateIntegration: vi.fn() },
+			});
 
 			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
 
@@ -860,6 +963,34 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			});
 
 			expect(connectSpy).not.toHaveBeenCalled();
+		});
+
+		it('updates a peer connection when the incoming config has newer settings', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('telegram', false));
+			const { service } = buildServiceWith({ registry });
+			const incoming: AgentIntegrationConfig = {
+				type: 'telegram',
+				credentialId: 'c1',
+				settings: { accessMode: 'private', allowedUsers: ['456'] },
+			};
+			const updateIntegration = vi.fn();
+			const internal = service as unknown as {
+				connections: Map<string, TestConnection>;
+			};
+			internal.connections.set('a1:telegram:c1', {
+				bridge: { updateIntegration },
+			});
+			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
+
+			await service.handleIntegrationChanged({
+				agentId: 'a1',
+				integration: incoming,
+				action: 'connect',
+			});
+
+			expect(connectSpy).not.toHaveBeenCalled();
+			expect(updateIntegration).toHaveBeenCalledWith(incoming);
 		});
 	});
 

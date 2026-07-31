@@ -9,6 +9,29 @@ import {
 	ExpressionWithStatementError,
 } from './errors';
 import { isSafeObjectProperty } from './utils';
+import type { Workflow } from './workflow';
+
+export function deepFreeze(value: unknown, seen = new WeakSet<object>()): void {
+	if (typeof value !== 'object' || value === null || seen.has(value)) return;
+	seen.add(value);
+	for (const nestedValue of Object.values(value)) deepFreeze(nestedValue, seen);
+	Object.freeze(value);
+}
+
+/**
+ * Runs expression work while preserving ownership of an existing workflow isolate.
+ */
+export async function withExpressionIsolate<T>(
+	workflow: Workflow,
+	fn: () => Promise<T>,
+): Promise<T> {
+	const acquired = await workflow.expression.acquireIsolate();
+	try {
+		return await fn();
+	} finally {
+		if (acquired) await workflow.expression.releaseIsolate();
+	}
+}
 
 export const sanitizerName = '__sanitize';
 const sanitizerIdentifier = b.identifier(sanitizerName);

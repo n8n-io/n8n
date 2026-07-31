@@ -46,6 +46,7 @@ export type {
 	ExecutionOptions,
 	SmoothStreamOptions,
 	AgentExecutionCounter,
+	AgentRuntimeOverlay,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,
@@ -68,6 +69,7 @@ export type {
 	InterruptibleToolContext,
 	BuiltTool,
 	BuiltProviderTool,
+	AgentToolRuntimeOverride,
 } from './sdk/tool';
 
 export type {

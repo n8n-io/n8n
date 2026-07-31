@@ -2258,6 +2258,11 @@ export type ExecuteAgentInfo = ExecuteAgentSource & {
 	exposeWorkflowData?: boolean;
 };
 
+export interface ExecuteAgentExpressionResolver {
+	readonly variables: Readonly<IDataObject>;
+	resolveParameterValue(value: NodeParameterValueType): Promise<NodeParameterValueType>;
+}
+
 /**
  * Context about the calling workflow execution, passed to the agent runtime so
  * it can expose the `fetch_input_data` and (opt-in) `fetch_workflow_context` tools to the agent. The
@@ -2288,6 +2293,8 @@ export interface ExecuteAgentWorkflowContext {
 	nodes: Array<{ name: string; type: string }>;
 	/** The calling execution's run data (read-only by convention). */
 	runExecutionData: IRunExecutionData;
+	/** Resolves expressions against the calling workflow item. */
+	expressionResolver?: ExecuteAgentExpressionResolver;
 }
 
 export interface ExecuteAgentOptions {

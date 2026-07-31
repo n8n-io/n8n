@@ -4,7 +4,8 @@ import { z } from 'zod';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 
-import { resolveNodeTool } from '../node-tool-factory';
+import { AgentExpressionContext } from '../../expression/agent-expression-context';
+import { resolveNodeTool, resolveNodeToolInputSchemaForRun } from '../node-tool-factory';
 
 // The node-tool-factory imports the DI `Container` to look up NodeTypes inside
 // `resolveInputSchema` (for auto-seeding a `{ input: string }` schema on
@@ -250,5 +251,149 @@ describe('resolveNodeTool → eval instrumentation', () => {
 		const request = executeInline.mock.calls[0][0] as Record<string, unknown>;
 		expect(request.nodeName).toBeUndefined();
 		expect(request.configureAdditionalData).toBeUndefined();
+	});
+
+	it('applies each run variable snapshot to ephemeral invocation without leaking tool data', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const instrumentToolAdditionalData = vi.fn();
+		const nodeParameters = {
+			channelId: '={{ $vars.channel }}',
+			message:
+				"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message', 'Message', 'string') }}",
+		};
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters },
+			},
+			{
+				executor: { executeInline } as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+				instrumentToolAdditionalData,
+			},
+		);
+		const contexts = ['first', 'second'].map(
+			(channel) => new AgentExpressionContext({ channel }, async (value) => value),
+		);
+		const inputs = contexts.map((_, index) => ({ message: `message-${index + 1}` }));
+
+		await Promise.all(
+			contexts.map(
+				async (runtimeContext, index) => await tool.handler?.(inputs[index], { runtimeContext }),
+			),
+		);
+
+		const requests = executeInline.mock.calls.map(([request]) => request) as Array<{
+			nodeParameters: object;
+			inputData: Array<{ json: object }>;
+			configureAdditionalData?: (additionalData: { variables: object }) => void;
+		}>;
+		const snapshots = requests.map((request) => {
+			const additionalData = { variables: { stale: true } };
+			request.configureAdditionalData?.(additionalData);
+			return additionalData.variables;
+		});
+
+		expect(snapshots).toEqual([{ channel: 'first' }, { channel: 'second' }]);
+		expect(snapshots[0]).not.toBe(contexts[0].variables);
+		expect(instrumentToolAdditionalData).toHaveBeenCalledTimes(2);
+		expect(instrumentToolAdditionalData).toHaveBeenCalledWith(
+			expect.objectContaining({ variables: { channel: 'first' } }),
+			{ toolName: 'Google_Drive', toolKind: 'node' },
+		);
+		expect(
+			requests.map(({ nodeParameters: parameters, inputData }) => ({ parameters, inputData })),
+		).toEqual(
+			inputs.map((input) => ({ parameters: nodeParameters, inputData: [{ json: input }] })),
+		);
+	});
+});
+
+describe('node tool run input schemas', () => {
+	it('does not re-introspect a static schema for each run', async () => {
+		const introspectSupplyDataToolSchema = vi.fn();
+
+		await expect(
+			resolveNodeToolInputSchemaForRun(
+				baseToolSchema,
+				{
+					executor: { introspectSupplyDataToolSchema } as unknown as EphemeralNodeExecutor,
+					projectId: 'p1',
+				},
+				new AgentExpressionContext({}, async (value) => value),
+			),
+		).resolves.toBeUndefined();
+		expect(introspectSupplyDataToolSchema).not.toHaveBeenCalled();
+	});
+
+	it('does not re-introspect when only the tool description is dynamic', async () => {
+		const introspectSupplyDataToolSchema = vi.fn();
+		Container.set(NodeTypes, {
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: { description: 'Send a message' },
+				supplyData: vi.fn(),
+			}),
+		} as unknown as NodeTypes);
+
+		await expect(
+			resolveNodeToolInputSchemaForRun(
+				{ ...baseToolSchema, description: '={{ $vars.description }}' },
+				{
+					executor: { introspectSupplyDataToolSchema } as unknown as EphemeralNodeExecutor,
+					projectId: 'p1',
+				},
+				new AgentExpressionContext({ description: 'Send a message' }, async (value) => value),
+			),
+		).resolves.toBeUndefined();
+		expect(introspectSupplyDataToolSchema).not.toHaveBeenCalled();
+	});
+
+	it('introspects each dynamic schema with its run variable snapshot', async () => {
+		Container.set(NodeTypes, {
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: { description: 'Send a message' },
+				supplyData: vi.fn(),
+			}),
+		} as unknown as NodeTypes);
+		const snapshots: string[] = [];
+		const introspectSupplyDataToolSchema = vi.fn(
+			async (request: {
+				configureAdditionalData?: (additionalData: {
+					variables: Record<string, unknown>;
+				}) => void;
+			}) => {
+				const additionalData: { variables: Record<string, unknown> } = { variables: {} };
+				request.configureAdditionalData?.(additionalData);
+				const channel = String(additionalData.variables.channel);
+				snapshots.push(channel);
+				return z.object({ [channel]: z.string() });
+			},
+		);
+		const toolSchema = {
+			...baseToolSchema,
+			node: {
+				...baseToolSchema.node,
+				nodeParameters: { channelId: '={{ $vars.channel }}' },
+			},
+		};
+		const ctx = {
+			executor: { introspectSupplyDataToolSchema } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+		};
+		const context = (channel: string) =>
+			new AgentExpressionContext({ channel }, async (value) => value);
+
+		const [firstSchema, secondSchema] = (await Promise.all([
+			resolveNodeToolInputSchemaForRun(toolSchema, ctx, context('first')),
+			resolveNodeToolInputSchemaForRun(toolSchema, ctx, context('second')),
+		])) as z.ZodType[];
+
+		expect(snapshots).toEqual(['first', 'second']);
+		expect([
+			firstSchema.safeParse({ first: 'channel' }).success,
+			firstSchema.safeParse({ second: 'channel' }).success,
+			secondSchema.safeParse({ first: 'channel' }).success,
+			secondSchema.safeParse({ second: 'channel' }).success,
+		]).toEqual([true, false, false, true]);
 	});
 });

@@ -1,4 +1,8 @@
-import { AgentIntegrationSchema } from '../agent-integration.schema';
+import {
+	AgentIntegrationSchema,
+	AgentTelegramAllowedUserSchema,
+	AgentTelegramSettingsSchema,
+} from '../agent-integration.schema';
 
 describe('AgentIntegrationSchema', () => {
 	it('accepts a telegram integration with credential id', () => {
@@ -26,6 +30,36 @@ describe('AgentIntegrationSchema', () => {
 		});
 		expect(result.success).toBe(false);
 	});
+
+	it('accepts and preserves a Telegram allowed-user expression', () => {
+		const expression = '={{ $vars.TELEGRAM_USER_ID }}';
+
+		expect(AgentTelegramAllowedUserSchema.parse(expression)).toBe(expression);
+		expect(
+			AgentTelegramSettingsSchema.parse({
+				accessMode: 'private',
+				allowedUsers: [expression],
+			}),
+		).toEqual({ accessMode: 'private', allowedUsers: [expression] });
+	});
+
+	it('trims and deduplicates Telegram literals and expressions', () => {
+		const expression = '={{ $vars.TELEGRAM_USER_ID }}';
+
+		expect(
+			AgentTelegramSettingsSchema.parse({
+				accessMode: 'private',
+				allowedUsers: [`  ${expression}  `, expression, '  @alice  ', '@alice'],
+			}),
+		).toEqual({ accessMode: 'private', allowedUsers: [expression, '@alice'] });
+	});
+
+	it.each(['{{ $vars.TELEGRAM_USER_ID }}', 'invalid-user!'])(
+		'rejects invalid Telegram allowed user %s',
+		(value) => {
+			expect(AgentTelegramAllowedUserSchema.safeParse(value).success).toBe(false);
+		},
+	);
 
 	it('rejects the removed schedule integration type', () => {
 		const result = AgentIntegrationSchema.safeParse({

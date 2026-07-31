@@ -1,4 +1,9 @@
-import type { Agent as RuntimeAgent, SerializableAgentState, StreamChunk } from '@n8n/agents';
+import type {
+	Agent as RuntimeAgent,
+	AgentRuntimeOverlay,
+	SerializableAgentState,
+	StreamChunk,
+} from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
@@ -11,6 +16,8 @@ import type { Telemetry } from '@/telemetry';
 
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentExpressionContext } from '../expression/agent-expression-context';
+import type { AgentExpressionContextService } from '../expression/agent-expression-context.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -58,6 +65,7 @@ function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
 }
 
 function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }]) {
+	const runtimeOverlay: AgentRuntimeOverlay = { instructions: 'resolved instructions' };
 	return {
 		agent: {
 			name: 'Runtime Agent',
@@ -82,6 +90,8 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 			num_skills: 0,
 			memory_type: 'none' as const,
 		},
+		createRunOverlay: vi.fn().mockResolvedValue(runtimeOverlay),
+		runtimeOverlay,
 	};
 }
 
@@ -93,9 +103,12 @@ function makeService() {
 	const integrationMessageContextService = mock<IntegrationMessageContextService>();
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const externalHooks = mock<ExternalHooks>();
+	const agentExpressionContextService = mock<AgentExpressionContextService>();
+	const expressionContext = mock<AgentExpressionContext>();
 
 	executionService.recordMessage.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
+	agentExpressionContextService.createForProject.mockResolvedValue(expressionContext);
 
 	const service = new AgentExecutionOrchestratorService(
 		mockLogger(),
@@ -106,6 +119,7 @@ function makeService() {
 		integrationMessageContextService,
 		agentRunTracingService,
 		externalHooks,
+		agentExpressionContextService,
 	);
 
 	return {
@@ -117,6 +131,8 @@ function makeService() {
 		integrationMessageContextService,
 		agentRunTracingService,
 		externalHooks,
+		agentExpressionContextService,
+		expressionContext,
 	};
 }
 
@@ -226,6 +242,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			integrationMessageContextService,
 			agentRunTracingService,
 			externalHooks,
+			agentExpressionContextService,
+			expressionContext,
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
@@ -264,8 +282,12 @@ describe('AgentExecutionOrchestratorService', () => {
 			'hello',
 			expect.objectContaining({
 				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+				runtimeContext: expressionContext,
+				runtimeOverlay: runtime.runtimeOverlay,
 			}),
 		);
+		expect(agentExpressionContextService.createForProject).toHaveBeenCalledWith(projectId);
+		expect(runtime.createRunOverlay).toHaveBeenCalledWith(expressionContext);
 		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -295,8 +317,10 @@ describe('AgentExecutionOrchestratorService', () => {
 			executionService,
 			agentRunTracingService,
 			externalHooks,
+			agentExpressionContextService,
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		const suppliedContext = mock<AgentExpressionContext>();
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
@@ -306,6 +330,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'from slack',
 				memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
 				integrationType: 'slack',
+				expressionContext: suppliedContext,
 			}),
 		);
 
@@ -332,6 +357,15 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'slack' }),
 		);
+		expect(agentExpressionContextService.createForProject).not.toHaveBeenCalled();
+		expect(runtime.createRunOverlay).toHaveBeenCalledWith(suppliedContext);
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'from slack',
+			expect.objectContaining({
+				runtimeContext: suppliedContext,
+				runtimeOverlay: runtime.runtimeOverlay,
+			}),
+		);
 	});
 
 	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
@@ -341,6 +375,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			executionService,
 			agentRunTracingService,
 			externalHooks,
+			agentExpressionContextService,
+			expressionContext,
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
@@ -380,6 +416,13 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'task' }),
+		);
+		expect(agentExpressionContextService.createForProject).toHaveBeenCalledOnce();
+		expect(agentExpressionContextService.createForProject).toHaveBeenCalledWith(projectId);
+		expect(runtime.createRunOverlay).toHaveBeenCalledWith(expressionContext);
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'run task',
+			expect.objectContaining({ runtimeContext: expressionContext }),
 		);
 	});
 
@@ -558,9 +601,16 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('rejects expired checkpoints and resumes active checkpoints without passing resourceId', async () => {
-		const { service, checkpointStorage, runtimeCacheService, executionService, externalHooks } =
-			makeService();
+		const {
+			service,
+			checkpointStorage,
+			runtimeCacheService,
+			executionService,
+			externalHooks,
+			agentExpressionContextService,
+		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		const suppliedContext = mock<AgentExpressionContext>();
 
 		checkpointStorage.getStatus.mockResolvedValueOnce({ status: 'expired' });
 		await expect(
@@ -591,6 +641,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				resumeData: { value: 'yes' },
 				integrationType: 'slack',
 				abortSignal: abortController.signal,
+				expressionContext: suppliedContext,
 			}),
 		);
 
@@ -601,8 +652,12 @@ describe('AgentExecutionOrchestratorService', () => {
 				runId: 'run-1',
 				toolCallId: 'tc-1',
 				abortSignal: abortController.signal,
+				runtimeContext: suppliedContext,
+				runtimeOverlay: runtime.runtimeOverlay,
 			}),
 		);
+		expect(agentExpressionContextService.createForProject).not.toHaveBeenCalled();
+		expect(runtime.createRunOverlay).toHaveBeenCalledWith(suppliedContext);
 		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');
 		expect(executionService.recordMessage).toHaveBeenCalledWith(

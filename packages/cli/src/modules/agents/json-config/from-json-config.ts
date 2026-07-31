@@ -7,11 +7,11 @@ import type {
 	FetchFn,
 	McpClient,
 	ModelConfig,
-	ToolDescriptor,
-	JSONObject,
 	RuntimeSkill,
 	RuntimeSkillLinkedFiles,
 	RuntimeSkillSource,
+	ToolDescriptor,
+	JSONObject,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
@@ -26,8 +26,8 @@ import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
 	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
 	AgentJsonSkillConfig,
+	AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { createHash } from 'crypto';
@@ -55,12 +55,12 @@ const WEB_SEARCH_INPUT_SCHEMA = z.object({
 const WEB_SEARCH_PLAN_INSTRUCTION =
 	'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.';
 
-export type FallbackWebSearchArgs = z.infer<typeof WEB_SEARCH_INPUT_SCHEMA>;
-export type FallbackWebSearchHandler = (args: FallbackWebSearchArgs) => Promise<unknown>;
-
 const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
+
+export type FallbackWebSearchArgs = z.infer<typeof WEB_SEARCH_INPUT_SCHEMA>;
+export type FallbackWebSearchHandler = (args: FallbackWebSearchArgs) => Promise<unknown>;
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -144,7 +144,7 @@ export async function buildFromJson(
 		agent.modelFetch(options.modelFetch);
 	}
 
-	const configuredSkillSource = getConfiguredSkillSource(
+	const configuredSkillSource = createConfiguredAgentSkillSource(
 		config.skills ?? [],
 		options.skills ?? {},
 		createRuntimeSkillRegistry,
@@ -263,9 +263,12 @@ function getProviderToolPrefix(toolName: string): string | undefined {
 	return dotIndex > 0 ? toolName.slice(0, dotIndex) : undefined;
 }
 
-function getInstructionsWithWebSearchPolicy(config: AgentJsonConfig): string {
-	if (config.config?.webSearch?.enabled !== true) return config.instructions;
-	return `${config.instructions.trimEnd()}\n\n${WEB_SEARCH_POLICY_INSTRUCTION}`;
+export function getInstructionsWithWebSearchPolicy(
+	config: Pick<AgentJsonConfig, 'config' | 'instructions'>,
+	instructions = config.instructions,
+): string {
+	if (config.config?.webSearch?.enabled !== true) return instructions;
+	return `${instructions.trimEnd()}\n\n${WEB_SEARCH_POLICY_INSTRUCTION}`;
 }
 
 /**
@@ -354,7 +357,7 @@ function buildFallbackWebSearchTool(
 	};
 }
 
-function getConfiguredSkillSource(
+export function createConfiguredAgentSkillSource(
 	refs: AgentJsonSkillConfig[],
 	skills: Record<string, AgentSkill>,
 	createRegistry: (skills: RuntimeSkill[]) => RuntimeSkillSource['registry'],

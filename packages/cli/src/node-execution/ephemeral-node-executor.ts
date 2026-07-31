@@ -475,12 +475,16 @@ export class EphemeralNodeExecutor {
 		);
 
 		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
-		if (typeof nodeType.supplyData !== 'function') {
+		const supplyData = nodeType.supplyData;
+		if (typeof supplyData !== 'function') {
 			return { ok: false, error: 'Node does not implement supplyData' };
 		}
 
 		try {
-			const supplyDataResult = await nodeType.supplyData.call(context, 0);
+			const supplyDataResult = await withExpressionIsolate(
+				parts.workflow,
+				async () => await supplyData.call(context, 0),
+			);
 			const response = supplyDataResult.response as
 				| LangChainToolType
 				| StructuredToolkit

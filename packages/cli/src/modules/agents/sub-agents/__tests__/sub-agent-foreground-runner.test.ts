@@ -19,6 +19,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
+import { AgentExpressionContext } from '../../expression/agent-expression-context';
 import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
@@ -186,6 +187,33 @@ describe('SubAgentForegroundRunner', () => {
 						model: 'anthropic/claude-sonnet-4-5',
 					}),
 				},
+			}),
+		);
+	});
+
+	it('materializes saved child fields from the parent context and streams with the same snapshot', async () => {
+		const expressionContext = new AgentExpressionContext({ region: 'eu' }, async (value) => value);
+		const runtimeOverlay = { instructions: 'Help with work in eu.' };
+		const createRunOverlay = vi.fn().mockResolvedValue(runtimeOverlay);
+		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
+			agent: childAgent as never,
+			toolRegistry: new Map(),
+			createRunOverlay,
+		});
+
+		await runner.runForeground(spawnRequest, {
+			projectId,
+			credentialProvider,
+			runtimeContext: expressionContext,
+		});
+
+		expect(createRunOverlay).toHaveBeenCalledOnce();
+		expect(createRunOverlay).toHaveBeenCalledWith(expressionContext);
+		expect(childAgent.stream).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				runtimeContext: expressionContext,
+				runtimeOverlay,
 			}),
 		);
 	});
