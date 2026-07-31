@@ -22,7 +22,7 @@ import { useResourceLocatorDropdown } from '../../composables/useResourceLocator
 import { useResourceLocatorModes } from '../../composables/useResourceLocatorModes';
 import { useWorkflowResourcesLocator } from '../../composables/useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VIEWS } from '@/app/constants';
 import {
 	SAMPLE_SUBWORKFLOW_TRIGGER_ID,

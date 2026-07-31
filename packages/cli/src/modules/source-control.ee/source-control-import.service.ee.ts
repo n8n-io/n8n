@@ -1,4 +1,4 @@
-import type { SourceControlledFile } from '@n8n/api-types';
+import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
 	FindOptionsWhere,
@@ -40,6 +40,7 @@ import path from 'path';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { IWorkflowToImport } from '@/interfaces';
 import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
@@ -54,6 +55,7 @@ import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
@@ -150,6 +152,7 @@ export class SourceControlImportService {
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly executionPersistence: ExecutionPersistence,
+		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -830,14 +833,16 @@ export class SourceControlImportService {
 			importedWorkflow.settings?.redactionPolicy,
 		);
 
-		const { shouldPublishAfterImport, publishingError } = await this.preparePublishStateForImport(
-			existingWorkflow,
-			importedWorkflow,
-			autoPublish,
-			userId,
-		);
+		const { shouldPublishAfterImport, publishingError, publishingErrorDetails } =
+			await this.preparePublishStateForImport(
+				existingWorkflow,
+				importedWorkflow,
+				autoPublish,
+				userId,
+			);
 
 		let finalPublishingError = publishingError;
+		let finalPublishingErrorDetails = publishingErrorDetails;
 
 		const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
@@ -886,6 +891,7 @@ export class SourceControlImportService {
 			const publishResult = await this.publishWorkflow(id, versionId, userId);
 			if (!publishResult.success) {
 				finalPublishingError = publishResult.error;
+				finalPublishingErrorDetails = publishResult.errorDetails;
 			}
 		}
 
@@ -893,6 +899,9 @@ export class SourceControlImportService {
 			id,
 			name: candidate.file,
 			publishingError: finalPublishingError,
+			...(finalPublishingErrorDetails && {
+				publishingErrorDetails: finalPublishingErrorDetails,
+			}),
 		};
 	}
 
@@ -960,7 +969,11 @@ export class SourceControlImportService {
 		workflowId: string,
 		versionId: string,
 		userId: string,
-	): Promise<{ success: boolean; error?: string }> {
+	): Promise<{
+		success: boolean;
+		error?: string;
+		errorDetails?: WorkflowPublishBlockedDetails;
+	}> {
 		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
 		if (!user) {
 			const errorMessage = `User ${userId} not found, cannot publish workflow ${workflowId}`;
@@ -977,7 +990,11 @@ export class SourceControlImportService {
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.error(`Failed to publish workflow ${workflowId}`, { error });
-			return { success: false, error: error.message };
+			return {
+				success: false,
+				error: error.message,
+				errorDetails: e instanceof WorkflowPublishBlockedError ? e.details : undefined,
+			};
 		}
 	}
 
@@ -2034,7 +2051,11 @@ export class SourceControlImportService {
 		importedWorkflow: IWorkflowToImport,
 		autoPublish: AutoPublishMode,
 		userId: string,
-	): Promise<{ shouldPublishAfterImport: boolean; publishingError?: string }> {
+	): Promise<{
+		shouldPublishAfterImport: boolean;
+		publishingError?: string;
+		publishingErrorDetails?: WorkflowPublishBlockedDetails;
+	}> {
 		const shouldAutoPublishRemote = this.shouldAutoPublishWorkflow(
 			existingWorkflow,
 			importedWorkflow,
@@ -2052,7 +2073,19 @@ export class SourceControlImportService {
 
 		let unpublishedLocal = false;
 		let publishingError: string | undefined;
-		if (mustUnpublishLocal && existingWorkflow) {
+		let publishingErrorDetails: WorkflowPublishBlockedDetails | undefined;
+		if (mustUnpublishLocal && shouldAutoPublishRemote && existingWorkflow) {
+			try {
+				await this.workflowPublishGuard.assertCanPublish(existingWorkflow.id);
+			} catch (error) {
+				if (!(error instanceof WorkflowPublishBlockedError)) throw error;
+
+				publishingError = error.message;
+				publishingErrorDetails = error.details;
+			}
+		}
+
+		if (mustUnpublishLocal && existingWorkflow && !publishingErrorDetails) {
 			unpublishedLocal = await this.unpublishWorkflow(existingWorkflow.id, userId);
 			if (!unpublishedLocal) {
 				publishingError = 'Failed to unpublish workflow before import';
@@ -2060,7 +2093,9 @@ export class SourceControlImportService {
 		}
 
 		const shouldPublishAfterImport =
-			shouldAutoPublishRemote && (!mustUnpublishLocal || unpublishedLocal);
+			!publishingErrorDetails &&
+			shouldAutoPublishRemote &&
+			(!mustUnpublishLocal || unpublishedLocal);
 
 		this.resolvePublishedStatus(
 			importedWorkflow,
@@ -2069,7 +2104,7 @@ export class SourceControlImportService {
 			unpublishedLocal,
 		);
 
-		return { shouldPublishAfterImport, publishingError };
+		return { shouldPublishAfterImport, publishingError, publishingErrorDetails };
 	}
 
 	/**

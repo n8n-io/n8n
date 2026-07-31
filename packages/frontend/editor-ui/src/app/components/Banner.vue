@@ -76,15 +76,17 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 		:disable-transitions="true"
 		:class="[$style.container, theme === 'info' && $style.containerInfo]"
 	>
-		<N8nIcon v-if="icon" :icon="icon" :class="iconClass[props.theme]" />
 		<div :class="$style.banner">
 			<div :class="$style.content">
 				<div>
-					<span :class="messageClass[props.theme]"> {{ message }}&nbsp; </span>
-					<N8nLink v-if="details && !expanded" :bold="true" size="small" @click="expand">
-						<span :class="$style.moreDetails">More details</span>
-					</N8nLink>
-					<div v-if="$slots.subtitle" :class="$style.subtitle">
+					<div :class="$style.messageRow">
+						<N8nIcon v-if="icon" :icon="icon" :class="iconClass[props.theme]" />
+						<span :class="messageClass[props.theme]"> {{ message }}&nbsp; </span>
+						<N8nLink v-if="details && !expanded" :bold="true" size="small" @click="expand">
+							<span :class="$style.moreDetails">More details</span>
+						</N8nLink>
+					</div>
+					<div v-if="$slots.subtitle" :class="[$style.subtitle, icon && $style.subtitleWithIcon]">
 						<slot name="subtitle" />
 					</div>
 				</div>
@@ -113,11 +115,7 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 
 <style module lang="scss">
 .icon {
-	position: absolute;
-	left: 14px;
-	top: 0;
-	bottom: 0;
-	margin: auto 0;
+	flex-shrink: 0;
 }
 
 .dangerIcon {
@@ -133,14 +131,11 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 .container {
 	width: 100%;
 	position: relative;
-	padding-left: 40px;
 	border: none;
 }
 
-// `info` has no icon, so it drops the icon gutter and gets a neutral fill.
+// `info` gets a neutral fill instead of the themed one.
 .containerInfo {
-	padding-left: var(--spacing--sm);
-
 	// Match Element Plus's specificity to override the tag's fill + border.
 	// Alpha overlays read against the modal in both themes; the border steps one
 	// notch past the fill (darker in light mode, lighter in dark).
@@ -210,10 +205,22 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 	font-size: var(--font-size--xs);
 }
 
+.messageRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
 .subtitle {
 	margin-top: var(--spacing--4xs);
 	line-height: var(--line-height--md);
 	// ElTag defaults to nowrap; let the subtitle wrap instead of overflowing.
 	white-space: normal;
+}
+
+// Align with the message text rather than the icon above it.
+// `1em` mirrors the icon's default size, `--spacing--xs` mirrors .messageRow's gap.
+.subtitleWithIcon {
+	margin-left: calc(1em + var(--spacing--xs));
 }
 </style>

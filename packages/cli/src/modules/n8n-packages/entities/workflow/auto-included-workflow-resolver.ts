@@ -40,6 +40,7 @@ export class AutoIncludedWorkflowResolver {
 		topLevelWorkflowIds: string[];
 		folderWorkflowIds: string[];
 		projectWorkflowIds: string[];
+		includeTags: boolean;
 	}): Promise<AutoIncludedWorkflowResolution> {
 		const originsByWorkflowId = this.seedExportedOrigins({
 			topLevelWorkflowIds: options.topLevelWorkflowIds,
@@ -58,6 +59,7 @@ export class AutoIncludedWorkflowResolver {
 			user: options.user,
 			workflowIds: autoIncludedWorkflowIds,
 			originsByWorkflowId,
+			includeTags: options.includeTags,
 		});
 
 		return { autoIncludedWorkflows };
@@ -145,10 +147,15 @@ export class AutoIncludedWorkflowResolver {
 		user: User;
 		workflowIds: string[];
 		originsByWorkflowId: Map<string, Set<WorkflowExportOrigin>>;
+		includeTags: boolean;
 	}): Promise<AutoIncludedWorkflow[]> {
 		if (options.workflowIds.length === 0) return [];
 
-		const workflows = await this.findExportableWorkflows(options.user, options.workflowIds);
+		const workflows = await this.findExportableWorkflows(
+			options.user,
+			options.workflowIds,
+			options.includeTags,
+		);
 		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
 		const ownersByWorkflowId = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
 			options.workflowIds,
@@ -221,12 +228,13 @@ export class AutoIncludedWorkflowResolver {
 	private async findExportableWorkflows(
 		user: User,
 		workflowIds: string[],
+		includeTags: boolean,
 	): Promise<WorkflowEntity[]> {
 		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
 			workflowIds,
 			user,
 			['workflow:export'],
-			{ includeParentFolder: true },
+			{ includeParentFolder: true, includeTags },
 		);
 
 		await assertEveryRequestedEntityAccessible(

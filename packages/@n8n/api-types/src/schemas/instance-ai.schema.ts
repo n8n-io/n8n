@@ -248,6 +248,12 @@ export const agentCompletedPayloadSchema = z.object({
 	role: z.string(),
 	result: z.string().describe('Synthesized answer'),
 	error: z.string().optional(),
+	/**
+	 * Terminal state of the sub-agent. Optional: events written before this
+	 * field existed (and the backfill migration's synthesized ones) carry only
+	 * `error`, and the reducer keeps deriving the status from it for those.
+	 */
+	status: z.enum(['completed', 'cancelled', 'error']).optional(),
 });
 
 export const textDeltaPayloadSchema = z.object({

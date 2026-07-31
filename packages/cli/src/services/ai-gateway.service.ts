@@ -349,6 +349,57 @@ export class AiGatewayService {
 	}
 
 	/**
+	 * Resolves the n8n credential type the gateway serves for a model-provider
+	 * prefix (e.g. `openai` → `openAiApi`), by matching the provider slug in each
+	 * `providerConfig` entry's `gatewayPath` (the segment right after
+	 * `/v1/gateway/`). Returns `undefined` when n8n Connect is unlicensed or the
+	 * gateway does not serve that provider. This is the authoritative n8n Connect
+	 * provider → credential-type mapping and support gate.
+	 */
+	async getCredentialTypeForProvider(provider: string): Promise<string | undefined> {
+		if (!this.licenseState.isAiGatewayLicensed()) return undefined;
+		const config = await this.getGatewayConfig();
+		return AiGatewayService.matchCredentialTypeForProvider(config, provider);
+	}
+
+	/**
+	 * Cache-only counterpart to {@link getCredentialTypeForProvider}, for the
+	 * static agent validator which must never trigger a network fetch. Returns:
+	 *  - the credential type when the cached config serves the provider,
+	 *  - `null` when support is definitively unavailable (unlicensed, or the
+	 *    cached config does not serve the provider) — a real "gateway says no",
+	 *  - `undefined` when it can't be determined (no config cached yet) — a
+	 *    "could not ask", so callers must not fail closed on it.
+	 *
+	 * Uses the last cached config even if past its refresh TTL: a slightly stale
+	 * answer is preferable to a network call here.
+	 */
+	getCredentialTypeForProviderCached(provider: string): string | null | undefined {
+		if (!this.licenseState.isAiGatewayLicensed()) return null;
+		if (!this.gatewayConfig) return undefined;
+		return AiGatewayService.matchCredentialTypeForProvider(this.gatewayConfig, provider) ?? null;
+	}
+
+	/**
+	 * Matches a model-provider prefix (e.g. `openai`) to the n8n credential type
+	 * the gateway serves it under, by comparing the provider slug in each
+	 * `providerConfig` entry's `gatewayPath` (the segment right after
+	 * `/v1/gateway/`). Returns `undefined` when the gateway does not serve it.
+	 */
+	private static matchCredentialTypeForProvider(
+		config: AiGatewayConfigDto,
+		provider: string,
+	): string | undefined {
+		const prefix = `${AiGatewayService.GATEWAY_PATH_PREFIX}/`;
+		for (const [credentialType, providerConfig] of Object.entries(config.providerConfig)) {
+			if (!providerConfig.gatewayPath.startsWith(prefix)) continue;
+			const slug = providerConfig.gatewayPath.slice(prefix.length).split('/')[0];
+			if (slug === provider) return credentialType;
+		}
+		return undefined;
+	}
+
+	/**
 	 * Headers required by the AI Gateway credentials endpoint (`HeadersMetadataDto`).
 	 */
 	private buildGatewayCredentialsHeaders(userId: string): Record<string, string> {

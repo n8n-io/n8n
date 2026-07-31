@@ -5,7 +5,7 @@ import { useResizeObserver } from '@vueuse/core';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();

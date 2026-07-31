@@ -1,6 +1,16 @@
 name: 'Release: Chromatic'
 
 on:
+  # Snapshot master so PRs have a fresh baseline to diff against. Without base-branch
+  # builds, TurboSnap diffs each PR against a stale ancestor, sees ~all files changed,
+  # and disables itself — rebuilding every story on every PR.
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/frontend/@n8n/design-system/**'
+      - 'packages/frontend/@n8n/storybook/**'
+      - '.github/workflows/release-chromatic.yml'
   workflow_dispatch:
   workflow_call:
     inputs:

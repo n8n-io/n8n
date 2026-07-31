@@ -19,7 +19,7 @@ const getNodeType = vi.fn();
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
 const messageAnAgentNode = mockNodeTypeDescription({
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
-	displayName: 'AI Agent V1',
+	displayName: 'AI Agent V2',
 	hidden: true,
 });
 
@@ -93,25 +93,14 @@ describe('viewsData', () => {
 	});
 
 	describe('AIView', () => {
-		test('should return ai view with ai transform node', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(true);
-
+		test('should return the AI view', () => {
 			expect(AIView([])).toMatchSnapshot();
 		});
 
-		test('should return ai view without ai transform node if ask ai is not enabled', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
+		test('should not include the deprecated AI Transform node', () => {
+			const result = AIView([]);
 
-			expect(AIView([])).toMatchSnapshot();
-		});
-
-		test('should return ai view without ai transform node if ask ai is not enabled and node is not in the list', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
-
-			expect(AIView([])).toMatchSnapshot();
+			expect(result.items.some((item) => item.key === AI_TRANSFORM_NODE_TYPE)).toBe(false);
 		});
 
 		test('should include Message an Agent node before the agent node when agents module is active', () => {

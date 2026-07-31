@@ -468,6 +468,7 @@ describe('GlobalConfig', () => {
 			enabledForPollTriggers: false,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
+			misfireGraceSeconds: 60,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -502,6 +503,7 @@ describe('GlobalConfig', () => {
 			awsSystemCredentialsSdkSources: 'all',
 			enableGitNodeHooks: false,
 			enableGitNodeAllConfigKeys: false,
+			postMessageAllowedOrigins: '',
 		},
 		executions: {
 			mode: 'regular',
@@ -536,6 +538,7 @@ describe('GlobalConfig', () => {
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
 			maxDisplaySize: 100 * 1024 * 1024,
+			webhookResponseRelaySizeMaxMiB: 64,
 		},
 		diagnostics: {
 			enabled: true,
@@ -641,6 +644,8 @@ describe('GlobalConfig', () => {
 			oidcLoginEnabled: false,
 			oidcPrompt: 'select_account',
 			oidcAcrValues: '',
+			oidcAdditionalScopes: '',
+			oidcRpInitiatedLogoutEnabled: false,
 			ssoUserRoleProvisioning: 'disabled',
 			securityPolicyManagedByEnv: false,
 			mfaEnforcedEnabled: false,

@@ -2,7 +2,7 @@ import { Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { toPackagesError } from './shared';
+import { toPackagesError } from './package-error';
 import { BaseCommand } from '../../base-command';
 
 export default class PackageImport extends BaseCommand {
@@ -85,9 +85,27 @@ export default class PackageImport extends BaseCommand {
 		}),
 		variableMissingMode: Flags.string({
 			description:
-				'What to do when a referenced variable is absent from the target project and the global scope (default on the instance: do-nothing). do-nothing imports the workflows and lists unresolved names as warnings without creating anything; must-preexist rejects the import unless every referenced variable already resolves',
-			options: ['do-nothing', 'must-preexist'],
+				'What to do when a referenced variable is absent from the target project and the global scope (default on the instance: do-nothing). do-nothing imports the workflows and lists unresolved names as warnings without creating anything; must-preexist rejects the import unless every referenced variable already resolves; create-stub creates each missing variable with an empty value (see variable-parent-policy) and needs an API key with the variable:create scope',
+			options: ['do-nothing', 'must-preexist', 'create-stub'],
 			aliases: ['variable-missing-mode'],
+		}),
+		variableParentPolicy: Flags.string({
+			description:
+				'Where create-stub creates missing variables for workflow/folder packages (default: project): project creates them in the target project; global creates them at global scope. Both placements need an API key with the variable:create scope when the package has variable requirements. Ignored for project packages, where placement follows the package layout',
+			options: ['project', 'global'],
+			aliases: ['variable-parent-policy'],
+		}),
+		tagMissingMode: Flags.string({
+			description:
+				'What to do when a tag referenced by the package is absent on the target instance — tags are matched by source id, never by name (default on the instance: create). create creates the tag globally with its source id and name, and needs an API key with the tag:create scope when the import would create a tag; do-nothing imports the workflows without the missing tags and lists them under tags.skipped',
+			options: ['create', 'do-nothing'],
+			aliases: ['tag-missing-mode'],
+		}),
+		tagConflictPolicy: Flags.string({
+			description:
+				"What to do when a referenced tag conflicts on the target instance — the same-id target tag has a different name (rename drift), or the tag's name is held by a different tag (name collision). skip (instance default) imports the workflows without the conflicted tags and lists them under tags.skipped; fail rejects the import; rename renames a drifted target tag to the package name (needs an API key with the tag:update scope when the import would rename a tag) — name collisions still reject the import",
+			options: ['skip', 'fail', 'rename'],
+			aliases: ['tag-conflict-policy'],
 		}),
 		bindings: Flags.string({
 			description:
@@ -123,6 +141,9 @@ export default class PackageImport extends BaseCommand {
 						dataTableMissingMode: flags.dataTableMissingMode,
 						dataTableSchemaConflictPolicy: flags.dataTableSchemaConflictPolicy,
 						variableMissingMode: flags.variableMissingMode,
+						variableParentPolicy: flags.variableParentPolicy,
+						tagMissingMode: flags.tagMissingMode,
+						tagConflictPolicy: flags.tagConflictPolicy,
 						bindings: flags.bindings,
 					},
 				);

@@ -75,7 +75,7 @@ export type BuildArgs = Pick<
 	| 'conversation'
 	| 'messageBudget'
 	| 'credentials'
-	| 'seedFile'
+	| 'conversationSeed'
 	| 'priorConversation'
 	| 'seedThread'
 	| 'executionScenarios'
@@ -450,7 +450,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						conversation: entry.conversation,
 						messageBudget: entry.messageBudget,
 						credentials: entry.credentials,
-						seedFile: entry.seedFile,
+						conversationSeed: entry.conversationSeed,
 						priorConversation: entry.priorConversation,
 						seedThread: entry.seedThread,
 						executionScenarios: entry.executionScenarios,
