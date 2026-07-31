@@ -33,6 +33,7 @@ import { PackageImportConfig } from './n8n-packages.config';
 import {
 	FolderConflictPolicy,
 	MissingWorkflowDependencyPolicy,
+	ProjectConflictPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageResult,
@@ -301,6 +302,17 @@ export class N8nPackagesService {
 			if (request.variableParentPolicy !== undefined) {
 				throw new BadRequestError(
 					'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
+				);
+			}
+			// Removing workflows is the most destructive thing an import can do, so it takes both
+			// policies saying `overwrite`. Rejecting the mixed request beats guessing which half the
+			// caller meant — silently removing under `merge`, or silently ignoring `overwrite`.
+			if (
+				request.folderConflictPolicy === FolderConflictPolicy.Overwrite &&
+				request.projectConflictPolicy !== ProjectConflictPolicy.Overwrite
+			) {
+				throw new BadRequestError(
+					`folderConflictPolicy=overwrite removes workflows the package does not contain, so it requires projectConflictPolicy=overwrite (got "${request.projectConflictPolicy}").`,
 				);
 			}
 			return await this.projectPackageImporter.import(request, reader, manifest);

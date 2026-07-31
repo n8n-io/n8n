@@ -58,7 +58,7 @@ export default class PackageImport extends BaseCommand {
 		}),
 		folderConflictPolicy: Flags.string({
 			description:
-				'What to do when a package folder already exists in the target project. merge (default) reuses it and merges the package children in; fail rejects the import; overwrite reuses it and additionally archives workflows the package does not contain, at the project root and in package-defined folders (project packages only, needs the workflow:delete scope)',
+				'What to do when a package folder already exists in the target project. merge (default) reuses it and merges the package children in; fail rejects the import; overwrite reuses it and additionally removes workflows the package does not contain, at the project root and in package-defined folders (project packages only, needs the workflow:delete scope and --project-conflict-policy=overwrite)',
 			options: ['merge', 'fail', 'overwrite'],
 			aliases: ['folder-conflict-policy'],
 		}),

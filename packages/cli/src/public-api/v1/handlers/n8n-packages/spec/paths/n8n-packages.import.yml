@@ -163,8 +163,9 @@ post:
                 and `workflowConflictPolicy` / `folderConflictPolicy` still govern the
                 contents. A package project id that belongs to a personal project, or
                 to a team project the caller cannot update, always rejects the import.
-                Ignored when importing loose workflows/folders, which target an
-                existing project.
+                Only `overwrite` permits `folderConflictPolicy=overwrite` to remove
+                workflows; under `merge` or `fail` that pairing is rejected. Ignored when
+                importing loose workflows/folders, which target an existing project.
             folderConflictPolicy:
               type: string
               enum:
@@ -192,9 +193,12 @@ post:
                 does not define is left alone, so a target-only folder shelters its
                 contents from reconciliation. Requires the `workflow:delete` scope, and
                 the import is rejected up front if the caller lacks delete permission on
-                any workflow that would be removed. Project packages only — a workflow
-                package describes only the workflows it carries, not the whole target
-                scope, so `overwrite` is rejected for one.
+                any workflow that would be removed. Requires `projectConflictPolicy` to be
+                `overwrite` as well: removing workflows takes both policies saying so, and
+                a request that pairs it with `merge` or `fail` is rejected rather than
+                guessed at. Project packages only — a workflow package describes only the
+                workflows it carries, not the whole target scope, so `overwrite` is
+                rejected for one.
             overwriteDeletionPolicy:
               type: string
               enum:

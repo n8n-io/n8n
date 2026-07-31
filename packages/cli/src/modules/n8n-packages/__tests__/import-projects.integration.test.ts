@@ -421,6 +421,22 @@ describe('project shell import', () => {
 			).rejects.toBeInstanceOf(ForbiddenError);
 		});
 
+		it.each(['merge', 'fail'] as const)(
+			'rejects overwrite paired with projectConflictPolicy=%s, removing nothing',
+			async (projectConflictPolicy) => {
+				const stale = await createWorkflow({ name: 'Stale' }, project);
+
+				await expect(
+					importProjects(owner, await projectPackage(), undefined, {
+						folderConflictPolicy: 'overwrite',
+						projectConflictPolicy,
+					}),
+				).rejects.toThrow(/requires projectConflictPolicy=overwrite/);
+
+				expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
+			},
+		);
+
 		it('reconciles only the project it is importing, never another project', async () => {
 			const bystander = await createTeamProject('Bystander', owner);
 			const untouched = await createWorkflow({ name: 'Untouched' }, bystander);
