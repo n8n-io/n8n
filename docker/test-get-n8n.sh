@@ -70,6 +70,10 @@ else
 	[ "$(find "$WORK/a/.env" -perm 0600)" = "$WORK/a/.env" ] && pass ".env is mode 600" || fail ".env is mode 600"
 fi
 check "compose.yml validates with generated .env" docker compose -f "$WORK/a/compose.yml" config -q
+case "$(env_value "$WORK/a" N8N_VERSION)" in
+[0-9]*.[0-9]*) pass "default install resolves a sane n8n version" ;;
+*) fail "default install resolves a sane n8n version" ;;
+esac
 
 api_key="$(env_value "$WORK/a" SANDBOX_API_KEYS)"
 runner_key="$(env_value "$WORK/a" SANDBOX_RUNNER_API_KEYS)"
@@ -174,10 +178,12 @@ if [ "$E2E" -eq 1 ]; then
 
 	check_not "fresh install fails while port is taken" env N8N_DIR="$WORK/conflict" sh "$SCRIPT"
 
-	# upgrade: only the N8N_VERSION line may change, and the new image must run
+	# upgrade: only the N8N_VERSION line may change, and the new image must run.
+	# Pin the target explicitly so the assertion is deterministic (a bare
+	# --upgrade resolves the latest stable release at run time).
 	target="$(sed -n 's/^DEFAULT_N8N_VERSION="\(.*\)"$/\1/p' "$SCRIPT")"
 	cp "$E2E_DIR/.env" "$WORK/env-before"
-	check "--upgrade succeeds" env N8N_DIR="$E2E_DIR" sh "$SCRIPT" --upgrade
+	check "--upgrade succeeds" env N8N_DIR="$E2E_DIR" sh "$SCRIPT" --upgrade --version "$target"
 	diff "$WORK/env-before" "$E2E_DIR/.env" >"$WORK/env.diff" 2>&1 || true
 	if [ "$(grep -c '^[<>]' "$WORK/env.diff")" = "2" ] &&
 		grep -q '^< N8N_VERSION=2.31.4$' "$WORK/env.diff" &&

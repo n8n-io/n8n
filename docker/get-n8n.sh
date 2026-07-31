@@ -38,9 +38,9 @@ Usage: get-n8n.sh [options]
        curl -fsSL https://get.n8n.io | sh -s -- [options]
 
 Options:
-  --version [x.y.z]  Without a value: print script and default n8n version.
-                     With a value: install (or, with --upgrade, upgrade to)
-                     that n8n version instead of the default.
+  --version [x.y.z]  Without a value: print script version and the n8n version
+                     that would be installed (latest stable). With a value:
+                     install (or, with --upgrade, upgrade to) that n8n version.
   --upgrade          Upgrade an existing install: updates the N8N_VERSION line
                      in .env, pulls images and restarts. Never touches any
                      other configuration or secrets.
@@ -63,7 +63,7 @@ parse_args() {
 					REQUESTED_VERSION="$2"
 					shift
 				else
-					say "get-n8n.sh v${SCRIPT_VERSION} (installs n8n ${DEFAULT_N8N_VERSION} by default)"
+					say "get-n8n.sh v${SCRIPT_VERSION} (installs the latest stable n8n, currently $(resolve_n8n_version))"
 					exit 0
 				fi
 				;;
@@ -139,6 +139,26 @@ gen_secret() {
 	else
 		od -An -tx1 -N24 /dev/urandom | tr -d ' \n'
 	fi
+}
+
+# Latest stable n8n version from GitHub releases, so the baked default only
+# matters offline. Installs stay pinned in .env — never a floating tag, which
+# would silently upgrade (and run DB migrations) on any container recreate.
+resolve_n8n_version() {
+	releases_url="https://api.github.com/repos/n8n-io/n8n/releases/latest"
+	if command -v curl >/dev/null 2>&1; then
+		v="$(curl -fsSL --max-time 5 "$releases_url" 2>/dev/null |
+			sed -n 's/.*"tag_name": *"n8n@\([0-9][0-9.]*\)".*/\1/p' | head -n1)"
+	elif command -v wget >/dev/null 2>&1; then
+		v="$(wget -qO- -T 5 "$releases_url" 2>/dev/null |
+			sed -n 's/.*"tag_name": *"n8n@\([0-9][0-9.]*\)".*/\1/p' | head -n1)"
+	else
+		v=""
+	fi
+	case "$v" in
+	[0-9]*.[0-9]*) printf '%s\n' "$v" ;;
+	*) printf '%s\n' "$DEFAULT_N8N_VERSION" ;;
+	esac
 }
 
 write_env() {
@@ -322,7 +342,7 @@ do_upgrade() {
 		fail "no existing install found in ${N8N_DIR} — run without --upgrade to install."
 	fi
 
-	target="${REQUESTED_VERSION:-${DEFAULT_N8N_VERSION}}"
+	target="${REQUESTED_VERSION:-$(resolve_n8n_version)}"
 	current="$(sed -n 's/^N8N_VERSION=//p' "${N8N_DIR}/.env")"
 	if [ -n "$current" ]; then
 		# .env is user state: --upgrade edits exactly this one line, nothing else.
@@ -413,7 +433,7 @@ main() {
   and adjust the port mapping in ${N8N_DIR}/compose.yml before starting."
 	fi
 
-	INSTALL_VERSION="${REQUESTED_VERSION:-${DEFAULT_N8N_VERSION}}"
+	INSTALL_VERSION="${REQUESTED_VERSION:-$(resolve_n8n_version)}"
 	mkdir -p "${N8N_DIR}"
 	write_compose
 	ok "Created ${N8N_DIR}/compose.yml"
