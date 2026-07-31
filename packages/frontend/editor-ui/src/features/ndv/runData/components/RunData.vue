@@ -2274,7 +2274,9 @@ defineExpose({ enterEditMode });
 	display: flex;
 	align-items: center;
 	margin-bottom: var(--ndv--spacing);
-	padding: var(--ndv--spacing) var(--spacing--3xs) 0 var(--ndv--spacing);
+	/* Bottom padding keeps SegmentControl focus rings (outline-offset) inside the
+	   overflow-y: hidden clip; top/sides match the previous spacing. */
+	padding: var(--ndv--spacing) var(--spacing--3xs) var(--spacing--4xs) var(--ndv--spacing);
 	position: relative;
 	/* Scroll overflowing header controls within the header itself, so they stay
 	   reachable on narrow panels without dragging the whole panel's background along */
@@ -2285,12 +2287,13 @@ defineExpose({ enterEditMode });
 	container-type: inline-size;
 
 	.compact & {
-		margin-bottom: var(--spacing--4xs);
-		padding: var(--spacing--2xs);
+		height: var(--logs-panel--header-height);
+		min-height: var(--logs-panel--header-height);
+		padding-inline: var(--spacing--2xs);
+		padding-block: 0;
 		margin-bottom: 0;
 		flex-shrink: 0;
 		flex-grow: 0;
-		min-height: auto;
 		gap: var(--spacing--2xs);
 	}
 
