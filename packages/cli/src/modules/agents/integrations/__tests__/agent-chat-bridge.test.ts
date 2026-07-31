@@ -246,6 +246,53 @@ describe('AgentChatBridge — consumeStream', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('silent outcome from the integration action tool', () => {
+		const silentToolResult: StreamChunk = {
+			type: 'tool-result',
+			toolCallId: 'tool-1',
+			toolName: 'test-streaming_action',
+			output: { ok: true, silent: true, note: 'No reply will be sent.' },
+			isError: false,
+		};
+
+		it('drops text streamed after a silent do_not_respond result', async () => {
+			const thread = await runMention(streamingIntegration, [
+				silentToolResult,
+				{ type: 'text-delta', id: 't1', delta: 'Staying silent now.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('ignores a silent field returned by tools other than the integration action tool', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-1',
+					toolName: 'my_custom_tool',
+					output: { ok: true, silent: true },
+					isError: false,
+				},
+				{ type: 'text-delta', id: 't1', delta: 'Regular reply.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).toHaveBeenCalled();
+		});
+
+		it('discards buffered text when the silent result arrives before the flush', async () => {
+			const thread = await runMention(bufferedIntegration, [
+				{ type: 'text-delta', id: 't1', delta: 'Draft I should not send. ' },
+				{ ...silentToolResult, toolName: 'test-buffered_action' },
+				{ type: 'text-delta', id: 't2', delta: 'More text.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('when integration disables streaming', () => {
 		it('posts a single collected string for a run that only has text deltas', async () => {
 			const { bot, handlers } = makeBot();
