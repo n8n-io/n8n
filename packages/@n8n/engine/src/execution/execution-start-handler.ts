@@ -35,19 +35,19 @@ export class ExecutionStartHandler {
 
 		// The trigger's output was captured at execution start; record it as
 		// already completed so successors can treat it as a satisfied predecessor.
-		await this.stepStore.createStep({
-			executionId: event.executionId,
-			nodeId: trigger.id,
-			status: 'completed',
-		});
-
+		// Planned together with the successors so a fan-out is one round trip.
 		const successorNodeIds = getSuccessorNodeIds(execution.graph, trigger.id);
-		for (const nodeId of successorNodeIds) {
-			const { id: stepId } = await this.stepStore.createStep({
+		const [, ...successorSteps] = await this.stepStore.createSteps([
+			{ executionId: event.executionId, nodeId: trigger.id, status: 'completed' },
+			...successorNodeIds.map((nodeId) => ({
 				executionId: event.executionId,
 				nodeId,
-				status: 'queued',
-			});
+				status: 'queued' as const,
+			})),
+		]);
+
+		// Published only after the rows exist, so a consumer can always load the step.
+		for (const { id: stepId } of successorSteps) {
 			await this.stepQueue.publish({
 				type: 'step:ready',
 				executionId: event.executionId,

@@ -63,6 +63,7 @@ class ModulesHooksRegistry {
 						const context = {
 							type: 'workflowExecuteAfter' as const,
 							workflow: this.workflowData,
+							mode: this.mode,
 							runData,
 							newStaticData,
 							executionId: this.executionId,
@@ -78,6 +79,7 @@ class ModulesHooksRegistry {
 						const context = {
 							type: 'nodeExecuteBefore' as const,
 							workflow: this.workflowData,
+							mode: this.mode,
 							nodeName,
 							taskData,
 							executionId: this.executionId,
@@ -92,6 +94,7 @@ class ModulesHooksRegistry {
 						const context = {
 							type: 'nodeExecuteAfter' as const,
 							workflow: this.workflowData,
+							mode: this.mode,
 							nodeName,
 							taskData,
 							executionData,
@@ -107,6 +110,7 @@ class ModulesHooksRegistry {
 						const context = {
 							type: 'workflowExecuteBefore' as const,
 							workflow: this.workflowData,
+							mode: this.mode,
 							workflowInstance,
 							executionData,
 							executionId: this.executionId,
@@ -121,6 +125,7 @@ class ModulesHooksRegistry {
 						const context = {
 							type: 'workflowExecuteResume' as const,
 							workflow: this.workflowData,
+							mode: this.mode,
 							workflowInstance,
 							executionData,
 							executionId: this.executionId,
@@ -140,6 +145,7 @@ type HooksSetupParameters = {
 	retryOf?: string;
 	parentExecution?: RelatedExecution;
 	source?: IWorkflowExecutionDataProcess['source'];
+	suppressErrorWorkflow?: IWorkflowExecutionDataProcess['suppressErrorWorkflow'];
 };
 
 function hookFunctionsWorkflowEvents(
@@ -542,7 +548,14 @@ async function duplicateBinaryDataToParent(
  */
 function hookFunctionsSave(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf, saveSettings, parentExecution, source }: HooksSetupParameters,
+	{
+		pushRef,
+		retryOf,
+		saveSettings,
+		parentExecution,
+		source,
+		suppressErrorWorkflow,
+	}: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
@@ -567,6 +580,7 @@ function hookFunctionsSave(
 		}
 
 		const isManualMode = this.mode === 'manual';
+		const dispatchesErrorWorkflow = !isManualMode && !suppressErrorWorkflow;
 
 		try {
 			if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
@@ -603,7 +617,15 @@ function hookFunctionsSave(
 				(fullRunData.status !== 'success' && !saveSettings.error);
 
 			if (shouldNotSave && !fullRunData.waitTill && !isManualMode) {
-				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
+				if (dispatchesErrorWorkflow) {
+					executeErrorWorkflow(
+						this.workflowData,
+						fullRunData,
+						this.mode,
+						this.executionId,
+						retryOf,
+					);
+				}
 
 				await executionPersistence.deleteInFlightExecution({
 					workflowId: this.workflowData.id,
@@ -649,7 +671,7 @@ function hookFunctionsSave(
 				fullRunData.data?.resultData?.metadata,
 			);
 
-			if (!isManualMode) {
+			if (dispatchesErrorWorkflow) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
 			}
 		} finally {
@@ -673,7 +695,7 @@ const DISCARDABLE_DATA_MODES: WorkflowExecuteMode[] = ['trigger', 'cli', 'error'
  */
 function hookFunctionsSaveWorker(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf, saveSettings, source }: HooksSetupParameters,
+	{ pushRef, retryOf, saveSettings, source, suppressErrorWorkflow }: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
@@ -702,7 +724,12 @@ function hookFunctionsSaveWorker(
 				}
 			}
 
-			if (!isManualMode && fullRunData.status !== 'success' && fullRunData.status !== 'waiting') {
+			if (
+				!isManualMode &&
+				!suppressErrorWorkflow &&
+				fullRunData.status !== 'success' &&
+				fullRunData.status !== 'waiting'
+			) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
 			}
 
@@ -780,6 +807,16 @@ export function getLifecycleHooksForSubExecutions(
 }
 
 /**
+ * Paths that resume or finalize an existing execution — wait resume, crash
+ * recovery, enqueued recovery, chat — rebuild the run data from the persisted
+ * execution and carry no transient top-level fields, so fall back to the copy
+ * kept in `manualData`.
+ */
+function resolveSuppressErrorWorkflow(data: IWorkflowExecutionDataProcess): boolean | undefined {
+	return data.suppressErrorWorkflow ?? data.executionData?.manualData?.suppressErrorWorkflow;
+}
+
+/**
  * Returns ExecutionLifecycleHooks instance for worker in scaling mode.
  */
 export function getLifecycleHooksForScalingWorker(
@@ -787,6 +824,7 @@ export function getLifecycleHooksForScalingWorker(
 	executionId: string,
 ): ExecutionLifecycleHooks {
 	const { pushRef, retryOf, executionMode, workflowData, source } = data;
+	const suppressErrorWorkflow = resolveSuppressErrorWorkflow(data);
 	const hooks = new ExecutionLifecycleHooks(
 		executionMode,
 		executionId,
@@ -794,7 +832,13 @@ export function getLifecycleHooksForScalingWorker(
 		retryOf ?? undefined,
 	);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings, source };
+	const optionalParameters = {
+		pushRef,
+		retryOf: retryOf ?? undefined,
+		saveSettings,
+		source,
+		suppressErrorWorkflow,
+	};
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSaveWorker(hooks, optionalParameters);
@@ -917,6 +961,7 @@ export function getLifecycleHooksForRegularMain(
 		source,
 		telemetryMetadata,
 	} = data;
+	const suppressErrorWorkflow = resolveSuppressErrorWorkflow(data);
 	const hooks = new ExecutionLifecycleHooks(
 		executionMode,
 		executionId,
@@ -924,7 +969,13 @@ export function getLifecycleHooksForRegularMain(
 		retryOf ?? undefined,
 	);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings, source };
+	const optionalParameters = {
+		pushRef,
+		retryOf: retryOf ?? undefined,
+		saveSettings,
+		source,
+		suppressErrorWorkflow,
+	};
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);

@@ -7,7 +7,6 @@
 import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -30,6 +29,7 @@ import type { AgentJsonConfig } from '../types';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
+import { normalizeReasoningForModelChange } from '../utils/reasoning';
 import AgentModelSelector from './AgentModelSelector.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
@@ -66,7 +66,7 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const { showError } = useToast();
-const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+const { catalog, ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 
 const projectId = useAgentProjectId(() => props.projectId);
 
@@ -129,8 +129,6 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	};
 });
 
-const isManagedCredential = computed(() => props.config?.credential === AI_GATEWAY_MANAGED_TAG);
-
 const panelTestId = computed(() => {
 	if (props.showModel && !props.showInstructions) return 'agent-model-panel';
 	if (!props.showModel && props.showInstructions) return 'agent-instructions-panel';
@@ -147,20 +145,31 @@ function onModelChange(selection: AgentModelSelection) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
 		return;
 	}
-	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
+	const modelName = sanitizeModelId(selection.provider, selection.model);
+	const model = `${selection.provider}/${modelName}`;
 	const capabilities = PROVIDER_CAPABILITIES[selection.provider];
 	const webSearchChanges = normalizeWebSearchForModelChange(
 		props.config,
 		capabilities?.webSearch ?? false,
 	);
+	const webSearchConfig =
+		'config' in webSearchChanges ? webSearchChanges.config : props.config?.config;
+	const promptCachingChanges = normalizePromptCachingForModelChange(
+		webSearchConfig,
+		capabilities?.promptCaching ?? false,
+	);
+	const normalizedConfig =
+		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;
+	const reasoningChanges = normalizeReasoningForModelChange(
+		normalizedConfig,
+		catalog.value[selection.provider]?.models[modelName]?.reasoning,
+	);
 	emit('update:config', {
 		model,
 		credential: credentialId,
 		...webSearchChanges,
-		...normalizePromptCachingForModelChange(
-			webSearchChanges.config ?? props.config?.config,
-			capabilities?.promptCaching ?? false,
-		),
+		...promptCachingChanges,
+		...reasoningChanges,
 	});
 }
 
@@ -219,7 +228,6 @@ function onInstructionsInput(value: string) {
 				:project-id="projectId"
 				:warn-missing-credentials="true"
 				:bound-credential-id="props.config?.credential ?? null"
-				:is-managed-credential="isManagedCredential"
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"

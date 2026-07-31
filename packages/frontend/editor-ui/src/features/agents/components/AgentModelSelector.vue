@@ -50,7 +50,6 @@ const {
 	warnMissingCredentials = false,
 	boundCredentialId = null,
 	disabled = false,
-	isManagedCredential = false,
 	credentialModalAppendToBody = false,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
@@ -66,8 +65,6 @@ const {
 	 */
 	boundCredentialId?: string | null;
 	disabled?: boolean;
-	/** The selected model uses the n8n Connect (AI Gateway) managed credential. */
-	isManagedCredential?: boolean;
 	/** Append credential modals to body (needed when embedded in the Memory dialog). */
 	credentialModalAppendToBody?: boolean;
 }>();
@@ -121,15 +118,21 @@ const selectedCredential = computed(() =>
 		: null,
 );
 
+// Derived rather than passed in: the selection is already in `credentials`, and a
+// prop duplicating it drifted — the memory panel never passed it, and the
+// sub-agents panel derived it from the persisted mapping, which is stale while a
+// per-difficulty choice is still pending.
+const isManagedCredential = computed(() => selectedCredentialId.value === AI_GATEWAY_MANAGED_TAG);
+
 const selectedCredentialName = computed(() =>
-	isManagedCredential
+	isManagedCredential.value
 		? i18n.baseText('aiGateway.credentialMode.n8nConnect.title')
 		: selectedCredential.value?.name,
 );
 
 const isCredentialsMissing = computed(
 	() =>
-		!isManagedCredential &&
+		!isManagedCredential.value &&
 		warnMissingCredentials &&
 		Boolean(selectedModel?.provider) &&
 		!(boundCredentialId && credentialsStore.getCredentialById(boundCredentialId)),
@@ -140,9 +143,7 @@ const selectedLabel = computed(
 );
 
 const triggerCredentialTypeName = computed(() =>
-	selectedModel
-		? AGENT_MODEL_PROVIDER_DEFINITIONS[selectedModel.provider].credentialTypes[0]
-		: null,
+	selectedModel ? getProviderCredentialTypes(selectedModel.provider)[0] : null,
 );
 
 const projectForPermissions = computed(() => {
@@ -199,6 +200,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const credentialOptions = getCredentialsForProvider(provider);
 	const selectedProviderCredentialId = credentials?.[provider] ?? null;
 	const models = modelsByProvider[provider]?.models ?? [];
+	const modelsUnavailable = modelsByProvider[provider]?.unavailable === true;
 	const credentialTypes = getProviderCredentialTypes(provider);
 	const isAiGatewayManagedSelected = selectedProviderCredentialId === AI_GATEWAY_MANAGED_TAG;
 	const hasProviderCredential =
@@ -242,17 +244,23 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 				]
 		: [];
 
+	// The type the gateway actually serves, which for a multi-credential-type
+	// provider need not be the first one listed.
+	const gatewayServedCredentialType = aiGateway.isEnabled.value
+		? credentialTypes.find((credentialType) => aiGateway.canServeCredentialType(credentialType))
+		: undefined;
 	const isAiGatewayManagedAvailable =
-		isAiGatewayManagedSelected ||
-		(aiGateway.isEnabled.value &&
-			credentialTypes.some((credentialType) =>
-				aiGateway.isCredentialTypeSupported(credentialType),
-			));
+		isAiGatewayManagedSelected || gatewayServedCredentialType !== undefined;
 
 	const n8nCreditsItems: MenuItem[] = isAiGatewayManagedAvailable
 		? [
 				{
-					id: buildMenuItemId(provider, 'n8nConnect', credentialTypes[0]),
+					// `parseMenuItemId` requires a value segment, so this cannot be dropped.
+					id: buildMenuItemId(
+						provider,
+						'n8nConnect',
+						gatewayServedCredentialType ?? credentialTypes[0],
+					),
 					label: i18n.baseText('aiGateway.credentialMode.n8nConnect.title'),
 					disabled: false,
 					checked: isAiGatewayManagedSelected,
@@ -318,7 +326,11 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 				? [
 						{
 							id: `${provider}::empty`,
-							label: i18n.baseText('agents.modelSelector.noModels'),
+							label: i18n.baseText(
+								modelsUnavailable
+									? 'agents.modelSelector.modelsUnavailable'
+									: 'agents.modelSelector.noModels',
+							),
 							disabled: true,
 						},
 					]
@@ -365,6 +377,13 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		data: {
 			provider,
 			credentialType: credentialTypes[0],
+			// Two independent offers, and an instance can have either: n8n Connect is
+			// licensed separately from the one-time free OpenAI credits, which most
+			// plans get instead of the gateway.
+			badgeLabel:
+				provider === FREE_OPENAI_CREDITS_PROVIDER && canUseFreeOpenAiCredits.value
+					? i18n.baseText('agents.modelSelector.freeCredits.badge')
+					: undefined,
 			actionPill: isAiGatewayManagedAvailable
 				? { text: i18n.baseText('generic.freeCredits'), type: 'default' as const }
 				: undefined,
@@ -436,6 +455,9 @@ const filteredMenu = computed(() => {
 				}),
 				children: results.slice(MAX_SEARCH_RESULTS_PER_PROVIDER),
 				divided: false,
+				// The provider's offer badges belong on the provider row, not on an
+				// overflow row that just holds the rest of the search results.
+				data: { ...providerItem.data, badgeLabel: undefined, actionPill: undefined },
 			},
 		];
 	});

@@ -178,15 +178,19 @@ export class WorkflowPublicationReconciler {
 	private async removeGhostTriggers(workflowIds: WorkflowId[]): Promise<number> {
 		let surplusRepairs = 0;
 		for (const workflowId of workflowIds) {
-			await this.lifecycleLock.runExclusive(workflowId, async () => {
-				const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+			try {
+				await this.lifecycleLock.runExclusive(workflowId, async () => {
+					const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
 
-				if (workflow?.activeVersionId) return;
-				if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) return;
+					if (workflow?.activeVersionId) return;
+					if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) return;
 
-				await this.activeWorkflowTriggers.remove(workflowId);
-				surplusRepairs++;
-			});
+					await this.activeWorkflowTriggers.remove(workflowId);
+					surplusRepairs++;
+				});
+			} catch (error) {
+				this.errorReporter.error(error, { shouldBeLogged: true });
+			}
 		}
 
 		return surplusRepairs;

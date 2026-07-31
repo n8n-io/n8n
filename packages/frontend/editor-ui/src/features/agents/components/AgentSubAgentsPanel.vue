@@ -5,7 +5,6 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 	SUB_AGENT_TASK_DIFFICULTIES,
-	AI_GATEWAY_MANAGED_TAG,
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -63,7 +62,7 @@ const toast = useToast();
 const usersStore = useUsersStore();
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 const projectIdRef = computed(() => props.projectId);
-const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
+const { credentialsByProvider } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 	projectIdRef,
 );
@@ -102,11 +101,6 @@ function clearPendingDifficultyCredential(
 	};
 }
 
-function isManagedCredentialForDifficulty(difficulty: SubAgentTaskDifficulty): boolean {
-	return (
-		props.config?.subAgents?.modelsByDifficulty?.[difficulty]?.credential === AI_GATEWAY_MANAGED_TAG
-	);
-}
 const maxChildrenHintInterpolate = {
 	min: String(SUB_AGENT_MAX_CHILDREN_MIN),
 	max: String(SUB_AGENT_MAX_CHILDREN_MAX),
@@ -120,9 +114,16 @@ watch(
 	{ immediate: true },
 );
 
-const filteredModels = computed<AgentModelsByProvider>(() =>
-	getModelsForPicker(credentialsByProvider.value),
-);
+// Model lists are credential-scoped — n8n Connect serves an allowlist, a user's
+// own credential serves the provider's full catalog — so each difficulty has to
+// resolve its own list from the credential it actually uses.
+const modelsByDifficulty = computed(() => {
+	const entries = SUB_AGENT_TASK_DIFFICULTIES.map((difficulty) => [
+		difficulty,
+		getModelsForPicker(credentialsForDifficulty(difficulty)),
+	]);
+	return Object.fromEntries(entries) as Record<SubAgentTaskDifficulty, AgentModelsByProvider>;
+});
 
 function resolveMaxChildrenDisplay(value: number | undefined): number {
 	return value ?? SUB_AGENT_MAX_CHILDREN_DEFAULT;
@@ -180,7 +181,7 @@ function selectedModelForDifficulty(difficulty: SubAgentTaskDifficulty): AgentMo
 	const parsed = parseModelString(mapping.model);
 	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
 
-	const registryEntry = filteredModels.value[parsed.provider]?.models.find(
+	const registryEntry = modelsByDifficulty.value[difficulty][parsed.provider]?.models.find(
 		(model) => model.model === parsed.name,
 	);
 	if (registryEntry) return registryEntry;
@@ -285,32 +286,23 @@ function onDifficultySelectCredential(
 	provider: AgentModelProvider,
 	credentialId: string | null,
 ) {
-	if (props.disabled) return;
-
-	// The n8n Connect managed tag has no per-difficulty storage until a model is
-	// chosen, so record it in the shared selection to unlock the model list (via
-	// the credentials fallback). Clear any pending own credential for this provider
-	// so the managed tag isn't shadowed when the next model pick is persisted.
-	if (credentialId === AI_GATEWAY_MANAGED_TAG) {
-		selectCredential(provider, credentialId);
-		clearPendingDifficultyCredential(difficulty, provider);
-	}
+	if (props.disabled || !credentialId) return;
 
 	const mapping = props.config?.subAgents?.modelsByDifficulty?.[difficulty];
 	const mappingProvider = mapping?.model ? parseModelString(mapping.model)?.provider : undefined;
 
 	// A model is already mapped for this provider → update its credential in place.
-	if (mapping?.model && mappingProvider === provider && credentialId) {
+	if (mapping?.model && mappingProvider === provider) {
 		clearPendingDifficultyCredential(difficulty, provider);
 		emitModelsByDifficulty(difficulty, { ...mapping, credential: credentialId });
 		return;
 	}
 
-	// No model chosen yet: remember a real credential per-difficulty so the next
-	// model pick uses it (the managed tag already flows via the shared selection).
-	if (credentialId && credentialId !== AI_GATEWAY_MANAGED_TAG) {
-		setPendingDifficultyCredential(difficulty, provider, credentialId);
-	}
+	// No model chosen yet: remember the choice per-difficulty so the next model
+	// pick uses it. This includes the n8n Connect tag — writing that to the shared
+	// selection instead would leak it into the other difficulties and the main
+	// model selector, and persist it where the user never chose it.
+	setPendingDifficultyCredential(difficulty, provider, credentialId);
 }
 
 function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
@@ -392,13 +384,12 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 						<AgentModelSelector
 							:selected-model="selectedModelForDifficulty(difficulty)"
 							:credentials="credentialsForDifficulty(difficulty)"
-							:models-by-provider="filteredModels"
+							:models-by-provider="modelsByDifficulty[difficulty]"
 							:is-loading="isLoading"
 							:project-id="projectId"
 							:warn-missing-credentials="true"
 							:bound-credential-id="boundCredentialForDifficulty(difficulty)"
 							:disabled="disabled"
-							:is-managed-credential="isManagedCredentialForDifficulty(difficulty)"
 							:data-testid="`agent-sub-agents-difficulty-${difficulty}-model`"
 							@change="(selection) => onDifficultyModelChange(difficulty, selection)"
 							@select-credential="

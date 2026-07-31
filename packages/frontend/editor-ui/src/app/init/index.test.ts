@@ -2,7 +2,7 @@ import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { initializeAuthenticatedFeatures, initializeCore, state } from '@/app/init';
 import { AuthenticationMethod } from '@n8n/api-types';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -21,12 +21,17 @@ import merge from 'lodash/merge';
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { telemetry } from '@/app/plugins/telemetry';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
+}));
+
+vi.mock('@/app/init/toastNotifier', () => ({
+	registerToastNotifier: vi.fn(),
 }));
 
 vi.mock('@/features/settings/users/users.store', () => ({
@@ -90,6 +95,21 @@ describe('Init', () => {
 			await initializeCore();
 
 			expect(settingsStoreSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should register the toast notifier before anything can toast', async () => {
+			const settingsStoreSpy = vi.spyOn(settingsStore, 'initialize');
+
+			await initializeCore();
+
+			expect(registerToastNotifier).toHaveBeenCalledTimes(1);
+
+			// Ordering, not just presence: the startup-error toast below fires when
+			// settings init rejects, and the notifier resolves per call, so a
+			// registration moved after this point would silently drop that toast.
+			expect(vi.mocked(registerToastNotifier).mock.invocationCallOrder[0]).toBeLessThan(
+				settingsStoreSpy.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should throw an error if settings initialization fails', async () => {

@@ -54,6 +54,7 @@ export async function runScriptedGateVerification(
 			timeout: args.timeout,
 			verificationPinData: { ...basePins, [script.nodeName]: decision.items },
 			omitConnections: [script.cutEdge],
+			isVerificationRun: true,
 			abortSignal: args.abortSignal,
 		});
 		const analysis = analyzeVerificationResult({

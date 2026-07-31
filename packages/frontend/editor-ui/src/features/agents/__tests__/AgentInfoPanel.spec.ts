@@ -4,9 +4,41 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
+import type { ProviderCatalog } from '../composables/useAgentApi';
+import type { AgentJsonConfig } from '../types';
 
 const ensureLoadedMock = vi.fn();
 const selectCredentialMock = vi.fn();
+
+function makeCatalog(): ProviderCatalog {
+	return {
+		anthropic: {
+			id: 'anthropic',
+			name: 'Anthropic',
+			models: {
+				'claude-sonnet-4-5': {
+					id: 'claude-sonnet-4-5',
+					name: 'Claude Sonnet 4.5',
+					reasoning: true,
+					toolCall: true,
+				},
+				'claude-3-haiku': {
+					id: 'claude-3-haiku',
+					name: 'Claude 3 Haiku',
+					reasoning: false,
+					toolCall: true,
+				},
+				'claude-unknown': {
+					id: 'claude-unknown',
+					name: 'Claude Unknown',
+					toolCall: true,
+				},
+			},
+		},
+	};
+}
+
+const modelCatalog = ref<ProviderCatalog>(makeCatalog());
 
 // Mutable holder so tests can vary the composable's (localStorage-backed) selection state.
 const { credsHolder } = vi.hoisted(() => ({
@@ -56,6 +88,7 @@ vi.mock('../composables/useAgentModelCredentials', () => ({
 
 vi.mock('../composables/useModelCatalog', () => ({
 	useModelCatalog: () => ({
+		catalog: modelCatalog,
 		ensureLoaded: ensureLoadedMock,
 		getModelsForPicker: () => ({
 			anthropic: {
@@ -64,6 +97,14 @@ vi.mock('../composables/useModelCatalog', () => ({
 						provider: 'anthropic',
 						model: 'claude-sonnet-4-5',
 						name: 'Claude Sonnet 4.5',
+						description: null,
+						createdAt: null,
+						metadata: { functionCalling: true, available: true },
+					},
+					{
+						provider: 'anthropic',
+						model: 'claude-3-haiku',
+						name: 'Claude 3 Haiku',
 						description: null,
 						createdAt: null,
 						metadata: { functionCalling: true, available: true },
@@ -79,13 +120,8 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 	default: {
 		name: 'AgentModelSelector',
 		template: '<div data-testid="agent-model-selector" />',
-		props: [
-			'selectedModel',
-			'credentials',
-			'isManagedCredential',
-			'warnMissingCredentials',
-			'modelsByProvider',
-		],
+		props: ['selectedModel', 'credentials', 'warnMissingCredentials', 'modelsByProvider'],
+		emits: ['change'],
 	},
 }));
 
@@ -115,6 +151,17 @@ function mountPanel(
 	});
 }
 
+function mountModelPanel(config: AgentJsonConfig) {
+	return mount(AgentInfoPanel, {
+		props: {
+			config,
+			projectId: 'project-1',
+			showInstructions: false,
+			embedded: true,
+		},
+	});
+}
+
 function selectorProps(wrapper: ReturnType<typeof mountPanel>) {
 	return wrapper.findComponent({ name: 'AgentModelSelector' }).props();
 }
@@ -122,6 +169,7 @@ function selectorProps(wrapper: ReturnType<typeof mountPanel>) {
 describe('AgentInfoPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		modelCatalog.value = makeCatalog();
 		credsHolder.value = { anthropic: 'credential-1' };
 	});
 
@@ -160,6 +208,79 @@ describe('AgentInfoPanel', () => {
 		expect(wrapper.text()).not.toContain('Enter instructions here');
 	});
 
+	it('removes reasoning immediately when selecting a model that does not support it', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+			config: { reasoning: 'high', toolCallConcurrency: 2 },
+		};
+		const wrapper = mountModelPanel(config);
+
+		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+			provider: 'anthropic',
+			model: 'claude-3-haiku',
+		});
+		await wrapper.vm.$nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events).toHaveLength(1);
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.model).toBe('anthropic/claude-3-haiku');
+		expect(last.config).toEqual({
+			toolCallConcurrency: 2,
+			promptCaching: { enabled: true },
+		});
+	});
+
+	it('preserves reasoning when selecting a model that supports it', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+			config: { reasoning: 'high' },
+		};
+		const wrapper = mountModelPanel(config);
+
+		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+		});
+		await wrapper.vm.$nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events).toHaveLength(1);
+		const last = events[0][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.reasoning).toBe('high');
+	});
+
+	it.each(['model-missing-from-catalog', 'claude-unknown'])(
+		'preserves reasoning when support metadata is unavailable for %s',
+		async (model) => {
+			const config: AgentJsonConfig = {
+				name: 'Support agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'credential-1',
+				instructions: 'Help users.',
+				config: { reasoning: 'high' },
+			};
+			const wrapper = mountModelPanel(config);
+
+			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+				provider: 'anthropic',
+				model,
+			});
+			await wrapper.vm.$nextTick();
+
+			const events = wrapper.emitted('update:config') ?? [];
+			expect(events).toHaveLength(1);
+			const last = events[0][0] as Partial<AgentJsonConfig>;
+			expect(last.config?.reasoning).toBe('high');
+		},
+	);
+
 	describe('model credential resolution', () => {
 		it("overlays the agent config's credential for the model provider (builder-created agent)", () => {
 			// Builder writes config.credential but not localStorage, so the manual-selection
@@ -174,7 +295,6 @@ describe('AgentInfoPanel', () => {
 
 			const props = selectorProps(wrapper);
 			expect((props.credentials as Record<string, string>).anthropic).toBe('real-cred-x');
-			expect(props.isManagedCredential).toBe(false);
 		});
 
 		it('marks the selection as managed when config uses the n8n Connect tag', () => {
@@ -187,7 +307,6 @@ describe('AgentInfoPanel', () => {
 
 			const props = selectorProps(wrapper);
 			expect((props.credentials as Record<string, string>).anthropic).toBe(AI_GATEWAY_MANAGED_TAG);
-			expect(props.isManagedCredential).toBe(true);
 		});
 
 		it('leaves the manual-selection state untouched when config has no credential', () => {

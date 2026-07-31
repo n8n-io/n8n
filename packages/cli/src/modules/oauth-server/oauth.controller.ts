@@ -230,7 +230,13 @@ export class OAuthController {
 			(Array.isArray(req.params.resourcePath)
 				? req.params.resourcePath.join('/')
 				: req.params.resourcePath); // Wildcard params are captured as arrays
-		const resource = await this.resourceRegistry.getByResourcePath(resourcePath);
+
+		// Some resources (e.g. webhook triggers) are selected by a `?method=…` query;
+		// the wildcard drops the query, so re-append it for the resolver to read.
+		const method = req.query?.method;
+		const resourcePathWithQuery =
+			typeof method === 'string' ? `${resourcePath}?method=${method}` : resourcePath;
+		const resource = await this.resourceRegistry.getByResourcePath(resourcePathWithQuery);
 		if (!resource) {
 			res.status(404).json({ message: 'Unknown protected resource' });
 			return;
