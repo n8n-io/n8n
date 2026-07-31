@@ -3,13 +3,15 @@ import { DataSource } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { PollerState } from '../entities';
+import { PollerState, ScheduledTask } from '../entities';
 import { BaseRepository } from './base-repository';
 import type { PollerCursor } from '../entities/poller-state';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 
 export type { PollerCursor } from '../entities/poller-state';
+
+export type PollLeaseFence = { taskId: string; leaseEpoch: number };
 
 @Service()
 export class PollerStateRepository extends BaseRepository<PollerState> {
@@ -76,19 +78,43 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		nodeId: string,
 		cursor: PollerCursor,
 		ctx: OperationContext,
-	): Promise<void> {
+		fence?: PollLeaseFence,
+	): Promise<boolean> {
+		const manager = this.managerFor(ctx);
+
 		// QueryDeepPartialEntity rejects `Record<string, unknown>`, so cast at this boundary.
-		const result = await this.managerFor(ctx).update(PollerState, { workflowId, nodeId }, {
-			cursor,
-			updatedAt: new Date(),
-		} as QueryDeepPartialEntity<PollerState>);
+		const qb = manager
+			.createQueryBuilder()
+			.update(PollerState)
+			.set({ cursor, updatedAt: new Date() } as QueryDeepPartialEntity<PollerState>)
+			.where({ workflowId, nodeId });
+
+		if (fence) {
+			const fenceExists = manager
+				.createQueryBuilder()
+				.subQuery()
+				.select('1')
+				.from(ScheduledTask, 'fenced_task')
+				.where('fenced_task.id = :fenceTaskId')
+				.andWhere('fenced_task.leaseEpoch = :fenceLeaseEpoch')
+				.getQuery();
+
+			qb.andWhere(`EXISTS ${fenceExists}`, {
+				fenceTaskId: Number(fence.taskId),
+				fenceLeaseEpoch: fence.leaseEpoch,
+			});
+		}
+
+		const result = await qb.execute();
 
 		// `affected` is optional and not reported by every driver, so only an exact
 		// single-row match counts as success.
-		if (result.affected !== 1) {
-			throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
-				extra: { workflowId, nodeId },
-			});
-		}
+		if (result.affected === 1) return true;
+
+		if (fence) return false;
+
+		throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
+			extra: { workflowId, nodeId },
+		});
 	}
 }
