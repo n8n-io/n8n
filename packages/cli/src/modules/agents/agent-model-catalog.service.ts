@@ -1,4 +1,8 @@
-import type { AgentCatalogModel, AgentProviderModelsResponse } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	type AgentCatalogModel,
+	type AgentProviderModelsResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -6,7 +10,7 @@ import { Service } from '@n8n/di';
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
-import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
+import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
 
 /** Google's models API returns ids as `models/<id>`; the AI SDK expects the bare id. */
 const GOOGLE_MODEL_ID_PREFIX = 'models/';
@@ -88,7 +92,36 @@ export class AgentModelCatalogService {
 				provider,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			// Managed slot: the gateway allowlist is the contract, so don't fall back
+			// to the static catalog (it may list models the gateway won't serve). A
+			// verified empty list shows nothing rather than un-served models.
+			if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+				return { provider, verified: true, models: [] };
+			}
 			return { provider, verified: false, models: Object.values(catalogModels) };
+		}
+
+		// n8n Connect managed slot: the gateway's `/models` is the authoritative,
+		// allowlist-filtered set, and its exact ids are what the gateway's model
+		// allowlist matches (e.g. a dated snapshot, not the catalog's versionless
+		// alias). Use those ids verbatim, enriched with catalog display/metadata.
+		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+			return {
+				provider,
+				verified: true,
+				models: liveModels.map((live) => {
+					const id = normalizeLiveModelValue(provider, live.value);
+					const catalogMatch = catalogModels[id] ?? catalogModels[id.replace(SNAPSHOT_SUFFIX, '')];
+					return catalogMatch
+						? { ...catalogMatch, id }
+						: {
+								id,
+								name: normalizeLiveModelValue(provider, live.name) || id,
+								reasoning: false,
+								toolCall: true,
+							};
+				}),
+			};
 		}
 
 		const liveModelIds = new Set(

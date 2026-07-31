@@ -91,7 +91,9 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * via the pubsub relay. Ephemeral events (deltas, status) carry NO id, so
 	 * their SSE frames have no `id:` line and the browser's replay cursor only
 	 * ever points at durable facts. The Redis sequence machinery below is never
-	 * touched; INS-844 composes the two drains into one.
+	 * touched: the flag picks exactly one drain (INS-844's composition was
+	 * cancelled), and the flag-off paths below survive only as the rollback
+	 * switch until they sunset at Gate B (INS-847).
 	 *
 	 * Flag OFF, single-main: assign the next local id and deliver in the same tick.
 	 *

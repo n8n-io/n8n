@@ -1,11 +1,15 @@
 import {
 	assertSubAgentTaskPath,
 	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+	deriveSubAgentTelemetry,
 	renderDelegateSubAgentPrompt,
 	type AgentExecutionCounter,
 	type AgentMessage,
+	type BuiltTelemetry,
 	type CredentialProvider,
 	type GenerateResult,
+	type SerializableAgentState,
+	type StreamChunk,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
@@ -16,6 +20,7 @@ import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { AgentExecutionService } from '../agent-execution.service';
+import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
@@ -31,11 +36,25 @@ export interface SubAgentForegroundRunContext {
 	/** Parent run's abort signal — cancelling the parent cancels this child. */
 	abortSignal?: AbortSignal;
 	/**
+	 * Parent's live, resolved telemetry, forwarded per-request. Derived (via
+	 * `deriveSubAgentTelemetry`) into the child's own telemetry so it shares the
+	 * parent's tracer and nests under the parent's delegate-tool-call span.
+	 */
+	telemetry?: BuiltTelemetry;
+	/**
 	 * Interactive n8n user of the delegating parent run; used to filter the
 	 * sub-agent's node/workflow tools by their access. Absent when the parent
 	 * is a published/integration run.
 	 */
 	user?: User;
+	/**
+	 * Runtime instrumentation of the delegating parent run. Threaded into the
+	 * child's reconstruction so delegated runs share the parent's seams
+	 * (model fetch, MCP fetch, tool execution contexts).
+	 */
+	instrumentation?: AgentRuntimeInstrumentation;
+	/** Optional callback to forward child stream chunks to the parent chat. */
+	onChunk?: (chunk: StreamChunk) => void;
 }
 
 export interface SubAgentForegroundResult {
@@ -88,8 +107,12 @@ export class SubAgentForegroundRunner {
 		const resourceId = request.parentResourceId ?? threadId;
 
 		const reconstructionService = await getReconstructionService();
+		const childConfig =
+			context.instrumentation?.transformDelegatedAgentConfig?.(runtimeSource.source.config, {
+				subAgentId: runtimeSource.source.sourceId,
+			}) ?? runtimeSource.source.config;
 		const { agent } = await reconstructionService.reconstructFromResolvedSource({
-			config: runtimeSource.source.config,
+			config: childConfig,
 			memoryOwnerAgentId: runtimeSource.source.sourceId,
 			projectId: context.projectId,
 			credentialProvider: context.credentialProvider,
@@ -99,15 +122,18 @@ export class SubAgentForegroundRunner {
 			runtimeProfile: 'sub-agent',
 			parentAgentIdForDelegation: context.parentAgentId,
 			user: context.user,
+			instrumentation: context.instrumentation,
 		});
 
 		// Abort the child when the parent run is cancelled.
 		const abortSignal = context.abortSignal;
+		const telemetry = deriveSubAgentTelemetry(context.telemetry);
 
 		const prompt = renderDelegateSubAgentPrompt(request);
 		try {
 			const resultStream = await agent.stream(prompt, {
 				...(abortSignal !== undefined ? { abortSignal } : {}),
+				...(telemetry !== undefined ? { telemetry } : {}),
 				persistence: {
 					resourceId,
 					threadId,
@@ -120,6 +146,7 @@ export class SubAgentForegroundRunner {
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				recorder.record(value);
+				context.onChunk?.(value);
 				if (value.type === 'tool-call-suspended') {
 					childSuspended = true;
 				}
@@ -149,9 +176,7 @@ export class SubAgentForegroundRunner {
 						messages: [],
 						finishReason: 'error',
 						error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
-						getState: () => {
-							throw new Error('getState is not implemented for sub-agent foreground runner');
-						},
+						getState: () => resultStream.getState(),
 					},
 				};
 			}
@@ -160,6 +185,7 @@ export class SubAgentForegroundRunner {
 				resultStream.runId,
 				messageRecord,
 				structuredOutput,
+				() => resultStream.getState(),
 			);
 
 			return {
@@ -249,6 +275,7 @@ function buildGenerateResultFromRecord(
 	runId: string,
 	record: MessageRecord,
 	structuredOutput: unknown,
+	getState: () => SerializableAgentState,
 ): GenerateResult {
 	const messages = createAssistantMessages(record.assistantResponse);
 	const finishReason = toKnownFinishReason(record.finishReason);
@@ -267,9 +294,7 @@ function buildGenerateResultFromRecord(
 			: {}),
 		...(structuredOutput !== undefined ? { structuredOutput } : {}),
 		...(record.error !== null ? { error: record.error } : {}),
-		getState: () => {
-			throw new Error('getState is not implemented for sub-agent foreground runner');
-		},
+		getState,
 	};
 	return result;
 }

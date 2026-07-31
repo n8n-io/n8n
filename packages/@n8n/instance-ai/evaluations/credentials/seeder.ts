@@ -44,6 +44,24 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_GMAIL_ACCESS_TOKEN',
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
+	googleDriveOAuth2Api: {
+		defaultName: '[eval] Google Drive',
+		envVar: 'EVAL_GOOGLE_DRIVE_ACCESS_TOKEN',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	// MCP-registry-synthesized credential types (agent MCP servers). Creating
+	// them requires the backend to run with the `mcp-registry` module enabled;
+	// placeholder tokens are fine — agent eval runs mock the MCP wire.
+	linearMcpOAuth2Api: {
+		defaultName: '[eval] Linear MCP',
+		envVar: 'EVAL_LINEAR_MCP_ACCESS_TOKEN',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	notionMcpOAuth2Api: {
+		defaultName: '[eval] Notion MCP',
+		envVar: 'EVAL_NOTION_MCP_ACCESS_TOKEN',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
 	microsoftTeamsOAuth2Api: {
 		defaultName: '[eval] Teams',
 		envVar: 'EVAL_TEAMS_ACCESS_TOKEN',

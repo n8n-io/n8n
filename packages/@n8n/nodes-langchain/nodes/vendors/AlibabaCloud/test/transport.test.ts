@@ -4,13 +4,9 @@ import { mockDeep } from 'vitest-mock-extended';
 
 import { apiRequest, pollTaskResult } from '../transport';
 
-vi.mock('n8n-workflow', async () => {
-	const actual = await vi.importActual('n8n-workflow');
-	return {
-		...actual,
-		sleep: vi.fn(),
-	};
-});
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn(),
+}));
 
 describe('AlicloudModelStudio Transport', () => {
 	let mockExecuteFunctions: ReturnType<typeof mockDeep<IExecuteFunctions>>;

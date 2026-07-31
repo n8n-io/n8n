@@ -14,7 +14,7 @@ import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { applyAgentThinking, tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
+import { tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
 import { IsNull } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 
@@ -28,6 +28,10 @@ import { getModelRecommendationsSection } from './agents-builder-model-recommend
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService } from './agents-builder-tools.service';
 import { BuilderCheckpointUnavailableError } from './errors';
+import {
+	BUILDER_PLANNER_TODOS_DESCRIPTION,
+	BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+} from './prompts/planner-todos.prompt';
 import { getBuilderRuntimeSkills } from './skills';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
@@ -69,6 +73,8 @@ export interface InstanceAiBuilderSessionOptions {
 	 * after the host trace's root finalizes.
 	 */
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
+	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only the host's consumption of it. */
+	abortSignal: AbortSignal;
 }
 
 @Service()
@@ -109,6 +115,9 @@ export class AgentsBuilderService {
 		const resourceId = user.id;
 		const resultStream = await builder.stream(message, {
 			persistence: { threadId: session.threadId, resourceId },
+			abortSignal: session.abortSignal,
+			// Keep billing a stopped builder turn for the tokens it already spent.
+			recoverUsageOnAbort: true,
 		});
 
 		yield* this.streamFromAgent(resultStream);
@@ -164,6 +173,9 @@ export class AgentsBuilderService {
 		const resultStream = await builder.resume('stream', resumeData, {
 			runId,
 			toolCallId,
+			abortSignal: session.abortSignal,
+			// Keep billing a stopped builder turn for the tokens it already spent.
+			recoverUsageOnAbort: true,
 		});
 
 		yield* this.streamFromAgent(resultStream);
@@ -227,9 +239,10 @@ export class AgentsBuilderService {
 			projectId,
 			credentialProvider,
 			user,
+			{ threadId: session.hostThreadId, runId: session.runId },
 		);
 
-		const { Agent, Memory } = await import('@n8n/agents');
+		const { Agent, Memory, createPlannerTodosTool } = await import('@n8n/agents');
 
 		const onMemoryUsage = async (report: MemoryTaskUsageReport) => {
 			try {
@@ -276,7 +289,14 @@ export class AgentsBuilderService {
 			builder.tool(tool);
 		}
 
-		applyAgentThinking(builder, modelConfig);
+		builder.tool(
+			createPlannerTodosTool({
+				description: BUILDER_PLANNER_TODOS_DESCRIPTION,
+				systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+			}),
+		);
+
+		builder.reasoning('medium');
 
 		return builder;
 	}

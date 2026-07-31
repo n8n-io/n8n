@@ -27,7 +27,7 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 });
 
 vi.mock('../workflow-validation-warnings', () => ({
-	partitionWarnings: vi.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
+	partitionWarnings: vi.fn((warnings: unknown[]) => ({ blocking: [], informational: warnings })),
 }));
 
 const generatedWorkflow = {
@@ -200,10 +200,19 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx',
 		});
 		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
-			errors: [],
+			blocking: [],
 			informational: warnings,
 		}));
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
+	});
+
+	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
+		const { context } = makeContext({ source: 'workflow source' });
+		const tool = createBuildWorkflowTool(context);
+
+		expect(tool.description).toContain('workflow-builder');
+		expect(tool.description).toContain('data-table-manager');
+		expect(tool.description).toContain('load_skill');
 	});
 
 	it('builds a new workflow from a workspace source file', async () => {
@@ -232,6 +241,10 @@ describe('createBuildWorkflowTool', () => {
 			'Follow the post-build instructions in `instructions` now',
 		);
 		expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
+		// The language reminder in the skill intro must ride along in the inline copy.
+		expect(result.postBuildFlow?.instructions).toContain(
+			"stays in the user's conversation language",
+		);
 		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
 		// Tag-turn-only sections are stripped from the inline copy.
 		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
@@ -244,7 +257,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
 		);
-		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source);
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Daily Weather to Slack' }),
 			{ markAsAiTemporary: true },
@@ -669,7 +682,7 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-existing',
 			workflowName: 'Daily Slack Channel Digest',
 		});
-		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source);
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'wf-existing',
 			workflowJson,
@@ -1074,7 +1087,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx',
 		});
 		vi.mocked(partitionWarnings).mockReturnValueOnce({
-			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			blocking: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
 			informational: [],
 		});
 
@@ -1104,7 +1117,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx' as const,
 		};
 		const partitionedWarnings = {
-			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			blocking: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
 			informational: [],
 		};
 		vi.mocked(compileWorkflowSource)
@@ -1140,7 +1153,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx' as const,
 		};
 		const partitionedWarnings = {
-			errors: validationResult.warnings,
+			blocking: validationResult.warnings,
 			informational: [],
 		};
 		vi.mocked(compileWorkflowSource)

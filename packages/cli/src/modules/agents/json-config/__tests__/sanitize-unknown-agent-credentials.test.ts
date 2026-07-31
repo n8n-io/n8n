@@ -1,7 +1,62 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+
 import { sanitizeUnknownAgentCredentials } from '../sanitize-unknown-agent-credentials';
 
 describe('sanitizeUnknownAgentCredentials', () => {
 	const accessibleCredentialIds = new Set(['known-cred', 'nested-cred']);
+
+	it('preserves the n8n Connect tag on the main model credential', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{ credential: AI_GATEWAY_MANAGED_TAG, model: 'openai/gpt-5' },
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({ credential: AI_GATEWAY_MANAGED_TAG, model: 'openai/gpt-5' });
+	});
+
+	it('preserves the n8n Connect tag on difficulty model credentials', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				subAgents: {
+					modelsByDifficulty: {
+						low: { model: 'openai/gpt-5-mini', credential: AI_GATEWAY_MANAGED_TAG },
+						high: { model: 'anthropic/claude-sonnet-4-6', credential: AI_GATEWAY_MANAGED_TAG },
+					},
+				},
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-5-mini', credential: AI_GATEWAY_MANAGED_TAG },
+					high: { model: 'anthropic/claude-sonnet-4-6', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			},
+		});
+	});
+
+	it('clears the n8n Connect tag on out-of-scope credential paths (memory worker models)', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				memory: {
+					observationalMemory: {
+						observerModel: { model: 'openai/gpt-4o-mini', credential: AI_GATEWAY_MANAGED_TAG },
+					},
+				},
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			memory: {
+				observationalMemory: {
+					observerModel: { model: 'openai/gpt-4o-mini', credential: '' },
+				},
+			},
+		});
+	});
 
 	it('clears unknown top-level credential fields', () => {
 		const result = sanitizeUnknownAgentCredentials(
@@ -22,11 +77,15 @@ describe('sanitizeUnknownAgentCredentials', () => {
 
 	it('preserves known credential fields', () => {
 		const result = sanitizeUnknownAgentCredentials(
-			{ credential: 'known-cred', name: 'Agent' },
+			{ credential: 'known-cred', model: 'anthropic/claude-sonnet-4-5', name: 'Agent' },
 			accessibleCredentialIds,
 		);
 
-		expect(result).toEqual({ credential: 'known-cred', name: 'Agent' });
+		expect(result).toEqual({
+			credential: 'known-cred',
+			model: 'anthropic/claude-sonnet-4-5',
+			name: 'Agent',
+		});
 	});
 
 	it('preserves managed proxy credential tokens only for episodic memory embeddings', () => {
@@ -268,5 +327,26 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		expect(sanitizeUnknownAgentCredentials('credential', accessibleCredentialIds)).toBe(
 			'credential',
 		);
+	});
+
+	it('clears a top-level credential when model is empty', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{ model: '', credential: 'known-cred' },
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({ model: '', credential: '' });
+	});
+
+	it('preserves a top-level credential when model is set', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{ model: 'anthropic/claude-sonnet-4-5', credential: 'known-cred' },
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'known-cred',
+		});
 	});
 });

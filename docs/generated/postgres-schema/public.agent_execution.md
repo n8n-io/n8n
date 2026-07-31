@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| attachments | json |  | true |  |  | Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService |
 | completionTokens | integer |  | true |  |  |  |
 | cost | double precision |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -17,6 +18,7 @@
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
+| storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
 | threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
 | timeline | json |  | true |  |  |  |
 | totalTokens | integer |  | true |  |  |  |
@@ -29,12 +31,14 @@
 | ---- | ---- | ---------- |
 | CHK_agent_execution_hitlStatus | CHECK | CHECK ((("hitlStatus")::text = ANY ((ARRAY['suspended'::character varying, 'resumed'::character varying])::text[]))) |
 | CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying])::text[]))) |
+| CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_execution_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_execution_duration_not_null | n | NOT NULL duration |
 | agent_execution_id_not_null | n | NOT NULL id |
 | agent_execution_status_not_null | n | NOT NULL status |
+| agent_execution_storedAt_not_null | n | NOT NULL "storedAt" |
 | agent_execution_threadId_not_null | n | NOT NULL "threadId" |
 | agent_execution_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -53,6 +57,7 @@ erDiagram
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
 "public.agent_execution" {
+  json attachments
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
@@ -66,6 +71,7 @@ erDiagram
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
   timestamp_3__with_time_zone stoppedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   json timeline
   integer totalTokens

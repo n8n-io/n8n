@@ -33,6 +33,7 @@ import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { Agent } from '../entities/agent.entity';
@@ -123,6 +124,7 @@ function makeReconstructionService(
 		mock<SsrfProtectionService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
+		mock<AgentChatAttachmentService>(),
 	);
 }
 
@@ -199,6 +201,46 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		expect(buildMcpClientForServerMock).toHaveBeenCalledTimes(2);
 		expect(buildMcpClientForServerMock.mock.calls[0][0]).toMatchObject({ name: 'github' });
 		expect(buildMcpClientForServerMock.mock.calls[1][0]).toMatchObject({ name: 'fs' });
+	});
+
+	it('forwards resolved MCP tool names through eval instrumentation', async () => {
+		const { service, credentialProvider } = setup();
+		const onMcpToolCallSettled = vi.fn();
+		const entity = makeAgentEntity(undefined, {
+			mcpServers: [
+				{
+					name: 'Linear Prod',
+					url: 'https://api.example.test/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+			],
+		});
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, undefined, {
+			mcpFetch: vi.fn(),
+			onMcpToolCallSettled,
+		} as never);
+
+		const deps = buildMcpClientForServerMock.mock.calls[0][1] as {
+			onToolCallSettled?: (event: {
+				toolName: string;
+				modelToolName?: string;
+				success: boolean;
+			}) => Promise<void>;
+		};
+		await deps.onToolCallSettled?.({
+			toolName: 'read file',
+			modelToolName: 'Linear_Prod_read_file_12345678',
+			success: true,
+		});
+
+		expect(onMcpToolCallSettled).toHaveBeenCalledWith({
+			serverName: 'Linear Prod',
+			toolName: 'read file',
+			modelToolName: 'Linear_Prod_read_file_12345678',
+			success: true,
+		});
 	});
 });
 

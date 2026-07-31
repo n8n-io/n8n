@@ -150,7 +150,7 @@ describe('calculateTimeSaved', () => {
 			stoppedAt: DateTime.utc().plus({ minutes: 10 }).toJSDate(),
 		});
 
-		// @ts-ignore-next-line
+		// @ts-expect-error private method under test
 		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
 		expect(timeSaved).toBe(10);
 	});
@@ -206,7 +206,7 @@ describe('calculateTimeSaved', () => {
 			},
 		});
 
-		// @ts-ignore-next-line
+		// @ts-expect-error private method under test
 		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
 		expect(timeSaved).toBe(20);
 	});

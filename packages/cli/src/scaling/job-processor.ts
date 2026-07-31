@@ -15,7 +15,6 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
-	IExecuteResponsePromiseData,
 	IExecutionContext,
 	INodeExecutionData,
 	IRun,
@@ -26,7 +25,6 @@ import type {
 	GenericValue,
 } from 'n8n-workflow';
 import {
-	BINARY_ENCODING,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -45,6 +43,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import type {
@@ -58,6 +57,7 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+import { assertRelayableSize, encodeRelayedWebhookResponse } from './webhook-response-relay';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -184,6 +184,7 @@ export class JobProcessor {
 				pushRef,
 				userId: execution.data.manualData?.userId,
 				source: execution.data.manualData?.source,
+				suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
 			},
 			executionId,
 		);
@@ -196,6 +197,8 @@ export class JobProcessor {
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
+			assertRelayableSize(response, this.executionsConfig.webhookResponseRelaySizeMaxMiB);
+
 			// Check if this is an MCP execution - broadcast response to all mains
 			if (job.data.isMcpExecution && job.data.mcpSessionId) {
 				const msg: McpResponseMessage = {
@@ -216,7 +219,7 @@ export class JobProcessor {
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,
-				response: this.encodeWebhookResponse(response),
+				response: encodeRelayedWebhookResponse(response),
 				workerId: this.instanceSettings.hostId,
 			};
 
@@ -356,16 +359,23 @@ export class JobProcessor {
 
 			let toolResult: unknown;
 			try {
-				toolResult = await this.invokeTool(
+				// The execution's isolate window closed when the run finished, but the
+				// tool's parameters may still contain expressions (e.g. $fromAI), so
+				// the tool call needs its own isolate window.
+				toolResult = await withExpressionIsolate(
 					workflow,
-					sourceNodeName,
-					toolArgs,
-					additionalData,
-					run.data,
-					// The execution context (e.g. the OAuth identity for private credentials)
-					// is established on the main and loaded with the execution here; pass it
-					// through so the tool node can resolve dynamic credentials on the worker.
-					execution.data?.executionData?.runtimeData,
+					async () =>
+						await this.invokeTool(
+							workflow,
+							sourceNodeName,
+							toolArgs,
+							additionalData,
+							run.data,
+							// The execution context (e.g. the OAuth identity for private credentials)
+							// is established on the main and loaded with the execution here; pass it
+							// through so the tool node can resolve dynamic credentials on the worker.
+							execution.data?.executionData?.runtimeData,
+						),
 				);
 			} catch (error) {
 				this.logger.error('Tool node execution failed for MCP Trigger', {
@@ -482,18 +492,6 @@ export class JobProcessor {
 
 	getRunningJobsSummary(): RunningJobSummary[] {
 		return Object.values(this.runningJobs).map(({ run, ...summary }) => summary);
-	}
-
-	private encodeWebhookResponse(
-		response: IExecuteResponsePromiseData,
-	): IExecuteResponsePromiseData {
-		if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
-			response.body = {
-				'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
-			};
-		}
-
-		return response;
 	}
 
 	/**

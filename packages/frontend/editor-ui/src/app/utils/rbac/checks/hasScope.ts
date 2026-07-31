@@ -1,4 +1,4 @@
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { RBACPermissionCheck, RBACPermissionOptions } from '@/app/types/rbac';
 
 export const hasScope: RBACPermissionCheck<RBACPermissionOptions> = (opts) => {

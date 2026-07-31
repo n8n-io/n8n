@@ -91,7 +91,7 @@ const searchTypesAction = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'When true, ignore `query` and return every credential type supported by n8n Connect. Use to answer "which credential types support n8n Connect?".',
+			'When true, ignore `query` and return every credential type supported by n8n credits. Use to answer "which credential types support n8n credits?".',
 		),
 });
 
@@ -227,10 +227,12 @@ function getToolDescription(options: CredentialsToolOptions): string {
 	const description = `${options.descriptionPrefix ?? 'Manage credentials'} — ${actionList}.`;
 	const builderSuffix =
 		'Use list, get, search-types, and test for credential metadata and connection checks during workflow building.';
+	const browserSetupSuffix =
+		'When `credentials(action="setup")` returns `needsBrowserSetup=true`, load `credential-setup-with-computer-use`, then use Computer Use `browser_*` tools directly.';
 
 	return options.descriptionSuffix
-		? `${description} ${options.descriptionSuffix}`
-		: `${description} ${builderSuffix}`;
+		? `${description} ${options.descriptionSuffix} ${browserSetupSuffix}`
+		: `${description} ${builderSuffix} ${browserSetupSuffix}`;
 }
 
 // ── Suspend / resume schemas (superset covering delete + setup) ────────────

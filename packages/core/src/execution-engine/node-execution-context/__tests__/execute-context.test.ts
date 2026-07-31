@@ -177,6 +177,7 @@ describe('ExecuteContext', () => {
 
 			expect(() => executeContext.getNodeParameter('testParameter', 0)).toThrow(error);
 			expect(error.context.parameter).toEqual('testParameter');
+			expect({ ...error }).toEqual(expect.objectContaining({ cause: 'testValue' }));
 		});
 
 		it('should handle expression errors on Set nodes (Ticket #PAY-684)', () => {
@@ -466,6 +467,7 @@ describe('ExecuteContext', () => {
 					workflowId: 'wf-id',
 					workflowName: 'My workflow',
 					callingNodeName: node.name,
+					callingNodeId: node.id,
 					inputData: [{ json: { test: 'data' } }],
 					inputDataScope: 'item',
 					exposeWorkflowData: false,

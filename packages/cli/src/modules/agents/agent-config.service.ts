@@ -2,11 +2,13 @@ import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
+	formatAgentConfigZodError,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -21,6 +23,7 @@ import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-conf
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
@@ -35,6 +38,7 @@ export class AgentConfigService {
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	/**
@@ -63,7 +67,7 @@ export class AgentConfigService {
 
 		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
 		if (!parsed.success) {
-			return { valid: false, error: parsed.error.message };
+			return { valid: false, error: formatAgentConfigZodError(parsed.error) };
 		}
 
 		const config = parsed.data;
@@ -96,16 +100,28 @@ export class AgentConfigService {
 
 	/**
 	 * Persist a new AgentJsonConfig (full replace).
+	 *
+	 * By default an optional field absent from `config` retains its previous
+	 * value. With `clearOmittedOptionalFields`, absence removes the field
+	 * instead — true replace semantics for callers whose clients submit the
+	 * complete config (e.g. MCP config.replace / config.patch, where an RFC
+	 * 6902 `remove` op must actually remove the field).
 	 */
 	async updateConfig(
 		agentId: string,
 		projectId: string,
 		config: unknown,
+		user?: User,
+		options?: { clearOmittedOptionalFields?: boolean },
 	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = createAgentCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+		);
 		const accessibleCredentialIds = new Set(
 			(await credentialProvider.list()).map((credential) => credential.id),
 		);
@@ -124,6 +140,10 @@ export class AgentConfigService {
 		// `webSearch` state. This is the single write path, so persisted config
 		// always agrees with read/compose paths.
 		const validatedConfig = reconcileNativeWebSearch(result.config);
+
+		if (validatedConfig.tools !== undefined) {
+			await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig.tools, projectId);
+		}
 
 		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided
@@ -156,12 +176,16 @@ export class AgentConfigService {
 			decomposeJsonConfig(validatedConfig);
 
 		const nextIntegrations = integrationsProvided ? decomposedIntegrations : previousIntegrations;
+		// Under clearOmittedOptionalFields an omitted gradient is a deliberate
+		// removal, so the schema default wins instead of the previous gradient.
 		const nextPersonalisation = personalisationProvided
-			? mergePersonalisationWithPreviousGradient(
-					decomposedSchema.personalisation,
-					previousSchema,
-					config,
-				)
+			? options?.clearOmittedOptionalFields
+				? decomposedSchema.personalisation
+				: mergePersonalisationWithPreviousGradient(
+						decomposedSchema.personalisation,
+						previousSchema,
+						config,
+					)
 			: undefined;
 
 		const nextSchema: AgentJsonConfig = {
@@ -181,6 +205,10 @@ export class AgentConfigService {
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
 		};
+
+		if (options?.clearOmittedOptionalFields) {
+			clearOmittedOptionalFields(nextSchema, validatedConfig);
+		}
 
 		entity.schema = nextSchema;
 		entity.name = validatedConfig.name;
@@ -309,6 +337,26 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 	if (!isRecord(raw) || !Array.isArray(raw.tools)) return false;
 
 	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
+}
+
+/** Drop optional fields the submitted config omitted instead of retaining the previous value. */
+function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJsonConfig): void {
+	const optionalFields = [
+		'credential',
+		'personalisation',
+		'memory',
+		'subAgents',
+		'tools',
+		'skills',
+		'tasks',
+		'providerTools',
+		'config',
+		'mcpServers',
+		'vectorStores',
+	] as const;
+	for (const field of optionalFields) {
+		if (submitted[field] === undefined) delete schema[field];
+	}
 }
 
 function omitLegacyAgentDescription(config: AgentJsonConfig | null): Partial<AgentJsonConfig> {

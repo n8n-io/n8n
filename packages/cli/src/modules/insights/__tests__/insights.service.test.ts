@@ -1,8 +1,11 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
+
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
@@ -18,6 +21,7 @@ describe('InsightsService', () => {
 	let mockPruningService: MockProxy<InsightsPruningService>;
 	let mockLicenseState: MockProxy<LicenseState>;
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
+	let mockWorkflowSharingService: MockProxy<WorkflowSharingService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -27,6 +31,7 @@ describe('InsightsService', () => {
 		mockPruningService = mock<InsightsPruningService>();
 		mockLicenseState = mock<LicenseState>();
 		mockInstanceSettings = mock<InstanceSettings>();
+		mockWorkflowSharingService = mock<WorkflowSharingService>();
 
 		insightsService = new InsightsService(
 			mockInsightsByPeriodRepository,
@@ -35,6 +40,7 @@ describe('InsightsService', () => {
 			mockLicenseState,
 			mockInstanceSettings,
 			mockLogger(),
+			mockWorkflowSharingService,
 		);
 	});
 
@@ -795,6 +801,79 @@ describe('InsightsService', () => {
 					expect(result.timeSaved.deviation).toBeNull();
 				});
 			});
+		});
+	});
+
+	describe('getInsightsByWorkflow', () => {
+		const startDate = new Date('2024-01-01');
+		const endDate = new Date('2024-01-07');
+
+		const makeRow = (workflowId: string | null) => ({
+			workflowId,
+			workflowName: workflowId ? `Workflow ${workflowId}` : 'Deleted workflow',
+			projectId: 'project-1',
+			projectName: 'Project 1',
+			total: 10,
+			succeeded: 8,
+			failed: 2,
+			failureRate: 0.2,
+			runTime: 1000,
+			averageRunTime: 100,
+			timeSaved: 60,
+		});
+
+		const makeUser = (scopes: string[]) =>
+			({ role: { scopes: scopes.map((slug) => ({ slug })) } }) as unknown as User;
+
+		it('sets hasReadAccess only for workflows in the shared set for non-admins', async () => {
+			const user = makeUser([]);
+			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+				count: 2,
+				rows: [makeRow('wf-accessible'), makeRow('wf-inaccessible')],
+			});
+			mockWorkflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-accessible']);
+
+			const result = await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
+
+			expect(mockWorkflowSharingService.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
+				scopes: ['workflow:read'],
+				projectId: undefined,
+			});
+			expect(result.data.find((r) => r.workflowId === 'wf-accessible')?.hasReadAccess).toBe(true);
+			expect(result.data.find((r) => r.workflowId === 'wf-inaccessible')?.hasReadAccess).toBe(
+				false,
+			);
+		});
+
+		it('sets hasReadAccess true for all rows for admins', async () => {
+			const user = makeUser(['workflow:read']);
+			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+				count: 2,
+				rows: [makeRow('wf-1'), makeRow('wf-2')],
+			});
+			// getSharedWorkflowIds returns all workflow IDs for users with the global scope
+			mockWorkflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1', 'wf-2']);
+
+			const result = await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
+
+			expect(mockWorkflowSharingService.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
+				scopes: ['workflow:read'],
+				projectId: undefined,
+			});
+			expect(result.data.every((r) => r.hasReadAccess)).toBe(true);
+		});
+
+		it('sets hasReadAccess false for rows with a null workflowId (deleted workflow)', async () => {
+			const user = makeUser([]);
+			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+				count: 1,
+				rows: [makeRow(null)],
+			});
+			mockWorkflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			const result = await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
+
+			expect(result.data[0].hasReadAccess).toBe(false);
 		});
 	});
 });

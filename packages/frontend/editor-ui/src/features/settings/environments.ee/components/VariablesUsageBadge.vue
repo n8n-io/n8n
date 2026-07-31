@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 
 import { N8nTooltip } from '@n8n/design-system';
 const i18n = useI18n();

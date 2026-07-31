@@ -95,6 +95,10 @@ export class WorkflowPublicationOutboxConsumer {
 	@OnPubSubEvent('workflow-publish-wake-up', { instanceType: 'main', instanceRole: 'leader' })
 	async wakeUp(): Promise<void> {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
+		// Direct callers (e.g. a short-lived CLI process waking its own local consumer)
+		// bypass the pubsub role filter, and a non-leader claiming a record it can never
+		// apply would strand it `in_progress` until its lease expires.
+		if (!this.instanceSettings.isLeader) return;
 
 		this.startPolling();
 		await this.drainPending();
@@ -298,8 +302,7 @@ export class WorkflowPublicationOutboxConsumer {
 			case 'skipped':
 				return {
 					result: 'skipped',
-					reason:
-						result.reason === 'workflow-not-found' ? 'workflow_not_found' : 'workflow_inactive',
+					reason: 'workflow_not_found',
 				};
 			case 'version-missing':
 				return { result: 'failed', reason: 'version_missing' };

@@ -8,7 +8,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 
-import type { ConversationSeed } from './conversation-seed';
+import type { ConversationSeed, SeedMessage } from './conversation-seed';
 import { parseSeedWorkflowCode } from './parse-seed-workflow';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 
@@ -255,18 +255,21 @@ function redactDataTableRowPayload(value: unknown): Record<string, unknown> {
 	return out;
 }
 
-interface TextBlock {
+// Type aliases, not interfaces: seed content blocks are open by design
+// (`.passthrough()`), and an interface has no index signature so it isn't
+// assignable to that. Converting these back to interfaces breaks the build.
+type TextBlock = {
 	type: 'text';
 	text: string;
-}
-interface ToolCallBlock {
+};
+type ToolCallBlock = {
 	type: 'tool-call';
 	toolCallId: string;
 	toolName: string;
 	state: 'resolved';
 	input: unknown;
 	output: unknown;
-}
+};
 
 /**
  * Reconstruct a thread's seed + live turn. The workspace holding the thread is
@@ -347,8 +350,10 @@ async function reconstructWithClient(
 		);
 	}
 
+	// `?? NaN` keeps the SDK's optional start_time behavior-identical: an absent
+	// value still yields NaN comparisons, never a valid epoch-0 date.
 	const byStartTime = (a: Run, b: Run) =>
-		new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+		new Date(a.start_time ?? NaN).getTime() - new Date(b.start_time ?? NaN).getTime();
 	const rootRuns = runs.filter((r) => r.run_type === 'chain' && !r.parent_run_id).sort(byStartTime);
 	// Real agent tool calls only — the compiled-workflow bookkeeping event is
 	// excluded BY NAME (it must never become a tool-call block in the rebuilt
@@ -386,7 +391,7 @@ async function reconstructWithClient(
 		);
 	}
 	const liveTurnRun = userTurns[liveIndex];
-	const boundaryMs = new Date(liveTurnRun.start_time).getTime();
+	const boundaryMs = new Date(liveTurnRun.start_time ?? NaN).getTime();
 	const liveTurn = userMessageOf(liveTurnRun)!;
 
 	const messages = buildSeedMessages(rootRuns, toolRuns, boundaryMs);
@@ -415,11 +420,7 @@ async function reconstructWithClient(
 }
 
 /** Rebuild the native message log for every run before the seed boundary. */
-function buildSeedMessages(
-	rootRuns: Run[],
-	toolRuns: Run[],
-	boundaryMs: number,
-): Array<Record<string, unknown>> {
+function buildSeedMessages(rootRuns: Run[], toolRuns: Run[], boundaryMs: number): SeedMessage[] {
 	const toolsByRoot = new Map<string, Run[]>();
 	for (const tool of toolRuns) {
 		const rootId = asString(metadata(tool).langsmith_root_run_id) ?? tool.trace_id ?? '';
@@ -429,10 +430,12 @@ function buildSeedMessages(
 	}
 
 	const emittedToolCallIds = new Set<string>();
-	const messages: Array<Record<string, unknown>> = [];
+	// Typed, so the compiler enforces the envelope on the machine-producer side
+	// while ConversationSeedSchema enforces it on hand-authored seeds.
+	const messages: SeedMessage[] = [];
 
 	for (const root of rootRuns) {
-		if (new Date(root.start_time).getTime() >= boundaryMs) break;
+		if (new Date(root.start_time ?? NaN).getTime() >= boundaryMs) break;
 
 		const userText = userMessageOf(root);
 		if (userText) {
@@ -440,7 +443,7 @@ function buildSeedMessages(
 				id: `${root.id}-user`,
 				role: 'user',
 				type: 'llm',
-				createdAt: new Date(root.start_time).toISOString(),
+				createdAt: new Date(root.start_time ?? NaN).toISOString(),
 				content: [{ type: 'text', text: userText }],
 			});
 		}
@@ -478,7 +481,7 @@ function buildSeedMessages(
 				role: 'assistant',
 				type: 'llm',
 				// +1ms so the assistant reply orders after its user turn.
-				createdAt: new Date(new Date(root.start_time).getTime() + 1).toISOString(),
+				createdAt: new Date(new Date(root.start_time ?? NaN).getTime() + 1).toISOString(),
 				content,
 			});
 		}

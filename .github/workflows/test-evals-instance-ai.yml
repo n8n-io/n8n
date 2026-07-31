@@ -22,7 +22,7 @@ on:
         description: 'LangTracer suite slug or id to pull test cases from.'
         required: false
         type: string
-        default: 'n8n-workflows'
+        default: 'baseline'
       sandbox-provider:
         description: 'Sandbox provider (n8n-sandbox or daytona)'
         required: false
@@ -80,7 +80,7 @@ on:
       suite:
         description: 'LangTracer suite slug or id to pull test cases from.'
         required: false
-        default: 'n8n-workflows'
+        default: 'baseline'
       sandbox-provider:
         description: 'Sandbox provider (n8n-sandbox or daytona)'
         required: false
@@ -164,6 +164,7 @@ jobs:
       - name: Start n8n containers
         env:
           EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          INSTANCE_AI_BRAVE_SEARCH_API_KEY: ${{ secrets.INSTANCE_AI_BRAVE_SEARCH_API_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
@@ -224,6 +225,7 @@ jobs:
               -e N8N_ENABLED_MODULES=instance-ai \
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
+              -e INSTANCE_AI_BRAVE_SEARCH_API_KEY="$INSTANCE_AI_BRAVE_SEARCH_API_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
               "${SANDBOX_ARGS[@]}" \
@@ -371,7 +373,7 @@ jobs:
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
           ARGS=(--base-url "$BASE_URLS" --concurrency 32 --verbose --iterations "${ITERATIONS:-3}")
           # LangTracer is the only CI case source (no disk fallback by design).
-          ARGS+=(--source langtracer --suite "${SUITE:-n8n-workflows}")
+          ARGS+=(--source langtracer --suite "${SUITE:-baseline}")
           # Pin the LangSmith cohort: langtracer mode otherwise derives a
           # suite-scoped dataset/baseline prefix, which would fork the KPI
           # history and orphan the baseline comparison.
@@ -500,3 +502,18 @@ jobs:
             packages/@n8n/instance-ai/.data/workflow-eval-report.html
             eval-diag/
           retention-days: 14
+
+      # The eval step runs with continue-on-error so the logs/artifacts above
+      # always land — but a run that never wrote eval-results.json (bad secret,
+      # unresolvable LangTracer suite, CLI crash before any results) must still
+      # fail the job rather than end green with zero evals. Per-case build
+      # failures DO write results and stay green by design. Mirrors the same
+      # guard in test-evals-mcp.yml.
+      - name: Fail when no results were produced
+        if: ${{ always() }}
+        working-directory: packages/@n8n/instance-ai
+        run: |
+          if [ ! -f eval-results.json ]; then
+            echo "::error::Eval run produced no eval-results.json — it failed before writing any results. Check the 'Run Instance AI Evals' step logs and the uploaded artifacts."
+            exit 1
+          fi

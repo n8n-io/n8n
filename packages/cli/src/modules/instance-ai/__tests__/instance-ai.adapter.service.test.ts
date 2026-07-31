@@ -1332,6 +1332,89 @@ function createNodeAdapterForTests(
 	return createNodeAdapterServiceForTests(nodes, { nodeCatalogService }).nodeService;
 }
 
+// ---------------------------------------------------------------------------
+// Web-search provider selection
+// ---------------------------------------------------------------------------
+
+import { braveSearch, searxngSearch } from '@n8n/ai-utilities';
+
+describe('web-search provider selection', () => {
+	type SearchFn = (query: string, options?: Record<string, unknown>) => Promise<unknown>;
+	type ProxyConfig = { apiUrl: string; getAuthHeaders: () => Promise<Record<string, string>> };
+
+	/** `buildSearchMethod` is private, but the precedence it encodes is exactly what
+	 *  the `INSTANCE_AI_BRAVE_SEARCH_API_KEY` wiring relies on — assert it directly. */
+	function buildSearch(args: {
+		apiKey?: string;
+		searxngUrl?: string;
+		proxyConfig?: ProxyConfig;
+	}): SearchFn | undefined {
+		const { service } = createNodeAdapterServiceForTests([]);
+		const cache = { get: vi.fn().mockReturnValue(undefined), set: vi.fn() };
+		const withPrivate = service as unknown as {
+			buildSearchMethod: (
+				apiKey: string,
+				searxngUrl: string,
+				cache: unknown,
+				proxyConfig?: ProxyConfig,
+				userId?: string,
+			) => SearchFn | undefined;
+		};
+		return withPrivate.buildSearchMethod.call(
+			service,
+			args.apiKey ?? '',
+			args.searxngUrl ?? '',
+			cache,
+			args.proxyConfig,
+			'user-1',
+		);
+	}
+
+	beforeEach(() => {
+		vi.mocked(braveSearch).mockReset().mockResolvedValue({ query: 'q', results: [] });
+		vi.mocked(searxngSearch).mockReset().mockResolvedValue({ query: 'q', results: [] });
+	});
+
+	it('has no search method when neither a Brave key nor a SearXNG URL is set', () => {
+		// The adapter then serves `{ query, results: [] }`, which the agent cannot
+		// distinguish from "nothing found" — hence the key in the eval lanes.
+		expect(buildSearch({})).toBeUndefined();
+	});
+
+	it('searches Brave with the configured key', async () => {
+		await buildSearch({ apiKey: 'BSA-key' })!('quakes', { maxResults: 3 });
+
+		expect(braveSearch).toHaveBeenCalledWith(
+			'BSA-key',
+			'quakes',
+			expect.objectContaining({ maxResults: 3 }),
+		);
+		expect(searxngSearch).not.toHaveBeenCalled();
+	});
+
+	it('routes through the AI-service proxy in preference to a configured key', async () => {
+		const proxyConfig: ProxyConfig = {
+			apiUrl: 'https://proxy.example.com/brave-search',
+			getAuthHeaders: async () => ({}),
+		};
+
+		await buildSearch({ apiKey: 'BSA-key', proxyConfig })!('quakes');
+
+		expect(braveSearch).toHaveBeenCalledWith(
+			'',
+			'quakes',
+			expect.objectContaining({ proxyConfig }),
+		);
+	});
+
+	it('falls back to SearXNG when only a URL is set', async () => {
+		await buildSearch({ searxngUrl: 'http://searxng:8080' })!('quakes');
+
+		expect(searxngSearch).toHaveBeenCalledWith('http://searxng:8080', 'quakes', expect.anything());
+		expect(braveSearch).not.toHaveBeenCalled();
+	});
+});
+
 describe('createNodeAdapter', () => {
 	it('preserves credential displayOptions in getDescription()', async () => {
 		const adapter = createNodeAdapterForTests([
@@ -2245,6 +2328,57 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('defaults executionOrder to v1 when the SDK workflow declares no settings', async () => {
+		// Regression: the SDK omits the settings argument when empty, so AI-authored
+		// workflows persisted with `{}` and ran on legacy v0.
+		const { adapter, mockWorkflowRepository, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+		);
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('keeps an explicit executionOrder from the SDK workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON({
+			...minimalWorkflowJSON,
+			settings: { executionOrder: 'v0' },
+		} as unknown as WorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v0' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('does not inject executionOrder on update, leaving the stored value to the merge', async () => {
+		// update merges over stored settings, so forcing v1 here would upgrade a
+		// workflow the user deliberately kept on v0.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: {} }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
 	it('clears existing node groups when the SDK workflow declares none (update is authoritative)', async () => {
 		// Regression: the SDK omits `nodeGroups` when no `.group(...)` is declared. The
 		// update path must treat that as "no groups" and send [] so a removed group is
@@ -2980,7 +3114,48 @@ describe('createExecutionAdapter run()', () => {
 			saveManualExecutions: true,
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
+			executionTimeout: 300,
 		});
+	});
+
+	it('bounds the execution inside the engine with the wait budget, capped at the max', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [],
+		});
+
+		await adapter.run('wf-1', undefined, { timeout: 60_000 });
+		await adapter.run('wf-1', undefined, { timeout: 60 * 60 * 1000 });
+
+		const [firstRun, secondRun] = mockWorkflowRunner.run.mock.calls.map((call) => call[0]);
+		expect(firstRun.workflowData.settings?.executionTimeout).toBe(60);
+		expect(secondRun.workflowData.settings?.executionTimeout).toBe(600);
+	});
+
+	it('omits the listed connections on the ephemeral run copy only', async () => {
+		const workflow = {
+			id: 'wf-1',
+			nodes: [],
+			connections: {
+				Revise: { main: [[{ node: 'Format', type: 'main', index: 0 }]] },
+				Format: { main: [[{ node: 'Gate', type: 'main', index: 0 }]] },
+			},
+		};
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflow);
+
+		await adapter.run('wf-1', undefined, {
+			omitConnections: [{ source: 'Revise', target: 'Format' }],
+		});
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.connections.Revise.main).toEqual([[]]);
+		expect(runData.workflowData.connections.Format.main).toEqual([
+			[{ node: 'Gate', type: 'main', index: 0 }],
+		]);
+		// The saved workflow object is untouched.
+		expect(workflow.connections.Revise.main).toEqual([
+			[{ node: 'Format', type: 'main', index: 0 }],
+		]);
 	});
 
 	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
@@ -3134,13 +3309,55 @@ describe('createExecutionAdapter run()', () => {
 			status: 'error',
 		});
 
-		expect(mockActiveExecutions.stopExecution).toHaveBeenCalled();
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalledWith(
+			'exec-1',
+			expect.objectContaining({ name: 'TimeoutExecutionCancelledError' }),
+		);
 		expect(mockTelemetry.track).toHaveBeenCalledWith(
 			'Builder executed workflow',
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
 				error: expect.stringContaining('timed out'),
+			}),
+		);
+	});
+
+	it('tracks abort cancellation as a manual cancel, not a timeout', async () => {
+		const { adapter, mockActiveExecutions, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				activeExecution: true,
+				postExecutePromise: new Promise(() => {}),
+				threadId: 'thread-1',
+			},
+		);
+		const abortController = new AbortController();
+
+		const runPromise = adapter.run('wf-1', undefined, {
+			timeout: 60_000,
+			abortSignal: abortController.signal,
+		});
+		abortController.abort();
+
+		await expect(runPromise).resolves.toMatchObject({
+			status: 'error',
+			error: 'Execution was cancelled',
+		});
+
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalledWith(
+			'exec-1',
+			expect.objectContaining({ name: 'ManualExecutionCancelledError' }),
+		);
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+				error: 'Execution was cancelled',
 			}),
 		);
 	});
@@ -3196,6 +3413,59 @@ describe('createExecutionAdapter run()', () => {
 		const firstStackItem = runData.executionData?.executionData?.nodeExecutionStack[0];
 		expect(firstStackItem?.node.name).toBe('Schedule Trigger');
 		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
+	});
+
+	it('opts a verification run out of the error workflow, on the main process and on a worker', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			settings: { errorWorkflow: 'error-wf-1' },
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+		});
+
+		await adapter.run('wf-1', undefined, { isVerificationRun: true });
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		// A trigger-mode run is a production execution as far as the lifecycle
+		// hooks are concerned, so the opt-out is what keeps a failed build attempt
+		// from paging the user's error workflow.
+		expect(runData.executionMode).toBe('trigger');
+		expect(runData.suppressErrorWorkflow).toBe(true);
+		// Queue mode rebuilds the run from persisted execution data.
+		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBe(true);
+	});
+
+	it('leaves the error workflow enabled for a run the user asked for', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			settings: { errorWorkflow: 'error-wf-1' },
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+		});
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.suppressErrorWorkflow).toBeUndefined();
+		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBeUndefined();
+		// The user's setting is never stripped from the run itself.
+		expect(runData.workflowData.settings?.errorWorkflow).toBe('error-wf-1');
 	});
 
 	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
@@ -3723,5 +3993,38 @@ describe('createContext — builder delegate telemetry', () => {
 
 		expect(result).toEqual(agents);
 		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — run model wiring
+// ---------------------------------------------------------------------------
+
+describe('createContext — run model wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	// Guards the one link of the INS-948 fix that instance-ai's own unit tests
+	// cannot see: the run's resolved (proxy-aware) model must land on the domain
+	// context, where simulation fixture/classifier LLM calls read it as their
+	// fallback on deployments without env model keys (cloud). Dropping this
+	// wiring regresses silently — every simulated node degrades back to a
+	// single empty pinned item.
+	it('copies the host-resolved modelId onto the context', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+		const modelId = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+
+		const context = service.createContext(mockUser, { modelId });
+
+		expect(context.modelId).toEqual(modelId);
+	});
+
+	it('leaves modelId undefined when the host does not resolve one', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		expect(service.createContext(mockUser).modelId).toBeUndefined();
 	});
 });

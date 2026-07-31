@@ -38,6 +38,15 @@ export interface ComputeScopeOptions {
 	rootDir: string;
 	/** `null` = no signal → RUN_FULL (local dev with unset env). */
 	changedFiles: string[] | null;
+	/** This package's name (from its package.json). Needed to check membership
+	 *  in `affectedPackages`. */
+	packageName?: string;
+	/** Packages affected by the change — the owner of each changed file plus its
+	 *  transitive dependents (from `affectedPackages()`). When this package has
+	 *  no in-package changes but appears here, an upstream workspace dependency
+	 *  changed and we must run the full suite (a scoped `vitest related` run
+	 *  can't see the cross-package change). `null`/undefined = no signal. */
+	affectedPackages?: string[] | null;
 }
 
 export type ScopeResult =
@@ -70,7 +79,18 @@ export function computeScope(options: ComputeScopeOptions): ScopeResult {
 	const inPackage = options.changedFiles.filter(
 		(f) => f === pkgPrefix || f.startsWith(pkgPrefixSlash),
 	);
-	if (inPackage.length === 0) return { kind: 'skip', reason: 'No changed files in package' };
+	if (inPackage.length === 0) {
+		// No files changed inside this package, but the dep-graph flags it as
+		// affected → an upstream workspace dependency changed. `vitest related`
+		// on this package's own test files can't see that, so run the full suite.
+		if (options.packageName && options.affectedPackages?.includes(options.packageName)) {
+			return {
+				kind: 'full',
+				reason: 'Affected by an upstream workspace change (no in-package changes)',
+			};
+		}
+		return { kind: 'skip', reason: 'No changed files in package' };
+	}
 
 	const bailout = VITEST_BAILOUT;
 	for (const file of inPackage) {

@@ -135,7 +135,24 @@ describe('unsupportedMcpBuildSetupFields', () => {
 
 	it.each<[string, Partial<WorkflowTestCase>]>([
 		['credentials', { credentials: [{ type: 'slackApi' }] }],
-		['seedFile', { seedFile: 'seeds/some-thread.seed.json' }],
+		[
+			'conversationSeed',
+			{
+				conversationSeed: {
+					messages: [
+						{
+							id: 'm1',
+							type: 'llm',
+							role: 'user',
+							createdAt: '2026-06-29T09:00:00.000Z',
+							content: [{ type: 'text', text: 'build it' }],
+						},
+					],
+					workflows: [],
+					dataTables: [],
+				},
+			},
+		],
 		['priorConversation', { priorConversation: [user('We already agreed on #alerts')] }],
 		['seedThread', { seedThread: { threadId: 't1' } }],
 	])('flags %s', (field, overrides) => {
@@ -257,6 +274,41 @@ describe('buildWorkflowViaMcp', () => {
 		expect(result.workflowId).toBe('wf123');
 		expect(result.failureReason).toBeUndefined();
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
+	});
+
+	it('sums cost, turns and duration across attempts — failed attempts cost money too', async () => {
+		let call = 0;
+		spawnReturning(() => {
+			const child = new FakeChild(1234);
+			call++;
+			const session =
+				call === 1
+					? {
+							result: 'built something, forgot the id',
+							total_cost_usd: 0.1,
+							num_turns: 2,
+							duration_ms: 1000,
+						}
+					: {
+							result: 'done\nWORKFLOW_ID=wf42',
+							total_cost_usd: 0.25,
+							num_turns: 5,
+							duration_ms: 3000,
+						};
+			setImmediate(() => {
+				child.stdout.emit('data', Buffer.from(JSON.stringify(session)));
+				child.emit('close', 0, null);
+			});
+			return child;
+		});
+
+		const result = await buildWorkflowViaMcp(buildOpts());
+
+		expect(result.workflowId).toBe('wf42');
+		expect(result.cost).toBeCloseTo(0.35);
+		expect(result.turns).toBe(7);
+		expect(result.durationMs).toBe(4000);
+		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(2);
 	});
 });
 

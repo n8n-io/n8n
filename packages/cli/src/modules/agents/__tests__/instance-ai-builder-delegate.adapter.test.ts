@@ -55,6 +55,8 @@ async function* asAsyncGenerator<T>(values: T[]): AsyncGenerator<T> {
 	for (const value of values) yield value;
 }
 
+const abortSignal = new AbortController().signal;
+
 describe('InstanceAiBuilderDelegateAdapterService', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -77,6 +79,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 			});
 
 			const seen: unknown[] = [];
@@ -97,6 +100,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 				telemetry: sentinel,
 			});
 
@@ -111,6 +115,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
 				},
@@ -127,6 +132,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 			});
 
 			const [, , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
@@ -143,6 +149,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
 				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.buildAgent).not.toHaveBeenCalled();
@@ -168,6 +175,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
 				},
 			);
 
@@ -189,6 +197,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 				},
 			);
@@ -207,6 +216,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 						hostThreadId: 'thread-1',
 						runId: 'run-1',
 						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+						abortSignal,
 					},
 				),
 			).rejects.toThrow(ForbiddenError);
@@ -256,6 +266,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 			});
 
 			expect(agentsBuilderService.findOpenCheckpointForThread).toHaveBeenCalledWith(
@@ -278,6 +289,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 			});
 
 			expect(result).toEqual([]);
@@ -297,6 +309,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 			});
 
 			expect(result).toEqual([]);
@@ -312,6 +325,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
 				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.findOpenCheckpointForThread).not.toHaveBeenCalled();
@@ -410,6 +424,45 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 	});
 
+	describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
+		it('requires Preview markdown links instead of forbidding them', () => {
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).not.toContain('not visible in this chat');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('[Preview]');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('relative path');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('Do not invent absolute URLs');
+		});
+	});
+
+	describe('resolveAgentName', () => {
+		it('returns the agent display name', async () => {
+			const { delegate, agentsService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(mock<Agent>({ id: 'agent-1', name: 'Support Bot' }));
+
+			await expect(delegate.resolveAgentName('agent-1')).resolves.toBe('Support Bot');
+			expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'project-1');
+		});
+
+		it('returns undefined when the agent does not exist', async () => {
+			const { delegate, agentsService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(null);
+
+			await expect(delegate.resolveAgentName('agent-missing')).resolves.toBeUndefined();
+		});
+
+		it('rejects when the user lacks agent:read scope', async () => {
+			const { delegate, agentsService, user } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			await expect(delegate.resolveAgentName('agent-1')).rejects.toThrow(ForbiddenError);
+			expect(agentsService.findById).not.toHaveBeenCalled();
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+				projectId: 'project-1',
+			});
+		});
+	});
+
 	describe('deleteBuilderSessions', () => {
 		it('deletes messages and thread state for every builder session of the instance thread, scoped per target agent', async () => {
 			const { service, n8nMemory, agentThreadRepository } = setup();
@@ -442,5 +495,17 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
+	it('tells the builder the orchestrator can create workflows and data tables', () => {
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain(
+			'The Instance AI orchestrator can create workflows and data tables',
+		);
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('never ask the user to create them manually');
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain(
+			'the orchestrator will provision them and call you again',
+		);
 	});
 });

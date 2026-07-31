@@ -45,6 +45,7 @@ type RecordProducedOptions = {
 type AgentBuilderTargetMetadata = {
 	agentId: string;
 	projectId: string;
+	name?: string;
 };
 
 /**
@@ -107,6 +108,7 @@ function entryFromListItem(
 const ARTIFACT_TOOLS = new Set([
 	'build-workflow',
 	'build-workflow-with-agent',
+	'build-agent',
 	'submit-workflow',
 	'apply-workflow-credentials',
 	'workflows',
@@ -200,6 +202,20 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			if (projectId !== undefined) entry.projectId = projectId;
 			recordProduced(col, entry);
 		}
+	}
+
+	// --- Agents ------------------------------------------------------------
+	// build-agent: { agentId, agentName? } — produced. Follow-up calls may omit
+	// the name, so fall back to the existing entry before regressing to
+	// 'Untitled'. projectId is preserved from the agent-spawned entry by
+	// recordProduced's merge.
+	if (tc.toolName === 'build-agent' && typeof result.agentId === 'string') {
+		const existing = col.produced.get(result.agentId);
+		recordProduced(col, {
+			type: 'agent',
+			id: result.agentId,
+			name: optionalString(result.agentName) ?? existing?.name ?? 'Untitled',
+		});
 	}
 
 	// --- Credentials -----------------------------------------------------
@@ -333,12 +349,16 @@ function enrichAgentFromBuilderTarget(
 	if (!target) return;
 	const existing = col.produced.get(target.agentId);
 	if (existing && existing.type !== 'agent') return;
+	// Event-derived names are canonical; the persisted metadata name only fills
+	// in when no run event carried one (e.g. historical threads whose events
+	// aren't loaded). The 'Untitled' placeholder is not a real name.
+	const eventName = existing && existing.name !== 'Untitled' ? existing.name : undefined;
 	recordProduced(
 		col,
 		{
 			type: 'agent',
 			id: target.agentId,
-			name: existing?.name ?? 'Untitled',
+			name: eventName ?? target.name ?? 'Untitled',
 			projectId: target.projectId,
 		},
 		{ linkable: existing !== undefined },

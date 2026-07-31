@@ -61,6 +61,11 @@ const filteredAgents = computed<AgentModelsByProvider>(() =>
 	getModelsForPicker(credentialsByProvider.value),
 );
 
+const boundCredentialId = computed(() => {
+	const settings = store.effectiveSettings;
+	return settings.mode === 'custom' ? settings.credentialId : null;
+});
+
 const selectedAgent = computed<AgentModelOption | null>(() => {
 	const settings = store.effectiveSettings;
 	if (settings.mode !== 'custom') return null;
@@ -206,6 +211,7 @@ function onCancel() {
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
+				:bound-credential-id="boundCredentialId"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
 			/>

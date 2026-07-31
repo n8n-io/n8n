@@ -9,7 +9,21 @@
         },
         "id": {
             "type": "string"
+        },
+        "Owner": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "version": 3
+    "version": 4
 }

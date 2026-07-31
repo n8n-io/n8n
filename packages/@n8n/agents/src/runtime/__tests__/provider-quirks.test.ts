@@ -36,17 +36,34 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
-	it('anthropic: adaptive mode defaults display to summarized', () => {
+	it('anthropic: adaptive mode defaults display to summarized and effort to medium', () => {
 		expect(
 			getProviderQuirks('anthropic').thinkingToProviderOptions?.({ mode: 'adaptive' }),
 		).toEqual({
-			anthropic: { thinking: { type: 'adaptive', display: 'summarized' } },
+			anthropic: {
+				thinking: { type: 'adaptive', display: 'summarized' },
+				effort: 'medium',
+			},
+		});
+	});
+
+	it('anthropic: adaptive mode forwards explicit effort', () => {
+		expect(
+			getProviderQuirks('anthropic').thinkingToProviderOptions?.({
+				mode: 'adaptive',
+				effort: 'high',
+			}),
+		).toEqual({
+			anthropic: {
+				thinking: { type: 'adaptive', display: 'summarized' },
+				effort: 'high',
+			},
 		});
 	});
 
 	it('openai: defaults reasoningEffort to medium', () => {
 		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({})).toEqual({
-			openai: { reasoningEffort: 'medium' },
+			openai: { reasoningEffort: 'medium', reasoningSummary: null },
 		});
 	});
 

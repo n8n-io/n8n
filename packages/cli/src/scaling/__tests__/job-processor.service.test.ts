@@ -19,12 +19,14 @@ import {
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import type { Mock, MockedClass } from 'vitest';
+import type { Mock, MockedClass, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { WebhookResponseTooLargeError } from '@/errors/webhook-response-too-large.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ManualExecutionService } from '@/manual-execution.service';
@@ -38,6 +40,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { JobProcessor } from '../job-processor';
 import type { Job } from '../scaling.types';
+import { ENCODED_BUFFER_KEY } from '../webhook-response-relay';
 
 mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {
@@ -71,10 +74,14 @@ const logger = mock<Logger>({
 	scoped: vi.fn().mockImplementation(() => logger),
 });
 
-const executionsConfig = mock<ExecutionsConfig>({
-	timeout: -1,
-	maxTimeout: 3600,
-});
+const executionsConfigWith = (overrides: Partial<ExecutionsConfig> = {}) =>
+	mock<ExecutionsConfig>({
+		timeout: -1,
+		maxTimeout: 3600,
+		...overrides,
+	});
+
+const executionsConfig = executionsConfigWith();
 
 const successRun = (): IRun =>
 	mock<IRun>({
@@ -938,6 +945,127 @@ describe('JobProcessor', () => {
 			});
 			// Response should contain the tool's output data
 			expect(lastResponse.response).toEqual([{ result: 'tool response data' }]);
+		});
+
+		describe('expression isolate for tool calls', () => {
+			const toolNode = {
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequestTool',
+				typeVersion: 4.4,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+
+			const setupToolJob = (executeFn: Mock) => {
+				const executionPersistence = mock<ExecutionPersistence>();
+				executionPersistence.findSingleExecution.mockResolvedValueOnce(
+					mock<IExecutionResponse>({
+						mode: 'trigger',
+						workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+						data: mock<IRunExecutionData>({ executionData: undefined }),
+					}),
+				);
+				executionPersistence.findSingleExecution.mockResolvedValueOnce(
+					mock<IExecutionResponse>({
+						status: 'success',
+						workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+						data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+					}),
+				);
+
+				const nodeTypes = mock<NodeTypes>();
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						name: 'httpRequestTool',
+						outputs: [NodeConnectionTypes.AiTool],
+						properties: [],
+					},
+					execute: executeFn,
+				} as never);
+
+				const jobProcessor = new JobProcessor(
+					logger,
+					mock(), // executionRepository
+					executionPersistence,
+					mock(), // workflowRepository
+					nodeTypes,
+					{ hostId: 'worker-host-123' } as unknown as InstanceSettings,
+					createManualExecutionServiceMock(),
+					executionsConfig,
+					mock(), // eventService
+				);
+
+				const job = mock<Job>();
+				job.data = {
+					workflowId: 'wf-1',
+					executionId: 'exec-mcp-isolate',
+					loadStaticData: false,
+					isMcpExecution: true,
+					mcpType: 'trigger',
+					mcpSessionId: 'session-isolate',
+					mcpMessageId: 'msg-isolate',
+					mcpToolCall: {
+						toolName: 'HTTP Request',
+						arguments: { url: 'https://example.com' },
+						sourceNodeName: 'HTTP Request',
+					},
+				};
+
+				return { jobProcessor, job };
+			};
+
+			let acquireSpy: MockInstance;
+			let releaseSpy: MockInstance;
+
+			beforeEach(() => {
+				acquireSpy = vi
+					.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
+					.mockResolvedValue(true);
+				releaseSpy = vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue();
+			});
+
+			afterEach(() => {
+				acquireSpy.mockRestore();
+				releaseSpy.mockRestore();
+			});
+
+			it('should acquire an isolate around the tool invocation and release it after', async () => {
+				const executeFn = vi.fn().mockResolvedValue([[{ json: { ok: true } }]]);
+				const { jobProcessor, job } = setupToolJob(executeFn);
+
+				await jobProcessor.processJob(job);
+
+				expect(acquireSpy).toHaveBeenCalledTimes(1);
+				expect(releaseSpy).toHaveBeenCalledTimes(1);
+				// The tool must run inside the acquire/release window
+				expect(acquireSpy.mock.invocationCallOrder[0]).toBeLessThan(
+					executeFn.mock.invocationCallOrder[0],
+				);
+				expect(releaseSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+					executeFn.mock.invocationCallOrder[0],
+				);
+			});
+
+			it('should release the isolate when the tool invocation throws', async () => {
+				const executeFn = vi.fn().mockRejectedValue(new Error('tool failed'));
+				const { jobProcessor, job } = setupToolJob(executeFn);
+
+				await jobProcessor.processJob(job);
+
+				expect(acquireSpy).toHaveBeenCalledTimes(1);
+				expect(releaseSpy).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not release an isolate it did not newly acquire', async () => {
+				acquireSpy.mockResolvedValue(false);
+				const executeFn = vi.fn().mockResolvedValue([[{ json: { ok: true } }]]);
+				const { jobProcessor, job } = setupToolJob(executeFn);
+
+				await jobProcessor.processJob(job);
+
+				expect(acquireSpy).toHaveBeenCalledTimes(1);
+				expect(releaseSpy).not.toHaveBeenCalled();
+			});
 		});
 
 		it('should invoke tool via supplyData for nodes with supplyData method', async () => {
@@ -1843,6 +1971,94 @@ describe('JobProcessor', () => {
 			expect(startedCall![1].workflowId).toBe('wf-1');
 			expect(startedCall![1]).not.toHaveProperty('projectId');
 			expect(startedCall![1]).not.toHaveProperty('projectName');
+		});
+	});
+
+	describe('webhook response relay', () => {
+		const processJobAndCaptureHooks = async (
+			webhookResponseRelaySizeMaxMiB: number,
+			jobData: Partial<Job['data']> = {},
+		) => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				createManualExecutionServiceMock(),
+				executionsConfigWith({ webhookResponseRelaySizeMaxMiB }),
+				mock(),
+			);
+
+			const job = mock<Job>({
+				data: {
+					workflowId: 'wf-1',
+					executionId: 'exec-1',
+					loadStaticData: false,
+					isMcpExecution: undefined,
+					mcpSessionId: undefined,
+					...jobData,
+				},
+			});
+			await jobProcessor.processJob(job);
+
+			return { hooks: additionalData.hooks!, job };
+		};
+
+		it('should relay a response within the size limit, encoding a buffer body', async () => {
+			const { hooks, job } = await processJobAndCaptureHooks(1);
+
+			await hooks.runHook('sendResponse', [
+				{ body: Buffer.from('hello'), headers: {}, statusCode: 200 },
+			]);
+
+			expect(job.progress).toHaveBeenCalledWith(
+				expect.objectContaining({
+					kind: 'respond-to-webhook',
+					executionId: 'exec-1',
+					response: expect.objectContaining({ body: { [ENCODED_BUFFER_KEY]: 'aGVsbG8=' } }),
+				}),
+			);
+		});
+
+		it('should refuse to relay a response over the size limit', async () => {
+			const { hooks, job } = await processJobAndCaptureHooks(1);
+			const relayedBefore = (job.progress as Mock).mock.calls.length;
+
+			await expect(
+				hooks.runHook('sendResponse', [
+					{ body: { blob: 'x'.repeat(2 * 1024 * 1024) }, headers: {}, statusCode: 200 },
+				]),
+			).rejects.toThrow(WebhookResponseTooLargeError);
+
+			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
+		});
+
+		it('should refuse to relay an MCP response over the size limit', async () => {
+			const { hooks, job } = await processJobAndCaptureHooks(1, {
+				isMcpExecution: true,
+				mcpSessionId: 'session-1',
+			});
+			const relayedBefore = (job.progress as Mock).mock.calls.length;
+
+			await expect(
+				hooks.runHook('sendResponse', [{ toolResult: 'x'.repeat(2 * 1024 * 1024) }]),
+			).rejects.toThrow(WebhookResponseTooLargeError);
+
+			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
 		});
 	});
 });
