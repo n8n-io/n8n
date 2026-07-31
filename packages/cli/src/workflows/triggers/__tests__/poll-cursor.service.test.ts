@@ -7,7 +7,7 @@ import type {
 	TransactionRunner,
 } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, PollCursor } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -76,6 +76,13 @@ describe('PollCursorService', () => {
 
 			expect(seenSeed).toEqual({ lastItemId: 'from-static-data' });
 			expect(cursor).toEqual({ lastItemId: 'from-db' });
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			expect(pollerStateRepository.ensureCursor).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				expect.anything(),
+				txRunner.run.mock.calls[0][0],
+			);
 		});
 
 		it('returns null when the resulting cursor is empty', async () => {
@@ -173,6 +180,9 @@ describe('PollCursorService', () => {
 			expect(previousCursor).toEqual({ lastItemId: 'a', etag: 'v1' });
 		});
 
+		// The transaction runner is a pass-through here, so this only pins that the insert
+		// is never reached once the advance fails. The rollback itself is proven in
+		// test/integration/executions/poll-cursor-atomicity.test.ts.
 		it('does not create the execution when the cursor advance fails', async () => {
 			const service = buildService();
 			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'a' });
@@ -214,11 +224,20 @@ describe('PollCursorService', () => {
 	});
 
 	describe('commitCursorOnly', () => {
+		const commitCursorOnly = async (service: PollCursorService, nodeStaticData: PollCursor = {}) =>
+			await service.commitCursorOnly({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				nodeName: 'Poll Node',
+				cursor: { lastItemId: 'b' },
+				nodeStaticData,
+			});
+
 		it('advances the cursor in one transaction without creating an execution', async () => {
 			const service = buildService();
 			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'a' });
 
-			await service.commitCursorOnly('wf-1', 'node-1', { lastItemId: 'b' });
+			await commitCursorOnly(service);
 
 			expect(txRunner.run).toHaveBeenCalledTimes(1);
 			const ctx = txRunner.run.mock.calls[0][0];
@@ -231,15 +250,39 @@ describe('PollCursorService', () => {
 			expect(executionPersistence.create).not.toHaveBeenCalled();
 		});
 
+		it('mirrors the advance to the static data of the polled node', async () => {
+			const service = buildService();
+			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'a', etag: 'v1' });
+			workflowStaticDataService.getStaticDataById.mockResolvedValue({
+				'node:Poll Node': { lastItemId: 'a', etag: 'v1' },
+			});
+			const nodeStaticData = { lastItemId: 'a', etag: 'v1' };
+
+			await commitCursorOnly(service, nodeStaticData);
+
+			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
+				'node:Poll Node': { lastItemId: 'b' },
+			});
+			expect(nodeStaticData).toEqual({ lastItemId: 'b' });
+		});
+
 		it('propagates a failing advance', async () => {
 			const service = buildService();
 			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'a' });
 			const advanceError = new Error('Poller cursor row disappeared while its poll was running');
 			pollerStateRepository.advanceCursor.mockRejectedValue(advanceError);
 
-			await expect(service.commitCursorOnly('wf-1', 'node-1', { lastItemId: 'b' })).rejects.toBe(
-				advanceError,
-			);
+			await expect(commitCursorOnly(service)).rejects.toBe(advanceError);
+
+			expect(workflowStaticDataService.saveStaticDataById).not.toHaveBeenCalled();
+		});
+
+		it('resolves when mirroring the advance fails', async () => {
+			const service = buildService();
+			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'a' });
+			workflowStaticDataService.getStaticDataById.mockRejectedValue(new Error('read failed'));
+
+			await expect(commitCursorOnly(service)).resolves.toBeUndefined();
 		});
 	});
 
