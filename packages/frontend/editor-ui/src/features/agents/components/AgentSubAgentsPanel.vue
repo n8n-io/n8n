@@ -196,6 +196,10 @@ function hasDifficultyMapping(difficulty: SubAgentTaskDifficulty): boolean {
 	return Boolean(props.config?.subAgents?.modelsByDifficulty?.[difficulty]);
 }
 
+function boundCredentialForDifficulty(difficulty: SubAgentTaskDifficulty): string | null {
+	return props.config?.subAgents?.modelsByDifficulty?.[difficulty]?.credential ?? null;
+}
+
 const hasAnyDifficultyMapping = computed(() =>
 	SUB_AGENT_TASK_DIFFICULTIES.some((difficulty) => hasDifficultyMapping(difficulty)),
 );
@@ -377,6 +381,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 							:is-loading="isLoading"
 							:project-id="projectId"
 							:warn-missing-credentials="true"
+							:bound-credential-id="boundCredentialForDifficulty(difficulty)"
 							:disabled="disabled"
 							:data-testid="`agent-sub-agents-difficulty-${difficulty}-model`"
 							@change="(selection) => onDifficultyModelChange(difficulty, selection)"

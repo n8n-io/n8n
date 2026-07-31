@@ -5,6 +5,7 @@ import {
 	createWorkflow,
 	getPersonalProject,
 	linkUserToProject,
+	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
@@ -18,15 +19,21 @@ import {
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { v4 as uuid } from 'uuid';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
+mockInstance(ActiveWorkflowManager);
+const workflowValidationService = mockInstance(WorkflowValidationService);
+
 const testServer = utils.setupTestServer({
-	endpointGroups: ['workflow-reviews'],
+	endpointGroups: ['workflow-reviews', 'workflows'],
 	enabledFeatures: ['feat:workflowReviews'],
 	modules: ['workflow-reviews'],
 });
@@ -49,7 +56,8 @@ let publishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowEntityRepository: WorkflowRepository;
 let policyService: WorkflowReviewPolicyService;
 
-beforeAll(() => {
+beforeAll(async () => {
+	await utils.initNodeTypes();
 	requestRepository = Container.get(WorkflowReviewRequestRepository);
 	workflowRepository = Container.get(WorkflowReviewRequestWorkflowRepository);
 	authorRepository = Container.get(WorkflowReviewRequestAuthorRepository);
@@ -72,8 +80,10 @@ beforeEach(async () => {
 		'SharedWorkflow',
 		// Before WorkflowHistory: the published pointer FKs onto it with onDelete RESTRICT
 		'WorkflowPublishedVersion',
-		'WorkflowHistory',
+		'WorkflowPublicationOutbox',
+		'WorkflowPublishHistory',
 		'WorkflowEntity',
+		'WorkflowHistory',
 		'ProjectRelation',
 		'Project',
 		'User',
@@ -82,6 +92,9 @@ beforeEach(async () => {
 	// The instance policy defaults to disabled; enable it so the feature is
 	// available. Individual tests may disable it again to assert the gate.
 	await policyService.set(true);
+	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
+	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 
 	owner = await createOwner();
 	member = await createMember();
@@ -97,10 +110,33 @@ beforeEach(async () => {
 });
 
 /** Create a workflow owned by `owner` with a pinned history version. */
-async function createReviewableWorkflow(versionId = 'version-1') {
+async function createReviewableWorkflow(versionId = uuid()) {
 	const workflow = await createWorkflow({}, owner);
 	await createWorkflowHistoryItem(workflow.id, { versionId });
 	return { workflow, versionId };
+}
+
+async function createOpenReview(
+	workflowId: string,
+	versionId: string,
+	decision: 'pending' | 'changes_requested' = 'pending',
+) {
+	const request = await requestRepository.createRequest({
+		projectId: ownerProject.id,
+		title: 'Review before publishing',
+		createdById: owner.id,
+		decision,
+	});
+	await workflowRepository.createWorkflowRow({
+		workflowReviewRequestId: request.id,
+		workflowId,
+		workflowVersionId: versionId,
+	});
+	await authorRepository.addAuthor({
+		workflowReviewRequestId: request.id,
+		userId: owner.id,
+	});
+	return request;
 }
 
 describe('POST /workflow-review-requests', () => {
@@ -489,6 +525,82 @@ describe('POST /workflow-review-requests', () => {
 			.expect(403);
 
 		testServer.license.enable('feat:workflowReviews');
+	});
+});
+
+describe('publishing a workflow under review', () => {
+	test.each([
+		['waiting for a decision', 'pending', 'review_pending'],
+		['waiting for requested changes', 'changes_requested', 'changes_requested'],
+	] as const)(
+		'blocks publication while the review is %s',
+		async (_reviewState, decision, expectedReason) => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+			const request = await createOpenReview(workflow.id, versionId, decision);
+
+			const response = await ownerAgent
+				.post(`/workflows/${workflow.id}/activate`)
+				.send({ versionId })
+				.expect(409);
+
+			expect(response.body.meta).toEqual({
+				reason: expectedReason,
+				workflowReviewRequestId: request.id,
+				validationError: true,
+			});
+			expect(
+				(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+			).toBeNull();
+		},
+	);
+
+	test('allows publication after the review is approved and closed', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
+
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBe(versionId);
+	});
+
+	test.each(['policy disabled', 'license unavailable'] as const)(
+		'allows publication when workflow reviews are %s',
+		async (unavailableReason) => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+			await createOpenReview(workflow.id, versionId);
+
+			if (unavailableReason === 'policy disabled') {
+				await policyService.set(false);
+			} else {
+				testServer.license.disable('feat:workflowReviews');
+			}
+
+			await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
+
+			expect(
+				(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+			).toBe(versionId);
+		},
+	);
+
+	test('allows unpublishing while a review is open', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+
+		await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
+		await createOpenReview(workflow.id, versionId);
+
+		await ownerAgent.post(`/workflows/${workflow.id}/deactivate`).send({}).expect(200);
+
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBeNull();
 	});
 });
 

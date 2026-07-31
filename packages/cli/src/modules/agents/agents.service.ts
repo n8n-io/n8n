@@ -45,7 +45,11 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
-	async create(projectId: string, name: string): Promise<Agent> {
+	async create(
+		projectId: string,
+		name: string,
+		{ availableInMCP = false }: { availableInMCP?: boolean } = {},
+	): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
 			model: '',
@@ -59,6 +63,7 @@ export class AgentsService {
 			projectId,
 			schema: defaultConfig,
 			versionId: uuid(),
+			availableInMCP,
 		});
 
 		const saved = await this.agentRepository.save(agent);
@@ -173,7 +178,7 @@ export class AgentsService {
 	 * filters and limit applied in the database.
 	 */
 	async findSummariesInProjects(
-		projectIds: string[],
+		projectIds: string[] | null,
 		options: AgentSummaryFilters = {},
 	): Promise<AgentSummary[]> {
 		return await this.agentRepository.findSummariesByProjectIds(projectIds, options);

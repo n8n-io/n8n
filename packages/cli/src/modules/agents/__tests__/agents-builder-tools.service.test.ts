@@ -1430,6 +1430,32 @@ describe('AgentsBuilderToolsService', () => {
 				name: 'seo_analyzer',
 			});
 		});
+
+		it('soft-fails on a build error but rethrows when the run was aborted', async () => {
+			const { service, secureRuntime } = makeService();
+			secureRuntime.describeToolSecurely.mockRejectedValue(new Error('compile failed'));
+			const controller = new AbortController();
+			const abortableCtx = { ...ctx, abortSignal: controller.signal };
+
+			await expect(
+				getBuildCustomTool(service).handler!({ code: 'broken' }, abortableCtx),
+			).resolves.toEqual({ ok: false, errors: [{ message: 'compile failed' }] });
+
+			// The isolate compiles model-authored code, so an abort-shaped error from
+			// the generated tool must not be read as a cancellation of the run.
+			secureRuntime.describeToolSecurely.mockRejectedValue(new Error('Aborted'));
+
+			await expect(
+				getBuildCustomTool(service).handler!({ code: 'broken' }, abortableCtx),
+			).resolves.toEqual({ ok: false, errors: [{ message: 'Aborted' }] });
+
+			secureRuntime.describeToolSecurely.mockRejectedValue(new Error('compile failed'));
+			controller.abort();
+
+			await expect(
+				getBuildCustomTool(service).handler!({ code: 'broken' }, abortableCtx),
+			).rejects.toThrow('compile failed');
+		});
 	});
 
 	describe('create_skills tool', () => {

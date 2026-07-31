@@ -78,6 +78,8 @@ import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.v
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -110,6 +112,8 @@ const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
+const mcpStore = useMCPStore();
+const mcp = useMcp();
 
 // Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
 // the backend: Daytona sandbox env vars (N8N_AGENTS_AI_SANDBOX_ENABLED +
@@ -597,6 +601,13 @@ interface SkillAutosaveSnapshot {
 	skill: AgentSkill;
 }
 
+interface McpAvailabilitySnapshot {
+	type: 'mcp';
+	projectId: string;
+	agentId: string;
+	enabled: boolean;
+}
+
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' | undefined> {
 	// The AI may be mutating this agent right now — a save queued just before
 	// the lock engaged must not persist its now-stale full config over it.
@@ -677,18 +688,75 @@ const skillAutosave = useAgentConfigAutosave<SkillAutosaveSnapshot>({
 		showError(error, locale.baseText('agents.builder.skills.saveError'));
 	},
 });
+// The MCP availability flag lives on the agent resource, not the JSON config,
+// so it saves through its own autosave loop — while sharing the header's
+// Saving/Saved indicator with config and skill edits.
+const mcpAvailabilityOverride = ref<boolean | null>(null);
+const agentAvailableInMcp = computed(
+	() => mcpAvailabilityOverride.value ?? agent.value?.availableInMCP ?? false,
+);
+
+async function saveMcpAvailability(
+	snapshot: McpAvailabilitySnapshot,
+): Promise<'skipped' | undefined> {
+	await mcpStore.toggleAgentMcpAccess(snapshot.agentId, snapshot.enabled);
+	if (snapshot.enabled) {
+		mcp.trackMcpAccessEnabledForAgent(snapshot.agentId);
+	}
+	if (isStaleAgentTarget(snapshot.projectId, snapshot.agentId)) return undefined;
+	if (agent.value?.id === snapshot.agentId) {
+		agent.value = { ...agent.value, availableInMCP: snapshot.enabled };
+	}
+	// Keep the override if the user flipped the switch again while this save
+	// was in flight — the newer value has its own save chained behind us.
+	if (mcpAvailabilityOverride.value === snapshot.enabled) {
+		mcpAvailabilityOverride.value = null;
+	}
+	return undefined;
+}
+
+const mcpAutosave = useAgentConfigAutosave<McpAvailabilitySnapshot>({
+	save: saveMcpAvailability,
+	onError: (error: unknown) => {
+		// Revert the optimistic toggle — unlike config edits there is no local
+		// pending state that a later autosave would persist.
+		mcpAvailabilityOverride.value = null;
+		showError(error, locale.baseText('agents.toggleMCP.error.title'));
+	},
+});
+
+function onToggleMcpAccess(enabled: boolean) {
+	if (!agent.value) return;
+	mcpAvailabilityOverride.value = enabled;
+	mcpAutosave.scheduleAutosave({
+		type: 'mcp',
+		projectId: projectId.value,
+		agentId: agentId.value,
+		enabled,
+	});
+}
+
 const saveStatus = computed(() => {
-	if (configAutosave.saveStatus.value === 'saving' || skillAutosave.saveStatus.value === 'saving') {
+	const statuses = [
+		configAutosave.saveStatus.value,
+		skillAutosave.saveStatus.value,
+		mcpAutosave.saveStatus.value,
+	];
+	if (statuses.includes('saving')) {
 		return 'saving';
 	}
-	if (configAutosave.saveStatus.value === 'saved' || skillAutosave.saveStatus.value === 'saved') {
+	if (statuses.includes('saved')) {
 		return 'saved';
 	}
 	return 'idle';
 });
 
 async function settleAutosave() {
-	await Promise.all([configAutosave.settleAutosave(), skillAutosave.settleAutosave()]);
+	await Promise.all([
+		configAutosave.settleAutosave(),
+		skillAutosave.settleAutosave(),
+		mcpAutosave.settleAutosave(),
+	]);
 }
 
 async function flushAutosave() {
@@ -697,9 +765,14 @@ async function flushAutosave() {
 	if (props.artifactEditingLocked) {
 		configAutosave.cancelPendingAutosave();
 		skillAutosave.cancelPendingAutosave();
+		mcpAutosave.cancelPendingAutosave();
 		return;
 	}
-	await Promise.all([configAutosave.flushAutosave(), skillAutosave.flushAutosave()]);
+	await Promise.all([
+		configAutosave.flushAutosave(),
+		skillAutosave.flushAutosave(),
+		mcpAutosave.flushAutosave(),
+	]);
 }
 
 // Makes the lock a write boundary rather than only a disabled UI state: drop
@@ -1076,12 +1149,14 @@ async function initialize() {
 	// fresh data anyway. Only events arriving during this init need replaying.
 	pendingExternalRefresh.value = false;
 	try {
-		// Flush any pending/in-flight save for the previous agent before we tear
-		// down its state — without this, an autosave scheduled by edits in the
-		// previous agent could land after we've already swapped to the new one.
-		// The save itself snapshots agentId at schedule-time, so the persisted
-		// data is correct; settling here keeps localConfig/agent state consistent.
-		await settleAutosave();
+		// Persist a pending MCP toggle before the new agent can replace its
+		// snapshot. Other pending edits remain governed by their existing
+		// switch/revert behavior.
+		await Promise.all([
+			configAutosave.settleAutosave(),
+			skillAutosave.settleAutosave(),
+			mcpAutosave.flushAutosave(),
+		]);
 		// Drop any per-agent telemetry state from the previous agent — an in-flight
 		// save for the previous agent would've already flushed pending edits before
 		// we got here, and a scheduled-but-not-fired save wouldn't flush correctly
@@ -1090,6 +1165,7 @@ async function initialize() {
 
 		agent.value = null;
 		agentName.value = '';
+		mcpAvailabilityOverride.value = null;
 		activeChatSessionId.value = null;
 		localConfig.value = null;
 		connectedTriggers.value = [];
@@ -1405,6 +1481,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
 					:can-edit-agent="effectiveCanEditAgent"
+					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
 					:main-tab-options="mainTabOptions"
 					:executions-description="executionsDescription"
@@ -1425,6 +1502,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"
+					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>

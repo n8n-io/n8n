@@ -49,6 +49,7 @@ export default {
 import { N8nAiActivityStep, N8nAiActivityStepGroup, N8nMarkdownEditor } from '@n8n/design-system';
 import { computed, toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import {
@@ -137,6 +138,16 @@ function hasToolData(tc: ToolCall): boolean {
 	return tc.input !== undefined || tc.output !== undefined;
 }
 
+/** Render a delegated child's live steps through this same component, so they look
+ *  identical to the parent's own tool steps. */
+function childToolCalls(steps: NonNullable<ToolCall['childProgress']>['steps']): ToolCall[] {
+	return steps.map((step) => ({
+		tool: step.toolName,
+		toolCallId: step.toolCallId,
+		state: step.running ? TOOL_CALL_STATE.RUNNING : TOOL_CALL_STATE.DONE,
+	}));
+}
+
 function formatToolData(value: unknown): string {
 	if (typeof value === 'string') return value;
 	return JSON.stringify(value, null, 2) ?? String(value);
@@ -154,11 +165,12 @@ function isEmptyToolErrorPayload(value: unknown): boolean {
 function toolStepView(tc: ToolCall): ToolStepDisplay {
 	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
 	const metadata = toolStepMetadata(tc);
+	const hasChildProgress = Boolean(tc.childProgress);
 	return {
 		label: [toolStepLabel(tc), ...metadata].join(' · '),
 		details,
-		hasRawData: details.length === 0 && hasToolData(tc),
-		expandable: details.length > 0 || hasToolData(tc),
+		hasRawData: details.length === 0 && hasToolData(tc) && !hasChildProgress,
+		expandable: details.length > 0 || hasToolData(tc) || hasChildProgress,
 	};
 }
 
@@ -206,6 +218,32 @@ function hasActiveToolCall(): boolean {
 						:hide-error-callout="showFix && tc.state === TOOL_CALL_STATE.ERROR"
 						:has-content="view.expandable"
 					>
+						<div
+							v-if="tc.childProgress"
+							:class="$style.childProgress"
+							data-test-id="agent-chat-delegate-child-progress"
+						>
+							<AgentChatToolSteps
+								v-if="tc.childProgress.steps.length > 0"
+								:tool-calls="childToolCalls(tc.childProgress.steps)"
+								:project-id="projectId"
+							/>
+							<AiReasoningBlock
+								v-for="segment in tc.childProgress.reasoningSegments"
+								:key="segment.id"
+								:entry="segment"
+								:streaming="segment.endTime === undefined"
+							/>
+							<N8nMarkdownEditor
+								v-if="tc.childProgress.text && !view.details"
+								:model-value="tc.childProgress.text"
+								readonly
+								variant="ghost"
+								show-toolbar="never"
+								max-height="240px"
+								:class="$style.answer"
+							/>
+						</div>
 						<N8nMarkdownEditor
 							v-if="view.details"
 							:model-value="view.details"
@@ -215,7 +253,7 @@ function hasActiveToolCall(): boolean {
 							max-height="240px"
 							:class="$style.answer"
 						/>
-						<div v-else-if="view.hasRawData" :class="$style.toolDataList">
+						<div v-if="view.hasRawData" :class="$style.toolDataList">
 							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
@@ -250,6 +288,32 @@ function hasActiveToolCall(): boolean {
 					:has-content="toolStepView(tc).expandable"
 				>
 					<template v-for="view in [toolStepView(tc)]" :key="view.label">
+						<div
+							v-if="tc.childProgress"
+							:class="$style.childProgress"
+							data-test-id="agent-chat-delegate-child-progress"
+						>
+							<AgentChatToolSteps
+								v-if="tc.childProgress.steps.length > 0"
+								:tool-calls="childToolCalls(tc.childProgress.steps)"
+								:project-id="projectId"
+							/>
+							<AiReasoningBlock
+								v-for="segment in tc.childProgress.reasoningSegments"
+								:key="segment.id"
+								:entry="segment"
+								:streaming="segment.endTime === undefined"
+							/>
+							<N8nMarkdownEditor
+								v-if="tc.childProgress.text && !view.details"
+								:model-value="tc.childProgress.text"
+								readonly
+								variant="ghost"
+								show-toolbar="never"
+								max-height="240px"
+								:class="$style.answer"
+							/>
+						</div>
 						<N8nMarkdownEditor
 							v-if="view.details"
 							:model-value="view.details"
@@ -259,7 +323,7 @@ function hasActiveToolCall(): boolean {
 							max-height="240px"
 							:class="$style.answer"
 						/>
-						<div v-else-if="view.hasRawData" :class="$style.toolDataList">
+						<div v-if="view.hasRawData" :class="$style.toolDataList">
 							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
@@ -288,6 +352,19 @@ function hasActiveToolCall(): boolean {
 <style module>
 .toolSteps {
 	margin: 0 0 var(--spacing--sm);
+}
+
+.childProgress {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--xs);
+}
+
+/* Nested in a delegate row the flex gap already spaces the child's steps, so
+   the standalone bottom margin would double up. */
+.childProgress .toolSteps {
+	margin-bottom: 0;
 }
 
 .answer {

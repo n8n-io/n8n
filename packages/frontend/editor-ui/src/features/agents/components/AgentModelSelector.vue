@@ -48,6 +48,7 @@ const {
 	isLoading,
 	projectId,
 	warnMissingCredentials = false,
+	boundCredentialId = null,
 	disabled = false,
 	credentialModalAppendToBody = false,
 } = defineProps<{
@@ -57,6 +58,12 @@ const {
 	isLoading: boolean;
 	projectId: string;
 	warnMissingCredentials?: boolean;
+	/**
+	 * The credential the host has actually persisted for this model. The picker
+	 * falls back to any credential of the provider, so only this tells us
+	 * whether the saved config can run.
+	 */
+	boundCredentialId?: string | null;
 	disabled?: boolean;
 	/** Append credential modals to body (needed when embedded in the Memory dialog). */
 	credentialModalAppendToBody?: boolean;
@@ -127,8 +134,8 @@ const isCredentialsMissing = computed(
 	() =>
 		!isManagedCredential.value &&
 		warnMissingCredentials &&
-		selectedModel?.provider &&
-		!selectedCredential.value,
+		Boolean(selectedModel?.provider) &&
+		!(boundCredentialId && credentialsStore.getCredentialById(boundCredentialId)),
 );
 
 const selectedLabel = computed(
