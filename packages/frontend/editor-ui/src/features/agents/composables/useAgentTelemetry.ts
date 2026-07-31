@@ -5,6 +5,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
 export type AgentCreateSource = 'button' | 'dropdown' | 'card';
+/** Whether a model runs on n8n credits (the managed gateway credential) or the user's own key. */
+export type AgentCredentialKind = 'n8n_credits' | 'own';
 export type AgentConfigPart =
 	| 'instructions'
 	| 'model'
@@ -57,12 +59,14 @@ export function useAgentTelemetry() {
 		part: AgentConfigPart;
 		configVersion: string;
 		status: AgentTelemetryStatus;
+		credentialKind?: AgentCredentialKind;
 	}) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_EDITED_AGENT_CONFIG, {
 			agent_id: params.agentId,
 			part: params.part,
 			config_version: params.configVersion,
 			status: params.status,
+			...(params.credentialKind ? { credential_kind: params.credentialKind } : {}),
 			...common(),
 		});
 	}
