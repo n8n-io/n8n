@@ -183,30 +183,26 @@ export class WorkflowRunner {
 	}
 
 	/**
-	 * Prepares `data.executionData` for any caller that is about to persist it. Returns
-	 * the masking error if there was one, having already emptied the trigger-item stack.
+	 * Returns the masking error, if any, having already emptied the trigger-item stack
+	 * either way.
 	 */
 	async establishContextForPersistence(
 		data: IWorkflowExecutionDataProcess,
 	): Promise<(ExecutionError & { node?: INode }) | undefined> {
-		// Establish the execution context before persisting to the DB.
-		// activeExecutions.add() -> executionPersistence.create() writes
-		// data.executionData to the DB; any header masking or runtimeData
-		// population must happen before that write so the persisted record
-		// does not contain raw trigger-item data (e.g. Authorization headers).
-		// The runtimeData early-exit guard in establishExecutionContext keeps
-		// the subsequent worker-side call at workflow-execute.ts idempotent.
+		// Header masking and runtimeData population must happen before any write of
+		// data.executionData, so a persisted record never holds raw trigger-item data
+		// (e.g. Authorization headers). Calling this more than once is safe: the
+		// runtimeData early-exit guard in establishExecutionContext makes it idempotent.
 		// Guard on the inner executionData: in queue mode with manual offload
 		// the outer IRunExecutionData is created with `executionData: null`
 		// so the trigger-item stack is undefined here; nothing to mask yet,
 		// the worker will establish context once it populates the stack.
 		let establishContextError: (ExecutionError & { node?: INode }) | undefined;
 		if (data.executionData?.executionData) {
-			// Deliberately lightweight: no pinData, no staticData loading,
-			// no additionalData. establishExecutionContext only needs the
-			// workflow's settings (for redactionPolicy) and node lookups.
-			// runMainProcess() builds its own fully-configured Workflow for
-			// actual execution.
+			// Deliberately lightweight: no pinData, no staticData loading, no
+			// additionalData. establishExecutionContext only needs the workflow's
+			// settings (for redactionPolicy) and node lookups; actual execution builds
+			// its own fully-configured Workflow separately.
 			const contextWorkflow = new Workflow({
 				id: data.workflowData.id,
 				name: data.workflowData.name,
@@ -225,9 +221,8 @@ export class WorkflowRunner {
 					data.executionMode,
 				);
 			} catch (error) {
-				// Masking may have failed partway through, so the trigger-item
-				// stack can still contain raw header data. Drop it before
-				// activeExecutions.add() persists the execution row.
+				// Masking may have failed partway through, so the trigger-item stack can
+				// still hold raw header data. Clear it before the caller persists anything.
 				data.executionData.executionData.nodeExecutionStack = [];
 				establishContextError = error as ExecutionError & { node?: INode };
 			}

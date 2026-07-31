@@ -30,11 +30,9 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	}
 
 	/**
-	 * The node's cursor, creating the row from `initial` if it has none.
-	 *
-	 * Returns what the database holds, which is not always `initial`: two processes can
-	 * reach a node's first poll at once, and the loser must continue from the cursor the
-	 * winner stored rather than from its own starting value.
+	 * Returns the node's cursor, which is not always `initial`: two processes racing to
+	 * poll the same node for the first time both try to insert, and the loser continues
+	 * from the cursor the winner stored.
 	 */
 	async ensureCursor(
 		workflowId: string,
@@ -60,15 +58,11 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	}
 
 	/**
-	 * Move the cursor of an existing row.
-	 *
 	 * Call inside the transaction that also inserts the execution the poll produced, so
-	 * neither can commit without the other. Throws when no row matched: the row was read
-	 * before `poll()` ran, so its absence means the workflow or node went away mid-poll
-	 * and the surrounding transaction must not commit.
-	 *
-	 * The write is unconditional, so when two polls of one node overlap the last
-	 * transaction to commit sets the cursor.
+	 * neither commits without the other. Throws if no row matched: the row was read
+	 * before `poll()` ran, so a miss means the workflow or node was removed mid-poll, and
+	 * the transaction must not commit. The write is unconditional, so when two polls of
+	 * one node overlap, the last transaction to commit wins.
 	 */
 	async advanceCursor(
 		workflowId: string,
@@ -76,15 +70,14 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		cursor: PollerCursor,
 		ctx: OperationContext,
 	): Promise<void> {
-		// TypeORM's QueryDeepPartialEntity doesn't accept `Record<string, unknown>`, so the
-		// well-typed value is cast at this boundary.
+		// QueryDeepPartialEntity rejects `Record<string, unknown>`, so cast at this boundary.
 		const result = await this.managerFor(ctx).update(PollerState, { workflowId, nodeId }, {
 			cursor,
 			updatedAt: new Date(),
 		} as QueryDeepPartialEntity<PollerState>);
 
-		// `affected` is optional in TypeORM and not reported by every driver, so anything
-		// other than a definite single row is treated as a miss.
+		// `affected` is optional and not reported by every driver, so only an exact
+		// single-row match counts as success.
 		if (result.affected !== 1) {
 			throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
 				extra: { workflowId, nodeId },
