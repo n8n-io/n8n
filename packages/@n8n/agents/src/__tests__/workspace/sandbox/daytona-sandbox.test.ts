@@ -297,6 +297,73 @@ describe('DaytonaSandbox (creation strategies)', () => {
 			}),
 		);
 	});
+
+	it('reattaches to the existing sandbox when creation reports a name conflict', async () => {
+		const logger = makeLogger();
+		const errorReporter: ErrorReporter = { error: vi.fn() };
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queuedGetResults.push(makeMockSandbox('remote-existing'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			logger,
+			errorReporter,
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-existing');
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(logger.info).toHaveBeenCalledWith(
+			'Sandbox name already exists; reattached to existing sandbox',
+			expect.objectContaining({ sandboxName: 'sandbox-name', remoteSandboxId: 'remote-existing' }),
+		);
+	});
+
+	it('resumes a stopped sandbox when reattaching after a name conflict', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(new DaytonaError('Sandbox with name sandbox-name already exists'));
+		const stopped = makeMockSandbox('remote-stopped', 'stopped');
+		queuedGetResults.push(stopped);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+		});
+
+		await sandbox.start();
+
+		expect(stopped.start).toHaveBeenCalled();
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-stopped');
+	});
+
+	it('rethrows a name conflict without falling back to image when reattach finds nothing', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queueNotFound('gone by reattach');
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			image: 'node:20',
+		});
+
+		await expect(sandbox.start()).rejects.toThrow('already exists');
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('DaytonaSandbox (direct mode)', () => {

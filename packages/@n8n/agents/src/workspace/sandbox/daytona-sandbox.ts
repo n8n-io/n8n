@@ -106,6 +106,13 @@ function isSandboxGone(error: unknown): boolean {
 	return error instanceof DaytonaNotFoundError;
 }
 
+function isSandboxNameConflictError(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+	const { DaytonaError } = loadDaytona();
+	if (error instanceof DaytonaError && error.statusCode === 409) return true;
+	return /already exists/i.test(error.message);
+}
+
 export class DaytonaSandbox extends BaseSandbox {
 	private static readonly DEAD_STATES: ReadonlySet<SandboxState> = new Set([
 		SANDBOX_STATE_DESTROYED,
@@ -164,8 +171,28 @@ export class DaytonaSandbox extends BaseSandbox {
 			return;
 		}
 
-		this.sandbox = await this.createSandbox(client);
+		this.sandbox = await this.createSandboxOrReattach(client);
 		await this.detectWorkingDirectory();
+	}
+
+	/**
+	 * Create the remote sandbox, reattaching by name on a name conflict — the sandbox
+	 * exists even though the initial lookup missed it (transient lookup failure, or a
+	 * concurrent create from another main). Deterministic names make reattach safe.
+	 */
+	private async createSandboxOrReattach(client: Daytona): Promise<Sandbox> {
+		try {
+			return await this.createSandbox(client);
+		} catch (error) {
+			if (!isSandboxNameConflictError(error)) throw error;
+			const existing = await this.findExistingSandbox(client);
+			if (!existing) throw error;
+			this.options.logger?.info('Sandbox name already exists; reattached to existing sandbox', {
+				sandboxName: this.sandboxName,
+				remoteSandboxId: existing.id,
+			});
+			return existing;
+		}
 	}
 
 	override async stop(): Promise<void> {
@@ -414,6 +441,8 @@ export class DaytonaSandbox extends BaseSandbox {
 					? await client.create(candidate.params, { timeout: this.options.createTimeoutSeconds })
 					: await client.create(candidate.params);
 			} catch (error) {
+				// A name conflict is strategy-independent; let the caller reattach by name.
+				if (isSandboxNameConflictError(error)) throw error;
 				lastError = error;
 				this.reportCreateError(error, candidate.strategy);
 				if (
