@@ -90,7 +90,7 @@ export function throwOnSlackApiError(
 			'Slack error response: ' + JSON.stringify(responseData.error),
 			{
 				description:
-					'Wait before running this again, or ask for fewer results. Search is limited far more tightly than the rest of the Slack API - https://docs.slack.dev/reference/methods/assistant.search.context/#rate-limiting',
+					'Wait before running this again, or request less data at a time. Limits differ per operation - see the Slack Documentation - https://docs.slack.dev/apis/web-api/rate-limits',
 				level: 'warning',
 			},
 		);

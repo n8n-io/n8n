@@ -98,7 +98,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				slackApiRequest.call(mockExecuteFunctions, 'POST', '/assistant.search.context'),
 			).rejects.toMatchObject({
 				message: `Slack error response: "${error}"`,
-				description: expect.stringContaining('#rate-limiting'),
+				description: expect.stringContaining('web-api/rate-limits'),
 				level: 'warning',
 			});
 		});
