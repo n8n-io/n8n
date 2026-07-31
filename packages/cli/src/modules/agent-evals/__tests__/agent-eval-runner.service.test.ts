@@ -507,6 +507,33 @@ describe('AgentEvalRunnerService', () => {
 			);
 			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
+
+		it('keeps the tally when the final cancellation read throws', async () => {
+			seedFor([{ id: 'row-1', question: 'Q1' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			// Both per-case checks pass, then the post-pool re-read fails. Letting it
+			// escape would reach `failRun` and drop the counts entirely.
+			runRepository.isCancellationRequested
+				.mockResolvedValueOnce(false)
+				.mockResolvedValueOnce(false)
+				.mockRejectedValue(new Error('db down'));
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(runRepository.markAsError).toHaveBeenCalledWith(
+				'run-1',
+				'case_dispatch_failed',
+				expect.objectContaining({ errors: ['db down'] }),
+				expect.objectContaining({ total: 1, success: 1 }),
+			);
+			// Not the tally-less `run_failed` path.
+			expect(runRepository.markAsError).not.toHaveBeenCalledWith(
+				'run-1',
+				'run_failed',
+				expect.anything(),
+			);
+		});
 	});
 
 	describe('run deadline', () => {

@@ -31,6 +31,7 @@ import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-exec
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
+import { assertRequiredModulesActive } from './agent-evals-required-modules';
 
 const ROW_PAGE_SIZE = 100;
 // Per-run in-flight cap layered on the shared evaluation queue: keeps one run
@@ -110,16 +111,8 @@ export class AgentEvalRunnerService {
 			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
 		}
 
-		// With either module off its entities are never registered, so the run would
-		// die inside TypeORM instead of saying what is missing.
-		const inactive = (['agents', 'data-table'] as const).filter(
-			(name) => !this.moduleRegistry.isActive(name),
-		);
-		if (inactive.length > 0) {
-			throw new BadRequestError(
-				`Agent eval runs require these modules to be active: ${inactive.join(', ')}.`,
-			);
-		}
+		// Backstop for direct callers; the REST path asserts before its own lookups.
+		assertRequiredModulesActive(this.moduleRegistry);
 
 		// Authorize up front. `executeWithLlmMock` also checks `agent:execute`, but
 		// it returns an error result rather than throwing — without this a caller
@@ -319,18 +312,25 @@ export class AgentEvalRunnerService {
 				const reason: unknown = settlement.reason;
 				dispatchFailures.push(reason instanceof Error ? reason.message : String(reason));
 			}
+			// Re-read once more: a cancel that arrived after every case had already
+			// settled is never observed above, so honor it rather than reporting the
+			// run completed with the flag still set. Collected like the pool's throws,
+			// since letting this one escape would lose the tally it guards.
+			let wasCancelled = cancelObserved;
+			if (!wasCancelled) {
+				try {
+					wasCancelled = await this.runRepository.isCancellationRequested(runId);
+				} catch (error) {
+					dispatchFailures.push(error instanceof Error ? error.message : String(error));
+				}
+			}
+
 			if (dispatchFailures.length > 0) {
 				this.logger.error(
-					`[AgentEvalRunner] ${dispatchFailures.length} case(s) in run ${runId} failed outside execution`,
+					`[AgentEvalRunner] ${dispatchFailures.length} failure(s) outside case execution in run ${runId}`,
 					{ errors: dispatchFailures },
 				);
 			}
-
-			// Re-read once more: a cancel that arrived after every case had already
-			// settled is never observed above, so honor it rather than reporting the
-			// run completed with the flag still set.
-			const wasCancelled =
-				cancelObserved || (await this.runRepository.isCancellationRequested(runId));
 
 			const counts = await this.resultRepository.countByStatus(runId);
 			const metrics: IDataObject = { ...toSummaryCounts(counts), usage: { ...totalUsage } };
@@ -354,7 +354,7 @@ export class AgentEvalRunnerService {
 					runId,
 					'case_dispatch_failed',
 					{
-						message: `${dispatchFailures.length} case(s) failed outside execution.`,
+						message: `${dispatchFailures.length} failure(s) occurred outside case execution.`,
 						errors: dispatchFailures,
 					},
 					metrics,
