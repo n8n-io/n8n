@@ -12,6 +12,7 @@ import {
 } from '../../runtime/tools/delegate-sub-agent-tool';
 import type {
 	AgentDbMessage,
+	AgentExecutionCounter,
 	BuiltTool,
 	GenerateResult,
 	InterruptibleToolContext,
@@ -304,7 +305,9 @@ describe('delegate sub-agent routing', () => {
 			executionCounter,
 		});
 
-		const childCounter = runtimeGenerateOptions[0]?.executionCounter;
+		const childCounter = runtimeGenerateOptions[0]?.executionCounter as
+			| AgentExecutionCounter
+			| undefined;
 		childCounter?.incrementMessageCount();
 		childCounter?.incrementToolCallCount();
 		childCounter?.incrementTokenCount(42);
