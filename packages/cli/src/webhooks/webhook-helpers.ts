@@ -49,6 +49,7 @@ import {
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
+	resolveNativeParameterTemplate,
 	tryToParseUrl,
 	UnexpectedError,
 	WAIT_NODE_TYPE,
@@ -1114,18 +1115,20 @@ function evaluateResponseOptions(
 	//check if response mode should be set automatically, e.g. multipage form
 	const responseMode =
 		autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
-		(workflow.expression.getSimpleParameterValue(
+		(workflow.expression.getWebhookDescriptionValue(
 			workflowStartNode,
-			webhookData.webhookDescription.responseMode,
+			webhookData.webhookDescription,
+			'responseMode',
 			executionMode,
 			additionalKeys,
 			undefined,
 			'onReceived',
 		) as WebhookResponseMode);
 
-	const responseCode = workflow.expression.getSimpleParameterValue(
+	const responseCode = workflow.expression.getWebhookDescriptionValue(
 		workflowStartNode,
-		webhookData.webhookDescription.responseCode as string,
+		webhookData.webhookDescription,
+		'responseCode',
 		executionMode,
 		additionalKeys,
 		undefined,
@@ -1135,9 +1138,10 @@ function evaluateResponseOptions(
 	// This parameter is used for two different purposes:
 	// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
 	// 2. as well as WebhookResponseData config in all the other modes
-	const responseData = workflow.expression.getComplexParameterValue(
+	const responseData = workflow.expression.getComplexWebhookDescriptionValue(
 		workflowStartNode,
-		webhookData.webhookDescription.responseData,
+		webhookData.webhookDescription,
+		'responseData',
 		executionMode,
 		additionalKeys,
 		undefined,
@@ -1149,23 +1153,26 @@ function evaluateResponseOptions(
 	// We can unify the behavior in the next major release and get rid of this flag
 	const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
 
-	const responsePropertyName = workflow.expression.getSimpleParameterValue(
+	const responsePropertyName = workflow.expression.getWebhookDescriptionValue(
 		workflowStartNode,
-		webhookData.webhookDescription.responsePropertyName,
+		webhookData.webhookDescription,
+		'responsePropertyName',
 		executionMode,
 		additionalKeys,
 	) as string | undefined;
 
-	const responseContentType = workflow.expression.getSimpleParameterValue(
+	const responseContentType = workflow.expression.getWebhookDescriptionValue(
 		workflowStartNode,
-		webhookData.webhookDescription.responseContentType,
+		webhookData.webhookDescription,
+		'responseContentType',
 		executionMode,
 		additionalKeys,
 	) as string | undefined;
 
-	const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
+	const responseBinaryPropertyName = workflow.expression.getWebhookDescriptionValue(
 		workflowStartNode,
-		webhookData.webhookDescription.responseBinaryPropertyName,
+		webhookData.webhookDescription,
+		'responseBinaryPropertyName',
 		executionMode,
 		additionalKeys,
 		undefined,
@@ -1183,6 +1190,9 @@ function evaluateResponseOptions(
 	};
 }
 
+/** Only read for typeVersion 1 nodes, where the option still exists. */
+const BINARY_DATA_OPTION_TEMPLATE = '={{$parameter["options"]["binaryData"]}}';
+
 /**
  * Parses the request body (form, xml, json, form-urlencoded, etc.) if needed
  * into the `req.body` property.
@@ -1199,14 +1209,17 @@ async function parseRequestBody(
 	const nodeVersion = workflowStartNode.typeVersion;
 	if (nodeVersion === 1) {
 		// binaryData option is removed in versions higher than 1
-		binaryData = workflow.expression.getSimpleParameterValue(
-			workflowStartNode,
-			'={{$parameter["options"]["binaryData"]}}',
-			executionMode,
-			additionalKeys,
-			undefined,
-			false,
-		);
+		const native = resolveNativeParameterTemplate(workflowStartNode, BINARY_DATA_OPTION_TEMPLATE);
+		binaryData = native.resolved
+			? (native.value as string | number | boolean | unknown[] | undefined)
+			: workflow.expression.getSimpleParameterValue(
+					workflowStartNode,
+					BINARY_DATA_OPTION_TEMPLATE,
+					executionMode,
+					additionalKeys,
+					undefined,
+					false,
+				);
 	}
 
 	// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body

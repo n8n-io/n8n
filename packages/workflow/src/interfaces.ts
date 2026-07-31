@@ -2993,8 +2993,28 @@ export interface IWebhookData {
 
 export type WebhookType = 'default' | 'setup';
 
+/**
+ * Native equivalents of a webhook description's expression templates, keyed by
+ * field name. Backend-only: functions do not survive the JSON serialization
+ * that ships node descriptions to the editor, which keeps using the template
+ * strings. Provide one only for a field whose template cannot be resolved by
+ * `matchParameterPathTemplate` (i.e. is not a plain `$parameter` lookup), and
+ * derive both from the same function so there is nothing to keep in sync — see
+ * `defaultWebhookDescription` in the Webhook node for the pattern.
+ */
+export type WebhookDescriptionResolvers = Record<
+	string,
+	(parameters: INodeParameters) => NodeParameterValueType | undefined
+>;
+
 export interface IWebhookDescription {
-	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
+	[key: string]:
+		| IHttpRequestMethods
+		| WebhookResponseMode
+		| WebhookDescriptionResolvers
+		| boolean
+		| string
+		| undefined;
 	httpMethod: IHttpRequestMethods | string;
 	isFullPath?: boolean;
 	name: WebhookType;
@@ -3008,6 +3028,8 @@ export interface IWebhookDescription {
 	nodeType?: 'webhook' | 'form' | 'mcp';
 	ndvHideUrl?: string | boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: string | boolean; // If true the method will not be displayed in the editor
+	/** See {@link WebhookDescriptionResolvers}. Not serialized to the editor. */
+	resolve?: WebhookDescriptionResolvers;
 }
 
 export interface ProxyInput {

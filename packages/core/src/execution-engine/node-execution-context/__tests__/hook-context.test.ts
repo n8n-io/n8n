@@ -80,6 +80,9 @@ describe('HookContext', () => {
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		expression.getParameterValue.mockImplementation((value) => value);
 		expression.getSimpleParameterValue.mockImplementation((_, value) => value);
+		expression.getWebhookDescriptionValue.mockImplementation(
+			(_node, description, field) => description[field] as string,
+		);
 	});
 
 	describe('getActivationMode', () => {

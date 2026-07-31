@@ -128,7 +128,8 @@ describe('Webhook Helper Functions', () => {
 			nodeType.description.webhooks = [webhookDescription];
 			nodeTypes.getByNameAndVersion.mockReturnValueOnce(nodeType);
 
-			expression.getSimpleParameterValue.mockImplementation((_node, parameterValue) => {
+			expression.getWebhookDescriptionValue.mockImplementation((_node, description, field) => {
+				const parameterValue = description[field];
 				if (parameterValue === 'webhook') return webhookPath;
 				return parameterValue;
 			});
@@ -144,7 +145,7 @@ describe('Webhook Helper Functions', () => {
 			);
 
 			expect(result).toEqual(expected);
-			expect(expression.getSimpleParameterValue).toHaveBeenCalled();
+			expect(expression.getWebhookDescriptionValue).toHaveBeenCalled();
 		});
 	});
 
@@ -179,8 +180,8 @@ describe('Webhook Helper Functions', () => {
 			});
 			nodeType.description.webhooks = [webhookDescription];
 			nodeTypes.getByNameAndVersion.mockReturnValueOnce(nodeType);
-			expression.getSimpleParameterValue.mockImplementation((_node, parameterValue) =>
-				parameterValue === 'mcp' ? 'mcp' : parameterValue,
+			expression.getWebhookDescriptionValue.mockImplementation((_node, description, field) =>
+				description[field] === 'mcp' ? 'mcp' : (description[field] as string),
 			);
 
 			const result = getNodeWebhookUrl(

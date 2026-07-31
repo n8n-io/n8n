@@ -6,6 +6,7 @@ import type {
 	INodeExecutionData,
 	INodeParameterResourceLocator,
 	INodeParameters,
+	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeParameterValue,
 	NodeParameterValueType,
@@ -13,6 +14,7 @@ import type {
 } from './interfaces';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { createEmptyRunExecutionData } from './run-execution-data-factory';
+import { resolveWebhookDescriptionValue } from './webhook-description-resolution';
 import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
 
@@ -214,6 +216,64 @@ export class WorkflowExpression {
 			additionalKeys,
 			executeData,
 		) as boolean | number | string | undefined;
+	}
+
+	/**
+	 * Resolves a `webhookDescription` field, natively when possible.
+	 *
+	 * Description templates depend only on `$parameter`, so for a node with
+	 * static parameters they can be resolved without the expression engine —
+	 * which is what lets the webhook phase run without acquiring an isolate.
+	 * Anything not natively resolvable falls through to
+	 * `getSimpleParameterValue` unchanged.
+	 */
+	getWebhookDescriptionValue(
+		node: INode,
+		webhookDescription: IWebhookDescription,
+		field: string,
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
+		defaultValue?: boolean | number | string | unknown[],
+	): boolean | number | string | undefined | unknown[] {
+		const native = resolveWebhookDescriptionValue(node, webhookDescription, field);
+		if (native.resolved) {
+			return native.value as boolean | number | string | undefined | unknown[];
+		}
+
+		return this.getSimpleParameterValue(
+			node,
+			webhookDescription[field] as string | boolean | undefined,
+			mode,
+			additionalKeys,
+			executeData,
+			defaultValue,
+		);
+	}
+
+	/**
+	 * Complex-value variant of `getWebhookDescriptionValue` — see there.
+	 */
+	getComplexWebhookDescriptionValue(
+		node: INode,
+		webhookDescription: IWebhookDescription,
+		field: string,
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
+		defaultValue: NodeParameterValueType | undefined = undefined,
+	): NodeParameterValueType | undefined {
+		const native = resolveWebhookDescriptionValue(node, webhookDescription, field);
+		if (native.resolved) return native.value as NodeParameterValueType | undefined;
+
+		return this.getComplexParameterValue(
+			node,
+			webhookDescription[field] as NodeParameterValue,
+			mode,
+			additionalKeys,
+			executeData,
+			defaultValue,
+		);
 	}
 
 	/**

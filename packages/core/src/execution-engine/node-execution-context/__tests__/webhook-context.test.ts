@@ -198,6 +198,9 @@ describe('WebhookContext', () => {
 			});
 			nodeTypes.getByNameAndVersion.mockReturnValue(urlNodeType);
 			expression.getSimpleParameterValue.mockImplementation((_node, value) => value);
+			expression.getWebhookDescriptionValue.mockImplementation(
+				(_node, description, field) => description[field] as string,
+			);
 
 			const urlAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				formBaseUrl: 'http://localhost/prod-webhook',

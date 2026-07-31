@@ -61,4 +61,15 @@ export class ExpressionEngineConfig {
 	/** If set, scale the pool to 0 warm isolates after this many seconds with no acquire. */
 	@Env('N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT')
 	idleTimeout?: number;
+
+	/**
+	 * Whether a production webhook request may skip acquiring an isolate when
+	 * its trigger provably evaluates no expression — no expression in the node's
+	 * parameters, and a webhook description that resolves without the engine.
+	 *
+	 * Kill switch: set to `false` to always acquire, as before. Only relevant
+	 * when `engine === 'vm'`, since acquiring is a no-op otherwise.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_SKIP_WEBHOOK_ISOLATE')
+	skipWebhookIsolate: boolean = true;
 }

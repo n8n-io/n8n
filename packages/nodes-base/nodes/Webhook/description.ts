@@ -1,11 +1,19 @@
 import type {
+	INodeParameters,
 	INodeProperties,
 	INodePropertyOptions,
 	INodeTypeDescription,
 	IWebhookDescription,
 } from 'n8n-workflow';
 
-import { getResponseCode, getResponseData } from './utils';
+import { getResponseCode, getResponseData, type WebhookParameters } from './utils';
+
+/**
+ * The untyped parameter bag is this node's own parameters, so it has this
+ * node's shape. Used only by the `resolve` map below.
+ */
+const asWebhookParameters = (parameters: INodeParameters) =>
+	parameters as unknown as WebhookParameters;
 
 // The Webhook node's opt-in "n8n User Auth (OAuth2)" mode. Seeds the triggering
 // user's identity into the execution so the workflow can use that user's private
@@ -32,6 +40,15 @@ export const defaultWebhookDescription: IWebhookDescription = {
 	responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
 	responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
 	path: '={{$parameter["path"]}}',
+	// Native equivalents for the two fields above whose templates inline a
+	// function body (the templates exist in that form so the editor, which only
+	// receives the serialized description, can evaluate them too). Same
+	// functions, so there is no second source of truth; the backend uses these
+	// to resolve the fields without the expression engine.
+	resolve: {
+		responseCode: (parameters) => getResponseCode(asWebhookParameters(parameters)),
+		responseData: (parameters) => getResponseData(asWebhookParameters(parameters)),
+	},
 };
 
 export const credentialsProperty = (
