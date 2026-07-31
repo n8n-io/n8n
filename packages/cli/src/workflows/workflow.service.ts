@@ -1624,10 +1624,17 @@ export class WorkflowService {
 	}
 
 	/**
-	 * Replace all tag mappings on a workflow. Caller must have already verified
-	 * the user may update the workflow. Missing tag IDs surface as NotFoundError.
+	 * Replace all tag mappings on a workflow. Missing tag IDs surface as NotFoundError.
 	 */
-	async updateWorkflowTags(workflowId: string, tagIds: string[]) {
+	async updateWorkflowTags(user: User, workflowId: string, tagIds: string[]) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
+		]);
+
+		if (!workflow) {
+			throw new NotFoundError('Not Found');
+		}
+
 		try {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		} catch (error) {

@@ -371,20 +371,8 @@ const workflowHandlers: WorkflowHandlers = {
 				throw new BadRequestError('Workflow Tags Disabled');
 			}
 
-			const sharedWorkflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:update'],
-			);
-
-			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
-				// or workflow does not exist
-				throw new NotFoundError('Not Found');
-			}
-
 			try {
-				const tags = await Container.get(WorkflowService).updateWorkflowTags(id, newTags);
+				const tags = await Container.get(WorkflowService).updateWorkflowTags(req.user, id, newTags);
 				return res.json(tags);
 			} catch (error) {
 				return handleError(error);
