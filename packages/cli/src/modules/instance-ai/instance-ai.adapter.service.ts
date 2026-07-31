@@ -1174,6 +1174,12 @@ export class InstanceAiAdapterService {
 					},
 					userId: user.id,
 					pushRef,
+					// A verification run picks a production execution mode above so the
+					// trigger behaves realistically. Without this opt-out, a failed build
+					// attempt would dispatch the user's error workflow as if production
+					// had broken — the one side effect node simulation cannot pin, since
+					// it is dispatched by the execution lifecycle, not by a node.
+					...(options?.isVerificationRun ? { suppressErrorWorkflow: true } : {}),
 				};
 
 				const pinDataPlan = buildInstanceAiRunPinDataPlan({
@@ -1206,12 +1212,16 @@ export class InstanceAiAdapterService {
 
 				// In queue mode the worker rebuilds the run from persisted `execution.data`,
 				// where top-level `runData.source` doesn't survive. Persist it in
-				// `manualData` so worker-side statistics can classify IAI runs.
+				// `manualData` so worker-side statistics can classify IAI runs, and so
+				// the worker's save hook honours `suppressErrorWorkflow`. A run without
+				// `executionData` has no trigger node, which means `executionMode` is
+				// 'manual' and the error workflow is already skipped.
 				if (runData.executionData) {
 					runData.executionData.manualData = {
 						...runData.executionData.manualData,
 						userId: user.id,
 						source: runData.source,
+						suppressErrorWorkflow: runData.suppressErrorWorkflow,
 					};
 				}
 

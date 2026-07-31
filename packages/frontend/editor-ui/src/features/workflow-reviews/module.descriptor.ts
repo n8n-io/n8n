@@ -15,7 +15,7 @@ export const WorkflowReviewsModule: FrontendModuleDescription = {
 	icon: 'message-square-text',
 	routes: [
 		{
-			path: '/workflow-review-requests',
+			path: '/workflow-review-requests/:reviewRequestId?',
 			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
 			component: WorkflowReviewRequestsView,
 			beforeEnter() {

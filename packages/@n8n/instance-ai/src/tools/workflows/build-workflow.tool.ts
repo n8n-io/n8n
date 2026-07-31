@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 
 import { planVerificationSimulation } from './plan-verification-simulation';
+import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
@@ -743,6 +744,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await preserveExistingSetupValues(json, targetWorkflowId, context);
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
+				await preserveExistingNodePositions(json, targetWorkflowId, context);
 
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
 				const hasResolvedCredentials = Object.keys(mockResult.resolvedCredentialsByNode).length > 0;
