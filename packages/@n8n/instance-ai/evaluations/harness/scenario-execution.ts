@@ -54,13 +54,17 @@ export async function writeScenarioVerificationSnapshot(input: {
 	verifierAttempts: VerifierAttemptDebug[];
 	buildTrace?: BuildTrace;
 	logger: EvalLogger;
+	/** --output-dir; falls back to EVAL_DATA_DIR. Concurrent eval children share
+	 *  one checkout, so each needs its snapshots under its own directory. */
+	outputDir?: string;
 }): Promise<void> {
+	const snapshotDir = input.outputDir ?? EVAL_DATA_DIR;
 	const timestamp = makeArtifactTimestamp();
 	const fileName = `${slugifyArtifactSegment(input.testCaseName, 'workflow')}_${slugifyArtifactSegment(input.scenarioName, 'scenario')}_${timestamp}.json`;
-	const filePath = path.join(EVAL_DATA_DIR, fileName);
+	const filePath = path.join(snapshotDir, fileName);
 
 	try {
-		await mkdir(EVAL_DATA_DIR, { recursive: true });
+		await mkdir(snapshotDir, { recursive: true });
 		await writeFile(
 			filePath,
 			JSON.stringify(
@@ -90,6 +94,9 @@ export async function writeScenarioVerificationSnapshot(input: {
 
 /**
  * Execute a single scenario against a pre-built workflow and verify the result.
+ *
+ * `outputDir` (--output-dir) is where the verification snapshot lands; omitting
+ * it keeps the historical EVAL_DATA_DIR location.
  */
 export async function executeScenario(
 	client: N8nClient,
@@ -102,6 +109,7 @@ export async function executeScenario(
 	buildTrace?: BuildTrace,
 	pinAiRoots?: string[],
 	seedContext?: ScenarioSeedContext,
+	outputDir?: string,
 ): Promise<ExecutionScenarioResult> {
 	return await runScenario(
 		client,
@@ -114,6 +122,7 @@ export async function executeScenario(
 		buildTrace,
 		pinAiRoots,
 		seedContext,
+		outputDir,
 	);
 }
 
@@ -248,6 +257,7 @@ async function runScenario(
 	buildTrace?: BuildTrace,
 	pinAiRoots?: string[],
 	seedContext?: ScenarioSeedContext,
+	outputDir?: string,
 ): Promise<ExecutionScenarioResult> {
 	const pinNodes = pinAiRoots && pinAiRoots.length > 0 ? pinAiRoots : undefined;
 	const targetWorkflowId = selectScenarioWorkflowId(scenario, workflowId, workflowJsons, logger);
@@ -336,6 +346,7 @@ async function runScenario(
 		verifierAttempts: verification.attempts,
 		buildTrace,
 		logger,
+		outputDir,
 	});
 	// Empty verification = the verifier itself failed after all attempts. The run
 	// is excluded from scoring (mirrors incomplete build expectations) but stays

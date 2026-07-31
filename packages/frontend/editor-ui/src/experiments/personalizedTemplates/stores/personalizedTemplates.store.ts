@@ -1,5 +1,5 @@
 import { useStorage } from '@/app/composables/useStorage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS,
 	TEMPLATE_ONBOARDING_EXPERIMENT,

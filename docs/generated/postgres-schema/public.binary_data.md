@@ -18,7 +18,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_binary_data_sourceType | CHECK | CHECK ((("sourceType")::text = ANY ((ARRAY['execution'::character varying, 'chat_message_attachment'::character varying, 'agent_file'::character varying])::text[]))) |
+| CHK_binary_data_sourceType | CHECK | CHECK ((("sourceType")::text = ANY ((ARRAY['execution'::character varying, 'chat_message_attachment'::character varying, 'agent_file'::character varying, 'agent_chat_attachment'::character varying])::text[]))) |
 | PK_fc3691585b39408bb0551122af6 | PRIMARY KEY | PRIMARY KEY ("fileId") |
 | binary_data_createdAt_not_null | n | NOT NULL "createdAt" |
 | binary_data_data_not_null | n | NOT NULL data |

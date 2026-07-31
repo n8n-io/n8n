@@ -1,6 +1,6 @@
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 

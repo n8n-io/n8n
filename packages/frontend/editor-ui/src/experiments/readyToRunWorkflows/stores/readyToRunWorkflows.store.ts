@@ -1,4 +1,4 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { BATCH_11AUG_EXPERIMENT } from '@/app/constants';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
