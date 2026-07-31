@@ -62,6 +62,8 @@ beforeEach(() => {
 	outboxRepository.enqueueByWorkflowIds.mockResolvedValue();
 	outboxRepository.findInFlightByWorkflowId.mockResolvedValue(null);
 	outboxRepository.findVersionSkewedWorkflowIds.mockResolvedValue([]);
+	outboxRepository.findTriggerStatusDriftedWorkflowIds.mockResolvedValue([]);
+	outboxRepository.findUnreportedPublishedWorkflowIds.mockResolvedValue([]);
 	outboxConsumer.drainPending.mockResolvedValue(0);
 	setRegistered({});
 	activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([]);
@@ -189,6 +191,32 @@ describe('WorkflowPublicationReconciler', () => {
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-reconciliation',
 				expect.objectContaining({ result: 'success', versionSkewCount: 1, deficientCount: 0 }),
+			);
+		});
+
+		it('re-enqueues a workflow whose trigger-status rows lag the active version', async () => {
+			outboxRepository.findTriggerStatusDriftedWorkflowIds.mockResolvedValue(['wf-drift']);
+
+			await service.reconcile();
+
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-drift']);
+			expect(outboxConsumer.drainPending).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', statusDriftCount: 1, versionSkewCount: 0 }),
+			);
+		});
+
+		it('re-enqueues a published workflow that has no trigger-status rows', async () => {
+			outboxRepository.findUnreportedPublishedWorkflowIds.mockResolvedValue(['wf-unreported']);
+
+			await service.reconcile();
+
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-unreported']);
+			expect(outboxConsumer.drainPending).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', unreportedCount: 1, statusDriftCount: 0 }),
 			);
 		});
 
