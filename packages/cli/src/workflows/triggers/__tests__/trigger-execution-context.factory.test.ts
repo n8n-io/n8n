@@ -493,7 +493,8 @@ describe('TriggerExecutionContextFactory', () => {
 				expect(scheduleTriggerJobRegistrar.interceptsNode).toHaveBeenCalledWith(node);
 				expect(scheduleCollectionSession.createCollector).toHaveBeenCalledWith(workflow, node);
 
-				// registerCron calls must reach the collector, not the in-memory scheduler.
+				// The node's registerCron calls must reach the collector, not the
+				// in-memory scheduler.
 				const cron: Cron = { expression: '0 0 9 * * *' as CronExpression };
 				const onTick = vi.fn();
 				context.helpers.registerCron(cron, onTick);
@@ -1256,6 +1257,7 @@ describe('TriggerExecutionContextFactory', () => {
 				workflowSettings: { timezone: 'Europe/Berlin' },
 			});
 
+			// Built with the activation path's execution/activation modes ('trigger'/'update').
 			// Exactly five args: no per-occurrence deduplication key is threaded as a sixth.
 			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
 				workflowData,
