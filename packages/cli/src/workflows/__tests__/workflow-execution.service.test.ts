@@ -321,6 +321,36 @@ describe('WorkflowExecutionService', () => {
 			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
 			expect(responsePromise.reject).not.toHaveBeenCalled();
 		});
+
+		test('passes the fence through to the cursor commit', async () => {
+			const fence = { taskId: 'task-1', leaseEpoch: 3 };
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+				fence,
+			);
+
+			expect(pollCursorService.commitWithExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ fence }),
+			);
+		});
+
+		test('starts no run and leaves the response promise untouched when the commit is fenced out', async () => {
+			pollCursorService.commitWithExecution.mockResolvedValue(null);
+
+			const returned = await runPolledWorkflow();
+
+			expect(returned).toBeUndefined();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(responsePromise.reject).not.toHaveBeenCalled();
+			expect(responsePromise.resolve).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('executeManually()', () => {
