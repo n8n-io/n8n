@@ -38,46 +38,38 @@ describe('public-api-route-resolver', () => {
 	});
 
 	describe('resolveRouteArgs', () => {
+		const resolve = (controllerClass: Controller) => {
+			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
+				controllerClass,
+				'method',
+			);
+			return resolveRouteArgs(controllerClass, 'method', args);
+		};
+
 		it('passes a param arg through unchanged', () => {
 			class TestController {
 				method(@Param('id') _id: string) {}
 			}
-			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
-				TestController as Controller,
-				'method',
-			);
 
-			const resolved = resolveRouteArgs(TestController as Controller, 'method', args);
-
-			expect(resolved).toEqual([{ type: 'param', key: 'id' }]);
+			expect(resolve(TestController as Controller)).toEqual([{ type: 'param', key: 'id' }]);
 		});
 
 		it('resolves a body arg to its Zod DTO via design:paramtypes reflection', () => {
 			class TestController {
 				method(@Body _body: WidgetBodyDto) {}
 			}
-			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
-				TestController as Controller,
-				'method',
-			);
 
-			const resolved = resolveRouteArgs(TestController as Controller, 'method', args);
-
-			expect(resolved).toEqual([{ type: 'body', dto: WidgetBodyDto }]);
+			expect(resolve(TestController as Controller)).toEqual([{ type: 'body', dto: WidgetBodyDto }]);
 		});
 
 		it('resolves a query arg to its Zod DTO via design:paramtypes reflection', () => {
 			class TestController {
 				method(@Query _query: WidgetQueryDto) {}
 			}
-			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
-				TestController as Controller,
-				'method',
-			);
 
-			const resolved = resolveRouteArgs(TestController as Controller, 'method', args);
-
-			expect(resolved).toEqual([{ type: 'query', dto: WidgetQueryDto }]);
+			expect(resolve(TestController as Controller)).toEqual([
+				{ type: 'query', dto: WidgetQueryDto },
+			]);
 		});
 
 		it('resolves param/body/query args together, preserving parameter order', () => {
@@ -88,14 +80,8 @@ describe('public-api-route-resolver', () => {
 					@Query _query: WidgetQueryDto,
 				) {}
 			}
-			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
-				TestController as Controller,
-				'method',
-			);
 
-			const resolved = resolveRouteArgs(TestController as Controller, 'method', args);
-
-			expect(resolved).toEqual([
+			expect(resolve(TestController as Controller)).toEqual([
 				{ type: 'param', key: 'id' },
 				{ type: 'body', dto: WidgetBodyDto },
 				{ type: 'query', dto: WidgetQueryDto },
@@ -106,29 +92,19 @@ describe('public-api-route-resolver', () => {
 			class TestController {
 				method(_req: unknown, _res: unknown, @Query _query: WidgetQueryDto) {}
 			}
-			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
-				TestController as Controller,
-				'method',
-			);
 
-			const resolved = resolveRouteArgs(TestController as Controller, 'method', args);
-
-			expect(resolved).toEqual([{ type: 'query', dto: WidgetQueryDto }]);
+			expect(resolve(TestController as Controller)).toEqual([
+				{ type: 'query', dto: WidgetQueryDto },
+			]);
 		});
 
 		it('throws when an undecorated parameter follows a decorated one', () => {
 			class TestController {
 				method(@Param('id') _id: string, _undecorated: number, @Body _body: WidgetBodyDto) {}
 			}
-			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
-				TestController as Controller,
-				'method',
-			);
 
-			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
-				UnexpectedError,
-			);
-			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
+			expect(() => resolve(TestController as Controller)).toThrow(UnexpectedError);
+			expect(() => resolve(TestController as Controller)).toThrow(
 				'Public API route TestController.method has an undecorated parameter at index 1',
 			);
 		});
@@ -137,15 +113,9 @@ describe('public-api-route-resolver', () => {
 			class TestController {
 				method(@Query _query: WidgetQueryDto, _extra: number) {}
 			}
-			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
-				TestController as Controller,
-				'method',
-			);
 
-			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
-				UnexpectedError,
-			);
-			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
+			expect(() => resolve(TestController as Controller)).toThrow(UnexpectedError);
+			expect(() => resolve(TestController as Controller)).toThrow(
 				'Public API route TestController.method has an undecorated parameter at index 1',
 			);
 		});
@@ -154,15 +124,9 @@ describe('public-api-route-resolver', () => {
 			class TestController {
 				method(@Body _body: object) {}
 			}
-			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
-				TestController as Controller,
-				'method',
-			);
 
-			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
-				UnexpectedError,
-			);
-			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
+			expect(() => resolve(TestController as Controller)).toThrow(UnexpectedError);
+			expect(() => resolve(TestController as Controller)).toThrow(
 				'Public API route TestController.method is missing a Zod DTO for @body',
 			);
 		});
@@ -171,12 +135,8 @@ describe('public-api-route-resolver', () => {
 			class TestController {
 				method(@Query _query: string) {}
 			}
-			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
-				TestController as Controller,
-				'method',
-			);
 
-			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
+			expect(() => resolve(TestController as Controller)).toThrow(
 				'Public API route TestController.method is missing a Zod DTO for @query',
 			);
 		});

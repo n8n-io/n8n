@@ -45,19 +45,6 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.tags).toEqual(['Beta', 'Widgets']);
 	});
 
-	it('omits tags when @ApiTags is absent', () => {
-		class WidgetsPublicController {
-			@Get('/')
-			@ApiResponse(200)
-			method() {}
-		}
-		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-		const [operation] = getDecoratorGeneratedOperations();
-
-		expect(operation.config.tags).toBeUndefined();
-	});
-
 	it('includes the summary when @ApiSummary is present', () => {
 		class WidgetsPublicController {
 			@Get('/')
@@ -70,19 +57,6 @@ describe('getDecoratorGeneratedOperations', () => {
 		const [operation] = getDecoratorGeneratedOperations();
 
 		expect(operation.config.summary).toBe('List widgets');
-	});
-
-	it('omits summary when @ApiSummary is absent', () => {
-		class WidgetsPublicController {
-			@Get('/')
-			@ApiResponse(200)
-			method() {}
-		}
-		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-		const [operation] = getDecoratorGeneratedOperations();
-
-		expect(operation.config.summary).toBeUndefined();
 	});
 
 	it('includes the description when @ApiDescription is present', () => {
@@ -99,19 +73,6 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.description).toBe('Returns a list of widgets.');
 	});
 
-	it('omits description when @ApiDescription is absent', () => {
-		class WidgetsPublicController {
-			@Get('/')
-			@ApiResponse(200)
-			method() {}
-		}
-		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-		const [operation] = getDecoratorGeneratedOperations();
-
-		expect(operation.config.description).toBeUndefined();
-	});
-
 	it('documents the required scope when @ApiKeyScope is present', () => {
 		class WidgetsPublicController {
 			@Get('/')
@@ -124,19 +85,6 @@ describe('getDecoratorGeneratedOperations', () => {
 		const [operation] = getDecoratorGeneratedOperations();
 
 		expect(operation.config['x-required-scope']).toBe('workflow:read');
-	});
-
-	it('omits the required scope when @ApiKeyScope is absent', () => {
-		class WidgetsPublicController {
-			@Get('/')
-			@ApiResponse(200)
-			method() {}
-		}
-		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-		const [operation] = getDecoratorGeneratedOperations();
-
-		expect(operation.config['x-required-scope']).toBeUndefined();
 	});
 
 	it('includes shared pagination parameters when the query DTO declares them', () => {
@@ -152,19 +100,6 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.parameters).toEqual([
 			{ $ref: '../../../../shared/spec/parameters/limit.yml' },
 		]);
-	});
-
-	it('omits parameters when the query DTO declares no shared pagination fields', () => {
-		class WidgetsPublicController {
-			@Get('/')
-			@ApiResponse(200)
-			method() {}
-		}
-		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-		const [operation] = getDecoratorGeneratedOperations();
-
-		expect(operation.config.parameters).toBeUndefined();
 	});
 
 	it('includes request params, query, and body together when a route declares all three', () => {
@@ -185,7 +120,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		});
 	});
 
-	it('omits request entirely when no params, query, or body are declared', () => {
+	it('bare route: omits every optional field, but always adds success/auth responses and eov routing headers', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			@ApiResponse(200)
@@ -195,19 +130,12 @@ describe('getDecoratorGeneratedOperations', () => {
 
 		const [operation] = getDecoratorGeneratedOperations();
 
+		expect(operation.config.tags).toBeUndefined();
+		expect(operation.config.summary).toBeUndefined();
+		expect(operation.config.description).toBeUndefined();
+		expect(operation.config['x-required-scope']).toBeUndefined();
+		expect(operation.config.parameters).toBeUndefined();
 		expect(operation.config.request).toBeUndefined();
-	});
-
-	it('base case: always adds the success/auth responses and eov routing headers', () => {
-		class WidgetsPublicController {
-			@Get('/')
-			@ApiResponse(200)
-			method() {}
-		}
-		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-		const [operation] = getDecoratorGeneratedOperations();
-
 		expect(operation.config.responses[200]).toEqual({ description: 'Operation successful.' });
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',

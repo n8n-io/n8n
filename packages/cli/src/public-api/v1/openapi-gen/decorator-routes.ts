@@ -17,21 +17,14 @@ import {
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 
-/**
- * Query fields backed by shared, hand-written parameter files instead of being generated from the
- * DTO. Eventually we would want these to be generated via DTOs as well.
- */
+// Query fields backed by shared hand-written parameter files instead of being generated
 const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
 	limit: { $ref: '../../../../shared/spec/parameters/limit.yml' },
 	cursor: { $ref: '../../../../shared/spec/parameters/cursor.yml' },
 	offset: { $ref: '../../../../shared/spec/parameters/offset.yml' },
 };
 
-/**
- * Status codes an `@ApiErrorResponse` can declare, each backed by the same shared, hand-written
- * response file the eov-routed handlers already `$ref`. Extending this to a new status code is
- * just adding its shared response file and a line here.
- */
+// Status codes an `@ApiErrorResponse` can declare backed by hand-written schemas
 const ERROR_RESPONSE_REFS: Record<number, { $ref: string }> = {
 	400: { $ref: '../../../../shared/spec/responses/badRequest.yml' },
 	401: { $ref: '../../../../shared/spec/responses/unauthorized.yml' },
@@ -40,11 +33,6 @@ const ERROR_RESPONSE_REFS: Record<number, { $ref: string }> = {
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
 };
-
-/** First non-empty path segment, used as the output directory. */
-function resourceSegment(path: string): string {
-	return path.split('/').find(Boolean) ?? 'root';
-}
 
 /** A `ResponseDtoClass` narrowed to the two fields the generator actually reads off it. */
 export type NamedResponseDto = ResponseDtoClass & { schema: z.ZodTypeAny; name: string };
@@ -66,9 +54,7 @@ const inlineResolver: SchemaResolver = (_dto, schema) => schema;
 
 /**
  * Response DTOs referenced by more than one decorator route are hoisted into a shared, `$ref`d component
- * instead of inlining at each use site. A single-use schema stays inline. Keyed by the DTO *class
- * reference* itself (not its name) - two unrelated DTOs that happen to share a class name are never
- * conflated, only reusing the exact same class counts as "shared".
+ * instead of inlining at each use site. A single-use schema stays inline.
  */
 export function getSharedResponseSchemas(): Map<NamedResponseDto, z.ZodTypeAny> {
 	const seen = new Set<NamedResponseDto>();
@@ -230,7 +216,7 @@ export function getDecoratorGeneratedOperations(
 		const { parameters, requestQuery } = buildQueryConfig(route);
 		const requestParams = buildPathParams(route);
 		const requestBody = buildRequestBody(route);
-		const resource = resourceSegment(route.path);
+		const resource = route.path.split('/').find(Boolean) ?? 'root';
 
 		const config: RouteConfig = {
 			method: route.method,
