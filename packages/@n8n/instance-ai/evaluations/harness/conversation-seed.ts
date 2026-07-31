@@ -201,6 +201,8 @@ export const SEED_WORKFLOW_NAME_RE = /^(.*) \[seed [0-9a-f]{8}\]$/;
 /** n8n's workflow-name column bound. */
 const MAX_WORKFLOW_NAME = 128;
 
+const escapeForRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /** Rewrite every string inside a parsed value, leaving structure untouched. */
 function mapStrings(value: unknown, fn: (s: string) => string): unknown {
 	if (typeof value === 'string') return fn(value);
@@ -259,15 +261,36 @@ export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 	}
 
 	// Uniquify names after the id pass, so the rename can't perturb id matching.
-	let messages = remapped.messages;
 	const workflows = remapped.workflows.map((workflow) => {
 		const suffix = seedNameSuffix(randomUUID().slice(0, 8));
-		const name = `${workflow.name.slice(0, MAX_WORKFLOW_NAME - suffix.length)}${suffix}`;
-		// Any mention in the seeded history follows the workflow, so the agent's own
-		// record of what it built still matches what is on the instance.
-		messages = mapStrings(messages, (s) => s.replaceAll(workflow.name, name)) as SeedMessage[];
-		return { ...workflow, name };
+		return {
+			...workflow,
+			name: `${workflow.name.slice(0, MAX_WORKFLOW_NAME - suffix.length)}${suffix}`,
+		};
 	});
+
+	// Any mention in the seeded history follows the workflow, so the agent's own
+	// record of what it built still matches what is on the instance.
+	//
+	// ONE pass over each string, longest original name first. Renaming per
+	// workflow instead would feed each rewrite into the next: with "Order" and
+	// "Order Sync", renaming "Order" first turns every "Order Sync" mention into
+	// "Order [seed …] Sync", which no later pass matches — leaving the history
+	// pointing at a name that was never restored. A replacement produced by this
+	// pass is never rescanned, so the two can't interfere.
+	const renames = new Map(
+		remapped.workflows.map((workflow, index) => [workflow.name, workflows[index].name]),
+	);
+	const mentionRe = new RegExp(
+		[...renames.keys()]
+			.sort((a, b) => b.length - a.length)
+			.map(escapeForRegExp)
+			.join('|'),
+		'g',
+	);
+	const messages = mapStrings(remapped.messages, (s) =>
+		s.replace(mentionRe, (match) => renames.get(match) ?? match),
+	) as SeedMessage[];
 
 	// Data table ids are remapped server-side on restore (id is generated, not
 	// pinnable), so carry them through untouched here.

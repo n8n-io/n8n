@@ -648,13 +648,24 @@ async function evictLeftoverSeedWorkflows(
 			const base = SEED_WORKFLOW_NAME_RE.exec(workflow.name)?.[1];
 			return base !== undefined && baseNames.has(base);
 		});
+		// Per-workflow, because best-effort has to mean each one: letting a single
+		// failed delete abort the loop leaves the rest of the leftovers selectable
+		// by name, which is the collision this eviction exists to prevent.
+		let evicted = 0;
 		for (const workflow of stale) {
-			// deleteWorkflow archives first — a non-archived workflow can't be deleted.
-			await client.deleteWorkflow(workflow.id);
+			try {
+				// deleteWorkflow archives first — a non-archived workflow can't be deleted.
+				await client.deleteWorkflow(workflow.id);
+				evicted++;
+			} catch (error: unknown) {
+				logger.info(
+					`  Could not evict leftover seed workflow "${workflow.name}" (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+				);
+			}
 		}
-		if (stale.length > 0) {
+		if (evicted > 0) {
 			logger.info(
-				`  Evicted ${String(stale.length)} leftover seed workflow(s) before restore${laneTag ?? ''}`,
+				`  Evicted ${String(evicted)} leftover seed workflow(s) before restore${laneTag ?? ''}`,
 			);
 		}
 	} catch (error: unknown) {

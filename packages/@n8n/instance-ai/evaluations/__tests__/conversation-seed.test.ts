@@ -275,6 +275,37 @@ describe('remapSeedWorkflowIds', () => {
 		expect(() => remapSeedWorkflowIds(seed)).toThrow(/two workflows named/);
 	});
 
+	// Renaming one workflow at a time would feed each rewrite into the next pass:
+	// "Order" is rewritten first, so every "Order Sync" mention becomes
+	// "Order [seed …] Sync" and no later pass matches it — the history would point
+	// at a name that was never restored.
+	it('renames overlapping workflow names without corrupting either mention', () => {
+		const seed = makeSeed();
+		seed.workflows[0].name = 'Order';
+		seed.workflows.push({
+			id: 'YyYyYy1234567890',
+			name: 'Order Sync',
+			nodes: [],
+			connections: {},
+		});
+		seed.messages.push({
+			id: 'm-names',
+			type: 'llm',
+			role: 'user',
+			createdAt: '2026-06-29T09:00:03.000Z',
+			content: [{ type: 'text', text: 'Order Sync feeds Order downstream' }],
+		});
+
+		const remapped = remapSeedWorkflowIds(seed);
+		const [orderName, syncName] = remapped.workflows.map((w) => w.name);
+		const mention = remapped.messages.find((m) => m.id === 'm-names');
+
+		expect(orderName).toMatch(/^Order \[seed [0-9a-f]{8}\]$/);
+		expect(syncName).toMatch(/^Order Sync \[seed [0-9a-f]{8}\]$/);
+		// Each mention resolves to exactly one restored name.
+		expect(JSON.stringify(mention)).toContain(`${syncName} feeds ${orderName} downstream`);
+	});
+
 	it('generates a distinct NAME per call, so two iterations never share one', () => {
 		expect(remapSeedWorkflowIds(makeSeed()).workflows[0].name).not.toBe(
 			remapSeedWorkflowIds(makeSeed()).workflows[0].name,

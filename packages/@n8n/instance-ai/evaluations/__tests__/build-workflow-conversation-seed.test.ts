@@ -195,6 +195,38 @@ describe('buildWorkflow with an inline seed', () => {
 		expect(restoreThread).toHaveBeenCalledTimes(1);
 	});
 
+	// One undeletable leftover must not shield the rest: whatever survives stays
+	// selectable by name, which is the collision eviction exists to prevent.
+	it('keeps evicting the remaining leftovers after one delete fails', async () => {
+		const deleteWorkflow = vi.fn(
+			async (id: string) =>
+				await (id === 'leftover-1'
+					? Promise.reject(new Error('archive failed'))
+					: Promise.resolve()),
+		);
+		const listWorkflows = vi.fn().mockResolvedValue([
+			{ id: 'leftover-1', name: 'Batch loop [seed aaaaaaaa]' },
+			{ id: 'leftover-2', name: 'Batch loop [seed bbbbbbbb]' },
+			{ id: 'leftover-3', name: 'Batch loop [seed cccccccc]' },
+		]);
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+
+		const build = await buildWorkflow({
+			client: makeClient(restoreThread, { listWorkflows, deleteWorkflow }),
+			...baseConfig,
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		expect(deleteWorkflow.mock.calls.map((call) => String(call[0]))).toEqual([
+			'leftover-1',
+			'leftover-2',
+			'leftover-3',
+		]);
+		expect(build.success).toBe(true);
+	});
+
 	it('does not restore anything for a case with no seed', async () => {
 		const restoreThread = vi
 			.fn()
