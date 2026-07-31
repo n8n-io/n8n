@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch, onMounted, nextTick } from 'vue';
 import { MAX_WORKFLOW_NAME_LENGTH } from '@/app/constants';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import Modal from '@/app/components/Modal.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';

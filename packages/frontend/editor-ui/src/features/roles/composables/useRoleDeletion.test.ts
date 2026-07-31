@@ -12,7 +12,7 @@ const mockConfirm = vi.fn();
 const mockTrack = vi.fn();
 const mockPush = vi.fn();
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
 }));
 

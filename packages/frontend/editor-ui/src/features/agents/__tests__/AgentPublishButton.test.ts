@@ -42,7 +42,7 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return { useToast: () => ({ showMessage, showError }) };
@@ -250,7 +250,7 @@ describe('AgentPublishButton', () => {
 	it('treats publish as successful when telemetry fingerprinting throws', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
 		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
-		const { useToast } = await import('@/app/composables/useToast');
+		const { useToast } = await import('@n8n/composables/useToast');
 		const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
 		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
 		vi.mocked(buildAgentConfigFingerprint).mockRejectedValueOnce(
