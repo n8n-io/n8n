@@ -184,6 +184,7 @@ export class JobProcessor {
 				pushRef,
 				userId: execution.data.manualData?.userId,
 				source: execution.data.manualData?.source,
+				suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
 			},
 			executionId,
 		);

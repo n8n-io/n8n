@@ -3332,6 +3332,59 @@ describe('createExecutionAdapter run()', () => {
 		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
 	});
 
+	it('opts a verification run out of the error workflow, on the main process and on a worker', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			settings: { errorWorkflow: 'error-wf-1' },
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+		});
+
+		await adapter.run('wf-1', undefined, { isVerificationRun: true });
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		// A trigger-mode run is a production execution as far as the lifecycle
+		// hooks are concerned, so the opt-out is what keeps a failed build attempt
+		// from paging the user's error workflow.
+		expect(runData.executionMode).toBe('trigger');
+		expect(runData.suppressErrorWorkflow).toBe(true);
+		// Queue mode rebuilds the run from persisted execution data.
+		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBe(true);
+	});
+
+	it('leaves the error workflow enabled for a run the user asked for', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			settings: { errorWorkflow: 'error-wf-1' },
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+		});
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.suppressErrorWorkflow).toBeUndefined();
+		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBeUndefined();
+		// The user's setting is never stripped from the run itself.
+		expect(runData.workflowData.settings?.errorWorkflow).toBe('error-wf-1');
+	});
+
 	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
 		const original = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
