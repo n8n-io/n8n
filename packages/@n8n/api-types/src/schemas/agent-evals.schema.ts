@@ -75,6 +75,8 @@ export type AgentEvalVote = z.infer<typeof agentEvalVoteSchema>;
 // which `Z.class` (flat shape only) cannot express.
 // ---------------------------------------------------------------------------
 
+// `agentId` is also a path param on the create route; the API rejects a mismatch
+// rather than picking a winner.
 export const createAgentEvalDatasetSchema = z
 	.object({
 		name: z.string().min(1).max(128),
@@ -96,8 +98,8 @@ export const updateAgentEvalDatasetSchema = z.object(updateAgentEvalDatasetShape
 export type UpdateAgentEvalDatasetPayload = z.infer<typeof updateAgentEvalDatasetSchema>;
 export class UpdateAgentEvalDatasetDto extends Z.class(updateAgentEvalDatasetShape) {}
 
-// Kicks off a run of the path dataset. `agentVersionId` optionally pins a
-// published version of the dataset's own agent; omitted runs the current one.
+// Kicks off a run of the path dataset. `agentVersionId` would pin a published
+// version, but the API rejects it until the runner can execute a snapshot.
 const createAgentEvalRunShape = {
 	agentVersionId: z.string().min(1).optional(),
 };
@@ -192,6 +194,14 @@ export type AgentEvalRatingRecord = {
 // A run with its per-case results — the "open a run" view.
 export type AgentEvalRunDetail = AgentEvalRunRecord & {
 	results: AgentEvalResultRecord[];
+};
+
+// The progress-polling shape: status plus tallies, no per-case rows, so polling
+// stays cheap. `pending` folds `new` + `running` — watchers only need "not settled".
+export type AgentEvalRunSummary = {
+	runId: string;
+	status: AgentEvalRunStatus;
+	counts: { total: number; success: number; error: number; cancelled: number; pending: number };
 };
 
 // ---------------------------------------------------------------------------
