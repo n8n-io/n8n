@@ -1,0 +1,1002 @@
+{
+ "agent-with-notion-mcp": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PFPPP",
+    "iter5_28": "FPFFP",
+    "categories": {
+     "builder_issue": 4
+    },
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "always_pass",
+  "expectation_texts": []
+ },
+ "binary-multipart-upload": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "flaky",
+    "pattern7": "FPFFPFF",
+    "pass7": "2/7",
+    "iter5_27": "FFFFF",
+    "iter5_28": "FPFFF",
+    "categories": {
+     "builder_issue": 14
+    },
+    "diagnosis": "The Upload File to Slack node crashes at iteration 0 with 'Provided parameter is not a string or binary data object.' The root cause is the `binaryPropertyName` field, which is configured as `={{ $bin",
+    "n_diagnoses": 5
+   },
+   {
+    "kind": "scenario",
+    "name": "audio-attachment",
+    "class": "flaky",
+    "pattern7": "FPFFPFF",
+    "pass7": "2/7",
+    "iter5_27": "FFFFF",
+    "iter5_28": "FPFFF",
+    "categories": {
+     "builder_issue": 14
+    },
+    "diagnosis": "The Upload File to Slack node crashes immediately with \"Provided parameter is not a string or binary data object.\" The root cause is the `binaryPropertyName` config: it is set to `={{ $binary.image }}",
+    "n_diagnoses": 5
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": []
+ },
+ "binary-pdf-download-extract": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "scenario",
+    "name": "large-pdf",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "always_pass",
+  "expectation_texts": []
+ },
+ "binary-telegram-voice-transcribe": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "always_fail",
+    "pattern7": "FFFFFFF",
+    "pass7": "0/7",
+    "iter5_27": "FFFFF",
+    "iter5_28": "FFFFF",
+    "categories": {
+     "builder_issue": 17
+    },
+    "diagnosis": "The Transcribe Audio node failed with a 400 error because it sent a request with no URL. The mock error explicitly states: 'the node sent an HTTP request without a URL (configured resource/operation: ",
+    "n_diagnoses": 7
+   }
+  ],
+  "case_class": "always_fail",
+  "expectation_texts": []
+ },
+ "contact-form-automation": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "flaky",
+    "pattern7": "PPPPPPF",
+    "pass7": "6/7",
+    "iter5_27": "FFFPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "builder_issue": 4
+    },
+    "diagnosis": "The Google Sheets node failed with 'Sheet with ID Contact Submissions not found'. The node's sheetName resource locator is set to `mode: \"list\"` with `value: \"Contact Submissions\"` \u2014 a human-readable ",
+    "n_diagnoses": 1
+   },
+   {
+    "kind": "scenario",
+    "name": "missing-fields",
+    "class": "flaky",
+    "pattern7": "PPPPPPF",
+    "pass7": "6/7",
+    "iter5_27": "FFFPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "builder_issue": 4
+    },
+    "diagnosis": "The workflow correctly handles the missing name field via the `$json.body?.name ?? $json.name ?? \"there\"` fallback in Normalize Submission, producing `name: \"there\"`. The Gmail node successfully sent ",
+    "n_diagnoses": 1
+   },
+   {
+    "kind": "scenario",
+    "name": "partial-action-failure",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "scenario",
+    "name": "empty-message",
+    "class": "flaky",
+    "pattern7": "PPPPPPF",
+    "pass7": "6/7",
+    "iter5_27": "FFFPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "builder_issue": 4
+    },
+    "diagnosis": "The Google Sheets log node failed with 'Sheet with ID Contact Submissions not found'. The Send Auto-Reply succeeded (mock returned SENT label) and Notify Team on Telegram succeeded (ok: true, message ",
+    "n_diagnoses": 1
+   },
+   {
+    "kind": "scenario",
+    "name": "invalid-email",
+    "class": "flaky",
+    "pattern7": "PPPPPPF",
+    "pass7": "6/7",
+    "iter5_27": "FFFPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "builder_issue": 4
+    },
+    "diagnosis": "Google Sheets logging failed, so the criterion that 'Telegram and Google Sheets should still work' is not fully met. Telegram succeeded (ok: true). However, the Log to Google Sheets node errored with ",
+    "n_diagnoses": 1
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": []
+ },
+ "cross-team-linear-report": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "flaky",
+    "pattern7": "FPPPFPP",
+    "pass7": "5/7",
+    "iter5_27": "FFPPP",
+    "iter5_28": "FPFPF",
+    "categories": {
+     "mock_issue": 7
+    },
+    "diagnosis": "The mock returned all 8 issues including ISS-007 (July 7, ~3 weeks before the July 28 trigger) and ISS-008 (July 5, ~3.5 weeks before), even though the GraphQL request sent a `since` variable of `2026",
+    "n_diagnoses": 2
+   },
+   {
+    "kind": "scenario",
+    "name": "multi-team-creator",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "scenario",
+    "name": "no-cross-team-issues",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "scenario",
+    "name": "unknown-creator",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": []
+ },
+ "daily-gmail-action-digest": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "emails-with-action-items",
+    "class": "flaky",
+    "pattern7": "PFPPPPP",
+    "pass7": "6/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "builder_issue": 1
+    },
+    "diagnosis": "The workflow executes without errors and reaches the final Send Daily Digest node, but the digest email contains zero action items \u2014 subject 'Daily Digest - 0 action item(s)' and body 'No action items",
+    "n_diagnoses": 1
+   },
+   {
+    "kind": "scenario",
+    "name": "no-recent-emails",
+    "class": "flaky",
+    "pattern7": "FFFFFFP",
+    "pass7": "1/7",
+    "iter5_27": "FFFFP",
+    "iter5_28": "FFFFF",
+    "categories": {
+     "builder_issue": 15
+    },
+    "diagnosis": "When Gmail returns 0 emails, the Get Last 24h Emails node outputs 0 items. With 0 items flowing into Compact Email Fields, every downstream node \u2014 Compact Email Fields, Combine Emails, Extract & Prior",
+    "n_diagnoses": 6
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": []
+ },
+ "daily-slack-summary": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "flaky",
+    "pattern7": "PPFPFPP",
+    "pass7": "5/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "builder_issue": 1,
+     "mock_issue": 1
+    },
+    "diagnosis": "The workflow executed without errors and reached the final posting node, but the posted message body is `[object Object]` instead of the actual digest text. In the Format Digest Message node, the expr",
+    "n_diagnoses": 2
+   },
+   {
+    "kind": "scenario",
+    "name": "empty-channel",
+    "class": "flaky",
+    "pattern7": "PPFPPPP",
+    "pass7": "6/7",
+    "iter5_27": "PPFPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "builder_issue": 2
+    },
+    "diagnosis": "The workflow completes end-to-end without crashing, the merge step correctly handles the empty #product channel (0 items, 5 total), and Claude produced a proper summary covering team offsite planning ",
+    "n_diagnoses": 1
+   },
+   {
+    "kind": "scenario",
+    "name": "high-volume",
+    "class": "flaky",
+    "pattern7": "PPFPPPP",
+    "pass7": "6/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "builder_issue": 1
+    },
+    "diagnosis": "The digest posted to #daily-digest contains `[object Object]` instead of the actual summary text. The Format Digest Message Set node uses the expression `$json.text || $json.content || $json.output`. ",
+    "n_diagnoses": 1
+   },
+   {
+    "kind": "scenario",
+    "name": "channel-not-found",
+    "class": "always_fail",
+    "pattern7": "FFFFFFF",
+    "pass7": "0/7",
+    "iter5_27": "FPFFF",
+    "iter5_28": "FFFPF",
+    "categories": {
+     "builder_issue": 15
+    },
+    "diagnosis": "The workflow crashed entirely when Read #product returned `{\"ok\": false, \"error\": \"channel_not_found\"}`. The error propagated up and halted execution \u2014 Combine Channel Messages, Tag #product, Collect ",
+    "n_diagnoses": 7
+   },
+   {
+    "kind": "scenario",
+    "name": "insufficient-permissions",
+    "class": "always_fail",
+    "pattern7": "FFFFFFF",
+    "pass7": "0/7",
+    "iter5_27": "FPFFF",
+    "iter5_28": "FFFPF",
+    "categories": {
+     "builder_issue": 15
+    },
+    "diagnosis": "The workflow crashed entirely when Read #product returned `not_in_channel`. No error handling is present \u2014 the Read #product node has no 'Continue on Error' setting, there is no error branch, and no t",
+    "n_diagnoses": 7
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": []
+ },
+ "datatable-exact-spec-schema": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "The agent created the pd_tq_clusters data table with all ten specified columns:",
+    "class": "flaky",
+    "pattern7": "PPPPPFP",
+    "pass7": "6/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "The agent created the pd_periods data table with all six specified columns: peri",
+    "class": "flaky",
+    "pattern7": "PPPPPFP",
+    "pass7": "6/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "The agent gave the count columns (thread_count, rank, consecutive_weeks, total_c",
+    "class": "flaky",
+    "pattern7": "PPPPPFP",
+    "pass7": "6/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "The agent did not drop, merge, rename, or simplify any of the specified columns",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": [
+   "The agent created the pd_periods data table with all six specified columns: peri",
+   "The agent created the pd_tq_clusters data table with all ten specified columns:",
+   "The agent did not drop, merge, rename, or simplify any of the specified columns",
+   "The agent gave the count columns (thread_count, rank, consecutive_weeks, total_c"
+  ]
+ },
+ "form-to-hubspot": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "flaky",
+    "pattern7": "FPFFPFP",
+    "pass7": "3/7",
+    "iter5_27": "PFFFF",
+    "iter5_28": "FFFPF",
+    "categories": {
+     "builder_issue": 12
+    },
+    "diagnosis": "The workflow executed without errors and the confirmation email was sent to sarah@techstartup.io mentioning TechStartup Inc. However, the HubSpot contact does not satisfy the required field split: the",
+    "n_diagnoses": 4
+   },
+   {
+    "kind": "scenario",
+    "name": "single-name",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": []
+ },
+ "github-notion-sync": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "flaky",
+    "pattern7": "PPPFPPP",
+    "pass7": "6/7",
+    "iter5_27": "FPFPP",
+    "iter5_28": "FPPFP",
+    "categories": {
+     "builder_issue": 5
+    },
+    "diagnosis": "The Create Notion Bug Page node threw 'Title is required to create a database page' at iteration 0 and produced no output. All 3 issues arrived correctly from the Exclude Pull Requests filter (title f",
+    "n_diagnoses": 1
+   },
+   {
+    "kind": "scenario",
+    "name": "no-bugs",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": []
+ },
+ "http-node-pagination": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "spans-two-pages",
+    "class": "always_fail",
+    "pattern7": "FFFFFFF",
+    "pass7": "0/7",
+    "iter5_27": "PPFFF",
+    "iter5_28": "PFFFF",
+    "categories": {
+     "builder_issue": 14
+    },
+    "diagnosis": "The pagination terminated with an error rather than returning all four records. The node's `paginationCompleteWhen` is set to `\"responseIsEmpty\"`, which stops only when the HTTP response body itself i",
+    "n_diagnoses": 7
+   },
+   {
+    "kind": "expectation",
+    "name": "The HTTP Request node fetches across all pages (e.g. via its built-in pagination",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "The agent did NOT work around paging with a Code node loop, a single request, or",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "mixed_stable_fail",
+  "expectation_texts": [
+   "The HTTP Request node fetches across all pages (e.g. via its built-in pagination",
+   "The agent did NOT work around paging with a Code node loop, a single request, or"
+  ]
+ },
+ "no-http-in-code-node": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "two-releases",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "The network request was performed by an HTTP Request node, not by an HTTP/fetch",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "No Code node in the final workflow attempts a network/HTTP request (e.g. fetch,",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "always_pass",
+  "expectation_texts": [
+   "No Code node in the final workflow attempts a network/HTTP request (e.g. fetch,",
+   "The network request was performed by an HTTP Request node, not by an HTTP/fetch"
+  ]
+ },
+ "notification-router": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "high-priority",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "scenario",
+    "name": "medium-priority",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "scenario",
+    "name": "low-priority",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "The final workflow branches on the notification `level` (e.g. a Switch node) and",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "always_pass",
+  "expectation_texts": [
+   "The final workflow branches on the notification `level` (e.g. a Switch node) and"
+  ]
+ },
+ "order-threshold-notify": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "large-order-forwarded",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "scenario",
+    "name": "small-order-ignored",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "The workflow has a Webhook trigger and an IF (or Filter) node that branches on t",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "On the over-100 branch an HTTP Request node sends a POST to https://hooks.exampl",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "always_pass",
+  "expectation_texts": [
+   "On the over-100 branch an HTTP Request node sends a POST to https://hooks.exampl",
+   "The workflow has a Webhook trigger and an IF (or Filter) node that branches on t"
+  ]
+ },
+ "rest-api-data-pipeline": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "flaky",
+    "pattern7": "PPPPFPP",
+    "pass7": "6/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "builder_issue": 1
+    },
+    "diagnosis": "The Filter And Summarize Code node crashed at iteration 0 with 'Invalid or unexpected token', preventing Post Digest to Slack from running at all. The error is a JavaScript syntax error in the jsCode ",
+    "n_diagnoses": 1
+   },
+   {
+    "kind": "scenario",
+    "name": "all-filtered",
+    "class": "flaky",
+    "pattern7": "PPFPFPP",
+    "pass7": "5/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "mock_issue": 1,
+     "builder_issue": 1
+    },
+    "diagnosis": "The checklist requires 0 posts remain after filtering, but the Filter and Build Summary node produced count=1 and sent a message stating '1 post remain after filtering.' The root cause is a mock fidel",
+    "n_diagnoses": 2
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": []
+ },
+ "set-edit-fields-contract": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "preserve-fields",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "always_pass",
+  "expectation_texts": []
+ },
+ "telegram-chatbot-memory-session": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "distinct-telegram-chat",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "always_pass",
+  "expectation_texts": []
+ },
+ "trading-bot-http-array-normalization": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path-multi-candle-array",
+    "class": "flaky",
+    "pattern7": "FFPFPPP",
+    "pass7": "4/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "FPPPF",
+    "categories": {
+     "builder_issue": 1,
+     "mock_issue": 3,
+     "framework_issue": 1
+    },
+    "diagnosis": "The workflow failed to complete for two builder reasons. First, Normalize Candles correctly consumed all 32 rows with valid numeric OHLCV fields (outputCount=32, confirmed in trace) \u2014 that part passes",
+    "n_diagnoses": 3
+   },
+   {
+    "kind": "scenario",
+    "name": "array-shape-hidden-by-single-item-mock",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPFP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "builder_issue": 1
+    },
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "scenario",
+    "name": "empty-klines-response",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": []
+ },
+ "weather-alert": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "flaky",
+    "pattern7": "PPPPPFP",
+    "pass7": "6/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {
+     "mock_issue": 1
+    },
+    "diagnosis": "The Code node output shows `slotsChecked: 0` and `rainExpected: false`, meaning no forecast slots were matched for today (2026-07-29), so the IF node routed to its false branch and `Email Rain Warning",
+    "n_diagnoses": 1
+   },
+   {
+    "kind": "scenario",
+    "name": "rain-not-expected",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": []
+ },
+ "weather-monitoring": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "scenario",
+    "name": "no-alerts",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "always_pass",
+  "expectation_texts": []
+ },
+ "whatsapp-faq-assistant": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "faq-question-matches",
+    "class": "flaky",
+    "pattern7": "FPPFFFP",
+    "pass7": "3/7",
+    "iter5_27": "FFFFF",
+    "iter5_28": "PFFPP",
+    "categories": {
+     "builder_issue": 6,
+     "mock_issue": 3,
+     "framework_issue": 2
+    },
+    "diagnosis": "The 'Resolved by FAQ?' IF node routed the item to branch 1 (unresolved path) instead of branch 0 (resolved path). The pinned FAQ Matcher (Gemini) output is `{ \"output\": { \"resolved\": true, \"answer\": \"",
+    "n_diagnoses": 4
+   },
+   {
+    "kind": "scenario",
+    "name": "faq-question-does-not-match",
+    "class": "flaky",
+    "pattern7": "PFFPFFP",
+    "pass7": "3/7",
+    "iter5_27": "FFFFF",
+    "iter5_28": "PFFFP",
+    "categories": {
+     "mock_issue": 4,
+     "builder_issue": 8
+    },
+    "diagnosis": "The escalation path executed and all three downstream nodes (Notion, Slack, WhatsApp) ran without errors. The Notion ticket was created with the correct title ('WhatsApp Support Ticket - 14155550192')",
+    "n_diagnoses": 4
+   },
+   {
+    "kind": "expectation",
+    "name": "The workflow is triggered by a WhatsApp Trigger node (n8n-nodes-base.whatsAppTri",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "An AI agent or llm chain wired to Gemini is involved in figuring out if the ques",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "A Google Sheet faq is present either before the AI agent or as a tool of the AI",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "A node that branches into decisions (if node, filter node, etc.) is present afte",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "If the question is resolved from the FAQ, respond back to the user on WhatsApp.",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   },
+   {
+    "kind": "expectation",
+    "name": "If the question is not resolved from the FAQ, create a Notion support ticket, al",
+    "class": "flaky",
+    "pattern7": "PPPPPFP",
+    "pass7": "6/7",
+    "iter5_27": null,
+    "iter5_28": null,
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "flaky",
+  "expectation_texts": [
+   "A Google Sheet faq is present either before the AI agent or as a tool of the AI",
+   "A node that branches into decisions (if node, filter node, etc.) is present afte",
+   "An AI agent or llm chain wired to Gemini is involved in figuring out if the ques",
+   "If the question is not resolved from the FAQ, create a Notion support ticket, al",
+   "If the question is resolved from the FAQ, respond back to the user on WhatsApp.",
+   "The workflow is triggered by a WhatsApp Trigger node (n8n-nodes-base.whatsAppTri"
+  ]
+ },
+ "workflow-data-table": {
+  "units": [
+   {
+    "kind": "scenario",
+    "name": "happy-path",
+    "class": "always_pass",
+    "pattern7": "PPPPPPP",
+    "pass7": "7/7",
+    "iter5_27": "PPPPP",
+    "iter5_28": "PPPPP",
+    "categories": {},
+    "diagnosis": null,
+    "n_diagnoses": 0
+   }
+  ],
+  "case_class": "always_pass",
+  "expectation_texts": []
+ }
+}

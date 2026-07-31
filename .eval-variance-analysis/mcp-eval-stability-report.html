@@ -1,0 +1,858 @@
+<title>MCP Eval Case Stability Report</title>
+<style>
+:root {
+  --bg:#f6f7f9; --surface:#ffffff; --ink:#1b1f27; --muted:#5b6472; --line:#e3e6eb;
+  --accent:#3d5a80; --accent-ink:#2c4260;
+  --pass-bg:#ddf0e4; --pass-ink:#1d6f43; --fail-bg:#fbe2e0; --fail-ink:#a63232;
+  --flaky-bg:#fdeed8; --flaky-ink:#9a5b12; --code-bg:#eef0f3;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg:#14161b; --surface:#1d2026; --ink:#e8eaee; --muted:#9aa3b0; --line:#31353d;
+  --accent:#8fb3d9; --accent-ink:#a9c6e4;
+  --pass-bg:#173527; --pass-ink:#6fce9a; --fail-bg:#3d1f1e; --fail-ink:#e58a84;
+  --flaky-bg:#3a2c14; --flaky-ink:#e0a95c; --code-bg:#262a31;
+} }
+:root[data-theme="light"] {
+  --bg:#f6f7f9; --surface:#ffffff; --ink:#1b1f27; --muted:#5b6472; --line:#e3e6eb;
+  --accent:#3d5a80; --accent-ink:#2c4260;
+  --pass-bg:#ddf0e4; --pass-ink:#1d6f43; --fail-bg:#fbe2e0; --fail-ink:#a63232;
+  --flaky-bg:#fdeed8; --flaky-ink:#9a5b12; --code-bg:#eef0f3;
+}
+:root[data-theme="dark"] {
+  --bg:#14161b; --surface:#1d2026; --ink:#e8eaee; --muted:#9aa3b0; --line:#31353d;
+  --accent:#8fb3d9; --accent-ink:#a9c6e4;
+  --pass-bg:#173527; --pass-ink:#6fce9a; --fail-bg:#3d1f1e; --fail-ink:#e58a84;
+  --flaky-bg:#3a2c14; --flaky-ink:#e0a95c; --code-bg:#262a31;
+}
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--ink); margin:0;
+  font:15px/1.55 "Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif; }
+main { max-width:880px; margin:0 auto; padding:40px 24px 80px; }
+h1 { font-size:26px; line-height:1.25; margin:0 0 6px; text-wrap:balance; letter-spacing:-.01em; }
+.sub { color:var(--muted); margin:0 0 28px; max-width:64ch; }
+.sub code, p code { background:var(--code-bg); padding:1px 5px; border-radius:4px;
+  font:12.5px ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace; }
+.band { display:flex; gap:12px; flex-wrap:wrap; margin:0 0 34px; }
+.tile { flex:1 1 150px; background:var(--surface); border:1px solid var(--line); border-radius:8px;
+  padding:14px 16px; }
+.tile .n { font-size:26px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+.tile .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+.tile.t-pass .n { color:var(--pass-ink); } .tile.t-fail .n { color:var(--fail-ink); }
+.tile.t-flaky .n { color:var(--flaky-ink); }
+h2 { font-size:19px; margin:44px 0 4px; letter-spacing:-.01em; }
+.sect-note { color:var(--muted); margin:0 0 16px; max-width:70ch; }
+.case { background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:16px 18px 12px; margin:0 0 14px; }
+.case h3 { margin:0 0 10px; font-size:15.5px; color:var(--accent-ink);
+  font:600 15.5px/1.3 ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace; }
+.unit { border-top:1px solid var(--line); padding:9px 0; }
+.unit:first-of-type { border-top:none; }
+.unit-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.uname { font-weight:500; }
+.kind { font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);
+  border:1px solid var(--line); border-radius:99px; padding:1px 8px; }
+.score { margin-left:auto; color:var(--muted); font-variant-numeric:tabular-nums; font-size:13px; }
+.cells { display:inline-flex; gap:2px; }
+.cell { width:20px; height:20px; border-radius:4px; display:inline-flex; align-items:center;
+  justify-content:center; font:600 11px ui-monospace,Menlo,monospace; }
+.cell.p, .i5 i.p { background:var(--pass-bg); color:var(--pass-ink); }
+.cell.f, .i5 i.f { background:var(--fail-bg); color:var(--fail-ink); }
+.i5 i { font-style:normal; padding:1px 2px; border-radius:3px;
+  font:600 11px ui-monospace,Menlo,monospace; }
+.i5 b { color:var(--muted); font-weight:500; font-size:12px; }
+.i5row { margin-top:6px; font-size:13px; color:var(--muted); display:flex; gap:14px; flex-wrap:wrap; }
+.cats { margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; }
+.chip { font-size:11.5px; border-radius:99px; padding:1px 9px; }
+.chip-builder_issue { background:var(--fail-bg); color:var(--fail-ink); }
+.chip-mock_issue { background:var(--flaky-bg); color:var(--flaky-ink); }
+.chip-framework_issue { background:var(--code-bg); color:var(--muted); }
+details { margin-top:7px; font-size:13.5px; }
+details summary { cursor:pointer; color:var(--accent); font-size:13px; }
+details p, details ul { color:var(--muted); margin:6px 0 4px; }
+details ul { padding-left:20px; }
+.diag p { border-left:3px solid var(--line); padding-left:10px; }
+.prompt { border-top:1px dashed var(--line); padding-top:8px; margin-top:10px; }
+.pending { font-style:italic; }
+.legend { display:flex; gap:16px; flex-wrap:wrap; align-items:center; color:var(--muted);
+  font-size:13px; margin:0 0 18px; }
+.legend .cell { vertical-align:middle; }
+.note { background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent);
+  border-radius:8px; padding:12px 16px; color:var(--muted); font-size:13.5px; margin:20px 0 0; }
+.note b { color:var(--ink); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto; } }
+</style>
+<main>
+<h1>MCP workflow eval — case stability report</h1>
+<p class="sub">Per-unit pass/fail across <b>7 identical runs of the same master commit</b> (runs #18, #19, #21, #22, #24, #25, #26 · iterations=1 · 23 cases · 65 scored units), cross-checked against the two 5-iteration master runs #27/#28. Source: full CI job logs of <code>test-evals-mcp.yml</code>, cross-validated against each run&rsquo;s printed aggregates.</p>
+
+<div class="band">
+  <div class="tile t-pass"><div class="n">37</div><div class="l">units always pass</div></div>
+  <div class="tile t-flaky"><div class="n">24</div><div class="l">units flip</div></div>
+  <div class="tile t-fail"><div class="n">4</div><div class="l">units never pass</div></div>
+  <div class="tile"><div class="n">76.9&ndash;87.7%</div><div class="l">headline range, same commit</div></div>
+</div>
+
+<div class="legend">
+  <span><span class="cell p">P</span> pass</span>
+  <span><span class="cell f">F</span> fail</span>
+  <span>7 boxes = runs #18 #19 #21 #22 #24 #25 #26 in order</span>
+  <span>&ldquo;n/7&rdquo; = passes across the 7 runs</span>
+</div>
+
+<h2>Never pass &mdash; deterministic gaps, not noise (2 cases, 4 units)</h2>
+<p class="sect-note">These fail identically in every run (and every iteration of #27/#28). They are product/builder capability gaps. They add zero discrimination between experiment branches while consuming build budget &mdash; candidates to move to a tracked &ldquo;known gaps&rdquo; bucket outside the headline metric.</p>
+<article class="case" id="binary-telegram-voice-transcribe">
+      <h3>binary-telegram-voice-transcribe</h3>
+      <div class="unit unit-always_fail">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">0/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell f" title="run #19">F</span><span class="cell f" title="run #21">F</span><span class="cell f" title="run #22">F</span><span class="cell f" title="run #24">F</span><span class="cell f" title="run #25">F</span><span class="cell f" title="run #26">F</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×17</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span></div>
+      <details class="diag"><summary>failure diagnosis (7 recorded)</summary><p>The Transcribe Audio node failed with a 400 error because it sent a request with no URL. The mock error explicitly states: &#x27;the node sent an HTTP request without a URL (configured resource/operation: </p></details>
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="http-node-pagination">
+      <h3>http-node-pagination</h3>
+      <div class="unit unit-always_fail">
+      <div class="unit-head">
+        <span class="uname">spans-two-pages</span>
+        <span class="score">0/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell f" title="run #19">F</span><span class="cell f" title="run #21">F</span><span class="cell f" title="run #22">F</span><span class="cell f" title="run #24">F</span><span class="cell f" title="run #25">F</span><span class="cell f" title="run #26">F</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×14</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span></div>
+      <details class="diag"><summary>failure diagnosis (7 recorded)</summary><p>The pagination terminated with an error rather than returning all four records. The node&#x27;s `paginationCompleteWhen` is set to `&quot;responseIsEmpty&quot;`, which stops only when the HTTP response body itself i</p></details>
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">The HTTP Request node fetches across all pages (e.g. via its built-in pagination</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">The agent did NOT work around paging with a Code node loop, a single request, or</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      <p class="exp-list"><b>Build expectations checked (from run logs, truncated at source):</b></p><ul><li>The HTTP Request node fetches across all pages (e.g. via its built-in pagination…</li><li>The agent did NOT work around paging with a Code node loop, a single request, or…</li></ul>
+    </details>
+    </article>
+
+<h2>Flaky &mdash; the entire noise budget (12 cases, 24 units)</h2>
+<p class="sect-note">Ordered by instability. Every headline swing between identical runs comes from these units; each flip moves the headline by 1.54pp. Note the block-failure signature: sibling scenarios of one case often flip together, because the flip happens at <em>build</em> time (a defective build fails several scenarios at once).</p>
+<article class="case" id="whatsapp-faq-assistant">
+      <h3>whatsapp-faq-assistant</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">faq-question-matches</span>
+        <span class="score">3/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell f" title="run #22">F</span><span class="cell f" title="run #24">F</span><span class="cell f" title="run #25">F</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×6</span> <span class="chip chip-mock_issue">mock issue ×3</span> <span class="chip chip-framework_issue">framework issue ×2</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="f">F</i><i class="f">F</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis (4 recorded)</summary><p>The &#x27;Resolved by FAQ?&#x27; IF node routed the item to branch 1 (unresolved path) instead of branch 0 (resolved path). The pinned FAQ Matcher (Gemini) output is `{ &quot;output&quot;: { &quot;resolved&quot;: true, &quot;answer&quot;: &quot;</p></details>
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">faq-question-does-not-match</span>
+        <span class="score">3/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell f" title="run #19">F</span><span class="cell f" title="run #21">F</span><span class="cell p" title="run #22">P</span><span class="cell f" title="run #24">F</span><span class="cell f" title="run #25">F</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×8</span> <span class="chip chip-mock_issue">mock issue ×4</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis (4 recorded)</summary><p>The escalation path executed and all three downstream nodes (Notion, Slack, WhatsApp) ran without errors. The Notion ticket was created with the correct title (&#x27;WhatsApp Support Ticket - 14155550192&#x27;)</p></details>
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">The workflow is triggered by a WhatsApp Trigger node (n8n-nodes-base.whatsAppTri</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">An AI agent or llm chain wired to Gemini is involved in figuring out if the ques</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">A Google Sheet faq is present either before the AI agent or as a tool of the AI</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">A node that branches into decisions (if node, filter node, etc.) is present afte</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">If the question is resolved from the FAQ, respond back to the user on WhatsApp.</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">If the question is not resolved from the FAQ, create a Notion support ticket, al</span><span class="kind">expectation</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell f" title="run #25">F</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      <p class="exp-list"><b>Build expectations checked (from run logs, truncated at source):</b></p><ul><li>A Google Sheet faq is present either before the AI agent or as a tool of the AI…</li><li>A node that branches into decisions (if node, filter node, etc.) is present afte…</li><li>An AI agent or llm chain wired to Gemini is involved in figuring out if the ques…</li><li>If the question is not resolved from the FAQ, create a Notion support ticket, al…</li><li>If the question is resolved from the FAQ, respond back to the user on WhatsApp.…</li><li>The workflow is triggered by a WhatsApp Trigger node (n8n-nodes-base.whatsAppTri…</li></ul>
+    </details>
+    </article>
+<article class="case" id="binary-multipart-upload">
+      <h3>binary-multipart-upload</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">2/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell p" title="run #19">P</span><span class="cell f" title="run #21">F</span><span class="cell f" title="run #22">F</span><span class="cell p" title="run #24">P</span><span class="cell f" title="run #25">F</span><span class="cell f" title="run #26">F</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×14</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="p">P</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span></div>
+      <details class="diag"><summary>failure diagnosis (5 recorded)</summary><p>The Upload File to Slack node crashes at iteration 0 with &#x27;Provided parameter is not a string or binary data object.&#x27; The root cause is the `binaryPropertyName` field, which is configured as `={{ $bin</p></details>
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">audio-attachment</span>
+        <span class="score">2/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell p" title="run #19">P</span><span class="cell f" title="run #21">F</span><span class="cell f" title="run #22">F</span><span class="cell p" title="run #24">P</span><span class="cell f" title="run #25">F</span><span class="cell f" title="run #26">F</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×14</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="p">P</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span></div>
+      <details class="diag"><summary>failure diagnosis (5 recorded)</summary><p>The Upload File to Slack node crashes immediately with &quot;Provided parameter is not a string or binary data object.&quot; The root cause is the `binaryPropertyName` config: it is set to `={{ $binary.image }}</p></details>
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="contact-form-automation">
+      <h3>contact-form-automation</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell f" title="run #26">F</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×4</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis</summary><p>The Google Sheets node failed with &#x27;Sheet with ID Contact Submissions not found&#x27;. The node&#x27;s sheetName resource locator is set to `mode: &quot;list&quot;` with `value: &quot;Contact Submissions&quot;` — a human-readable </p></details>
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">missing-fields</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell f" title="run #26">F</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×4</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis</summary><p>The workflow correctly handles the missing name field via the `$json.body?.name ?? $json.name ?? &quot;there&quot;` fallback in Normalize Submission, producing `name: &quot;there&quot;`. The Gmail node successfully sent </p></details>
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">partial-action-failure</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">empty-message</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell f" title="run #26">F</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×4</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis</summary><p>The Google Sheets log node failed with &#x27;Sheet with ID Contact Submissions not found&#x27;. The Send Auto-Reply succeeded (mock returned SENT label) and Notify Team on Telegram succeeded (ok: true, message </p></details>
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">invalid-email</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell f" title="run #26">F</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×4</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis</summary><p>Google Sheets logging failed, so the criterion that &#x27;Telegram and Google Sheets should still work&#x27; is not fully met. Telegram succeeded (ok: true). However, the Log to Google Sheets node errored with </p></details>
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="daily-slack-summary">
+      <h3>daily-slack-summary</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">5/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell f" title="run #21">F</span><span class="cell p" title="run #22">P</span><span class="cell f" title="run #24">F</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×1</span> <span class="chip chip-mock_issue">mock issue ×1</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis (2 recorded)</summary><p>The workflow executed without errors and reached the final posting node, but the posted message body is `[object Object]` instead of the actual digest text. In the Format Digest Message node, the expr</p></details>
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">empty-channel</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell f" title="run #21">F</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×2</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="f">F</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis</summary><p>The workflow completes end-to-end without crashing, the merge step correctly handles the empty #product channel (0 items, 5 total), and Claude produced a proper summary covering team offsite planning </p></details>
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">high-volume</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell f" title="run #21">F</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×1</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis</summary><p>The digest posted to #daily-digest contains `[object Object]` instead of the actual summary text. The Format Digest Message Set node uses the expression `$json.text || $json.content || $json.output`. </p></details>
+    </div>
+<div class="unit unit-always_fail">
+      <div class="unit-head">
+        <span class="uname">channel-not-found</span>
+        <span class="score">0/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell f" title="run #19">F</span><span class="cell f" title="run #21">F</span><span class="cell f" title="run #22">F</span><span class="cell f" title="run #24">F</span><span class="cell f" title="run #25">F</span><span class="cell f" title="run #26">F</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×15</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="p">P</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="p">P</i><i class="f">F</i></span></div>
+      <details class="diag"><summary>failure diagnosis (7 recorded)</summary><p>The workflow crashed entirely when Read #product returned `{&quot;ok&quot;: false, &quot;error&quot;: &quot;channel_not_found&quot;}`. The error propagated up and halted execution — Combine Channel Messages, Tag #product, Collect </p></details>
+    </div>
+<div class="unit unit-always_fail">
+      <div class="unit-head">
+        <span class="uname">insufficient-permissions</span>
+        <span class="score">0/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell f" title="run #19">F</span><span class="cell f" title="run #21">F</span><span class="cell f" title="run #22">F</span><span class="cell f" title="run #24">F</span><span class="cell f" title="run #25">F</span><span class="cell f" title="run #26">F</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×15</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="p">P</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="p">P</i><i class="f">F</i></span></div>
+      <details class="diag"><summary>failure diagnosis (7 recorded)</summary><p>The workflow crashed entirely when Read #product returned `not_in_channel`. No error handling is present — the Read #product node has no &#x27;Continue on Error&#x27; setting, there is no error branch, and no t</p></details>
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="datatable-exact-spec-schema">
+      <h3>datatable-exact-spec-schema</h3>
+      <div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">The agent created the pd_tq_clusters data table with all ten specified columns:</span><span class="kind">expectation</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell f" title="run #25">F</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">The agent created the pd_periods data table with all six specified columns: peri</span><span class="kind">expectation</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell f" title="run #25">F</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">The agent gave the count columns (thread_count, rank, consecutive_weeks, total_c</span><span class="kind">expectation</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell f" title="run #25">F</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">The agent did not drop, merge, rename, or simplify any of the specified columns</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      <p class="exp-list"><b>Build expectations checked (from run logs, truncated at source):</b></p><ul><li>The agent created the pd_periods data table with all six specified columns: peri…</li><li>The agent created the pd_tq_clusters data table with all ten specified columns:…</li><li>The agent did not drop, merge, rename, or simplify any of the specified columns…</li><li>The agent gave the count columns (thread_count, rank, consecutive_weeks, total_c…</li></ul>
+    </details>
+    </article>
+<article class="case" id="form-to-hubspot">
+      <h3>form-to-hubspot</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">3/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell p" title="run #19">P</span><span class="cell f" title="run #21">F</span><span class="cell f" title="run #22">F</span><span class="cell p" title="run #24">P</span><span class="cell f" title="run #25">F</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×12</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="p">P</i><i class="f">F</i></span></div>
+      <details class="diag"><summary>failure diagnosis (4 recorded)</summary><p>The workflow executed without errors and the confirmation email was sent to sarah@techstartup.io mentioning TechStartup Inc. However, the HubSpot contact does not satisfy the required field split: the</p></details>
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">single-name</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="rest-api-data-pipeline">
+      <h3>rest-api-data-pipeline</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell f" title="run #24">F</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×1</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis</summary><p>The Filter And Summarize Code node crashed at iteration 0 with &#x27;Invalid or unexpected token&#x27;, preventing Post Digest to Slack from running at all. The error is a JavaScript syntax error in the jsCode </p></details>
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">all-filtered</span>
+        <span class="score">5/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell f" title="run #21">F</span><span class="cell p" title="run #22">P</span><span class="cell f" title="run #24">F</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-mock_issue">mock issue ×1</span> <span class="chip chip-builder_issue">builder issue ×1</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis (2 recorded)</summary><p>The checklist requires 0 posts remain after filtering, but the Filter and Build Summary node produced count=1 and sent a message stating &#x27;1 post remain after filtering.&#x27; The root cause is a mock fidel</p></details>
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="trading-bot-http-array-normalization">
+      <h3>trading-bot-http-array-normalization</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">happy-path-multi-candle-array</span>
+        <span class="score">4/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell f" title="run #19">F</span><span class="cell p" title="run #21">P</span><span class="cell f" title="run #22">F</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-mock_issue">mock issue ×3</span> <span class="chip chip-builder_issue">builder issue ×1</span> <span class="chip chip-framework_issue">framework issue ×1</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="f">F</i></span></div>
+      <details class="diag"><summary>failure diagnosis (3 recorded)</summary><p>The workflow failed to complete for two builder reasons. First, Normalize Candles correctly consumed all 32 rows with valid numeric OHLCV fields (outputCount=32, confirmed in trace) — that part passes</p></details>
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">array-shape-hidden-by-single-item-mock</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×1</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="f">F</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">empty-klines-response</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="cross-team-linear-report">
+      <h3>cross-team-linear-report</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">5/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell f" title="run #24">F</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-mock_issue">mock issue ×7</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="p">P</i><i class="f">F</i><i class="p">P</i><i class="f">F</i></span></div>
+      <details class="diag"><summary>failure diagnosis (2 recorded)</summary><p>The mock returned all 8 issues including ISS-007 (July 7, ~3 weeks before the July 28 trigger) and ISS-008 (July 5, ~3.5 weeks before), even though the GraphQL request sent a `since` variable of `2026</p></details>
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">multi-team-creator</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">no-cross-team-issues</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">unknown-creator</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="daily-gmail-action-digest">
+      <h3>daily-gmail-action-digest</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">emails-with-action-items</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell f" title="run #19">F</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×1</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis</summary><p>The workflow executes without errors and reaches the final Send Daily Digest node, but the digest email contains zero action items — subject &#x27;Daily Digest - 0 action item(s)&#x27; and body &#x27;No action items</p></details>
+    </div>
+<div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">no-recent-emails</span>
+        <span class="score">1/7</span><span class="cells"><span class="cell f" title="run #18">F</span><span class="cell f" title="run #19">F</span><span class="cell f" title="run #21">F</span><span class="cell f" title="run #22">F</span><span class="cell f" title="run #24">F</span><span class="cell f" title="run #25">F</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×15</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i><i class="f">F</i></span></div>
+      <details class="diag"><summary>failure diagnosis (6 recorded)</summary><p>When Gmail returns 0 emails, the Get Last 24h Emails node outputs 0 items. With 0 items flowing into Compact Email Fields, every downstream node — Compact Email Fields, Combine Emails, Extract &amp; Prior</p></details>
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="github-notion-sync">
+      <h3>github-notion-sync</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell f" title="run #22">F</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×5</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="f">F</i><i class="p">P</i><i class="f">F</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="p">P</i><i class="p">P</i><i class="f">F</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis</summary><p>The Create Notion Bug Page node threw &#x27;Title is required to create a database page&#x27; at iteration 0 and produced no output. All 3 issues arrived correctly from the Exclude Pull Requests filter (title f</p></details>
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">no-bugs</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="weather-alert">
+      <h3>weather-alert</h3>
+      <div class="unit unit-flaky">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">6/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell f" title="run #25">F</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-mock_issue">mock issue ×1</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      <details class="diag"><summary>failure diagnosis</summary><p>The Code node output shows `slotsChecked: 0` and `rainExpected: false`, meaning no forecast slots were matched for today (2026-07-29), so the IF node routed to its false branch and `Email Rain Warning</p></details>
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">rain-not-expected</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+
+<h2>Always pass &mdash; stable floor (9 cases, 19 of the 37 stable units live here)</h2>
+<p class="sect-note">Never moved a unit in 7 runs (the remaining always-pass units sit inside the flaky cases above). Useful as a regression tripwire at 1 iteration &mdash; running these at 3+ iterations buys no information for experiments.</p>
+<article class="case" id="agent-with-notion-mcp">
+      <h3>agent-with-notion-mcp</h3>
+      <div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      <div class="cats"><span class="chip chip-builder_issue">builder issue ×4</span></div>
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="f">F</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="f">F</i><i class="p">P</i><i class="f">F</i><i class="f">F</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="binary-pdf-download-extract">
+      <h3>binary-pdf-download-extract</h3>
+      <div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">large-pdf</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="no-http-in-code-node">
+      <h3>no-http-in-code-node</h3>
+      <div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">two-releases</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">The network request was performed by an HTTP Request node, not by an HTTP/fetch</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">No Code node in the final workflow attempts a network/HTTP request (e.g. fetch,</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      <p class="exp-list"><b>Build expectations checked (from run logs, truncated at source):</b></p><ul><li>No Code node in the final workflow attempts a network/HTTP request (e.g. fetch,…</li><li>The network request was performed by an HTTP Request node, not by an HTTP/fetch…</li></ul>
+    </details>
+    </article>
+<article class="case" id="notification-router">
+      <h3>notification-router</h3>
+      <div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">high-priority</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">medium-priority</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">low-priority</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">The final workflow branches on the notification `level` (e.g. a Switch node) and</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      <p class="exp-list"><b>Build expectations checked (from run logs, truncated at source):</b></p><ul><li>The final workflow branches on the notification `level` (e.g. a Switch node) and…</li></ul>
+    </details>
+    </article>
+<article class="case" id="order-threshold-notify">
+      <h3>order-threshold-notify</h3>
+      <div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">large-order-forwarded</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">small-order-ignored</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">The workflow has a Webhook trigger and an IF (or Filter) node that branches on t</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">On the over-100 branch an HTTP Request node sends a POST to https://hooks.exampl</span><span class="kind">expectation</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      <p class="exp-list"><b>Build expectations checked (from run logs, truncated at source):</b></p><ul><li>On the over-100 branch an HTTP Request node sends a POST to https://hooks.exampl…</li><li>The workflow has a Webhook trigger and an IF (or Filter) node that branches on t…</li></ul>
+    </details>
+    </article>
+<article class="case" id="set-edit-fields-contract">
+      <h3>set-edit-fields-contract</h3>
+      <div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">preserve-fields</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="telegram-chatbot-memory-session">
+      <h3>telegram-chatbot-memory-session</h3>
+      <div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">distinct-telegram-chat</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="weather-monitoring">
+      <h3>weather-monitoring</h3>
+      <div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+<div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">no-alerts</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+<article class="case" id="workflow-data-table">
+      <h3>workflow-data-table</h3>
+      <div class="unit unit-always_pass">
+      <div class="unit-head">
+        <span class="uname">happy-path</span>
+        <span class="score">7/7</span><span class="cells"><span class="cell p" title="run #18">P</span><span class="cell p" title="run #19">P</span><span class="cell p" title="run #21">P</span><span class="cell p" title="run #22">P</span><span class="cell p" title="run #24">P</span><span class="cell p" title="run #25">P</span><span class="cell p" title="run #26">P</span></span>
+      </div>
+      
+      <div class="i5row">5-iteration runs: <span class="i5"><b>#27</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span> <span class="i5"><b>#28</b> <i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i><i class="p">P</i></span></div>
+      
+    </div>
+      <details class="prompt"><summary>Case prompt</summary>
+      <p class="pending">Not stored in the repo or CI logs — the case corpus lives in LangTracer (suite <code>baseline</code>, tier <code>mcp</code>) and is synced to the LangSmith dataset <code>mcp-workflow-evals</code>. Connect the LangSmith MCP and I can fill these in.</p>
+      
+    </details>
+    </article>
+
+<p class="note"><b>About prompts:</b> the MCP-tier case corpus (prompts, success criteria, expectations) is pulled live from LangTracer at run time and is not checked into the repo, nor echoed into CI logs. Each run syncs cases into the LangSmith dataset <code>mcp-workflow-evals</code> &mdash; with LangSmith MCP access I can pull each case&rsquo;s full prompt and success criteria into this report. Expectation texts shown above are recovered (truncated) from run logs.</p>
+</main>
