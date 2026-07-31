@@ -280,11 +280,12 @@ export class TriggerExecutionContextFactory {
 			// two overlapping polls of the same node never share a slot.
 			const stagedCursorStore = new AsyncLocalStorage<{
 				cursor: PollCursor | null;
+				persistOnEmpty: boolean;
 				closed: boolean;
 			}>();
 
 			const __runPoll = async <T>(poll: () => Promise<T>): Promise<T> => {
-				const store = { cursor: null, closed: false };
+				const store = { cursor: null, persistOnEmpty: false, closed: false };
 				try {
 					return await stagedCursorStore.run(store, poll);
 				} finally {
@@ -385,7 +386,7 @@ export class TriggerExecutionContextFactory {
 				);
 			};
 
-			const setCursor = (cursor: PollCursor) => {
+			const setCursor: IPollFunctions['setCursor'] = (cursor, options) => {
 				const staged = stagedCursorStore.getStore();
 				if (staged === undefined) {
 					throw new UnexpectedError(
@@ -402,11 +403,16 @@ export class TriggerExecutionContextFactory {
 				}
 				// An empty cursor means the node has none, so it stages nothing to commit.
 				staged.cursor = Object.keys(cursor).length === 0 ? null : { ...cursor };
+				staged.persistOnEmpty = options?.persistOnEmpty ?? false;
 			};
 
+			// Skipped unless the node opted in: most sources don't need an empty poll's
+			// cursor to survive, since the next poll just widens its own query range.
 			const __commitCursor = async () => {
+				const staged = stagedCursorStore.getStore();
+				const persistOnEmpty = staged?.persistOnEmpty ?? false;
 				const cursor = takeStagedCursor();
-				if (cursor === null) return;
+				if (cursor === null || !persistOnEmpty) return;
 				await this.pollCursorService.commitCursorOnly({
 					workflowId: workflowData.id,
 					nodeId: node.id,
