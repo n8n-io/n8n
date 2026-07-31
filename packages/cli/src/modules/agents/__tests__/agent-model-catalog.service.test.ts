@@ -145,6 +145,23 @@ describe('AgentModelCatalogService', () => {
 		]);
 	});
 
+	it('leaves reasoning support unknown for managed models missing from the catalog', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.list.mockResolvedValue([{ name: 'Claude Brand New', value: 'claude-brand-new' }]);
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'anthropic',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({ id: 'claude-brand-new', name: 'Claude Brand New' }),
+		]);
+		expect(result.models[0]).not.toHaveProperty('reasoning');
+	});
+
 	it('verifies a catalog alias when the provider lists only its dated snapshot', async () => {
 		const { service, lookupService } = makeService();
 		fetchProviderCatalog.mockResolvedValue({
@@ -265,6 +282,7 @@ describe('AgentModelCatalogService', () => {
 		expect(result.models).toEqual([
 			expect.objectContaining({ id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' }),
 		]);
+		expect(result.models[0]).not.toHaveProperty('reasoning');
 	});
 
 	it('returns an empty unverified list when both the lookup and the catalog fail', async () => {

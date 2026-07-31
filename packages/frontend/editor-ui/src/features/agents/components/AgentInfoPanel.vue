@@ -30,6 +30,7 @@ import type { AgentJsonConfig } from '../types';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
+import { normalizeReasoningForModelChange } from '../utils/reasoning';
 import AgentModelSelector from './AgentModelSelector.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
@@ -66,7 +67,7 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const { showError } = useToast();
-const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+const { catalog, ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 
 const projectId = useAgentProjectId(() => props.projectId);
 
@@ -147,20 +148,31 @@ function onModelChange(selection: AgentModelSelection) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
 		return;
 	}
-	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
+	const modelName = sanitizeModelId(selection.provider, selection.model);
+	const model = `${selection.provider}/${modelName}`;
 	const capabilities = PROVIDER_CAPABILITIES[selection.provider];
 	const webSearchChanges = normalizeWebSearchForModelChange(
 		props.config,
 		capabilities?.webSearch ?? false,
 	);
+	const webSearchConfig =
+		'config' in webSearchChanges ? webSearchChanges.config : props.config?.config;
+	const promptCachingChanges = normalizePromptCachingForModelChange(
+		webSearchConfig,
+		capabilities?.promptCaching ?? false,
+	);
+	const normalizedConfig =
+		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;
+	const reasoningChanges = normalizeReasoningForModelChange(
+		normalizedConfig,
+		catalog.value[selection.provider]?.models[modelName]?.reasoning,
+	);
 	emit('update:config', {
 		model,
 		credential: credentialId,
 		...webSearchChanges,
-		...normalizePromptCachingForModelChange(
-			webSearchChanges.config ?? props.config?.config,
-			capabilities?.promptCaching ?? false,
-		),
+		...promptCachingChanges,
+		...reasoningChanges,
 	});
 }
 
