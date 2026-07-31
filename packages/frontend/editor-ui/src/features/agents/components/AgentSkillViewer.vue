@@ -27,6 +27,7 @@ import { AgentSkillImportError, useAgentSkillImport } from '../composables/useAg
 import type { AgentSkill, AgentSkillReference } from '../types';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import AgentChipButton from './AgentChipButton.vue';
+import AgentExpressionAwareMarkdownEditor from './AgentExpressionAwareMarkdownEditor.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -568,11 +569,13 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:required="true"
 					size="small"
 				>
-					<N8nMarkdownEditor
+					<AgentExpressionAwareMarkdownEditor
 						:class="$style.editor"
 						:container-class="$style.fullHeightEditor"
 						:model-value="props.skill.instructions ?? ''"
 						:readonly="props.disabled"
+						path="agent.skill.instructions"
+						show-toolbar="always"
 						max-height="100%"
 						data-testid="agent-skill-instructions-editor"
 						@update:model-value="onInstructionsInput"

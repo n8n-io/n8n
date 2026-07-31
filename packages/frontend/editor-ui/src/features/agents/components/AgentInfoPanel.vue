@@ -6,7 +6,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
@@ -33,6 +33,7 @@ import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
 import { normalizeReasoningForModelChange } from '../utils/reasoning';
 import AgentModelSelector from './AgentModelSelector.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
+import AgentExpressionAwareMarkdownEditor from './AgentExpressionAwareMarkdownEditor.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -244,7 +245,7 @@ function onInstructionsInput(value: string) {
 					i18n.baseText('agents.builder.agent.instructions.label')
 				}}</N8nText>
 			</label>
-			<N8nMarkdownEditor
+			<AgentExpressionAwareMarkdownEditor
 				:class="$style.instructionsDocument"
 				:model-value="instructions"
 				:disabled="props.disabled"

@@ -25,10 +25,11 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
@@ -110,6 +111,7 @@ const { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi } =
 const sessionsStore = useAgentSessionsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
+const environmentsStore = useEnvironmentsStore();
 const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
@@ -1180,6 +1182,9 @@ async function initialize() {
 			fetchConfig(projectId.value, agentId.value),
 			fetchAgentFiles(),
 			refreshConfigValidation(projectId.value, agentId.value),
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]
+				? environmentsStore.fetchAllVariables().catch(() => undefined)
+				: Promise.resolve(),
 		]);
 		persistMissingPersonalisationGradient();
 		builderTelemetry.captureToolsBaseline();
