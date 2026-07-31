@@ -386,6 +386,7 @@ export type PendingToolCall = {
 			suspended: true;
 			suspendPayload: unknown;
 			resumeSchema: JsonSchema7Type;
+			continuation?: JSONValue;
 			runId: string;
 	  }
 	| {

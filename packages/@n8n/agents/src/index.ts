@@ -19,6 +19,7 @@ export type {
 	ToolCancellationContext,
 	ToolExecutionContext,
 	InterruptibleToolContext,
+	ToolSuspendOptions,
 	CheckpointStore,
 	StreamChunk,
 	Provider,

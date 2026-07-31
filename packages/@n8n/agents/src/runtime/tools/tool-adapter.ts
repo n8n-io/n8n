@@ -7,9 +7,11 @@ import {
 	type BuiltTool,
 	type BuiltTelemetry,
 	type InterruptibleToolContext,
+	type ToolSuspendOptions,
 	type ToolExecutionContext,
 	type ToolContext,
 } from '../../types';
+import type { JSONValue } from '../../types/utils/json';
 import { fixSchema } from '../../utils/json-schema';
 import { isZodSchema } from '../../utils/zod';
 import { loadAi } from '../model/lazy-ai';
@@ -28,6 +30,8 @@ const SUSPEND_BRAND = Symbol('SuspendBrand');
 export interface SuspendedToolResult {
 	readonly [SUSPEND_BRAND]: true;
 	payload: unknown;
+	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+	continuation?: JSONValue;
 }
 
 /** Type guard: returns true when a tool's return value is a suspend signal. */
@@ -116,9 +120,14 @@ export async function executeTool(
 	if (builtTool.suspendSchema) {
 		const isCancelled = isCancellation(resumeData);
 		const ctx: InterruptibleToolContext = {
-			suspend: async (payload: unknown): Promise<never> => {
-				executionContext.onSuspend?.(payload);
-				return await Promise.resolve({ [SUSPEND_BRAND]: true, payload } as never);
+			suspend: async (payload: unknown, options?: ToolSuspendOptions): Promise<never> => {
+				executionContext.onSuspend?.(payload, options);
+				return await Promise.resolve({
+					[SUSPEND_BRAND]: true,
+					payload,
+					...(options?.resumeSchema !== undefined ? { resumeSchema: options.resumeSchema } : {}),
+					...(options?.continuation !== undefined ? { continuation: options.continuation } : {}),
+				} as never);
 			},
 			resumeData: isCancelled ? undefined : resumeData,
 			cancellation: isCancelled ? { message: resumeData.message } : undefined,
@@ -131,6 +140,8 @@ export async function executeTool(
 			abortSignal: executionContext.abortSignal,
 			executionCounter: executionContext.executionCounter,
 			suspendPayload: executionContext.suspendPayload,
+			continuation: executionContext.continuation,
+			resumeSchema: executionContext.resumeSchema,
 		};
 		return await builtTool.handler(args, ctx);
 	}

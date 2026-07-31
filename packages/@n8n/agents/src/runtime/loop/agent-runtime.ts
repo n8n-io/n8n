@@ -70,7 +70,6 @@ import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
 import {
-	resolveToolResumeSchema,
 	ToolCallExecutor,
 	type PendingResume,
 	type ToolBatchContext,
@@ -365,17 +364,7 @@ export class AgentRuntime {
 		let resumeData: unknown = data;
 		let abortScope: AgentAbortScope | undefined;
 
-		const resumeSchema = resolveToolResumeSchema(
-			toolForValidation,
-			toolCall.suspended ? toolCall.suspendPayload : undefined,
-		);
-		if (
-			!isCancellation(resumeData) &&
-			toolForValidation.resolveResumeSchema !== undefined &&
-			resumeSchema === undefined
-		) {
-			throw new Error(`Tool ${toolCall.toolName} has no resume schema for this suspension`);
-		}
+		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : undefined;
 		if (!isCancellation(resumeData) && resumeSchema) {
 			const parseResult = await parseWithSchema(resumeSchema, data);
 			if (!parseResult.success) {

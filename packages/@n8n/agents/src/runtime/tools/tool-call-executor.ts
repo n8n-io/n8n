@@ -15,6 +15,7 @@ import type {
 	BuiltTelemetry,
 	BuiltTool,
 	PendingToolCall,
+	ToolSuspendOptions,
 } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentPersistenceOptions, ToolResultEntry } from '../../types/sdk/agent';
@@ -53,6 +54,7 @@ type ToolCallOutcome =
 			outcome: 'suspended';
 			payload: unknown;
 			resumeSchema: JsonSchema7Type;
+			continuation?: JSONValue;
 	  }
 	| {
 			outcome: 'cancelled';
@@ -143,6 +145,10 @@ interface ProcessToolCallParams {
 	countToolCall?: boolean;
 	/** Checkpointed suspend payload of the tool call being resumed. */
 	suspendPayload?: unknown;
+	/** Checkpointed private continuation of the tool call being resumed. */
+	continuation?: JSONValue;
+	/** Checkpointed resume schema of the tool call being resumed. */
+	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 }
 
 function isDeniedApprovalResumeData(value: unknown): boolean {
@@ -167,8 +173,9 @@ export function resolveToolResumeSchema(
 function getToolResumeJsonSchema(
 	tool: BuiltTool,
 	suspendPayload?: unknown,
+	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
 ): JsonSchema7Type | undefined {
-	const resolvedSchema = resolveToolResumeSchema(tool, suspendPayload);
+	const resolvedSchema = resumeSchemaOverride ?? resolveToolResumeSchema(tool, suspendPayload);
 	if (!resolvedSchema) return undefined;
 	return isZodSchema(resolvedSchema) ? zodToJsonSchema(resolvedSchema) : resolvedSchema;
 }
@@ -396,6 +403,9 @@ export class ToolCallExecutor {
 						input: toolInput,
 						suspendPayload: result.value.payload,
 						resumeSchema: result.value.resumeSchema,
+						...(result.value.continuation !== undefined
+							? { continuation: result.value.continuation }
+							: {}),
 						runId,
 					};
 				} else if (result.value.outcome === 'success') {
@@ -517,15 +527,26 @@ export class ToolCallExecutor {
 			executionCounter,
 			abortSignal,
 			countToolCall: false,
-			suspendPayload: resumedEntry.suspended ? resumedEntry.suspendPayload : undefined,
+			...(resumedEntry.suspended
+				? {
+						suspendPayload: resumedEntry.suspendPayload,
+						continuation: resumedEntry.continuation,
+						resumeSchema: resumedEntry.resumeSchema,
+					}
+				: {}),
 		});
 
 		if (processResult.outcome === 'suspended') {
 			pending[resumedId] = {
-				...resumedEntry,
 				suspended: true,
+				toolCallId: resumedEntry.toolCallId,
+				toolName: resumedToolName,
+				input: resumedEntry.input,
 				suspendPayload: processResult.payload,
 				resumeSchema: processResult.resumeSchema,
+				...(processResult.continuation !== undefined
+					? { continuation: processResult.continuation }
+					: {}),
 				runId,
 			};
 			suspensions.push({
@@ -585,7 +606,13 @@ export class ToolCallExecutor {
 						executionCounter,
 						abortSignal,
 						countToolCall: false,
-						...(siblingEntry.suspended ? { suspendPayload: siblingEntry.suspendPayload } : {}),
+						...(siblingEntry.suspended
+							? {
+									suspendPayload: siblingEntry.suspendPayload,
+									continuation: siblingEntry.continuation,
+									resumeSchema: siblingEntry.resumeSchema,
+								}
+							: {}),
 					};
 					if (siblingEntry.suspended && siblingTool?.onCancellation) {
 						try {
@@ -760,18 +787,35 @@ export class ToolCallExecutor {
 
 		let toolResult: unknown;
 		let interruptedSuspendPayload: unknown;
+		let interruptedSuspendOptions: ToolSuspendOptions | undefined;
 		let didSuspend = false;
 		try {
-			toolResult = await this.runToolHandler(params, builtTool, input, (payload) => {
+			toolResult = await this.runToolHandler(params, builtTool, input, (payload, options) => {
 				didSuspend = true;
 				interruptedSuspendPayload = payload;
+				interruptedSuspendOptions = options;
 			});
 		} catch (error) {
 			if (isAbortError(error) || params.abortSignal?.aborted) {
 				if (didSuspend) {
+					const interruptedResumeSchema = getToolResumeJsonSchema(
+						builtTool,
+						interruptedSuspendPayload,
+						interruptedSuspendOptions?.resumeSchema,
+					);
 					try {
 						await this.runCancellationCleanup(
-							{ ...params, input, suspendPayload: interruptedSuspendPayload },
+							{
+								...params,
+								input,
+								suspendPayload: interruptedSuspendPayload,
+								...(interruptedSuspendOptions?.continuation !== undefined
+									? { continuation: interruptedSuspendOptions.continuation }
+									: {}),
+								...(interruptedResumeSchema !== undefined
+									? { resumeSchema: interruptedResumeSchema }
+									: {}),
+							},
 							builtTool,
 							'Run aborted',
 						);
@@ -809,6 +853,8 @@ export class ToolCallExecutor {
 			abortSignal: params.abortSignal,
 			executionCounter: params.executionCounter,
 			suspendPayload: params.suspendPayload,
+			continuation: params.continuation,
+			resumeSchema: params.resumeSchema,
 		});
 	}
 
@@ -835,6 +881,8 @@ export class ToolCallExecutor {
 						abortSignal: ctx.abortSignal,
 						countToolCall: false,
 						suspendPayload: entry.suspendPayload,
+						continuation: entry.continuation,
+						resumeSchema: entry.resumeSchema,
 					},
 					tool,
 					'Run aborted',
@@ -938,7 +986,7 @@ export class ToolCallExecutor {
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
 		input: JSONValue,
-		onSuspend: (payload: unknown) => void,
+		onSuspend: (payload: unknown, options?: ToolSuspendOptions) => void,
 	): Promise<unknown> {
 		const {
 			toolCallId,
@@ -950,6 +998,8 @@ export class ToolCallExecutor {
 			executionCounter,
 			abortSignal,
 			suspendPayload,
+			continuation,
+			resumeSchema,
 		} = params;
 		return await this.telemetry.withToolSpan(
 			toolCallId,
@@ -966,6 +1016,8 @@ export class ToolCallExecutor {
 							abortSignal,
 							executionCounter,
 							suspendPayload,
+							continuation,
+							resumeSchema,
 							onSuspend,
 						}),
 					abortSignal,
@@ -986,14 +1038,20 @@ export class ToolCallExecutor {
 			}
 			toolResult.payload = parseResult.data as JSONValue;
 		}
-		if (!builtTool.resumeSchema) {
+		const resumeSchema = getToolResumeJsonSchema(
+			builtTool,
+			toolResult.payload,
+			toolResult.resumeSchema,
+		);
+		if (!resumeSchema) {
 			return this.toolError(params, new Error(`Tool ${params.toolName} has no resume schema`));
 		}
-		const resumeSchema = getToolResumeJsonSchema(builtTool, toolResult.payload);
-		if (!resumeSchema) {
-			return this.toolError(params, new Error('Invalid resume schema'));
-		}
-		return { outcome: 'suspended', payload: toolResult.payload, resumeSchema };
+		return {
+			outcome: 'suspended',
+			payload: toolResult.payload,
+			resumeSchema,
+			...(toolResult.continuation !== undefined ? { continuation: toolResult.continuation } : {}),
+		};
 	}
 
 	/** Apply toModelOutput, emit ToolExecutionEnd, build the success outcome. */

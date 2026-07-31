@@ -133,6 +133,8 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				...interruptCtx,
 				resumeData: undefined,
 				suspendPayload: undefined,
+				continuation: undefined,
+				resumeSchema: undefined,
 			};
 			return await originalHandler(input, initialInnerContext);
 		},

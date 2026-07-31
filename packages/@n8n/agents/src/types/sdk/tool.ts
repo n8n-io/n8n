@@ -5,7 +5,14 @@ import type { AgentExecutionCounter } from './agent';
 import type { AgentMessage } from './message';
 import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
-import type { JSONObject } from '../utils/json';
+import type { JSONObject, JSONValue } from '../utils/json';
+
+export interface ToolSuspendOptions {
+	/** Schema for data accepted when resuming this specific suspension. */
+	resumeSchema?: ZodType | JSONSchema7;
+	/** Private serializable state restored only to the tool on resume or cancellation. */
+	continuation?: JSONValue;
+}
 
 export interface ToolExecutionContext {
 	/** Agent run ID for the current execution. */
@@ -31,12 +38,16 @@ export interface ToolExecutionContext {
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: AgentExecutionCounter;
 	/** Internal runtime hook used to retain cleanup ownership if abort wins the suspend race. */
-	onSuspend?: (payload: unknown) => void;
+	onSuspend?: (payload: unknown, options?: ToolSuspendOptions) => void;
 	/**
 	 * Checkpointed suspend payload for a resumed interruptible tool call,
 	 * restored from persistence. Only set when the tool is being resumed.
 	 */
 	suspendPayload?: unknown;
+	/** Private continuation restored from persistence for a resumed tool call. */
+	continuation?: JSONValue;
+	/** Resume schema restored from persistence for a resumed tool call. */
+	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 }
 
 export interface ToolContext {
@@ -64,7 +75,7 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	 * Must be used with `return await` — the branded return type signals
 	 * the execution engine to halt. Code after `return await ctx.suspend()` is unreachable.
 	 */
-	suspend: (payload: S) => Promise<never>;
+	suspend: (payload: S, options?: ToolSuspendOptions) => Promise<never>;
 	/** Data from the consumer after resume. Undefined on first invocation or when cancelled. */
 	resumeData: R | undefined;
 	/** Set when the resume was a cancellation and the tool opted in via `.handleCancellation()`. */
@@ -87,6 +98,10 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	executionCounter?: ToolExecutionContext['executionCounter'];
 	/** The payload this tool passed to `suspend()` when it suspended, restored from the checkpoint. Only set when the tool is being resumed. */
 	suspendPayload?: S;
+	/** Private continuation this tool passed to `suspend()`, restored from the checkpoint. */
+	continuation?: JSONValue;
+	/** Resume schema persisted for this suspension. */
+	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 }
 
 export interface ToolCancellationContext extends ToolContext {
@@ -94,6 +109,10 @@ export interface ToolCancellationContext extends ToolContext {
 	cancellation: { message: string };
 	/** Payload originally persisted when the tool suspended. */
 	suspendPayload?: unknown;
+	/** Private continuation originally persisted when the tool suspended. */
+	continuation?: JSONValue;
+	/** Resume schema persisted for the suspension being cancelled. */
+	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 }
 
 export interface BuiltTool {

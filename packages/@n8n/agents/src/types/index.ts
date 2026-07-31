@@ -67,6 +67,7 @@ export type {
 	ToolCancellationContext,
 	ToolExecutionContext,
 	InterruptibleToolContext,
+	ToolSuspendOptions,
 	BuiltTool,
 	BuiltProviderTool,
 } from './sdk/tool';

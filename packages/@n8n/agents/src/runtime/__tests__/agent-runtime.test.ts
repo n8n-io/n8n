@@ -478,6 +478,76 @@ describe('AgentRuntime — execution counters', () => {
 		expect(observedCtx?.suspendPayload).toEqual(suspendPayload);
 	});
 
+	it('persists dynamic suspension state privately and validates resume before claiming', async () => {
+		const continuation = { childRunId: 'child-run-1', taskPath: '/root/research_0' };
+		const dynamicResumeSchema = z.object({ decision: z.literal('continue') });
+		let observedCtx: InterruptibleToolContext | undefined;
+		const suspendTool: BuiltTool = {
+			name: 'dynamic_suspend',
+			description: 'Suspends with invocation-specific state',
+			inputSchema: z.object({}),
+			suspendSchema: z.object({ prompt: z.string() }),
+			resumeSchema: z.object({ fallback: z.string() }),
+			handler: async (_input, ctx) => {
+				const interruptibleCtx = ctx as InterruptibleToolContext;
+				if (!interruptibleCtx.resumeData) {
+					return await interruptibleCtx.suspend(
+						{ prompt: 'Continue the child run?' },
+						{ resumeSchema: dynamicResumeSchema, continuation },
+					);
+				}
+				observedCtx = interruptibleCtx;
+				return { resumed: true };
+			},
+		};
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([suspendTool], checkpointStore);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-dynamic', toolName: 'dynamic_suspend', args: {} },
+			]),
+		);
+
+		const first = await runtime.generate('start');
+		const publicSuspension = first.pendingSuspend?.[0];
+		expect(publicSuspension?.resumeSchema).toEqual(
+			expect.objectContaining({
+				type: 'object',
+				properties: { decision: expect.objectContaining({ const: 'continue' }) },
+				required: ['decision'],
+			}),
+		);
+		expect(publicSuspension).not.toHaveProperty('continuation');
+
+		const checkpoint = await checkpointStore.load(first.runId);
+		expect(checkpoint?.pendingToolCalls['tc-dynamic']).toEqual(
+			expect.objectContaining({
+				continuation,
+				resumeSchema: publicSuspension?.resumeSchema,
+			}),
+		);
+
+		await expect(
+			runtime.resume(
+				'generate',
+				{ fallback: 'accepted only by the static schema' },
+				{ runId: first.runId, toolCallId: 'tc-dynamic' },
+			),
+		).rejects.toThrow('Invalid resume payload');
+		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('resumed'));
+		await runtime.resume(
+			'generate',
+			{ decision: 'continue' },
+			{ runId: first.runId, toolCallId: 'tc-dynamic' },
+		);
+
+		expect(observedCtx?.continuation).toEqual(continuation);
+		expect(observedCtx?.resumeSchema).toEqual(publicSuspension?.resumeSchema);
+	});
+
 	it('keeps delegate_subagent output usage per tool call without adding it to generate result usage', async () => {
 		const delegateTool: BuiltTool = {
 			name: DELEGATE_SUB_AGENT_TOOL_NAME,
@@ -2268,9 +2338,13 @@ describe('AgentRuntime — concurrent tool execution', () => {
 	});
 
 	it('streams skipped sibling tool results when cancelling one of multiple suspensions', async () => {
-		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+		const handler = vi.fn(async (input, ctx: InterruptibleToolContext) => {
 			if (ctx.resumeData) return { approved: true };
-			return await ctx.suspend({ reason: 'needs approval' });
+			const value = (input as { value: string }).value;
+			return await ctx.suspend(
+				{ reason: 'needs approval' },
+				{ continuation: { cleanupKey: `cleanup-${value}` } },
+			);
 		});
 		const onCancellation = vi
 			.fn<NonNullable<BuiltTool['onCancellation']>>()
@@ -2303,6 +2377,10 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(onCancellation.mock.calls.map(([toolInput]) => toolInput)).toEqual([
 			{ value: 'a' },
 			{ value: 'b' },
+		]);
+		expect(onCancellation.mock.calls.map(([, context]) => context.continuation)).toEqual([
+			{ cleanupKey: 'cleanup-a' },
+			{ cleanupKey: 'cleanup-b' },
 		]);
 		expect(chunks).toEqual(
 			expect.arrayContaining([
@@ -2841,9 +2919,16 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(state.pendingToolCalls['tc-2'].suspended).toBe(false);
 	});
 
-	it('tool-call-suspended chunks include resumeSchema when tool defines one', async () => {
+	it('tool-call-suspended chunks expose a dynamic resume schema without private continuation', async () => {
+		const dynamicResumeSchema = z.object({ decision: z.enum(['continue', 'stop']) });
 		const suspendTool = makeSuspendingTool('suspend_tool', async (_input, ctx) => {
-			return await ctx.suspend({ reason: 'needs approval' });
+			return await ctx.suspend(
+				{ reason: 'needs approval' },
+				{
+					resumeSchema: dynamicResumeSchema,
+					continuation: { childRunId: 'private-child-run' },
+				},
+			);
 		});
 
 		const { runtime } = createRuntimeWithTools([suspendTool], 1);
@@ -2880,8 +2965,16 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		>;
 		expect(suspendedChunks.length).toBe(1);
 		// resumeSchema should be a JSON Schema object (from zod-to-json-schema conversion)
-		expect(suspendedChunks[0].resumeSchema).toBeDefined();
-		expect(typeof suspendedChunks[0].resumeSchema).toBe('object');
+		expect(suspendedChunks[0].resumeSchema).toEqual(
+			expect.objectContaining({
+				type: 'object',
+				properties: {
+					decision: expect.objectContaining({ enum: ['continue', 'stop'] }),
+				},
+				required: ['decision'],
+			}),
+		);
+		expect(suspendedChunks[0]).not.toHaveProperty('continuation');
 	});
 
 	it('pendingSuspend entries include resumeSchema when tool defines one', async () => {
@@ -4066,7 +4159,7 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 		vi.clearAllMocks();
 	});
 
-	it('surfaces a ZodError as a top-level error when consumer provides invalid resume data', async () => {
+	it('surfaces a persisted-schema error when consumer provides invalid resume data', async () => {
 		const tool = makeInterruptibleTool(); // has resumeSchema: z.object({ approved: z.boolean() })
 
 		generateText.mockResolvedValueOnce(
@@ -4091,7 +4184,7 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 			{ notApproved: 'wrong' },
 			{ runId, toolCallId },
 		);
-		await expect(resumeResultPromise).rejects.toThrow(/"message": "Required"/);
+		await expect(resumeResultPromise).rejects.toThrow('Invalid resume payload');
 	});
 });
 
@@ -4668,12 +4761,17 @@ describe('AgentRuntime — abort during a tool batch', () => {
 
 	it('cleans up a child suspension when the parent aborts before persisting it', async () => {
 		const bus = new AgentEventBus();
+		const continuation = { childRunId: 'child-run-before-abort' };
+		const resumeSchema = z.object({ approved: z.boolean() });
 		const onCancellation = vi
 			.fn<NonNullable<BuiltTool['onCancellation']>>()
 			.mockResolvedValue(undefined);
 		const tool = {
 			...makeSuspendingTool('suspend_tool', async (_input, ctx) => {
-				const suspension = ctx.suspend({ reason: 'needs approval' });
+				const suspension = ctx.suspend(
+					{ reason: 'needs approval' },
+					{ continuation, resumeSchema },
+				);
 				bus.abort();
 				return await suspension;
 			}),
@@ -4694,8 +4792,13 @@ describe('AgentRuntime — abort during a tool batch', () => {
 			{ value: 'a' },
 			expect.objectContaining({
 				cancellation: { message: 'Run aborted' },
+				continuation,
 				toolCallId: 'tc-1',
 				suspendPayload: { reason: 'needs approval' },
+				resumeSchema: expect.objectContaining({
+					type: 'object',
+					properties: { approved: expect.objectContaining({ type: 'boolean' }) },
+				}),
 			}),
 		);
 	});
