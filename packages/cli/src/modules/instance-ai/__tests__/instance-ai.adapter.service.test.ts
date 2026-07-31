@@ -1332,6 +1332,89 @@ function createNodeAdapterForTests(
 	return createNodeAdapterServiceForTests(nodes, { nodeCatalogService }).nodeService;
 }
 
+// ---------------------------------------------------------------------------
+// Web-search provider selection
+// ---------------------------------------------------------------------------
+
+import { braveSearch, searxngSearch } from '@n8n/ai-utilities';
+
+describe('web-search provider selection', () => {
+	type SearchFn = (query: string, options?: Record<string, unknown>) => Promise<unknown>;
+	type ProxyConfig = { apiUrl: string; getAuthHeaders: () => Promise<Record<string, string>> };
+
+	/** `buildSearchMethod` is private, but the precedence it encodes is exactly what
+	 *  the `INSTANCE_AI_BRAVE_SEARCH_API_KEY` wiring relies on — assert it directly. */
+	function buildSearch(args: {
+		apiKey?: string;
+		searxngUrl?: string;
+		proxyConfig?: ProxyConfig;
+	}): SearchFn | undefined {
+		const { service } = createNodeAdapterServiceForTests([]);
+		const cache = { get: vi.fn().mockReturnValue(undefined), set: vi.fn() };
+		const withPrivate = service as unknown as {
+			buildSearchMethod: (
+				apiKey: string,
+				searxngUrl: string,
+				cache: unknown,
+				proxyConfig?: ProxyConfig,
+				userId?: string,
+			) => SearchFn | undefined;
+		};
+		return withPrivate.buildSearchMethod.call(
+			service,
+			args.apiKey ?? '',
+			args.searxngUrl ?? '',
+			cache,
+			args.proxyConfig,
+			'user-1',
+		);
+	}
+
+	beforeEach(() => {
+		vi.mocked(braveSearch).mockReset().mockResolvedValue({ query: 'q', results: [] });
+		vi.mocked(searxngSearch).mockReset().mockResolvedValue({ query: 'q', results: [] });
+	});
+
+	it('has no search method when neither a Brave key nor a SearXNG URL is set', () => {
+		// The adapter then serves `{ query, results: [] }`, which the agent cannot
+		// distinguish from "nothing found" — hence the key in the eval lanes.
+		expect(buildSearch({})).toBeUndefined();
+	});
+
+	it('searches Brave with the configured key', async () => {
+		await buildSearch({ apiKey: 'BSA-key' })!('quakes', { maxResults: 3 });
+
+		expect(braveSearch).toHaveBeenCalledWith(
+			'BSA-key',
+			'quakes',
+			expect.objectContaining({ maxResults: 3 }),
+		);
+		expect(searxngSearch).not.toHaveBeenCalled();
+	});
+
+	it('routes through the AI-service proxy in preference to a configured key', async () => {
+		const proxyConfig: ProxyConfig = {
+			apiUrl: 'https://proxy.example.com/brave-search',
+			getAuthHeaders: async () => ({}),
+		};
+
+		await buildSearch({ apiKey: 'BSA-key', proxyConfig })!('quakes');
+
+		expect(braveSearch).toHaveBeenCalledWith(
+			'',
+			'quakes',
+			expect.objectContaining({ proxyConfig }),
+		);
+	});
+
+	it('falls back to SearXNG when only a URL is set', async () => {
+		await buildSearch({ searxngUrl: 'http://searxng:8080' })!('quakes');
+
+		expect(searxngSearch).toHaveBeenCalledWith('http://searxng:8080', 'quakes', expect.anything());
+		expect(braveSearch).not.toHaveBeenCalled();
+	});
+});
+
 describe('createNodeAdapter', () => {
 	it('preserves credential displayOptions in getDescription()', async () => {
 		const adapter = createNodeAdapterForTests([

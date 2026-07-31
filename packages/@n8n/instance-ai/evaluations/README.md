@@ -306,6 +306,7 @@ Not yet covered: an automatic "unexpected artifact" fail (a build producing an a
 | `LANGSMITH_BRANCH` | No | Branch name to tag the experiment with (auto-set in CI) |
 | `CONTEXT7_API_KEY` | No | Context7 key for API-doc lookups. Improves mock realism for less-common services; the LLM falls back to training data when unset |
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
+| `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
@@ -714,8 +715,9 @@ Write the turns as a screenplay of what the user wants, keeping concrete values 
 | Withhold a value until asked | `[Don't bring up the channel unless the agent asks where to post; then say 'Slack #growth.']` |
 | Refuse and hold firm on re-ask | `[The user has no channel and won't provide one. If asked — question or setup card, even repeatedly — skip it; never invent one.]` |
 | Keep the conversation going | `[After each change lands, send the next one from the list, one at a time, until done.]` |
+| Refuse network access | `[Deny the web-search request — the user doesn't want it searching the web.]` |
 
-A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
+A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Network-access prompts (`web-search`, `fetch-url`) are the one gate that's granted **without** consulting the proxy LLM, so they cost nothing by default — but while any stage direction is still pending the decision goes to the LLM, which is what makes the refusal above reachable. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
 
 **Prompt / conversation tips**
 
