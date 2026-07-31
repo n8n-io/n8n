@@ -16,8 +16,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
-				projectConflictPolicy: 'overwrite',
-				folderConflictPolicy: 'merge',
+				projectConflictPolicy: 'merge',
 				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -45,8 +44,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
-				projectConflictPolicy: 'overwrite',
-				folderConflictPolicy: 'merge',
+				projectConflictPolicy: 'merge',
 				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -76,8 +74,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
-				projectConflictPolicy: 'overwrite',
-				folderConflictPolicy: 'merge',
+				projectConflictPolicy: 'merge',
 				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -106,8 +103,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
-				projectConflictPolicy: 'overwrite',
-				folderConflictPolicy: 'merge',
+				projectConflictPolicy: 'merge',
 				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -304,6 +300,14 @@ describe('ImportPackageRequestDto', () => {
 	});
 
 	describe('folderConflictPolicy', () => {
+		it('stays undefined when omitted, so the module can follow projectConflictPolicy', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.folderConflictPolicy).toBeUndefined();
+			}
+		});
+
 		it.each(['merge', 'fail', 'overwrite'])('accepts "%s"', (policy) => {
 			const result = ImportPackageRequestDto.safeParse({
 				workflowConflictPolicy: 'fail',
@@ -360,11 +364,11 @@ describe('ImportPackageRequestDto', () => {
 	});
 
 	describe('projectConflictPolicy', () => {
-		it('defaults to "overwrite" when omitted', () => {
+		it('defaults to "merge" when omitted', () => {
 			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.projectConflictPolicy).toBe('overwrite');
+				expect(result.data.projectConflictPolicy).toBe('merge');
 			}
 		});
 
@@ -494,8 +498,7 @@ describe('ImportPackageRequestDto', () => {
 			{ field: 'workflowPublishingPolicy', expected: 'preserve-published-state' },
 			{ field: 'workflowIdPolicy', expected: 'source' },
 			{ field: 'missingNodeTypeMode', expected: 'fail' },
-			{ field: 'projectConflictPolicy', expected: 'overwrite' },
-			{ field: 'folderConflictPolicy', expected: 'merge' },
+			{ field: 'projectConflictPolicy', expected: 'merge' },
 			{ field: 'overwriteDeletionPolicy', expected: 'archive' },
 			{ field: 'dataTableMatchingMode', expected: 'by-id' },
 			{ field: 'dataTableMissingMode', expected: 'create' },

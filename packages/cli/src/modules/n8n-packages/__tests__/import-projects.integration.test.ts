@@ -36,9 +36,9 @@ import { initNodeTypes } from '@test-integration/utils';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
 import type {
-	FolderConflictPolicy,
 	ImportPackageRequest,
 	OverwriteDeletionPolicy,
+	ProjectConflictPolicy,
 } from '../n8n-packages.types';
 import {
 	buildEntityPackageBuffer,
@@ -204,6 +204,8 @@ describe('project shell import', () => {
 					},
 				],
 			}),
+			undefined,
+			{ projectConflictPolicy: 'overwrite' },
 		);
 
 		expect(result.projects).toEqual([
@@ -325,12 +327,13 @@ describe('project shell import', () => {
 			packagedWorkflowId = first.workflows[0].localId;
 		});
 
+		/** States the intent once, at project level; the folder policy inherits it. */
 		const reconcile = async (
-			folderConflictPolicy: FolderConflictPolicy,
+			projectConflictPolicy: ProjectConflictPolicy,
 			overwriteDeletionPolicy: OverwriteDeletionPolicy = 'archive',
 		) =>
 			await importProjects(owner, await projectPackage(), undefined, {
-				folderConflictPolicy,
+				projectConflictPolicy,
 				overwriteDeletionPolicy,
 			});
 
@@ -393,6 +396,19 @@ describe('project shell import', () => {
 			expect(await findWorkflow(packagedWorkflowId)).not.toBeNull();
 		});
 
+		it('follows an explicit folder policy over the inherited one', async () => {
+			const stale = await createWorkflow({ name: 'Stale' }, project);
+
+			// Project says overwrite, but folders were told otherwise, so nothing is removed.
+			const result = await importProjects(owner, await projectPackage(), undefined, {
+				projectConflictPolicy: 'overwrite',
+				folderConflictPolicy: 'merge',
+			});
+
+			expect(result.removedWorkflows).toEqual([]);
+			expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
+		});
+
 		it('archives nothing under merge', async () => {
 			const stale = await createWorkflow({ name: 'Stale' }, project);
 
@@ -416,7 +432,7 @@ describe('project shell import', () => {
 					owner,
 					await projectPackage(),
 					['project:create', 'project:update', 'folder:create', 'folder:update', 'workflow:import'],
-					{ folderConflictPolicy: 'overwrite' },
+					{ projectConflictPolicy: 'overwrite' },
 				),
 			).rejects.toBeInstanceOf(ForbiddenError);
 		});
@@ -1519,7 +1535,9 @@ describe('project custom span attributes (LIGO-862)', () => {
 			],
 		});
 
-		const result = await importProjects(owner, packageBuffer);
+		const result = await importProjects(owner, packageBuffer, undefined, {
+			projectConflictPolicy: 'overwrite',
+		});
 
 		expect(result.projects).toEqual([
 			{ sourceProjectId: project.id, localId: project.id, name: project.name, status: 'updated' },

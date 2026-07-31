@@ -52,11 +52,11 @@ import type {
 	ImportBindingMap,
 	ImportContext,
 	ImportedFolderSummary,
-	ImportFolderProperties,
 	ImportWorkflowProperties,
 	MissingNodeTypeMode,
 	PackageImportBindings,
 	RemovedWorkflowSummary,
+	ResolvedImportFolderProperties,
 } from '../n8n-packages.types';
 import { toImportBlockedError } from './import-blocked.error';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
@@ -69,7 +69,7 @@ export interface ImportOrchestrationInput {
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
 	tagRequest: TagImportRequest;
-	options: ImportWorkflowProperties & ImportFolderProperties;
+	options: ImportWorkflowProperties & ResolvedImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
 	/** Sub-workflow dependency graph from the manifest, used to order the import. */

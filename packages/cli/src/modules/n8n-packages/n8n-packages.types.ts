@@ -221,8 +221,34 @@ export type ImportProjectProperties = {
 	projectConflictPolicy: ProjectConflictPolicy;
 };
 
-export type ImportFolderProperties = {
+/** Folder options once the dispatcher has settled what the caller left to the project policy. */
+export type ResolvedImportFolderProperties = ImportFolderProperties & {
 	folderConflictPolicy: FolderConflictPolicy;
+};
+
+/** An import request every importer can read without re-deriving what the caller omitted. */
+export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImportFolderProperties;
+
+/**
+ * The folder policy the import runs under: what the caller asked for, or the project policy they
+ * already stated. A workflow package defines no projects, so its project policy is meaningless and
+ * folder handling falls back to `merge`.
+ */
+export function resolveFolderConflictPolicy(
+	request: ImportProjectProperties & ImportFolderProperties,
+	packageShape: 'project' | 'workflow',
+): FolderConflictPolicy {
+	if (request.folderConflictPolicy !== undefined) return request.folderConflictPolicy;
+	return packageShape === 'project' ? request.projectConflictPolicy : FolderConflictPolicy.Merge;
+}
+
+export type ImportFolderProperties = {
+	/**
+	 * Omitted means "same as `projectConflictPolicy`" — the two express one intent at two levels, so
+	 * the caller states it once. {@link resolveFolderConflictPolicy} settles it before any importer
+	 * runs, which is why everything downstream sees a concrete value.
+	 */
+	folderConflictPolicy?: FolderConflictPolicy;
 	/** How `folderConflictPolicy=overwrite` removes a workflow the package does not contain. */
 	overwriteDeletionPolicy: OverwriteDeletionPolicy;
 };

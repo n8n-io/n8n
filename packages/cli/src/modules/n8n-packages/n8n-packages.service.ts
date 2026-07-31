@@ -34,6 +34,7 @@ import {
 	FolderConflictPolicy,
 	MissingWorkflowDependencyPolicy,
 	ProjectConflictPolicy,
+	resolveFolderConflictPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageResult,
@@ -305,8 +306,8 @@ export class N8nPackagesService {
 				);
 			}
 			// Removing workflows is the most destructive thing an import can do, so it takes both
-			// policies saying `overwrite`. Rejecting the mixed request beats guessing which half the
-			// caller meant — silently removing under `merge`, or silently ignoring `overwrite`.
+			// policies saying `overwrite`. Only an explicit mismatch gets here — an omitted folder
+			// policy inherits the project's — and rejecting it beats guessing which half was meant.
 			if (
 				request.folderConflictPolicy === FolderConflictPolicy.Overwrite &&
 				request.projectConflictPolicy !== ProjectConflictPolicy.Overwrite
@@ -315,16 +316,26 @@ export class N8nPackagesService {
 					`folderConflictPolicy=overwrite removes workflows the package does not contain, so it requires projectConflictPolicy=overwrite (got "${request.projectConflictPolicy}").`,
 				);
 			}
-			return await this.projectPackageImporter.import(request, reader, manifest);
+			return await this.projectPackageImporter.import(
+				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
+				reader,
+				manifest,
+			);
 		}
+
+		const folderConflictPolicy = resolveFolderConflictPolicy(request, 'workflow');
 		// A workflow package describes only the workflows it carries, not the whole target scope, so
 		// it cannot tell an unpackaged workflow apart from one that was never meant to be in scope.
-		if (request.folderConflictPolicy === FolderConflictPolicy.Overwrite) {
+		if (folderConflictPolicy === FolderConflictPolicy.Overwrite) {
 			throw new BadRequestError(
 				'folderConflictPolicy=overwrite is only supported for project packages, which describe the whole project scope. Use merge or fail.',
 			);
 		}
-		return await this.workflowPackageImporter.import(request, reader, manifest);
+		return await this.workflowPackageImporter.import(
+			{ ...request, folderConflictPolicy },
+			reader,
+			manifest,
+		);
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
