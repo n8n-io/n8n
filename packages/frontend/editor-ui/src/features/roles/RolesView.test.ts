@@ -87,7 +87,7 @@ describe('RolesView', () => {
 
 			await userEvent.hover(getByText('Instance roles'));
 			expect(
-				await screen.findByText('Your role does not have the permission to create instance roles'),
+				await screen.findByText("You don't have permission to manage instance roles"),
 			).toBeInTheDocument();
 		});
 

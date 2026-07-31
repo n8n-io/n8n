@@ -401,7 +401,7 @@ describe('SettingsApiView', () => {
 			const tooltip = createButton.closest('[data-tooltip-content]');
 			expect(tooltip?.getAttribute('data-tooltip-disabled')).toBe('false');
 			expect(tooltip?.getAttribute('data-tooltip-content')).toBe(
-				'Your role does not have the permission to create API keys',
+				"You don't have permission to create API keys",
 			);
 		});
 
