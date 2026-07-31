@@ -137,6 +137,51 @@ describe('V1StepExecutor', () => {
 		await expect(execution).rejects.toThrow(EngineRequestNotSupportedError);
 	});
 
+	it('routes multi-output results to their output slots', async () => {
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+					{ id: 'n', name: 'Splitter', type: 'test.twoOutputs' },
+					{ id: 'a', name: 'A', type: 'n8n-nodes-base.noOp' },
+					{ id: 'b', name: 'B', type: 'n8n-nodes-base.noOp' },
+				],
+				{
+					Manual: { main: [[{ node: 'Splitter', type: 'main', index: 0 }]] },
+					Splitter: {
+						main: [
+							[{ node: 'A', type: 'main', index: 0 }],
+							[{ node: 'B', type: 'main', index: 0 }],
+						],
+					},
+				},
+			),
+		);
+
+		const result = await executor.execute(stepRequest(graph, 'n', items({ a: 1 })));
+		expect(result.outputs).toEqual([[{ json: { a: 1 } }], [{ json: { a: 1, second: true } }]]);
+	});
+
+	it('rejects batch steps until the engine iterates loops natively', async () => {
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+					{ id: 'loop', name: 'Loop', type: 'n8n-nodes-base.splitInBatches', typeVersion: 3 },
+					{ id: 'body', name: 'Body', type: 'n8n-nodes-base.noOp' },
+				],
+				{
+					Manual: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+					Loop: { main: [[], [{ node: 'Body', type: 'main', index: 0 }]] },
+					Body: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+				},
+			),
+		);
+
+		const execution = executor.execute(stepRequest(graph, 'loop', items({ a: 1 })));
+		await expect(execution).rejects.toThrow(UnsupportedStepTypeError);
+	});
+
 	it('honors onError=continueRegularOutput as passthrough', async () => {
 		const workflow = v1Workflow([
 			{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },

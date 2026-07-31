@@ -20,6 +20,7 @@ import AgentChannelListItem from './AgentChannelListItem.vue';
 import AgentChannelSlackSetup from './AgentChannelSlackSetup.vue';
 import AgentChannelLinearSetup from './AgentChannelLinearSetup.vue';
 import AgentChannelTelegramSetup from './AgentChannelTelegramSetup.vue';
+import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
 
 export type ChannelView =
 	| 'list'
@@ -64,21 +65,28 @@ const {
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const currentView = ref<ChannelView>(props.view);
+const credentialIdAtEditOpen = ref('');
+const pendingCredentialReplacement = ref<{
+	channelType: string;
+	originalCredentialId: string;
+	replacementCredentialId: string;
+} | null>(null);
+const credentialReplacementError = ref(false);
 
-watch(
-	() => props.view,
-	(newView) => {
-		currentView.value = newView;
-	},
-);
+function channelTypeFromView(view: ChannelView): string | null {
+	return view === 'list' ? null : view.split('_')[0];
+}
+
+function captureConnectedCredential(channelType: string | null) {
+	credentialIdAtEditOpen.value = channelType ? (connectedCredentials.value[channelType] ?? '') : '';
+}
 
 watch(currentView, (newView) => {
 	emit('update:view', newView);
 });
 
 const selectedChannelType = computed(() => {
-	if (currentView.value === 'list') return null;
-	return currentView.value.split('_')[0];
+	return channelTypeFromView(currentView.value);
 });
 
 const isSetupMode = computed(() => currentView.value.endsWith('_setup'));
@@ -110,10 +118,36 @@ const {
 	isIntegrationConnected,
 });
 
-const showFooterActions = computed(
-	() =>
-		isEditMode.value && selectedChannelType.value !== null && selectedChannelType.value !== 'slack',
+const hasPendingCredentialReplacement = computed(() => pendingCredentialReplacement.value !== null);
+const isCredentialReplacementInProgress = computed(
+	() => hasPendingCredentialReplacement.value && !credentialReplacementError.value,
 );
+
+function clearFailedCredentialReplacement() {
+	if (!credentialReplacementError.value) return;
+	pendingCredentialReplacement.value = null;
+	credentialReplacementError.value = false;
+}
+
+function prepareChannelEdit(channelType: string | null) {
+	credentialReplacementError.value = false;
+	captureConnectedCredential(channelType);
+	if (channelType && credentialIdAtEditOpen.value) {
+		selectedCredentials.value[channelType] = credentialIdAtEditOpen.value;
+	}
+}
+
+watch(
+	() => props.view,
+	(newView) => {
+		if (isCredentialReplacementInProgress.value) return;
+		clearFailedCredentialReplacement();
+		currentView.value = newView;
+		prepareChannelEdit(newView.endsWith('_edit') ? channelTypeFromView(newView) : null);
+	},
+);
+
+const showFooterActions = computed(() => isEditMode.value && selectedChannelType.value !== null);
 
 const currentChannelCredentialId = computed(() =>
 	getChannelCredentialId(selectedChannelType.value),
@@ -171,10 +205,19 @@ function goToSetup(channelType: string) {
 }
 
 function goToEdit(channelType: string) {
+	prepareChannelEdit(channelType);
 	currentView.value = `${channelType}_edit` as ChannelView;
 }
 
 function goBackToList() {
+	if (
+		isCredentialReplacementInProgress.value ||
+		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false)
+	) {
+		return;
+	}
+	clearFailedCredentialReplacement();
+	captureConnectedCredential(null);
 	currentView.value = 'list';
 }
 
@@ -183,7 +226,38 @@ function handleListDisconnect(channelType: string) {
 }
 
 function closeModal() {
+	if (
+		isCredentialReplacementInProgress.value ||
+		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false)
+	) {
+		return;
+	}
 	emit('update:open', false);
+}
+
+function handleModalOpenUpdate(isOpen: boolean) {
+	if (
+		!isOpen &&
+		(isCredentialReplacementInProgress.value ||
+			(selectedChannelType.value ? isLoading(selectedChannelType.value) : false))
+	) {
+		return;
+	}
+	emit('update:open', isOpen);
+}
+
+async function finishCredentialReplacement(
+	pendingReplacement: NonNullable<typeof pendingCredentialReplacement.value>,
+) {
+	credentialReplacementError.value = false;
+	try {
+		await disconnect(pendingReplacement.channelType, pendingReplacement.originalCredentialId);
+		await fetchStatus([pendingReplacement.channelType]);
+		pendingCredentialReplacement.value = null;
+	} catch (error) {
+		credentialReplacementError.value = true;
+		throw error;
+	}
 }
 
 async function saveChannelConfig() {
@@ -191,8 +265,31 @@ async function saveChannelConfig() {
 	const credentialId = currentChannelCredentialId.value;
 	if (!channelType || !credentialId) return;
 	if (channelSetupRef.value?.validationError) return;
+	const pendingReplacement = pendingCredentialReplacement.value;
+	if (pendingReplacement?.channelType === channelType) {
+		selectedCredentials.value[channelType] = pendingReplacement.replacementCredentialId;
+		await finishCredentialReplacement(pendingReplacement);
+		emit('channel-connected', channelType);
+		emit('agent-changed');
+		closeModal();
+		return;
+	}
+	const credentialIdToReplace =
+		isEditMode.value &&
+		credentialIdAtEditOpen.value &&
+		credentialIdAtEditOpen.value !== credentialId
+			? credentialIdAtEditOpen.value
+			: null;
 
 	await connect(channelType, credentialId, channelSetupRef.value?.currentSettings);
+	if (credentialIdToReplace) {
+		pendingCredentialReplacement.value = {
+			channelType,
+			originalCredentialId: credentialIdToReplace,
+			replacementCredentialId: credentialId,
+		};
+		await finishCredentialReplacement(pendingCredentialReplacement.value);
+	}
 	emit('channel-connected', channelType);
 	emit('agent-changed');
 	closeModal();
@@ -206,23 +303,34 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 	});
 }
 
-async function handleDisconnected(channelType: string) {
+async function handleDisconnected(channelType: string, credentialId?: string) {
 	// Draft channels (configured but missing a credential) have no connected
 	// credential — send '' so the backend removes the draft entry by type.
-	const credentialId = connectedCredentials.value[channelType] ?? '';
-	await disconnect(channelType, credentialId);
-	emit('channel-disconnected', channelType);
+	await disconnect(channelType, credentialId ?? connectedCredentials.value[channelType] ?? '');
+	await fetchStatus([channelType]);
+	if (!isIntegrationConnected(channelType)) {
+		emit('channel-disconnected', channelType);
+	}
 	emit('agent-changed');
 }
 
-async function disconnectSlackApp() {
-	await handleDisconnected('slack');
+async function removeCurrentChannel() {
+	const channelType = selectedChannelType.value;
+	if (!channelType || hasPendingCredentialReplacement.value || isLoading(channelType)) return;
+
+	await handleDisconnected(
+		channelType,
+		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
+	);
 	closeModal();
 }
 
 async function loadChannelState() {
 	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
 	await loadSharedChannelState(integrations);
+	if (isEditMode.value) {
+		prepareChannelEdit(selectedChannelType.value);
+	}
 }
 
 watch(
@@ -231,6 +339,9 @@ watch(
 		if (isOpen) {
 			void loadChannelState();
 			currentView.value = props.view;
+		} else {
+			clearFailedCredentialReplacement();
+			captureConnectedCredential(null);
 		}
 	},
 	{ immediate: true },
@@ -243,8 +354,12 @@ watch(
 		size="2xlarge"
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
+		:show-close-button="
+			!isCredentialReplacementInProgress &&
+			!(selectedChannelType ? isLoading(selectedChannelType) : false)
+		"
 		@interact-outside="(e) => e.preventDefault()"
-		@update:open="$emit('update:open', $event)"
+		@update:open="handleModalOpenUpdate"
 	>
 		<FocusScope
 			v-if="credentialModalOpen"
@@ -268,6 +383,10 @@ watch(
 						size="small"
 						icon-size="medium"
 						icon="arrow-left"
+						:disabled="
+							isCredentialReplacementInProgress ||
+							(selectedChannelType ? isLoading(selectedChannelType) : false)
+						"
 						:class="$style.backButton"
 						@click="goBackToList"
 					>
@@ -308,7 +427,6 @@ watch(
 						v-if="selectedChannelType === 'slack'"
 						ref="channelSetupRef"
 						v-model="selectedCredentials.slack"
-						mode="setup"
 						:connected="isConnected('slack')"
 						:is-published="isPublished"
 						:setup-slack-app="setupSlackApp"
@@ -378,29 +496,34 @@ watch(
 				</div>
 
 				<div v-else-if="isEditMode" :key="`edit-${currentView}`" :class="$style.editView">
-					<AgentChannelSlackSetup
-						v-if="currentIntegration?.type === 'slack'"
-						ref="channelSetupRef"
-						v-model="selectedCredentials.slack"
-						mode="edit"
-						:connected="isConnected('slack')"
-						:is-published="isPublished"
-						:disabled="isLoading('slack')"
-						:disconnect-slack-app="disconnectSlackApp"
-						:integration="currentIntegration"
-						:credentials="getCredentials('slack')"
+					<AgentIntegrationCredentialConnection
+						v-if="currentIntegration"
+						v-model="selectedCredentials[currentIntegration.type]"
+						:integration-type="currentIntegration.type"
+						:integration-label="currentIntegration.label"
+						:credentials="getCredentials(currentIntegration.type)"
 						:credential-permissions="credentialPermissions"
-						:connected-credential-id="connectedCredentials.slack ?? ''"
 						:credentials-loading="credentialsLoading"
-						:loading="isLoading('slack')"
-						:error-message="hasError('slack') ? errorMessages.slack : ''"
-						:error-is-conflict="errorIsConflict.slack"
+						:disabled="hasPendingCredentialReplacement || isLoading(currentIntegration.type)"
+						:loading="isLoading(currentIntegration.type)"
+						:error-message="
+							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
+						"
+						:error-is-conflict="errorIsConflict[currentIntegration.type]"
+						:show-edit-button="!hasPendingCredentialReplacement"
 						@create="createCredential"
 						@edit="editCredential"
-						@connect="saveChannelConfig"
 					/>
+					<N8nText
+						v-if="credentialReplacementError"
+						:class="$style.errorText"
+						size="small"
+						data-testid="agent-channel-credential-replacement-error"
+					>
+						{{ i18n.baseText('agents.channels.modal.credentialReplacementError') }}
+					</N8nText>
 					<AgentChannelLinearSetup
-						v-else-if="currentIntegration?.type === 'linear'"
+						v-if="currentIntegration?.type === 'linear'"
 						ref="channelSetupRef"
 						v-model="selectedCredentials[currentIntegration.type]"
 						mode="edit"
@@ -408,19 +531,12 @@ watch(
 						:credentials="getCredentials(currentIntegration.type)"
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
-						:loading="isLoading(currentIntegration.type)"
+						:loading="hasPendingCredentialReplacement || isLoading(currentIntegration.type)"
 						:connected="isConnected(currentIntegration.type)"
-						:connected-description="integrationConnectedText(currentIntegration.type)"
-						:error-message="
-							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
-						"
-						:error-is-conflict="errorIsConflict[currentIntegration.type]"
 						:saved-settings="integrationSettings[currentIntegration.type]"
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
-						@create="createCredential"
-						@edit="editCredential"
 					/>
 					<AgentChannelTelegramSetup
 						v-else-if="currentIntegration?.type === 'telegram'"
@@ -431,21 +547,14 @@ watch(
 						:credentials="getCredentials(currentIntegration.type)"
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
-						:loading="isLoading(currentIntegration.type)"
+						:loading="hasPendingCredentialReplacement || isLoading(currentIntegration.type)"
 						:connected="isConnected(currentIntegration.type)"
-						:connected-description="integrationConnectedText(currentIntegration.type)"
-						:error-message="
-							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
-						"
-						:error-is-conflict="errorIsConflict[currentIntegration.type]"
 						:saved-settings="integrationSettings[currentIntegration.type]"
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
-						@create="createCredential"
-						@edit="editCredential"
 					/>
-					<N8nText v-else size="small" color="text-light">
+					<N8nText v-else-if="currentIntegration?.type !== 'slack'" size="small" color="text-light">
 						{{
 							i18n.baseText('agents.channels.modal.editPlaceholder', {
 								interpolate: { channel: selectedChannelType ?? '' },
@@ -459,18 +568,47 @@ watch(
 		<Transition name="channel-footer-fade">
 			<N8nDialogFooter v-if="showFooterActions" :class="$style.customFooter">
 				<div :class="$style.footer">
-					<N8nButton variant="ghost" size="medium" @click="closeModal">
-						{{ i18n.baseText('generic.cancel') }}
-					</N8nButton>
 					<N8nButton
-						variant="solid"
+						variant="destructive"
 						size="medium"
-						:disabled="!canSaveChannelConfig"
-						data-testid="agent-channel-save-channel-config"
-						@click="saveChannelConfig"
+						:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
+						:disabled="
+							hasPendingCredentialReplacement ||
+							(selectedChannelType ? isLoading(selectedChannelType) : true)
+						"
+						data-testid="agent-channel-remove-channel"
+						@click="removeCurrentChannel"
 					>
-						{{ i18n.baseText('generic.save') }}
+						{{ i18n.baseText('agents.channels.modal.removeChannel') }}
 					</N8nButton>
+					<div :class="$style.footerActions">
+						<N8nButton
+							variant="ghost"
+							size="medium"
+							:disabled="
+								isCredentialReplacementInProgress ||
+								(selectedChannelType ? isLoading(selectedChannelType) : false)
+							"
+							@click="closeModal"
+						>
+							{{ i18n.baseText('generic.cancel') }}
+						</N8nButton>
+						<N8nButton
+							variant="solid"
+							size="medium"
+							:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
+							:disabled="
+								!canSaveChannelConfig ||
+								(selectedChannelType ? isLoading(selectedChannelType) : true)
+							"
+							data-testid="agent-channel-save-channel-config"
+							@click="saveChannelConfig"
+						>
+							{{
+								i18n.baseText(hasPendingCredentialReplacement ? 'generic.retry' : 'generic.save')
+							}}
+						</N8nButton>
+					</div>
 				</div>
 			</N8nDialogFooter>
 		</Transition>
@@ -553,9 +691,18 @@ body:has([data-testid='agent-channel-modal'])
 
 .footer {
 	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
+	justify-content: space-between;
+	align-items: center;
 	height: var(--height--md);
+}
+
+.footerActions {
+	display: flex;
+	gap: var(--spacing--xs);
+}
+
+.errorText {
+	color: var(--text-color--danger);
 }
 
 :global(.channel-view-fade-enter-active) {

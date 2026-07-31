@@ -526,6 +526,46 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(result.toolCalls[0].interceptedRequests).toHaveLength(1);
 	});
 
+	it('snapshots the tool ledger body so node-side mutation cannot rewrite the evidence', async () => {
+		// Same aliasing hazard as the workflow ledger: `callEvalMockHandler` returns
+		// this body to the node tool, and nodes like OpenAI's json_schema mode parse
+		// fields in place — the judge must still see what was actually served.
+		const served = { output: [{ content: [{ type: 'output_text', text: '{"a":1}' }] }] };
+		vi.mocked(createLlmMockHandler).mockReturnValue(
+			vi.fn().mockResolvedValue({ body: served, statusCode: 200, headers: {} }),
+		);
+		const generate = vi.fn().mockImplementation(async () => {
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+				configureToolAdditionalData: (
+					additionalData: Record<string, unknown>,
+					ctx: { toolName: string; toolKind: string },
+				) => void;
+			};
+			const additionalData: Record<string, unknown> = { credentialsHelper: {} };
+			instrumentation.configureToolAdditionalData(additionalData, {
+				toolName: 'Slack_Tool',
+				toolKind: 'node',
+			});
+			const handler = additionalData.evalLlmMockHandler as EvalLlmMockHandler;
+			const response = await handler({ url: 'https://slack.com/api/x', method: 'POST' }, {
+				name: 'Slack_Tool',
+				type: 'n8n-nodes-base.slackTool',
+			} as INode);
+			// Node code mutates the body it was handed.
+			(response?.body as typeof served).output[0].content[0].text = { a: 1 } as never;
+			return makeGenerateResult({ toolCalls: [] });
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate, close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+		const recorded = result.toolCalls[0].interceptedRequests?.[0].mockResponse as typeof served;
+		expect(recorded.output[0].content[0].text).toBe('{"a":1}');
+	});
+
 	it('auto-approves suspended tool calls and flags them', async () => {
 		const suspended = makeGenerateResult({
 			pendingSuspend: [

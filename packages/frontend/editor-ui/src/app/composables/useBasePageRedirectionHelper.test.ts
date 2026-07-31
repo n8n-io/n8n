@@ -6,8 +6,8 @@ import { defaultSettings } from '@/__tests__/defaults';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { createPinia, setActivePinia } from 'pinia';
 import * as cloudPlanApi from '@n8n/rest-api-client/api/cloudPlans';
-import { useVersionsStore } from '@/app/stores/versions.store';
-import { useTelemetry } from './useTelemetry';
+import { useVersionsStore } from '@n8n/stores/versions.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -24,7 +24,7 @@ let usersStore: ReturnType<typeof useUsersStore>;
 let versionStore: ReturnType<typeof useVersionsStore>;
 let pageRedirectionHelper: ReturnType<typeof useBasePageRedirectionHelper>;
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {

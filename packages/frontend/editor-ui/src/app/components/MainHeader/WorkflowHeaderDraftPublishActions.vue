@@ -115,6 +115,7 @@ const isSaving = ref(false);
 const showPublishChoiceDialog = ref(false);
 const showSubmitForReviewDialog = ref(false);
 const showReviewSubmittedDialog = ref(false);
+const submittedReviewRequestId = ref<string>();
 const showUpdateReviewDialog = ref(false);
 
 watch(
@@ -123,6 +124,7 @@ watch(
 		showPublishChoiceDialog.value = false;
 		showSubmitForReviewDialog.value = false;
 		showReviewSubmittedDialog.value = false;
+		submittedReviewRequestId.value = undefined;
 		showUpdateReviewDialog.value = false;
 		uiStore.closeModal(WORKFLOW_PUBLISH_MODAL_KEY);
 	},
@@ -255,7 +257,8 @@ const flushSaveForReview = async (): Promise<string | undefined> => {
 	return workflowDocumentStore.value.versionId || undefined;
 };
 
-const onReviewSubmitted = () => {
+const onReviewSubmitted = (workflowReviewRequestId: string) => {
+	submittedReviewRequestId.value = workflowReviewRequestId;
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('workflowReviews.submitted.toast'),
@@ -805,7 +808,11 @@ defineExpose({
 				@submitted="onReviewSubmitted"
 				@conflict="onReviewConflict"
 			/>
-			<WorkflowReviewSubmittedDialog v-model:open="showReviewSubmittedDialog" />
+			<WorkflowReviewSubmittedDialog
+				v-if="submittedReviewRequestId"
+				v-model:open="showReviewSubmittedDialog"
+				:workflow-review-request-id="submittedReviewRequestId"
+			/>
 			<WorkflowUpdateReviewDialog
 				v-model:open="showUpdateReviewDialog"
 				:workflow-id="props.id"

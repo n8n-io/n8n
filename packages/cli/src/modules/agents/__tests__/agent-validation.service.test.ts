@@ -1,9 +1,10 @@
 import type { CredentialProvider } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
 import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentValidationService } from '../agent-validation.service';
@@ -61,6 +62,8 @@ function makeService() {
 	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	chatIntegrationRegistry.get.mockReturnValue(undefined);
+	const aiGatewayService = mock<AiGatewayService>();
+	aiGatewayService.getCredentialTypeForProvider.mockResolvedValue(undefined);
 
 	return {
 		service: new AgentValidationService(
@@ -70,6 +73,7 @@ function makeService() {
 			nodeTypes,
 			workflowRepository,
 			chatIntegrationRegistry,
+			aiGatewayService,
 		),
 		agentRepository,
 		agentSkillsService,
@@ -78,6 +82,7 @@ function makeService() {
 		nodeTypes,
 		workflowRepository,
 		chatIntegrationRegistry,
+		aiGatewayService,
 	};
 }
 
@@ -161,6 +166,57 @@ describe('AgentValidationService — structured issues', () => {
 			expect.arrayContaining([
 				expect.objectContaining({ code: 'incompatible_credential', path: 'credential' }),
 			]),
+		);
+	});
+
+	it('accepts the n8n Connect managed tag on the main model when the gateway serves the provider, else flags it', async () => {
+		const { service, agentRepository, aiGatewayService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ ...runnableConfig, credential: AI_GATEWAY_MANAGED_TAG }),
+		);
+
+		// Gateway serves the model's provider → the managed credential is valid.
+		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue('openAiApi');
+		const served = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([]),
+		);
+		expect(served.issues).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ path: 'credential' })]),
+		);
+
+		// Cached config present but does not serve the provider → incompatible_credential.
+		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(null);
+		const unserved = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([]),
+		);
+		expect(unserved.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'incompatible_credential', path: 'credential' }),
+			]),
+		);
+	});
+
+	it('does not flag the managed tag when gateway support cannot be determined (no cached config)', async () => {
+		const { service, agentRepository, aiGatewayService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ ...runnableConfig, credential: AI_GATEWAY_MANAGED_TAG }),
+		);
+		// No cached config (e.g. cold start or a throttled/failed fetch) → support is
+		// unknown. The static validator must fail open rather than block a working agent.
+		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(undefined);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([]),
+		);
+
+		expect(result.issues).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ path: 'credential' })]),
 		);
 	});
 

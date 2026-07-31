@@ -9,7 +9,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
@@ -36,6 +36,7 @@ const showUserRoleProvisioningDialog = ref(false);
 const {
 	roleAssignment,
 	mappingMethod,
+	defaultInstanceRole,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
 	trackProvisioningChange,
@@ -71,6 +72,7 @@ const promptDescriptions: PromptDescription[] = [
 
 const authenticationContextClassReference = ref('');
 const additionalScopes = ref('');
+const rpInitiatedLogoutEnabled = ref(false);
 const isAdditionalScopesInvalid = computed(() =>
 	[',', ';'].some((c) => additionalScopes.value.includes(c)),
 );
@@ -85,6 +87,7 @@ const getOidcConfig = async () => {
 	authenticationContextClassReference.value =
 		config.authenticationContextClassReference?.join(',') || '';
 	additionalScopes.value = config.additionalScopes ?? '';
+	rpInitiatedLogoutEnabled.value = config.rpInitiatedLogoutEnabled ?? false;
 };
 
 const loadOidcConfig = async () => {
@@ -117,6 +120,7 @@ const cannotSaveOidcSettings = computed(() => {
 			ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
 			ssoStore.oidcConfig?.prompt === prompt.value &&
 			ssoStore.oidcConfig?.additionalScopes === additionalScopes.value &&
+			ssoStore.oidcConfig?.rpInitiatedLogoutEnabled === rpInitiatedLogoutEnabled.value &&
 			!isUserRoleProvisioningChanged.value &&
 			!isRuleMappingDirty &&
 			storedAcrString === authenticationContextClassReference.value &&
@@ -185,6 +189,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 			authenticationContextClassReference: acrArray,
 			additionalScopes: additionalScopes.value,
+			rpInitiatedLogoutEnabled: rpInitiatedLogoutEnabled.value,
 		});
 		const provisioningResult = await saveProvisioningConfig(isDisablingOidcLogin);
 
@@ -344,12 +349,14 @@ onMounted(async () => {
 			<UserRoleProvisioningDropdown
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
+				v-model:default-instance-role="defaultInstanceRole"
 				auth-protocol="oidc"
 				:disabled="isSsoManagedByEnv"
 			/>
 			<RoleMappingRuleEditor
 				v-if="mappingMethod === 'rules_in_n8n'"
 				ref="roleMappingRuleEditorRef"
+				v-model:default-instance-role="defaultInstanceRole"
 				:show-project-rules="roleAssignment === 'instance_and_project'"
 			/>
 			<ConfirmProvisioningDialog
@@ -402,7 +409,7 @@ onMounted(async () => {
 			</div>
 		</div>
 		<div :class="$style.card">
-			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
+			<div :class="$style.settingsItem">
 				<div :class="$style.settingsItemLabel">
 					<label>Single sign-on (SSO)</label>
 					<small>Allow users to sign in through your identity provider</small>
@@ -417,6 +424,27 @@ onMounted(async () => {
 					>
 						<template #prefix>
 							<span v-if="ssoStore.isOidcLoginEnabled" :class="$style.greenDot" />
+						</template>
+						<N8nOption value="enabled" label="Enabled" data-test-id="sso-oidc-toggle-option" />
+						<N8nOption value="disabled" label="Disabled" data-test-id="sso-oidc-toggle-option" />
+					</N8nSelect>
+				</div>
+			</div>
+			<div :class="$style.settingsItem">
+				<div :class="$style.settingsItemLabel">
+					<label>Log out from identity provider</label>
+					<small>Also end your session at the identity provider when signing out of n8n</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<N8nSelect
+						:model-value="rpInitiatedLogoutEnabled ? 'enabled' : 'disabled'"
+						size="medium"
+						data-test-id="sso-oidc-logout-toggle"
+						:disabled="isSsoManagedByEnv"
+						@update:model-value="rpInitiatedLogoutEnabled = $event === 'enabled'"
+					>
+						<template #prefix>
+							<span v-if="rpInitiatedLogoutEnabled" :class="$style.greenDot" />
 						</template>
 						<N8nOption value="enabled" label="Enabled" />
 						<N8nOption value="disabled" label="Disabled" />

@@ -10,6 +10,7 @@ import type {
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentCatalogModel,
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
@@ -35,6 +36,7 @@ export type ListAgentsOptions = {
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
+		availableInMCP?: boolean;
 	};
 };
 
@@ -323,13 +325,7 @@ export const getSlackAgentAppManifest = async (
 	);
 };
 
-export interface ModelInfo {
-	id: string;
-	name: string;
-	releaseDate?: string;
-	reasoning: boolean;
-	toolCall: boolean;
-}
+export type ModelInfo = AgentCatalogModel;
 
 export interface ProviderInfo {
 	id: string;

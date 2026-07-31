@@ -8,13 +8,14 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
+| [agent_chat_attachments](agent_chat_attachments.md) | 12 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 6 |  | table |
 | [agent_eval_dataset](agent_eval_dataset.md) | 10 |  | table |
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 15 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 19 |  | table |
+| [agent_execution](agent_execution.md) | 20 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
@@ -98,8 +99,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
-| [scheduled_job](scheduled_job.md) | 19 |  | table |
-| [scheduled_task](scheduled_task.md) | 17 |  | table |
+| [scheduled_job](scheduled_job.md) | 21 |  | table |
+| [scheduled_task](scheduled_task.md) | 18 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
 | [settings](settings.md) | 3 |  | table |
@@ -136,6 +137,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 ```mermaid
 erDiagram
 
+"agent_chat_attachments" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_chat_attachments" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_subscriptions" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_checkpoints" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_eval_dataset" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -315,6 +318,20 @@ erDiagram
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
+"agent_chat_attachments" {
+  varchar_36_ agentId FK
+  TEXT binaryDataId
+  datetime_3_ createdAt
+  varchar_255_ fileName
+  INTEGER fileSizeBytes
+  varchar_16_ id PK
+  varchar_255_ mimeType
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  varchar_32_ source
+  varchar_128_ threadId
+  datetime_3_ updatedAt
+}
 "agent_chat_subscriptions" {
   varchar_36_ agentId PK
   datetime_3_ createdAt
@@ -387,6 +404,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_execution" {
+  TEXT attachments
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
@@ -400,7 +418,7 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
-  VARCHAR_2_ storedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
   INTEGER totalTokens
@@ -1200,6 +1218,8 @@ erDiagram
   varchar_16_ kind
   datetime_3_ lastFiredAt
   INTEGER maxAttempts
+  INT misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_255_ name
   datetime_3_ nextRunAt
   varchar_36_ nodeId
@@ -1223,6 +1243,7 @@ erDiagram
   INTEGER leaseEpoch
   datetime_3_ leaseExpiresAt
   INTEGER maxAttempts
+  datetime_3_ missedAfter
   TEXT payload
   datetime_3_ runAt
   datetime_3_ scheduledFor

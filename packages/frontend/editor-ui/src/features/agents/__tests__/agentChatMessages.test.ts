@@ -70,6 +70,35 @@ describe('rebuildInteractiveFromHistory', () => {
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
+	it('restores reasoning segments and their timing from history', () => {
+		const [assistant] = convertDbMessages([
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'Inspect the inputs.', startTime: 1_000, endTime: 2_000 },
+					{ type: 'reasoning', text: 'Form the answer.', startTime: 3_000, endTime: 5_000 },
+					{ type: 'text', text: 'Done' },
+				],
+			},
+		]);
+
+		expect(assistant.thinkingSegments).toEqual([
+			{
+				id: 'assistant-1:reasoning:0',
+				content: 'Inspect the inputs.',
+				startTime: 1_000,
+				endTime: 2_000,
+			},
+			{
+				id: 'assistant-1:reasoning:1',
+				content: 'Form the answer.',
+				startTime: 3_000,
+				endTime: 5_000,
+			},
+		]);
+	});
+
 	it('uses executionId from the persisted message dto', () => {
 		const chat = convertDbMessages([
 			{
@@ -343,6 +372,34 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		const chat = convertDbMessages(dbMessages);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('done');
+	});
+
+	it('hydrates childProgress from a persisted childTrace', () => {
+		const childTrace = {
+			text: 'Looking things up',
+			reasoningSegments: [{ id: 'r-1', content: 'Checking schemas.' }],
+			steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+		};
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d-trace',
+						input: { subAgentId: 'inline' },
+						state: 'resolved',
+						output: { status: 'completed', answer: 'all good' },
+						childTrace,
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat[0].toolCalls?.[0].childProgress).toEqual(childTrace);
 	});
 
 	it('leaves delegate difficulty summary for render-time i18n on reload', () => {

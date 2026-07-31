@@ -26,7 +26,7 @@ vi.mock('@/app/composables/useToast', () => ({
 }));
 
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({
 		track: (...args: unknown[]) => mockTelemetryTrack(...args),
 	}),

@@ -4,6 +4,9 @@
         "_id": {
             "type": "string"
         },
+        "archived": {
+            "type": "boolean"
+        },
         "createdAt": {
             "type": "string"
         },
@@ -13,9 +16,12 @@
         "name": {
             "type": "string"
         },
+        "sequenceId": {
+            "type": "string"
+        },
         "status": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }
