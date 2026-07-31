@@ -11,7 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
-    name: id
+    name: workflowId
     in: path
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
