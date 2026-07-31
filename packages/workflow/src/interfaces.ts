@@ -2994,8 +2994,27 @@ export interface IWebhookData {
 
 export type WebhookType = 'default' | 'setup';
 
+/**
+ * Native equivalents of a node description's expression templates, keyed by
+ * field. Backend-only: functions do not survive the JSON serialization that
+ * ships descriptions to the editor, which keeps using the templates. Only needed
+ * for a field `matchParameterPathTemplate` cannot read; derive template and
+ * resolver from the same function so there is nothing to keep in sync — see
+ * `defaultWebhookDescription` in the Webhook node.
+ */
+export type NativeParameterResolvers = Record<
+	string,
+	(parameters: INodeParameters) => NodeParameterValueType | undefined
+>;
+
 export interface IWebhookDescription {
-	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
+	[key: string]:
+		| IHttpRequestMethods
+		| WebhookResponseMode
+		| NativeParameterResolvers
+		| boolean
+		| string
+		| undefined;
 	httpMethod: IHttpRequestMethods | string;
 	isFullPath?: boolean;
 	name: WebhookType;
@@ -3009,6 +3028,8 @@ export interface IWebhookDescription {
 	nodeType?: 'webhook' | 'form' | 'mcp';
 	ndvHideUrl?: string | boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: string | boolean; // If true the method will not be displayed in the editor
+	/** See {@link NativeParameterResolvers}. Not serialized to the editor. */
+	resolve?: NativeParameterResolvers;
 }
 
 export interface ProxyInput {

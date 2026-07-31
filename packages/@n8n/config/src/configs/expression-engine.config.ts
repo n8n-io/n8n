@@ -61,4 +61,13 @@ export class ExpressionEngineConfig {
 	/** If set, scale the pool to 0 warm isolates after this many seconds with no acquire. */
 	@Env('N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT')
 	idleTimeout?: number;
+
+	/**
+	 * Whether to resolve webhook description fields without the expression engine
+	 * where that provably yields the same value — which lets a production webhook
+	 * request skip acquiring an isolate. Anything unprovable still uses the
+	 * engine; off means everything does.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_PREFER_NATIVE_WEBHOOK_RESOLUTION')
+	preferNativeWebhookResolution: boolean = true;
 }

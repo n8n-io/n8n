@@ -1,9 +1,15 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowsConfig } from '@n8n/config';
+import { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
 import { WorkflowRepository, type WorkflowEntity, type WorkflowHistory } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	Workflow,
+	CHAT_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	nodeParametersAreStatic,
+	valuesAreNativelyResolvable,
+} from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -27,6 +33,16 @@ import type {
 } from './webhook.types';
 
 /**
+ * Trigger types whose `webhook()` provably evaluates nothing beyond their own
+ * parameters and webhook description. Only extend after reviewing the node's
+ * `webhook()`: a parameter scan cannot see `evaluateExpression()` on values with
+ * no `=` prefix, nor helpers that resolve expressions themselves (e.g.
+ * `httpRequestWithAuthentication`). Credential decryption is fine — it acquires
+ * its own isolate.
+ */
+const ISOLATE_SKIP_NODE_TYPES = new Set<string>([WEBHOOK_NODE_TYPE]);
+
+/**
  * Service for handling the execution of live webhooks, i.e. webhooks
  * that belong to activated workflows and use the production URL
  * (https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls)
@@ -41,6 +57,7 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly expressionEngineConfig: ExpressionEngineConfig,
 	) {}
 
 	async getWebhookMethods(path: string) {
@@ -131,10 +148,14 @@ export class LiveWebhooks implements IWebhookManager {
 			projectId: ownerProjectId,
 		});
 
-		await workflow.expression.acquireIsolate();
+		const startNode = workflow.getNode(webhook.node);
+
+		if (this.webhookPhaseNeedsIsolate(startNode)) {
+			await workflow.expression.acquireIsolate();
+		}
 		try {
 			const webhookData = this.webhookService
-				.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
+				.getNodeWebhooks(workflow, startNode as INode, additionalData)
 				.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
 
 			if (
@@ -183,8 +204,27 @@ export class LiveWebhooks implements IWebhookManager {
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
+			// No-op when nothing was acquired for this workflow's expression instance.
 			await workflow.expression.releaseIsolate();
 		}
+	}
+
+	/**
+	 * Under `N8N_EXPRESSION_ENGINE=vm` acquisition builds a V8 isolate per
+	 * request, so it is worth skipping when there is provably nothing to
+	 * evaluate. Anything not proven below acquires eagerly.
+	 */
+	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
+		if (!this.expressionEngineConfig.preferNativeWebhookResolution) return true;
+		if (startNode === null) return true;
+		if (!ISOLATE_SKIP_NODE_TYPES.has(startNode.type)) return true;
+		if (!nodeParametersAreStatic(startNode)) return true;
+
+		const webhooks = this.nodeTypes.getByNameAndVersion(startNode.type, startNode.typeVersion)
+			?.description.webhooks;
+		if (!webhooks?.length) return true;
+
+		return !webhooks.every((webhook) => valuesAreNativelyResolvable(webhook, webhook.resolve));
 	}
 
 	private async loadWebhookExecutionData(

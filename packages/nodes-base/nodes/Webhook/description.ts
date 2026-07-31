@@ -5,7 +5,7 @@ import type {
 	IWebhookDescription,
 } from 'n8n-workflow';
 
-import { getResponseCode, getResponseData } from './utils';
+import { getResponseCode, getResponseData, type WebhookParameters } from './utils';
 
 // The Webhook node's opt-in "n8n User Auth (OAuth2)" mode. Seeds the triggering
 // user's identity into the execution so the workflow can use that user's private
@@ -32,6 +32,10 @@ export const defaultWebhookDescription: IWebhookDescription = {
 	responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
 	responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
 	path: '={{$parameter["path"]}}',
+	resolve: {
+		responseCode: (parameters) => getResponseCode(parameters as WebhookParameters),
+		responseData: (parameters) => getResponseData(parameters as WebhookParameters),
+	},
 };
 
 export const credentialsProperty = (
