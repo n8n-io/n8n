@@ -229,7 +229,7 @@ describe('Test Webhook Node', () => {
 
 			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith(
 				'bad-token',
-				`${WEBHOOK_URL}?methods=GET`,
+				`${WEBHOOK_URL}?method=GET`,
 			);
 			expect(res.writeHead).toHaveBeenCalledWith(
 				401,
@@ -270,11 +270,11 @@ describe('Test Webhook Node', () => {
 
 			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith(
 				'good-token',
-				`${WEBHOOK_URL}?methods=GET`,
+				`${WEBHOOK_URL}?method=GET`,
 			);
 			expect(context.establishTriggerIdentity).toHaveBeenCalledWith(
 				'good-token',
-				`${WEBHOOK_URL}?methods=GET`,
+				`${WEBHOOK_URL}?method=GET`,
 			);
 			expect(result.workflowData).toBeDefined();
 			expect(result.workflowData?.[0][0].json.body).toEqual({ hello: 'world' });

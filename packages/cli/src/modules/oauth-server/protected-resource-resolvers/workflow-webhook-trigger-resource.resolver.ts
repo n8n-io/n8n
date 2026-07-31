@@ -13,10 +13,9 @@ import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import {
 	WEBHOOK_TRIGGER_SCOPES,
-	canonicalMethodSet,
 	isWebhookOAuth2Enabled,
-	methodsQueryString,
-	parseMethodsParam,
+	methodQueryString,
+	parseMethodParam,
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
@@ -33,12 +32,16 @@ import {
  * `(path, method)`. n8n only enforces webhook uniqueness per `(path, method)`, so
  * one path can host several triggers as long as their methods are disjoint
  * (e.g. workflow A on `GET /orders`, workflow B on `POST /orders`). Path alone
- * therefore cannot name the resource. We encode the trigger's full method-set
- * into the resource identity as `?methods=…`, which makes each trigger's `aud`
- * distinct (case above) while a single multi-method trigger keeps one shared
- * `aud` across its methods. Because `(path, method)` is unique, two triggers on a
- * path always have disjoint — hence unequal — method-sets, so the method-set is a
- * unique key among the triggers sharing a path.
+ * therefore cannot name the resource, so a resource URL carries the method being
+ * served as `?method=…`.
+ *
+ * The method is a *selector*, not part of the identity: because `(webhookPath,
+ * method)` is the webhook table's primary key, one method picks exactly one row —
+ * hence exactly one trigger — with no ambiguity to resolve. The trigger it picks
+ * then accepts a token minted for *any* of its own methods (`getAudiences()`), so
+ * one token spans a multi-method node and stays valid when the node gains another
+ * method. That is also why `id` omits the method: consent is per trigger and must
+ * survive an edit to its method list.
  *
  * Dynamic webhooks (`<webhookId>/user/:id`) resolve to their templated path as the
  * canonical identity, so one token covers every concrete instance (`/user/42`,
@@ -62,7 +65,10 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 	readonly scopes = WEBHOOK_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl());
+		// `preserveQuery`: unlike the sibling resolvers, we need the `?method=` selector.
+		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl(), {
+			preserveQuery: true,
+		});
 		if (pathname === undefined) {
 			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
 			return undefined;
@@ -75,10 +81,10 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 			return undefined;
 		}
 
-		// The `methods` disambiguator rides in the query string (see `methodsQueryString`);
+		// The `?method=` selector rides in the query string (see `methodQueryString`);
 		// split it off before the `/{endpoint}/…` path check and slug extraction.
 		const [rawPath, queryString] = pathname.split('?');
-		const requestedMethods = parseMethodsParam(new URLSearchParams(queryString).get('methods'));
+		const requestedMethod = parseMethodParam(new URLSearchParams(queryString).get('method'));
 
 		if (!rawPath.startsWith(`/${this.config.endpoints.webhook}/`)) {
 			// we can quickly rule out non-webhook paths without doing any DB work, so check that first
@@ -104,64 +110,47 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 			return undefined;
 		}
 
-		// Group rows back into their triggers, collecting each trigger's method-set and
-		// its canonical resource path — the templated `uniquePath` for dynamic webhooks
-		// (placeholders intact, concrete values discarded), so all instances of one
-		// trigger share a single `aud`. A node listening on several methods registers
-		// one row per method, all sharing the same (workflow, node) — collapse those so
-		// a multi-method trigger counts as the single trigger it is.
-		const triggers = new Map<
-			string,
-			{ workflowId: string; node: string; resourcePath: string; methods: Set<string> }
-		>();
-		for (const webhook of webhooks) {
-			const key = `${webhook.workflowId}::${webhook.node}`;
-			const trigger = triggers.get(key) ?? {
-				workflowId: webhook.workflowId,
-				node: webhook.node,
-				resourcePath: webhook.uniquePath,
-				methods: new Set<string>(),
-			};
-			trigger.methods.add(webhook.method);
-			triggers.set(key, trigger);
-		}
+		// `(webhookPath, method)` is the webhook primary key, so the requested method
+		// picks exactly one row — and therefore exactly one trigger. Without a method
+		// (a bare well-known probe) we can only answer when the path hosts a single row.
+		const row = requestedMethod
+			? webhooks.find((webhook) => webhook.method === requestedMethod)
+			: webhooks.length === 1
+				? webhooks[0]
+				: undefined;
 
-		// Resolve each trigger to its resource, keyed by its canonical method-set so
-		// the requested set can pick exactly one (sets are disjoint across triggers).
-		const resolvedByMethodSet = new Map<string, ProtectedResource>();
-		for (const { workflowId, node, resourcePath, methods } of triggers.values()) {
-			const methodSet = canonicalMethodSet(methods);
-			const resource = await this.resolveWebhookNode(workflowId, node, resourcePath, methodSet);
-			if (resource) resolvedByMethodSet.set(methodSet.join(','), resource);
-		}
-
-		if (resolvedByMethodSet.size === 0) return undefined;
-
-		// A caller that knows the method-set (arrived via a `?methods=…` challenge)
-		// pins the exact trigger; a non-matching set resolves to nothing (fail closed).
-		if (requestedMethods) {
-			return resolvedByMethodSet.get(requestedMethods.join(','));
-		}
-
-		// No method-set given (e.g. a bare well-known probe): a resource must still map
-		// to exactly one trigger, otherwise its `aud` would be ambiguous. When several
-		// triggers share the path we refuse rather than pick a winner — the caller can
-		// disambiguate by repeating the request with `?methods=…`.
-		if (resolvedByMethodSet.size !== 1) {
-			this.logger.warn(
-				`Path ${path} maps to ${resolvedByMethodSet.size} OAuth webhook triggers; refusing to expose an ambiguous protected resource without a methods disambiguator`,
+		if (!row) {
+			this.logger.debug(
+				`No webhook at path ${path} for method ${requestedMethod ?? '(unspecified)'}`,
 			);
 			return undefined;
 		}
 
-		return [...resolvedByMethodSet.values()][0];
+		// Every method of the *same* trigger becomes an accepted audience, so one token
+		// spans a multi-method node. A node listening on several methods registers one
+		// row per method, all sharing the same (workflow, node).
+		const triggerMethods = webhooks
+			.filter((webhook) => webhook.workflowId === row.workflowId && webhook.node === row.node)
+			.map((webhook) => webhook.method);
+
+		// The resource path is the templated `uniquePath` for dynamic webhooks
+		// (placeholders intact, concrete values discarded), so every instance of one
+		// trigger shares a single identity.
+		return await this.resolveWebhookNode(
+			row.workflowId,
+			row.node,
+			row.uniquePath,
+			row.method,
+			triggerMethods,
+		);
 	}
 
 	private async resolveWebhookNode(
 		workflowId: string,
 		nodeName: string,
 		resourcePath: string,
-		methodSet: string[],
+		requestedMethod: string,
+		triggerMethods: string[],
 	): Promise<ProtectedResource | undefined> {
 		const workflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
@@ -187,20 +176,23 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 			!node.disabled &&
 			node.parameters.authentication === 'n8nOAuth2'
 		) {
-			// Identity = resource path + the trigger's method-set. The path alone can be
-			// shared by disjoint-method triggers, so the `?methods=…` suffix keeps each
-			// `aud` distinct; a single multi-method trigger keeps one `aud` across its
-			// methods. For dynamic webhooks the path is the template (placeholders intact),
-			// so one `aud` covers every concrete instance of the trigger.
-			const methodsQuery = methodsQueryString(methodSet);
-			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.webhook}/${resourcePath}${methodsQuery}`;
+			const baseUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.webhook}/${resourcePath}`;
+			const urlFor = (method: string) => `${baseUrl}${methodQueryString(method)}`;
+			const methods = [...new Set(triggerMethods.map((method) => method.toUpperCase()))].sort();
 			const requireExecute = node.parameters.requireExecuteAccess !== false;
 			return {
-				// Include the path and method-set: unlike an MCP trigger, a workflow can
-				// hold several webhook nodes, each its own resource with a distinct `aud`.
-				id: `workflow-webhook:${workflow.id}:${resourcePath}${methodsQuery}`,
-				getResourceUrl: () => resourceUrl,
-				getAudiences: () => [resourceUrl],
+				// Identity = the trigger, so the method is deliberately absent: editing the
+				// node's method list must not rotate the id and drop the user's consent.
+				// The path is included because — unlike an MCP trigger — a workflow can hold
+				// several webhook nodes, each its own resource.
+				id: `workflow-webhook:${workflow.id}:${resourcePath}`,
+				// Canonical URL = the method being resolved, so the metadata document served
+				// at `?method=POST` advertises `?method=POST` back (RFC 9728 §3.1).
+				getResourceUrl: () => urlFor(requestedMethod),
+				// A token minted for any of this trigger's methods is accepted at all of
+				// them; cross-trigger replay stays impossible because the list is built
+				// only from rows sharing this (workflowId, node).
+				getAudiences: () => methods.map(urlFor),
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflow.name,
 				authorize: async (user: User) => {

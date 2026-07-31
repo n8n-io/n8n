@@ -55,10 +55,15 @@ export function trimSlashes(path: string): string {
  * This keeps `resolveByPath` — which matches against `/{endpoint}/…` — working the
  * same for sub-path deployments as for root deployments, and matches the path the
  * unauthenticated well-known route already receives (relative to the mount point).
+ *
+ * The query string is dropped unless `preserveQuery` is set: only webhook triggers
+ * carry one (the `?method=` selector), and the other resolvers match on exact paths,
+ * so keeping a query for them would turn a tolerated extra parameter into a miss.
  */
 export function resourceUrlToWebhookPath(
 	resourceUrl: string,
 	webhookBaseUrl: string,
+	{ preserveQuery = false }: { preserveQuery?: boolean } = {},
 ): string | undefined {
 	let url: URL;
 	try {
@@ -77,31 +82,22 @@ export function resourceUrlToWebhookPath(
 		return undefined;
 	}
 
-	// Preserve the query string: for webhook triggers it carries the `methods`
-	// disambiguator (see `methodsQueryString`), which `resolveByPath` parses back out.
-	return url.pathname.slice(basePath.length) + url.search;
+	return url.pathname.slice(basePath.length) + (preserveQuery ? url.search : '');
 }
 
 /**
- * Canonical form of a trigger's HTTP method-set: upper-cased, de-duplicated and
- * sorted, so the same set always serialises identically on both the mint and the
- * verify side. This is what makes `path + method-set` a stable resource identity.
+ * Serialise the HTTP method a webhook resource URL is scoped to, as `?method=GET`.
+ *
+ * One path can host several triggers as long as their methods are disjoint, so the
+ * method selects which trigger a resource URL names. It is a *selector*, not part
+ * of the trigger's identity — see the resolver for why that distinction matters.
  */
-export function canonicalMethodSet(methods: Iterable<string>): string[] {
-	return [...new Set([...methods].map((method) => method.toUpperCase()))].sort();
+export function methodQueryString(method: string): string {
+	return `?method=${method.toUpperCase()}`;
 }
 
-/** Serialise a method-set as the `?methods=…` query appended to a resource URL/path. Empty set → no query. */
-export function methodsQueryString(methods: string[]): string {
-	return methods.length > 0 ? `?methods=${methods.join(',')}` : '';
-}
-
-/** Parse a `methods` query value (e.g. `GET,POST`) into a canonical method-set, or `undefined` if absent. */
-export function parseMethodsParam(value: string | null | undefined): string[] | undefined {
-	if (!value) return undefined;
-	const methods = value
-		.split(',')
-		.map((method) => method.trim())
-		.filter((method) => method.length > 0);
-	return methods.length > 0 ? canonicalMethodSet(methods) : undefined;
+/** Parse a `method` query value into its canonical form, or `undefined` if absent. */
+export function parseMethodParam(value: string | null | undefined): string | undefined {
+	const method = value?.trim().toUpperCase();
+	return method === '' ? undefined : method;
 }

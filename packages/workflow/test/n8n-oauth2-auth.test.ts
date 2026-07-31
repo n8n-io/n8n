@@ -43,18 +43,15 @@ describe('n8nOAuth2Auth', () => {
 		expect(result).toEqual({ status: 'ok', token: 'good-token', resource: WEBHOOK_URL });
 	});
 
-	it('encodes the method-set into the resource and the protected-resource metadata URL', async () => {
+	it('encodes the served method into the resource and the protected-resource metadata URL', async () => {
 		const { context, validateN8nOAuth2Token } = buildContext({
 			authorization: 'Bearer good-token',
 		});
 
-		// unsorted/mixed-case input is canonicalised to sorted, upper-cased `methods`
-		const result = await n8nOAuth2Auth(context, {
-			realm: 'n8n Webhook',
-			methods: ['post', 'GET'],
-		});
+		// mixed-case input is canonicalised to the upper-cased `method` selector
+		const result = await n8nOAuth2Auth(context, { realm: 'n8n Webhook', method: 'post' });
 
-		const expectedResource = `${WEBHOOK_URL}?methods=GET,POST`;
+		const expectedResource = `${WEBHOOK_URL}?method=POST`;
 		expect(validateN8nOAuth2Token).toHaveBeenCalledWith('good-token', expectedResource);
 		expect(result).toEqual({ status: 'ok', token: 'good-token', resource: expectedResource });
 	});
@@ -62,11 +59,11 @@ describe('n8nOAuth2Auth', () => {
 	it('advertises the method-qualified metadata URL in WWW-Authenticate', async () => {
 		const { context, response } = buildContext({});
 
-		await n8nOAuth2Auth(context, { realm: 'n8n Webhook', methods: ['GET', 'POST'] });
+		await n8nOAuth2Auth(context, { realm: 'n8n Webhook', method: 'GET' });
 
 		expect(response.writeHead).toHaveBeenCalledWith(401, {
 			'WWW-Authenticate': expect.stringContaining(
-				'/.well-known/oauth-protected-resource/webhook/protected-path?methods=GET,POST',
+				'/.well-known/oauth-protected-resource/webhook/protected-path?method=GET',
 			),
 		});
 	});

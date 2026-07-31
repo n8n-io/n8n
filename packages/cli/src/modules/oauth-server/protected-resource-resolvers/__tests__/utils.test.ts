@@ -1,7 +1,6 @@
 import {
-	canonicalMethodSet,
-	methodsQueryString,
-	parseMethodsParam,
+	methodQueryString,
+	parseMethodParam,
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
@@ -46,39 +45,42 @@ describe('resourceUrlToWebhookPath', () => {
 		expect(resourceUrlToWebhookPath('not-a-url', 'https://host.example/')).toBeUndefined();
 	});
 
-	test('should preserve the query string (carries the methods disambiguator)', () => {
+	test('should drop the query string by default', () => {
+		// only the webhook resolver reads a query; the others match exact paths, so a
+		// stray parameter must not turn into a lookup miss
+		expect(
+			resourceUrlToWebhookPath('https://host.example/mcp/abc?foo=bar', 'https://host.example/'),
+		).toBe('/mcp/abc');
+	});
+
+	test('should preserve the query string when asked (carries the method selector)', () => {
 		expect(
 			resourceUrlToWebhookPath(
-				'https://host.example/webhook/abc?methods=GET,POST',
+				'https://host.example/webhook/abc?method=GET',
 				'https://host.example/',
+				{ preserveQuery: true },
 			),
-		).toBe('/webhook/abc?methods=GET,POST');
+		).toBe('/webhook/abc?method=GET');
 	});
 });
 
-describe('method-set helpers', () => {
-	test('canonicalMethodSet upper-cases, de-duplicates and sorts', () => {
-		expect(canonicalMethodSet(['post', 'GET', 'Get'])).toEqual(['GET', 'POST']);
-		expect(canonicalMethodSet(new Set(['DELETE', 'get']))).toEqual(['DELETE', 'GET']);
+describe('method selector helpers', () => {
+	test('methodQueryString upper-cases the method', () => {
+		expect(methodQueryString('GET')).toBe('?method=GET');
+		expect(methodQueryString('post')).toBe('?method=POST');
 	});
 
-	test('methodsQueryString serialises a set, empty set -> no query', () => {
-		expect(methodsQueryString(['GET', 'POST'])).toBe('?methods=GET,POST');
-		expect(methodsQueryString([])).toBe('');
+	test('parseMethodParam canonicalises and returns undefined when absent', () => {
+		expect(parseMethodParam('post')).toBe('POST');
+		expect(parseMethodParam(' get ')).toBe('GET');
+		expect(parseMethodParam(null)).toBeUndefined();
+		expect(parseMethodParam(undefined)).toBeUndefined();
+		expect(parseMethodParam('')).toBeUndefined();
+		expect(parseMethodParam('  ')).toBeUndefined();
 	});
 
-	test('parseMethodsParam canonicalises and returns undefined when absent', () => {
-		expect(parseMethodsParam('post,GET')).toEqual(['GET', 'POST']);
-		expect(parseMethodsParam('GET, ,')).toEqual(['GET']);
-		expect(parseMethodsParam(null)).toBeUndefined();
-		expect(parseMethodsParam(undefined)).toBeUndefined();
-		expect(parseMethodsParam('')).toBeUndefined();
-	});
-
-	test('methodsQueryString and parseMethodsParam round-trip', () => {
-		const methods = canonicalMethodSet(['POST', 'get']);
-		const query = methodsQueryString(methods).replace('?methods=', '');
-		expect(parseMethodsParam(query)).toEqual(methods);
+	test('methodQueryString and parseMethodParam round-trip', () => {
+		expect(parseMethodParam(methodQueryString('post').replace('?method=', ''))).toBe('POST');
 	});
 });
 
