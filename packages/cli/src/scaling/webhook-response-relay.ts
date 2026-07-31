@@ -59,11 +59,12 @@ const INLINE_JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 const OFFLOAD_DISABLED_GUIDANCE =
 	'In scaling mode a response over this size can be stored for the main instance to stream instead of failing. Set N8N_WEBHOOK_RESPONSE_RELAY_OFFLOAD_ENABLED to true on every worker, once every main instance runs a version that reads a stored body, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX.';
 
-const NO_STORE_GUIDANCE =
-	'In scaling mode a response over this size is stored for the main instance to stream, which the in-memory binary-data mode cannot do. Set N8N_DEFAULT_BINARY_DATA_MODE to a mode with a store, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX.';
+const BINARY_DATA_DOCS_LINK =
+	"<a href='https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/use-environment-variables/binary-data' target='_blank'>in the docs</a>";
 
-const UNREADABLE_BODY_GUIDANCE =
-	'A response over N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX is stored by the instance that produced it, so N8N_DEFAULT_BINARY_DATA_MODE has to name a store every instance can read.';
+const NO_STORE_GUIDANCE = `In scaling mode a response over this size is stored for the main instance to stream, which the in-memory binary-data mode cannot do. Set N8N_DEFAULT_BINARY_DATA_MODE to a mode with a store, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX. The modes are described ${BINARY_DATA_DOCS_LINK}.`;
+
+const UNREADABLE_BODY_GUIDANCE = `A response over N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX is stored by the instance that produced it, so N8N_DEFAULT_BINARY_DATA_MODE has to name a store every instance can read. The modes are described ${BINARY_DATA_DOCS_LINK}.`;
 
 const NOT_OFFLOADABLE_GUIDANCE =
 	'In scaling mode a response is relayed to the main instance through the queue, which limits how large it can be. Only a response body can be stored for the main instance to stream instead, so raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX to relay a payload this large.';
