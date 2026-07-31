@@ -175,12 +175,11 @@ export class WebhookResponseRelay {
 	 *
 	 * @param response Relayed response. Mutated and returned.
 	 * @param reclaim Whether this caller is the sole reader of the response.
-	 * A sole reader deletes the stored body once read, without holding the
-	 * returned promise for it, and a body that cannot be fetched fails the
-	 * delivery it owns. Where the same relayed response
-	 * reaches several readers, deleting would strand the others, and a fetch
-	 * failure degrades to an empty body of the original form instead, never
-	 * the reference itself.
+	 * A sole reader deletes the stored body once read, without holding the returned
+	 * promise for it, and a body that cannot be fetched fails the delivery it owns.
+	 * Where the same relayed response reaches several readers, deleting would strand
+	 * the others, and a fetch failure degrades to an empty body of the original form
+	 * instead, never the reference itself.
 	 * @param context Where the response came from, reported on failure.
 	 * @returns The same `response`.
 	 * @throws {OperationalError} When `reclaim` is set and the stored content cannot be fetched.
