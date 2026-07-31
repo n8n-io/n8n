@@ -50,7 +50,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
 // Define the mock at module top-level so the `vi.mock` factory (hoisted) can
-// reference the class without a temporal-dead-zone error: a describe-scoped
+// reference the class without a temporal-dead-zone error — a describe-scoped
 // class isn't initialised when the hoisted factory first resolves.
 const setupQueue = vi.fn();
 const addJob = vi.fn();
@@ -169,6 +169,7 @@ describe('processError', () => {
 
 describe('run', () => {
 	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
+		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
@@ -200,12 +201,15 @@ describe('run', () => {
 			destinationNode: undefined,
 		});
 
+		// ACT
 		await runner.run(data);
 
+		// ASSERT
 		expect(recreateNodeExecutionStackSpy).toHaveBeenCalled();
 	});
 
 	it('does not use recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom without data is sent', async () => {
+		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
@@ -230,8 +234,10 @@ describe('run', () => {
 			runData: undefined,
 		});
 
+		// ACT
 		await runner.run(data);
 
+		// ASSERT
 		expect(recreateNodeExecutionStackSpy).not.toHaveBeenCalled();
 	});
 
@@ -240,6 +246,7 @@ describe('run', () => {
 		{ existingExecution: { executionId: '42', expectedStatus: 'waiting' as const } },
 		{ existingExecution: { executionId: '42', expectedStatus: 'new' as const } },
 	])('forwards $existingExecution to activeExecutions.add', async ({ existingExecution }) => {
+		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
@@ -258,12 +265,15 @@ describe('run', () => {
 			runData: undefined,
 		});
 
+		// ACT
 		await runner.run(data, undefined, false, existingExecution);
 
+		// ASSERT
 		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
 	});
 
 	it('run partial execution with additional data', async () => {
+		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
@@ -301,8 +311,10 @@ describe('run', () => {
 			userId: 'mock-user-id',
 		});
 
+		// ACT
 		await runner.run(data);
 
+		// ASSERT
 		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
 			userId: data.userId,
 			workflowId: 'workflow-id',
@@ -365,13 +377,15 @@ describe('run', () => {
 
 			await runner.run(data);
 
-			// additionalData is passed to the WorkflowExecute constructor by reference,
-			// so the mutation must land on the same object the engine sees.
+			// processRunExecutionData receives the WorkflowExecute instance, but
+			// the constructor was given additionalData by reference — assert the
+			// mutation landed on the same object the engine sees.
 			expect(additionalData.evalLlmMockHandler).toBe(sentinel);
 		});
 
 		it('is a no-op when not provided', async () => {
 			const { data } = arrangeRunDeps();
+			// Not setting data.configureAdditionalData
 
 			await expect(runner.run(data)).resolves.toBe('1');
 		});
@@ -551,13 +565,14 @@ describe('workflow timeout with startedAt', () => {
 			// There can be multiple calls to setTimeout with 60000ms, these happen
 			// when accessing the database, we only capture the first one not equal to 60000ms
 			if (timeout !== 60000) {
-				recordedTimeout = timeout;
+				recordedTimeout = timeout; // Capture the timeout value for assertions
 			}
 			return {} as NodeJS.Timeout;
 		});
 	});
 
 	it('should calculate timeout based on startedAt date when provided', async () => {
+		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
@@ -566,6 +581,7 @@ describe('workflow timeout with startedAt', () => {
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
+		// Mock config to return a workflow timeout of 10 seconds
 		Container.get(GlobalConfig).executions.timeout = 10;
 
 		const startedAt = new Date(Date.now() - 5000); // 5 seconds ago
@@ -593,19 +609,25 @@ describe('workflow timeout with startedAt', () => {
 			}),
 		);
 
+		// ACT
 		await runner.run(data);
 
-		// 10 second timeout minus 5 seconds already elapsed leaves ~5 seconds remaining.
+		// ASSERT
+		// The timeout should be adjusted: 10 seconds - 5 seconds elapsed = ~5 seconds remaining
 		expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), expect.any(Number));
+
+		// Should be approximately 5000ms (5 seconds remaining), allowing for timing differences
 		expect(recordedTimeout).toBeLessThan(6000);
 		expect(recordedTimeout).toBeGreaterThan(4000);
 
-		recordedTimeout = undefined;
+		recordedTimeout = undefined; // Reset for next test
 
+		// Execution should not be stopped immediately
 		expect(mockStopExecution).not.toHaveBeenCalled();
 	});
 
 	it('should stop execution immediately when timeout has already elapsed', async () => {
+		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
@@ -614,6 +636,7 @@ describe('workflow timeout with startedAt', () => {
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
+		// Mock config to return a workflow timeout of 10 seconds
 		Container.get(GlobalConfig).executions.timeout = 10;
 
 		const startedAt = new Date(Date.now() - 15000); // 15 seconds ago (timeout already elapsed)
@@ -641,12 +664,16 @@ describe('workflow timeout with startedAt', () => {
 			}),
 		);
 
+		// ACT
 		await runner.run(data);
 
+		// ASSERT
+		// The execution should be stopped immediately because the timeout has already elapsed
 		expect(mockStopExecution).toHaveBeenCalledWith('1', expect.any(TimeoutExecutionCancelledError));
 	});
 
 	it('should use original timeout logic when startedAt is not provided', async () => {
+		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
@@ -655,6 +682,7 @@ describe('workflow timeout with startedAt', () => {
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
+		// Mock config to return a workflow timeout of 10 seconds
 		Container.get(GlobalConfig).executions.timeout = 10;
 
 		const data = mock<IWorkflowExecutionDataProcess>({
@@ -665,6 +693,7 @@ describe('workflow timeout with startedAt', () => {
 			},
 			executionData: undefined,
 			executionMode: 'webhook',
+			// No startedAt provided
 		});
 
 		const mockHooks = mock<core.ExecutionLifecycleHooks>();
@@ -680,12 +709,16 @@ describe('workflow timeout with startedAt', () => {
 			}),
 		);
 
+		// ACT
 		await runner.run(data);
 
+		// ASSERT
+		// The execution should not be stopped immediately (original timeout logic)
 		expect(mockStopExecution).not.toHaveBeenCalled();
 	});
 
 	it('should call stopExecution when the timeout callback is executed', async () => {
+		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
@@ -694,6 +727,7 @@ describe('workflow timeout with startedAt', () => {
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
+		// Mock config to return a workflow timeout of 10 seconds
 		Container.get(GlobalConfig).executions.timeout = 10;
 
 		let timeoutCallback: (() => void) | undefined;
@@ -727,11 +761,15 @@ describe('workflow timeout with startedAt', () => {
 			}),
 		);
 
+		// ACT
 		await runner.run(data);
 
+		// Execute the timeout callback
 		expect(timeoutCallback).toBeDefined();
 		timeoutCallback!();
 
+		// ASSERT
+		// The execution should be stopped when the timeout callback is executed
 		expect(mockStopExecution).toHaveBeenCalledWith('1', expect.any(TimeoutExecutionCancelledError));
 	});
 });
@@ -961,6 +999,7 @@ describe('pre-persist context establishment', () => {
 
 describe('streaming functionality', () => {
 	it('should setup heartbeat interval and sendChunk handler when streaming is enabled', async () => {
+		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
@@ -992,10 +1031,13 @@ describe('streaming functionality', () => {
 			}),
 		);
 
+		// ACT
 		await runner.run(data);
 
-		// The heartbeat interval is set up before the queue/local execution path is chosen.
+		// ASSERT
+		// Heartbeat interval is set up in run() before queue/local decision
 		expect(mockSetInterval).toHaveBeenCalledWith(expect.any(Function), 30_000);
+		// sendChunk handler is still registered on lifecycle hooks
 		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
 
 		mockSetInterval.mockRestore();

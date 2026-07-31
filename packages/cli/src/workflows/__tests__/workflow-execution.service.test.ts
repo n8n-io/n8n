@@ -540,6 +540,7 @@ describe('WorkflowExecutionService', () => {
 				pushRef: undefined,
 				workflowData,
 				userId,
+				// pass unexecuted trigger to start from
 				triggerToStartFrom: runPayload.triggerToStartFrom,
 				projectId: 'test-project-id',
 				projectName: 'Test Project',
@@ -968,6 +969,7 @@ describe('WorkflowExecutionService', () => {
 		});
 
 		test('when receiving no `runData`, should set `runData` to undefined in `executionData`', async () => {
+			// ACT
 			const workflowData = mock<IWorkflowBase>({ nodes: [] });
 			await service.executeManually(
 				workflowData,
@@ -977,11 +979,13 @@ describe('WorkflowExecutionService', () => {
 				mock<User>({ id: 'user-id' }),
 			);
 
+			// ASSERT
 			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
 			expect(callArgs.executionData?.resultData?.runData).toBeUndefined();
 		});
 
 		test('when receiving `runData`, should preserve it in `executionData` for partial execution', async () => {
+			// ARRANGE
 			const runData = {
 				[webhookNode.name]: [
 					{
@@ -998,6 +1002,7 @@ describe('WorkflowExecutionService', () => {
 				mock<INodeType>({ description: { group: [] } }),
 			);
 
+			// ACT
 			const workflowData = mock<IWorkflowBase>({
 				nodes: [hackerNewsNode, webhookNode],
 				connections,
@@ -1012,11 +1017,13 @@ describe('WorkflowExecutionService', () => {
 				mock<User>({ id: 'user-id' }),
 			);
 
+			// ASSERT
 			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
 			expect(callArgs.executionData?.resultData?.runData).toEqual(runData);
 		});
 
 		test('should not initialize nested `executionData.executionData` to avoid treating it as resumed execution', async () => {
+			// ACT
 			const workflowData = mock<IWorkflowBase>({ nodes: [] });
 			await service.executeManually(
 				workflowData,
@@ -1026,10 +1033,13 @@ describe('WorkflowExecutionService', () => {
 				mock<User>({ id: 'user-id' }),
 			);
 
+			// ASSERT
 			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			// Should have executionData at top level with startData and manualData
 			expect(callArgs.executionData).toBeDefined();
 			expect(callArgs.executionData?.startData).toBeDefined();
 			expect(callArgs.executionData?.manualData).toBeDefined();
+			// But nested executionData.executionData should be undefined
 			expect(callArgs.executionData?.executionData).toBeUndefined();
 		});
 	});

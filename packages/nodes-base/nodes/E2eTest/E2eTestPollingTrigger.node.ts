@@ -40,8 +40,7 @@ export class E2eTestPollingTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description:
-					'GET endpoint to poll. Expected to return JSON of shape { "items": [...] }, where each item carries an ascending numeric identifier. Only items above the node cursor are emitted.',
+				description: 'GET endpoint to poll. Expected to return JSON of shape { "items": [...] }.',
 			},
 		],
 	};

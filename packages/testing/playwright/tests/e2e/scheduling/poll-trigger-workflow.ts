@@ -27,10 +27,10 @@ const buildWorkflow = (path: string, pollTimesItem: Record<string, unknown>) => 
 	return workflow(nanoid(), `Poll Trigger Test ${nanoid()}`).add(pollTrigger.to(noOp));
 };
 
-// Polls every minute: the fastest interval the scheduler treats as
-// minute-granular rather than sub-minute. Routed through the proxy
-// capability's MockServer so each poll tick's response is controlled
-// directly rather than depending on real external state.
+// Polls every minute, the fastest interval `isSubMinuteCron` treats as
+// minute-granular. Routed through the proxy capability's MockServer so each
+// poll tick's response is controlled directly, instead of racing real
+// external state.
 export const makePollTriggerWorkflow = (path: string) =>
 	buildWorkflow(path, { mode: 'everyMinute' });
 

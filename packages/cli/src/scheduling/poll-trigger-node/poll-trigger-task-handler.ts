@@ -88,7 +88,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 						return report.notDispatched();
 					}
 
-					// __emit persists the cursor and starts the run without waiting on either.
+					// __emit saves the cursor and starts the run without waiting on it.
 					pollFunctions.__emit(pollResponse);
 					this.logger.debug('Poll returned new data; handed off to a new execution', {
 						taskId: task.id,
@@ -131,8 +131,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				return report.notDispatched();
 			} catch (error) {
 				// Routed to the error workflow instead of rethrown, which would retry and
-				// dead-letter without ever running it. A failed poll commits no cursor, so
-				// the next tick retries the same window.
+				// dead-letter without ever running it. __emitError commits no cursor, so
+				// the cursor holds and the next tick retries the same window.
 				pollFunctions.__emitError(ensureError(error));
 				this.logger.debug('Poll failed at runtime; routed to the error workflow', {
 					taskId: task.id,
