@@ -65,9 +65,9 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 
 		const result = await tool.handler({ section: 'patterns_detailed' }, {} as never);
 
-		expect(result.structuredContent).toEqual({
-			reference: getSdkReferenceContent('patterns_detailed'),
-		});
+		expect(result.content).toEqual([
+			{ type: 'text', text: getSdkReferenceContent('patterns_detailed') },
+		]);
 	});
 
 	describe('node groups (canvasGroupsEnabled)', () => {
@@ -118,7 +118,9 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 					});
 
 					const enabledResult = await enabled.handler({ section: 'groups' }, {} as never);
-					expect(enabledResult.structuredContent?.reference).toContain(NODE_GROUPS_REFERENCE);
+					expect((enabledResult.content[0] as { text: string }).text).toContain(
+						NODE_GROUPS_REFERENCE,
+					);
 				});
 			});
 
@@ -137,7 +139,9 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 					});
 
 					const disabledResult = await disabled.handler({ section: undefined }, {} as never);
-					expect(disabledResult.structuredContent?.reference).not.toContain(NODE_GROUPS_REFERENCE);
+					expect((disabledResult.content[0] as { text: string }).text).not.toContain(
+						NODE_GROUPS_REFERENCE,
+					);
 				});
 			});
 		});

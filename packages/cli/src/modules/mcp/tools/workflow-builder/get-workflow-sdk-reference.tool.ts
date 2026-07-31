@@ -40,10 +40,6 @@ const buildInputSchema = (canvasGroupsEnabled: boolean) => {
 
 type SdkReferenceInputSchema = ReturnType<typeof buildInputSchema>;
 
-const outputSchema = {
-	reference: z.string().describe('SDK reference documentation content for the requested section'),
-} satisfies z.ZodRawShape;
-
 /**
  * MCP tool that returns the n8n Workflow SDK reference documentation.
  * This should be called first when building workflows to learn the SDK patterns and syntax.
@@ -58,7 +54,6 @@ export const createGetWorkflowSdkReferenceTool = (
 		description:
 			'Required reference when building a workflow, and only then. Call this BEFORE writing workflow code to learn workflow(), trigger()/node(), .add()/.to(), expr(), and credential patterns.',
 		inputSchema: buildInputSchema(canvasGroupsEnabled),
-		outputSchema,
 		annotations: {
 			title: MCP_GET_SDK_REFERENCE_TOOL.displayTitle,
 			readOnlyHint: true,
@@ -83,7 +78,6 @@ export const createGetWorkflowSdkReferenceTool = (
 
 		return {
 			content: [{ type: 'text', text: content }],
-			structuredContent: { reference: content },
 		};
 	},
 });
