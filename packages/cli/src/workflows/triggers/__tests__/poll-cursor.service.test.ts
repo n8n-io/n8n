@@ -70,7 +70,7 @@ describe('PollCursorService', () => {
 				return { lastItemId: 'from-db' };
 			});
 
-			const cursor = await service.readCursor('wf-1', 'node-1', {
+			const cursor = await service.readCursor('wf-1', 'node-1', 'Poll Node', {
 				lastItemId: 'from-static-data',
 			});
 
@@ -89,7 +89,7 @@ describe('PollCursorService', () => {
 			const service = buildService();
 			pollerStateRepository.ensureCursor.mockResolvedValue({});
 
-			await expect(service.readCursor('wf-1', 'node-1', {})).resolves.toBeNull();
+			await expect(service.readCursor('wf-1', 'node-1', 'Poll Node', {})).resolves.toBeNull();
 		});
 
 		it('writes the stored cursor into the static data it was given, keeping the keys it does not carry', async () => {
@@ -97,7 +97,7 @@ describe('PollCursorService', () => {
 			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-db' });
 			const nodeStaticData = { lastItemId: 'stale', seenIds: ['x'] };
 
-			await service.readCursor('wf-1', 'node-1', nodeStaticData);
+			await service.readCursor('wf-1', 'node-1', 'Poll Node', nodeStaticData);
 
 			expect(nodeStaticData).toEqual({ lastItemId: 'from-db', seenIds: ['x'] });
 		});
@@ -118,9 +118,23 @@ describe('PollCursorService', () => {
 				},
 			});
 
-			await service.readCursor('wf-1', 'node-1', observable);
+			await service.readCursor('wf-1', 'node-1', 'Poll Node', observable);
 
 			expect(observed).toEqual([]);
+			expect(workflowStaticDataService.saveStaticDataById).not.toHaveBeenCalled();
+		});
+
+		it('persists the repair to the workflow when the read finds static data out of step with the stored cursor', async () => {
+			const service = buildService();
+			pollerStateRepository.ensureCursor.mockResolvedValue({ lastItemId: 'from-db' });
+			workflowStaticDataService.getStaticDataById.mockResolvedValue({});
+			const nodeStaticData = { lastItemId: 'stale' };
+
+			await service.readCursor('wf-1', 'node-1', 'Poll Node', nodeStaticData);
+
+			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {
+				'node:Poll Node': { lastItemId: 'from-db' },
+			});
 		});
 
 		it('propagates a failing read so the poll does not run against an unknown cursor', async () => {
@@ -128,7 +142,7 @@ describe('PollCursorService', () => {
 			const readError = new Error('poller state read failed');
 			pollerStateRepository.ensureCursor.mockRejectedValue(readError);
 
-			await expect(service.readCursor('wf-1', 'node-1', {})).rejects.toBe(readError);
+			await expect(service.readCursor('wf-1', 'node-1', 'Poll Node', {})).rejects.toBe(readError);
 		});
 	});
 
