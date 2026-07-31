@@ -8,6 +8,10 @@ import { test, expect } from '../../../fixtures/base';
  */
 test.use({ capability: { env: { N8N_PUSH_BACKEND: 'sse' } } });
 
+test.beforeEach(({ n8nContainer }) => {
+	test.skip(!n8nContainer, 'container-only: requires the SSE backend configuration');
+});
+
 test.describe(
 	'SSE push backend',
 	{
