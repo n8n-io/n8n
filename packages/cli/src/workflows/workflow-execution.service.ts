@@ -202,10 +202,14 @@ export class WorkflowExecutionService {
 		});
 
 		if (commitResult === null) {
+			// A miss can't tell a reclaimed lease apart from a cursor row that's genuinely gone.
 			this.logger.debug(
 				'Poll cursor commit skipped: the poll no longer holds its lease, or its cursor row is gone',
 				{ workflowId: workflowData.id, nodeName: node.name },
 			);
+			// A fence miss is not a failure: no poll call site supplies a `responsePromise`, and
+			// `__emit`'s `donePromise` already resolves `undefined` when no execution id comes
+			// back, so leaving the promise unsettled here is correct.
 			return undefined;
 		}
 
