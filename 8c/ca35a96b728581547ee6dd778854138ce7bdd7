@@ -1,0 +1,55 @@
+packages/cli/src/public-api/v1/__tests__/public-api-error-response.test.ts
+  s_25b6c3cf1a05b3::t_d6221e766c638b 6
+  s_ed13a8041ac4af::t_bfed0b32a13550 44,46,48
+  s_25b6c3cf1a05b3::t_06c9ff90dc79e2 45,47,49-50
+packages/cli/src/public-api/v1/handlers/sso-saml/spec/schemas/saml-configuration.update.yml
+  s_25b6c3cf1a05b3::t_575d9a2c1f2091 1-98
+packages/cli/src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts
+  s_ed13a8041ac4af::t_8b6d991a41e80e 2,6
+  h_ed1b2d65e81e8e 9
+  s_ed13a8041ac4af::t_080caaf4810b17 42-47
+  s_25b6c3cf1a05b3::t_74de1d41ab16a5 1,5,19,32-41,48-49,51
+  s_ed13a8041ac4af::t_87a6bcdcfbd0be 50,52
+  s_ed13a8041ac4af::t_e31969f7d9119a 53-54
+packages/cli/src/public-api/v1/handlers/sso-saml/spec/paths/settings.sso.saml.yml
+  s_ed13a8041ac4af::t_1411d8d6c87b03 59
+  s_ed13a8041ac4af::t_d75d5120342bdc 36-37
+  s_25b6c3cf1a05b3::t_1ed7b204abb2a0 24-35,38-58
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_25b6c3cf1a05b3::t_bc7a527da7d241 187-189
+packages/cli/src/public-api/types.ts
+  s_25b6c3cf1a05b3::t_2567ce6f859055 400
+packages/cli/test/integration/public-api/sso-saml.test.ts
+  s_25b6c3cf1a05b3::t_2fde02a05aa041 164-168
+  s_25b6c3cf1a05b3::t_3d51d4f32e52ee 2,24-27,34,40
+  s_25b6c3cf1a05b3::t_6920d2254fb1fc 123-163,169-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8cca35a96b728581547ee6dd778854138ce7bdd7",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_25b6c3cf1a05b3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "314cc85a-b512-4b04-9ed4-dac19f062687",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    },
+    "s_ed13a8041ac4af": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b76829e4-1034-475b-9169-dcf03ee70564",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
