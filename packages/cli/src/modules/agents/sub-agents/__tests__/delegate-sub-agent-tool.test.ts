@@ -294,7 +294,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 					taskPath: '/root/research_api_0',
 					childCount: 0,
 				},
-				{ runInlineSubAgent },
+				{ runInlineSubAgent, emitChunk: () => undefined },
 			),
 		).resolves.toMatchObject({
 			status: 'completed',

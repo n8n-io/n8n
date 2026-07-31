@@ -1,4 +1,4 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 export function useMcp() {
 	const telemetry = useTelemetry();
@@ -7,12 +7,17 @@ export function useMcp() {
 		telemetry.track('User gave MCP access to workflow', { workflow_id: workflowId });
 	};
 
+	const trackMcpAccessEnabledForAgent = (agentId: string) => {
+		telemetry.track('User gave MCP access to agent', { agent_id: agentId });
+	};
+
 	const trackUserToggledMcpAccess = (enabled: boolean) => {
 		telemetry.track('User toggled MCP access', { state: enabled });
 	};
 
 	return {
 		trackMcpAccessEnabledForWorkflow,
+		trackMcpAccessEnabledForAgent,
 		trackUserToggledMcpAccess,
 	};
 }

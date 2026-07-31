@@ -6,8 +6,9 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { BINARY_ENCODING, sleep, jsonStringify, UnexpectedError } from 'n8n-workflow';
-import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { jsonStringify, UnexpectedError } from 'n8n-workflow';
+import type { IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -30,6 +31,7 @@ import type {
 	JobMessage,
 	JobFailedMessage,
 } from './scaling.types';
+import { decodeRelayedWebhookResponse } from './webhook-response-relay';
 
 @Service()
 export class ScalingService {
@@ -351,10 +353,11 @@ export class ScalingService {
 				case 'send-chunk':
 					this.activeExecutions.sendChunk(msg.executionId, msg.chunkText);
 					break;
-				case 'respond-to-webhook':
-					const decodedResponse = this.decodeWebhookResponse(msg.response);
+				case 'respond-to-webhook': {
+					const decodedResponse = decodeRelayedWebhookResponse(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
+				}
 				case 'job-finished':
 					if (msg.success) {
 						this.activeExecutions.resolveResponsePromise(msg.executionId, {});
@@ -493,22 +496,6 @@ export class ScalingService {
 	}
 
 	// #endregion
-
-	private decodeWebhookResponse(
-		response: IExecuteResponsePromiseData,
-	): IExecuteResponsePromiseData {
-		if (
-			typeof response === 'object' &&
-			typeof response.body === 'object' &&
-			response.body !== null &&
-			'__@N8nEncodedBuffer@__' in response.body &&
-			typeof response.body['__@N8nEncodedBuffer@__'] === 'string'
-		) {
-			response.body = Buffer.from(response.body['__@N8nEncodedBuffer@__'], BINARY_ENCODING);
-		}
-
-		return response;
-	}
 
 	private assertQueue() {
 		if (this.queue) return;

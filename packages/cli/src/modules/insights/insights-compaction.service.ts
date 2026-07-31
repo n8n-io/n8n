@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
 
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';

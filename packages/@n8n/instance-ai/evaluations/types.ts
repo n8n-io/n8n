@@ -11,6 +11,7 @@ import type {
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
+import type { ConversationSeed } from './harness/conversation-seed';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -238,11 +239,11 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
-	/** Synthetic seed file (messages + workflows) restored before the live turn.
-	 *  Synthetic fixtures only; mutually exclusive with the other seeds. */
-	seedFile?: string;
+	/** Prior messages + the workflows they reference, restored before the live turn.
+	 *  Mutually exclusive with the other seeds. */
+	conversationSeed?: ConversationSeed;
 	/** Prose turns seeded as plain-text history (no tool calls/workflows).
-	 *  Mutually exclusive with `seedFile`. */
+	 *  Mutually exclusive with the other seeds. */
 	priorConversation?: ConversationTurn[];
 	/** Reproduce a real conversation from its LangSmith trace at run time: restore
 	 *  up to the live turn (the last user message, or one pinned by `liveTurnRunId`)

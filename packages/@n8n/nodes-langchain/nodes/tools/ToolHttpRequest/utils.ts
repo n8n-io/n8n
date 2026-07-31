@@ -179,6 +179,83 @@ const defaultOptimizer = <T>(response: T) => {
 	return String(response);
 };
 
+/** Error payloads are appended to the tool output, so they must not flood the model's context. */
+const MAX_ERROR_BODY_LENGTH = 2000;
+
+const SECRET_REDACTION = '[redacted]';
+
+/**
+ * Masks credential-shaped values that an API echoed back in its error payload, so they do not
+ * reach the model or the stored execution data. The key is kept, so `invalid api_key: <secret>`
+ * still tells the model which credential the API rejected.
+ *
+ * A sibling of the redaction applied to skill tool output in
+ * `packages/@n8n/agents/src/skills/tools.ts`; kept separate because `@n8n/agents` is not a
+ * dependency here. Keep the two in mind when changing either.
+ *
+ * The leading `[\w-]*` matters: `\b` alone never fires inside a compound key such as
+ * `client_secret`, where every character before `secret` is a word character. The auth scheme is
+ * optional so an `Authorization` header holding a bare key is masked too.
+ */
+const redactSecrets = (content: string): string =>
+	content
+		.replace(
+			/\b(authorization)(["']?\s*[:=]\s*["']?\s*(?:(?:bearer|basic)\s+)?)[^\s"',;}]+/gi,
+			`$1$2${SECRET_REDACTION}`,
+		)
+		.replace(
+			/([\w-]*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|passwd|secret|credential|private[_-]?key))(["']?\s*[:=]\s*)(["']?)[^\s"',;}]+\3/gi,
+			`$1$2$3${SECRET_REDACTION}$3`,
+		);
+
+type FailedRequest = {
+	error?: unknown;
+	response?: { status?: number; data?: unknown };
+	// A tool using a predefined credential goes through `httpRequestWithAuthentication`, which
+	// rejects with a `NodeApiError`. That has no `response`, and its `cause` is not retained, but
+	// it copies an object payload onto `context.data`.
+	context?: { data?: unknown };
+};
+
+/**
+ * Reads the status and payload a failed request came back with. The error is either the one the
+ * HTTP client rejected with, or a `NodeApiError` wrapping it. The current client reports the
+ * payload as `response.data`, the legacy one as `error`.
+ */
+const getFailedRequest = (error: unknown): { status?: number; body?: unknown } => {
+	for (const candidate of [error, (error as { cause?: unknown })?.cause]) {
+		const failed = candidate as FailedRequest | undefined;
+		const body = failed?.response?.data ?? failed?.error ?? failed?.context?.data;
+		const status = failed?.response?.status;
+
+		if (body !== undefined || status !== undefined) {
+			return { status, body };
+		}
+	}
+
+	return {};
+};
+
+/**
+ * Turns an error payload into something safe to hand to the model: skips empty and binary bodies,
+ * and never throws, since this runs while we are already handling a failed request.
+ */
+const serializeErrorBody = (body: unknown): string | undefined => {
+	if (body === undefined || body === null || body === '' || isBinary(body)) {
+		return undefined;
+	}
+
+	let serialized: string;
+
+	try {
+		serialized = defaultOptimizer(body);
+	} catch {
+		return undefined;
+	}
+
+	return serialized.trim() ? redactSecrets(serialized) : undefined;
+};
+
 function isBinary(data: unknown) {
 	// Check if data is a Buffer
 	if (Buffer.isBuffer(data)) {
@@ -789,8 +866,21 @@ export const configureToolFunction = (
 			try {
 				fullResponse = await httpRequest(options);
 			} catch (error) {
-				const httpCode = (error as NodeApiError).httpCode;
-				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
+				const { status, body } = getFailedRequest(error);
+				const httpCode = (error as NodeApiError).httpCode ?? status;
+				// Some clients fold the response body into the message, so it needs the same masking
+				// as the body itself — and the dedupe check below only holds if both sides are redacted.
+				const message = redactSecrets(error.message);
+				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${message}"`;
+
+				// The API's own error payload is what tells the model why the call was rejected. Without
+				// it the model only sees a status code and tends to invent a reason for the failure.
+				const errorBody = serializeErrorBody(body);
+				if (errorBody !== undefined && !message.includes(errorBody)) {
+					response += `\nResponse body: ${errorBody.slice(0, MAX_ERROR_BODY_LENGTH)}${
+						errorBody.length > MAX_ERROR_BODY_LENGTH ? '... [truncated]' : ''
+					}`;
+				}
 			}
 
 			if (!response) {

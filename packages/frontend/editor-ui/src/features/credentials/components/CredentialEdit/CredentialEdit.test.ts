@@ -845,33 +845,35 @@ describe('CredentialEdit', () => {
 		});
 	});
 
-	test('should use the requested credential type when node has multiple credential types', async () => {
-		const alphaCredType: ICredentialType = {
-			name: 'alphaApi',
-			displayName: 'Alpha API',
-			properties: [
-				{
-					displayName: 'Alpha Key',
-					name: 'alphaKey',
-					type: 'string',
-					default: '',
-				},
-			],
-		};
+	const alphaCredType: ICredentialType = {
+		name: 'alphaApi',
+		displayName: 'Alpha API',
+		properties: [
+			{
+				displayName: 'Alpha Key',
+				name: 'alphaKey',
+				type: 'string',
+				default: '',
+			},
+		],
+	};
 
-		const betaCredType: ICredentialType = {
-			name: 'betaApi',
-			displayName: 'Beta API',
-			properties: [
-				{
-					displayName: 'Beta Token',
-					name: 'betaToken',
-					type: 'string',
-					default: '',
-				},
-			],
-		};
+	const betaCredType: ICredentialType = {
+		name: 'betaApi',
+		displayName: 'Beta API',
+		properties: [
+			{
+				displayName: 'Beta Token',
+				name: 'betaToken',
+				type: 'string',
+				default: '',
+			},
+		],
+	};
 
+	// Renders the new-credential modal (auth selector on) requesting the beta type
+	// of an alpha/beta node; returns the credentials store for assertions.
+	const renderDualCredModal = (mockNodeType: INodeTypeDescription) => {
 		const pinia = createTestingPinia({
 			initialState: {
 				[STORES.UI]: {
@@ -914,15 +916,30 @@ describe('CredentialEdit', () => {
 		workflowsStore.workflowId = 'test-workflow-id';
 		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 		ndvStore.activeNode = {
-			name: 'DualCredTest',
-			type: 'n8n-nodes-base.dualCredTest',
+			name: mockNodeType.displayName,
+			type: mockNodeType.name,
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
 		} as INode;
 
 		const nodeTypesStore = mockedStore(useNodeTypesStore);
-		const mockNodeType = {
+		nodeTypesStore.getNodeType = () => mockNodeType;
+
+		renderComponent({
+			props: {
+				activeId: 'betaApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		return credStore;
+	};
+
+	test('should use the requested credential type when node has multiple credential types', async () => {
+		const credStore = renderDualCredModal({
 			displayName: 'Dual Credential Test',
 			name: 'n8n-nodes-base.dualCredTest',
 			group: ['transform'],
@@ -936,17 +953,50 @@ describe('CredentialEdit', () => {
 				{ name: 'betaApi', required: true },
 			],
 			properties: [],
-		} as unknown as INodeTypeDescription;
-		nodeTypesStore.getNodeType = () => mockNodeType;
+		} as unknown as INodeTypeDescription);
 
-		renderComponent({
-			props: {
-				activeId: 'betaApi',
-				modalName: CREDENTIAL_EDIT_MODAL_KEY,
-				mode: 'new',
-			},
-			pinia,
-		});
+		await retry(() =>
+			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({
+				credentialTypeName: 'betaApi',
+			}),
+		);
+	});
+
+	test('should use the requested credential type when the node has multiple auth options', async () => {
+		const credStore = renderDualCredModal({
+			displayName: 'Dual Auth Test',
+			name: 'n8n-nodes-base.dualAuthTest',
+			group: ['transform'],
+			version: 1,
+			description: 'Test node',
+			defaults: { name: 'Dual Auth Test' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: 'alphaApi',
+					required: true,
+					displayOptions: { show: { authentication: ['alpha'] } },
+				},
+				{
+					name: 'betaApi',
+					required: true,
+					displayOptions: { show: { authentication: ['beta'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{ name: 'Alpha', value: 'alpha' },
+						{ name: 'Beta', value: 'beta' },
+					],
+					default: 'alpha',
+				},
+			],
+		} as unknown as INodeTypeDescription);
 
 		await retry(() =>
 			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({
@@ -956,7 +1006,10 @@ describe('CredentialEdit', () => {
 	});
 
 	describe('saving credentials', () => {
-		const createPiniaForSaveTest = (credentialModalState: Partial<NewCredentialsModal> = {}) =>
+		const createPiniaForSaveTest = (
+			credentialModalState: Partial<NewCredentialsModal> = {},
+			projectsState: Record<string, unknown> = {},
+		) =>
 			createTestingPinia({
 				initialState: {
 					[STORES.UI]: {
@@ -985,6 +1038,7 @@ describe('CredentialEdit', () => {
 							type: 'personal',
 							scopes: ['credential:create', 'credential:read', 'credential:update'],
 						},
+						...projectsState,
 					},
 				},
 			});
@@ -992,8 +1046,9 @@ describe('CredentialEdit', () => {
 		const setupNewCredential = (
 			credentialType: ICredentialType,
 			credentialModalState: Partial<NewCredentialsModal> = {},
+			projectsState: Record<string, unknown> = {},
 		) => {
-			const pinia = createPiniaForSaveTest(credentialModalState);
+			const pinia = createPiniaForSaveTest(credentialModalState, projectsState);
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes = {
 				[credentialType.name]: credentialType,
@@ -1106,6 +1161,49 @@ describe('CredentialEdit', () => {
 				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
 			});
 			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+		});
+
+		test('creates the credential in the project the modal was opened for', async () => {
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType;
+			const { credentialsStore, pinia } = setupNewCredential(
+				credentialType,
+				{ projectId: 'team-project' },
+				{
+					currentProject: null,
+					myProjects: [
+						{
+							id: 'team-project',
+							name: 'Team project',
+							type: 'team',
+							scopes: ['credential:create', 'credential:read', 'credential:update'],
+						},
+					],
+				},
+			);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() =>
+				expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'testApi' }),
+					'team-project',
+					undefined,
+				),
+			);
 		});
 
 		test('keeps the modal open after saving credentials by default', async () => {

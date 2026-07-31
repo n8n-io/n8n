@@ -13,7 +13,11 @@ export const AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH = 128;
 export const agentTaskSchema = z.object({
 	name: z.string().min(1).max(AGENT_TASK_NAME_MAX_LENGTH),
 	objective: z.string().min(1).max(AGENT_TASK_OBJECTIVE_MAX_LENGTH),
-	cronExpression: z.string().min(1).max(AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH),
+	cronExpression: z
+		.string()
+		.min(1)
+		.max(AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH)
+		.describe('Standard five-field cron expression, for example "0 9 * * *"'),
 });
 
 export type AgentTaskConfig = z.infer<typeof agentTaskSchema>;

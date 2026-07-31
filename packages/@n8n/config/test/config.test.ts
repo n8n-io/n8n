@@ -467,11 +467,13 @@ describe('GlobalConfig', () => {
 			enabledForPollTriggers: false,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
+			misfireGraceSeconds: 60,
 		},
 		evaluation: {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
 			agentEvalsEnabled: false,
+			agentEvalsRunTimeoutMinutes: 60,
 		},
 		generic: {
 			timezone: 'America/New_York',
@@ -536,6 +538,7 @@ describe('GlobalConfig', () => {
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
 			maxDisplaySize: 100 * 1024 * 1024,
+			webhookResponseRelaySizeMaxMiB: 64,
 		},
 		diagnostics: {
 			enabled: true,
@@ -641,6 +644,8 @@ describe('GlobalConfig', () => {
 			oidcLoginEnabled: false,
 			oidcPrompt: 'select_account',
 			oidcAcrValues: '',
+			oidcAdditionalScopes: '',
+			oidcRpInitiatedLogoutEnabled: false,
 			ssoUserRoleProvisioning: 'disabled',
 			securityPolicyManagedByEnv: false,
 			mfaEnforcedEnabled: false,

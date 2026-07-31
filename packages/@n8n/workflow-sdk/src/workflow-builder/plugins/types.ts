@@ -62,8 +62,13 @@ export interface ValidationIssue {
 	readonly code: string;
 	/** Human-readable message describing the issue */
 	readonly message: string;
-	/** Severity level: 'error' for fatal issues, 'warning' for non-fatal */
-	readonly severity: 'error' | 'warning';
+	/**
+	 * Severity at the creation site:
+	 * - `error` — fatal for `ValidationResult.valid`
+	 * - `warning` — non-fatal for `valid`, blocks save / CLI exit
+	 * - `informational` — never blocks save / CLI exit
+	 */
+	readonly severity: 'error' | 'warning' | 'informational';
 	/** Violation level for evaluation scoring (defaults to 'minor' if not set) */
 	readonly violationLevel?: 'critical' | 'major' | 'minor';
 	/** Name of the node where the issue was found (optional) */
