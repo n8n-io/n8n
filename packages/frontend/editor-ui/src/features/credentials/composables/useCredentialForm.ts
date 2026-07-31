@@ -15,6 +15,7 @@ import type {
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import type { IUpdateInformation } from '@/Interface';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -28,8 +29,10 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
+import { probeCredential } from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../templatedAuth.utils';
 
 const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 	'scope',
@@ -67,6 +70,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	const projectsStore = useProjectsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
+	const rootStore = useRootStore();
 	const nodeHelpers = useNodeHelpers();
 	const i18n = useI18n();
 
@@ -254,8 +258,19 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		return true;
 	});
 
+	// Templated Custom Auth has no static test definition — a persisted http(s)
+	// test URL makes it probeable server-side instead (only 401/403 reject).
+	const isTemplatedAuthProbeable = computed(
+		() =>
+			credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE &&
+			typeof credentialData.value.testUrl === 'string' &&
+			/^https?:\/\//i.test(credentialData.value.testUrl),
+	);
+
 	const isCredentialTestable = computed(() => {
 		if (isOAuthType.value || !requiredPropertiesFilled.value) return false;
+
+		if (isTemplatedAuthProbeable.value) return true;
 
 		const hasUntestableExpressions = credentialProperties.value.some((prop) => {
 			const value = credentialData.value[prop.name];
@@ -499,7 +514,13 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	}
 
 	async function testCredential(details: ICredentialsDecrypted) {
-		const result = await credentialsStore.testCredential(details);
+		// The probe runs against the SAVED credential (the server reads its
+		// persisted test URL), so it only applies once an id exists — which the
+		// modal guarantees by testing after save.
+		const result =
+			isTemplatedAuthProbeable.value && details.id
+				? await probeCredential(rootStore.restApiContext, details.id)
+				: await credentialsStore.testCredential(details);
 		if (result.status === 'Error') {
 			authError.value = result.message;
 			testedSuccessfully.value = false;

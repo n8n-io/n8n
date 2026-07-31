@@ -78,5 +78,4 @@ describe('templatedAuth.utils', () => {
 			expect(parsePlaceholderValues(raw)).toEqual({ api_key: '***' });
 		});
 	});
-
 });

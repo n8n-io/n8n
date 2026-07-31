@@ -8,12 +8,17 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsDecryptedResponse } from '../../credentials.types';
 import { useCredentialForm } from '../useCredentialForm';
+import { probeCredential } from '../../credentials.api';
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: () => ({ displayParameter: () => true }),
+}));
+vi.mock('@/features/credentials/credentials.api', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	probeCredential: vi.fn(),
 }));
 
 const httpBasicAuth: ICredentialType = {
@@ -66,11 +71,26 @@ const skipManagedOAuth: ICredentialType = {
 	],
 };
 
+// The templated generic type: no static test definition — a persisted test
+// URL routes the modal's connection test through the auth probe instead.
+const templatedCustomAuth: ICredentialType = {
+	name: 'httpTemplatedCustomAuth',
+	displayName: 'Simplified Custom Auth',
+	properties: [
+		{ displayName: 'Template', name: 'template', type: 'json', required: true, default: '' },
+		{ displayName: 'Placeholders', name: 'placeholderDefs', type: 'json', default: '' },
+		{ displayName: 'Placeholder Values', name: 'placeholderValues', type: 'json', default: '' },
+		{ displayName: 'Test URL', name: 'testUrl', type: 'string', default: '' },
+		{ displayName: 'Documentation URL', name: 'docsUrl', type: 'string', default: '' },
+	],
+};
+
 const typesByName: Record<string, ICredentialType> = {
 	httpBasicAuth,
 	acmeOAuth2Api: managedOAuth,
 	privateOAuth2Api: privateOAuth,
 	skipOAuth2Api: skipManagedOAuth,
+	httpTemplatedCustomAuth: templatedCustomAuth,
 };
 
 describe('useCredentialForm', () => {
@@ -165,6 +185,34 @@ describe('useCredentialForm', () => {
 			await form.initialize();
 
 			expect(form.useCustomOAuth.value).toBe(true);
+		});
+	});
+
+	describe('testCredential', () => {
+		it('routes a saved Templated Custom Auth credential through the auth probe', async () => {
+			vi.mocked(probeCredential).mockResolvedValue({ status: 'Error', message: 'Received 401' });
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
+			await form.initialize();
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify({ headers: { Authorization: 'Key {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'abc' }),
+				testUrl: 'https://fal.run/v1/models',
+			};
+
+			// A filled template + persisted http(s) test URL makes the credential probeable.
+			expect(form.isCredentialTestable.value).toBe(true);
+
+			await form.testCredential({
+				id: 'cred-9',
+				name: 'fal.ai API Key',
+				type: 'httpTemplatedCustomAuth',
+				data: form.credentialData.value as never,
+			});
+
+			expect(probeCredential).toHaveBeenCalledWith(expect.anything(), 'cred-9');
+			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+			expect(form.authError.value).toBe('Received 401');
 		});
 	});
 
