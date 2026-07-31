@@ -7,6 +7,8 @@ import {
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -29,6 +31,7 @@ export class AgentIntegrationPersistenceService {
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -90,6 +93,7 @@ export class AgentIntegrationPersistenceService {
 		markAgentDraftDirty(agent);
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
+		this.eventService.emit('agent-saved', { agentId: agent.id });
 		if (options.broadcast !== false) {
 			await this.chatIntegrationService.broadcastIntegrationChange(
 				agent.id,
@@ -119,6 +123,7 @@ export class AgentIntegrationPersistenceService {
 		markAgentDraftDirty(agent);
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
+		this.eventService.emit('agent-saved', { agentId: agent.id });
 		if (options.broadcast !== false) {
 			await this.chatIntegrationService.broadcastIntegrationChange(
 				agent.id,

@@ -5,6 +5,7 @@ import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { EventService } from '@/events/event.service';
 
 import { AgentConfigService } from '../agent-config.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -45,6 +46,7 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const eventService = mock<EventService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
@@ -66,6 +68,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
+		eventService,
 	);
 
 	return {
@@ -76,6 +79,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
+		eventService,
 	};
 }
 
@@ -190,7 +194,7 @@ describe('AgentConfigService', () => {
 		it('persists an explicit web-search disable and clears native provider tools', async () => {
 			// Regression: previously the disable was stripped on write and resurrected
 			// on read, so the config hash never changed and the builder looped.
-			const { service, agentRepository } = makeService();
+			const { service, agentRepository, eventService } = makeService();
 			const agent = makeAgent({
 				schema: {
 					...baseConfig,
@@ -213,6 +217,7 @@ describe('AgentConfigService', () => {
 			// layer's freshness hash actually changes.
 			expect(result.config?.config?.webSearch).toEqual({ enabled: false });
 			expect(result.config?.providerTools).toEqual({});
+			expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
 		});
 
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {

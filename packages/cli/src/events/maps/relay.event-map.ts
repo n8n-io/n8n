@@ -1046,6 +1046,10 @@ export type RelayEventMap = {
 	// #endregion
 
 	// region Agents
+	'agent-saved': {
+		agentId: string;
+	};
+
 	'agent-deleted': {
 		agentId: string;
 		projectId: string;

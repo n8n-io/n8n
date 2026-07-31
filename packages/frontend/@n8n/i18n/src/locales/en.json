@@ -4741,6 +4741,7 @@
 	"workflows.dependencies.type.errorWorkflowParent": "Error handler for",
 	"workflows.dependencies.type.subWorkflows": "Sub-workflows",
 	"workflows.dependencies.type.parentWorkflows": "Used by workflows",
+	"workflows.dependencies.type.agents": "Used by agents",
 	"workflows.dependencies.search.placeholder": "Search...",
 	"workflows.dependencies.search.empty": "No matching dependencies",
 	"workflows.dependencies.hiddenNotice": "+1 not accessible to you | +{count} not accessible to you",

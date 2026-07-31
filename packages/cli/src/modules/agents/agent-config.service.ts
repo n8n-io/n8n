@@ -14,6 +14,7 @@ import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSkillsService } from './agent-skills.service';
@@ -39,6 +40,7 @@ export class AgentConfigService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -238,6 +240,7 @@ export class AgentConfigService {
 		this.runtimeCacheService.clearRuntimes(agentId);
 
 		const saved = await this.agentRepository.save(entity);
+		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		if (tasksProvided) {

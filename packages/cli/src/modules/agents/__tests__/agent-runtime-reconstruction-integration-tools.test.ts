@@ -252,6 +252,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 			credentialsService,
 			mock<WorkflowRepository>(),
+			mock<EventService>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
@@ -273,6 +274,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			chatIntegrationService,
 			runtimeCacheService,
 			chatIntegrationRegistry,
+			mock<EventService>(),
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,
@@ -295,6 +297,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentValidationService,
 			credentialsService,
 			telemetry,
+			mock<EventService>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(

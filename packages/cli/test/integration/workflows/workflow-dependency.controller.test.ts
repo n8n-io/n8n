@@ -3,8 +3,15 @@ import {
 	randomCredentialPayload,
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { WorkflowDependencyRepository } from '@n8n/db';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { ProjectRepository, WorkflowDependencyRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+
+import { AgentCredentialDependency } from '@/modules/agents/entities/agent-credential-dependency.entity';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
+import { Agent } from '@/modules/agents/entities/agent.entity';
+import { AgentCredentialDependencyRepository } from '@/modules/agents/repositories/agent-credential-dependency.repository';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
@@ -12,6 +19,15 @@ import * as utils from '../shared/utils';
 
 let testServer: ReturnType<typeof utils.setupTestServer>;
 let depRepo: WorkflowDependencyRepository;
+let agentDepRepo: AgentCredentialDependencyRepository;
+let agentRepo: AgentRepository;
+let projectRepo: ProjectRepository;
+
+beforeAll(() => {
+	const moduleRegistry = Container.get(ModuleRegistry);
+	moduleRegistry.entities.push(Agent, AgentHistory, AgentCredentialDependency);
+	moduleRegistry.getActiveModules().push('agents');
+});
 
 testServer = utils.setupTestServer({
 	endpointGroups: ['workflowDependencies'],
@@ -20,6 +36,9 @@ testServer = utils.setupTestServer({
 
 beforeAll(() => {
 	depRepo = Container.get(WorkflowDependencyRepository);
+	agentDepRepo = Container.get(AgentCredentialDependencyRepository);
+	agentRepo = Container.get(AgentRepository);
+	projectRepo = Container.get(ProjectRepository);
 });
 
 /** Seed a workflow_dependency row (draft). */
@@ -35,6 +54,47 @@ async function seedDep(workflowId: string, dependencyType: string, dependencyKey
 			indexVersionId: 1,
 		}),
 	);
+}
+
+async function seedAgentCredentialDependencies(
+	user: User,
+	credentialId: string,
+	name = 'Support Agent',
+) {
+	const project = await projectRepo.getPersonalProjectForUserOrFail(user.id);
+	const agent = agentRepo.create({
+		name,
+		projectId: project.id,
+		schema: {
+			name,
+			model: 'openai/gpt-4.1-mini',
+			instructions: 'Help the user',
+			tools: [],
+			skills: [],
+		},
+		integrations: [],
+		tools: {},
+		skills: {},
+		versionId: 'draft-version-1',
+	});
+	await agentRepo.save(agent);
+
+	await agentDepRepo.save([
+		agentDepRepo.create({
+			agentId: agent.id,
+			source: 'draft',
+			sourceVersionId: null,
+			credentialId,
+		}),
+		agentDepRepo.create({
+			agentId: agent.id,
+			source: 'published',
+			sourceVersionId: 'published-version-1',
+			credentialId,
+		}),
+	]);
+
+	return agent;
 }
 
 describe('POST /workflow-dependencies/counts', () => {
@@ -95,6 +155,23 @@ describe('POST /workflow-dependencies/counts', () => {
 		expect(resp.body.data).not.toHaveProperty(ownerCred.id);
 		expect(resp.body.data).toHaveProperty(memberCred.id);
 		expect(resp.body.data[memberCred.id].workflowParent).toBe(1);
+	});
+
+	it('should count an agent once when draft and published versions use the credential', async () => {
+		const owner = await createOwner();
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		await seedAgentCredentialDependencies(owner, credential.id);
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/counts')
+			.send({ resourceIds: [credential.id], resourceType: 'credential' });
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data[credential.id].agentParent).toBe(1);
 	});
 
 	it('should include counts for dependencies the user cannot access', async () => {
@@ -298,6 +375,54 @@ describe('POST /workflow-dependencies/details', () => {
 			id: parentWf.id,
 			name: 'Parent WF',
 			type: 'workflowParent',
+		});
+	});
+
+	it('should resolve an accessible agent using a credential', async () => {
+		const owner = await createOwner();
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const agent = await seedAgentCredentialDependencies(owner, credential.id, 'Support Agent');
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/details')
+			.send({ resourceIds: [credential.id], resourceType: 'credential' });
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data[credential.id]).toEqual({
+			dependencies: [
+				{
+					id: agent.id,
+					name: 'Support Agent',
+					type: 'agentParent',
+					projectId: agent.projectId,
+				},
+			],
+			inaccessibleCount: 0,
+		});
+	});
+
+	it('should report an inaccessible agent without exposing its details', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+		await seedAgentCredentialDependencies(owner, credential.id, 'Private Agent');
+
+		const resp = await testServer
+			.authAgentFor(member)
+			.post('/workflow-dependencies/details')
+			.send({ resourceIds: [credential.id], resourceType: 'credential' });
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data[credential.id]).toEqual({
+			dependencies: [],
+			inaccessibleCount: 1,
 		});
 	});
 

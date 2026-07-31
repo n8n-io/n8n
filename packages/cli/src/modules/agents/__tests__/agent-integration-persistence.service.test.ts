@@ -1,6 +1,8 @@
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
+import type { EventService } from '@/events/event.service';
+
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { Agent } from '../entities/agent.entity';
@@ -26,6 +28,7 @@ function makeService() {
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+	const eventService = mock<EventService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 
@@ -35,11 +38,13 @@ function makeService() {
 			chatIntegrationService,
 			runtimeCacheService,
 			chatIntegrationRegistry,
+			eventService,
 		),
 		agentRepository,
 		chatIntegrationService,
 		runtimeCacheService,
 		chatIntegrationRegistry,
+		eventService,
 	};
 }
 
@@ -85,7 +90,8 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	it('appends a credential integration to an empty list and invalidates the runtime cache', async () => {
-		const { service, agentRepository, chatIntegrationService, runtimeCacheService } = makeService();
+		const { service, agentRepository, chatIntegrationService, runtimeCacheService, eventService } =
+			makeService();
 		const agent = makeAgent();
 
 		await service.saveCredentialIntegration(agent, { type: 'slack', credentialId: 'slack-1' });
@@ -94,6 +100,7 @@ describe('AgentIntegrationPersistenceService', () => {
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			agentId,
 			{ type: 'slack', credentialId: 'slack-1' },

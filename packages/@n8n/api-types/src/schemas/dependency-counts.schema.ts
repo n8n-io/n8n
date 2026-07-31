@@ -1,4 +1,5 @@
 export interface DependencyTypeCounts {
+	agentParent: number;
 	credentialId: number;
 	dataTableId: number;
 	errorWorkflow: number;

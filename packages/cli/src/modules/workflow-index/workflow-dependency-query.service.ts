@@ -4,6 +4,7 @@ import type {
 	DependencyResourceType,
 	ResolvedDependency,
 } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	CredentialsRepository,
 	ProjectRelationRepository,
@@ -16,11 +17,14 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { AgentCredentialDependencyRepository } from '@/modules/agents/repositories/agent-credential-dependency.repository';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 interface RawDepMaps {
+	agentParentMap: Map<string, Set<string>>;
 	credMap: Map<string, Set<string>>;
 	dtMap: Map<string, Set<string>>;
 	subMap: Map<string, Set<string>>;
@@ -28,6 +32,7 @@ interface RawDepMaps {
 	errorWfMap: Map<string, Set<string>>;
 	errorWfParentMap: Map<string, Set<string>>;
 	allCredIds: Set<string>;
+	allAgentIds: Set<string>;
 	allWfIds: Set<string>;
 	allDtIds: Set<string>;
 }
@@ -43,6 +48,9 @@ export class WorkflowDependencyQueryService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
+		private readonly agentDependencyRepository: AgentCredentialDependencyRepository,
+		private readonly agentRepository: AgentRepository,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async getDependencyCounts(
@@ -58,6 +66,7 @@ export class WorkflowDependencyQueryService {
 		const result: DependencyCountsBatchResponse = {};
 		for (const id of accessibleInputIds) {
 			result[id] = {
+				agentParent: maps.agentParentMap.get(id)?.size ?? 0,
 				credentialId: maps.credMap.get(id)?.size ?? 0,
 				dataTableId: maps.dtMap.get(id)?.size ?? 0,
 				errorWorkflow: maps.errorWfMap.get(id)?.size ?? 0,
@@ -81,11 +90,16 @@ export class WorkflowDependencyQueryService {
 		const { accessibleInputIds, maps } = loaded;
 
 		// Check user access for each dependency type
-		const [accessibleWfIds, accessibleCredIds, accessibleDtIds] = await Promise.all([
-			this.filterByAccess([...maps.allWfIds], 'workflow', user),
-			this.filterByAccess([...maps.allCredIds], 'credential', user),
-			this.filterByAccess([...maps.allDtIds], 'dataTable', user),
-		]);
+		const [accessibleWfIds, accessibleCredIds, accessibleDtIds, agents, accessibleAgentProjectIds] =
+			await Promise.all([
+				this.filterByAccess([...maps.allWfIds], 'workflow', user),
+				this.filterByAccess([...maps.allCredIds], 'credential', user),
+				this.filterByAccess([...maps.allDtIds], 'dataTable', user),
+				maps.allAgentIds.size > 0
+					? this.agentRepository.findSummariesByIds([...maps.allAgentIds])
+					: [],
+				maps.allAgentIds.size > 0 ? this.getAccessibleAgentProjectIds(user) : new Set<string>(),
+			]);
 
 		// Load all referenced resources (not just accessible ones) so that ids whose
 		// resource has been deleted — the index may still reference them — can be
@@ -115,13 +129,24 @@ export class WorkflowDependencyQueryService {
 		const accessibleCredIdSet = new Set(accessibleCredIds);
 		const accessibleDtIdSet = new Set(accessibleDtIds);
 
+		const agentNames = new Map<string, { name: string; projectId: string }>();
 		const wfNames = new Map<string, string>();
 		const credNames = new Map<string, string>();
 		const dtNames = new Map<string, { name: string; projectId: string }>();
+		const existingAgentIds = new Set<string>();
 		const existingWfIds = new Set<string>();
 		const existingCredIds = new Set<string>();
 		const existingDtIds = new Set<string>();
 
+		for (const agent of agents) {
+			existingAgentIds.add(agent.id);
+			if (accessibleAgentProjectIds === null || accessibleAgentProjectIds.has(agent.projectId)) {
+				agentNames.set(agent.id, {
+					name: agent.name ?? agent.id,
+					projectId: agent.projectId,
+				});
+			}
+		}
 		for (const c of credentials) {
 			existingCredIds.add(c.id);
 			if (accessibleCredIdSet.has(c.id)) credNames.set(c.id, c.name ?? c.id);
@@ -140,11 +165,12 @@ export class WorkflowDependencyQueryService {
 			accessibleInputIds,
 			maps,
 			{
+				agentNames,
 				wfNames,
 				credNames,
 				dtNames,
 			},
-			{ existingWfIds, existingCredIds, existingDtIds },
+			{ existingAgentIds, existingWfIds, existingCredIds, existingDtIds },
 		);
 	}
 
@@ -156,25 +182,32 @@ export class WorkflowDependencyQueryService {
 		const accessibleInputIds = await this.filterByAccess(resourceIds, resourceType, user);
 		if (accessibleInputIds.length === 0) return null;
 
-		const rawDeps = await this.dependencyRepository.find({
-			where: [
-				{
-					workflowId: In(accessibleInputIds),
-					dependencyType: In(['credentialId', 'dataTableId', 'errorWorkflow', 'workflowCall']),
-				},
-				{ dependencyKey: In(accessibleInputIds) },
-			],
-			select: ['workflowId', 'dependencyType', 'dependencyKey'],
-		});
+		const [rawDeps, agentDeps] = await Promise.all([
+			this.dependencyRepository.find({
+				where: [
+					{
+						workflowId: In(accessibleInputIds),
+						dependencyType: In(['credentialId', 'dataTableId', 'errorWorkflow', 'workflowCall']),
+					},
+					{ dependencyKey: In(accessibleInputIds) },
+				],
+				select: ['workflowId', 'dependencyType', 'dependencyKey'],
+			}),
+			resourceType === 'credential' && this.moduleRegistry.isActive('agents')
+				? this.agentDependencyRepository.findByCredentialIds(accessibleInputIds)
+				: [],
+		]);
 
-		if (rawDeps.length === 0) return null;
+		if (rawDeps.length === 0 && agentDeps.length === 0) return null;
 
-		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps) };
+		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps, agentDeps) };
 	}
 
 	private buildDepMaps(
 		rawDeps: Array<{ workflowId: string; dependencyType: string; dependencyKey: string }>,
+		agentDeps: Array<{ agentId: string; credentialId: string }>,
 	): RawDepMaps {
+		const agentParentMap = new Map<string, Set<string>>();
 		const credMap = new Map<string, Set<string>>();
 		const dtMap = new Map<string, Set<string>>();
 		const subMap = new Map<string, Set<string>>();
@@ -182,6 +215,7 @@ export class WorkflowDependencyQueryService {
 		const errorWfMap = new Map<string, Set<string>>();
 		const errorWfParentMap = new Map<string, Set<string>>();
 		const allCredIds = new Set<string>();
+		const allAgentIds = new Set<string>();
 		const allWfIds = new Set<string>();
 		const allDtIds = new Set<string>();
 
@@ -211,7 +245,13 @@ export class WorkflowDependencyQueryService {
 			}
 		}
 
+		for (const dep of agentDeps) {
+			addToSet(agentParentMap, dep.credentialId, dep.agentId);
+			allAgentIds.add(dep.agentId);
+		}
+
 		return {
+			agentParentMap,
 			credMap,
 			dtMap,
 			subMap,
@@ -219,6 +259,7 @@ export class WorkflowDependencyQueryService {
 			errorWfMap,
 			errorWfParentMap,
 			allCredIds,
+			allAgentIds,
 			allWfIds,
 			allDtIds,
 		};
@@ -232,11 +273,13 @@ export class WorkflowDependencyQueryService {
 		resourceIds: string[],
 		maps: RawDepMaps,
 		accessMaps: {
+			agentNames: Map<string, { name: string; projectId: string }>;
 			wfNames: Map<string, string>;
 			credNames: Map<string, string>;
 			dtNames: Map<string, { name: string; projectId: string }>;
 		},
 		existing: {
+			existingAgentIds: Set<string>;
 			existingWfIds: Set<string>;
 			existingCredIds: Set<string>;
 			existingDtIds: Set<string>;
@@ -247,6 +290,21 @@ export class WorkflowDependencyQueryService {
 		for (const resourceId of resourceIds) {
 			const dependencies: ResolvedDependency[] = [];
 			let inaccessibleCount = 0;
+
+			for (const id of maps.agentParentMap.get(resourceId) ?? []) {
+				if (!existing.existingAgentIds.has(id)) continue;
+				const agent = accessMaps.agentNames.get(id);
+				if (agent) {
+					dependencies.push({
+						id,
+						name: agent.name,
+						type: 'agentParent',
+						projectId: agent.projectId,
+					});
+				} else {
+					inaccessibleCount++;
+				}
+			}
 
 			const resolve = (
 				ids: Set<string> | undefined,
@@ -359,6 +417,15 @@ export class WorkflowDependencyQueryService {
 		);
 
 		return dataTables.filter((dt) => accessibleProjectIds.has(dt.projectId)).map((dt) => dt.id);
+	}
+
+	private async getAccessibleAgentProjectIds(user: User): Promise<Set<string> | null> {
+		if (hasGlobalScope(user, 'agent:read')) return null;
+
+		const roles = await this.roleService.rolesWithScope('project', ['agent:read']);
+		return new Set(
+			await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, roles),
+		);
 	}
 }
 
