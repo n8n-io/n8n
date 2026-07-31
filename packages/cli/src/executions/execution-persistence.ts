@@ -91,8 +91,8 @@ export class ExecutionPersistence {
 	 * - In `db` mode, we write both entity and data to the DB in a transaction.
 	 * - In blob modes (`fs`, `s3`, `az`), we write the entity to the DB and its data to the blob store.
 	 *
-	 * A caller passing a `ctx` that carries a transaction has the row commit together
-	 * with everything else in it; with no `ctx`, the write gets a transaction of its own.
+	 * With a `ctx` carrying a transaction, this row commits together with everything
+	 * else in it; with none, it gets a transaction of its own.
 	 */
 	async create(payload: CreateExecutionPayload, ctx: OperationContext = {}): Promise<string> {
 		const { data: rawData, workflowData, ...rest } = payload;

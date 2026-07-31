@@ -171,8 +171,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 	/**
 	 * Runs `fn` in a transaction, joining the one `ctx` already carries rather than
-	 * nesting. The `EntityManager` is handed to the callback so that an existing
-	 * multi-write body can join a caller's transaction without being rewritten.
+	 * opening a nested one. Hands back the raw `EntityManager` so a multi-write body
+	 * can be reused as-is inside either transaction.
 	 */
 	async runInTransaction<T>(
 		ctx: OperationContext,

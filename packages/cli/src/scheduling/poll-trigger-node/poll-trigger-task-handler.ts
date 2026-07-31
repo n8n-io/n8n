@@ -87,7 +87,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 						return report.notDispatched();
 					}
 
-					// __emit saves the cursor and starts the run without waiting on it.
+					// __emit persists the cursor, either to static data or inside the run's own
+					// transaction, and starts the run without waiting on it.
 					pollFunctions.__emit(pollResponse);
 					this.logger.debug('Poll returned new data; handed off to a new execution', {
 						taskId: task.id,
@@ -98,10 +99,10 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					return report.dispatched();
 				}
 
-				// A poll that found nothing may still have moved its cursor, and the advance
-				// is committed on its own. The stored active state is re-read first, since a
-				// workflow deactivated mid-poll must not have its cursor advanced; the flag
-				// check keeps that query off the path that stores no cursor.
+				// A poll with no items may still have staged a cursor advance, committed here
+				// on its own. Active state is re-read first so a workflow deactivated mid-poll
+				// doesn't get its cursor moved; the flag check skips that entirely when
+				// cursors aren't staged at all.
 				if (this.pollCursorService.enabled) {
 					try {
 						if (await this.workflowRepository.isActive(workflowId))
