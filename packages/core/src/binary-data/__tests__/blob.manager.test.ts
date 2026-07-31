@@ -126,9 +126,9 @@ describe('deletion', () => {
 		await manager.deleteManyByFileId(['malformed-id', fileId]);
 
 		expect(byteStore.delete).toHaveBeenCalledWith([fileId]);
-		expect(errorReporter.warn).toHaveBeenCalledWith(
-			'Could not parse file ID malformed-id. Skip deletion',
-		);
+		expect(errorReporter.warn).toHaveBeenCalledWith('Could not parse file ID. Skip deletion', {
+			extra: { fileId: 'malformed-id' },
+		});
 	});
 
 	it('deleteManyByFileId leaves the store untouched when every id is malformed', async () => {

@@ -278,7 +278,8 @@ describe('WebhookResponseRelay', () => {
 				.catch((e: WebhookResponseTooLargeError) => e);
 
 			expect(error).toBeInstanceOf(WebhookResponseTooLargeError);
-			expect((error as WebhookResponseTooLargeError).message).toContain('3 MiB');
+			expect((error as WebhookResponseTooLargeError).message).not.toContain('MiB');
+			expect((error as WebhookResponseTooLargeError).description).toContain('3 MiB');
 			expect((error as WebhookResponseTooLargeError).description).toContain(
 				'N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE',
 			);
@@ -324,7 +325,8 @@ describe('WebhookResponseRelay', () => {
 				.prepare(fullResponse('x'.repeat(3 * ONE_MIB)), ctx)
 				.catch((e: WebhookResponseTooLargeError) => e);
 
-			expect((error as WebhookResponseTooLargeError).message).toContain('limit is 2 MiB');
+			expect((error as WebhookResponseTooLargeError).message).not.toContain('MiB');
+			expect((error as WebhookResponseTooLargeError).description).toContain('The limit is 2 MiB');
 			expect((error as WebhookResponseTooLargeError).description).toContain(
 				'N8N_WEBHOOK_RESPONSE_RELAY_OFFLOAD_ENABLED',
 			);
@@ -366,7 +368,8 @@ describe('WebhookResponseRelay', () => {
 				.prepare(fullResponse('x'.repeat(3 * ONE_MIB)), ctx)
 				.catch((e: WebhookResponseTooLargeError) => e);
 
-			expect((error as WebhookResponseTooLargeError).message).toContain('limit is 2 MiB');
+			expect((error as WebhookResponseTooLargeError).message).not.toContain('MiB');
+			expect((error as WebhookResponseTooLargeError).description).toContain('The limit is 2 MiB');
 			expect((error as WebhookResponseTooLargeError).description).toContain(
 				'N8N_DEFAULT_BINARY_DATA_MODE',
 			);
@@ -446,7 +449,8 @@ describe('WebhookResponseRelay', () => {
 				.prepare(response, ctx)
 				.catch((e: WebhookResponseTooLargeError) => e);
 
-			expect((error as WebhookResponseTooLargeError).message).toContain('limit is 2 MiB');
+			expect((error as WebhookResponseTooLargeError).message).not.toContain('MiB');
+			expect((error as WebhookResponseTooLargeError).description).toContain('The limit is 2 MiB');
 			expect((error as WebhookResponseTooLargeError).description).toContain(
 				'N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX',
 			);

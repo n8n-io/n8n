@@ -285,9 +285,9 @@ describe('deleteManyByFileId', () => {
 
 			await manager.deleteManyByFileId([malformedId, fileId]);
 
-			expect(errorReporter.warn).toHaveBeenCalledWith(
-				`Could not parse file ID ${malformedId}. Skip deletion`,
-			);
+			expect(errorReporter.warn).toHaveBeenCalledWith('Could not parse file ID. Skip deletion', {
+				extra: { fileId: malformedId },
+			});
 			await expect(manager.getAsBuffer(fileId)).rejects.toThrow(FileNotFoundError);
 		},
 	);

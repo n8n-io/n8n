@@ -82,7 +82,9 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 			try {
 				this.parseFileId(fileId);
 			} catch {
-				this.errorReporter.warn(`Could not parse file ID ${fileId}. Skip deletion`);
+				this.errorReporter.warn('Could not parse file ID. Skip deletion', {
+					extra: { fileId },
+				});
 				return [];
 			}
 

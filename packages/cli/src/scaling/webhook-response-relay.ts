@@ -56,6 +56,10 @@ const INLINE_STRING_CONTENT_TYPE = 'text/html; charset=utf-8';
 /** What Express sets on a JSON body sent inline through `res.json`. */
 const INLINE_JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 
+const TOO_LARGE_MESSAGE = 'The response is too large to be sent back from the worker';
+
+const TOO_LARGE_FOR_STORE_MESSAGE = 'The response is too large for the binary-data store to hold';
+
 const OFFLOAD_DISABLED_GUIDANCE =
 	'In scaling mode a response over this size can be stored for the main instance to stream instead of failing. Set N8N_WEBHOOK_RESPONSE_RELAY_OFFLOAD_ENABLED to true on every worker, once every main instance runs a version that reads a stored body, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX.';
 
@@ -250,8 +254,8 @@ export class WebhookResponseRelay {
 	 */
 	assertFitsInline(payload: unknown): void {
 		if (exceedsInlineSize(payload, this.maxInlineBytes)) {
-			throw new WebhookResponseTooLargeError(this.tooLargeMessage(), {
-				description: NOT_OFFLOADABLE_GUIDANCE,
+			throw new WebhookResponseTooLargeError(TOO_LARGE_MESSAGE, {
+				description: withInlineLimit(NOT_OFFLOADABLE_GUIDANCE, this.maxInlineMib),
 			});
 		}
 	}
@@ -264,25 +268,24 @@ export class WebhookResponseRelay {
 	 */
 	private assertOffloadAvailable(): void {
 		if (!this.executionsConfig.webhookResponseRelayOffloadEnabled) {
-			throw new WebhookResponseTooLargeError(this.tooLargeMessage(), {
-				description: OFFLOAD_DISABLED_GUIDANCE,
+			throw new WebhookResponseTooLargeError(TOO_LARGE_MESSAGE, {
+				description: withInlineLimit(OFFLOAD_DISABLED_GUIDANCE, this.maxInlineMib),
 			});
 		}
 
 		if (this.binaryDataConfig.mode === IN_MEMORY_MODE) {
-			throw new WebhookResponseTooLargeError(this.tooLargeMessage(), {
-				description: NO_STORE_GUIDANCE,
+			throw new WebhookResponseTooLargeError(TOO_LARGE_MESSAGE, {
+				description: withInlineLimit(NO_STORE_GUIDANCE, this.maxInlineMib),
 			});
 		}
 	}
 
-	private get maxInlineBytes(): number {
-		return this.executionsConfig.webhookResponseRelaySizeMaxMiB * MIB;
+	private get maxInlineMib(): number {
+		return this.executionsConfig.webhookResponseRelaySizeMaxMiB;
 	}
 
-	private tooLargeMessage(): string {
-		const { webhookResponseRelaySizeMaxMiB } = this.executionsConfig;
-		return `The response is too large to be sent back from the worker (limit is ${webhookResponseRelaySizeMaxMiB} MiB)`;
+	private get maxInlineBytes(): number {
+		return this.maxInlineMib * MIB;
 	}
 
 	/**
@@ -356,8 +359,8 @@ export class WebhookResponseRelay {
 			});
 		} catch (error) {
 			if (error instanceof FileTooLargeError) {
-				throw new WebhookResponseTooLargeError(this.tooLargeForStoreMessage(body.length), {
-					description: STORE_LIMIT_GUIDANCE,
+				throw new WebhookResponseTooLargeError(TOO_LARGE_FOR_STORE_MESSAGE, {
+					description: withResponseSize(STORE_LIMIT_GUIDANCE, body.length),
 					cause: error,
 				});
 			}
@@ -370,11 +373,6 @@ export class WebhookResponseRelay {
 		}
 
 		return stored;
-	}
-
-	private tooLargeForStoreMessage(byteLength: number): string {
-		const sizeInMib = Math.round((byteLength / MIB) * 100) / 100;
-		return `The response is too large for the binary-data store to hold (${sizeInMib} MiB)`;
 	}
 
 	private degradeToEmptyBody<T extends IN8nHttpFullResponse>(
@@ -427,6 +425,15 @@ export function decodeRelayedWebhookResponse<T>(response: T): T {
 	}
 
 	return response;
+}
+
+function withInlineLimit(guidance: string, limitInMib: number): string {
+	return `The limit is ${limitInMib} MiB. ${guidance}`;
+}
+
+function withResponseSize(guidance: string, byteLength: number): string {
+	const sizeInMib = Math.round((byteLength / MIB) * 100) / 100;
+	return `The response is ${sizeInMib} MiB. ${guidance}`;
 }
 
 /**
