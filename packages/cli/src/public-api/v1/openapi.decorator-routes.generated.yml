@@ -6,6 +6,16 @@ paths:
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml
+  /variables:
+    get:
+      $ref: ./handlers/variables/spec/paths/getVariables.generated.yml
+    post:
+      $ref: ./handlers/variables/spec/paths/createVariable.generated.yml
+  /variables/{id}:
+    put:
+      $ref: ./handlers/variables/spec/paths/updateVariable.generated.yml
+    delete:
+      $ref: ./handlers/variables/spec/paths/deleteVariable.generated.yml
   /widgets:
     get:
       $ref: ./handlers/widgets/spec/paths/listWidgets.generated.yml

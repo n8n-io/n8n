@@ -2,7 +2,6 @@ import type { ProjectIcon, ProjectType } from '@n8n/api-types';
 import type {
 	APIRequest,
 	AuthenticatedRequest,
-	Variables,
 	Project,
 	User,
 	ListQueryDb,
@@ -234,32 +233,6 @@ export declare namespace NodeRequest {
 
 export declare namespace LicenseRequest {
 	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string; eulaUri?: string }, {}>;
-}
-
-// ----------------------------------
-//           /variables
-// ----------------------------------
-//
-export declare namespace VariablesRequest {
-	type CreateUpdatePayload = Omit<Variables, 'id'> & { id?: unknown };
-
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			lastId?: string;
-			projectId?: string;
-			state?: 'empty';
-		}
-	>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
-	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
-	type Delete = Get;
 }
 
 // ----------------------------------

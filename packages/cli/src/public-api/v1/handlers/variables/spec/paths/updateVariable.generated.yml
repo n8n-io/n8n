@@ -1,0 +1,49 @@
+operationId: updateVariable
+tags:
+  - Variables
+summary: Update a variable
+description: Update a variable from your instance.
+x-required-scope: variable:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: id
+    in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          key:
+            type: string
+            minLength: 1
+            maxLength: 50
+            pattern: ^[A-Za-z0-9_]+$
+          type:
+            type: string
+            enum:
+              - string
+            default: string
+          value:
+            type: string
+            maxLength: 1000
+          projectId:
+            type: string
+            nullable: true
+            maxLength: 36
+responses:
+  '204':
+    description: Operation successful.
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

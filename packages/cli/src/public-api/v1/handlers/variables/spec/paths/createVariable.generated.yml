@@ -1,0 +1,43 @@
+operationId: createVariable
+tags:
+  - Variables
+summary: Create a variable
+description: Create a variable in your instance.
+x-required-scope: variable:create
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - string
+            default: string
+          value:
+            type: string
+            maxLength: 1000
+          key:
+            type: string
+            minLength: 1
+            maxLength: 50
+            pattern: ^[A-Za-z_][A-Za-z0-9_]*$
+          projectId:
+            type: string
+            maxLength: 36
+        required:
+          - value
+          - key
+responses:
+  '201':
+    description: Operation successful.
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

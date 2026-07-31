@@ -4,5 +4,6 @@
  * scope-parity / discover run.
  */
 import './tags.public.controller';
+import './variables.public.controller';
 import './widgets.public.controller';
 import './workflows.public.controller';
