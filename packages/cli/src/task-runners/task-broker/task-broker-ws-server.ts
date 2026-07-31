@@ -25,6 +25,17 @@ function heartbeat(this: WebSocket) {
 
 type WsStatusCode = (typeof WsStatusCodes)[keyof typeof WsStatusCodes];
 
+type RemoveConnectionOptions = {
+	reason?: DisconnectReason;
+	/** Close code sent to the runner. */
+	code?: WsStatusCode;
+	/**
+	 * The connection the caller intends to remove. If the runner is registered
+	 * with a different connection by now, the removal is skipped as stale.
+	 */
+	expectedConnection?: WebSocket;
+};
+
 /**
  * Responsible for handling WebSocket connections with task runners
  * and monitoring the connection liveness
@@ -70,12 +81,11 @@ export class TaskBrokerWsServer {
 				connection.ping();
 			} else {
 				anyDead = true;
-				void this.removeConnection(
-					runnerId,
-					'failed-heartbeat-check',
-					WsStatusCodes.CloseProtocolError,
-					connection,
-				);
+				void this.removeConnection(runnerId, {
+					reason: 'failed-heartbeat-check',
+					code: WsStatusCodes.CloseProtocolError,
+					expectedConnection: connection,
+				});
 			}
 		}
 
@@ -159,7 +169,7 @@ export class TaskBrokerWsServer {
 		connection.once('close', async () => {
 			connection.off('pong', heartbeat);
 			connection.off('message', onMessage);
-			await this.removeConnection(id, 'unknown', WsStatusCodes.CloseNormal, connection);
+			await this.removeConnection(id, { expectedConnection: connection });
 		});
 
 		connection.on('message', onMessage);
@@ -170,9 +180,11 @@ export class TaskBrokerWsServer {
 
 	async removeConnection(
 		id: TaskRunner['id'],
-		reason: DisconnectReason = 'unknown',
-		code: WsStatusCode = WsStatusCodes.CloseNormal,
-		expectedConnection?: WebSocket,
+		{
+			reason = 'unknown',
+			code = WsStatusCodes.CloseNormal,
+			expectedConnection,
+		}: RemoveConnectionOptions = {},
 	) {
 		const connection = this.runnerConnections.get(id);
 		const isStaleRemoval =
@@ -230,12 +242,11 @@ export class TaskBrokerWsServer {
 		await Promise.all(
 			Array.from(this.runnerConnections.entries()).map(
 				async ([id, connection]) =>
-					await this.removeConnection(
-						id,
-						'shutting-down',
-						WsStatusCodes.CloseGoingAway,
-						connection,
-					),
+					await this.removeConnection(id, {
+						reason: 'shutting-down',
+						code: WsStatusCodes.CloseGoingAway,
+						expectedConnection: connection,
+					}),
 			),
 		);
 	}

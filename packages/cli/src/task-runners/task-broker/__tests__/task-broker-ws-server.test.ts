@@ -150,7 +150,7 @@ describe('TaskBrokerWsServer', () => {
 			const currentWs = mockWs();
 			server.runnerConnections.set('test-runner', currentWs);
 
-			await server.removeConnection('test-runner', 'unknown', WsStatusCodes.CloseNormal, staleWs);
+			await server.removeConnection('test-runner', { expectedConnection: staleWs });
 
 			expect(currentWs.close).not.toHaveBeenCalled();
 			expect(taskBroker.deregisterRunner).not.toHaveBeenCalled();
