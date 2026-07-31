@@ -753,7 +753,7 @@ conversation. Creation and editing stay on `build-agent`.
 Search the MCP registry so the orchestrator can discover a hosted MCP server for
 a service the user asked about but has not connected. One action, `search`, over
 `{ queries: string[] }`; returns
-`{ results: [{ slug, title, description, tools, isConnected }] }`.
+`{ results: [{ slug, title, description, tools, isConnected }], hint? }`.
 
 ## Other Domain Tools
 
