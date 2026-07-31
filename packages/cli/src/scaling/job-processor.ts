@@ -15,7 +15,6 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
-	IExecuteResponsePromiseData,
 	IExecutionContext,
 	INodeExecutionData,
 	IRun,
@@ -26,7 +25,6 @@ import type {
 	GenericValue,
 } from 'n8n-workflow';
 import {
-	BINARY_ENCODING,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -59,6 +57,7 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+import { assertRelayableSize, encodeRelayedWebhookResponse } from './webhook-response-relay';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -197,6 +196,8 @@ export class JobProcessor {
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
+			assertRelayableSize(response, this.executionsConfig.webhookResponseRelaySizeMaxMiB);
+
 			// Check if this is an MCP execution - broadcast response to all mains
 			if (job.data.isMcpExecution && job.data.mcpSessionId) {
 				const msg: McpResponseMessage = {
@@ -217,7 +218,7 @@ export class JobProcessor {
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,
-				response: this.encodeWebhookResponse(response),
+				response: encodeRelayedWebhookResponse(response),
 				workerId: this.instanceSettings.hostId,
 			};
 
@@ -490,18 +491,6 @@ export class JobProcessor {
 
 	getRunningJobsSummary(): RunningJobSummary[] {
 		return Object.values(this.runningJobs).map(({ run, ...summary }) => summary);
-	}
-
-	private encodeWebhookResponse(
-		response: IExecuteResponsePromiseData,
-	): IExecuteResponsePromiseData {
-		if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
-			response.body = {
-				'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
-			};
-		}
-
-		return response;
 	}
 
 	/**

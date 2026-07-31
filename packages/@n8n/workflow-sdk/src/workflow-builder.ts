@@ -747,6 +747,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						issue.parameterPath,
 						issue.originalName,
 						issue.violationLevel,
+						issue.severity === 'informational' ? 'informational' : 'warning',
 					),
 				);
 			}

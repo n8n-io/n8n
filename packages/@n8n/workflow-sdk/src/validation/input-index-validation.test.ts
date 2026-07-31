@@ -125,6 +125,40 @@ describe('input index validation', () => {
 		const invalidInputWarnings = result.warnings.filter((w) => w.code === 'INVALID_INPUT_INDEX');
 		expect(invalidInputWarnings.length).toBe(2);
 	});
+
+	it('warns for negative input index', () => {
+		const result = validateWorkflow(
+			{
+				id: 'test-id',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: 'a',
+						name: 'A',
+						type: 'n8n-nodes-base.aggregate',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'A', type: 'main', index: -1 }]] },
+				},
+			},
+			{ nodeTypesProvider: mockNodeTypesProvider },
+		);
+
+		const warning = result.warnings.find((w) => w.code === 'INVALID_INPUT_INDEX');
+		expect(warning).toBeDefined();
+		expect(warning?.message).toContain('input index -1');
+	});
 });
 
 describe('merge node input-count validation', () => {

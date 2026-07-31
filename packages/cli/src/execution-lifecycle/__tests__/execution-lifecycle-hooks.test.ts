@@ -1509,12 +1509,7 @@ describe('Execution Lifecycle Hooks', () => {
 				return executionPersistence.updateExistingExecution.mock.calls[0][1];
 			};
 
-			beforeEach(() => {
-				process.env.N8N_SKIP_UNSAVED_EXECUTION_DATA_WRITES = 'true';
-			});
-
 			afterEach(() => {
-				delete process.env.N8N_SKIP_UNSAVED_EXECUTION_DATA_WRITES;
 				workflowData.settings = {};
 			});
 
@@ -1528,18 +1523,6 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(payload.data).toBeUndefined();
 				expect(payload.workflowData).toBeUndefined();
 				expect(payload.status).toBe('success');
-			});
-
-			it('should write run data when the flag is not enabled', async () => {
-				delete process.env.N8N_SKIP_UNSAVED_EXECUTION_DATA_WRITES;
-				workflowData.settings = { saveDataSuccessExecution: 'none' };
-				const lifecycleHooks = createHooks('trigger');
-
-				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
-
-				const payload = getUpdatePayload();
-				expect(payload.data).toBeDefined();
-				expect(payload.workflowData).toBeDefined();
 			});
 
 			it('should write run data when successful executions are saved', async () => {
@@ -1589,6 +1572,17 @@ describe('Execution Lifecycle Hooks', () => {
 			it('should write run data for integrated executions so the parent workflow can read it', async () => {
 				workflowData.settings = { saveDataSuccessExecution: 'none' };
 				const lifecycleHooks = createHooks('integrated');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				const payload = getUpdatePayload();
+				expect(payload.data).toBeDefined();
+				expect(payload.workflowData).toBeDefined();
+			});
+
+			it('should write run data for manual executions so the editor can read it back', async () => {
+				workflowData.settings = { saveDataSuccessExecution: 'none' };
+				const lifecycleHooks = createHooks('manual');
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 

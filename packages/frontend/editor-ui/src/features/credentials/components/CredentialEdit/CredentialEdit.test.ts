@@ -1006,7 +1006,10 @@ describe('CredentialEdit', () => {
 	});
 
 	describe('saving credentials', () => {
-		const createPiniaForSaveTest = (credentialModalState: Partial<NewCredentialsModal> = {}) =>
+		const createPiniaForSaveTest = (
+			credentialModalState: Partial<NewCredentialsModal> = {},
+			projectsState: Record<string, unknown> = {},
+		) =>
 			createTestingPinia({
 				initialState: {
 					[STORES.UI]: {
@@ -1035,6 +1038,7 @@ describe('CredentialEdit', () => {
 							type: 'personal',
 							scopes: ['credential:create', 'credential:read', 'credential:update'],
 						},
+						...projectsState,
 					},
 				},
 			});
@@ -1042,8 +1046,9 @@ describe('CredentialEdit', () => {
 		const setupNewCredential = (
 			credentialType: ICredentialType,
 			credentialModalState: Partial<NewCredentialsModal> = {},
+			projectsState: Record<string, unknown> = {},
 		) => {
-			const pinia = createPiniaForSaveTest(credentialModalState);
+			const pinia = createPiniaForSaveTest(credentialModalState, projectsState);
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes = {
 				[credentialType.name]: credentialType,
@@ -1156,6 +1161,49 @@ describe('CredentialEdit', () => {
 				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
 			});
 			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+		});
+
+		test('creates the credential in the project the modal was opened for', async () => {
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType;
+			const { credentialsStore, pinia } = setupNewCredential(
+				credentialType,
+				{ projectId: 'team-project' },
+				{
+					currentProject: null,
+					myProjects: [
+						{
+							id: 'team-project',
+							name: 'Team project',
+							type: 'team',
+							scopes: ['credential:create', 'credential:read', 'credential:update'],
+						},
+					],
+				},
+			);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() =>
+				expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'testApi' }),
+					'team-project',
+					undefined,
+				),
+			);
 		});
 
 		test('keeps the modal open after saving credentials by default', async () => {

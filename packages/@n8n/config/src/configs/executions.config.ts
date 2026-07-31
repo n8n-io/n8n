@@ -2,6 +2,7 @@ import { Time } from '@n8n/constants';
 import z from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 @Config
 class PruningIntervalsConfig {
@@ -163,4 +164,15 @@ export class ExecutionsConfig {
 	 */
 	@Env('EXECUTIONS_DATA_MAX_DISPLAY_SIZE')
 	maxDisplaySize: number = 100 * 1024 * 1024; // 100 MB
+
+	/**
+	 * Maximum size in MiB of a response body a worker relays back to main in scaling mode.
+	 * A larger response fails the node instead of being sent through the queue.
+	 *
+	 * Relaying costs the queue a multiple of the body size,
+	 * so size this against the memory available to it,
+	 * and return large payloads as binary data to have them streamed from storage instead.
+	 */
+	@Env('N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX', positiveIntSchema)
+	webhookResponseRelaySizeMaxMiB: number = 64;
 }
