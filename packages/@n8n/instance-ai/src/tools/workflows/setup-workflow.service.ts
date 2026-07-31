@@ -592,16 +592,27 @@ async function buildRequestForCredentialType(
 	if (!credentialType && isTrigger && !isTestable && !hasParamIssues) return null;
 
 	// Determine whether this request still needs user intervention.
-	// A credential request needs action if no credential is set or the test failed.
+	// A credential request needs action only when the slot leaves something to
+	// collect: nothing bound, or a bound id that doesn't resolve to a stored
+	// credential in scope (e.g. an imported workflow referencing another
+	// instance's credential). A resolvable bound credential is settled even if
+	// its live test fails — tests fail transiently and re-asking for an
+	// already-connected credential is redundant friction; the failure still
+	// rides along in credentialTestResult for display.
 	// A parameter request needs action if issues remain.
 	// A trigger-only request (no credential, no param issues) never blocks apply.
 	let needsAction = false;
 	if (credentialType) {
 		const existingOnNode = node.credentials?.[credentialType];
-		const hasValidCredential =
-			(typeof existingOnNode?.id === 'string' || isAiGatewayManagedCredential(existingOnNode)) &&
-			(credentialTestResult === undefined || credentialTestResult.success);
-		needsAction = !hasValidCredential;
+		const boundId =
+			typeof existingOnNode?.id === 'string' && existingOnNode.id !== ''
+				? existingOnNode.id
+				: undefined;
+		const isSettled =
+			isAiGatewayManagedCredential(existingOnNode) ||
+			(boundId !== undefined &&
+				existingCredentials.some((credential) => credential.id === boundId));
+		needsAction = !isSettled;
 	}
 	if (hasParamIssues) {
 		needsAction = true;
