@@ -1,5 +1,6 @@
-import type { WorkflowReviewInboxItem } from '@n8n/api-types';
+import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { createPinia, setActivePinia } from 'pinia';
+import { ResponseError } from '@n8n/rest-api-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as workflowReviewsApi from './workflowReviews.api';
@@ -100,6 +101,20 @@ describe('useReviewInboxStore', () => {
 			expect.anything(),
 			expect.objectContaining({ state: 'closed' }),
 		);
+	});
+
+	it('does not clear the detail when switching tabs', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewInbox).mockResolvedValue({
+			data: [],
+			nextCursor: null,
+			hasMore: false,
+		});
+		const store = useReviewInboxStore();
+		store.detail = createDetail();
+
+		await store.setActiveTab('closed');
+
+		expect(store.detail).toEqual(expect.objectContaining({ id: 'req-1' }));
 	});
 
 	it('ignores stale list responses', async () => {
@@ -242,9 +257,7 @@ describe('useReviewInboxStore', () => {
 			updatedAt: '2024-01-01T00:00:00.000Z',
 		};
 
-		async function seedStoreWithOpenItem(
-			options: { items?: WorkflowReviewInboxItem[]; selectedId?: string } = {},
-		) {
+		async function seedStoreWithOpenItem(options: { items?: WorkflowReviewInboxItem[] } = {}) {
 			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockResolvedValue({
 				open: 2,
 				closed: 5,
@@ -258,12 +271,12 @@ describe('useReviewInboxStore', () => {
 
 			const store = useReviewInboxStore();
 			await store.probeInbox();
-			store.selectItem(options.selectedId ?? 'req-1');
 			return store;
 		}
 
-		it('removes the approved item from the open list, adjusts counts, and clears the selection', async () => {
+		it('removes an approved item from the open list, adjusts counts, and patches detail', async () => {
 			const store = await seedStoreWithOpenItem();
+			store.detail = createDetail();
 			vi.mocked(workflowReviewsApi.decideWorkflowReviewRequest).mockResolvedValue({
 				id: 'req-1',
 				state: 'closed',
@@ -283,15 +296,16 @@ describe('useReviewInboxStore', () => {
 			expect(store.items).toEqual([]);
 			expect(store.openCount).toBe(1);
 			expect(store.closedCount).toBe(6);
-			expect(store.selectedId).toBeNull();
-			expect(store.selectedItem).toBeNull();
+			expect(store.detail).toEqual(
+				expect.objectContaining({ state: 'closed', decision: 'approved' }),
+			);
 		});
 
-		it('keeps the selection when a different item is approved', async () => {
+		it('does not patch detail for a different item', async () => {
 			const store = await seedStoreWithOpenItem({
 				items: [{ ...openItem }, { ...openItem, id: 'req-2', title: 'Other review' }],
-				selectedId: 'req-2',
 			});
+			store.detail = { ...createDetail(), id: 'req-2', title: 'Other review' };
 			vi.mocked(workflowReviewsApi.decideWorkflowReviewRequest).mockResolvedValue({
 				id: 'req-1',
 				state: 'closed',
@@ -304,7 +318,7 @@ describe('useReviewInboxStore', () => {
 			await store.decideOnReview('req-1', 'approved');
 
 			expect(store.items).toEqual([expect.objectContaining({ id: 'req-2' })]);
-			expect(store.selectedId).toBe('req-2');
+			expect(store.detail).toEqual(expect.objectContaining({ id: 'req-2', state: 'open' }));
 		});
 
 		it('patches only the decision when changes are requested', async () => {
@@ -347,6 +361,103 @@ describe('useReviewInboxStore', () => {
 		});
 	});
 
+	describe('detail', () => {
+		it('loads review detail', async () => {
+			const expected = createDetail();
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewRequestDetail).mockResolvedValue(expected);
+			const store = useReviewInboxStore();
+
+			await store.fetchDetail('req-1');
+
+			expect(workflowReviewsApi.fetchWorkflowReviewRequestDetail).toHaveBeenCalledWith(
+				expect.anything(),
+				'req-1',
+			);
+			expect(store.detail).toEqual(expected);
+			expect(store.detailLoading).toBe(false);
+			expect(store.detailNotFound).toBe(false);
+		});
+
+		it('shows not found without throwing for a 404', async () => {
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewRequestDetail).mockRejectedValue(
+				new ResponseError('gone', { httpStatusCode: 404 }),
+			);
+			const store = useReviewInboxStore();
+
+			await expect(store.fetchDetail('missing')).resolves.toBeUndefined();
+
+			expect(store.detail).toBeNull();
+			expect(store.detailNotFound).toBe(true);
+			expect(store.detailLoading).toBe(false);
+		});
+
+		it('rethrows a non-404 detail error', async () => {
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewRequestDetail).mockRejectedValue(
+				new ResponseError('forbidden', { httpStatusCode: 403 }),
+			);
+			const store = useReviewInboxStore();
+
+			await expect(store.fetchDetail('req-1')).rejects.toThrow('forbidden');
+
+			expect(store.detailNotFound).toBe(false);
+			expect(store.error).toBeNull();
+		});
+
+		it('does not suppress the list empty state after a failed detail fetch', async () => {
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewRequestDetail).mockRejectedValue(
+				new ResponseError('boom', { httpStatusCode: 500 }),
+			);
+			const store = useReviewInboxStore();
+			store.probeSettled = true;
+			store.hasAnyReviews = true;
+			store.items = [];
+
+			await expect(store.fetchDetail('req-1')).rejects.toThrow('boom');
+
+			expect(store.isEmpty).toBe(true);
+		});
+
+		it('ignores a stale detail response', async () => {
+			let resolveFirst!: (detail: WorkflowReviewRequestDetail) => void;
+			const firstResponse = new Promise<WorkflowReviewRequestDetail>((resolve) => {
+				resolveFirst = resolve;
+			});
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewRequestDetail)
+				.mockImplementationOnce(async () => await firstResponse)
+				.mockResolvedValueOnce({ ...createDetail(), id: 'req-2', title: 'Newer review' });
+			const store = useReviewInboxStore();
+
+			const firstFetch = store.fetchDetail('req-1');
+			await store.fetchDetail('req-2');
+			resolveFirst(createDetail());
+			await firstFetch;
+
+			expect(store.detail).toEqual(expect.objectContaining({ id: 'req-2', title: 'Newer review' }));
+		});
+
+		it('clears and resets detail state', () => {
+			const store = useReviewInboxStore();
+			store.detail = createDetail();
+			store.detailLoading = true;
+			store.detailNotFound = true;
+
+			store.clearDetail();
+
+			expect(store.detail).toBeNull();
+			expect(store.detailLoading).toBe(false);
+			expect(store.detailNotFound).toBe(false);
+
+			store.detail = createDetail();
+			store.detailLoading = true;
+			store.detailNotFound = true;
+			store.reset();
+
+			expect(store.detail).toBeNull();
+			expect(store.detailLoading).toBe(false);
+			expect(store.detailNotFound).toBe(false);
+		});
+	});
+
 	it('does not treat a failed list fetch as an empty inbox', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockResolvedValue({
 			open: 1,
@@ -361,3 +472,21 @@ describe('useReviewInboxStore', () => {
 		expect(store.isEmpty).toBe(false);
 	});
 });
+
+function createDetail(): WorkflowReviewRequestDetail {
+	return {
+		id: 'req-1',
+		projectId: 'proj-1',
+		title: 'Review',
+		workflowName: 'My workflow',
+		workflowVersionId: null,
+		requester: null,
+		reviewers: [],
+		decision: 'pending',
+		state: 'open',
+		createdAt: '2024-01-01T00:00:00.000Z',
+		updatedAt: '2024-01-01T00:00:00.000Z',
+		description: null,
+		workflows: [],
+	};
+}

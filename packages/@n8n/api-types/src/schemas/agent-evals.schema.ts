@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from 'n8n-workflow';
+import type { JsonValue } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { datasetRefSchema, type DatasetRef } from '../dto/evaluations/evaluation-config.dto';
@@ -18,7 +18,6 @@ const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 		z.array(jsonValueSchema),
 	]),
 );
-const jsonObjectSchema: z.ZodType<JsonObject> = z.record(z.string(), jsonValueSchema);
 
 // PostHog rollout flag id gating the agent-evals feature surface. Every new
 // agent-eval endpoint + frontend entry point consults this; the flag-off
@@ -106,12 +105,23 @@ export const createAgentEvalRunSchema = z.object(createAgentEvalRunShape);
 export type CreateAgentEvalRunPayload = z.infer<typeof createAgentEvalRunSchema>;
 export class CreateAgentEvalRunDto extends Z.class(createAgentEvalRunShape) {}
 
+// A correction carries the edited answer under `finalText`, mirroring the key the
+// runner writes into a result's `output` so calibration can diff the two directly.
+// Required when a correction is sent: a correction without it persists a rating
+// that claims an edit no consumer can read. `catchall` keeps richer corrections
+// (per-field edits, structured output) possible without a migration, and infers to
+// the repository's `JsonObject` rather than `Record<string, unknown>`.
+export const agentEvalCorrectionSchema = z
+	.object({ finalText: z.string().trim().min(1) })
+	.catchall(jsonValueSchema);
+export type AgentEvalCorrection = z.infer<typeof agentEvalCorrectionSchema>;
+
 // A human's 👍/👎 on the path result, with an optional free-text comment and an
 // edited "should have been" output.
 const createAgentEvalRatingShape = {
 	vote: agentEvalVoteSchema,
 	comment: z.string().optional(),
-	correction: jsonObjectSchema.optional(),
+	correction: agentEvalCorrectionSchema.optional(),
 };
 export const createAgentEvalRatingSchema = z.object(createAgentEvalRatingShape);
 export type CreateAgentEvalRatingPayload = z.infer<typeof createAgentEvalRatingSchema>;

@@ -2,6 +2,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { createPinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
+import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
@@ -9,6 +10,7 @@ import {
 	fetchWorkflowReviewRequests,
 	updateWorkflowReviewRequestVersion,
 } from '@/features/workflow-reviews/workflowReviews.api';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import WorkflowUpdateReviewDialog from './WorkflowUpdateReviewDialog.vue';
 
 const mockShowError = vi.fn();
@@ -29,9 +31,26 @@ const openReview = {
 	workflowVersionId: 'version-1',
 	createdAt: '2024-01-01T00:00:00.000Z',
 	updatedAt: '2024-01-01T00:00:00.000Z',
+	decisionBy: null,
+	approvedVersionPublicationState: null,
 };
 
-const renderComponent = createComponentRenderer(WorkflowUpdateReviewDialog);
+const router = createRouter({
+	history: createMemoryHistory(),
+	routes: [
+		{
+			path: '/workflow-review-requests/:reviewRequestId?',
+			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+			component: { template: '<div />' },
+		},
+	],
+});
+
+const renderComponent = createComponentRenderer(WorkflowUpdateReviewDialog, {
+	// The real RouterLink resolves the named route, so the test asserts the URL
+	// the user actually lands on rather than the raw `to` object.
+	global: { plugins: [router], stubs: { RouterLink: false } },
+});
 
 const renderDialog = async ({
 	flushSave = vi.fn().mockResolvedValue('version-2'),
@@ -75,6 +94,24 @@ describe('WorkflowUpdateReviewDialog', () => {
 
 		expect(updateWorkflowReviewRequestVersion).not.toHaveBeenCalled();
 		expect(emitted('update:open')).toContainEqual([false]);
+	});
+
+	it('links to the open review', async () => {
+		const { getByRole } = await renderDialog();
+
+		expect(getByRole('link', { name: 'open review' })).toHaveAttribute(
+			'href',
+			'/workflow-review-requests/review-1',
+		);
+	});
+
+	it('keeps the description intact without a link when the open review is unknown', async () => {
+		const { baseElement, queryByRole } = await renderDialog({ seedOpenReview: false });
+
+		expect(baseElement.textContent?.replace(/\s+/g, ' ')).toContain(
+			'This workflow already has an open review.',
+		);
+		expect(queryByRole('link', { name: 'open review' })).not.toBeInTheDocument();
 	});
 
 	it('submits the flushed version to the open review and refetches the status', async () => {
