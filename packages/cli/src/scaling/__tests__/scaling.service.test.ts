@@ -642,6 +642,7 @@ describe('ScalingService', () => {
 			await vi.waitFor(() =>
 				expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(response, {
 					reclaim: false,
+					context: { executionId: 'exec-456' },
 				}),
 			);
 			expect(mcpServer.handleWorkerResponse).toHaveBeenCalledWith(
@@ -677,7 +678,7 @@ describe('ScalingService', () => {
 			await vi.waitFor(() =>
 				expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(
 					expect.objectContaining({ body: Buffer.from('tool output') }),
-					{ reclaim: false },
+					{ reclaim: false, context: { executionId: 'exec-456' } },
 				),
 			);
 		});
@@ -746,6 +747,7 @@ describe('ScalingService', () => {
 			);
 			expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(response, {
 				reclaim: false,
+				context: { executionId: 'exec-456' },
 			});
 		});
 	});

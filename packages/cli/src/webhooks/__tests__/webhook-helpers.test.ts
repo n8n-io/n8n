@@ -313,7 +313,10 @@ describe('setupResponseNodePromise', () => {
 		responsePromise.resolve(response);
 		await new Promise(process.nextTick);
 
-		expect(webhookResponseRelay.deleteOffloadedBody).toHaveBeenCalledWith(response);
+		expect(webhookResponseRelay.deleteOffloadedBody).toHaveBeenCalledWith(response, {
+			workflowId,
+			executionId,
+		});
 	});
 
 	test('should destroy the stream when the client goes away, so delivery settles', async () => {

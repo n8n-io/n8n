@@ -498,6 +498,7 @@ export class ScalingService {
 					const decoded = decodeRelayedWebhookResponse(response);
 					const toolResult = await this.webhookResponseRelay.restoreOffloadedBody(decoded, {
 						reclaim: false,
+						context: { executionId },
 					});
 
 					mcpServer.handleWorkerResponse(sessionId, messageId, toolResult);

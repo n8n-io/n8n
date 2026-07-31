@@ -153,7 +153,10 @@ describe('executeWorkflow → webhook response', () => {
 			false,
 		);
 
-		expect(relay.restoreOffloadedBody).toHaveBeenCalledWith(relayed, { reclaim: true });
+		expect(relay.restoreOffloadedBody).toHaveBeenCalledWith(relayed, {
+			reclaim: true,
+			context: { workflowId: 'wf-1', executionId: 'exec-1' },
+		});
 		expect(result.data?.response).toEqual(restored);
 	});
 

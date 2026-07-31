@@ -384,7 +384,7 @@ export async function executeWorkflow(
 	if (isWorkflowToolResponse(webhookResponse)) {
 		const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
 			webhookResponse,
-			{ reclaim: true },
+			{ reclaim: true, context: { workflowId: workflow.id, executionId } },
 		);
 		result.data = {
 			...(result.data ?? {}),

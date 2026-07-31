@@ -74,6 +74,8 @@ const STORE_LIMIT_GUIDANCE =
 
 export type RelayContext = { workflowId: string; executionId: string };
 
+export type RelayReadContext = Partial<RelayContext>;
+
 const OFFLOADED_BODY_KINDS = ['buffer', 'string', 'json'] as const;
 
 type OffloadedBodyKind = (typeof OFFLOADED_BODY_KINDS)[number];
@@ -174,10 +176,14 @@ export class WebhookResponseRelay {
 	 * reaches several readers, deleting would strand the others, and a fetch
 	 * failure degrades to an empty body of the original form instead, never
 	 * the reference itself.
+	 * @param context Where the response came from, reported on failure.
 	 * @returns The same `response`.
 	 * @throws OperationalError When `reclaim` is set and the stored content cannot be fetched.
 	 */
-	async restoreOffloadedBody<T>(response: T, { reclaim }: { reclaim: boolean }): Promise<T> {
+	async restoreOffloadedBody<T>(
+		response: T,
+		{ reclaim, context }: { reclaim: boolean; context: RelayReadContext },
+	): Promise<T> {
 		if (!hasResponseBody(response)) {
 			return response;
 		}
@@ -187,6 +193,8 @@ export class WebhookResponseRelay {
 			return response;
 		}
 
+		const binaryDataId = offloaded.binaryData.id;
+
 		try {
 			const buffer = await this.binaryDataService.getAsBuffer(offloaded.binaryData);
 			response.body = deserializeBody(buffer, offloaded.kind);
@@ -195,10 +203,12 @@ export class WebhookResponseRelay {
 				throw new OperationalError('The stored webhook response body could not be read', {
 					cause: error,
 					description: UNREADABLE_BODY_GUIDANCE,
+					extra: { binaryDataId, ...context },
 				});
 			}
 			this.logger.warn('Failed to restore an offloaded webhook response body', {
-				binaryDataId: offloaded.binaryData.id,
+				binaryDataId,
+				...context,
 				error,
 			});
 			response.body = emptyBodyOf(offloaded.kind);
@@ -209,7 +219,7 @@ export class WebhookResponseRelay {
 		clearOffloadMarker(response);
 
 		if (reclaim) {
-			await this.deleteStoredBody(offloaded.binaryData.id);
+			await this.deleteStoredBody(binaryDataId, context);
 		}
 
 		return response;
@@ -219,15 +229,20 @@ export class WebhookResponseRelay {
 	 * Reclaims the storage of an offloaded body.
 	 * A no-op for any other body.
 	 *
+	 * @param context Where the response came from, reported on failure.
+	 *
 	 * @remarks Failures are logged rather than thrown: the response has already
 	 * been delivered, and a body left behind is reclaimed by execution pruning
 	 * (`database`) or by store lifecycle rules (object stores).
 	 */
-	async deleteOffloadedBody(response: IExecuteResponsePromiseData): Promise<void> {
+	async deleteOffloadedBody(
+		response: IExecuteResponsePromiseData,
+		context: RelayReadContext,
+	): Promise<void> {
 		if (hasResponseBody(response)) {
 			const offloaded = asOffloadedBody(response);
 			if (offloaded) {
-				await this.deleteStoredBody(offloaded.binaryData.id);
+				await this.deleteStoredBody(offloaded.binaryData.id, context);
 			}
 		}
 	}
@@ -367,12 +382,13 @@ export class WebhookResponseRelay {
 		return `The response is too large for the binary-data store to hold (${sizeInMib} MiB)`;
 	}
 
-	private async deleteStoredBody(binaryDataId: string): Promise<void> {
+	private async deleteStoredBody(binaryDataId: string, context: RelayReadContext): Promise<void> {
 		try {
 			await this.binaryDataService.deleteManyByBinaryDataId([binaryDataId]);
 		} catch (error) {
 			this.logger.warn('Failed to delete an offloaded webhook response body', {
 				binaryDataId,
+				...context,
 				error,
 			});
 		}

@@ -464,6 +464,7 @@ describe('WebhookResponseRelay', () => {
 
 			const restored = await relay.restoreOffloadedBody(offloadedResponse(kind), {
 				reclaim: true,
+				context: ctx,
 			});
 
 			expect(bodyOf(restored)).toEqual(expected);
@@ -482,7 +483,7 @@ describe('WebhookResponseRelay', () => {
 				[OFFLOADED_BODY_KIND_KEY]: marker,
 			} as IExecuteResponsePromiseData;
 
-			const restored = await relay.restoreOffloadedBody(response, { reclaim: true });
+			const restored = await relay.restoreOffloadedBody(response, { reclaim: true, context: ctx });
 
 			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
 			expect(bodyOf(restored)).toEqual({ binaryData: { id: 'database:abc' } });
@@ -496,7 +497,7 @@ describe('WebhookResponseRelay', () => {
 			const [, stored] = binaryDataService.store.mock.calls[0];
 			binaryDataService.getAsBuffer.mockResolvedValue(stored as Buffer);
 
-			const restored = await relay.restoreOffloadedBody(prepared, { reclaim: true });
+			const restored = await relay.restoreOffloadedBody(prepared, { reclaim: true, context: ctx });
 
 			expect(bodyOf(restored)).toEqual(body);
 		});
@@ -505,7 +506,10 @@ describe('WebhookResponseRelay', () => {
 			const { relay, binaryDataService } = buildRelay();
 			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('hello'));
 
-			await relay.restoreOffloadedBody(offloadedResponse('string'), { reclaim: true });
+			await relay.restoreOffloadedBody(offloadedResponse('string'), {
+				reclaim: true,
+				context: ctx,
+			});
 
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['database:abc']);
 		});
@@ -516,6 +520,7 @@ describe('WebhookResponseRelay', () => {
 
 			const restored = await relay.restoreOffloadedBody(offloadedResponse('string'), {
 				reclaim: false,
+				context: ctx,
 			});
 
 			expect(bodyOf(restored)).toEqual('hello');
@@ -528,6 +533,7 @@ describe('WebhookResponseRelay', () => {
 
 			const restored = await relay.restoreOffloadedBody(offloadedResponse('string'), {
 				reclaim: true,
+				context: ctx,
 			});
 
 			expect(offloadMarkerOf(restored)).toBeUndefined();
@@ -545,6 +551,7 @@ describe('WebhookResponseRelay', () => {
 
 				const restored = await relay.restoreOffloadedBody(offloadedResponse(kind), {
 					reclaim: false,
+					context: ctx,
 				});
 
 				expect(bodyOf(restored)).toEqual(expected);
@@ -558,7 +565,7 @@ describe('WebhookResponseRelay', () => {
 			binaryDataService.getAsBuffer.mockRejectedValue(new Error('gone'));
 
 			await expect(
-				relay.restoreOffloadedBody(offloadedResponse('json'), { reclaim: true }),
+				relay.restoreOffloadedBody(offloadedResponse('json'), { reclaim: true, context: ctx }),
 			).rejects.toThrow(OperationalError);
 			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
@@ -568,10 +575,44 @@ describe('WebhookResponseRelay', () => {
 			binaryDataService.getAsBuffer.mockRejectedValue(new Error('gone'));
 
 			const error = await relay
-				.restoreOffloadedBody(offloadedResponse('json'), { reclaim: true })
+				.restoreOffloadedBody(offloadedResponse('json'), { reclaim: true, context: ctx })
 				.catch((e: OperationalError) => e);
 
 			expect((error as OperationalError).description).toContain('N8N_DEFAULT_BINARY_DATA_MODE');
+		});
+
+		it('reports which execution the unreadable body belongs to', async () => {
+			const { relay, binaryDataService } = buildRelay();
+			binaryDataService.getAsBuffer.mockRejectedValue(new Error('gone'));
+
+			const error = await relay
+				.restoreOffloadedBody(offloadedResponse('json'), { reclaim: true, context: ctx })
+				.catch((e: OperationalError) => e);
+
+			expect((error as OperationalError).extra).toEqual({
+				binaryDataId: 'database:abc',
+				workflowId: 'workflow-1',
+				executionId: 'execution-1',
+			});
+		});
+
+		it('reports which execution a body it could not restore belongs to', async () => {
+			const { relay, binaryDataService, logger } = buildRelay();
+			binaryDataService.getAsBuffer.mockRejectedValue(new Error('gone'));
+
+			await relay.restoreOffloadedBody(offloadedResponse('json'), {
+				reclaim: false,
+				context: ctx,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to restore an offloaded webhook response body',
+				expect.objectContaining({
+					binaryDataId: 'database:abc',
+					workflowId: 'workflow-1',
+					executionId: 'execution-1',
+				}),
+			);
 		});
 
 		it.each([
@@ -588,7 +629,10 @@ describe('WebhookResponseRelay', () => {
 		])('leaves %s untouched', async (_label, body) => {
 			const { relay, binaryDataService } = buildRelay();
 
-			const restored = await relay.restoreOffloadedBody(fullResponse(body), { reclaim: true });
+			const restored = await relay.restoreOffloadedBody(fullResponse(body), {
+				reclaim: true,
+				context: ctx,
+			});
 
 			expect(bodyOf(restored)).toEqual(body);
 			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
@@ -603,7 +647,7 @@ describe('WebhookResponseRelay', () => {
 				[OFFLOADED_BODY_KIND_KEY]: 'zip',
 			} as IExecuteResponsePromiseData;
 
-			const restored = await relay.restoreOffloadedBody(response, { reclaim: true });
+			const restored = await relay.restoreOffloadedBody(response, { reclaim: true, context: ctx });
 
 			expect(bodyOf(restored)).toEqual({ binaryData: { id: 'database:abc' } });
 			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
@@ -613,7 +657,9 @@ describe('WebhookResponseRelay', () => {
 			const { relay } = buildRelay();
 			const payload = { toolResult: 'done' };
 
-			expect(await relay.restoreOffloadedBody(payload, { reclaim: true })).toBe(payload);
+			expect(await relay.restoreOffloadedBody(payload, { reclaim: true, context: ctx })).toBe(
+				payload,
+			);
 		});
 	});
 
@@ -621,7 +667,7 @@ describe('WebhookResponseRelay', () => {
 		it('reclaims the storage of an offloaded body', async () => {
 			const { relay, binaryDataService } = buildRelay();
 
-			await relay.deleteOffloadedBody(offloadedResponse('json'));
+			await relay.deleteOffloadedBody(offloadedResponse('json'), ctx);
 
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['database:abc']);
 		});
@@ -640,7 +686,7 @@ describe('WebhookResponseRelay', () => {
 		])('leaves %s alone', async (_label, body) => {
 			const { relay, binaryDataService } = buildRelay();
 
-			await relay.deleteOffloadedBody(fullResponse(body));
+			await relay.deleteOffloadedBody(fullResponse(body), ctx);
 
 			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
@@ -649,17 +695,23 @@ describe('WebhookResponseRelay', () => {
 			const { relay, binaryDataService, logger } = buildRelay();
 			binaryDataService.deleteManyByBinaryDataId.mockRejectedValue(new Error('store is down'));
 
-			await expect(relay.deleteOffloadedBody(offloadedResponse('json'))).resolves.toBeUndefined();
+			await expect(
+				relay.deleteOffloadedBody(offloadedResponse('json'), ctx),
+			).resolves.toBeUndefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to delete an offloaded webhook response body',
-				expect.objectContaining({ binaryDataId: 'database:abc' }),
+				expect.objectContaining({
+					binaryDataId: 'database:abc',
+					workflowId: 'workflow-1',
+					executionId: 'execution-1',
+				}),
 			);
 		});
 
 		it('accepts a payload that is not a full response', async () => {
 			const { relay } = buildRelay();
 
-			await expect(relay.deleteOffloadedBody({ toolResult: 'done' })).resolves.toBeUndefined();
+			await expect(relay.deleteOffloadedBody({ toolResult: 'done' }, ctx)).resolves.toBeUndefined();
 		});
 	});
 });

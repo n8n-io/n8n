@@ -335,7 +335,10 @@ export function setupResponseNodePromise(
 					stream.pipe(res, { end: false });
 					await finished(stream);
 				} finally {
-					void Container.get(WebhookResponseRelay).deleteOffloadedBody(response);
+					void Container.get(WebhookResponseRelay).deleteOffloadedBody(response, {
+						workflowId: workflow.id,
+						executionId,
+					});
 				}
 				responseCallback(null, { noWebhookResponse: true });
 			} else if (Buffer.isBuffer(response.body)) {
