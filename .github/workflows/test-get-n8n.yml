@@ -31,6 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: shellcheck
         run: shellcheck docker/get-n8n.sh docker/test-get-n8n.sh
       - name: POSIX syntax check (dash)
@@ -42,6 +44,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Run test harness
         run: sh docker/test-get-n8n.sh --e2e
 
@@ -54,6 +58,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Run test harness (no containers)
         shell: bash
         run: sh docker/test-get-n8n.sh
@@ -66,6 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           sparse-checkout: .github/scripts/slack
           sparse-checkout-cone-mode: false
       - name: Notify Slack
