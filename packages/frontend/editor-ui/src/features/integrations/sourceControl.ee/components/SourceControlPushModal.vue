@@ -83,7 +83,9 @@ async function loadSourceControlStatus() {
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
 
 	try {
-		const freshStatus = await sourceControlStore.getAggregatedStatus();
+		const freshStatus =
+			sourceControlStore.takePrefetchedPushStatus() ??
+			(await sourceControlStore.getAggregatedStatus());
 
 		if (!freshStatus.length) {
 			toast.showMessage({

@@ -243,6 +243,19 @@ describe('ProvisioningService', () => {
 
 		it('should provision the instance role for the user', async () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
+			const roleSlug = 'global:admin';
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
+			);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+
+			expect(userService.changeUserRole).toHaveBeenCalledWith(user, { newRoleName: roleSlug });
+		});
+
+		it('should not promote a non-owner user to global:owner', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 'global:owner';
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
@@ -251,7 +264,12 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
-			expect(userService.changeUserRole).toHaveBeenCalledWith(user, { newRoleName: roleSlug });
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('global:owner'), {
+				userId: user.id,
+				roleSlug: 'global:owner',
+			});
 		});
 
 		it('should do nothing if the role has not changed', async () => {
@@ -288,10 +306,10 @@ describe('ProvisioningService', () => {
 
 		it('sends telemetry event', async () => {
 			const user = mock<User>({ id: 'user-123', role: { slug: 'global:member' } });
-			const roleSlug = 'global:owner';
+			const roleSlug = 'global:admin';
 
 			roleRepository.findOneOrFail.mockResolvedValue(
-				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
+				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
 			);
 
 			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);

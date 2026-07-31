@@ -56,6 +56,10 @@ class RedisConfig {
 	/** Whether to enable dual-stack hostname resolution for Redis connections. */
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
 	dualStack: boolean = false;
+
+	/** Whether to reconnect to Redis on READONLY errors i.e., failover events. */
+	@Env('QUEUE_BULL_REDIS_RECONNECT_ON_FAILOVER')
+	reconnectOnFailover: boolean = true;
 }
 
 @Config

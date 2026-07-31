@@ -20,6 +20,7 @@ import { createCallTool, getSelectedTools, McpToolkit, mcpToolToDynamicTool } fr
 import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
+	assertCredentialAllowsUrl,
 	connectMcpClient,
 	getAllTools,
 	getAuthHeaders,
@@ -84,7 +85,8 @@ async function connectAndGetTools(
 	config: ReturnType<typeof getNodeConfig>,
 ) {
 	const node = ctx.getNode();
-	const { headers } = await getAuthHeaders(ctx, config.authentication);
+	const { headers, credentials } = await getAuthHeaders(ctx, config.authentication);
+	const allowedDomains = assertCredentialAllowsUrl(node, credentials, config.endpointUrl);
 
 	const client = await connectMcpClient({
 		serverTransport: config.serverTransport,
@@ -92,6 +94,7 @@ async function connectAndGetTools(
 		headers,
 		name: node.type,
 		version: node.typeVersion,
+		allowedDomains,
 		onUnauthorized: async (headers) =>
 			await tryRefreshOAuth2Token(ctx, config.authentication, headers),
 	});
@@ -364,6 +367,7 @@ export class McpClientTool implements INodeType {
 		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
 
 		if (!mcpTools?.length) {
+			await client.close();
 			return setError(
 				new NodeOperationError(node, 'MCP Server returned no tools', {
 					itemIndex,
@@ -373,25 +377,30 @@ export class McpClientTool implements INodeType {
 			);
 		}
 
-		const tools = mcpTools.map((tool) =>
-			logWrapper(
-				mcpToolToDynamicTool(
-					tool,
-					createCallTool(tool.name, client, config.timeout, (errorMessage) => {
-						const error = new NodeOperationError(node, errorMessage, { itemIndex });
-						void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
-						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
-					}),
+		try {
+			const tools = mcpTools.map((tool) =>
+				logWrapper(
+					mcpToolToDynamicTool(
+						tool,
+						createCallTool(tool.name, client, config.timeout, (errorMessage) => {
+							const error = new NodeOperationError(node, errorMessage, { itemIndex });
+							void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+							this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
+						}),
+					),
+					this,
 				),
-				this,
-			),
-		);
+			);
 
-		this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
+			this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
 
-		const toolkit = new McpToolkit(tools);
+			const toolkit = new McpToolkit(tools);
 
-		return { response: toolkit, closeFunction: async () => await client.close() };
+			return { response: toolkit, closeFunction: async () => await client.close() };
+		} catch (e) {
+			await client.close();
+			throw e;
+		}
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

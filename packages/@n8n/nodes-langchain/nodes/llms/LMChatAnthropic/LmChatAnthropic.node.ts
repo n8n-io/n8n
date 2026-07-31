@@ -332,6 +332,7 @@ export class LmChatAnthropic implements INodeType {
 			},
 		};
 
+		let customHeaderName: string | undefined;
 		if (
 			credentials.header &&
 			typeof credentials.headerName === 'string' &&
@@ -341,6 +342,7 @@ export class LmChatAnthropic implements INodeType {
 			clientOptions.defaultHeaders = {
 				[credentials.headerName]: credentials.headerValue,
 			};
+			customHeaderName = credentials.headerName;
 		}
 
 		const model = new ChatAnthropic({
@@ -351,7 +353,12 @@ export class LmChatAnthropic implements INodeType {
 			temperature: options.temperature,
 			topK: options.topK,
 			topP: options.topP,
-			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
+			callbacks: [
+				new N8nLlmTracing(this, {
+					tokensUsageParser,
+					redactedHeaders: customHeaderName ? [customHeaderName] : [],
+				}),
+			],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			invocationKwargs,
 			clientOptions,

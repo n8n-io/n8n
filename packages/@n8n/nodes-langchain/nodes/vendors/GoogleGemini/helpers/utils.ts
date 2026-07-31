@@ -104,7 +104,8 @@ export async function transferFile(
 			responseType: 'stream',
 		});
 
-		mimeType = downloadResponse.headers['content-type']?.split(';')?.[0] ?? fallbackMimeType;
+		const contentType = downloadResponse.headers['content-type'] as string | undefined;
+		mimeType = contentType?.split(';')?.[0] ?? fallbackMimeType ?? 'application/octet-stream';
 		stream = downloadResponse.data;
 	} else {
 		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');

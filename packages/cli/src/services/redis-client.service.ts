@@ -14,6 +14,9 @@ type RedisEventMap = {
 	'connection-recovered': never;
 };
 
+const RECONNECT_AND_RETRY = 2;
+const DO_NOT_RECONNECT = false;
+
 @Service()
 export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	private readonly clients = new Set<ioRedis | Cluster>();
@@ -131,7 +134,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls, dualStack } = this.globalConfig.queue.bull.redis;
+		const { username, password, db, tls, dualStack, reconnectOnFailover } =
+			this.globalConfig.queue.bull.redis;
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -157,6 +161,16 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (tls) options.tls = {}; // enable TLS with default Node.js settings
 
+		if (reconnectOnFailover) {
+			options.reconnectOnError = (redisErr: Error) => {
+				const targetError = 'READONLY';
+				if (redisErr.message.includes(targetError)) {
+					this.logger.warn('Reconnecting to Redis due to READONLY error (possible failover event)');
+					return RECONNECT_AND_RETRY;
+				}
+				return DO_NOT_RECONNECT;
+			};
+		}
 		return options;
 	}
 

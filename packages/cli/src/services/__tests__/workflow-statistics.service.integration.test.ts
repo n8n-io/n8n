@@ -59,7 +59,7 @@ describe('WorkflowStatisticsService', () => {
 			await testDb.truncate(['WorkflowStatistics']);
 		});
 
-		test.each<WorkflowExecuteMode>(['cli', 'error', 'retry', 'trigger', 'webhook', 'evaluation'])(
+		test.each<WorkflowExecuteMode>(['cli', 'retry', 'trigger', 'webhook', 'evaluation'])(
 			'should upsert `count` and `rootCount` for execution mode %s',
 			async (mode) => {
 				// ARRANGE
@@ -88,7 +88,7 @@ describe('WorkflowStatisticsService', () => {
 			},
 		);
 
-		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal'])(
+		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal', 'error'])(
 			'should upsert `count`, but not `rootCount` for execution mode %s',
 			async (mode) => {
 				// ARRANGE

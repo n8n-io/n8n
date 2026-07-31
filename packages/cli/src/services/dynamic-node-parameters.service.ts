@@ -20,12 +20,20 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IExecuteData,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
+import {
+	Workflow,
+	UnexpectedError,
+	createEmptyRunExecutionData,
+	findDisplayedProperty,
+} from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
-import { User } from '@n8n/db';
+import { SharedWorkflowRepository, User } from '@n8n/db';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Logger } from '@n8n/backend-common';
 
@@ -57,9 +65,14 @@ export class DynamicNodeParametersService {
 		private logger: Logger,
 		private nodeTypes: NodeTypes,
 		private workflowLoaderService: WorkflowLoaderService,
+		private sharedWorkflowRepository: SharedWorkflowRepository,
+		private credentialsFinderService: CredentialsFinderService,
 	) {}
 
-	async scrubInaccessibleProjectId(user: User, payload: { projectId?: string }) {
+	async refineResourceIds(
+		user: User,
+		payload: { projectId?: string; workflowId?: string; credentials?: INodeCredentials },
+	) {
 		// We want to avoid relying on generic project:read permissions to enable
 		// a future with fine-grained permission control dependent on the respective resource
 		// For now we use the dataTable:listProject scope as this is the existing consumer of
@@ -74,6 +87,39 @@ export class DynamicNodeParametersService {
 				`Scrubbed inaccessible projectId ${payload.projectId} from DynamicNodeParameters request`,
 			);
 			payload.projectId = undefined;
+		}
+
+		if (payload.workflowId) {
+			const hasAccess = await userHasScopes(user, ['workflow:read'], false, {
+				workflowId: payload.workflowId,
+			});
+
+			if (!hasAccess) {
+				this.logger.warn(
+					`Scrubbed inaccessible workflowId ${payload.workflowId} from DynamicNodeParameters request`,
+				);
+				payload.workflowId = undefined;
+			} else if (payload.projectId === undefined) {
+				const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+					payload.workflowId,
+				);
+				payload.projectId = project?.id;
+			}
+		}
+
+		if (payload.credentials) {
+			const credentialIds = Object.values(payload.credentials)
+				.map((details) => details.id)
+				.filter((id): id is string => id !== undefined && id !== null);
+
+			for (const id of credentialIds) {
+				const credential = await this.credentialsFinderService.findCredentialForUser(id, user, [
+					'credential:read',
+				]);
+				if (credential === null) {
+					throw new ForbiddenError();
+				}
+			}
 		}
 	}
 
@@ -96,6 +142,43 @@ export class DynamicNodeParametersService {
 		return method.call(thisArgs);
 	}
 
+	/**
+	 * Resolves the property's loadOptions routing from the node definition via the parameter path
+	 * (not from the request body), then runs it.
+	 */
+	async getOptionsViaLoadOptionsByPath(
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeTypeAndVersion: INodeTypeNameVersion,
+		currentNodeParameters: INodeParameters,
+		credentials?: INodeCredentials,
+	): Promise<INodePropertyOptions[]> {
+		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		const property = findDisplayedProperty(
+			path,
+			nodeType.description.properties,
+			currentNodeParameters,
+			{ typeVersion: nodeTypeAndVersion.version },
+			nodeType.description,
+		);
+		const routing =
+			property && 'typeOptions' in property
+				? property.typeOptions?.loadOptions?.routing
+				: undefined;
+		if (!routing) {
+			throw new BadRequestError(
+				`Node type "${nodeType.description.name}" has no loadOptions routing for parameter path "${path}"`,
+			);
+		}
+		return await this.getOptionsViaLoadOptions(
+			{ routing },
+			additionalData,
+			nodeTypeAndVersion,
+			currentNodeParameters,
+			credentials,
+		);
+	}
+
 	/** Returns the available options via a loadOptions param */
 	async getOptionsViaLoadOptions(
 		loadOptions: ILoadOptions,
@@ -106,12 +189,6 @@ export class DynamicNodeParametersService {
 	): Promise<INodePropertyOptions[]> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType.description.requestDefaults?.baseURL) {
-			// This is in here for now for security reasons.
-			// Background: As the full data for the request to make does get send, and the auth data
-			// will then be applied, would it be possible to retrieve that data like that. By at least
-			// requiring a baseURL to be defined can at least not a random server be called.
-			// In the future this code has to get improved that it does not use the request information from
-			// the request rather resolves it via the parameter-path and nodeType data.
 			throw new UnexpectedError(
 				'Node type does not exist or does not have "requestDefaults.baseURL" defined!',
 				{ tags: { nodeType: nodeType.description.name } },
@@ -210,8 +287,9 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs);
+		return this.removeDuplicateResourceMappingFields(
+			(await method.call(thisArgs)) as ResourceMapperFields,
+		);
 	}
 
 	/** Returns the available workflow input mapping fields for the ResourceMapper component */
@@ -224,8 +302,9 @@ export class DynamicNodeParametersService {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('localResourceMapping', methodName, nodeType);
 		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs);
+		return this.removeDuplicateResourceMappingFields(
+			(await method.call(thisArgs)) as ResourceMapperFields,
+		);
 	}
 
 	/** Returns the result of the action handler */
@@ -336,5 +415,19 @@ export class DynamicNodeParametersService {
 			path,
 			this.workflowLoaderService,
 		);
+	}
+
+	private removeDuplicateResourceMappingFields(fields: ResourceMapperFields) {
+		const uniqueFieldIds = new Set<string>();
+		return {
+			...fields,
+			fields: fields.fields?.filter((field) => {
+				if (uniqueFieldIds.has(field.id)) {
+					return false;
+				}
+				uniqueFieldIds.add(field.id);
+				return true;
+			}),
+		};
 	}
 }

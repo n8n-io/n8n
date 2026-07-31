@@ -225,7 +225,12 @@ function registerAuthenticationHooks() {
 
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
 		telemetry.identify(rootStore.instanceId, user.id, rootStore.versionCli);
-		postHogStore.init(user.featureFlags);
+		try {
+			postHogStore.init(user.featureFlags);
+		} catch (e) {
+			// don't let posthog failing prevent further function calls
+			console.error(e);
+		}
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		void settingsStore.getModuleSettings();
 		void bannersStore.loadDynamicBanners();

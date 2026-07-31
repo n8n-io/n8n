@@ -346,7 +346,6 @@ export class GoogleApi implements ICredentialType {
 			{
 				algorithm: 'RS256',
 				header: {
-					kid: privateKey,
 					typ: 'JWT',
 					alg: 'RS256',
 				},

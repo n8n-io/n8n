@@ -89,7 +89,6 @@ export async function getGoogleAccessToken(
 		{
 			algorithm: 'RS256',
 			header: {
-				kid: privateKey,
 				typ: 'JWT',
 				alg: 'RS256',
 			},

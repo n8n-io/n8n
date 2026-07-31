@@ -17,6 +17,7 @@ import * as resourceMapping from './resourceMapping';
 import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
+	assertCredentialAllowsUrl,
 	getAuthHeaders,
 	tryRefreshOAuth2Token,
 	connectMcpClient,
@@ -225,13 +226,15 @@ export class McpClient implements INodeType {
 		const serverTransport = this.getNodeParameter('serverTransport', 0) as McpServerTransport;
 		const endpointUrl = this.getNodeParameter('endpointUrl', 0) as string;
 		const node = this.getNode();
-		const { headers } = await getAuthHeaders(this, authentication);
+		const { headers, credentials } = await getAuthHeaders(this, authentication);
+		const allowedDomains = assertCredentialAllowsUrl(node, credentials, endpointUrl);
 		const client = await connectMcpClient({
 			serverTransport,
 			endpointUrl,
 			headers,
 			name: node.type,
 			version: node.typeVersion,
+			allowedDomains,
 			onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
 		});
 		if (!client.ok) {

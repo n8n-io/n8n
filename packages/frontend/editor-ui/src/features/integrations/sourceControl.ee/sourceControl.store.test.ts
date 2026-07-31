@@ -180,6 +180,33 @@ describe('useSourceControlStore', () => {
 		});
 	});
 
+	describe('prefetchPushStatus', () => {
+		it('should fetch push status and cache it for the modal', async () => {
+			const mockStatus: SourceControlledFile[] = [
+				{
+					id: 'workflow1',
+					name: 'Test Workflow',
+					type: 'workflow' as const,
+					status: 'modified' as const,
+					location: 'local' as const,
+					conflict: false,
+					file: '/path/to/workflow.json',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+					pushed: false,
+				},
+			];
+
+			const mockGetAggregatedStatus = vi.mocked(vcApi.getAggregatedStatus);
+			mockGetAggregatedStatus.mockResolvedValue(mockStatus);
+
+			const result = await sourceControlStore.prefetchPushStatus();
+
+			expect(mockGetAggregatedStatus).toHaveBeenCalledWith({});
+			expect(result).toEqual(mockStatus);
+			expect(sourceControlStore.takePrefetchedPushStatus()).toEqual(mockStatus);
+		});
+	});
+
 	describe('pushWorkfolder', () => {
 		it('should call API with correct parameters', async () => {
 			const data = {

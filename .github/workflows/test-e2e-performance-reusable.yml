@@ -11,7 +11,6 @@ on:
 
 jobs:
   build-and-test-performance:
-    if: false # Disabled on 1.x branch
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-build

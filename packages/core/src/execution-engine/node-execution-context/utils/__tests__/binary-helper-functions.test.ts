@@ -669,6 +669,18 @@ describe('prepareBinaryData', () => {
 		);
 	});
 
+	it('correctly determines video mime type based on file name', async () => {
+		const result = await prepareBinaryData(buffer, executionId, workflowId, 'some-file.mp4');
+
+		expect(result.mimeType).toEqual('video/mp4');
+	});
+
+	it('correctly determines audio mime type based on file name', async () => {
+		const result = await prepareBinaryData(buffer, executionId, workflowId, 'some-file.mp3');
+
+		expect(result.mimeType).toEqual('audio/mpeg');
+	});
+
 	it('handles IncomingMessage with responseUrl', async () => {
 		const incomingMessage = bufferToIncomingMessage(buffer);
 		incomingMessage.responseUrl = 'http://example.com/file.txt';
@@ -677,6 +689,18 @@ describe('prepareBinaryData', () => {
 
 		expect(result.fileName).toBe('file.txt');
 		expect(result.mimeType).toBe('text/plain');
+	});
+
+	it('sanitizes responseUrl before storing in directory metadata', async () => {
+		const incomingMessage = bufferToIncomingMessage(buffer);
+		incomingMessage.responseUrl = 'http://user:pass@example.com/path/file.txt';
+
+		const result = await prepareBinaryData(incomingMessage, executionId, workflowId);
+
+		expect(result.directory).toBe('http://example.com/path/file.txt');
+		expect(result.fileName).toBe('file.txt');
+		expect(result.directory).not.toContain('user');
+		expect(result.directory).not.toContain('pass');
 	});
 
 	it('handles buffer with no detectable mime type', async () => {

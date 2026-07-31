@@ -15,22 +15,22 @@ jobs:
     name: sqlite database export -> sqlite database import
     runs-on: blacksmith-2vcpu-ubuntu-2204
     outputs:
-      db_changed: ${{ steps.paths-filter.outputs.db == 'true' }}
+      db_changed: ${{ fromJSON(steps.paths-filter.outputs.results).db }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        # with:
-        #   ref: refs/pull/${{ github.event.pull_request.number }}/merge
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Check for frontend changes
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+      - name: Check for db changes
+        uses: ./.github/actions/ci-filter
         id: paths-filter
         with:
+          mode: filter
+          base-ref: master
           filters: |
             db:
               - packages/@n8n/db/**
               - packages/cli/**
       - name: Setup, build and export sqlite
-        if: steps.paths-filter.outputs.db == 'true'
+        if: fromJSON(steps.paths-filter.outputs.results).db
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: |
@@ -41,7 +41,7 @@ jobs:
     name: postgres export -> postgres import
     runs-on: blacksmith-2vcpu-ubuntu-2204
     outputs:
-      db_changed: ${{ steps.paths-filter.outputs.db == 'true' }}
+      db_changed: ${{ fromJSON(steps.paths-filter.outputs.results).db }}
     env:
       DB_TYPE: postgresdb
       DB_POSTGRESDB_DATABASE: n8n
@@ -51,34 +51,34 @@ jobs:
       DB_POSTGRESDB_PASSWORD: password
       DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        # with:
-        #   ref: refs/pull/${{ github.event.pull_request.number }}/merge
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Check for db changes
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        uses: ./.github/actions/ci-filter
         id: paths-filter
         with:
+          mode: filter
+          base-ref: master
           filters: |
             db:
               - packages/@n8n/db/**
               - packages/cli/**
 
       - name: Setup and Build
-        if: steps.paths-filter.outputs.db == 'true'
+        if: fromJSON(steps.paths-filter.outputs.results).db
         uses: ./.github/actions/setup-nodejs
 
       - name: Start Postgres
-        if: steps.paths-filter.outputs.db == 'true'
-        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
+        if: fromJSON(steps.paths-filter.outputs.results).db
+        uses: isbang/compose-action@4894d2492015c1774ee5a13a95b1072093087ec3 # v2.5.0
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
             postgres
 
       - name: Export postgres
-        if: steps.paths-filter.outputs.db == 'true'
+        if: fromJSON(steps.paths-filter.outputs.results).db
         run: ./packages/cli/bin/n8n export:entities --outputDir packages/cli/commands/export/outputs
       - name: Import postgres
-        if: steps.paths-filter.outputs.db == 'true'
+        if: fromJSON(steps.paths-filter.outputs.results).db
         run: ./packages/cli/bin/n8n import:entities --inputDir packages/cli/commands/export/outputs --truncateTables

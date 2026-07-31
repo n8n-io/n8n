@@ -1,7 +1,7 @@
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import { getHtmlSandboxCSP } from 'n8n-core';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
 
 import type { WaitingWebhookRequest } from '../webhook.types';
@@ -482,7 +482,7 @@ describe('WaitingForms', () => {
 
 			const result = await waitingForms.executeWebhook(req, res);
 
-			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 			expect(res.render).toHaveBeenCalledWith('form-trigger-completion', {
 				title: 'Form Submitted',
 				message: 'Your response has been recorded',

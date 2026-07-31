@@ -104,7 +104,7 @@
 		},
 		{
 			"parameters": {
-				"fileSelector": "/test/binary.data"
+				"fileSelector": "nodes/Crypto/test/fixtures/binary.data"
 			},
 			"id": "09bbc611-c2ca-4750-94a7-d1bb4fc53a57",
 			"name": "Read Binary Files",
@@ -247,9 +247,7 @@
 			]
 		},
 		"No Operation, do nothing": {
-			"main": [
-				[]
-			]
+			"main": [[]]
 		},
 		"Read Binary Files": {
 			"main": [

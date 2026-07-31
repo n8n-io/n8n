@@ -3,14 +3,22 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import type {
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INode,
 	ISupplyDataFunctions,
 	Result,
 } from 'n8n-workflow';
-import { createResultError, createResultOk, NodeOperationError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	createResultError,
+	createResultOk,
+	isDomainAllowed,
+	NodeOperationError,
+} from 'n8n-workflow';
 
+import { fetchFollowingRedirects } from '@utils/follow-redirects';
 import { proxyFetch } from '@utils/httpProxyAgent';
 
 import type { McpAuthenticationOption, McpServerTransport, McpTool } from './types';
@@ -93,6 +101,25 @@ export function mapToNodeOperationError(
 	}
 }
 
+/**
+ * Wraps `proxyFetch` so each hop is validated against `allowedDomains` before
+ * the request is sent. With no allowlist, behaves like `proxyFetch`.
+ */
+function createValidatingFetch(allowedDomains?: string): typeof fetch {
+	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+		const startUrl = input instanceof Request ? input.url : input;
+		return await fetchFollowingRedirects(proxyFetch, startUrl, init, {
+			onBeforeHop: (hopUrl) => {
+				if (allowedDomains && !isDomainAllowed(hopUrl, { allowedDomains })) {
+					throw new ApplicationError(
+						`Domain not allowed: This credential is restricted from accessing ${hopUrl}. Only the following domains are allowed: ${allowedDomains}`,
+					);
+				}
+			},
+		});
+	};
+}
+
 export async function connectMcpClient({
 	headers,
 	serverTransport,
@@ -100,6 +127,7 @@ export async function connectMcpClient({
 	name,
 	version,
 	onUnauthorized,
+	allowedDomains,
 }: {
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
@@ -107,6 +135,11 @@ export async function connectMcpClient({
 	name: string;
 	version: number;
 	onUnauthorized?: OnUnauthorizedHandler;
+	/**
+	 * Comma-separated allowlist from the credential. When set, every request
+	 * (including redirect hops) is validated against it.
+	 */
+	allowedDomains?: string;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -114,13 +147,14 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
+	const validatingFetch = createValidatingFetch(allowedDomains);
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	if (serverTransport === 'httpStreamable') {
 		try {
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
 				requestInit: { headers },
-				fetch: proxyFetch,
+				fetch: validatingFetch,
 			});
 			await client.connect(transport);
 			return createResultOk(client);
@@ -135,6 +169,7 @@ export async function connectMcpClient({
 						endpointUrl,
 						name,
 						version,
+						allowedDomains,
 					});
 				}
 			}
@@ -151,7 +186,7 @@ export async function connectMcpClient({
 		const sseTransport = new SSEClientTransport(endpoint.result, {
 			eventSourceInit: {
 				fetch: async (url, init) =>
-					await proxyFetch(url, {
+					await validatingFetch(url, {
 						...init,
 						headers: {
 							...headers,
@@ -159,7 +194,7 @@ export async function connectMcpClient({
 						},
 					}),
 			},
-			fetch: proxyFetch,
+			fetch: validatingFetch,
 			requestInit: { headers },
 		});
 		await client.connect(sseTransport);
@@ -175,6 +210,7 @@ export async function connectMcpClient({
 					endpointUrl,
 					name,
 					version,
+					allowedDomains,
 				});
 			}
 		}
@@ -190,52 +226,65 @@ export async function connectMcpClient({
 export async function getAuthHeaders(
 	ctx: Pick<IExecuteFunctions, 'getCredentials'>,
 	authentication: McpAuthenticationOption,
-): Promise<{ headers?: Record<string, string> }> {
+): Promise<{
+	headers?: Record<string, string>;
+	credentials?: ICredentialDataDecryptedObject;
+}> {
 	switch (authentication) {
 		case 'headerAuth': {
-			const header = await ctx
+			const credentials = await ctx
 				.getCredentials<{ name: string; value: string }>('httpHeaderAuth')
 				.catch(() => null);
 
-			if (!header) return {};
+			if (!credentials) return {};
 
-			return { headers: { [header.name]: header.value } };
+			return {
+				headers: { [credentials.name]: credentials.value },
+				credentials,
+			};
 		}
 		case 'bearerAuth': {
-			const result = await ctx
+			const credentials = await ctx
 				.getCredentials<{ token: string }>('httpBearerAuth')
 				.catch(() => null);
 
-			if (!result) return {};
+			if (!credentials) return {};
 
-			return { headers: { Authorization: `Bearer ${result.token}` } };
+			return {
+				headers: { Authorization: `Bearer ${credentials.token}` },
+				credentials,
+			};
 		}
 		case 'mcpOAuth2Api': {
-			const result = await ctx
+			const credentials = await ctx
 				.getCredentials<{ oauthTokenData: { access_token: string } }>('mcpOAuth2Api')
 				.catch(() => null);
 
-			if (!result) return {};
+			if (!credentials) return {};
 
-			return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
+			return {
+				headers: { Authorization: `Bearer ${credentials.oauthTokenData.access_token}` },
+				credentials,
+			};
 		}
 		case 'multipleHeadersAuth': {
-			const result = await ctx
+			const credentials = await ctx
 				.getCredentials<{ headers: { values: Array<{ name: string; value: string }> } }>(
 					'httpMultipleHeadersAuth',
 				)
 				.catch(() => null);
 
-			if (!result) return {};
+			if (!credentials) return {};
 
 			return {
-				headers: result.headers.values.reduce(
-					(acc, cur) => {
+				headers: credentials.headers.values.reduce(
+					(acc: Record<string, string>, cur: { name: string; value: string }) => {
 						acc[cur.name] = cur.value;
 						return acc;
 					},
 					{} as Record<string, string>,
 				),
+				credentials,
 			};
 		}
 		case 'none':
@@ -243,6 +292,52 @@ export async function getAuthHeaders(
 			return {};
 		}
 	}
+}
+
+/**
+ * Enforces the credential's "Allowed HTTP Request Domains" setting for the
+ * MCP server URL. Mirrors the HTTP Request node's behaviour:
+ *   - `'none'` blocks any use of the credential
+ *   - `'domains'` restricts to a comma-separated allowlist (wildcards via `*.`)
+ *   - anything else (or missing credential) allows the request
+ *
+ * Returns the allowlist string when one applies so callers can pass it down
+ * to `connectMcpClient` for per-hop redirect validation; returns `undefined`
+ * when the credential allows everything.
+ */
+export function assertCredentialAllowsUrl(
+	node: INode,
+	credentials: ICredentialDataDecryptedObject | undefined,
+	url: string,
+): string | undefined {
+	if (!credentials) return undefined;
+
+	if (credentials.allowedHttpRequestDomains === 'none') {
+		throw new NodeOperationError(
+			node,
+			'This credential is configured to prevent use within an MCP Client node',
+		);
+	}
+
+	if (credentials.allowedHttpRequestDomains !== 'domains') return undefined;
+
+	const allowedDomains =
+		typeof credentials.allowedDomains === 'string' ? credentials.allowedDomains : '';
+	if (!allowedDomains || allowedDomains.trim() === '') {
+		throw new NodeOperationError(
+			node,
+			'No allowed domains specified. Configure allowed domains or change restriction setting.',
+		);
+	}
+
+	if (!isDomainAllowed(url, { allowedDomains })) {
+		throw new NodeOperationError(
+			node,
+			`Domain not allowed: This credential is restricted from accessing ${url}. Only the following domains are allowed: ${allowedDomains}`,
+		);
+	}
+
+	return allowedDomains;
 }
 
 /**

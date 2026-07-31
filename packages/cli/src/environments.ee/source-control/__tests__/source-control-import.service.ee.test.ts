@@ -10,7 +10,9 @@ import {
 	type ProjectRepository,
 	type SharedWorkflowRepository,
 	User,
+	type UserRepository,
 	WorkflowEntity,
+	type WorkflowPublishHistoryRepository,
 	type WorkflowRepository,
 } from '@n8n/db';
 import { In } from '@n8n/typeorm';
@@ -28,6 +30,7 @@ import type { ExportableProject } from '../types/exportable-project';
 import { SourceControlContext } from '../types/source-control-context';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 jest.mock('fast-glob');
 
@@ -53,6 +56,9 @@ describe('SourceControlImportService', () => {
 	const variableService = mock<VariablesService>();
 	const variablesRepository = mock<VariablesRepository>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
+	const userRepository = mock<UserRepository>();
+	const workflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
+	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const service = new SourceControlImportService(
 		mockLogger,
 		mock(),
@@ -63,7 +69,7 @@ describe('SourceControlImportService', () => {
 		mock(),
 		sharedWorkflowRepository,
 		mock(),
-		mock(),
+		userRepository,
 		variablesRepository,
 		workflowRepository,
 		mock(),
@@ -73,8 +79,8 @@ describe('SourceControlImportService', () => {
 		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 		sourceControlScopedService,
-		mock(),
-		mock(),
+		workflowPublishHistoryRepository,
+		workflowHistoryService,
 	);
 
 	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
@@ -356,7 +362,9 @@ describe('SourceControlImportService', () => {
 			const mockWorkflowData = {
 				id: 'workflow1',
 				name: 'Active Workflow',
+				versionId: 'version-123',
 				nodes: [],
+				connections: {},
 				parentFolderId: null,
 			};
 			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
@@ -379,6 +387,9 @@ describe('SourceControlImportService', () => {
 				generatedMaps: [],
 				raw: [],
 			});
+			workflowRepository.update.mockResolvedValue({ generatedMaps: [], raw: [], affected: 1 });
+			userRepository.findOne.mockResolvedValue(null);
+			workflowHistoryService.findVersion.mockResolvedValue(null);
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
 
@@ -449,7 +460,9 @@ describe('SourceControlImportService', () => {
 			const mockWorkflowData = {
 				id: 'workflow1',
 				name: 'Workflow with activation error',
+				versionId: 'version-123',
 				nodes: [],
+				connections: {},
 				parentFolderId: null,
 			};
 			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
@@ -487,8 +500,131 @@ describe('SourceControlImportService', () => {
 				'Failed to activate workflow workflow1',
 				expect.any(Object),
 			);
-			expect(workflowRepository.update).toHaveBeenCalled();
 			expect(result).toEqual([{ id: 'workflow1', name: mockWorkflowFile }]);
+		});
+
+		it('should publish newly pulled version when importing an active workflow', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Active Workflow',
+				versionId: 'new-version-id',
+				nodes: [],
+				connections: {},
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Active Workflow',
+					active: true,
+					activeVersionId: 'old-version-id',
+					versionId: 'old-version-id',
+				}),
+			]);
+
+			activeWorkflowManager.add.mockResolvedValue({ webhooks: false, triggersAndPollers: false });
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				{
+					active: true,
+					activeVersionId: 'old-version-id',
+					connections: {},
+					id: 'workflow1',
+					name: 'Active Workflow',
+					nodes: [],
+					parentFolder: null,
+					parentFolderId: null,
+					versionId: 'new-version-id', // this is important, because updateActiveState will copy the versionId from the workflow entity to the activeVersionId column
+				},
+				['id'],
+			);
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('workflow1', true);
+		});
+
+		it('should record workflowPublishHistory with the new versionId when reactivating a pulled workflow', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Active Workflow',
+				versionId: 'new-version-id',
+				nodes: [],
+				connections: {},
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Active Workflow',
+					active: true,
+					activeVersionId: 'old-version-id',
+					versionId: 'old-version-id',
+				}),
+			]);
+			activeWorkflowManager.add.mockResolvedValue({ webhooks: false, triggersAndPollers: false });
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(workflowPublishHistoryRepository.addRecord).toHaveBeenCalledWith(
+				expect.objectContaining({ versionId: 'new-version-id', event: 'activated' }),
+			);
+		});
+
+		it('should call updateActiveState() before activeWorkflowManager.add() when reactivating a pulled workflow', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Active Workflow',
+				versionId: 'new-version-id',
+				nodes: [],
+				connections: {},
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Active Workflow',
+					active: true,
+					activeVersionId: 'old-version-id',
+					versionId: 'old-version-id',
+				}),
+			]);
+
+			// updateActiveState MUST be called before add() so that findById() inside
+			// add() sees the new activeVersionId and loads the correct WorkflowHistory
+			// for the cron/poll trigger closure. Cron triggers capture a snapshot of the
+			// workflow at activation time, unlike webhooks which re-fetch from DB on
+			// every incoming request.
+			workflowRepository.updateActiveState.mockResolvedValue({
+				generatedMaps: [],
+				raw: [],
+				affected: 1,
+			});
+			activeWorkflowManager.add.mockResolvedValue({ webhooks: false, triggersAndPollers: false });
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			const updateActiveStateCallOrder =
+				workflowRepository.updateActiveState.mock.invocationCallOrder[0];
+			const addCallOrder = activeWorkflowManager.add.mock.invocationCallOrder[0];
+			expect(updateActiveStateCallOrder).toBeLessThan(addCallOrder);
 		});
 	});
 

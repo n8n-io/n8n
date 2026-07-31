@@ -91,6 +91,14 @@ export class ProvisioningService {
 			return;
 		}
 
+		if (dbRole.slug === globalOwnerRoleSlug && user.role.slug !== globalOwnerRoleSlug) {
+			this.logger.warn(
+				`Skipping instance role provisioning. Cannot assign owner role: ${globalOwnerRoleSlug} to user: ${user.id}`,
+				{ userId: user.id, roleSlug },
+			);
+			return;
+		}
+
 		/*
 		 * If the user is changing from an owner to a non-owner role,
 		 * we need to check if they are the last owner to avoid an instance losing its only owner

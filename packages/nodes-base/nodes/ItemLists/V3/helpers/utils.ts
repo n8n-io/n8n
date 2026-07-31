@@ -6,6 +6,7 @@ import type {
 	GenericValue,
 } from 'n8n-workflow';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { generateSortingScript } from '../../../Code/utils';
 
 export const prepareFieldsArray = (fields: string | string[], fieldName = 'Fields') => {
 	if (typeof fields === 'string') {
@@ -43,7 +44,7 @@ export function sortByCode(
 		sandbox: { items },
 	});
 
-	return vm.run(`module.exports = items.sort((a, b) => { ${code} })`);
+	return vm.run(generateSortingScript(code));
 }
 
 type PartialBinaryData = Omit<IBinaryData, 'data'>;

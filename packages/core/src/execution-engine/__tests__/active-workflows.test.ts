@@ -40,9 +40,15 @@ describe('ActiveWorkflows', () => {
 	const pollNode = mock<INode>();
 
 	let activeWorkflows: ActiveWorkflows;
+	let acquireIsolate: jest.Mock;
+	let releaseIsolate: jest.Mock;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		acquireIsolate = jest.fn().mockResolvedValue(undefined);
+		releaseIsolate = jest.fn().mockResolvedValue(undefined);
+		// @ts-expect-error -- assign minimal expression stub for isolate-acquisition tests
+		workflow.expression = { acquireIsolate, releaseIsolate };
 		activeWorkflows = new ActiveWorkflows(
 			mock(),
 			scheduledTaskManager,

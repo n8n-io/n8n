@@ -13,7 +13,7 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
 import { parseStringPromise } from 'xml2js';
 
 export async function microsoftApiRequest(
@@ -255,6 +255,8 @@ export async function getGroupProperties(
 	const response = await microsoftApiRequest.call(this, 'GET', '/$metadata#groups');
 	const metadata = await parseStringPromise(response as string, {
 		explicitArray: false,
+		tagNameProcessors: [sanitizeXmlName],
+		attrNameProcessors: [sanitizeXmlName],
 	});
 
 	/* eslint-disable */
@@ -291,6 +293,8 @@ export async function getUserProperties(
 	const response = await microsoftApiRequest.call(this, 'GET', '/$metadata#users');
 	const metadata = await parseStringPromise(response as string, {
 		explicitArray: false,
+		tagNameProcessors: [sanitizeXmlName],
+		attrNameProcessors: [sanitizeXmlName],
 	});
 
 	/* eslint-disable */

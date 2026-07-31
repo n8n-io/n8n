@@ -1,8 +1,10 @@
-import type {
-	IDisplayOptions,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
+import {
+	DATA_TABLE_SYSTEM_COLUMNS,
+	NodeOperationError,
+	type IDisplayOptions,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { ROWS_LIMIT_DEFAULT } from '../../common/constants';
@@ -52,6 +54,19 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const dataTableProxy = await getDataTableProxyExecute(this, index);
+
+	// Extract sort parameters
+	const orderBy = this.getNodeParameter('orderBy', index, false) as boolean;
+
+	if (orderBy) {
+		const column = this.getNodeParameter('orderByColumn', index, '') as string;
+		if (column) {
+			const availableColumns = await dataTableProxy.getColumns();
+			const isSystemColumn = DATA_TABLE_SYSTEM_COLUMNS.includes(column);
+			if (!isSystemColumn && !availableColumns.find((x) => x.name === column))
+				throw new NodeOperationError(this.getNode(), 'Specified column does not exist');
+		}
+	}
 
 	return await executeSelectMany(this, index, dataTableProxy);
 }

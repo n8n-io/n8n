@@ -19,7 +19,7 @@ export function sanitizeHtml(dirtyHtml: string) {
 
 			if (ALLOWED_HTML_ATTRIBUTES.includes(name) || name.startsWith('data-')) {
 				// href is allowed but we allow only https and relative URLs
-				if (name === 'href' && !value.match(/^https?:\/\//gm) && !value.startsWith('/')) {
+				if (name === 'href' && !value.match(/^https?:\/\//) && !value.startsWith('/')) {
 					return '';
 				}
 				return `${name}="${escapeAttrValue(value)}"`;
@@ -35,6 +35,27 @@ export function sanitizeHtml(dirtyHtml: string) {
 	});
 
 	return sanitizedHtml;
+}
+
+const SAFE_OPEN_PROTOCOLS = ['http:', 'https:'];
+
+/**
+ * Opens a URL in a new tab, but only when it resolves to an http(s) protocol.
+ * Persisted, untrusted values (e.g. resource locator URLs) can carry schemes
+ * like `javascript:` or `data:`, so anything else is dropped. Always opens with
+ * `noopener,noreferrer` so the new tab cannot reach back to the opener window.
+ */
+export function openSafeUrl(url: string): void {
+	let protocol: string;
+	try {
+		protocol = new URL(url, window.location.origin).protocol;
+	} catch {
+		return;
+	}
+
+	if (SAFE_OPEN_PROTOCOLS.includes(protocol)) {
+		window.open(url, '_blank', 'noopener,noreferrer');
+	}
 }
 
 /**

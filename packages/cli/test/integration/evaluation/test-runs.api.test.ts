@@ -1,4 +1,9 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import {
 	GLOBAL_MEMBER_ROLE,
@@ -236,6 +241,71 @@ describe('DELETE /workflows/:workflowId/test-runs/:id', () => {
 
 		expect(resp.statusCode).toBe(404);
 	});
+
+	test('should return 404 when user has project:viewer role on the workflow project', async () => {
+		const viewerShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const viewerAgent = testServer.authAgentFor(viewerShell);
+
+		const teamProject = await createTeamProject('eval-delete-project', ownerShell);
+		await linkUserToProject(viewerShell, teamProject, 'project:viewer');
+
+		const teamWorkflow = await createWorkflow({ name: 'team-workflow-delete' }, teamProject);
+		const testRun = await testRunRepository.createTestRun(teamWorkflow.id);
+
+		const listResp = await viewerAgent.get(`/workflows/${teamWorkflow.id}/test-runs`);
+		expect(listResp.statusCode).toBe(200);
+
+		const resp = await viewerAgent.delete(`/workflows/${teamWorkflow.id}/test-runs/${testRun.id}`);
+
+		expect(resp.statusCode).toBe(404);
+
+		const testRunAfterDelete = await testRunRepository.findOne({ where: { id: testRun.id } });
+		expect(testRunAfterDelete).not.toBeNull();
+	});
+});
+
+describe('POST /workflows/:workflowId/test-runs/new', () => {
+	beforeEach(() => {
+		testRunner.runTest.mockClear();
+	});
+
+	test('should start a new test run', async () => {
+		const resp = await authOwnerAgent.post(`/workflows/${workflowUnderTest.id}/test-runs/new`);
+
+		expect(resp.statusCode).toBe(202);
+		expect(resp.body).toEqual({ success: true });
+		expect(testRunner.runTest).toHaveBeenCalledWith(
+			expect.objectContaining({ id: ownerShell.id }),
+			workflowUnderTest.id,
+		);
+	});
+
+	test('should return 404 if user does not have access to workflow', async () => {
+		const resp = await authOwnerAgent.post(`/workflows/${otherWorkflow.id}/test-runs/new`);
+
+		expect(resp.statusCode).toBe(404);
+		expect(testRunner.runTest).not.toHaveBeenCalled();
+	});
+
+	test('should return 404 when user has project:viewer role on the workflow project', async () => {
+		const viewerShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const viewerAgent = testServer.authAgentFor(viewerShell);
+
+		const teamProject = await createTeamProject('eval-create-project', ownerShell);
+		await linkUserToProject(viewerShell, teamProject, 'project:viewer');
+
+		const teamWorkflow = await createWorkflow({ name: 'team-workflow-create' }, teamProject);
+
+		const listResp = await viewerAgent.get(`/workflows/${teamWorkflow.id}/test-runs`);
+		expect(listResp.statusCode).toBe(200);
+
+		testRunner.runTest.mockClear();
+
+		const resp = await viewerAgent.post(`/workflows/${teamWorkflow.id}/test-runs/new`);
+
+		expect(resp.statusCode).toBe(404);
+		expect(testRunner.runTest).not.toHaveBeenCalled();
+	});
 });
 
 describe('POST /workflows/:workflowId/test-runs/:id/cancel', () => {
@@ -276,6 +346,29 @@ describe('POST /workflows/:workflowId/test-runs/:id/cancel', () => {
 		);
 
 		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should return 404 when user has project:viewer role on the workflow project', async () => {
+		const viewerShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const viewerAgent = testServer.authAgentFor(viewerShell);
+
+		const teamProject = await createTeamProject('eval-cancel-project', ownerShell);
+		await linkUserToProject(viewerShell, teamProject, 'project:viewer');
+
+		const teamWorkflow = await createWorkflow({ name: 'team-workflow-cancel' }, teamProject);
+		const testRun = await testRunRepository.createTestRun(teamWorkflow.id);
+
+		const listResp = await viewerAgent.get(`/workflows/${teamWorkflow.id}/test-runs`);
+		expect(listResp.statusCode).toBe(200);
+
+		testRunner.cancelTestRun.mockClear();
+
+		const resp = await viewerAgent.post(
+			`/workflows/${teamWorkflow.id}/test-runs/${testRun.id}/cancel`,
+		);
+
+		expect(resp.statusCode).toBe(404);
+		expect(testRunner.cancelTestRun).not.toHaveBeenCalled();
 	});
 });
 

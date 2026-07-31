@@ -43,3 +43,17 @@ export const encodeNextCursor = (
 	}
 	return encodeCursorPagination(pagination);
 };
+
+export function paginateArray<T>(
+	items: T[],
+	{ offset, limit }: { offset: number; limit: number },
+): { data: T[]; nextCursor: string | null } {
+	return {
+		data: items.slice(offset, offset + limit),
+		nextCursor: encodeNextCursor({
+			offset,
+			limit,
+			numberOfTotalRecords: items.length,
+		}),
+	};
+}

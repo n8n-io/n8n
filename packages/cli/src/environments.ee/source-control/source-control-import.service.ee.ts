@@ -6,7 +6,6 @@ import type {
 	TagEntity,
 	User,
 	Variables,
-	WorkflowEntity,
 	WorkflowTagMapping,
 } from '@n8n/db';
 import {
@@ -639,6 +638,7 @@ export class SourceControlImportService {
 		};
 	}
 
+	// eslint-disable-next-line complexity
 	async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
@@ -698,12 +698,12 @@ export class SourceControlImportService {
 			);
 			if (upsertResult?.identifiers?.length !== 1) {
 				throw new UnexpectedError('Failed to upsert workflow', {
+					// TODO: why is this nullish coalescing operator here, when importedWorkflows that don't have an id are skipped via "continue;" above?
 					extra: { workflowId: importedWorkflow.id ?? 'new' },
 				});
 			}
 
 			await this.saveOrUpdateWorkflowHistory(importedWorkflow, userId);
-
 			const localOwner = allSharedWorkflows.find(
 				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
 			);
@@ -716,13 +716,32 @@ export class SourceControlImportService {
 				repository: this.sharedWorkflowRepository,
 			});
 
-			await this.activateImportedWorkflowIfAlreadyActive(
-				{ existingWorkflow, importedWorkflow },
-				userId,
-			);
+			if (
+				importedWorkflow.active &&
+				existingWorkflow?.activeVersionId &&
+				importedWorkflow.versionId
+			) {
+				// Ensure the pulled version of a previously active version is now the active one
+				await this.activateImportedWorkflow(
+					{
+						workflowId: importedWorkflow.id,
+						versionIdToActivate: importedWorkflow.versionId,
+					},
+					userId,
+				);
+			} else if (importedWorkflow.isArchived && existingWorkflow?.activeVersionId) {
+				await this.activeWorkflowManager.remove(existingWorkflow.id);
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId: existingWorkflow.id,
+					versionId: existingWorkflow.activeVersionId,
+					event: 'deactivated',
+					userId,
+				});
+				await this.workflowRepository.updateActiveState(existingWorkflow.id, false);
+			}
 
 			importWorkflowsResult.push({
-				id: importedWorkflow.id ?? 'unknown',
+				id: importedWorkflow.id,
 				name: candidate.file,
 			});
 		}
@@ -746,50 +765,37 @@ export class SourceControlImportService {
 		}
 	}
 
-	private async activateImportedWorkflowIfAlreadyActive(
+	private async activateImportedWorkflow(
 		{
-			existingWorkflow,
-			importedWorkflow,
+			workflowId,
+			versionIdToActivate,
 		}: {
-			existingWorkflow?: WorkflowEntity;
-			importedWorkflow: IWorkflowToImport;
+			workflowId: string;
+			versionIdToActivate: string;
 		},
 		userId: string,
 	) {
-		if (!existingWorkflow?.activeVersionId) return;
-		let didAdd = false;
+		let didPublish = false;
 		try {
 			// remove active pre-import workflow
-			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-			await this.activeWorkflowManager.remove(existingWorkflow.id);
+			this.logger.debug(`Deactivating workflow id ${workflowId}`);
+			await this.activeWorkflowManager.remove(workflowId);
 
-			if (importedWorkflow.activeVersionId) {
-				// try activating the imported workflow
-				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
-				didAdd = true;
-			}
+			// try activating the imported workflow
+			this.logger.debug(`Reactivating workflow id ${workflowId}`);
+			await this.workflowRepository.updateActiveState(workflowId, true);
+			await this.activeWorkflowManager.add(workflowId, 'activate');
+			didPublish = true;
 		} catch (e) {
+			// TODO: this operation failing should be told to the user in the app, rather than just being logged
 			const error = ensureError(e);
-			this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
+			this.logger.error(`Failed to activate workflow ${workflowId}`, { error });
 		} finally {
-			// update the versionId of the workflow to match the imported workflow
-			await this.workflowRepository.update(
-				{ id: existingWorkflow.id },
-				{ versionId: importedWorkflow.versionId },
-			);
-			if (didAdd) {
+			if (didPublish) {
 				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId: existingWorkflow.id,
-					versionId: existingWorkflow.activeVersionId,
+					workflowId,
+					versionId: versionIdToActivate,
 					event: 'activated',
-					userId,
-				});
-			} else {
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId: existingWorkflow.id,
-					versionId: existingWorkflow.activeVersionId,
-					event: 'deactivated',
 					userId,
 				});
 			}
@@ -1273,7 +1279,7 @@ export class SourceControlImportService {
 
 	/**
 	 * Saves or updates workflow version history during import.
-	 * - If versionId is new: Creates new history record
+	 * - If versionId is new: Creates new history record using the versionId stored in the workflow json tracked in git
 	 * - If versionId exists with different nodes/connections: Updates existing record
 	 * - If versionId exists with same content: No action
 	 */
@@ -1336,6 +1342,7 @@ export class SourceControlImportService {
 				);
 			}
 		} catch (error) {
+			// TODO: this error should be communicated to the user directly, rather than just being logged
 			this.logger.error(
 				`Failed to save/update workflow history for workflow ${importedWorkflow.id}`,
 				{ error: ensureError(error) },

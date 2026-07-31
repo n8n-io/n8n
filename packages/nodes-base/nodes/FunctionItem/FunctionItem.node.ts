@@ -11,6 +11,7 @@ import type {
 import { NodeConnectionTypes, deepCopy, NodeOperationError } from 'n8n-workflow';
 
 import { vmResolver } from '../Code/JavaScriptSandbox';
+import { generateScript } from '../Code/utils';
 
 export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {
@@ -174,10 +175,7 @@ return item;`,
 				let jsonData: IDataObject;
 				try {
 					// Execute the function code
-					jsonData = await vm.run(
-						`module.exports = async function() {${functionCode}\n}()`,
-						__dirname,
-					);
+					jsonData = await vm.run(generateScript(functionCode), __dirname);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });

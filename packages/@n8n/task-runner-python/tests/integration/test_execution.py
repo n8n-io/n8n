@@ -203,7 +203,8 @@ async def test_cannot_access_builtins_via_globals(broker, manager):
     error_msg = await wait_for_task_error(broker, task_id)
 
     assert error_msg["taskId"] == task_id
-    assert "globals" in str(error_msg["error"]["message"]).lower()
+    description = str(error_msg["error"].get("description", "")).lower()
+    assert "__builtins__" in description or "globals" in description
 
 
 @pytest.mark.asyncio
@@ -221,7 +222,8 @@ async def test_cannot_access_builtins_via_locals(broker, manager):
     error_msg = await wait_for_task_error(broker, task_id)
 
     assert error_msg["taskId"] == task_id
-    assert "locals" in str(error_msg["error"]["message"]).lower()
+    description = str(error_msg["error"].get("description", "")).lower()
+    assert "__builtins__" in description or "locals" in description
 
 
 # ========== edge cases ===========
@@ -335,6 +337,27 @@ async def test_cannot_bypass_import_restrictions_via_sys_builtins_spec_leader(
 
     assert error_msg["taskId"] == task_id
     assert "error" in error_msg
+
+
+@pytest.mark.asyncio
+async def test_cannot_bypass_import_restrictions_via_format_string(broker, manager):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        ex = None
+        try:
+            "{.__builtins__[__import__].__call__.a}".format(print)
+        except Exception as e:
+            ex = e
+        return [{"json": {"error": str(ex)}}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    error_msg = await wait_for_task_error(broker, task_id)
+
+    assert error_msg["taskId"] == task_id
+    assert "error" in error_msg
+    assert "__builtins__" in str(error_msg["error"]["description"]).lower()
 
 
 @pytest.mark.asyncio

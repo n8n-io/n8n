@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22.21.0
+ARG NODE_VERSION=24.13.1
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
@@ -74,12 +74,15 @@ RUN uv sync \
 			--all-extras \
       --no-editable
 
+# Install the python runner package itself into site packages. We can remove the src directory then
+RUN uv pip install . && rm -rf /app/task-runner-python/src
+
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
-FROM alpine:3.22.1 AS launcher-downloader
+FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.2
+ARG LAUNCHER_VERSION=1.4.3
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -126,6 +129,19 @@ RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
 COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack && \
     ln -s ../lib/node_modules/corepack/dist/pnpm.js /usr/local/bin/pnpm
+
+# Patch all npm bundled tar copies to 7.5.7 for CVE fixes (CVE-2026-23745, CVE-2026-23950, CVE-2026-24842)
+RUN set -e; \
+    TAR_TGZ=$(mktemp); \
+    wget -qO "$TAR_TGZ" https://registry.npmjs.org/tar/-/tar-7.5.7.tgz; \
+    for dir in \
+      /usr/local/lib/node_modules/npm/node_modules/tar \
+      /usr/local/lib/node_modules/npm/node_modules/cacache/node_modules/tar \
+      /usr/local/lib/node_modules/npm/node_modules/node-gyp/node_modules/tar; \
+    do \
+      [ -d "$dir" ] && rm -rf "$dir" && mkdir -p "$dir" && tar -xzf "$TAR_TGZ" --strip-components=1 -C "$dir"; \
+    done; \
+    rm -f "$TAR_TGZ"
 
 RUN addgroup -g 1000 -S runner \
  && adduser  -u 1000 -S -G runner -h /home/runner -D runner

@@ -120,7 +120,8 @@ export async function execute(
 
 		const returnAll = this.getNodeParameter('returnAll', i, false);
 		if (!returnAll) {
-			const limit = this.getNodeParameter('limit', i, 50);
+			const limitParam = this.getNodeParameter('limit', i, 50);
+			const limit = Number.isFinite(Number(limitParam)) ? Math.trunc(Number(limitParam)) : 0;
 			query += ` FETCH FIRST ${limit} ROWS ONLY`;
 		}
 

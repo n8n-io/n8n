@@ -54,6 +54,37 @@ describe('McpClientTool', () => {
 				getTools.call(mock<ILoadOptionsFunctions>({ getNode: jest.fn(() => node) })),
 			).rejects.toEqual(new NodeOperationError(node, 'Could not connect to your MCP server'));
 		});
+
+		it('should block the request when the credential restricts the endpoint URL', async () => {
+			const node = mock<INode>({ typeVersion: 1.1 });
+
+			await expect(
+				getTools.call(
+					mock<ILoadOptionsFunctions>({
+						getNode: jest.fn(() => node),
+						getNodeParameter: jest.fn((key, _index) => {
+							const params: Record<string, any> = {
+								authentication: 'headerAuth',
+								serverTransport: 'httpStreamable',
+								endpointUrl: 'https://evil.example.com/mcp',
+							};
+							return params[key];
+						}),
+						getCredentials: jest.fn().mockResolvedValue({
+							name: 'X-Test',
+							value: 'trace',
+							allowedHttpRequestDomains: 'domains',
+							allowedDomains: 'allowed.example.com',
+						}),
+					}),
+				),
+			).rejects.toEqual(
+				new NodeOperationError(
+					node,
+					'Domain not allowed: This credential is restricted from accessing https://evil.example.com/mcp. Only the following domains are allowed: allowed.example.com',
+				),
+			);
+		});
 	});
 
 	describe('supplyData', () => {
@@ -224,7 +255,9 @@ describe('McpClientTool', () => {
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
 			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
 
-			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
+			const fetchSpy = jest
+				.spyOn(global, 'fetch')
+				.mockResolvedValue(new Response(null, { status: 200 }));
 			const url = new URL('https://my-mcp-endpoint.ai/sse');
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
@@ -237,6 +270,7 @@ describe('McpClientTool', () => {
 			await customFetch?.(url, {} as any);
 			expect(fetchSpy).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', 'my-header': 'header-value' },
+				redirect: 'manual',
 			});
 		});
 
@@ -274,7 +308,9 @@ describe('McpClientTool', () => {
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
 			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
 
-			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
+			const fetchSpy = jest
+				.spyOn(global, 'fetch')
+				.mockResolvedValue(new Response(null, { status: 200 }));
 			const url = new URL('https://my-mcp-endpoint.ai/sse');
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
@@ -287,6 +323,7 @@ describe('McpClientTool', () => {
 			await customFetch?.(url, {} as any);
 			expect(fetchSpy).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', Authorization: 'Bearer my-token' },
+				redirect: 'manual',
 			});
 		});
 
@@ -365,6 +402,54 @@ describe('McpClientTool', () => {
 				0,
 				new NodeOperationError(supplyDataFunctions.getNode(), 'Weather unknown at location'),
 			);
+		});
+
+		it('should close client when MCP server returns no tools', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [] });
+			const closeSpy = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			await expect(
+				new McpClientTool().supplyData.call(
+					mock<ISupplyDataFunctions>({
+						getNode: jest.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+						logger: { debug: jest.fn(), error: jest.fn() },
+						addInputData: jest.fn(() => ({ index: 0 })),
+						addOutputData: jest.fn(),
+					}),
+					0,
+				),
+			).rejects.toThrow('MCP Server returned no tools');
+
+			expect(closeSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should call client.close() when closeFunction is invoked', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool1',
+						description: 'MyTool1 does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+			const closeSpy = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 1, name: 'McpClientTool' })),
+					logger: { debug: jest.fn(), error: jest.fn() },
+					addInputData: jest.fn(() => ({ index: 0 })),
+				}),
+				0,
+			);
+
+			expect(supplyDataResult.closeFunction).toBeDefined();
+			await supplyDataResult.closeFunction?.();
+
+			expect(closeSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it('should support setting a timeout', async () => {

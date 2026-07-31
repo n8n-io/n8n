@@ -1,9 +1,6 @@
-ARG NODE_VERSION=22.21.0
+ARG NODE_VERSION=24.13.1
 
-# ==============================================================================
-# STAGE 1: Builder for Base Dependencies
-# ==============================================================================
-FROM node:${NODE_VERSION}-alpine AS builder
+FROM node:${NODE_VERSION}-alpine
 
 # Install fonts
 RUN \
@@ -23,7 +20,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" >> /etc/apk/reposito
         git \
         openssh \
         openssl \
-        graphicsmagick \
+        graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (AGPL)` \
         tini \
         tzdata \
         ca-certificates \
@@ -35,13 +32,6 @@ RUN npm install -g full-icu@1.5.0
 
 RUN rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
   apk del apk-tools
-
-# ==============================================================================
-# STAGE 2: Final Base Runtime Image
-# ==============================================================================
-FROM node:${NODE_VERSION}-alpine
-
-COPY --from=builder / /
 
 WORKDIR /home/node
 ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu

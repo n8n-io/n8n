@@ -4,6 +4,7 @@ import { ManualExecutionCancelledError } from '../src/errors/execution-cancelled
 import {
 	jsonParse,
 	jsonStringify,
+	replaceCircularReferences,
 	deepCopy,
 	isDomainAllowed,
 	isObjectEmpty,
@@ -12,10 +13,12 @@ import {
 	randomString,
 	hasKey,
 	isSafeObjectProperty,
+	containsUnsafeObjectPropertyToken,
 	setSafeObjectProperty,
 	sleepWithAbort,
 	isCommunityPackageName,
 	sanitizeFilename,
+	sanitizeXmlName,
 } from '../src/utils';
 
 describe('isObjectEmpty', () => {
@@ -265,6 +268,20 @@ describe('jsonStringify', () => {
 	});
 });
 
+describe('replaceCircularReferences', () => {
+	it('should not promote an own __proto__ key onto the copy', () => {
+		const source = jsonParse<{ note: string; id?: string }>(
+			'{"note":"x","__proto__":{"id":"injected"}}',
+		);
+
+		const copy = replaceCircularReferences(source);
+
+		expect(copy.note).toBe('x');
+		expect(copy.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+	});
+});
+
 describe('deepCopy', () => {
 	it('should deep copy an object', () => {
 		const serializable = {
@@ -340,6 +357,45 @@ describe('deepCopy', () => {
 		expect(copy.deep.props.circular).not.toBe(object);
 		expect(copy.deep.arr.slice(-1)[0]).toBe(copy);
 		expect(copy.deep.arr.slice(-1)[0]).not.toBe(object);
+	});
+
+	it('should not promote an own __proto__ key onto the clone', () => {
+		// An object literal `{ __proto__: ... }` sets the prototype; only parsed
+		// JSON produces an own enumerable `__proto__` property, as a request body would.
+		const source = jsonParse<{ note: string; id?: string }>(
+			'{"note":"x","__proto__":{"id":"injected"}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.note).toBe('x');
+		expect(copy.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+	});
+
+	it('should not copy own constructor or prototype keys onto the clone', () => {
+		const source = jsonParse<{ keep: string }>(
+			'{"keep":"y","constructor":{"polluted":true},"prototype":{"polluted":true}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.keep).toBe('y');
+		expect(Object.prototype.hasOwnProperty.call(copy, 'constructor')).toBe(false);
+		expect(Object.prototype.hasOwnProperty.call(copy, 'prototype')).toBe(false);
+		expect(copy.constructor).toBe(Object);
+	});
+
+	it('should not promote a nested own __proto__ key', () => {
+		const source = jsonParse<{ body: { note: string; id?: string } }>(
+			'{"body":{"note":"x","__proto__":{"id":"injected"}}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.body.note).toBe('x');
+		expect(copy.body.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy.body)).toBe(Object.prototype);
 	});
 });
 
@@ -510,6 +566,11 @@ describe('isSafeObjectProperty', () => {
 		['prototype', false],
 		['constructor', false],
 		['getPrototypeOf', false],
+		['setPrototypeOf', false],
+		['getOwnPropertyDescriptor', false],
+		['getOwnPropertyDescriptors', false],
+		['defineProperty', false],
+		['defineProperties', false],
 		['mainModule', false],
 		['binding', false],
 		['_load', false],
@@ -518,6 +579,31 @@ describe('isSafeObjectProperty', () => {
 		['toString', true],
 	])('should return %s for key "%s"', (key, expected) => {
 		expect(isSafeObjectProperty(key)).toBe(expected);
+	});
+});
+
+describe('containsUnsafeObjectPropertyToken', () => {
+	it.each([
+		['constructor', true],
+		['__proto__', true],
+		['prototype', true],
+		['getPrototypeOf', true],
+		['setPrototypeOf', true],
+		['getOwnPropertyDescriptor', true],
+		['getOwnPropertyDescriptors', true],
+		['defineProperty', true],
+		['defineProperties', true],
+		['mainModule', true],
+		['user.constructor', true],
+		['"constructor"', true],
+		['a.b."__proto__".c', true],
+		['user.name', false],
+		['items[0].title', false],
+		['constructorName', false],
+		['myPrototypeId', false],
+		['', false],
+	])('should return %s for "%s"', (input, expected) => {
+		expect(containsUnsafeObjectPropertyToken(input)).toBe(expected);
 	});
 });
 
@@ -531,6 +617,22 @@ describe('setSafeObjectProperty', () => {
 		setSafeObjectProperty(obj, key, value);
 		expect(obj).toEqual(expected);
 	});
+});
+
+describe('sanitizeXmlName', () => {
+	it.each(['__proto__', 'constructor', 'prototype'])(
+		'should prefix dangerous name "%s"',
+		(name) => {
+			expect(sanitizeXmlName(name)).toBe(`sanitized_${name}`);
+		},
+	);
+
+	it.each(['name', 'id', 'root', '__custom__', 'Constructor', 'PROTOTYPE'])(
+		'should pass through safe name "%s" unchanged',
+		(name) => {
+			expect(sanitizeXmlName(name)).toBe(name);
+		},
+	);
 });
 
 describe('sleepWithAbort', () => {

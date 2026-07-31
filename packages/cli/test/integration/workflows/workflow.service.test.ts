@@ -4,6 +4,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
+import type { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflowRepository,
@@ -18,6 +19,7 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { Telemetry } from '@/telemetry';
+import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -43,7 +45,7 @@ beforeAll(async () => {
 		Container.get(WorkflowRepository),
 		mock(),
 		mock(),
-		mock(),
+		Container.get(OwnershipService),
 		mock(),
 		workflowHistoryService,
 		mock(),
@@ -57,6 +59,7 @@ beforeAll(async () => {
 		mock(),
 		Container.get(WorkflowFinderService),
 		workflowPublishHistoryRepository,
+		mock<LicenseState>(),
 	);
 });
 

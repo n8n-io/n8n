@@ -8,7 +8,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { renderForm } from './utils';
+import { handleNewlines, renderForm, sanitizeHtml } from './utils';
 
 export const renderFormNode = async (
 	context: IWebhookFunctions,
@@ -29,6 +29,8 @@ export const renderFormNode = async (
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
 	}
 
+	const description = handleNewlines(sanitizeHtml(options.formDescription ?? ''));
+
 	let buttonLabel = options.buttonLabel;
 	if (!buttonLabel) {
 		buttonLabel =
@@ -45,7 +47,7 @@ export const renderFormNode = async (
 		context,
 		res,
 		formTitle: title,
-		formDescription: options.formDescription,
+		formDescription: description,
 		formFields: fields,
 		responseMode: 'responseNode',
 		mode,

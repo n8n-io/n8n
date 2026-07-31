@@ -1,0 +1,386 @@
+import { getOctokit } from '@actions/github';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import semver from 'semver';
+
+export const CURRENT_MAJOR_VERSION = 2;
+export const RELEASE_CANDIDATE_BRANCH_PREFIX = 'release-candidate/';
+
+export const RELEASE_TRACKS = /** @type { const } */ ([
+	//
+	'stable',
+	'beta',
+	'v1',
+]);
+
+/**
+ * @typedef { InstanceType<typeof import("@actions/github/lib/utils").GitHub> } GitHubInstance
+ * */
+
+/**
+ * @typedef {typeof RELEASE_TRACKS[number]} ReleaseTrack
+ * */
+
+/**
+ * @typedef {`${number}.${number}.${number}`} SemVer
+ * */
+
+/**
+ * @typedef {`${RELEASE_PREFIX}${SemVer}`} ReleaseVersion
+ * */
+
+/**
+ * @typedef {{ tag: ReleaseVersion, version: SemVer }} TagVersionInfo
+ * */
+
+export const RELEASE_PREFIX = 'n8n@';
+
+/**
+ * Given a list of tags, return the highest semver for tags like "n8n@2.7.0".
+ * Returns the *tag string* (e.g. "n8n@2.7.0") or null.
+ *
+ * @param {string[]} tags
+ *
+ * @returns { ReleaseVersion | null }
+ * */
+export function pickHighestReleaseTag(tags) {
+	const versions = tags
+		.filter((t) => t.startsWith(RELEASE_PREFIX))
+		.map((t) => ({ tag: t, v: stripReleasePrefixes(t) }))
+		.filter(({ v }) => semver.valid(v))
+		.sort((a, b) => semver.rcompare(a.v, b.v));
+
+	return /** @type { ReleaseVersion } */ (versions[0]?.tag) ?? null;
+}
+
+/**
+ * @param {any} track
+ *
+ * @returns { track is ReleaseTrack }
+ * */
+export function isReleaseTrack(track) {
+	return RELEASE_TRACKS.includes(track);
+}
+
+/**
+ * @param {any} track
+ *
+ * @returns { ReleaseTrack }
+ * */
+export function ensureReleaseTrack(track) {
+	if (!RELEASE_TRACKS.includes(track)) {
+		throw new Error(`Invalid track ${track}. Available tracks are ${RELEASE_TRACKS.join(', ')}`);
+	}
+
+	return track;
+}
+
+/**
+ * Resolve a release track tag (stable/beta/etc.) to the corresponding
+ * n8n@x.y.z tag pointing at the same commit.
+ *
+ * Returns null if the track tag or release tag is missing.
+ *
+ * @param { typeof RELEASE_TRACKS[number] } track
+ *
+ * @returns { TagVersionInfo | null }
+ * */
+export function resolveReleaseTagForTrack(track) {
+	const commit = getCommitForRef(track);
+	if (!commit) return null;
+
+	const tagsAtCommit = listTagsPointingAt(commit);
+	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
+	if (!releaseTag) return null;
+
+	return {
+		tag: releaseTag,
+		version: stripReleasePrefixes(releaseTag),
+	};
+}
+
+/**
+ * Resolve a release track tag (stable/beta/etc.) to the corresponding
+ * release-candidate/<major>.<minor>.x branch, based on the n8n@<x.y.z> tag
+ * pointing at the same commit.
+ *
+ * Returns null if the track tag or release tag is missing.
+ *
+ * @param { ReleaseTrack } track
+ * */
+export function resolveRcBranchForTrack(track) {
+	if (track === 'v1') {
+		return '1.x';
+	}
+
+	const commit = getCommitForRef(track);
+	if (!commit) return null;
+
+	const tagsAtCommit = listTagsPointingAt(commit);
+	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
+	if (!releaseTag) return null;
+
+	const version = stripReleasePrefixes(releaseTag);
+	const parsed = semver.parse(version);
+	if (!parsed) return null;
+
+	return `release-candidate/${parsed.major}.${parsed.minor}.x`;
+}
+
+/**
+ * Takes a TagVersionInfo object and returns a rc-branch name.
+ *
+ * e.g. release-candidate/2.8.x or 1.x
+ *
+ * @param {import('./github-helpers.mjs').TagVersionInfo} tagVersionInfo
+ *
+ * @returns { `${RELEASE_CANDIDATE_BRANCH_PREFIX}${number}.${number}.x` | `${number}.x` }
+ * */
+export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo) {
+	const version = tagVersionInfo.version;
+	const majorVersion = semver.major(version);
+	if (majorVersion < CURRENT_MAJOR_VERSION) {
+		return `${majorVersion}.x`;
+	}
+
+	return `${RELEASE_CANDIDATE_BRANCH_PREFIX}${majorVersion}.${semver.minor(version)}.x`;
+}
+
+/**
+ * @param {string} tag
+ *
+ * @returns { SemVer }
+ * */
+export function stripReleasePrefixes(tag) {
+	return /** @type { SemVer } */ (
+		tag.startsWith(RELEASE_PREFIX) ? tag.slice(RELEASE_PREFIX.length) : tag
+	);
+}
+
+export function getEventFromGithubEventPath() {
+	let eventPath = ensureEnvVar('GITHUB_EVENT_PATH');
+	if (!path.isAbsolute(eventPath)) {
+		eventPath = import.meta.dirname + '/' + eventPath;
+	}
+	return JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+}
+
+/**
+ * @param {any} [pullRequest] Optional pull request object. If not provided, reads from GITHUB_EVENT_PATH
+ *
+ * @returns {string[]}
+ */
+export function readPrLabels(pullRequest) {
+	if (!pullRequest) {
+		const event = getEventFromGithubEventPath();
+		pullRequest = event.pull_request;
+	}
+	/** @type { string[] | { name: string }[] } */
+	const labels = pullRequest?.labels ?? [];
+
+	return labels.map((l) => (typeof l === 'string' ? l : l?.name)).filter(Boolean);
+}
+
+/**
+ * Ensures git tag exists.
+ *
+ * @param {string} tag
+ * @throws {Error} if no tag was found
+ */
+export function ensureTagExists(tag) {
+	sh('git', ['fetch', '--force', '--no-tags', 'origin', `refs/tags/${tag}:refs/tags/${tag}`]);
+}
+
+/**
+ * @param {string} bump
+ *
+ * @returns { bump is import("semver").ReleaseType }
+ * */
+export function isReleaseType(bump) {
+	return ['major', 'minor', 'patch'].includes(bump);
+}
+
+/**
+ * @param {string} variableName
+ */
+export function ensureEnvVar(variableName) {
+	const v = process.env[variableName];
+	if (!v) {
+		throw new Error(`Missing required env var: ${variableName}`);
+	}
+	return v;
+}
+
+/**
+ * @param {string} cmd
+ * @param {readonly string[]} args
+ * @param {import("node:child_process").ExecFileOptionsWithStringEncoding} args
+ *
+ * @example sh("git", ["tag", "--points-at", commit]);
+ * */
+export function sh(cmd, args, opts = {}) {
+	return execFileSync(cmd, args, { encoding: 'utf8', ...opts }).trim();
+}
+
+/**
+ * @param {string} cmd
+ * @param {readonly string[]} args
+ * @param {import("node:child_process").ExecFileOptionsWithStringEncoding} args
+ *
+ * @example trySh("git", ["tag", "--points-at", commit]);
+ * */
+export function trySh(cmd, args, opts = {}) {
+	try {
+		return { ok: true, out: sh(cmd, args, opts) };
+	} catch {
+		return { ok: false, out: '' };
+	}
+}
+
+/**
+ * Append outputs to GITHUB_OUTPUT if available.
+ *
+ * @param {Record<string, string | boolean>} obj
+ */
+export function writeGithubOutput(obj) {
+	const path = process.env.GITHUB_OUTPUT;
+	if (!path) return;
+
+	const lines = Object.entries(obj)
+		.map(([k, v]) => `${k}=${v ?? ''}`)
+		.join('\n');
+
+	fs.appendFileSync(path, lines + '\n', 'utf8');
+}
+
+/**
+ * Resolve a ref (tag/branch/SHA) to the underlying commit SHA.
+ * Uses ^{} so annotated tags are peeled to the commit.
+ * Returns null if ref doesn't exist.
+ *
+ * @param {string} ref
+ */
+export function getCommitForRef(ref) {
+	const res = trySh('git', ['rev-parse', `${ref}^{}`]);
+	return res.ok && res.out ? res.out : null;
+}
+
+/**
+ * List all tags that point at the given commit SHA.
+ *
+ * @param {string} commit
+ */
+export function listTagsPointingAt(commit) {
+	const res = trySh('git', ['tag', '--points-at', commit]);
+	if (!res.ok || !res.out) return [];
+
+	return res.out
+		.split('\n')
+		.map((s) => s.trim())
+		.filter(Boolean);
+}
+
+/**
+ * @param {string} from
+ * @param {string} to
+ */
+export function listCommitsBetweenRefs(from, to) {
+	return sh('git', ['--no-pager', 'log', '--format=%s (%h)', `${to}..origin/${from}`]);
+}
+
+/**
+ * @param {string} from
+ * @param {string} to
+ */
+export function countCommitsBetweenRefs(from, to) {
+	const output = sh('git', ['rev-list', '--count', `${to}..origin/${from}`]);
+	const count = parseInt(output);
+
+	return isNaN(count) ? 0 : count;
+}
+
+/**
+ * @param {string} branch
+ */
+export function remoteBranchExists(branch) {
+	const res = trySh('git', ['ls-remote', '--heads', 'origin', branch]);
+	return res.ok && res.out.length > 0;
+}
+
+/**
+ * @param {string} ref
+ */
+export function localRefExists(ref) {
+	const res = trySh('git', ['show-ref', '--verify', '--quiet', ref]);
+	return res.ok;
+}
+
+/**
+ * Initializes octokit with GITHUB_TOKEN from env vars.
+ *
+ * Also ensures the existence of useful environment variables.
+ * */
+export function initGithub() {
+	const token = ensureEnvVar('GITHUB_TOKEN');
+	const repoFullName = ensureEnvVar('GITHUB_REPOSITORY');
+
+	const [owner, repo] = repoFullName.split('/');
+
+	const octokit = getOctokit(token);
+
+	return {
+		octokit,
+		owner,
+		repo,
+	};
+}
+
+/**
+ * @param {number} pullRequestId
+ */
+export async function getPullRequestById(pullRequestId) {
+	const { octokit, owner, repo } = initGithub();
+
+	const pullRequest = await octokit.rest.pulls.get({
+		owner,
+		repo,
+		pull_number: pullRequestId,
+	});
+
+	return pullRequest.data;
+}
+
+/**
+ * @param {string} tag
+ */
+export async function getExistingRelease(tag) {
+	const { octokit, owner, repo } = initGithub();
+
+	try {
+		const releaseRequest = await octokit.rest.repos.getReleaseByTag({
+			owner,
+			repo,
+			tag,
+		});
+
+		return releaseRequest.data;
+	} catch (ex) {
+		if (ex?.status === 404) {
+			return undefined;
+		}
+		throw ex;
+	}
+}
+
+/**
+ * @param {number} releaseId
+ */
+export async function deleteRelease(releaseId) {
+	const { octokit, owner, repo } = initGithub();
+	await octokit.rest.repos.deleteRelease({
+		owner,
+		repo,
+		release_id: releaseId,
+	});
+}

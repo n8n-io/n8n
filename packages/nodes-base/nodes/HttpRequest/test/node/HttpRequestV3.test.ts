@@ -299,4 +299,232 @@ describe('HttpRequestV3', () => {
 			);
 		});
 	});
+
+	describe('Pagination parameter validation', () => {
+		it('should keep valid pagination parameters and ignore invalid parameter names', async () => {
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'updateAParameterInEachRequest',
+								parameters: {
+									parameters: [
+										{
+											type: 'qs',
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											name: 'page',
+											value: '1',
+										},
+										{
+											type: 'qs',
+											name: 'constructor',
+											value: 'ignored',
+										},
+									],
+								},
+								paginationCompleteWhen: 'responseIsEmpty',
+								statusCodesWhenComplete: '',
+								completeExpression: '',
+								limitPagesFetched: false,
+								maxRequests: 10,
+								requestInterval: 0,
+							};
+						case 'options.response.response.responseFormat':
+							return 'json';
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: { success: true },
+					statusCode: 200,
+				},
+			]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(1);
+			const paginationData = (
+				executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock
+			).mock.calls[0][2] as {
+				request: {
+					qs: Record<string, unknown>;
+				};
+			};
+			expect(paginationData.request.qs).toEqual({ page: '1' });
+			expect(Object.prototype.hasOwnProperty.call(paginationData.request.qs, 'constructor')).toBe(
+				false,
+			);
+		});
+
+		it('should reject invalid pagination parameter type values', async () => {
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: { success: true },
+					statusCode: 200,
+				},
+			]);
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'updateAParameterInEachRequest',
+								parameters: {
+									parameters: [
+										{
+											type: '__proto__' as unknown as 'qs',
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											name: 'page',
+											value: '1',
+										},
+									],
+								},
+								paginationCompleteWhen: 'responseIsEmpty',
+								statusCodesWhenComplete: '',
+								completeExpression: '',
+								limitPagesFetched: false,
+								maxRequests: 10,
+								requestInterval: 0,
+							};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'Parameter type must be one of: body, headers, qs for parameter [1] in pagination settings',
+			);
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).not.toHaveBeenCalled();
+		});
+
+		it('should pass a redacted request snapshot to the paginated helper for a generic header credential', async () => {
+			const headerName = 'x-owner-domain-secret';
+			const headerValue = 'super-secret-value';
+
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'genericCredentialType';
+						case 'genericAuthType':
+							return 'httpHeaderAuth';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'responseContainsNextURL',
+								nextURL: `={{ $request.headers['${headerName}'] }}`,
+								paginationCompleteWhen: 'receiveSpecificStatusCodes',
+								statusCodesWhenComplete: '200',
+								completeExpression: '',
+								limitPagesFetched: true,
+								maxRequests: 1,
+								requestInterval: 0,
+							};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.getCredentials as jest.Mock).mockResolvedValue({
+				name: headerName,
+				value: headerValue,
+			});
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: { success: true },
+					statusCode: 200,
+				},
+			]);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(1);
+
+			// The live request options (1st arg) keep the credential header so the
+			// actual outgoing requests stay authenticated.
+			const liveRequest = (executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock)
+				.mock.calls[0][0] as { headers: Record<string, unknown> };
+			expect(liveRequest.headers[headerName]).toBe(headerValue);
+
+			// The sanitized snapshot (6th arg) exposed to pagination expressions has
+			// the credential-derived header redacted.
+			const sanitizedRequest = (
+				executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock
+			).mock.calls[0][5] as { headers: Record<string, unknown> };
+			expect(sanitizedRequest.headers[headerName]).toBe('**hidden**');
+		});
+	});
 });

@@ -249,6 +249,10 @@ describe('ChatExecutionManager', () => {
 			const workflow = {
 				getNode: jest.fn().mockReturnValue(node),
 				nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+				expression: {
+					acquireIsolate: jest.fn().mockResolvedValue(undefined),
+					releaseIsolate: jest.fn().mockResolvedValue(undefined),
+				},
 			};
 			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
 			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
@@ -280,6 +284,10 @@ describe('ChatExecutionManager', () => {
 			const workflow = {
 				getNode: jest.fn().mockReturnValue(node),
 				nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+				expression: {
+					acquireIsolate: jest.fn().mockResolvedValue(undefined),
+					releaseIsolate: jest.fn().mockResolvedValue(undefined),
+				},
 			};
 			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
 			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);

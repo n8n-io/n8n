@@ -7,6 +7,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type INodeTypeDescription,
+	type NodeParameterValueType,
 } from '../src/interfaces';
 import {
 	getNodeParameters,
@@ -22,6 +23,7 @@ import {
 	makeNodeName,
 	isTool,
 	getNodeWebhookPath,
+	findDisplayedProperty,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -5792,6 +5794,370 @@ describe('NodeHelpers', () => {
 			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, false);
 
 			expect(result).toBe('workflow-123/testnode/test-path');
+		});
+	});
+
+	describe('getNodeParameters - noDataExpression handling', () => {
+		it('should strip expression prefix when noDataExpression is true and value is an expression', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: '=users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+			const description: INodeTypeDescription = {
+				name: 'Test',
+				displayName: 'Test',
+				group: [],
+				version: 1,
+				description: 'Test',
+				defaults: {},
+				inputs: [],
+				outputs: [],
+				properties: nodePropertiesArray,
+			};
+
+			const nodeType: INodeType = {
+				description,
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('users');
+		});
+
+		it('should not strip expression prefix when noDataExpression is false', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: false,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: '=users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('=users');
+		});
+
+		it('should not modify non-expression values when noDataExpression is true', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: 'users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('users');
+		});
+
+		it('should handle undefined values when noDataExpression is true', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: NodeParameterValueType = {
+				resource: undefined,
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			// When undefined, the default value (empty string) is used
+			expect(result?.resource).toBe('');
+		});
+	});
+
+	describe('findDisplayedProperty', () => {
+		const routingFor = (url: string) => ({
+			typeOptions: { loadOptions: { routing: { request: { url } } } },
+		});
+		const resolve = (
+			path: string,
+			properties: INodeProperties[],
+			nodeValues: INodeParameters = {},
+			node: Pick<INode, 'typeVersion'> | null = null,
+		) =>
+			findDisplayedProperty(path, properties, nodeValues, node, null) as
+				| INodeProperties
+				| undefined;
+		const routingUrl = (property: INodeProperties | undefined) =>
+			property?.typeOptions?.loadOptions?.routing?.request?.url;
+
+		it('resolves a top-level property', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					...routingFor('/models'),
+				},
+			] as INodeProperties[];
+
+			expect(resolve('parameters.model', properties)?.name).toBe('model');
+		});
+
+		it('resolves a property nested in a collection', () => {
+			const properties = [
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							displayName: 'Model',
+							name: 'model',
+							type: 'options',
+							default: '',
+							...routingFor('/m'),
+						},
+					],
+				},
+			] as INodeProperties[];
+
+			expect(resolve('parameters.options.model', properties)?.name).toBe('model');
+		});
+
+		it('resolves a field in a fixedCollection section, ignoring the array index', () => {
+			const properties = [
+				{
+					displayName: 'Create',
+					name: 'createContactAttributes',
+					type: 'fixedCollection',
+					default: {},
+					options: [
+						{
+							displayName: 'Attr',
+							name: 'attributesValues',
+							values: [
+								{
+									displayName: 'Field',
+									name: 'fieldName',
+									type: 'options',
+									default: '',
+									...routingFor('/create'),
+								},
+							],
+						},
+					],
+				},
+			] as INodeProperties[];
+
+			expect(
+				routingUrl(
+					resolve('parameters.createContactAttributes.attributesValues[0].fieldName', properties),
+				),
+			).toBe('/create');
+		});
+
+		it('picks the displayed variant when two properties share a name (param-gated)', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { modelSource: ['a'] } },
+					...routingFor('/a'),
+				},
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { modelSource: ['b'] } },
+					...routingFor('/b'),
+				},
+			] as INodeProperties[];
+
+			expect(routingUrl(resolve('parameters.model', properties, { modelSource: 'a' }))).toBe('/a');
+			expect(routingUrl(resolve('parameters.model', properties, { modelSource: 'b' }))).toBe('/b');
+		});
+
+		it('picks the displayed variant by node type version', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { '@version': [1] } },
+					...routingFor('/v1'),
+				},
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { '@version': [2] } },
+					...routingFor('/v2'),
+				},
+			] as INodeProperties[];
+
+			expect(routingUrl(resolve('parameters.model', properties, {}, { typeVersion: 2 }))).toBe(
+				'/v2',
+			);
+		});
+
+		it('returns undefined for an unknown path', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					...routingFor('/models'),
+				},
+			] as INodeProperties[];
+
+			expect(resolve('parameters.unknown', properties)).toBeUndefined();
+		});
+
+		it('returns undefined when a collection property has no options', () => {
+			const properties = [
+				{ displayName: 'Options', name: 'options', type: 'collection', default: {} },
+			] as INodeProperties[];
+
+			expect(resolve('parameters.options.model', properties)).toBeUndefined();
 		});
 	});
 });

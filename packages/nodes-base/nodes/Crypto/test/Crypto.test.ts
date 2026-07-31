@@ -1,21 +1,8 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import fs from 'fs';
-import fsPromises from 'fs/promises';
-import { Readable } from 'stream';
 
+// Reads a real fixture file (nodes/Crypto/test/fixtures/binary.data, content "test") rather
+// than mocking fast-glob/fs. The hardened file-system helper performs additional filesystem
+// operations (symlink checks, directory pinning) that a partial fs mock cannot satisfy.
 describe('Test Crypto Node', () => {
-	jest.mock('fast-glob', () => async () => ['/test/binary.data']);
-	jest.mock('fs/promises');
-	fsPromises.access = async () => {};
-	const realpathSpy = jest.spyOn(fsPromises, 'realpath');
-	realpathSpy.mockImplementation(async (path) => path as string);
-	jest.mock('fs');
-	fs.createReadStream = () => {
-		const stream = Readable.from(Buffer.from('test')) as fs.ReadStream;
-		// Emit 'open' event asynchronously to match real fs.ReadStream behavior
-		setImmediate(() => stream.emit('open'));
-		return stream;
-	};
-
 	new NodeTestHarness().setupTests();
 });

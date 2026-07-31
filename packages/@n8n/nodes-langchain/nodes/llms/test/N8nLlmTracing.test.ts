@@ -386,5 +386,79 @@ describe('N8nLlmTracing', () => {
 				undefined,
 			);
 		});
+
+		const getPersistedOptions = () =>
+			(executionFunctions.addInputData.mock.calls[0][1] as any)[0][0].json.options;
+
+		it('should mask declared header values in persisted input data', async () => {
+			const tracer = new N8nLlmTracing(executionFunctions, {
+				redactedHeaders: ['x-secret-header'],
+			});
+			const llm = {
+				type: 'constructor',
+				kwargs: {
+					configuration: {
+						defaultHeaders: { 'User-Agent': 'n8n', 'x-secret-header': 'secret' },
+					},
+				},
+			};
+
+			await tracer.handleLLMStart(llm as unknown as Serialized, ['hi'], 'run-1');
+
+			const persisted = getPersistedOptions();
+			expect(persisted.configuration.defaultHeaders['x-secret-header']).toBe('**********');
+			expect(persisted.configuration.defaultHeaders['User-Agent']).toBe('n8n');
+			// the original serialized object is not mutated
+			expect(llm.kwargs.configuration.defaultHeaders['x-secret-header']).toBe('secret');
+		});
+
+		it('should always mask well-known secret header values without configuration', async () => {
+			const tracer = new N8nLlmTracing(executionFunctions);
+			const llm = {
+				type: 'constructor',
+				kwargs: {
+					headers: { authorization: 'Bearer s', Cookie: 'c' },
+					configuration: { defaultHeaders: { 'x-api-key': 'sk' } },
+				},
+			};
+
+			await tracer.handleLLMStart(llm as unknown as Serialized, ['hi'], 'run-1');
+
+			const persisted = getPersistedOptions();
+			expect(persisted.headers.authorization).toBe('**********');
+			expect(persisted.headers.Cookie).toBe('**********');
+			expect(persisted.configuration.defaultHeaders['x-api-key']).toBe('**********');
+		});
+
+		it('should mask header values nested at any depth and inside arrays', async () => {
+			const tracer = new N8nLlmTracing(executionFunctions);
+			const llm = {
+				type: 'constructor',
+				kwargs: {
+					configuration: { httpAgent: { headers: { Authorization: 'Bearer deep' } } },
+					transports: [{ headers: { Authorization: 'Bearer arr' } }],
+				},
+			};
+
+			await tracer.handleLLMStart(llm as unknown as Serialized, ['hi'], 'run-1');
+
+			const persisted = getPersistedOptions();
+			expect(persisted.configuration.httpAgent.headers.Authorization).toBe('**********');
+			expect(persisted.transports[0].headers.Authorization).toBe('**********');
+		});
+
+		it('should not mask a non-header field that shares a declared name', async () => {
+			const tracer = new N8nLlmTracing(executionFunctions, { redactedHeaders: ['model'] });
+			const llm = {
+				type: 'constructor',
+				kwargs: { model: 'gpt-4', configuration: { defaultHeaders: { model: 'v' } } },
+			};
+
+			await tracer.handleLLMStart(llm as unknown as Serialized, ['hi'], 'run-1');
+
+			const persisted = getPersistedOptions();
+			expect(persisted.model).toBe('gpt-4');
+			expect(persisted.configuration.defaultHeaders.model).toBe('**********');
+		});
 	});
 });

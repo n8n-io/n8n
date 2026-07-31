@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import snowflake from 'snowflake-sdk';
 
 import { getResolvables } from '@utils/utilities';
@@ -13,6 +13,8 @@ import { getResolvables } from '@utils/utilities';
 import {
 	connect,
 	destroy,
+	escapeSnowflakeIdentifier,
+	escapeSnowflakeObjectIdentifier,
 	execute,
 	getConnectionOptions,
 	type SnowflakeCredential,
@@ -87,7 +89,33 @@ export class Snowflake implements INodeType {
 				default: '',
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
-				description: 'The SQL query to execute',
+				description:
+					"The SQL query to execute. Use ? (bound in order) or :1, :2, :3 to refer to the 'Query Parameters' set in the options below.",
+				hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: ['executeQuery'],
+					},
+				},
+				default: {},
+				placeholder: 'Add option',
+				options: [
+					{
+						displayName: 'Query Parameters',
+						name: 'queryReplacement',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. value1,value2,value3',
+						description:
+							'Comma-separated list of the values you want to use as query parameters. You can drag the values from the input panel on the left.',
+						hint: 'Comma-separated list of values: reference them in your query as ? (in order) or :1, :2, :3…',
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -193,7 +221,25 @@ export class Snowflake implements INodeType {
 					query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
 				}
 
-				const responseData = await execute(connection, query, []);
+				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				const rawReplacement = options.queryReplacement;
+				let binds: snowflake.Bind[] = [];
+
+				if (rawReplacement !== undefined && rawReplacement !== '') {
+					if (typeof rawReplacement === 'string') {
+						binds = rawReplacement.split(',').map((entry) => entry.trim());
+					} else if (Array.isArray(rawReplacement)) {
+						binds = rawReplacement as snowflake.Bind[];
+					} else {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Query Parameters must be a string of comma-separated values, or an array of values',
+							{ itemIndex: i },
+						);
+					}
+				}
+
+				const responseData = await execute(connection, query, binds);
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
@@ -210,12 +256,12 @@ export class Snowflake implements INodeType {
 			const table = this.getNodeParameter('table', 0) as string;
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map((column) => column.trim());
-			const query = `INSERT INTO ${table}(${columns.join(',')}) VALUES (${columns
-				.map((_column) => '?')
-				.join(',')})`;
+			const quotedTable = escapeSnowflakeObjectIdentifier(table);
+			const quotedColumns = columns.map(escapeSnowflakeIdentifier);
+			const query = `INSERT INTO ${quotedTable} (${quotedColumns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
 			const data = this.helpers.copyInputItems(items, columns);
-			const binds = data.map((element) => Object.values(element));
-			await execute(connection, query, binds as unknown as snowflake.InsertBinds);
+			const binds = data.map((element) => [...Object.values(element)]);
+			await execute(connection, query, binds as snowflake.Binds);
 			data.forEach((d, i) => {
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(d),
@@ -239,13 +285,22 @@ export class Snowflake implements INodeType {
 				columns.unshift(updateKey);
 			}
 
-			const query = `UPDATE ${table} SET ${columns
-				.map((column) => `${column} = ?`)
-				.join(',')} WHERE ${updateKey} = ?;`;
+			const quotedTable = escapeSnowflakeObjectIdentifier(table);
+			const quotedColumns = columns.map(escapeSnowflakeIdentifier);
+			const quotedUpdateKey = escapeSnowflakeIdentifier(updateKey);
+			const query = `UPDATE ${quotedTable} SET ${quotedColumns.map((col) => `${col} = ?`).join(',')} WHERE ${quotedUpdateKey} = ?;`;
 			const data = this.helpers.copyInputItems(items, columns);
-			const binds = data.map((element) => Object.values(element).concat(element[updateKey]));
+			const binds = data.map((element) => {
+				const values = Object.values(element);
+				const rowBinds: unknown[] = [];
+				columns.forEach((_col, idx) => {
+					rowBinds.push(values[idx]);
+				});
+				rowBinds.push(element[updateKey]);
+				return rowBinds;
+			});
 			for (let i = 0; i < binds.length; i++) {
-				await execute(connection, query, binds[i] as unknown as snowflake.InsertBinds);
+				await execute(connection, query, binds[i] as snowflake.Binds);
 			}
 			data.forEach((d, i) => {
 				const executionData = this.helpers.constructExecutionMetaData(

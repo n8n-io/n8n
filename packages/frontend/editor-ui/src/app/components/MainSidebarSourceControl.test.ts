@@ -31,6 +31,14 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
+const mockShowError = vi.fn();
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: mockShowError,
+	}),
+}));
+
 const renderComponent = createComponentRenderer(MainSidebarSourceControl);
 
 describe('MainSidebarSourceControl', () => {
@@ -57,6 +65,7 @@ describe('MainSidebarSourceControl', () => {
 
 		sourceControlStore = useSourceControlStore();
 		vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
+		mockShowError.mockReset();
 	});
 
 	it('should render nothing when not instance owner', async () => {

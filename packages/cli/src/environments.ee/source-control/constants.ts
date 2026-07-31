@@ -17,3 +17,5 @@ export const SOURCE_CONTROL_README = `
 `;
 export const SOURCE_CONTROL_DEFAULT_NAME = 'n8n user';
 export const SOURCE_CONTROL_DEFAULT_EMAIL = 'n8n@example.com';
+export const SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE =
+	'The connected Git repository is missing the projects folder. An instance owner or instance admin must perform the next push so that projects are synced correctly with environments.';

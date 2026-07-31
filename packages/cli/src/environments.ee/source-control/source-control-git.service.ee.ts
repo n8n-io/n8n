@@ -22,6 +22,8 @@ import {
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_ORIGIN,
+	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
+	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { sourceControlFoldersExistCheck } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
@@ -137,6 +139,7 @@ export class SourceControlGitService {
 					// ensures that the credentials are only used for the configured repositoryUrl of the environment
 					'credential.useHttpPath=true',
 				],
+				unsafe: { allowUnsafeCredentialHelper: true },
 			};
 
 			this.git = simpleGit(httpsGitOptions).env('GIT_TERMINAL_PROMPT', '0');
@@ -156,7 +159,12 @@ export class SourceControlGitService {
 			// Quote paths to handle spaces and special characters
 			const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=no -i "${escapedPrivateKeyPath}"`;
 
-			this.git = simpleGit(this.gitOptions)
+			// Allow GIT_SSH_COMMAND so we can point SSH at n8n's own private key and known_hosts.
+			// This is safe because the command is constructed internally above, not from user input.
+			this.git = simpleGit({
+				...this.gitOptions,
+				unsafe: { allowUnsafeSshCommand: true },
+			})
 				.env('GIT_SSH_COMMAND', sshCommand)
 				.env('GIT_TERMINAL_PROMPT', '0');
 		}
@@ -484,5 +492,40 @@ export class SourceControlGitService {
 				{ cause: error },
 			);
 		}
+	}
+
+	/**
+	 * Instances that used environments before n8n 1.118.0 have workflows on the remote repository
+	 * but no projects directory yet. The first push after upgrading must be done by an instance admin.
+	 */
+	async requiresAdminPushForProjectsMigration(): Promise<boolean> {
+		const workflowsExist = await this.remoteDirectoryExists(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
+		if (!workflowsExist) {
+			return false;
+		}
+
+		const projectsExist = await this.remoteDirectoryExists(SOURCE_CONTROL_PROJECT_EXPORT_FOLDER);
+		return !projectsExist;
+	}
+
+	/**
+	 * Checks whether a directory exists on the remote tracking branch of the connected repository.
+	 * On git or network failure, throws — callers must not treat errors as "directory absent", or
+	 * non-admins could bypass the legacy migration admin push requirement (see LIGO-326).
+	 */
+	private async remoteDirectoryExists(directory: string): Promise<boolean> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (remoteDirectoryExists)');
+		}
+
+		const branchName = this.sourceControlPreferencesService.getPreferences().branchName;
+		if (!branchName) {
+			return false;
+		}
+
+		await this.fetch();
+		const remoteRef = `${SOURCE_CONTROL_ORIGIN}/${branchName}`;
+		const result = await this.git.raw(['ls-tree', remoteRef, directory]);
+		return result.trim().length > 0;
 	}
 }

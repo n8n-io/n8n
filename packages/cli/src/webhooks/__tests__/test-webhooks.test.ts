@@ -3,6 +3,7 @@ import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
 import { mock } from 'jest-mock-extended';
 import type {
+	Expression,
 	ITaskData,
 	IWorkflowBase,
 	IWebhookData,
@@ -48,6 +49,7 @@ describe('TestWebhooks', () => {
 	const testWebhooks = new TestWebhooks(
 		mock(),
 		mock(),
+		mock(),
 		registrations,
 		mock(),
 		mock(),
@@ -70,7 +72,7 @@ describe('TestWebhooks', () => {
 		};
 
 		test('if webhook is needed, should register then create webhook and return true', async () => {
-			const workflow = mock<Workflow>();
+			const workflow = mock<Workflow>({ expression: mock<Expression>() });
 
 			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
@@ -106,7 +108,7 @@ describe('TestWebhooks', () => {
 		});
 
 		test('returns false if a triggerToStartFrom with triggerData is given', async () => {
-			const workflow = mock<Workflow>();
+			const workflow = mock<Workflow>({ expression: mock<Expression>() });
 			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
@@ -123,7 +125,7 @@ describe('TestWebhooks', () => {
 
 		test('returns true, registers and then creates webhook if triggerToStartFrom is given with no triggerData', async () => {
 			// ARRANGE
-			const workflow = mock<Workflow>();
+			const workflow = mock<Workflow>({ expression: mock<Expression>() });
 			const webhook2 = mock<IWebhookData>({
 				node: 'trigger',
 				httpMethod,

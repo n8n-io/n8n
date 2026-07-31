@@ -31,6 +31,8 @@ const SIX_WEEKS_IN_MS = 6 * 7 * ONE_DAY_IN_MS;
 const RELEASE_EXPIRATION_WARNING =
 	'Error tracking disabled because this release is older than 6 weeks.';
 
+const SENTRY_MAX_VALUE_LENGTH = 500;
+
 @Service()
 export class ErrorReporter {
 	private expirationTimer?: NodeJS.Timeout;
@@ -147,6 +149,7 @@ export class ErrorReporter {
 			tracesSampleRate: inProduction ? 0.01 : 0,
 			serverName,
 			beforeBreadcrumb: () => null,
+			maxValueLength: SENTRY_MAX_VALUE_LENGTH,
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.includes(name)),

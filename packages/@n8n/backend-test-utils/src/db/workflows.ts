@@ -6,6 +6,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
+	WebhookRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
@@ -319,4 +320,13 @@ export async function createWorkflowWithActiveVersion(
 
 	workflow.activeVersionId = activeVersionId;
 	return workflow;
+}
+
+export async function deleteWorkflowAndWebhooks(workflowId: string) {
+	// Clear the active version reference first: deleting the workflow cascade-deletes its
+	// workflow_history rows, and the workflow_entity.activeVersionId -> workflow_history FK
+	// (ON DELETE RESTRICT) would otherwise block the delete on MySQL.
+	await Container.get(WorkflowRepository).update({ id: workflowId }, { activeVersionId: null });
+	await Container.get(WorkflowRepository).delete({ id: workflowId });
+	await Container.get(WebhookRepository).delete({ workflowId });
 }

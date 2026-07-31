@@ -38,7 +38,7 @@ export class TaskBrokerWsServer {
 		private readonly logger: Logger,
 		private readonly taskBroker: TaskBroker,
 		private disconnectAnalyzer: DefaultTaskRunnerDisconnectAnalyzer,
-		private readonly taskTunnersConfig: TaskRunnersConfig,
+		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {}
 
@@ -47,7 +47,7 @@ export class TaskBrokerWsServer {
 	}
 
 	private startHeartbeatChecks() {
-		const { heartbeatInterval } = this.taskTunnersConfig;
+		const { heartbeatInterval } = this.taskRunnersConfig;
 
 		if (heartbeatInterval <= 0) {
 			throw new UserError('Heartbeat interval must be greater than 0');
@@ -164,7 +164,7 @@ export class TaskBrokerWsServer {
 			const disconnectError = await this.disconnectAnalyzer.toDisconnectError({
 				runnerId: id,
 				reason,
-				heartbeatInterval: this.taskTunnersConfig.heartbeatInterval,
+				heartbeatInterval: this.taskRunnersConfig.heartbeatInterval,
 			});
 			this.taskBroker.deregisterRunner(id, disconnectError);
 			this.logger.debug(`Deregistered runner "${id}"`);
