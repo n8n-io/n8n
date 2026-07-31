@@ -2,6 +2,8 @@ import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
 
+export type PollerCursor = Record<string, unknown>;
+
 /**
  * Durable state for one poll trigger node.
  *
@@ -21,7 +23,7 @@ export class PollerState extends WithTimestamps {
 	 * e.g. a timestamp, a page token, or a list of already-emitted ids.
 	 */
 	@JsonColumn({ default: '{}' })
-	cursor: Record<string, unknown>;
+	cursor: PollerCursor;
 
 	@Column({ type: 'int', default: 0 })
 	consecutiveErrors: number;
