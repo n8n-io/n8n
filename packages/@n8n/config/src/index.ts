@@ -27,6 +27,7 @@ import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { HttpRequestConfig } from './configs/http-request.config';
 import { InstanceAiConfig } from './configs/instance-ai.config';
 import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
+import { LanguagesConfig } from './configs/languages.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { McpClientConfig } from './configs/mcp-client.config';
@@ -58,6 +59,8 @@ export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
+export { LanguagesConfig } from './configs/languages.config';
+export type { LanguageDefinitions } from './configs/languages.config';
 export { sampleRateSchema } from './configs/sentry.config';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
@@ -227,9 +230,12 @@ export class GlobalConfig {
 	@Nested
 	httpRequest: HttpRequestConfig;
 
-	/** Default locale for the UI. */
+	/** Default locale for the UI. May reference a code declared in `languages.available`. */
 	@Env('N8N_DEFAULT_LOCALE')
 	defaultLocale: string = 'en';
+
+	@Nested
+	languages: LanguagesConfig;
 
 	/** Whether to hide the page that shows active workflows and executions count. */
 	@Env('N8N_HIDE_USAGE_PAGE')

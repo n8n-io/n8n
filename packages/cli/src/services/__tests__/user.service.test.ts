@@ -23,6 +23,7 @@ import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
+import type { LanguageService } from '../language.service';
 import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
@@ -55,6 +56,7 @@ describe('UserService', () => {
 	const jwtService = mockInstance(JwtService, {
 		sign: vi.fn().mockReturnValue('mock-jwt-token'),
 	});
+	const languageService = mock<LanguageService>();
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -68,6 +70,7 @@ describe('UserService', () => {
 		globalConfig,
 		jwtService,
 		projectService,
+		languageService,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -254,6 +257,41 @@ describe('UserService', () => {
 
 			expect(userRepository.save).toHaveBeenCalledWith({ ...user, ...data }, { transaction: true });
 			expect(userRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateSettings', () => {
+		beforeEach(() => {
+			globalConfig.languages.userSettingEnabled = true;
+		});
+
+		it('should reject a locale change when the user setting is disabled', async () => {
+			globalConfig.languages.userSettingEnabled = false;
+
+			await expect(userService.updateSettings('1234', { locale: 'de' })).rejects.toThrow(
+				'Personal UI language selection is not supported on this instance',
+			);
+			expect(userRepository.findOneOrFail).not.toHaveBeenCalled();
+		});
+
+		it('should reject an unknown locale', async () => {
+			languageService.isAvailable.mockReturnValue(false);
+
+			await expect(userService.updateSettings('1234', { locale: 'xx' })).rejects.toThrow(
+				'Unknown UI language: "xx"',
+			);
+		});
+
+		it('should persist a known locale when the user setting is enabled', async () => {
+			const user = Object.assign(new User(), { id: '1234', settings: {} });
+			languageService.isAvailable.mockReturnValue(true);
+			userRepository.findOneOrFail.mockResolvedValueOnce(user);
+
+			await userService.updateSettings('1234', { locale: 'de' });
+
+			expect(userRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ settings: { locale: 'de' } }),
+			);
 		});
 	});
 

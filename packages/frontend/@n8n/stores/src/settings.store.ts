@@ -328,6 +328,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 		setSettings(fetchedSettings);
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+		// Not present on the public (pre-auth) settings payload - only needed for the
+		// personal-language picker, which only renders once a user is authenticated.
+		if (fetchedSettings.availableLocales) {
+			rootStore.setAvailableLocales(fetchedSettings.availableLocales);
+		}
 
 		// Set MFA enforced state even for public settings mode
 		// as it is needed to determine if the MFA setup page should be shown

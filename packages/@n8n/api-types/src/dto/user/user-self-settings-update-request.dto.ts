@@ -15,4 +15,6 @@ import { Z } from '../../zod-class';
 export class UserSelfSettingsUpdateRequestDto extends Z.class({
 	easyAIWorkflowOnboarded: z.boolean().optional(),
 	dismissedCallouts: z.record(z.string(), z.boolean()).optional(),
+	/** Personal UI language override. Validated against configured languages in UserService. */
+	locale: z.string().optional(),
 }) {}
