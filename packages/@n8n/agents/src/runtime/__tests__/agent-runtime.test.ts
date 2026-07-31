@@ -482,6 +482,7 @@ describe('AgentRuntime — execution counters', () => {
 		const continuation = { childRunId: 'child-run-1', taskPath: '/root/research_0' };
 		const dynamicResumeSchema = z.object({ decision: z.literal('continue') });
 		let observedCtx: InterruptibleToolContext | undefined;
+		let shouldResuspend = true;
 		const suspendTool: BuiltTool = {
 			name: 'dynamic_suspend',
 			description: 'Suspends with invocation-specific state',
@@ -497,6 +498,10 @@ describe('AgentRuntime — execution counters', () => {
 					);
 				}
 				observedCtx = interruptibleCtx;
+				if (shouldResuspend) {
+					shouldResuspend = false;
+					return await interruptibleCtx.suspend({ prompt: 'Continue waiting?' });
+				}
 				return { resumed: true };
 			},
 		};
@@ -537,8 +542,7 @@ describe('AgentRuntime — execution counters', () => {
 		).rejects.toThrow('Invalid resume payload');
 		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
 
-		generateText.mockResolvedValueOnce(makeGenerateSuccess('resumed'));
-		await runtime.resume(
+		const second = await runtime.resume(
 			'generate',
 			{ decision: 'continue' },
 			{ runId: first.runId, toolCallId: 'tc-dynamic' },
@@ -546,6 +550,20 @@ describe('AgentRuntime — execution counters', () => {
 
 		expect(observedCtx?.continuation).toEqual(continuation);
 		expect(observedCtx?.resumeSchema).toEqual(publicSuspension?.resumeSchema);
+		expect(second.pendingSuspend?.[0]).toEqual(
+			expect.objectContaining({ resumeSchema: publicSuspension?.resumeSchema }),
+		);
+		const repeatedCheckpoint = await checkpointStore.load(first.runId);
+		expect(repeatedCheckpoint?.pendingToolCalls['tc-dynamic']).toEqual(
+			expect.objectContaining({ continuation }),
+		);
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('resumed'));
+		await runtime.resume(
+			'generate',
+			{ decision: 'continue' },
+			{ runId: first.runId, toolCallId: 'tc-dynamic' },
+		);
 	});
 
 	it('keeps delegate_subagent output usage per tool call without adding it to generate result usage', async () => {

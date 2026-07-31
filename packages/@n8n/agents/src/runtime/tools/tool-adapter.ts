@@ -121,12 +121,21 @@ export async function executeTool(
 		const isCancelled = isCancellation(resumeData);
 		const ctx: InterruptibleToolContext = {
 			suspend: async (payload: unknown, options?: ToolSuspendOptions): Promise<never> => {
-				executionContext.onSuspend?.(payload, options);
+				const resolvedOptions: ToolSuspendOptions = {
+					resumeSchema: executionContext.resumeSchema,
+					continuation: executionContext.continuation,
+					...options,
+				};
+				executionContext.onSuspend?.(payload, resolvedOptions);
 				return await Promise.resolve({
 					[SUSPEND_BRAND]: true,
 					payload,
-					...(options?.resumeSchema !== undefined ? { resumeSchema: options.resumeSchema } : {}),
-					...(options?.continuation !== undefined ? { continuation: options.continuation } : {}),
+					...(resolvedOptions.resumeSchema !== undefined
+						? { resumeSchema: resolvedOptions.resumeSchema }
+						: {}),
+					...(resolvedOptions.continuation !== undefined
+						? { continuation: resolvedOptions.continuation }
+						: {}),
 				} as never);
 			},
 			resumeData: isCancelled ? undefined : resumeData,
