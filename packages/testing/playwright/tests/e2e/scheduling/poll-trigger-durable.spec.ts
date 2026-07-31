@@ -46,9 +46,10 @@ test.describe(
 			api,
 			services,
 		}) => {
-			// The seed poll above bypasses the scheduler; `fireScheduledJobsNow`
-			// backdates the job's `nextRunAt` so materialisation and execution pick
-			// it up on their next pass instead of waiting out the real cron interval.
+			// The seed poll above runs inline on activation, bypassing the scheduler.
+			// `fireScheduledJobsNow` forces the job's `nextRunAt` to now so the 1s
+			// sweep configured above claims it, instead of waiting out the real
+			// cron interval.
 			const { workflowId, nodeId } = await expectPollTriggerFires(
 				api,
 				services.proxy,
