@@ -1,3 +1,11 @@
+## [2.32.7](https://github.com/n8n-io/n8n/compare/n8n@2.32.6...n8n@2.32.7) (2026-07-31)
+
+
+### Bug Fixes
+
+* **core:** Import security audit risk reporters with a file extension ([#35267](https://github.com/n8n-io/n8n/issues/35267)) ([7d61ea0](https://github.com/n8n-io/n8n/commit/7d61ea01229858d1dc6f75fcdb60cf3ce644adaa))
+
+
 ## [2.32.6](https://github.com/n8n-io/n8n/compare/n8n@2.32.5...n8n@2.32.6) (2026-07-29)
 
 
