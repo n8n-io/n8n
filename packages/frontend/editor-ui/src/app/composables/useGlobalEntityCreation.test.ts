@@ -7,7 +7,7 @@ import { flushPromises } from '@vue/test-utils';
 import { useToast } from '@n8n/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
 

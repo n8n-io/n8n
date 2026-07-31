@@ -1,6 +1,7 @@
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
@@ -57,6 +58,61 @@ describe('classifyTriggerIdentity', () => {
 			expect(
 				classifyTriggerIdentity(MCP_TRIGGER_NODE_TYPE, { authentication: 'bearerAuth' }),
 			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: false });
+		});
+	});
+
+	describe('Form Trigger', () => {
+		it('provides both identities when n8nUserAuth is used and form OAuth2 is enabled', () => {
+			expect(
+				classifyTriggerIdentity(
+					FORM_TRIGGER_NODE_TYPE,
+					{ authentication: 'n8nUserAuth' },
+					{ isFormOAuth2Enabled: true },
+				),
+			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: true });
+		});
+
+		it('provides no identity when n8nUserAuth is used but form OAuth2 is disabled', () => {
+			// Without OAuth2 the form falls back to the cookie/HMAC flow, which gates page
+			// access without establishing an identity to resolve credentials with.
+			expect(
+				classifyTriggerIdentity(
+					FORM_TRIGGER_NODE_TYPE,
+					{ authentication: 'n8nUserAuth' },
+					{ isFormOAuth2Enabled: false },
+				),
+			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
+		});
+
+		it('provides no identity when the options bag is omitted', () => {
+			// Fails closed: a caller that has not read the flag must not let the
+			// combination through.
+			expect(
+				classifyTriggerIdentity(FORM_TRIGGER_NODE_TYPE, { authentication: 'n8nUserAuth' }),
+			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
+		});
+
+		it.each(['none', 'basicAuth'])(
+			'provides no identity for authentication %s even when form OAuth2 is enabled',
+			(authentication) => {
+				expect(
+					classifyTriggerIdentity(
+						FORM_TRIGGER_NODE_TYPE,
+						{ authentication },
+						{ isFormOAuth2Enabled: true },
+					),
+				).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
+			},
+		);
+
+		it('provides the external identity when an extractor hook is configured without n8nUserAuth', () => {
+			expect(
+				classifyTriggerIdentity(
+					FORM_TRIGGER_NODE_TYPE,
+					{ authentication: 'none', ...hooksParameters },
+					{ isFormOAuth2Enabled: true },
+				),
+			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: true });
 		});
 	});
 
