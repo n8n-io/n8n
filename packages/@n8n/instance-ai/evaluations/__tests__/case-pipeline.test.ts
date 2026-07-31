@@ -144,6 +144,9 @@ describe('createCasePipeline', () => {
 				costUsd: 0.42,
 				turns: 6,
 				toolCalls: { 'mcp__n8n-local__create_workflow_from_code': 2 },
+				toolErrors: [
+					{ tool: 'mcp__n8n-local__create_workflow_from_code', message: 'validation failed' },
+				],
 			},
 		};
 		const orchestrator = makeOrchestrator(cached);
@@ -163,6 +166,9 @@ describe('createCasePipeline', () => {
 			buildCostUsd: 0.42,
 			buildTurns: 6,
 			buildToolCalls: { 'mcp__n8n-local__create_workflow_from_code': 2 },
+			buildToolErrors: [
+				{ tool: 'mcp__n8n-local__create_workflow_from_code', message: 'validation failed' },
+			],
 		});
 		// Single-scenario case → this was the last row → artifacts deleted eagerly.
 		expect(vi.mocked(cleanupBuild)).toHaveBeenCalledTimes(1);

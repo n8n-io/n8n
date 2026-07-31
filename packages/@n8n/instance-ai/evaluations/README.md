@@ -454,7 +454,11 @@ How it differs from the manifest flow:
   `buildToolCallsPerRun` per case and `summary.mcpBuild.toolCalls` run-wide in
   `eval-results.json` (plus `build_tool_calls` in LangSmith experiment
   metadata) — answering *what the turns were spent on*, including the partial
-  stream of a timed-out build. For builder cost comparisons across any runs
+  stream of a timed-out build. Errored calls are additionally recorded with
+  their (truncated) error text: `buildToolErrorsPerRun` per case, per-tool
+  error counts in `summary.mcpBuild.toolErrors` and LangSmith
+  `build_tool_errors` experiment metadata, and a `build_tool_errors` count as
+  row feedback — the wasted-turns signal. For builder cost comparisons across any runs
   (MCP vs AIA, builder-model A/Bs), the un-wired helper
   `evaluations/cli/build-cost-report.ts` (run via `pnpm tsx`, one `--results`
   per arm) auto-detects each arm's cost source — these persisted fields, or

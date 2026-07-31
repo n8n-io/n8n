@@ -220,6 +220,17 @@ export function mergeToolCalls(into: ToolCallCounts, from: ToolCallCounts): void
 	}
 }
 
+/** One failed tool call: which tool errored and what `claude` saw. */
+export interface ToolCallError {
+	tool: string;
+	/** Error text of the `tool_result`, truncated to TOOL_ERROR_MESSAGE_CAP. */
+	message: string;
+}
+
+/** Cap on a recorded tool-error message — enough to diagnose (validation
+ *  errors, HTTP failures) without letting a huge payload bloat run outputs. */
+export const TOOL_ERROR_MESSAGE_CAP = 500;
+
 /** The stream's trailing `result` event — same shape the old `--output-format
  *  json` single object had, plus the event-type discriminator. */
 const resultEventSchema = claudeSessionSchema.extend({ type: z.literal('result') });
@@ -231,11 +242,57 @@ const assistantEventSchema = z
 		type: z.literal('assistant'),
 		message: z
 			.object({
-				content: z.array(z.object({ type: z.string(), name: z.string().optional() }).passthrough()),
+				content: z.array(
+					z
+						.object({ type: z.string(), id: z.string().optional(), name: z.string().optional() })
+						.passthrough(),
+				),
 			})
 			.passthrough(),
 	})
 	.passthrough();
+
+/** A `user` event carrying `tool_result` blocks — each closes a `tool_use`
+ *  (matched by id) and flags failure via `is_error`. */
+const toolResultEventSchema = z
+	.object({
+		type: z.literal('user'),
+		message: z
+			.object({
+				content: z.array(
+					z
+						.object({
+							type: z.string(),
+							tool_use_id: z.string().optional(),
+							is_error: z.boolean().optional(),
+							content: z.unknown().optional(),
+						})
+						.passthrough(),
+				),
+			})
+			.passthrough(),
+	})
+	.passthrough();
+
+/** Flatten a `tool_result`'s content (string, or array of text blocks) into
+ *  the error text, capped at TOOL_ERROR_MESSAGE_CAP. */
+function toolResultText(content: unknown): string {
+	let text = '';
+	if (typeof content === 'string') {
+		text = content;
+	} else if (Array.isArray(content)) {
+		const textBlockSchema = z.object({ text: z.string() });
+		text = content
+			.map((block) => {
+				const parsed = textBlockSchema.safeParse(block);
+				return parsed.success ? parsed.data.text : '';
+			})
+			.filter((t) => t.length > 0)
+			.join('\n');
+	}
+	text = text.trim();
+	return text.length > TOOL_ERROR_MESSAGE_CAP ? `${text.slice(0, TOOL_ERROR_MESSAGE_CAP)}…` : text;
+}
 
 export interface ParsedClaudeStream {
 	/** Session totals from the trailing `result` event; undefined when the
@@ -243,19 +300,26 @@ export interface ParsedClaudeStream {
 	session: ClaudeSession | undefined;
 	/** `tool_use` blocks counted per tool name across all assistant turns. */
 	toolCalls: ToolCallCounts;
+	/** Failed tool calls (`tool_result` with `is_error`), in stream order, each
+	 *  with the tool name and truncated error text. Errored calls are also
+	 *  counted in `toolCalls` — this is the failure subset. */
+	toolErrors: ToolCallError[];
 }
 
 /**
  * Parse `claude --output-format stream-json` NDJSON output. The trailing
  * `result` event carries the session totals (result text, num_turns, cost);
  * the assistant events' `tool_use` blocks attribute those turns to the
- * specific MCP tools they were spent on. Unrecognized or truncated lines are
- * skipped, so a stream cut short by a kill still yields the attribution it
- * recorded up to that point.
+ * specific MCP tools they were spent on, and the `tool_result` events flag
+ * which of those calls errored (matched back to the tool by `tool_use_id`).
+ * Unrecognized or truncated lines are skipped, so a stream cut short by a
+ * kill still yields the attribution it recorded up to that point.
  */
 export function parseClaudeStream(stdout: string): ParsedClaudeStream {
 	let session: ClaudeSession | undefined;
 	const toolCalls: ToolCallCounts = {};
+	const toolErrors: ToolCallError[] = [];
+	const toolNameById = new Map<string, string>();
 	for (const line of stdout.split('\n')) {
 		const trimmed = line.trim();
 		if (!trimmed) continue;
@@ -270,14 +334,26 @@ export function parseClaudeStream(stdout: string): ParsedClaudeStream {
 			for (const block of assistant.data.message.content) {
 				if (block.type === 'tool_use' && block.name) {
 					toolCalls[block.name] = (toolCalls[block.name] ?? 0) + 1;
+					if (block.id) toolNameById.set(block.id, block.name);
 				}
+			}
+			continue;
+		}
+		const toolResult = toolResultEventSchema.safeParse(event);
+		if (toolResult.success) {
+			for (const block of toolResult.data.message.content) {
+				if (block.type !== 'tool_result' || !block.is_error) continue;
+				// An id with no registered tool_use can only come from a corrupted
+				// stream — attribute it anyway rather than dropping the failure.
+				const tool = (block.tool_use_id && toolNameById.get(block.tool_use_id)) ?? '(unknown)';
+				toolErrors.push({ tool, message: toolResultText(block.content) });
 			}
 			continue;
 		}
 		const result = resultEventSchema.safeParse(event);
 		if (result.success) session = result.data;
 	}
-	return { session, toolCalls };
+	return { session, toolCalls, toolErrors };
 }
 
 /** Default per-attempt wall-clock cap for a `claude` build. Generous enough for
@@ -314,6 +390,8 @@ interface BuildAttempt {
 	/** Per-tool `tool_use` counts parsed from the attempt's event stream —
 	 *  populated even for timed-out attempts (partial streams still attribute). */
 	toolCalls: ToolCallCounts;
+	/** Failed tool calls from the attempt's stream, same partial-stream rules. */
+	toolErrors: ToolCallError[];
 	logFile: string;
 	/** True when the attempt was killed by the build timeout rather than exiting. */
 	timedOut: boolean;
@@ -367,11 +445,22 @@ async function runClaude(
 
 		// Resolve only once, and only after the process is actually dead (so the
 		// caller — and the lane allocator — never overlaps with a live subprocess).
-		const settle = (session: ClaudeSession | undefined, toolCalls: ToolCallCounts) => {
+		const settle = (
+			session: ClaudeSession | undefined,
+			toolCalls: ToolCallCounts,
+			toolErrors: ToolCallError[],
+		) => {
 			if (settled) return;
 			settled = true;
 			clearTimers();
-			resolve({ session, toolCalls, logFile, timedOut, spawnError: spawnError?.message });
+			resolve({
+				session,
+				toolCalls,
+				toolErrors,
+				logFile,
+				timedOut,
+				spawnError: spawnError?.message,
+			});
 		};
 
 		child.stdout.on('data', (chunk: Buffer) => {
@@ -396,6 +485,7 @@ async function runClaude(
 			writeFileSync(logFile, stream || stderr || fallback);
 			let session: ClaudeSession | undefined;
 			let toolCalls: ToolCallCounts = {};
+			let toolErrors: ToolCallError[] = [];
 			if (!spawnError) {
 				// Parse even a timed-out stream: what a hung build spent its turns on
 				// is exactly the forensic signal we want. `session` stays undefined on
@@ -403,9 +493,10 @@ async function runClaude(
 				// stray one must not turn a killed attempt into a success.
 				const parsed = parseClaudeStream(stdout);
 				toolCalls = parsed.toolCalls;
+				toolErrors = parsed.toolErrors;
 				if (!timedOut) session = parsed.session;
 			}
-			settle(session, toolCalls);
+			settle(session, toolCalls, toolErrors);
 		});
 		child.on('error', (error) => {
 			// No pid = the process never spawned (e.g. `claude` not on PATH). Node
@@ -417,7 +508,7 @@ async function runClaude(
 				spawnError = error;
 				return;
 			}
-			settle(undefined, {});
+			settle(undefined, {}, []);
 		});
 
 		if (settings.buildTimeoutMs && settings.buildTimeoutMs > 0) {
@@ -504,6 +595,10 @@ export interface McpBuildResult {
 	 *  to the specific MCP tools they were spent on. Timed-out attempts
 	 *  contribute the calls their partial stream recorded. */
 	toolCalls: ToolCallCounts;
+	/** Failed tool calls across every attempt, in stream order, with truncated
+	 *  error text — the failure subset of `toolCalls` (turns burned on retries
+	 *  after validation/HTTP errors show up here). */
+	toolErrors: ToolCallError[];
 	/** `claude` wall-clock summed across every attempt (ms). */
 	durationMs: number;
 	/** Path to the last attempt's captured `claude` event stream (NDJSON), for post-mortem. */
@@ -541,6 +636,7 @@ export async function buildWorkflowViaMcp(opts: {
 	let totalTurns = 0;
 	let totalDurationMs = 0;
 	const totalToolCalls: ToolCallCounts = {};
+	const totalToolErrors: ToolCallError[] = [];
 
 	for (let attempt = 1; attempt <= settings.maxAttempts; attempt++) {
 		const ts = new Date().toISOString().replace(/[:.]/g, '-');
@@ -550,7 +646,7 @@ export async function buildWorkflowViaMcp(opts: {
 			`${slug}-iter${String(iteration)}-attempt${String(attempt)}-${ts}.jsonl`,
 		);
 		lastLogFile = logFile;
-		const { session, toolCalls, timedOut, spawnError } = await runClaude(
+		const { session, toolCalls, toolErrors, timedOut, spawnError } = await runClaude(
 			userMessage,
 			settings,
 			mcpConfigPath,
@@ -561,6 +657,7 @@ export async function buildWorkflowViaMcp(opts: {
 		totalTurns += session?.num_turns ?? 0;
 		totalDurationMs += session?.duration_ms ?? 0;
 		mergeToolCalls(totalToolCalls, toolCalls);
+		totalToolErrors.push(...toolErrors);
 		const id = session?.result ? tailWorkflowId(session.result) : null;
 		if (id) {
 			workflowId = id;
@@ -603,6 +700,7 @@ export async function buildWorkflowViaMcp(opts: {
 		cost: totalCostUsd,
 		turns: totalTurns,
 		toolCalls: totalToolCalls,
+		toolErrors: totalToolErrors,
 		durationMs: totalDurationMs,
 		logFile: lastLogFile,
 		failureReason: workflowId ? undefined : failureReason,

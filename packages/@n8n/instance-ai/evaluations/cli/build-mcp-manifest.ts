@@ -15,6 +15,7 @@ import {
 	stageMcpConfigFromClaudeJson,
 	uniqueProjectScopes,
 	type ToolCallCounts,
+	type ToolCallError,
 } from './mcp-builder';
 import { runWithConcurrency } from '../harness/cleanup';
 import { createLogger } from '../harness/logger';
@@ -288,6 +289,8 @@ interface BuildOutcome {
 	turns: number;
 	/** Per-tool `tool_use` counts — attributes `turns` to specific MCP tools. */
 	toolCalls: ToolCallCounts;
+	/** Failed tool calls (tool + truncated error text) — subset of toolCalls. */
+	toolErrors: ToolCallError[];
 	durationMs: number;
 }
 
@@ -333,6 +336,7 @@ async function buildOne(
 		cost: result.cost,
 		turns: result.turns,
 		toolCalls: result.toolCalls,
+		toolErrors: result.toolErrors,
 		durationMs: result.durationMs,
 	};
 }
@@ -385,9 +389,14 @@ function writeStats(args: CliArgs, results: BuildOutcome[]): void {
 	const sum = (selector: (r: BuildOutcome) => number) =>
 		successful.reduce((s, r) => s + selector(r), 0);
 
-	// Per-tool call totals across successful builds — where the turns went.
+	// Per-tool call/error totals across successful builds — where the turns
+	// went, and which tools kept failing (messages stay on the per-build rows).
 	const toolCallTotals: ToolCallCounts = {};
-	for (const r of successful) mergeToolCalls(toolCallTotals, r.toolCalls);
+	const toolErrorTotals: ToolCallCounts = {};
+	for (const r of successful) {
+		mergeToolCalls(toolCallTotals, r.toolCalls);
+		for (const { tool } of r.toolErrors) toolErrorTotals[tool] = (toolErrorTotals[tool] ?? 0) + 1;
+	}
 
 	const stats = {
 		version: 1 as const,
@@ -399,6 +408,7 @@ function writeStats(args: CliArgs, results: BuildOutcome[]): void {
 			totalCostUSD: sum((r) => r.cost),
 			avgDurationMs: total > 0 ? sum((r) => r.durationMs) / total : 0,
 			toolCallTotals,
+			toolErrorTotals,
 		},
 		builds: successful.map((r) => ({
 			slug: r.slug,
@@ -406,6 +416,7 @@ function writeStats(args: CliArgs, results: BuildOutcome[]): void {
 			workflowId: r.workflowId,
 			turns: r.turns,
 			toolCalls: r.toolCalls,
+			toolErrors: r.toolErrors,
 			costUSD: r.cost,
 			durationMs: r.durationMs,
 		})),

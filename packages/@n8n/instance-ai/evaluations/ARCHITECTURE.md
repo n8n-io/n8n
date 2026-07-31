@@ -78,8 +78,8 @@ split them out of the old `runner.ts` monolith):
   `### Instance AI Workflow Eval` prefix.
 - **LangSmith feedback keys** (`scenario_pass`, `failure_category`,
   `evals.workflows.*`, `pass_at_k`, `pass_hat_k` — plus `build_cost_usd` /
-  `build_turns` on `--build-via-mcp` rows) and the traced span names
-  feed the LangSmith→BigQuery analytics.
+  `build_turns` / `build_tool_errors` on `--build-via-mcp` rows) and the
+  traced span names feed the LangSmith→BigQuery analytics.
 - **`pnpm eval:*` script names** are invoked by CI workflows and
   `run-eval-lanes.sh`.
 

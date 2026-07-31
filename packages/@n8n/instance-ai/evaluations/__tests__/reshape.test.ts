@@ -152,6 +152,9 @@ describe('reshapeLangSmithRuns', () => {
 					buildCostUsd: 0.37,
 					buildTurns: 6,
 					buildToolCalls: { 'mcp__n8n-local__create_workflow_from_code': 1 },
+					buildToolErrors: [
+						{ tool: 'mcp__n8n-local__create_workflow_from_code', message: 'validation failed' },
+					],
 				},
 			),
 		];
@@ -163,6 +166,9 @@ describe('reshapeLangSmithRuns', () => {
 		expect(result[0][0].buildToolCalls).toEqual({
 			'mcp__n8n-local__create_workflow_from_code': 1,
 		});
+		expect(result[0][0].buildToolErrors).toEqual([
+			{ tool: 'mcp__n8n-local__create_workflow_from_code', message: 'validation failed' },
+		]);
 	});
 
 	it('attaches build-expectation verdicts by iteration:fileSlug even with no threadId (prebuilt/MCP path)', () => {
