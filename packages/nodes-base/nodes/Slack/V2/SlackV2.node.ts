@@ -1107,12 +1107,8 @@ export class SlackV2 implements INodeType {
 								sort: sortBy,
 								sort_dir: sortDir,
 							};
-							const searchChannel = toMultiOptionsCsv(options.searchChannel);
-							if (searchChannel) {
-								body.modifiers = searchChannel
-									.split(',')
-									.map((channel) => `in:${channel}`)
-									.join(' ');
+							if (options.modifiers) {
+								body.modifiers = options.modifiers as string;
 							}
 							const channelTypes = toMultiOptionsCsv(options.channelTypes);
 							if (channelTypes) {
@@ -1127,6 +1123,18 @@ export class SlackV2 implements INodeType {
 							}
 							if (options.keywordSearchOnly) {
 								body.disable_semantic_search = true;
+							}
+							if (options.includeArchivedChannels) {
+								body.include_archived_channels = true;
+							}
+							if (options.includeBots) {
+								body.include_bots = true;
+							}
+							if (options.includeDeletedUsers) {
+								body.include_deleted_users = true;
+							}
+							if (options.includeMessageBlocks) {
+								body.include_message_blocks = true;
 							}
 
 							responseData = await searchContextItems.call(

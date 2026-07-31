@@ -77,9 +77,13 @@ describe('Test SlackV2 v2.7, message => search', () => {
 			content_types: ['messages'],
 			sort: 'timestamp',
 			sort_dir: 'desc',
-			modifiers: 'in:test-002',
+			modifiers: 'has:pin before:yesterday',
 			channel_types: ['public_channel', 'private_channel'],
 			disable_semantic_search: true,
+			include_archived_channels: true,
+			include_bots: true,
+			include_deleted_users: true,
+			include_message_blocks: true,
 			limit: 2,
 		})
 		.reply(200, API_RESPONSE);

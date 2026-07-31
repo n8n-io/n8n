@@ -15,9 +15,13 @@
 				"query": "test",
 				"limit": 2,
 				"options": {
-					"searchChannel": ["test-002"],
+					"modifiers": "has:pin before:yesterday",
 					"channelTypes": ["public_channel", "private_channel"],
-					"keywordSearchOnly": true
+					"keywordSearchOnly": true,
+					"includeArchivedChannels": true,
+					"includeBots": true,
+					"includeDeletedUsers": true,
+					"includeMessageBlocks": true
 				}
 			},
 			"id": "2e1937a6-4c8f-4cd1-ae42-11b2bd12cc4c",

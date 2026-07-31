@@ -1466,12 +1466,74 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 			{
+				displayName: 'Include Archived Channels',
+				name: 'includeArchivedChannels',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include archived channels in the results',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Include Bots',
+				name: 'includeBots',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include messages sent by bots',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Include Deleted Users',
+				name: 'includeDeletedUsers',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include deleted users in the results',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Include Message Blocks',
+				name: 'includeMessageBlocks',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return the rich text blocks of each message alongside its text',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Keyword Search Only',
 				name: 'keywordSearchOnly',
 				type: 'boolean',
 				default: false,
 				description:
 					'Whether to match keywords only. By default Slack also returns semantically similar messages.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Modifiers',
+				name: 'modifiers',
+				type: 'string',
+				default: '',
+				placeholder: 'has:pin before:yesterday',
+				description:
+					'Slack search filters to narrow the results, given as space-separated modifier:value pairs',
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 2.7 } }],
@@ -1487,6 +1549,11 @@ export const messageFields: INodeProperties[] = [
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getChannelsName',
+				},
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lte: 2.6 } }],
+					},
 				},
 			},
 		],
