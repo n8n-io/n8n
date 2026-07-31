@@ -259,6 +259,48 @@ test.describe(
 			await expect(n8n.executions.logsPanel.getLogEntries().nth(2)).toContainText('E2E Chat Model');
 		});
 
+		test('should refresh chat history when switching between past executions', async ({
+			n8n,
+			anthropicCredential,
+			setupRequirements,
+		}) => {
+			await setupRequirements({ workflow: 'Workflow_ai_agent.json' });
+
+			await n8n.canvas.clickZoomToFitButton();
+			await n8n.canvas.openNode('E2E Chat Model');
+			await expect(n8n.ndv.getCredentialSelect()).toHaveValue(anthropicCredential.name);
+			await n8n.ndv.close();
+			await n8n.canvas.logsPanel.open();
+
+			await n8n.canvas.logsPanel.sendManualChatMessage('First message');
+			await n8n.notifications.waitForNotificationAndClose('Successful');
+			await n8n.canvas.logsPanel.refreshSession();
+			await n8n.canvas.logsPanel.sendManualChatMessage('Second message');
+			await n8n.notifications.waitForNotificationAndClose('Successful');
+
+			await n8n.canvas.openExecutions();
+			await n8n.executions.getAutoRefreshButton().click();
+			await expect(n8n.executions.getExecutionItems()).toHaveCount(2);
+
+			// Newest execution first
+			await n8n.executions.getExecutionItems().nth(0).click();
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText(
+				'Second message',
+			);
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
+
+			await n8n.executions.getExecutionItems().nth(1).click();
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText(
+				'First message',
+			);
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
+
+			await n8n.executions.getExecutionItems().nth(0).click();
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText(
+				'Second message',
+			);
+		});
+
 		test('should show logs for a workflow with a node that waits for webhook', async ({
 			n8n,
 			api,
