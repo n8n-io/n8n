@@ -373,12 +373,10 @@ export class MessageEventBusDestinationWebhook
 					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
 				} catch {}
 			} else if (this.genericAuthType === 'httpTemplatedCustomAuth') {
-				try {
-					httpTemplatedCustomAuth = await this.matchDecryptedCredentialType(
-						'httpTemplatedCustomAuth',
-						false,
-					);
-				} catch {}
+				httpTemplatedCustomAuth = await this.matchDecryptedCredentialType(
+					'httpTemplatedCustomAuth',
+					false,
+				);
 			}
 		}
 
