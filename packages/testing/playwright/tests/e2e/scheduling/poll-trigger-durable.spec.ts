@@ -1,4 +1,8 @@
-import { expectPollTriggerFires } from './poll-trigger-helpers';
+import {
+	expectNewTriggerExecution,
+	expectPollTriggerFires,
+	triggerExecutionIds,
+} from './poll-trigger-helpers';
 import { makePollTriggerWorkflow, makeCronPollTriggerWorkflow } from './poll-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
 
@@ -24,10 +28,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should fire the activation-time seed poll and provision a durable job', async ({
-			api,
-			services,
-		}) => {
+		test('should fire the activation-time seed poll', async ({ api, services }) => {
 			// Only proves the seed poll that runs inline on activation; the durable
 			// claim/dispatch path is exercised separately below.
 			await expectPollTriggerFires(api, services.proxy, makePollTriggerWorkflow);
@@ -49,21 +50,17 @@ test.describe(
 			// `fireScheduledJobsNow` forces the job's `nextRunAt` to now so the 1s
 			// sweep configured above claims it, instead of waiting out the real
 			// cron interval.
-			const { workflowId, nodeId, path } = await expectPollTriggerFires(
+			const { workflowId, nodeId } = await expectPollTriggerFires(
 				api,
 				services.proxy,
 				makePollTriggerWorkflow,
+				{ itemsAfterSeedPoll: [{ id: 1 }, { id: 2 }] },
 			);
 
-			await services.proxy.createGetExpectation(path, { items: [{ id: 2 }] });
+			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 
-			const scheduledExecution = await api.workflows.waitForExecution(
-				workflowId,
-				15_000,
-				'trigger',
-			);
-			expect(scheduledExecution.status).toBe('success');
+			await expectNewTriggerExecution(api, workflowId, afterSeedPoll);
 		});
 
 		test('should remove the durable job when the workflow is deactivated', async ({
