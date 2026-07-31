@@ -74,6 +74,9 @@ const targetOutputSchema = z.object({
 	buildCostUsd: z.number().optional(),
 	/** Assistant turns across the `claude` build's attempts (--build-via-mcp only). */
 	buildTurns: z.number().optional(),
+	/** Per-tool `tool_use` counts across the build's attempts (--build-via-mcp
+	 *  only) — attributes `buildTurns` to specific MCP tools. */
+	buildToolCalls: z.record(z.number()).optional(),
 	execDurationMs: z.number().default(0),
 	nodeCount: z.number().default(0),
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
@@ -260,6 +263,7 @@ export function reshapeLangSmithRuns(
 			let buildTrace: BuildTrace | undefined;
 			let buildCostUsd: number | undefined;
 			let buildTurns: number | undefined;
+			let buildToolCalls: Record<string, number> | undefined;
 
 			for (const scenario of testCase.executionScenarios ?? []) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
@@ -286,6 +290,7 @@ export function reshapeLangSmithRuns(
 				// Every row of the case repeats the build's spend — first defined wins.
 				buildCostUsd ??= output.buildCostUsd;
 				buildTurns ??= output.buildTurns;
+				buildToolCalls ??= output.buildToolCalls;
 				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
@@ -317,6 +322,7 @@ export function reshapeLangSmithRuns(
 					buildTrace = output.buildTrace;
 					buildCostUsd = output.buildCostUsd;
 					buildTurns = output.buildTurns;
+					buildToolCalls = output.buildToolCalls;
 				}
 			}
 
@@ -339,6 +345,7 @@ export function reshapeLangSmithRuns(
 				buildTrace,
 				buildCostUsd,
 				buildTurns,
+				buildToolCalls,
 				n8nBaseUrl,
 				runDebug: threadId ? runDebugByThreadId.get(threadId) : undefined,
 			});

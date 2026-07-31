@@ -151,6 +151,7 @@ describe('reshapeLangSmithRuns', () => {
 					reasoning: 'ok',
 					buildCostUsd: 0.37,
 					buildTurns: 6,
+					buildToolCalls: { 'mcp__n8n-local__create_workflow_from_code': 1 },
 				},
 			),
 		];
@@ -159,6 +160,9 @@ describe('reshapeLangSmithRuns', () => {
 
 		expect(result[0][0].buildCostUsd).toBe(0.37);
 		expect(result[0][0].buildTurns).toBe(6);
+		expect(result[0][0].buildToolCalls).toEqual({
+			'mcp__n8n-local__create_workflow_from_code': 1,
+		});
 	});
 
 	it('attaches build-expectation verdicts by iteration:fileSlug even with no threadId (prebuilt/MCP path)', () => {

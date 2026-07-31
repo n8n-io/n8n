@@ -384,7 +384,14 @@ async function updateExperimentAggregates(config: {
 		unique_builds: uniqueBuilds,
 		pass_rate_per_iter: computePassRatePerIter(evaluation),
 		...(config.buildModel ? { build_model: config.buildModel } : {}),
-		...(spend ? { total_build_cost_usd: spend.totalCostUsd, avg_build_turns: spend.avgTurns } : {}),
+		...(spend
+			? {
+					total_build_cost_usd: spend.totalCostUsd,
+					avg_build_turns: spend.avgTurns,
+					// Per-tool call totals across all builds — what the turns were spent on.
+					build_tool_calls: spend.toolCalls,
+				}
+			: {}),
 	};
 
 	try {

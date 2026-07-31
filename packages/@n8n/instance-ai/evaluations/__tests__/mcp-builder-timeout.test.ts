@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
-import { mkdtempSync } from 'fs';
+import { mkdtempSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
@@ -41,9 +41,30 @@ describe('buildWorkflowViaMcp — build timeout', () => {
 	});
 
 	it('kills a hung build at the timeout, reports it, and does NOT retry', async () => {
-		// Child never emits close on its own → only the timeout can end it.
+		// Child never emits close on its own → only the timeout can end it. It
+		// gets one tool call into its event stream before hanging.
 		const child = makeFakeChild();
 		vi.mocked(spawn).mockReturnValue(child as unknown as ReturnType<typeof spawn>);
+		setImmediate(() => {
+			child.stdout.emit(
+				'data',
+				Buffer.from(
+					JSON.stringify({
+						type: 'assistant',
+						message: {
+							content: [
+								{
+									type: 'tool_use',
+									id: 'toolu_0',
+									name: 'mcp__n8n-local__search_nodes',
+									input: {},
+								},
+							],
+						},
+					}) + '\n',
+				),
+			);
+		});
 
 		const result = await buildWorkflowViaMcp({
 			conversation: [{ role: 'user', text: 'build a contact form' }],
@@ -60,6 +81,11 @@ describe('buildWorkflowViaMcp — build timeout', () => {
 		expect(child.kill).toHaveBeenCalledWith('SIGTERM');
 		// maxAttempts is 3, but a timeout must not retry — exactly one spawn.
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
+		// The partial stream still attributes what the hung build was doing…
+		expect(result.toolCalls).toEqual({ 'mcp__n8n-local__search_nodes': 1 });
+		// …and the persisted stream ends with the timeout marker line.
+		const logged = readFileSync(String(result.logFile), 'utf-8');
+		expect(logged.trimEnd().split('\n').at(-1)).toBe('{"subtype":"timeout"}');
 	});
 
 	it('does not arm a killer when buildTimeoutMs is 0 (disabled)', async () => {
@@ -69,7 +95,13 @@ describe('buildWorkflowViaMcp — build timeout', () => {
 		setImmediate(() => {
 			child.stdout.emit(
 				'data',
-				Buffer.from(JSON.stringify({ result: 'created\nWORKFLOW_ID=W1', subtype: 'success' })),
+				Buffer.from(
+					JSON.stringify({
+						type: 'result',
+						result: 'created\nWORKFLOW_ID=W1',
+						subtype: 'success',
+					}) + '\n',
+				),
 			);
 			child.emit('close', 0);
 		});

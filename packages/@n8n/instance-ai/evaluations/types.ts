@@ -315,6 +315,9 @@ export interface WorkflowTestCaseResult {
 	buildCostUsd?: number;
 	/** Assistant turns across the `claude` build's attempts (--build-via-mcp only). */
 	buildTurns?: number;
+	/** Per-tool `tool_use` counts across the `claude` build's attempts
+	 *  (--build-via-mcp only) — attributes `buildTurns` to specific MCP tools. */
+	buildToolCalls?: Record<string, number>;
 	/** Per-expectation verdicts from the build-expectations judge. Aggregated as
 	 *  scoring units alongside execution scenarios. */
 	buildExpectationResults?: BuildExpectationResult[];

@@ -14,6 +14,7 @@ import { parseTargetOutput, reshapeLangSmithRuns, type ReshapeRunRow } from './r
 import { roundRobinCaseRows } from './rows';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import type { CliArgs } from '../cli/args';
+import { mergeToolCalls } from '../cli/mcp-builder';
 import type { ComparisonOutcome, ComparisonResult } from '../comparison/compare';
 import { formatComparisonMarkdown, type RerunHint } from '../comparison/format';
 import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
@@ -35,16 +36,25 @@ import { caseDisplayPrompt } from '../utils/conversation-text';
  * Each entry already sums every attempt of its build (see McpBuildSpend), so
  * the totals are the run's true spend.
  */
-export function summarizeMcpBuildSpend(
-	spend: McpBuildSpend[] | undefined,
-): { builds: number; totalCostUsd: number; avgTurns: number } | undefined {
+export function summarizeMcpBuildSpend(spend: McpBuildSpend[] | undefined):
+	| {
+			builds: number;
+			totalCostUsd: number;
+			avgTurns: number;
+			toolCalls: Record<string, number>;
+	  }
+	| undefined {
 	if (!spend || spend.length === 0) return undefined;
 	const totalCost = spend.reduce((sum, s) => sum + s.costUsd, 0);
 	const totalTurns = spend.reduce((sum, s) => sum + s.turns, 0);
+	// Per-tool call totals across every build — where the run's turns went.
+	const toolCalls: Record<string, number> = {};
+	for (const s of spend) mergeToolCalls(toolCalls, s.toolCalls);
 	return {
 		builds: spend.length,
 		totalCostUsd: Math.round(totalCost * 100) / 100,
 		avgTurns: Math.round((totalTurns / spend.length) * 10) / 10,
+		toolCalls,
 	};
 }
 
@@ -441,6 +451,7 @@ export function writeEvalResults(
 				? {
 						buildCostUsdPerRun: tc.runs.map((run) => run.buildCostUsd ?? null),
 						buildTurnsPerRun: tc.runs.map((run) => run.buildTurns ?? null),
+						buildToolCallsPerRun: tc.runs.map((run) => run.buildToolCalls ?? null),
 					}
 				: {}),
 			scenarios: tc.executionScenarios.map((sa) => ({

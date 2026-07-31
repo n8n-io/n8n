@@ -11,8 +11,10 @@ import { z } from 'zod';
 
 import {
 	buildWorkflowViaMcp,
+	mergeToolCalls,
 	stageMcpConfigFromClaudeJson,
 	uniqueProjectScopes,
+	type ToolCallCounts,
 } from './mcp-builder';
 import { runWithConcurrency } from '../harness/cleanup';
 import { createLogger } from '../harness/logger';
@@ -61,7 +63,8 @@ interface CliArgs {
 const HELP = `
 Build n8n workflows for each test case using \`claude -p\` driving an MCP
 server, write a manifest the eval CLI's --prebuilt-workflows flag accepts,
-plus a build-stats sidecar with per-cohort cost/turn/duration aggregates.
+plus a build-stats sidecar with per-cohort cost/turn/duration aggregates and
+per-tool call counts (which MCP tools the turns were spent on).
 
 Prerequisites:
   * \`claude\` CLI installed (https://docs.claude.com/claude-code)
@@ -283,6 +286,8 @@ interface BuildOutcome {
 	workflowId: string | null;
 	cost: number;
 	turns: number;
+	/** Per-tool `tool_use` counts — attributes `turns` to specific MCP tools. */
+	toolCalls: ToolCallCounts;
 	durationMs: number;
 }
 
@@ -327,6 +332,7 @@ async function buildOne(
 		workflowId: result.workflowId,
 		cost: result.cost,
 		turns: result.turns,
+		toolCalls: result.toolCalls,
 		durationMs: result.durationMs,
 	};
 }
@@ -379,6 +385,10 @@ function writeStats(args: CliArgs, results: BuildOutcome[]): void {
 	const sum = (selector: (r: BuildOutcome) => number) =>
 		successful.reduce((s, r) => s + selector(r), 0);
 
+	// Per-tool call totals across successful builds — where the turns went.
+	const toolCallTotals: ToolCallCounts = {};
+	for (const r of successful) mergeToolCalls(toolCallTotals, r.toolCalls);
+
 	const stats = {
 		version: 1 as const,
 		builder: args.builder,
@@ -388,12 +398,14 @@ function writeStats(args: CliArgs, results: BuildOutcome[]): void {
 			avgCostUSD: total > 0 ? sum((r) => r.cost) / total : 0,
 			totalCostUSD: sum((r) => r.cost),
 			avgDurationMs: total > 0 ? sum((r) => r.durationMs) / total : 0,
+			toolCallTotals,
 		},
 		builds: successful.map((r) => ({
 			slug: r.slug,
 			iteration: r.iteration,
 			workflowId: r.workflowId,
 			turns: r.turns,
+			toolCalls: r.toolCalls,
 			costUSD: r.cost,
 			durationMs: r.durationMs,
 		})),

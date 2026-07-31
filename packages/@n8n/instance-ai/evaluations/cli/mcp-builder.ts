@@ -209,6 +209,77 @@ const claudeSessionSchema = z
 	.passthrough();
 export type ClaudeSession = z.infer<typeof claudeSessionSchema>;
 
+/** Per-tool call counts, keyed by the full tool name as `claude` reports it
+ *  (e.g. `mcp__n8n-local__create_workflow_from_code`). */
+export type ToolCallCounts = Record<string, number>;
+
+/** Accumulate per-tool call counts from `from` into `into` (mutates `into`). */
+export function mergeToolCalls(into: ToolCallCounts, from: ToolCallCounts): void {
+	for (const [tool, count] of Object.entries(from)) {
+		into[tool] = (into[tool] ?? 0) + count;
+	}
+}
+
+/** The stream's trailing `result` event — same shape the old `--output-format
+ *  json` single object had, plus the event-type discriminator. */
+const resultEventSchema = claudeSessionSchema.extend({ type: z.literal('result') });
+
+/** An `assistant` event: one model turn; its `tool_use` blocks name the tools
+ *  the turn was spent on. Only the fields the counter reads are modeled. */
+const assistantEventSchema = z
+	.object({
+		type: z.literal('assistant'),
+		message: z
+			.object({
+				content: z.array(z.object({ type: z.string(), name: z.string().optional() }).passthrough()),
+			})
+			.passthrough(),
+	})
+	.passthrough();
+
+export interface ParsedClaudeStream {
+	/** Session totals from the trailing `result` event; undefined when the
+	 *  stream never finished (killed/hung run). */
+	session: ClaudeSession | undefined;
+	/** `tool_use` blocks counted per tool name across all assistant turns. */
+	toolCalls: ToolCallCounts;
+}
+
+/**
+ * Parse `claude --output-format stream-json` NDJSON output. The trailing
+ * `result` event carries the session totals (result text, num_turns, cost);
+ * the assistant events' `tool_use` blocks attribute those turns to the
+ * specific MCP tools they were spent on. Unrecognized or truncated lines are
+ * skipped, so a stream cut short by a kill still yields the attribution it
+ * recorded up to that point.
+ */
+export function parseClaudeStream(stdout: string): ParsedClaudeStream {
+	let session: ClaudeSession | undefined;
+	const toolCalls: ToolCallCounts = {};
+	for (const line of stdout.split('\n')) {
+		const trimmed = line.trim();
+		if (!trimmed) continue;
+		let event: unknown;
+		try {
+			event = JSON.parse(trimmed);
+		} catch {
+			continue;
+		}
+		const assistant = assistantEventSchema.safeParse(event);
+		if (assistant.success) {
+			for (const block of assistant.data.message.content) {
+				if (block.type === 'tool_use' && block.name) {
+					toolCalls[block.name] = (toolCalls[block.name] ?? 0) + 1;
+				}
+			}
+			continue;
+		}
+		const result = resultEventSchema.safeParse(event);
+		if (result.success) session = result.data;
+	}
+	return { session, toolCalls };
+}
+
 /** Default per-attempt wall-clock cap for a `claude` build. Generous enough for
  *  legitimately slow builds (the heaviest mcp cases average ~18 min) while still
  *  bounding a wedged subprocess so it can't hold an eval lane indefinitely. */
@@ -240,6 +311,9 @@ export interface McpBuildSettings {
 
 interface BuildAttempt {
 	session: ClaudeSession | undefined;
+	/** Per-tool `tool_use` counts parsed from the attempt's event stream —
+	 *  populated even for timed-out attempts (partial streams still attribute). */
+	toolCalls: ToolCallCounts;
 	logFile: string;
 	/** True when the attempt was killed by the build timeout rather than exiting. */
 	timedOut: boolean;
@@ -266,8 +340,12 @@ async function runClaude(
 			'--strict-mcp-config',
 			'--allowedTools',
 			...allowedTools,
+			// stream-json (which requires --verbose in -p mode) instead of json:
+			// the per-event stream is what lets us attribute turns to the MCP
+			// tools they were spent on, and is persisted verbatim for forensics.
 			'--output-format',
-			'json',
+			'stream-json',
+			'--verbose',
 		];
 		const child = spawn('claude', claudeArgs, {
 			env: { ...process.env, MCP_TIMEOUT: String(settings.mcpTimeoutMs) },
@@ -289,11 +367,11 @@ async function runClaude(
 
 		// Resolve only once, and only after the process is actually dead (so the
 		// caller — and the lane allocator — never overlaps with a live subprocess).
-		const settle = (session: ClaudeSession | undefined) => {
+		const settle = (session: ClaudeSession | undefined, toolCalls: ToolCallCounts) => {
 			if (settled) return;
 			settled = true;
 			clearTimers();
-			resolve({ session, logFile, timedOut, spawnError: spawnError?.message });
+			resolve({ session, toolCalls, logFile, timedOut, spawnError: spawnError?.message });
 		};
 
 		child.stdout.on('data', (chunk: Buffer) => {
@@ -303,25 +381,31 @@ async function runClaude(
 			stderr += chunk.toString();
 		});
 		child.on('close', () => {
-			// Persist stdout (or a structured fallback) for forensics regardless of
-			// parse success — including spawn failures, whose error is recorded here
-			// so the log path reported to the caller stays truthful.
+			// Persist the raw event stream (or a structured fallback) for forensics
+			// regardless of parse success — including spawn failures, whose error is
+			// recorded here so the log path reported to the caller stays truthful.
 			const fallback = spawnError
 				? JSON.stringify({ subtype: 'spawn-error', error: spawnError.message })
 				: timedOut
 					? '{"subtype":"timeout"}'
 					: '{}';
-			writeFileSync(logFile, stdout || stderr || fallback);
+			// A killed build's stream ends without a `result` event — append the
+			// timeout marker as a trailing line so the log itself says why it stopped.
+			const stream =
+				timedOut && stdout ? `${stdout.replace(/\n$/, '')}\n{"subtype":"timeout"}\n` : stdout;
+			writeFileSync(logFile, stream || stderr || fallback);
 			let session: ClaudeSession | undefined;
-			if (!timedOut && !spawnError) {
-				try {
-					const parsed = claudeSessionSchema.safeParse(JSON.parse(stdout));
-					if (parsed.success) session = parsed.data;
-				} catch {
-					// stdout wasn't JSON — caller treats undefined session as failure.
-				}
+			let toolCalls: ToolCallCounts = {};
+			if (!spawnError) {
+				// Parse even a timed-out stream: what a hung build spent its turns on
+				// is exactly the forensic signal we want. `session` stays undefined on
+				// timeout — the killed process never emitted its `result` event, and a
+				// stray one must not turn a killed attempt into a success.
+				const parsed = parseClaudeStream(stdout);
+				toolCalls = parsed.toolCalls;
+				if (!timedOut) session = parsed.session;
 			}
-			settle(session);
+			settle(session, toolCalls);
 		});
 		child.on('error', (error) => {
 			// No pid = the process never spawned (e.g. `claude` not on PATH). Node
@@ -333,7 +417,7 @@ async function runClaude(
 				spawnError = error;
 				return;
 			}
-			settle(undefined);
+			settle(undefined, {});
 		});
 
 		if (settings.buildTimeoutMs && settings.buildTimeoutMs > 0) {
@@ -415,9 +499,14 @@ export interface McpBuildResult {
 	cost: number;
 	/** Assistant turns summed across every attempt. */
 	turns: number;
+	/** `tool_use` calls summed across every attempt, keyed by full tool name
+	 *  (e.g. `mcp__n8n-local__create_workflow_from_code`) — attributes `turns`
+	 *  to the specific MCP tools they were spent on. Timed-out attempts
+	 *  contribute the calls their partial stream recorded. */
+	toolCalls: ToolCallCounts;
 	/** `claude` wall-clock summed across every attempt (ms). */
 	durationMs: number;
-	/** Path to the last attempt's captured `claude` output, for post-mortem. */
+	/** Path to the last attempt's captured `claude` event stream (NDJSON), for post-mortem. */
 	logFile: string | null;
 	/** Short reason for the final failure (e.g. `no-stdout`, a claude subtype). */
 	failureReason?: string;
@@ -451,15 +540,17 @@ export async function buildWorkflowViaMcp(opts: {
 	let totalCostUsd = 0;
 	let totalTurns = 0;
 	let totalDurationMs = 0;
+	const totalToolCalls: ToolCallCounts = {};
 
 	for (let attempt = 1; attempt <= settings.maxAttempts; attempt++) {
 		const ts = new Date().toISOString().replace(/[:.]/g, '-');
+		// .jsonl: the persisted log is the verbatim stream-json event stream.
 		const logFile = join(
 			logDir,
-			`${slug}-iter${String(iteration)}-attempt${String(attempt)}-${ts}.json`,
+			`${slug}-iter${String(iteration)}-attempt${String(attempt)}-${ts}.jsonl`,
 		);
 		lastLogFile = logFile;
-		const { session, timedOut, spawnError } = await runClaude(
+		const { session, toolCalls, timedOut, spawnError } = await runClaude(
 			userMessage,
 			settings,
 			mcpConfigPath,
@@ -469,6 +560,7 @@ export async function buildWorkflowViaMcp(opts: {
 		totalCostUsd += session?.total_cost_usd ?? 0;
 		totalTurns += session?.num_turns ?? 0;
 		totalDurationMs += session?.duration_ms ?? 0;
+		mergeToolCalls(totalToolCalls, toolCalls);
 		const id = session?.result ? tailWorkflowId(session.result) : null;
 		if (id) {
 			workflowId = id;
@@ -510,6 +602,7 @@ export async function buildWorkflowViaMcp(opts: {
 		workflowId,
 		cost: totalCostUsd,
 		turns: totalTurns,
+		toolCalls: totalToolCalls,
 		durationMs: totalDurationMs,
 		logFile: lastLogFile,
 		failureReason: workflowId ? undefined : failureReason,
