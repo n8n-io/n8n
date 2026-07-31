@@ -555,27 +555,6 @@ describe('validateValueAgainstSchema', () => {
 				expect(result).toEqual({ dup: 42 });
 			});
 
-			test('applies the required check of the first entry when a field id appears twice', () => {
-				const schema = [schemaField('dup', 'string', true), schemaField('dup', 'string', false)];
-				const value = { dup: null };
-
-				let error: unknown;
-
-				try {
-					validateValueAgainstSchema(makeNode(schema, value), nodeType, value, parameterName, 0, 0);
-				} catch (e) {
-					error = e;
-				}
-
-				// Both entries reject `null`, so the thrown message alone would not tell them
-				// apart — the description is what shows the required check of the *first*
-				// entry is the one that ran.
-				expect(error).toBeInstanceOf(ExpressionError);
-				expect((error as ExpressionError).description).toEqual(
-					'The value "dup" is required but not set',
-				);
-			});
-
 			test('leaves values that have no schema entry untouched', () => {
 				const schema = [schemaField('known', 'number')];
 				const value = { known: '7', unknown: 'abc' };

@@ -6,6 +6,7 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	INodeType,
+	ResourceMapperField,
 	ResourceMapperTypeOptions,
 } from 'n8n-workflow';
 import {
@@ -16,6 +17,21 @@ import {
 } from 'n8n-workflow';
 
 import type { ExtendedValidationResult } from '@/interfaces';
+
+const schemaIndexCache = new WeakMap<ResourceMapperField[], Map<string, ResourceMapperField>>();
+
+const indexSchemaById = (schema: ResourceMapperField[]) => {
+	let index = schemaIndexCache.get(schema);
+	if (!index) {
+		index = new Map<string, ResourceMapperField>();
+		for (const entry of schema) {
+			// First occurrence wins, matching the `schema.find` this index replaces
+			if (!index.has(entry.id)) index.set(entry.id, entry);
+		}
+		schemaIndexCache.set(schema, index);
+	}
+	return index;
+};
 
 const validateResourceMapperValue = (
 	parameterName: string,
@@ -35,16 +51,7 @@ const validateResourceMapperValue = (
 	if (!resourceMapperField || !isResourceMapperValue(resourceMapperField)) {
 		return result;
 	}
-	const schema = resourceMapperField.schema;
-	// Index the schema by id so the per-value lookup below is O(1) instead of a `schema.find`
-	// scan — turning the validation loop from O(values × schema) into O(values + schema).
-	// First occurrence wins, mirroring `find`.
-	const schemaById = new Map<string, (typeof schema)[number]>();
-	for (const entry of schema) {
-		if (!schemaById.has(entry.id)) {
-			schemaById.set(entry.id, entry);
-		}
-	}
+	const schemaById = indexSchemaById(resourceMapperField.schema);
 	const paramValueNames = Object.keys(paramValues);
 	for (let i = 0; i < paramValueNames.length; i++) {
 		const key = paramValueNames[i];
