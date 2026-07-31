@@ -287,6 +287,25 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
+		it('ignores a nested silent field on batch entries for other actions', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-1',
+					toolName: 'test-streaming_action',
+					output: {
+						ok: true,
+						results: [{ action: 'add_reaction', result: { ok: true, silent: true } }],
+					},
+					isError: false,
+				},
+				{ type: 'text-delta', id: 't1', delta: 'Regular reply.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).toHaveBeenCalled();
+		});
+
 		it('ignores a silent field returned by tools other than the integration action tool', async () => {
 			const thread = await runMention(streamingIntegration, [
 				{

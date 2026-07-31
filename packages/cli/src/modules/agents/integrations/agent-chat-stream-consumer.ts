@@ -237,6 +237,7 @@ export class AgentChatStreamConsumer {
 			chunk.output.results.some(
 				(entry) =>
 					isRecord(entry) &&
+					entry.action === 'do_not_respond' &&
 					isRecord(entry.result) &&
 					entry.result.ok === true &&
 					entry.result.silent === true,
