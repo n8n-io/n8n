@@ -8,6 +8,8 @@ import type {
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
+import { toClientSuspendPayload } from './utils/client-suspend-payload';
+
 export type FlushableResponse = Response & { flush?: () => void };
 
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
@@ -181,7 +183,7 @@ function emitToolChunk(
 				toolCallId: chunk.toolCallId,
 				runId: chunk.runId,
 				toolName: chunk.toolName,
-				input: chunk.suspendPayload,
+				input: toClientSuspendPayload(chunk.suspendPayload),
 			};
 			send({ type: 'tool-call-suspended', payload });
 			return { suspended: true };

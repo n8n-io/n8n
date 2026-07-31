@@ -372,6 +372,68 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith({ card: { kind: 'card' } });
 		});
 
+		it('uses the cascaded child resume schema for a delegated approval card', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+			const resumeSchema = {
+				type: 'object' as const,
+				properties: { approved: { type: 'boolean' as const } },
+				required: ['approved'],
+				additionalProperties: false,
+			};
+
+			const agentExecutor = makeAgentExecutor([
+				{
+					type: 'tool-call-suspended',
+					runId: 'parent-run-1',
+					toolCallId: 'parent-tool-1',
+					toolName: 'delegate_subagent',
+					resumeSchema,
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'http_request',
+						args: { url: 'https://example.com/data' },
+						delegateCheckpoint: {
+							runId: 'child-run-1',
+							toolCallId: 'child-tool-1',
+							taskPath: '/root/research_api_0',
+							subAgentId: 'inline',
+							childCount: 0,
+						},
+					},
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				bufferedIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(componentMapper.toCard).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Approval required',
+					components: expect.arrayContaining([
+						expect.objectContaining({ type: 'section' }),
+						expect.objectContaining({ type: 'button', label: 'Approve' }),
+					]),
+				}),
+				'parent-run-1',
+				'parent-tool-1',
+				resumeSchema,
+				undefined,
+				'test-buffered',
+			);
+		});
+
 		it('falls back to a default suspension card for malformed payloads', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();

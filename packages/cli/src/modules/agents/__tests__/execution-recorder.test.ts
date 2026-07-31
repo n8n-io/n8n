@@ -561,6 +561,14 @@ describe('ExecutionRecorder — workflow-tool timeline tags', () => {
 			toolName: 'run-wf',
 			output: { executionId: 'e-99', status: 'success' },
 			isError: false,
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'run-wf',
+				args: {},
+				delegateCheckpoint: { runId: 'child-run-1' },
+			},
+			resumeData: { approved: true },
+			canceled: true,
 		} as never);
 		rec.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
@@ -575,6 +583,13 @@ describe('ExecutionRecorder — workflow-tool timeline tags', () => {
 		expect(tc?.workflowName).toBe('Run WF');
 		expect(tc?.workflowExecutionId).toBe('e-99');
 		expect(tc?.success).toBe(true);
+		expect(tc?.suspendPayload).toEqual({
+			type: 'approval',
+			toolName: 'run-wf',
+			args: {},
+		});
+		expect(tc?.resumeData).toEqual({ approved: true });
+		expect(tc?.canceled).toBe(true);
 	});
 
 	it('leaves workflowExecutionId undefined when the output is an error with no executionId', () => {

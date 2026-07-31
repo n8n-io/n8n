@@ -1,10 +1,16 @@
-import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
+import {
+	INLINE_SUB_AGENT_ID,
+	type Agent as RuntimeAgent,
+	type SerializableAgentState,
+	type StreamChunk,
+} from '@n8n/agents';
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
@@ -167,6 +173,69 @@ function normalizeAbortedMessageRecord(
 	return { ...record, finishReason: 'cancelled', error: null };
 }
 
+const delegateCheckpointSchema = z
+	.object({
+		runId: z.string().min(1),
+		toolCallId: z.string().min(1),
+		taskPath: z.string().min(1),
+		subAgentId: z.string().min(1),
+		childCount: z.number().int().nonnegative(),
+		threadId: z.string().min(1).optional(),
+		resumeContext: z.unknown().optional(),
+		resumeSchema: z.unknown().optional(),
+	})
+	.strict();
+
+const configuredChildResumeContextSchema = z
+	.object({
+		agentId: z.string().min(1),
+		versionId: z.string().min(1),
+	})
+	.strict();
+
+const delegatedSuspendPayloadSchema = z
+	.object({ delegateCheckpoint: delegateCheckpointSchema })
+	.passthrough();
+
+function getDelegatedChildCheckpoints(
+	checkpoint: SerializableAgentState,
+	parentAgentId: string,
+): Array<{ runId: string; agentId: string }> {
+	const childCheckpoints: Array<{ runId: string; agentId: string }> = [];
+	const seen = new Set<string>();
+
+	for (const pendingToolCall of Object.values(checkpoint.pendingToolCalls)) {
+		if (!pendingToolCall.suspended) continue;
+		const parsedPayload = delegatedSuspendPayloadSchema.safeParse(pendingToolCall.suspendPayload);
+		if (!parsedPayload.success) continue;
+
+		const childCheckpoint = parsedPayload.data.delegateCheckpoint;
+		let ownerAgentId: string;
+		if (childCheckpoint.subAgentId === INLINE_SUB_AGENT_ID) {
+			if (childCheckpoint.resumeContext !== undefined) continue;
+			ownerAgentId = parentAgentId;
+		} else {
+			const parsedResumeContext = configuredChildResumeContextSchema.safeParse(
+				childCheckpoint.resumeContext,
+			);
+			if (
+				!parsedResumeContext.success ||
+				parsedResumeContext.data.agentId !== childCheckpoint.subAgentId
+			) {
+				continue;
+			}
+			ownerAgentId = parsedResumeContext.data.agentId;
+		}
+
+		const identity = `${ownerAgentId}\0${childCheckpoint.runId}`;
+		if (seen.has(identity)) continue;
+		seen.add(identity);
+		childCheckpoints.push({ runId: childCheckpoint.runId, agentId: ownerAgentId });
+	}
+
+	return childCheckpoints;
+}
+
 /**
  * Executes agents for the interactive surfaces — in-app test chat, published
  * chat integrations (Slack, Telegram, …), and scheduled/manual tasks — as
@@ -210,22 +279,40 @@ export class AgentExecutionOrchestratorService {
 		runId: string;
 		resourceId: string;
 	}): Promise<boolean> {
-		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(params.runId);
-		if (checkpointStatus.status !== 'active') return false;
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(
+			params.runId,
+			params.agentId,
+		);
+		if (checkpointStatus.status === 'not-found' || checkpointStatus.checkpoint === undefined) {
+			return false;
+		}
 
 		const { checkpoint } = checkpointStatus;
 		if (
 			checkpoint.status !== 'suspended' ||
+			checkpoint.persistence?.delegated === true ||
 			checkpoint.persistence?.resourceId !== params.resourceId
 		) {
 			return false;
 		}
 
-		return await this.n8nCheckpointStorage.cancelSuspended(
-			params.runId,
-			checkpoint,
-			params.agentId,
+		const childCheckpoints = getDelegatedChildCheckpoints(checkpoint, params.agentId);
+		if (checkpointStatus.status === 'active') {
+			const cancelled = await this.n8nCheckpointStorage.cancelSuspended(
+				params.runId,
+				checkpoint,
+				params.agentId,
+			);
+			if (!cancelled) return false;
+		}
+
+		await Promise.all(
+			childCheckpoints.map(
+				async ({ runId, agentId }) => await this.n8nCheckpointStorage.delete(runId, agentId),
+			),
 		);
+		await this.n8nCheckpointStorage.delete(params.runId, params.agentId);
+		return true;
 	}
 
 	/**
@@ -247,7 +334,7 @@ export class AgentExecutionOrchestratorService {
 			abortSignal,
 		} = config;
 
-		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
 		if (checkpointStatus.status === 'expired') {
 			throw new UserError(`Checkpoint ${runId} is expired and cannot be resumed`);
 		}
@@ -259,6 +346,9 @@ export class AgentExecutionOrchestratorService {
 		const memoryScope = checkpointStatus.checkpoint?.persistence;
 		if (!memoryScope) {
 			throw new UserError(`Checkpoint ${runId} has no memory data and cannot be resumed`);
+		}
+		if (memoryScope.delegated === true) {
+			throw new UserError('Delegated actions must be resumed through their parent agent');
 		}
 
 		const threadId = memoryScope.threadId;

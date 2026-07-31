@@ -4,6 +4,7 @@ import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
 import { isZodSchema } from '../../utils/zod';
 import {
+	DELEGATE_SUB_AGENT_CHILD_SUSPEND_PAYLOAD_KEY,
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
@@ -11,6 +12,7 @@ import {
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
+	type DelegateSubAgentResumeRunner,
 	type DelegateSubAgentRunner,
 } from '../tools/delegate-sub-agent-tool';
 
@@ -92,6 +94,19 @@ describe('createDelegateSubAgentTool', () => {
 		expect(() => createDelegateSubAgentTool({ name: 'agent', policy: { maxChildren: 0 } })).toThrow(
 			'agent policy.maxChildren must be at least 1',
 		);
+	});
+
+	it('requires resume and cancellation callbacks to be configured together', () => {
+		expect(() =>
+			createDelegateSubAgentTool({
+				resumeSubAgent: vi.fn(),
+			}),
+		).toThrow('requires resumeSubAgent and cancelSubAgent to be configured together');
+		expect(() =>
+			createDelegateSubAgentTool({
+				cancelSubAgent: vi.fn(),
+			}),
+		).toThrow('requires resumeSubAgent and cancelSubAgent to be configured together');
 	});
 
 	it('names a renamed tool in the missing-runner error', async () => {
@@ -374,6 +389,572 @@ describe('createDelegateSubAgentTool', () => {
 		await tool.handler?.(input, { runId: 'parent-run-1' });
 
 		expect(runSubAgent).toHaveBeenCalledOnce();
+	});
+
+	it('cascades an object child suspension through the parent delegate tool', async () => {
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async (request) =>
+				await Promise.resolve({
+					status: 'suspended',
+					taskPath: request.taskPath,
+					runId: 'child-run-1',
+					threadId: 'child-thread-1',
+					resumeContext: { agentId: 'agent-1', versionId: 'version-1' },
+					answer: '',
+					pendingSuspend: [
+						{
+							runId: 'child-run-1',
+							toolCallId: 'child-tool-call-1',
+							toolName: 'http_request',
+							input: { url: 'https://example.com' },
+							resumeSchema: {
+								type: 'object',
+								properties: { approved: { type: 'boolean' } },
+								required: ['approved'],
+							},
+							suspendPayload: {
+								type: 'approval',
+								toolName: 'http_request',
+								args: { url: 'https://example.com' },
+							},
+						},
+					],
+				}),
+			resumeSubAgent: async () => await Promise.reject(new Error('not resumed')),
+			cancelSubAgent: vi.fn(),
+		});
+
+		expect(tool.suspendSchema).toBeDefined();
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'parent-tool-call-1',
+			resumeData: undefined,
+			suspend,
+		});
+
+		expect(suspend).toHaveBeenCalledWith({
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com' },
+			delegateCheckpoint: {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				threadId: 'child-thread-1',
+				taskPath: '/root/research_api_0',
+				subAgentId: INLINE_SUB_AGENT_ID,
+				childCount: 0,
+				resumeContext: { agentId: 'agent-1', versionId: 'version-1' },
+				resumeSchema: {
+					type: 'object',
+					properties: { approved: { type: 'boolean' } },
+					required: ['approved'],
+				},
+			},
+		});
+		const cascadedPayload = suspend.mock.calls[0]?.[0];
+		expect(tool.resolveResumeSchema?.(cascadedPayload)).toEqual({
+			type: 'object',
+			properties: { approved: { type: 'boolean' } },
+			required: ['approved'],
+		});
+	});
+
+	it('cascades a non-object child suspension through an internal envelope', async () => {
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async (request) =>
+				await Promise.resolve({
+					status: 'suspended',
+					taskPath: request.taskPath,
+					runId: 'child-run-1',
+					answer: '',
+					pendingSuspend: [
+						{
+							runId: 'child-run-1',
+							toolCallId: 'child-tool-call-1',
+							toolName: 'choose_value',
+							input: {},
+							resumeSchema: { type: 'string' },
+							suspendPayload: ['first', 'second'],
+						},
+					],
+				}),
+			resumeSubAgent: vi.fn(),
+			cancelSubAgent: vi.fn(),
+		});
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'parent-tool-call-1',
+			resumeData: undefined,
+			suspend,
+		});
+
+		expect(suspend).toHaveBeenCalledWith({
+			[DELEGATE_SUB_AGENT_CHILD_SUSPEND_PAYLOAD_KEY]: ['first', 'second'],
+			delegateCheckpoint: {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				taskPath: '/root/research_api_0',
+				subAgentId: INLINE_SUB_AGENT_ID,
+				childCount: 0,
+				resumeSchema: { type: 'string' },
+			},
+		});
+	});
+
+	it('does not expose a child suspension without a resume schema', async () => {
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async (request) =>
+				await Promise.resolve({
+					status: 'suspended',
+					taskPath: request.taskPath,
+					runId: 'child-run-1',
+					answer: '',
+					pendingSuspend: [
+						{
+							runId: 'child-run-1',
+							toolCallId: 'child-tool-call-1',
+							toolName: 'unknown_interaction',
+							input: {},
+							suspendPayload: { prompt: 'Choose' },
+						},
+					],
+				}),
+			resumeSubAgent: vi.fn(),
+			cancelSubAgent: vi.fn(),
+		});
+
+		await expect(
+			tool.handler?.(input, {
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				resumeData: undefined,
+				suspend,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			error: 'agents.chat.delegate.childSuspendUnsupported',
+		});
+		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('routes a parent resume to the exact cascaded child checkpoint', async () => {
+		const runSubAgent = vi.fn();
+		const resumeSubAgent = vi.fn().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api_3',
+			runId: 'child-run-1',
+			threadId: 'child-thread-1',
+			answer: 'request completed',
+		});
+		const tool = createDelegateSubAgentTool({
+			runSubAgent,
+			resumeSubAgent,
+			cancelSubAgent: vi.fn(),
+		});
+
+		await expect(
+			tool.handler?.(input, {
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				resumeData: { approved: true },
+				suspendPayload: {
+					type: 'approval',
+					toolName: 'http_request',
+					args: { url: 'https://example.com' },
+					delegateCheckpoint: {
+						runId: 'child-run-1',
+						toolCallId: 'child-tool-call-1',
+						threadId: 'child-thread-1',
+						taskPath: '/root/research_api_3',
+						subAgentId: INLINE_SUB_AGENT_ID,
+						childCount: 3,
+						resumeContext: { agentId: 'agent-1', versionId: 'version-1' },
+					},
+				},
+				suspend: vi.fn().mockResolvedValue(undefined),
+			}),
+		).resolves.toMatchObject({ status: 'completed', answer: 'request completed' });
+
+		expect(runSubAgent).not.toHaveBeenCalled();
+		expect(resumeSubAgent).toHaveBeenCalledWith(
+			{
+				...input,
+				taskPath: '/root/research_api_3',
+				childCount: 3,
+				policy: { maxChildren: 10 },
+				parentRunId: 'parent-run-1',
+				parentToolCallId: 'parent-tool-call-1',
+				childRunId: 'child-run-1',
+				childToolCallId: 'child-tool-call-1',
+				childThreadId: 'child-thread-1',
+				resumeContext: { agentId: 'agent-1', versionId: 'version-1' },
+				resumeData: { approved: true },
+			},
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+				emitChunk: expect.any(Function),
+			}),
+		);
+	});
+
+	it('preserves task-path numbering after resuming in a rebuilt tool', async () => {
+		const runSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api_4',
+			answer: 'new delegation completed',
+		});
+		const resumeSubAgent = vi.fn<DelegateSubAgentResumeRunner>().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api_3',
+			answer: 'resumed delegation completed',
+		});
+		const tool = createDelegateSubAgentTool({
+			runSubAgent,
+			resumeSubAgent,
+			cancelSubAgent: vi.fn(),
+		});
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com' },
+			delegateCheckpoint: {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				taskPath: '/root/research_api_3',
+				subAgentId: INLINE_SUB_AGENT_ID,
+				childCount: 3,
+				resumeSchema: {
+					type: 'object',
+					properties: { approved: { type: 'boolean' } },
+				},
+			},
+		};
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			resumeData: { approved: true },
+			suspendPayload,
+			suspend: vi.fn().mockResolvedValue(undefined),
+		});
+		await tool.handler?.(input, { runId: 'parent-run-1' });
+
+		expect(runSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ taskPath: '/root/research_api_4', childCount: 4 }),
+			expect.any(Object),
+		);
+	});
+
+	it('re-suspends the parent when child resume data does not match the child schema', async () => {
+		const resumeSubAgent = vi.fn<DelegateSubAgentResumeRunner>();
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: vi.fn(),
+			resumeSubAgent,
+			cancelSubAgent: vi.fn(),
+		});
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com' },
+			delegateCheckpoint: {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				taskPath: '/root/research_api_0',
+				subAgentId: INLINE_SUB_AGENT_ID,
+				childCount: 0,
+				resumeSchema: {
+					type: 'object',
+					properties: { approved: { type: 'boolean' } },
+					required: ['approved'],
+					additionalProperties: false,
+				},
+			},
+		};
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			resumeData: { unexpected: true },
+			suspendPayload,
+			suspend,
+		});
+
+		expect(resumeSubAgent).not.toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledWith(suspendPayload);
+	});
+
+	it('cleans up the exact child checkpoint when the parent wait is cancelled', async () => {
+		const cancelSubAgent = vi.fn().mockResolvedValue(undefined);
+		const resumeSubAgent = vi.fn<DelegateSubAgentResumeRunner>();
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: vi.fn(),
+			resumeSubAgent,
+			cancelSubAgent,
+		});
+
+		await tool.onCancellation?.(input, {
+			cancellation: { message: 'take another approach' },
+			runId: 'parent-run-1',
+			toolCallId: 'parent-tool-call-1',
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com' },
+				delegateCheckpoint: {
+					runId: 'child-run-1',
+					toolCallId: 'child-tool-call-1',
+					threadId: 'child-thread-1',
+					taskPath: '/root/research_api_2',
+					subAgentId: INLINE_SUB_AGENT_ID,
+					childCount: 2,
+					resumeContext: { agentId: 'agent-1', versionId: 'version-1' },
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+					},
+				},
+			},
+		});
+
+		expect(resumeSubAgent).not.toHaveBeenCalled();
+		expect(cancelSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				taskPath: '/root/research_api_2',
+				childRunId: 'child-run-1',
+				childToolCallId: 'child-tool-call-1',
+				childThreadId: 'child-thread-1',
+				resumeContext: { agentId: 'agent-1', versionId: 'version-1' },
+				reason: 'take another approach',
+			}),
+			expect.objectContaining({ emitChunk: expect.any(Function) }),
+		);
+	});
+
+	it('does not run child cleanup when cancelling the delegate approval gate', async () => {
+		const cancelSubAgent = vi.fn().mockResolvedValue(undefined);
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: vi.fn(),
+			resumeSubAgent: vi.fn(),
+			cancelSubAgent,
+		});
+
+		await expect(
+			tool.onCancellation?.(input, {
+				cancellation: { message: 'do not delegate' },
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				suspendPayload: {
+					type: 'approval',
+					toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+					args: input,
+				},
+			}),
+		).resolves.toBeUndefined();
+		expect(cancelSubAgent).not.toHaveBeenCalled();
+	});
+
+	it('keeps the parent suspended when child resume setup fails and succeeds on retry', async () => {
+		const resumeSubAgent = vi
+			.fn<DelegateSubAgentResumeRunner>()
+			.mockRejectedValueOnce(new Error('reconstruction unavailable'))
+			.mockResolvedValueOnce({
+				status: 'completed',
+				taskPath: '/root/research_api_0',
+				answer: 'request completed',
+			});
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: vi.fn(),
+			resumeSubAgent,
+			cancelSubAgent: vi.fn(),
+		});
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com' },
+			delegateCheckpoint: {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				taskPath: '/root/research_api_0',
+				subAgentId: INLINE_SUB_AGENT_ID,
+				childCount: 0,
+				resumeSchema: {
+					type: 'object',
+					properties: { approved: { type: 'boolean' } },
+					required: ['approved'],
+				},
+			},
+		};
+		const suspend = vi.fn().mockResolvedValue(undefined);
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'parent-tool-call-1',
+			resumeData: { approved: true },
+			suspendPayload,
+			suspend,
+		});
+
+		expect(suspend).toHaveBeenCalledWith(suspendPayload);
+		await expect(
+			tool.handler?.(input, {
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				resumeData: { approved: true },
+				suspendPayload,
+				suspend,
+			}),
+		).resolves.toMatchObject({ status: 'completed', answer: 'request completed' });
+		expect(resumeSubAgent).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not re-suspend when child resume is aborted with the parent', async () => {
+		const abortController = new AbortController();
+		abortController.abort();
+		const resumeSubAgent = vi
+			.fn<DelegateSubAgentResumeRunner>()
+			.mockRejectedValue(new DOMException('Aborted', 'AbortError'));
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: vi.fn(),
+			resumeSubAgent,
+			cancelSubAgent: vi.fn(),
+		});
+		const suspend = vi.fn().mockResolvedValue(undefined);
+
+		await expect(
+			tool.handler?.(input, {
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				abortSignal: abortController.signal,
+				resumeData: { approved: true },
+				suspendPayload: {
+					type: 'approval',
+					toolName: 'http_request',
+					args: { url: 'https://example.com' },
+					delegateCheckpoint: {
+						runId: 'child-run-1',
+						toolCallId: 'child-tool-call-1',
+						taskPath: '/root/research_api_0',
+						subAgentId: INLINE_SUB_AGENT_ID,
+						childCount: 0,
+						resumeSchema: {
+							type: 'object',
+							properties: { approved: { type: 'boolean' } },
+						},
+					},
+				},
+				suspend,
+			}),
+		).rejects.toThrow('Aborted');
+		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('cascades repeated child suspensions and routes each new checkpoint', async () => {
+		const runSubAgent = vi.fn();
+		const resumeSubAgent = vi
+			.fn<DelegateSubAgentResumeRunner>()
+			.mockResolvedValueOnce({
+				status: 'suspended',
+				taskPath: '/root/research_api_2',
+				runId: 'child-run-1',
+				threadId: 'child-thread-1',
+				resumeContext: { agentId: 'agent-1', versionId: 'version-1' },
+				answer: '',
+				pendingSuspend: [
+					{
+						runId: 'child-run-1',
+						toolCallId: 'child-tool-call-2',
+						toolName: 'http_request',
+						input: { url: 'https://example.com/next' },
+						resumeSchema: {
+							type: 'object',
+							properties: { approved: { type: 'boolean' } },
+						},
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'http_request',
+							args: { url: 'https://example.com/next' },
+						},
+					},
+				],
+			})
+			.mockResolvedValueOnce({
+				status: 'completed',
+				taskPath: '/root/research_api_2',
+				runId: 'child-run-1',
+				threadId: 'child-thread-1',
+				answer: 'all requests completed',
+			});
+		const tool = createDelegateSubAgentTool({
+			runSubAgent,
+			resumeSubAgent,
+			cancelSubAgent: vi.fn(),
+		});
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		const firstCheckpoint = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com' },
+			delegateCheckpoint: {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				threadId: 'child-thread-1',
+				taskPath: '/root/research_api_2',
+				subAgentId: INLINE_SUB_AGENT_ID,
+				childCount: 2,
+				resumeContext: { agentId: 'agent-1', versionId: 'version-1' },
+				resumeSchema: {
+					type: 'object',
+					properties: { approved: { type: 'boolean' } },
+				},
+			},
+		};
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'parent-tool-call-1',
+			resumeData: { approved: true },
+			suspendPayload: firstCheckpoint,
+			suspend,
+		});
+
+		const secondCheckpoint = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com/next' },
+			delegateCheckpoint: {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-2',
+				threadId: 'child-thread-1',
+				taskPath: '/root/research_api_2',
+				subAgentId: INLINE_SUB_AGENT_ID,
+				childCount: 2,
+				resumeContext: { agentId: 'agent-1', versionId: 'version-1' },
+				resumeSchema: {
+					type: 'object',
+					properties: { approved: { type: 'boolean' } },
+				},
+			},
+		};
+		expect(suspend).toHaveBeenCalledWith(secondCheckpoint);
+
+		await expect(
+			tool.handler?.(input, {
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				resumeData: { approved: true },
+				suspendPayload: secondCheckpoint,
+				suspend,
+			}),
+		).resolves.toMatchObject({ status: 'completed', answer: 'all requests completed' });
+
+		expect(runSubAgent).not.toHaveBeenCalled();
+		expect(resumeSubAgent.mock.calls.map(([request]) => request.childToolCallId)).toEqual([
+			'child-tool-call-1',
+			'child-tool-call-2',
+		]);
 	});
 
 	it('forwards the parent execution counter to the runner callback', async () => {

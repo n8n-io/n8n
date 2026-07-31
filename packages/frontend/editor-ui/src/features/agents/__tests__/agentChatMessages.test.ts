@@ -67,6 +67,81 @@ describe('rebuildInteractiveFromHistory', () => {
 		expect(result?.resolvedAt).toBeDefined();
 		expect(result?.resolvedValue).toEqual({ approved: false });
 	});
+
+	it('does not infer rejection from an ordinary tool result with approved false', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'policy_check',
+			toolCallId: 'call-approval-3',
+			input: {
+				type: 'approval',
+				toolName: 'policy_check',
+				args: { documentId: 'document-1' },
+			},
+			output: { approved: false, reason: 'Policy requirements were not met' },
+			state: 'done',
+		});
+
+		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
+		expect(result?.resolvedValue).toEqual({ approved: true });
+	});
+
+	it('restores a nested approval decision from resolved delegation history', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'delegate_subagent',
+			toolCallId: 'call-delegate-1',
+			input: {
+				subAgentId: 'inline',
+				taskName: 'Research API',
+				goal: 'Check the endpoint',
+			},
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com' },
+			},
+			resumeData: { approved: false },
+			output: { status: 'completed', answer: 'The request was declined.' },
+			state: 'done',
+		});
+
+		expect(result).toMatchObject({
+			toolName: APPROVAL_TOOL_NAME,
+			input: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com' },
+			},
+			resolvedValue: { approved: false },
+		});
+	});
+
+	it('restores a cancelled nested approval without inferring an approval decision', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'delegate_subagent',
+			toolCallId: 'call-delegate-cancelled',
+			input: {
+				subAgentId: 'inline',
+				taskName: 'Research API',
+				goal: 'Check the endpoint',
+			},
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com' },
+			},
+			resumeData: { __n8nCancelTool: true, message: 'Use another source' },
+			output: 'Use another source',
+			canceled: true,
+			state: 'cancelled',
+		});
+
+		expect(result).toMatchObject({
+			toolName: APPROVAL_TOOL_NAME,
+			cancelled: true,
+		});
+		expect(result?.resolvedAt).toBeDefined();
+		expect(result?.resolvedValue).toBeUndefined();
+	});
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
@@ -325,6 +400,47 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(tc?.state).toBe('cancelled');
 		expect(tc?.output).toBe('The sibling tool call was skipped');
 		expect(tc?.canceled).toBe(true);
+	});
+
+	it('restores a cancelled nested approval as cancelled', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-delegate-cancel',
+						input: {
+							subAgentId: 'inline',
+							taskName: 'Research API',
+							goal: 'Check the endpoint',
+						},
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'http_request',
+							args: { url: 'https://example.com' },
+						},
+						resumeData: { __n8nCancelTool: true, message: 'Use another source' },
+						state: 'resolved',
+						output: 'Use another source',
+						canceled: true,
+					} as AgentPersistedMessageContentPart,
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		const tc = chat[0].toolCalls?.[0];
+
+		expect(tc).toMatchObject({ state: 'cancelled', canceled: true });
+		expect(chat[0].interactive).toMatchObject({
+			toolCallId: 'tc-delegate-cancel',
+			toolName: APPROVAL_TOOL_NAME,
+			cancelled: true,
+		});
+		expect(chat[0].interactive?.resolvedValue).toBeUndefined();
 	});
 
 	it('renders a resolved-but-failed delegate_subagent call as an error', () => {
@@ -611,6 +727,61 @@ describe('buildDisplayGroups — interactive payloads', () => {
 });
 
 describe('applyOpenSuspensions', () => {
+	it('rebuilds a nested approval without replacing the delegated tool input', () => {
+		const delegateInput = {
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			goal: 'Research the requested API',
+			context: 'Use the configured research agent',
+		};
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com/data' },
+		};
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{
+						tool: 'delegate_subagent',
+						toolCallId: 'parent-tool-call-1',
+						input: delegateInput,
+						state: 'running',
+					},
+				],
+			},
+		];
+
+		applyOpenSuspensions(chat, [
+			{
+				toolCallId: 'parent-tool-call-1',
+				runId: 'parent-run-1',
+				suspendPayload,
+			},
+		]);
+
+		expect(chat[0].toolCalls?.[0]).toMatchObject({
+			input: delegateInput,
+			suspendPayload,
+			state: 'suspended',
+			runId: 'parent-run-1',
+		});
+		expect(chat[0].interactive).toEqual({
+			toolCallId: 'parent-tool-call-1',
+			toolName: APPROVAL_TOOL_NAME,
+			input: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com/data' },
+			},
+			runId: 'parent-run-1',
+		});
+		expect(chat[0].status).toBe('awaitingUser');
+	});
+
 	it('stamps the runId onto a matching open interactive card', () => {
 		const chat: ChatMessage[] = [
 			{

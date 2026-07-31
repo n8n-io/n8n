@@ -16,6 +16,7 @@ import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentEventBus } from '../state/event-bus';
+import { RunStateManager } from '../state/run-state';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY,
@@ -2259,6 +2260,8 @@ describe('AgentRuntime — concurrent tool execution', () => {
 					toolName: 'suspend_tool',
 					output: '[Tool call cancelled. User said: "Stop this action"]',
 					canceled: true,
+					suspendPayload: { reason: 'needs approval' },
+					resumeData: createCancellation('Stop this action'),
 				}),
 			]),
 		);
@@ -2269,7 +2272,13 @@ describe('AgentRuntime — concurrent tool execution', () => {
 			if (ctx.resumeData) return { approved: true };
 			return await ctx.suspend({ reason: 'needs approval' });
 		});
-		const suspendTool = makeSuspendingTool('suspend_tool', handler);
+		const onCancellation = vi
+			.fn<NonNullable<BuiltTool['onCancellation']>>()
+			.mockResolvedValue(undefined);
+		const suspendTool = {
+			...makeSuspendingTool('suspend_tool', handler),
+			onCancellation,
+		};
 
 		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
 		generateText.mockResolvedValueOnce(
@@ -2290,6 +2299,11 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		const chunks = await collectChunks(resumed.stream as ReadableStream<unknown>);
 
 		expect(handler).toHaveBeenCalledTimes(2);
+		expect(onCancellation).toHaveBeenCalledTimes(2);
+		expect(onCancellation.mock.calls.map(([toolInput]) => toolInput)).toEqual([
+			{ value: 'a' },
+			{ value: 'b' },
+		]);
 		expect(chunks).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -2308,6 +2322,120 @@ describe('AgentRuntime — concurrent tool execution', () => {
 				}),
 			]),
 		);
+	});
+
+	it('does not run suspension cleanup for an unexecuted sibling', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const onCancellation = vi
+			.fn<NonNullable<BuiltTool['onCancellation']>>()
+			.mockResolvedValue(undefined);
+		const suspendTool = {
+			...makeSuspendingTool('suspend_tool', handler),
+			onCancellation,
+		};
+
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools');
+		const { runId } = first.pendingSuspend![0];
+		streamText.mockReturnValueOnce(makeStreamSuccess('Cancelled'));
+
+		const resumed = await runtime.resume('stream', createCancellation('Stop this action'), {
+			runId,
+			toolCallId: 'tc-1',
+		});
+		await collectChunks(resumed.stream as ReadableStream<unknown>);
+
+		expect(handler).toHaveBeenCalledOnce();
+		expect(onCancellation).toHaveBeenCalledOnce();
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ value: 'a' },
+			expect.objectContaining({ toolCallId: 'tc-1' }),
+		);
+	});
+
+	it('re-suspends when cancellation cleanup fails', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const cleanupError = new Error('checkpoint delete failed');
+		const suspendTool = {
+			...makeSuspendingTool('suspend_tool', handler),
+			onCancellation: vi
+				.fn<NonNullable<BuiltTool['onCancellation']>>()
+				.mockRejectedValue(cleanupError),
+		};
+
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tool');
+		const resumed = await runtime.resume('generate', createCancellation('Stop this action'), {
+			runId: first.runId,
+			toolCallId: 'tc-1',
+		});
+
+		expect(resumed.pendingSuspend).toEqual([
+			expect.objectContaining({
+				runId: first.runId,
+				toolCallId: 'tc-1',
+				suspendPayload: { reason: 'needs approval' },
+			}),
+		]);
+		expect(resumed.getState().status).toBe('suspended');
+	});
+
+	it('keeps a suspended sibling retryable when its cancellation cleanup fails', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const onCancellation = vi.fn<NonNullable<BuiltTool['onCancellation']>>(async (input) => {
+			if ((input as { value?: string }).value === 'b') {
+				throw new Error('sibling checkpoint delete failed');
+			}
+			await Promise.resolve();
+		});
+		const suspendTool = {
+			...makeSuspendingTool('suspend_tool', handler),
+			onCancellation,
+		};
+
+		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools');
+		const resumed = await runtime.resume('generate', createCancellation('Stop this action'), {
+			runId: first.runId,
+			toolCallId: 'tc-1',
+		});
+
+		expect(resumed.pendingSuspend).toEqual([
+			expect.objectContaining({
+				runId: first.runId,
+				toolCallId: 'tc-2',
+				suspendPayload: { reason: 'needs approval' },
+			}),
+		]);
+		expect(onCancellation).toHaveBeenCalledTimes(2);
+		expect(resumed.getState().status).toBe('suspended');
 	});
 
 	it('bounded concurrency (2) batches respects the limit', async () => {
@@ -2774,6 +2902,32 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(result.pendingSuspend).toBeDefined();
 		expect(result.pendingSuspend![0].resumeSchema).toBeDefined();
 		expect(typeof result.pendingSuspend![0].resumeSchema).toBe('object');
+	});
+
+	it('uses a payload-specific resume schema for cascaded interactions', async () => {
+		const suspendTool = {
+			...makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+				return await ctx.suspend({ reason: 'needs approval' });
+			}),
+			resumeSchema: z.unknown(),
+			resolveResumeSchema: () => z.object({ approved: z.boolean() }),
+		};
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+			]),
+		);
+
+		const result = await runtime.generate('run tools');
+
+		expect(result.pendingSuspend?.[0].resumeSchema).toEqual(
+			expect.objectContaining({
+				type: 'object',
+				properties: { approved: expect.objectContaining({ type: 'boolean' }) },
+				required: ['approved'],
+			}),
+		);
 	});
 
 	it('stream mode emits multiple tool-call-suspended chunks for concurrent suspensions', async () => {
@@ -4511,6 +4665,40 @@ describe('AgentRuntime — abort during a tool batch', () => {
 		expect(errorEvents).toHaveLength(0);
 		expect(secondHandler).not.toHaveBeenCalled();
 	});
+
+	it('cleans up a child suspension when the parent aborts before persisting it', async () => {
+		const bus = new AgentEventBus();
+		const onCancellation = vi
+			.fn<NonNullable<BuiltTool['onCancellation']>>()
+			.mockResolvedValue(undefined);
+		const tool = {
+			...makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+				const suspension = ctx.suspend({ reason: 'needs approval' });
+				bus.abort();
+				return await suspension;
+			}),
+			onCancellation,
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1, bus);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+			]),
+		);
+
+		const result = await runtime.generate('go');
+
+		expect(result.finishReason).toBe('error');
+		expect(runtime.getState().status).toBe('cancelled');
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ value: 'a' },
+			expect.objectContaining({
+				cancellation: { message: 'Run aborted' },
+				toolCallId: 'tc-1',
+				suspendPayload: { reason: 'needs approval' },
+			}),
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -4529,6 +4717,18 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 			return await ctx.suspend({ reason: 'needs approval' });
 		});
 	}
+
+	it('surfaces strict cancellation cleanup failures', async () => {
+		const deleteError = new Error('checkpoint delete failed');
+		const store: CheckpointStore = {
+			save: async () => await Promise.resolve(),
+			load: async () => await Promise.resolve(undefined),
+			delete: async () => await Promise.reject(deleteError),
+		};
+		const runState = new RunStateManager(store);
+
+		await expect(runState.cancel('child-run-1')).rejects.toBe(deleteError);
+	});
 
 	it('deletes the checkpoint after a resumed generate run completes', async () => {
 		const { runtime } = createRuntimeWithTools([makeApprovalTool()], 1);
@@ -4639,6 +4839,27 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 			runtime.resume('generate', { approved: 'yes' }, { runId, toolCallId }),
 		).rejects.toThrow('Invalid resume payload');
 
+		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
+	});
+
+	it('validates a payload-specific resume schema before claiming the checkpoint', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const dynamicTool = {
+			...makeApprovalTool(),
+			resumeSchema: z.unknown(),
+			resolveResumeSchema: () => z.object({ approved: z.boolean() }),
+		};
+		const runtime = createRuntimeWithCheckpointStore([dynamicTool], checkpointStore);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		await expect(
+			runtime.resume('generate', { approved: 'yes' }, { runId, toolCallId }),
+		).rejects.toThrow('Invalid resume payload');
 		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
 	});
 
@@ -6235,6 +6456,42 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 		expect(handlerSpy).not.toHaveBeenCalled();
 		// The generation should have continued after cancellation
 		expect(resumed.finishReason).toBe('stop');
+	});
+
+	it('runs cancellation cleanup before auto-bypassing the tool handler', async () => {
+		const onCancellation = vi
+			.fn<NonNullable<BuiltTool['onCancellation']>>()
+			.mockResolvedValue(undefined);
+		const tool = {
+			...makeSuspendToolForCancel(),
+			onCancellation,
+		} satisfies BuiltTool;
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-1', toolName: 'interactive_tool', args: { prompt: 'continue?' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Changed direction'));
+
+		const first = await runtime.generate('start');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		await runtime.resume('generate', createCancellation('take another approach'), {
+			runId,
+			toolCallId,
+		});
+
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ prompt: 'continue?' },
+			expect.objectContaining({
+				cancellation: { message: 'take another approach' },
+				runId,
+				toolCallId,
+				suspendPayload: { prompt: 'What should I do?' },
+			}),
+		);
 	});
 
 	it('auto-bypass: injects the steering message and the LLM sees it', async () => {

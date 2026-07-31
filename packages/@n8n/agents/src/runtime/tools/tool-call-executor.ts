@@ -61,6 +61,7 @@ type ToolCallOutcome =
 			userMessage: string;
 			canceled: true;
 	  }
+	| { outcome: 'retryable-error' }
 	| { outcome: 'error'; error: unknown }
 	| { outcome: 'noop' }; // tool call shouldn't be saved or logged anywhere, usually means that if was executed by AI SDK
 
@@ -72,6 +73,8 @@ export interface ToolCallSuccess {
 	toolEntry: ToolResultEntry;
 	modelOutput: unknown;
 	customMessage?: AgentMessage;
+	suspendPayload?: unknown;
+	resumeData?: unknown;
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -153,9 +156,21 @@ function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boo
 	return !isDeniedApprovalResumeData(resumeData);
 }
 
-function getToolResumeJsonSchema(tool: BuiltTool): JsonSchema7Type | undefined {
-	if (!tool.resumeSchema) return undefined;
-	return isZodSchema(tool.resumeSchema) ? zodToJsonSchema(tool.resumeSchema) : tool.resumeSchema;
+export function resolveToolResumeSchema(
+	tool: BuiltTool,
+	suspendPayload: unknown,
+): BuiltTool['resumeSchema'] {
+	if (tool.resolveResumeSchema) return tool.resolveResumeSchema(suspendPayload);
+	return tool.resumeSchema;
+}
+
+function getToolResumeJsonSchema(
+	tool: BuiltTool,
+	suspendPayload?: unknown,
+): JsonSchema7Type | undefined {
+	const resolvedSchema = resolveToolResumeSchema(tool, suspendPayload);
+	if (!resolvedSchema) return undefined;
+	return isZodSchema(resolvedSchema) ? zodToJsonSchema(resolvedSchema) : resolvedSchema;
 }
 
 export interface ToolCallExecutorDeps {
@@ -301,6 +316,7 @@ export class ToolCallExecutor {
 
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
 			if (ctx.isAborted()) {
+				await this.cleanupSuspendedToolsOnAbort(pending, ctx);
 				this.deps.onCancelled();
 				for (const id of unexecutedIds) {
 					const tc = executableCallsById.get(id)!;
@@ -412,6 +428,7 @@ export class ToolCallExecutor {
 			}
 
 			if (ctx.isAborted()) {
+				await this.cleanupSuspendedToolsOnAbort(pending, ctx);
 				this.deps.onCancelled();
 				for (const id of unexecutedIds) {
 					const tc = executableCallsById.get(id)!;
@@ -526,6 +543,12 @@ export class ToolCallExecutor {
 				toolEntry: processResult.toolEntry,
 				modelOutput: processResult.modelOutput,
 				customMessage: processResult.customMessage,
+				...(resumedEntry.suspended
+					? {
+							suspendPayload: resumedEntry.suspendPayload,
+							resumeData: pendingResume.resumeData,
+						}
+					: {}),
 			});
 		} else if (processResult.outcome === 'cancelled') {
 			results.push({
@@ -534,6 +557,12 @@ export class ToolCallExecutor {
 				input: resumedEntry.input,
 				toolEntry: processResult.toolEntry,
 				modelOutput: processResult.modelOutput,
+				...(resumedEntry.suspended
+					? {
+							suspendPayload: resumedEntry.suspendPayload,
+							resumeData: pendingResume.resumeData,
+						}
+					: {}),
 			});
 			list.addInput([
 				{ role: 'user', content: [{ type: 'text', text: processResult.userMessage }] },
@@ -542,6 +571,41 @@ export class ToolCallExecutor {
 			for (const id of Object.keys(pendingResume.pendingToolCalls)) {
 				if (id !== resumedId) {
 					const siblingEntry = pendingResume.pendingToolCalls[id];
+					const siblingTool = toolMap.get(siblingEntry.toolName);
+					const siblingParams: ProcessToolCallParams = {
+						toolCallId: siblingEntry.toolCallId,
+						toolName: siblingEntry.toolName,
+						input: siblingEntry.input,
+						toolMap,
+						list,
+						runId,
+						persistence,
+						resumeData: pendingResume.resumeData,
+						resolvedTelemetry,
+						executionCounter,
+						abortSignal,
+						countToolCall: false,
+						...(siblingEntry.suspended ? { suspendPayload: siblingEntry.suspendPayload } : {}),
+					};
+					if (siblingEntry.suspended && siblingTool?.onCancellation) {
+						try {
+							await this.runCancellationCleanup(
+								siblingParams,
+								siblingTool,
+								processResult.userMessage,
+							);
+						} catch {
+							pending[id] = siblingEntry;
+							suspensions.push({
+								toolCallId: id,
+								toolName: siblingEntry.toolName,
+								input: siblingEntry.input,
+								payload: siblingEntry.suspendPayload,
+								resumeSchema: siblingEntry.resumeSchema,
+							});
+							continue;
+						}
+					}
 					const modelOutput = '[Skipped: a sibling tool call was cancelled]';
 					list.setToolCallResult(id, modelOutput, {
 						canceled: true,
@@ -558,10 +622,29 @@ export class ToolCallExecutor {
 							canceled: true,
 						},
 						modelOutput,
+						...(siblingEntry.suspended
+							? {
+									suspendPayload: siblingEntry.suspendPayload,
+									resumeData: pendingResume.resumeData,
+								}
+							: {}),
 					});
 				}
 			}
 
+			return { results, suspensions, errors, pending };
+		} else if (processResult.outcome === 'retryable-error') {
+			for (const [id, entry] of Object.entries(pendingResume.pendingToolCalls)) {
+				pending[id] = entry;
+				if (!entry.suspended) continue;
+				suspensions.push({
+					toolCallId: id,
+					toolName: entry.toolName,
+					input: entry.input,
+					payload: entry.suspendPayload,
+					resumeSchema: entry.resumeSchema,
+				});
+			}
 			return { results, suspensions, errors, pending };
 		} else if (processResult.outcome === 'error') {
 			errors.push({
@@ -650,6 +733,11 @@ export class ToolCallExecutor {
 		}
 
 		if (isCancellation(resumeData) && !builtTool.handleCancellation) {
+			try {
+				await this.runCancellationCleanup(params, builtTool, resumeData.message);
+			} catch {
+				return this.retryableToolError();
+			}
 			return this.buildCancelledOutcome(params, resumeData.message);
 		}
 
@@ -671,10 +759,26 @@ export class ToolCallExecutor {
 		}
 
 		let toolResult: unknown;
+		let interruptedSuspendPayload: unknown;
+		let didSuspend = false;
 		try {
-			toolResult = await this.runToolHandler(params, builtTool, input);
+			toolResult = await this.runToolHandler(params, builtTool, input, (payload) => {
+				didSuspend = true;
+				interruptedSuspendPayload = payload;
+			});
 		} catch (error) {
 			if (isAbortError(error) || params.abortSignal?.aborted) {
+				if (didSuspend) {
+					try {
+						await this.runCancellationCleanup(
+							{ ...params, input, suspendPayload: interruptedSuspendPayload },
+							builtTool,
+							'Run aborted',
+						);
+					} catch {
+						// Parent shutdown must continue; persistent stores will prune stale checkpoints.
+					}
+				}
 				this.deps.onCancelled();
 				return this.buildCancelledOutcome(params, 'Run aborted');
 			}
@@ -688,6 +792,59 @@ export class ToolCallExecutor {
 		return this.buildSuccessOutcome(params, builtTool, input, toolResult);
 	}
 
+	private async runCancellationCleanup(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+		message: string,
+	): Promise<void> {
+		if (!builtTool.onCancellation) return;
+		await builtTool.onCancellation(params.input, {
+			cancellation: { message },
+			toolCallId: params.toolCallId,
+			toolName: params.toolName,
+			runId: params.runId,
+			persistence: params.persistence,
+			parentTelemetry: params.resolvedTelemetry,
+			emitEvent: (event) => this.eventBus.emit(event),
+			abortSignal: params.abortSignal,
+			executionCounter: params.executionCounter,
+			suspendPayload: params.suspendPayload,
+		});
+	}
+
+	private async cleanupSuspendedToolsOnAbort(
+		pending: Record<string, PendingToolCall>,
+		ctx: ToolBatchContext,
+	): Promise<void> {
+		for (const entry of Object.values(pending)) {
+			if (!entry.suspended) continue;
+			const tool = ctx.toolMap.get(entry.toolName);
+			if (!tool?.onCancellation) continue;
+			try {
+				await this.runCancellationCleanup(
+					{
+						toolCallId: entry.toolCallId,
+						toolName: entry.toolName,
+						input: entry.input,
+						toolMap: ctx.toolMap,
+						list: ctx.list,
+						runId: ctx.runId,
+						persistence: ctx.persistence,
+						resolvedTelemetry: ctx.telemetry,
+						executionCounter: ctx.executionCounter,
+						abortSignal: ctx.abortSignal,
+						countToolCall: false,
+						suspendPayload: entry.suspendPayload,
+					},
+					tool,
+					'Run aborted',
+				);
+			} catch {
+				// Parent shutdown must continue; persistent stores will prune stale child checkpoints.
+			}
+		}
+	}
+
 	/** Emit a failed ToolExecutionEnd, record the error on the list, return an error outcome. */
 	private toolError(params: ProcessToolCallParams, error: unknown): ToolCallOutcome {
 		this.eventBus.emit({
@@ -699,6 +856,10 @@ export class ToolCallExecutor {
 		});
 		params.list.setToolCallError(params.toolCallId, error);
 		return { outcome: 'error', error };
+	}
+
+	private retryableToolError(): ToolCallOutcome {
+		return { outcome: 'retryable-error' };
 	}
 
 	/** Find an already-settled (resolved/rejected) tool-call block for this id, if any. */
@@ -777,6 +938,7 @@ export class ToolCallExecutor {
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
 		input: JSONValue,
+		onSuspend: (payload: unknown) => void,
 	): Promise<unknown> {
 		const {
 			toolCallId,
@@ -804,6 +966,7 @@ export class ToolCallExecutor {
 							abortSignal,
 							executionCounter,
 							suspendPayload,
+							onSuspend,
 						}),
 					abortSignal,
 				),
@@ -826,7 +989,7 @@ export class ToolCallExecutor {
 		if (!builtTool.resumeSchema) {
 			return this.toolError(params, new Error(`Tool ${params.toolName} has no resume schema`));
 		}
-		const resumeSchema = getToolResumeJsonSchema(builtTool);
+		const resumeSchema = getToolResumeJsonSchema(builtTool, toolResult.payload);
 		if (!resumeSchema) {
 			return this.toolError(params, new Error('Invalid resume schema'));
 		}

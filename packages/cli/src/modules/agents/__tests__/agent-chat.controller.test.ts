@@ -12,7 +12,7 @@ import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { FlushableResponse } from '../agent-sse-stream';
-import type { AgentTestChatService } from '../agent-test-chat.service';
+import { chatThreadId, type AgentTestChatService } from '../agent-test-chat.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
@@ -26,6 +26,7 @@ function makeController() {
 		mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
+	const agentTestChatService = mock<AgentTestChatService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const agentExecutionService = mock<AgentExecutionService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
@@ -33,7 +34,7 @@ function makeController() {
 
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
-		mock<AgentTestChatService>(),
+		agentTestChatService,
 		agentValidationService,
 		agentsBuilderService,
 		mock<CredentialsService>(),
@@ -48,6 +49,8 @@ function makeController() {
 		agentValidationService,
 		agentExecutionService,
 		agentChatAttachmentService,
+		agentTestChatService,
+		agentsBuilderService,
 		agentsService: {
 			findById: agentsService.findById,
 			getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
@@ -153,6 +156,24 @@ describe('AgentChatController chat message history', () => {
 				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 			} as never),
 		).rejects.toThrow(NotFoundError);
+	});
+
+	it('adopts a legacy preview-chat checkpoint after validating the server-derived thread', async () => {
+		const { controller, agentsService, agentTestChatService, agentsBuilderService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentTestChatService.getTestChatMessages.mockResolvedValue([]);
+
+		await controller.getTestChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+			user: { id: 'user-1' },
+		} as never);
+
+		expect(agentsBuilderService.findOpenCheckpointForThread).toHaveBeenCalledWith(
+			'agent-1',
+			chatThreadId('agent-1', 'user-1'),
+			{ includeUnscoped: true },
+		);
 	});
 });
 

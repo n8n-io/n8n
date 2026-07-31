@@ -30,6 +30,8 @@ export interface ToolExecutionContext {
 	abortSignal?: AbortSignal;
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: AgentExecutionCounter;
+	/** Internal runtime hook used to retain cleanup ownership if abort wins the suspend race. */
+	onSuspend?: (payload: unknown) => void;
 	/**
 	 * Checkpointed suspend payload for a resumed interruptible tool call,
 	 * restored from persistence. Only set when the tool is being resumed.
@@ -87,6 +89,13 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	suspendPayload?: S;
 }
 
+export interface ToolCancellationContext extends ToolContext {
+	/** User steering message that cancelled the suspended tool call. */
+	cancellation: { message: string };
+	/** Payload originally persisted when the tool suspended. */
+	suspendPayload?: unknown;
+}
+
 export interface BuiltTool {
 	readonly name: string;
 	readonly description: string;
@@ -100,12 +109,16 @@ export interface BuiltTool {
 	readonly systemInstruction?: string;
 	readonly suspendSchema?: ZodType | JSONSchema7;
 	readonly resumeSchema?: ZodType | JSONSchema7;
+	/** Resolve a payload-specific resume schema for dynamically cascaded interactions. */
+	readonly resolveResumeSchema?: (suspendPayload: unknown) => ZodType | JSONSchema7 | undefined;
 	readonly approval?: {
 		readonly required: boolean;
 		readonly conditional?: boolean;
 	};
 	/** When `true`, the handler is called on cancellation with `ctx.cancellation` set instead of being bypassed. */
 	readonly handleCancellation?: boolean;
+	/** Run cleanup before the runtime auto-cancels a suspended tool call. */
+	readonly onCancellation?: (input: unknown, ctx: ToolCancellationContext) => Promise<void>;
 	readonly toMessage?: (output: unknown) => AgentMessage | undefined;
 	/**
 	 * Transform the handler output before sending it to the LLM as a tool result.

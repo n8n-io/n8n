@@ -197,6 +197,105 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		});
 	});
 
+	it('keeps delegated tool input separate from a nested approval suspension', async () => {
+		const delegateInput = {
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			goal: 'Research the requested API',
+			context: 'Use the configured research agent',
+		};
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com/data' },
+			delegateCheckpoint: {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				taskPath: '/root/research_api_0',
+				subAgentId: 'inline',
+				childCount: 0,
+			},
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'parent-tool-call-1',
+				toolName: 'delegate_subagent',
+				input: delegateInput,
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'parent-tool-call-1',
+					runId: 'parent-run-1',
+					toolName: 'delegate_subagent',
+					input: suspendPayload,
+				},
+			},
+			{ type: 'done' },
+		];
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(makeSseResponse(events))
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-result',
+						toolCallId: 'parent-tool-call-1',
+						toolName: 'delegate_subagent',
+						output: {
+							status: 'completed',
+							taskPath: '/root/research_api_0',
+							answer: 'The child continued without the request.',
+						},
+					},
+					{ type: 'done' },
+				]),
+			);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('research this API');
+		await nextTick();
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.toolCalls?.[0]).toMatchObject({
+			input: delegateInput,
+			suspendPayload,
+			state: 'suspended',
+			runId: 'parent-run-1',
+		});
+		expect(assistant.interactive).toEqual({
+			toolCallId: 'parent-tool-call-1',
+			toolName: APPROVAL_TOOL_NAME,
+			input: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com/data' },
+			},
+			runId: 'parent-run-1',
+		});
+
+		await hook.resume({
+			runId: assistant.interactive!.runId!,
+			toolCallId: assistant.interactive!.toolCallId,
+			resumeData: { approved: false },
+		});
+
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			2,
+			'http://localhost:5678/projects/p1/agents/v2/a1/chat/resume',
+			expect.objectContaining({
+				body: JSON.stringify({
+					runId: 'parent-run-1',
+					toolCallId: 'parent-tool-call-1',
+					resumeData: { approved: false },
+				}),
+			}),
+		);
+		expect(assistant.interactive?.resolvedValue).toEqual({ approved: false });
+	});
+
 	it('treats a suspension as a valid ending when the stream closes without done', async () => {
 		const events: AgentSseEvent[] = [
 			{
@@ -771,6 +870,63 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 		expect(assistant.interactive?.resolvedAt).toBeDefined();
 		expect(assistant.status).toBe('success');
+	});
+
+	it('reopens a cancelled HITL card when backend cleanup re-suspends it', async () => {
+		const approvalInput = {
+			type: 'approval' as const,
+			toolName: 'calculator',
+			args: { input: '2 + 2' },
+		};
+		const suspensionEvent: AgentSseEvent = {
+			type: 'tool-call-suspended',
+			payload: {
+				toolCallId: 'tc-approval',
+				runId: 'run-approval',
+				toolName: 'calculator',
+				input: approvalInput,
+			},
+		};
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-approval',
+						toolName: 'calculator',
+						input: { input: '2 + 2' },
+					},
+					suspensionEvent,
+				]),
+			)
+			.mockResolvedValueOnce(makeSseResponse([suspensionEvent]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('calculate 2 + 2');
+		await hook.resume({
+			runId: 'run-approval',
+			toolCallId: 'tc-approval',
+			cancelled: true,
+			text: 'Keep waiting',
+		});
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.status).toBe('awaitingUser');
+		expect(assistant.toolCalls?.[0]).toMatchObject({
+			state: 'suspended',
+			canceled: false,
+			output: undefined,
+			resumeData: undefined,
+			displaySummary: undefined,
+		});
+		expect(assistant.interactive).toMatchObject({
+			toolCallId: 'tc-approval',
+			runId: 'run-approval',
+		});
+		expect(assistant.interactive?.cancelled).toBeUndefined();
+		expect(assistant.interactive?.resolvedAt).toBeUndefined();
 	});
 
 	it('reconciles a failed resume against the backend suspension state', async () => {

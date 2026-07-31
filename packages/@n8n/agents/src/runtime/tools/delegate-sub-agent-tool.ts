@@ -1,7 +1,10 @@
+import { isRecord } from '@n8n/utils/is-record';
+import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import {
+	assertSubAgentTaskPath,
 	createChildSubAgentTaskPath,
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	type SubAgentTaskPath,
@@ -21,10 +24,19 @@ import type {
 	TokenUsage,
 } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
-import type { BuiltProviderTool, BuiltTool, ToolContext } from '../../types/sdk/tool';
+import type {
+	BuiltProviderTool,
+	BuiltTool,
+	InterruptibleToolContext,
+	ToolCancellationContext,
+	ToolContext,
+} from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import type { JSONValue } from '../../types/utils/json';
+import { parseWithSchema } from '../../utils/parse';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
+export const DELEGATE_SUB_AGENT_CHILD_SUSPEND_PAYLOAD_KEY = 'childSuspendPayload';
 export const INLINE_SUB_AGENT_ID = 'inline';
 /** i18n key — localized in the agent chat UI; see `agents.chat.delegate.childSuspendUnsupported`. */
 export const DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE =
@@ -34,6 +46,17 @@ export const INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY = 'inlineDelegateSubAge
 export const SUB_AGENT_TASK_DIFFICULTIES = ['low', 'medium', 'high'] as const;
 const SubAgentTaskDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
 export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
+
+const jsonValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(jsonValueSchema),
+		z.record(z.string(), jsonValueSchema),
+	]),
+);
 
 // Model-facing input: the arguments the LLM fills in when it calls the tool.
 // The `.describe(...)` text is what the model reads, so keep it task-oriented.
@@ -82,6 +105,7 @@ const delegateSubAgentOutputSchema = z.object({
 		.optional(),
 	finishReason: z.string().optional(),
 	error: z.string().optional(),
+	resumeContext: jsonValueSchema.optional(),
 	pendingSuspend: z
 		.array(
 			z.object({
@@ -95,6 +119,23 @@ const delegateSubAgentOutputSchema = z.object({
 		)
 		.optional(),
 });
+
+const delegateCheckpointRefSchema = z.object({
+	runId: z.string(),
+	toolCallId: z.string(),
+	taskPath: z.string(),
+	subAgentId: z.string(),
+	childCount: z.number().int().nonnegative(),
+	threadId: z.string().optional(),
+	resumeContext: jsonValueSchema.optional(),
+	resumeSchema: z.unknown().optional(),
+});
+
+const delegateSubAgentSuspendSchema = z
+	.object({ delegateCheckpoint: delegateCheckpointRefSchema })
+	.passthrough();
+
+const delegateSubAgentResumeSchema = z.unknown();
 
 /** The arguments the LLM provides when calling delegate_subagent. */
 export type DelegateSubAgentInput = z.infer<typeof delegateSubAgentInputSchema>;
@@ -169,6 +210,8 @@ export interface DelegateSubAgentToolOutput {
 	finishReason?: FinishReason;
 	/** Present when status is 'failed'. */
 	error?: string;
+	/** Host-owned, serializable context required to reconstruct this exact child. */
+	resumeContext?: JSONValue;
 	/** Present when status is 'suspended' — child run paused awaiting tool resume. */
 	pendingSuspend?: GenerateResult['pendingSuspend'];
 }
@@ -242,6 +285,32 @@ export type DelegateSubAgentRunner = (
 	helpers: DelegateSubAgentRunnerHelpers,
 ) => Promise<DelegateSubAgentToolOutput>;
 
+export interface DelegateSubAgentResumeRequest extends DelegateSubAgentRequest {
+	childRunId: string;
+	childToolCallId: string;
+	childThreadId?: string;
+	resumeContext?: JSONValue;
+	resumeData: unknown;
+}
+
+export type DelegateSubAgentResumeRunner = (
+	request: DelegateSubAgentResumeRequest,
+	helpers: DelegateSubAgentRunnerHelpers,
+) => Promise<DelegateSubAgentToolOutput>;
+
+export interface DelegateSubAgentCancelRequest extends DelegateSubAgentRequest {
+	childRunId: string;
+	childToolCallId: string;
+	childThreadId?: string;
+	resumeContext?: JSONValue;
+	reason: string;
+}
+
+export type DelegateSubAgentCancelRunner = (
+	request: DelegateSubAgentCancelRequest,
+	helpers: DelegateSubAgentRunnerHelpers,
+) => Promise<void>;
+
 export interface CreateDelegateSubAgentToolOptions {
 	/** Model-facing tool name. Defaults to {@link DELEGATE_SUB_AGENT_TOOL_NAME}; the default description and system instruction adapt to it. */
 	name?: string;
@@ -274,6 +343,10 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * `helpers.runInlineSubAgent` for inline work.
 	 */
 	runSubAgent?: DelegateSubAgentRunner;
+	/** Resume a child checkpoint previously cascaded through this delegate tool. */
+	resumeSubAgent?: DelegateSubAgentResumeRunner;
+	/** Clean up a child checkpoint when the parent cancels the suspended delegation. */
+	cancelSubAgent?: DelegateSubAgentCancelRunner;
 
 	toModelOutput?: (output: z.infer<typeof delegateSubAgentOutputSchema>) => unknown;
 }
@@ -373,11 +446,19 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		...options,
 		policy: resolveDelegateSubAgentPolicy(options.policy, toolName),
 	};
+	if (
+		(resolvedOptions.resumeSubAgent === undefined) !==
+		(resolvedOptions.cancelSubAgent === undefined)
+	) {
+		throw new Error(
+			`${toolName} requires resumeSubAgent and cancelSubAgent to be configured together`,
+		);
+	}
 	const inlineProviderToolInstruction = resolvedOptions.resolveInlineSubAgentProviderTools
 		? "Provider-defined tools are loaded for the inline child's selected model provider."
 		: 'Inline children do not inherit provider-defined tools.';
 
-	const tool = new Tool(toolName)
+	const toolBuilder = new Tool(toolName)
 		.description(resolveDelegateSubAgentDescription(resolvedOptions))
 		.systemInstruction(
 			resolveDelegateSubAgentSystemInstruction(
@@ -387,17 +468,45 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 			),
 		)
 		.input(delegateSubAgentInputSchema)
-		.output(delegateSubAgentOutputSchema)
-		.handler(
-			async (input, ctx) =>
-				await handleDelegateSubAgent(input, ctx, resolvedOptions, childPathIndexes),
-		)
-		.toModelOutput((output) => {
-			return resolvedOptions.toModelOutput ? resolvedOptions.toModelOutput(output) : output;
-		})
-		.build();
+		.output(delegateSubAgentOutputSchema);
+	const handler = async (
+		input: DelegateSubAgentInput,
+		ctx: ToolContext | InterruptibleToolContext,
+	) => await handleDelegateSubAgent(input, ctx, resolvedOptions, childPathIndexes);
+	const toModelOutput = (output: z.infer<typeof delegateSubAgentOutputSchema>) =>
+		resolvedOptions.toModelOutput ? resolvedOptions.toModelOutput(output) : output;
+	const tool = resolvedOptions.resumeSubAgent
+		? toolBuilder
+				.suspend(delegateSubAgentSuspendSchema)
+				.resume(delegateSubAgentResumeSchema)
+				.handler(handler)
+				.toModelOutput(toModelOutput)
+				.build()
+		: toolBuilder.handler(handler).toModelOutput(toModelOutput).build();
 	return withSdkOwnedBuiltInMetadata({
 		...tool,
+		...(resolvedOptions.resumeSubAgent !== undefined
+			? {
+					resolveResumeSchema: (suspendPayload: unknown) => {
+						const parsed = delegateSubAgentSuspendSchema.safeParse(suspendPayload);
+						const childSchema = parsed.success
+							? parsed.data.delegateCheckpoint.resumeSchema
+							: undefined;
+						return isJsonSchemaObject(childSchema) ? childSchema : undefined;
+					},
+				}
+			: {}),
+		...(resolvedOptions.cancelSubAgent !== undefined
+			? {
+					onCancellation: async (rawInput: unknown, ctx: ToolCancellationContext) => {
+						const parsedInput = delegateSubAgentInputSchema.safeParse(rawInput);
+						if (!parsedInput.success) {
+							throw new Error('Delegated child input is missing or invalid');
+						}
+						await cancelDelegatedSubAgent(parsedInput.data, ctx, resolvedOptions, childPathIndexes);
+					},
+				}
+			: {}),
 		metadata: {
 			...tool.metadata,
 			[INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY]: {
@@ -422,6 +531,12 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 					: {}),
 				...(resolvedOptions.runSubAgent !== undefined
 					? { runSubAgent: resolvedOptions.runSubAgent }
+					: {}),
+				...(resolvedOptions.resumeSubAgent !== undefined
+					? { resumeSubAgent: resolvedOptions.resumeSubAgent }
+					: {}),
+				...(resolvedOptions.cancelSubAgent !== undefined
+					? { cancelSubAgent: resolvedOptions.cancelSubAgent }
 					: {}),
 				...(resolvedOptions.systemInstruction !== undefined
 					? { systemInstruction: resolvedOptions.systemInstruction }
@@ -492,7 +607,7 @@ function formatDelegationPolicyInstructions(
  */
 async function handleDelegateSubAgent(
 	input: DelegateSubAgentInput,
-	ctx: ToolContext,
+	ctx: ToolContext | InterruptibleToolContext,
 	options: CreateDelegateSubAgentToolOptions,
 	childPathIndexes: Map<string, number>,
 ): Promise<DelegateSubAgentToolOutput> {
@@ -500,31 +615,75 @@ async function handleDelegateSubAgent(
 	let request: DelegateSubAgentRequest | undefined;
 	let startedAt: number | undefined;
 	try {
+		if (
+			options.resumeSubAgent !== undefined &&
+			isInterruptibleToolContext(ctx) &&
+			ctx.suspendPayload !== undefined
+		) {
+			const parsedSuspend = delegateSubAgentSuspendSchema.safeParse(ctx.suspendPayload);
+			if (!parsedSuspend.success) {
+				throw new Error('Delegated child checkpoint metadata is missing or invalid');
+			}
+			const checkpoint = parsedSuspend.data.delegateCheckpoint;
+			if (checkpoint.subAgentId !== input.subAgentId) {
+				throw new Error('Delegated child checkpoint does not match the selected sub-agent');
+			}
+			assertSubAgentTaskPath(checkpoint.taskPath);
+			taskPath = checkpoint.taskPath;
+			advanceChildPathIndex(childPathIndexes, ctx, checkpoint.childCount);
+			request = createDelegateSubAgentRequest(
+				input,
+				ctx,
+				taskPath,
+				checkpoint.childCount,
+				options.policy,
+			);
+			let resumeData = ctx.resumeData;
+			if (checkpoint.resumeSchema !== undefined) {
+				if (!isJsonSchemaObject(checkpoint.resumeSchema)) {
+					throw new Error('Delegated child resume schema is invalid');
+				}
+				const parsedResume = await parseWithSchema(checkpoint.resumeSchema, resumeData);
+				if (!parsedResume.success) {
+					return await ctx.suspend(ctx.suspendPayload);
+				}
+				resumeData = parsedResume.data;
+			}
+			startedAt = Date.now();
+			emitSubAgentStarted(ctx, request, startedAt);
+			let output: DelegateSubAgentToolOutput;
+			try {
+				output = await options.resumeSubAgent(
+					{
+						...request,
+						childRunId: checkpoint.runId,
+						childToolCallId: checkpoint.toolCallId,
+						...(checkpoint.threadId !== undefined ? { childThreadId: checkpoint.threadId } : {}),
+						...(checkpoint.resumeContext !== undefined
+							? { resumeContext: checkpoint.resumeContext }
+							: {}),
+						resumeData,
+					},
+					createRunnerHelpers(ctx, request, options.name),
+				);
+			} catch (error) {
+				if (ctx.abortSignal?.aborted || isAbortError(error)) throw error;
+				return await ctx.suspend(ctx.suspendPayload);
+			}
+			emitSubAgentCompleted(ctx, request, output, startedAt);
+			if (output.status === 'suspended') {
+				return await cascadeChildSuspension(ctx, request, output);
+			}
+			return output;
+		}
+
 		const childPathIndexKey = getChildPathIndexKey(ctx);
 		const childPathIndex = childPathIndexes.get(childPathIndexKey) ?? 0;
 
 		taskPath = createChildSubAgentTaskPath(input.taskName, childPathIndex);
 		childPathIndexes.set(childPathIndexKey, childPathIndex + 1);
 
-		request = {
-			...input,
-			taskPath,
-			childCount: childPathIndex,
-			...(ctx.runId !== undefined ? { parentRunId: ctx.runId } : {}),
-			...(ctx.persistence?.threadId !== undefined
-				? { parentThreadId: ctx.persistence.threadId }
-				: {}),
-			...(ctx.persistence?.resourceId !== undefined
-				? { parentResourceId: ctx.persistence.resourceId }
-				: {}),
-			...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
-			...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
-			...(ctx.executionCounter !== undefined
-				? { parentExecutionCounter: ctx.executionCounter }
-				: {}),
-			...(ctx.parentTelemetry !== undefined ? { parentTelemetry: ctx.parentTelemetry } : {}),
-			...(options.policy !== undefined ? { policy: options.policy } : {}),
-		};
+		request = createDelegateSubAgentRequest(input, ctx, taskPath, childPathIndex, options.policy);
 
 		startedAt = Date.now();
 		emitSubAgentStarted(ctx, request, startedAt);
@@ -534,15 +693,18 @@ async function handleDelegateSubAgent(
 				`${toolName} was registered without a runSubAgent callback, and no host runner was provided. Register it on an Agent (for inline delegation) or pass runSubAgent.`,
 			);
 		}
-		const output = await options.runSubAgent(request, {
-			runInlineSubAgent: () => {
-				throw new Error(
-					`${toolName} host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.`,
-				);
-			},
-			emitChunk: createEmitChunkHelper(ctx, request),
-		});
+		const output = await options.runSubAgent(
+			request,
+			createRunnerHelpers(ctx, request, options.name),
+		);
 		emitSubAgentCompleted(ctx, request, output, startedAt);
+		if (
+			output.status === 'suspended' &&
+			options.resumeSubAgent !== undefined &&
+			isInterruptibleToolContext(ctx)
+		) {
+			return await cascadeChildSuspension(ctx, request, output);
+		}
 		return output;
 	} catch (error) {
 		// When the parent has a signal it is the authority: `isAbortError` also
@@ -561,6 +723,135 @@ async function handleDelegateSubAgent(
 		if (aborted) throw error;
 		return output;
 	}
+}
+
+function createDelegateSubAgentRequest(
+	input: DelegateSubAgentInput,
+	ctx: ToolContext,
+	taskPath: SubAgentTaskPath,
+	childCount: number,
+	policy?: DelegateSubAgentPolicy,
+): DelegateSubAgentRequest {
+	return {
+		...input,
+		taskPath,
+		childCount,
+		...(ctx.runId !== undefined ? { parentRunId: ctx.runId } : {}),
+		...(ctx.persistence?.threadId !== undefined
+			? { parentThreadId: ctx.persistence.threadId }
+			: {}),
+		...(ctx.persistence?.resourceId !== undefined
+			? { parentResourceId: ctx.persistence.resourceId }
+			: {}),
+		...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
+		...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
+		...(ctx.executionCounter !== undefined ? { parentExecutionCounter: ctx.executionCounter } : {}),
+		...(ctx.parentTelemetry !== undefined ? { parentTelemetry: ctx.parentTelemetry } : {}),
+		...(policy !== undefined ? { policy } : {}),
+	};
+}
+
+function advanceChildPathIndex(
+	childPathIndexes: Map<string, number>,
+	ctx: ToolContext,
+	childCount: number,
+): void {
+	const key = getChildPathIndexKey(ctx);
+	childPathIndexes.set(key, Math.max(childPathIndexes.get(key) ?? 0, childCount + 1));
+}
+
+function isJsonSchemaObject(value: unknown): value is JSONSchema7 {
+	return isRecord(value);
+}
+
+async function cancelDelegatedSubAgent(
+	input: DelegateSubAgentInput,
+	ctx: ToolCancellationContext,
+	options: CreateDelegateSubAgentToolOptions,
+	childPathIndexes: Map<string, number>,
+): Promise<void> {
+	if (options.cancelSubAgent === undefined || ctx.suspendPayload === undefined) return;
+	if (!isRecord(ctx.suspendPayload) || !('delegateCheckpoint' in ctx.suspendPayload)) return;
+	const parsedSuspend = delegateSubAgentSuspendSchema.safeParse(ctx.suspendPayload);
+	if (!parsedSuspend.success) {
+		throw new Error('Delegated child checkpoint metadata is missing or invalid');
+	}
+	const checkpoint = parsedSuspend.data.delegateCheckpoint;
+	if (checkpoint.subAgentId !== input.subAgentId) {
+		throw new Error('Delegated child checkpoint does not match the selected sub-agent');
+	}
+	assertSubAgentTaskPath(checkpoint.taskPath);
+	advanceChildPathIndex(childPathIndexes, ctx, checkpoint.childCount);
+	const request = createDelegateSubAgentRequest(
+		input,
+		ctx,
+		checkpoint.taskPath,
+		checkpoint.childCount,
+		options.policy,
+	);
+	await options.cancelSubAgent(
+		{
+			...request,
+			childRunId: checkpoint.runId,
+			childToolCallId: checkpoint.toolCallId,
+			...(checkpoint.threadId !== undefined ? { childThreadId: checkpoint.threadId } : {}),
+			...(checkpoint.resumeContext !== undefined
+				? { resumeContext: checkpoint.resumeContext }
+				: {}),
+			reason: ctx.cancellation.message,
+		},
+		createRunnerHelpers(ctx, request, options.name),
+	);
+}
+
+function createRunnerHelpers(
+	ctx: ToolContext | InterruptibleToolContext,
+	request: DelegateSubAgentRequest,
+	configuredToolName?: string,
+): DelegateSubAgentRunnerHelpers {
+	const toolName = configuredToolName ?? DELEGATE_SUB_AGENT_TOOL_NAME;
+	return {
+		runInlineSubAgent: () => {
+			throw new Error(
+				`${toolName} host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.`,
+			);
+		},
+		emitChunk: createEmitChunkHelper(ctx, request),
+	};
+}
+
+function isInterruptibleToolContext(
+	ctx: ToolContext | InterruptibleToolContext,
+): ctx is InterruptibleToolContext {
+	return 'suspend' in ctx;
+}
+
+async function cascadeChildSuspension(
+	ctx: InterruptibleToolContext,
+	request: DelegateSubAgentRequest,
+	output: DelegateSubAgentToolOutput,
+): Promise<never> {
+	const suspension = output.pendingSuspend?.[0];
+	if (!suspension || !isJsonSchemaObject(suspension.resumeSchema)) {
+		throw new Error(DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE);
+	}
+	const clientPayload = isRecord(suspension.suspendPayload)
+		? suspension.suspendPayload
+		: { [DELEGATE_SUB_AGENT_CHILD_SUSPEND_PAYLOAD_KEY]: suspension.suspendPayload };
+
+	return await ctx.suspend({
+		...clientPayload,
+		delegateCheckpoint: {
+			runId: suspension.runId,
+			toolCallId: suspension.toolCallId,
+			taskPath: request.taskPath,
+			subAgentId: request.subAgentId,
+			childCount: request.childCount,
+			...(output.threadId !== undefined ? { threadId: output.threadId } : {}),
+			...(output.resumeContext !== undefined ? { resumeContext: output.resumeContext } : {}),
+			resumeSchema: suspension.resumeSchema,
+		},
+	});
 }
 
 function emitSubAgentStarted(

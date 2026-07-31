@@ -27,12 +27,14 @@ import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
-	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
+	type DelegateSubAgentCancelRequest,
 	type DelegateSubAgentRequest,
+	type DelegateSubAgentResumeRequest,
+	type DelegateSubAgentRunnerHelpers,
 	type DelegateSubAgentToolOutput,
 	type InlineSubAgentProviderToolsResolver,
 	type SubAgentTaskDifficulty,
@@ -1060,10 +1062,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
 				? { topK: this.deferredToolSearchTopK }
 				: undefined;
+		const runState = new RunStateManager(this.checkpointStore);
 
 		allTools = this.completeInlineDelegateTools(allTools, {
 			deferredTools: finalDeferredTools,
 			modelConfig,
+			runState,
 			...(telemetry !== undefined ? { telemetry } : {}),
 			...(this.concurrencyValue !== undefined
 				? { toolCallConcurrency: this.concurrencyValue }
@@ -1083,8 +1087,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		} catch {
 			modelCost = undefined;
 		}
-
-		const runState = new RunStateManager(this.checkpointStore);
 
 		return {
 			name: this.name,
@@ -1121,6 +1123,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options: {
 			deferredTools: BuiltTool[];
 			modelConfig: ModelConfig;
+			runState: RunStateManager;
 			telemetry?: BuiltTelemetry;
 			toolCallConcurrency?: number;
 			toolSearch?: { topK?: number };
@@ -1138,6 +1141,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				resolveInlineSubAgentProviderTools: delegateOptions.resolveInlineSubAgentProviderTools,
 			});
 			const hostRunner = delegateOptions.runSubAgent;
+			const hostResumeRunner = delegateOptions.resumeSubAgent;
+			const hostCancelRunner = delegateOptions.cancelSubAgent;
+			const inlineChildCanSuspend = [...tools, ...options.deferredTools].some(
+				(candidate) => !isDelegateSubAgentTool(candidate) && candidate.suspendSchema !== undefined,
+			);
 			const completedTool = createDelegateSubAgentTool({
 				...delegateOptions,
 				runSubAgent: async (request, helpersFromHandler) => {
@@ -1159,6 +1167,47 @@ export class Agent implements BuiltAgent, AgentBuilder {
 						error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
 					};
 				},
+				...(hostResumeRunner !== undefined || inlineChildCanSuspend
+					? {
+							resumeSubAgent: async (
+								request: DelegateSubAgentResumeRequest,
+								helpersFromHandler: DelegateSubAgentRunnerHelpers,
+							) => {
+								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+									return await runInlineSubAgent(request, helpersFromHandler.emitChunk, request);
+								}
+								if (hostResumeRunner !== undefined) {
+									return await hostResumeRunner(request, helpersFromHandler);
+								}
+								return {
+									status: 'failed' as const,
+									taskPath: request.taskPath,
+									answer: '',
+									error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
+								};
+							},
+						}
+					: {}),
+				...(hostCancelRunner !== undefined || inlineChildCanSuspend
+					? {
+							cancelSubAgent: async (
+								request: DelegateSubAgentCancelRequest,
+								helpersFromHandler: DelegateSubAgentRunnerHelpers,
+							) => {
+								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+									await options.runState.cancel(request.childRunId);
+									return;
+								}
+								if (hostCancelRunner !== undefined) {
+									await hostCancelRunner(request, helpersFromHandler);
+									return;
+								}
+								throw new Error(
+									`No cancellation handler is available for "${request.subAgentId}".`,
+								);
+							},
+						}
+					: {}),
 			});
 
 			if (tool.approval?.required === true) {
@@ -1171,6 +1220,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private createInlineSubAgentRunner(options: {
 		deferredTools: BuiltTool[];
 		modelConfig: ModelConfig;
+		runState: RunStateManager;
 		telemetry?: BuiltTelemetry;
 		toolCallConcurrency?: number;
 		toolSearch?: { topK?: number };
@@ -1181,8 +1231,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}): (
 		request: DelegateSubAgentRequest,
 		onChunk?: (chunk: StreamChunk) => void,
+		resume?: Pick<DelegateSubAgentResumeRequest, 'childRunId' | 'childToolCallId' | 'resumeData'>,
 	) => Promise<DelegateSubAgentToolOutput> {
-		return async (request, onChunk) => {
+		return async (request, onChunk, resume) => {
 			const tools = filterInlineSubAgentTools(options.tools, options.inlineSubAgentBlockedTools);
 			const deferredTools = filterInlineSubAgentTools(
 				options.deferredTools,
@@ -1214,7 +1265,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
 				promptCaching: this.promptCachingConfig,
-				checkpointStorage: this.checkpointStore,
+				runState: options.runState,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(this.reasoningLevel !== undefined ? { reasoning: this.reasoningLevel } : {}),
 				...(telemetry !== undefined ? { telemetry } : {}),
@@ -1224,7 +1275,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			});
 
 			try {
-				const resultStream = await childRuntime.stream(renderDelegateSubAgentPrompt(request), {
+				const executionOptions: ExecutionOptions = {
 					...(request.parentAbortSignal !== undefined
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
@@ -1232,7 +1283,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
 						: {}),
-				});
+				};
+				const resultStream = resume
+					? await childRuntime.resume('stream', resume.resumeData, {
+							...executionOptions,
+							runId: resume.childRunId,
+							toolCallId: resume.childToolCallId,
+						})
+					: await childRuntime.stream(renderDelegateSubAgentPrompt(request), executionOptions);
 
 				let text = '';
 				let model: string | undefined;
@@ -1240,7 +1298,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				let finishReason: FinishReason | undefined;
 				let structuredOutput: unknown;
 				let error: unknown;
-				let suspended = false;
+				const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
 
 				const reader = resultStream.stream.getReader();
 				try {
@@ -1254,7 +1312,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 								text += chunk.delta;
 								break;
 							case 'tool-call-suspended':
-								suspended = true;
+								pendingSuspend.push({
+									runId: chunk.runId,
+									toolCallId: chunk.toolCallId,
+									toolName: chunk.toolName,
+									input: chunk.input,
+									suspendPayload: chunk.suspendPayload,
+									...(chunk.resumeSchema !== undefined ? { resumeSchema: chunk.resumeSchema } : {}),
+								});
 								break;
 							case 'error':
 								error = chunk.error;
@@ -1273,10 +1338,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					}
 				} finally {
 					reader.releaseLock();
-				}
-
-				if (suspended) {
-					return failedDelegatedChildSuspendOutput(request.taskPath, model ?? childModelId);
 				}
 
 				// The runtime only serializes its message list into state on success
@@ -1299,6 +1360,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					...(usage !== undefined ? { usage } : {}),
 					...(structuredOutput !== undefined ? { structuredOutput } : {}),
 					...(error !== undefined ? { error } : {}),
+					...(pendingSuspend.length > 0 ? { pendingSuspend } : {}),
 					getState: () => resultStream.getState(),
 				};
 				return generateResultToDelegateSubAgentOutput(request.taskPath, result);

@@ -1,5 +1,4 @@
 import {
-	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	type BuiltAgent,
 	type BuiltTelemetry,
 	type CredentialProvider,
@@ -19,6 +18,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
+import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
@@ -101,6 +101,7 @@ describe('SubAgentForegroundRunner', () => {
 	let childAgent: Mocked<BuiltAgent>;
 	let agentExecutionService: Mocked<AgentExecutionService>;
 	let logger: Mocked<Logger>;
+	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
 
 	beforeEach(() => {
@@ -111,8 +112,14 @@ describe('SubAgentForegroundRunner', () => {
 		reconstructionService = mock<AgentRuntimeReconstructionService>();
 		Container.set(AgentRuntimeReconstructionService, reconstructionService);
 		agentExecutionService = mock<AgentExecutionService>();
+		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
-		runner = new SubAgentForegroundRunner(sourceResolver, agentExecutionService, logger);
+		runner = new SubAgentForegroundRunner(
+			sourceResolver,
+			agentExecutionService,
+			checkpointStorage,
+			logger,
+		);
 
 		childAgent = mock<BuiltAgent>();
 		childAgent.stream.mockResolvedValue(makeStreamResult(defaultStreamChunks));
@@ -169,6 +176,7 @@ describe('SubAgentForegroundRunner', () => {
 				persistence: {
 					resourceId: result.threadId,
 					threadId: result.threadId,
+					delegated: true,
 				},
 			}),
 		);
@@ -219,6 +227,7 @@ describe('SubAgentForegroundRunner', () => {
 				persistence: {
 					resourceId: 'draft-chat:user-1',
 					threadId: result.threadId,
+					delegated: true,
 				},
 			}),
 		);
@@ -263,6 +272,7 @@ describe('SubAgentForegroundRunner', () => {
 				persistence: {
 					resourceId: result.threadId,
 					threadId: result.threadId,
+					delegated: true,
 				},
 			}),
 		);
@@ -281,7 +291,11 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
-	it('marks the run as failed when the child stream emits a suspension', async () => {
+	it('returns every child suspension with pinned resume context', async () => {
+		sourceResolver.resolveForRuntime.mockResolvedValue({
+			...runtimeSource,
+			source: { ...runtimeSource.source, versionId: 'version-7' },
+		});
 		childAgent.stream.mockResolvedValue(
 			makeStreamResult([
 				{ type: 'text-delta', id: 'text-1', delta: 'Choose an option' },
@@ -290,6 +304,20 @@ describe('SubAgentForegroundRunner', () => {
 					runId: 'child-run-1',
 					toolCallId: 'tool-call-1',
 					toolName: 'approval_action',
+					input: { action: 'publish' },
+					suspendPayload: { type: 'approval', action: 'publish' },
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+					},
+				},
+				{
+					type: 'tool-call-suspended',
+					runId: 'child-run-1',
+					toolCallId: 'tool-call-2',
+					toolName: 'confirm_action',
+					input: { action: 'notify' },
+					suspendPayload: { type: 'confirmation', action: 'notify' },
 				},
 				{ type: 'finish', finishReason: 'tool-calls' },
 			]),
@@ -301,14 +329,145 @@ describe('SubAgentForegroundRunner', () => {
 				credentialProvider,
 			}),
 		).resolves.toMatchObject({
-			status: 'failed',
+			status: 'suspended',
+			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
 			result: {
 				runId: 'child-run-1',
-				finishReason: 'error',
-				error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+				finishReason: 'tool-calls',
+				pendingSuspend: [
+					{
+						runId: 'child-run-1',
+						toolCallId: 'tool-call-1',
+						toolName: 'approval_action',
+						input: { action: 'publish' },
+						suspendPayload: { type: 'approval', action: 'publish' },
+						resumeSchema: {
+							type: 'object',
+							properties: { approved: { type: 'boolean' } },
+						},
+					},
+					{
+						runId: 'child-run-1',
+						toolCallId: 'tool-call-2',
+						toolName: 'confirm_action',
+						input: { action: 'notify' },
+						suspendPayload: { type: 'confirmation', action: 'notify' },
+					},
+				],
 			},
 		});
+		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ hitlStatus: 'suspended' }),
+		);
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('resumes the exact pinned child checkpoint in the same thread', async () => {
+		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
+
+		const result = await runner.resumeForeground(
+			{
+				taskPath: '/root/research_api_0',
+				runId: 'child-run-1',
+				toolCallId: 'tool-call-1',
+				threadId: 'child-thread-1',
+				resumeData: { approved: true },
+				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+				parentThreadId,
+			},
+			{
+				projectId,
+				parentAgentId,
+				credentialProvider,
+			},
+		);
+
+		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
+			{ agentId: 'agent-1', versionId: 'version-7' },
+			{ projectId },
+		);
+		expect(childAgent.resume).toHaveBeenCalledWith(
+			'stream',
+			{ approved: true },
+			expect.objectContaining({ runId: 'child-run-1', toolCallId: 'tool-call-1' }),
+		);
+		expect(result).toMatchObject({
+			taskPath: '/root/research_api_0',
+			threadId: 'child-thread-1',
+			status: 'completed',
+			result: { runId: 'child-run-1', finishReason: 'stop' },
+		});
+		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				threadId: 'child-thread-1',
+				agentId: 'agent-1',
+				userMessage: null,
+				hitlStatus: 'resumed',
+			}),
+		);
+		expect(childAgent.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('cancels the exact pinned child checkpoint without reconstructing the child', async () => {
+		await runner.cancelForeground({
+			taskPath: '/root/research_api_0',
+			runId: 'child-run-1',
+			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+		});
+
+		expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', 'agent-1');
+		expect(sourceResolver.resolveForRuntime).not.toHaveBeenCalled();
+		expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		expect(childAgent.resume).not.toHaveBeenCalled();
+	});
+
+	it('keeps a resumed child suspended when it reaches another checkpoint', async () => {
+		sourceResolver.resolveForRuntime.mockResolvedValue({
+			...runtimeSource,
+			source: { ...runtimeSource.source, versionId: 'version-7' },
+		});
+		childAgent.resume.mockResolvedValue(
+			makeStreamResult([
+				{
+					type: 'tool-call-suspended',
+					runId: 'child-run-1',
+					toolCallId: 'tool-call-2',
+					toolName: 'confirm_action',
+					input: { action: 'notify' },
+					suspendPayload: { type: 'confirmation', action: 'notify' },
+				},
+				{ type: 'finish', finishReason: 'tool-calls' },
+			]),
+		);
+
+		const result = await runner.resumeForeground(
+			{
+				taskPath: '/root/research_api_0',
+				runId: 'child-run-1',
+				toolCallId: 'tool-call-1',
+				threadId: 'child-thread-1',
+				resumeData: { approved: true },
+				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+			},
+			{ projectId, credentialProvider },
+		);
+
+		expect(result).toMatchObject({
+			status: 'suspended',
+			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+			result: {
+				pendingSuspend: [
+					{
+						runId: 'child-run-1',
+						toolCallId: 'tool-call-2',
+						toolName: 'confirm_action',
+					},
+				],
+			},
+		});
+		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ userMessage: null, hitlStatus: 'suspended' }),
+		);
 	});
 
 	it('marks the run as failed when the child result contains an error', async () => {

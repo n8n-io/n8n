@@ -48,6 +48,22 @@ export function getToolApprovalDisplayName(tool: BuiltTool): string | undefined 
 	return typeof displayName === 'string' && displayName.length > 0 ? displayName : undefined;
 }
 
+function combineInterruptSchemas(
+	approvalSchema: z.ZodType,
+	innerSchema: BuiltTool['suspendSchema'],
+): z.ZodType | JSONSchema7 {
+	if (innerSchema === undefined) return approvalSchema;
+	if (isZodSchema(innerSchema)) return z.union([innerSchema, approvalSchema]);
+
+	const approvalJsonSchema = zodToJsonSchema(approvalSchema);
+	return approvalJsonSchema ? { anyOf: [approvalJsonSchema, innerSchema] } : innerSchema;
+}
+
+function isApprovalGatePayload(payload: unknown, toolName: string): boolean {
+	const parsed = APPROVAL_SUSPEND_SCHEMA.safeParse(payload);
+	return parsed.success && parsed.data.toolName === toolName;
+}
+
 /**
  * Wrap a BuiltTool with an approval gate that suspends before execution and
  * waits for human confirmation. Used by Tool.build() (when .requireApproval()
@@ -68,13 +84,24 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			required: config.requireApproval === true,
 			...(hasConditionalApproval ? { conditional: true } : {}),
 		},
-		suspendSchema: APPROVAL_SUSPEND_SCHEMA,
-		resumeSchema: APPROVAL_RESUME_SCHEMA,
+		suspendSchema: combineInterruptSchemas(APPROVAL_SUSPEND_SCHEMA, tool.suspendSchema),
+		resumeSchema: combineInterruptSchemas(APPROVAL_RESUME_SCHEMA, tool.resumeSchema),
+		resolveResumeSchema(suspendPayload) {
+			if (isApprovalGatePayload(suspendPayload, tool.name)) return APPROVAL_RESUME_SCHEMA;
+			return tool.resolveResumeSchema?.(suspendPayload) ?? tool.resumeSchema;
+		},
 		async handler(this: BuiltTool | undefined, input, ctx) {
 			const currentTool = this ?? tool;
 			// This handler is always called with InterruptibleToolContext because
 			// wrapToolForApproval adds suspendSchema/resumeSchema.
 			const interruptCtx = ctx as InterruptibleToolContext;
+			const resumingInnerTool =
+				tool.suspendSchema !== undefined &&
+				interruptCtx.suspendPayload !== undefined &&
+				!isApprovalGatePayload(interruptCtx.suspendPayload, currentTool.name);
+			if (resumingInnerTool) {
+				return await originalHandler(input, interruptCtx);
+			}
 			if (interruptCtx.resumeData === undefined) {
 				let needs = config.requireApproval ?? false;
 				if (!needs && config.needsApprovalFn) {
@@ -99,7 +126,15 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			if (!approved) {
 				return { declined: true, message: `Tool "${currentTool.name}" was not approved` };
 			}
-			return await originalHandler(input, interruptCtx as ToolContext);
+			if (tool.suspendSchema === undefined) {
+				return await originalHandler(input, interruptCtx as ToolContext);
+			}
+			const initialInnerContext: InterruptibleToolContext = {
+				...interruptCtx,
+				resumeData: undefined,
+				suspendPayload: undefined,
+			};
+			return await originalHandler(input, initialInnerContext);
 		},
 	};
 }

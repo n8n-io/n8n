@@ -240,6 +240,77 @@ describe('agent-sse-stream — stream completion', () => {
 			},
 		]);
 	});
+
+	it('omits delegated checkpoint metadata from suspension events', async () => {
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			displayName: 'HTTP Request',
+			args: { url: 'https://example.com/data' },
+			delegateCheckpoint: {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+			},
+		};
+
+		const events = await collectEvents([
+			{
+				type: 'tool-call-suspended',
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				toolName: 'delegate_subagent',
+				suspendPayload,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'parent-tool-call-1',
+					runId: 'parent-run-1',
+					toolName: 'delegate_subagent',
+					input: {
+						type: 'approval',
+						toolName: 'http_request',
+						displayName: 'HTTP Request',
+						args: { url: 'https://example.com/data' },
+					},
+				},
+			},
+		]);
+		expect(suspendPayload.delegateCheckpoint).toBeDefined();
+	});
+
+	it('unwraps non-object delegated suspension payloads for clients', async () => {
+		const events = await collectEvents([
+			{
+				type: 'tool-call-suspended',
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				toolName: 'delegate_subagent',
+				suspendPayload: {
+					childSuspendPayload: ['first', 'second'],
+					delegateCheckpoint: {
+						runId: 'child-run-1',
+						toolCallId: 'child-tool-call-1',
+					},
+				},
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'parent-tool-call-1',
+					runId: 'parent-run-1',
+					toolName: 'delegate_subagent',
+					input: ['first', 'second'],
+				},
+			},
+		]);
+	});
 });
 
 describe('agent-sse-stream — warning chunks', () => {

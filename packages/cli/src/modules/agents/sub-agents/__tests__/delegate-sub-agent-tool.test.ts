@@ -333,6 +333,86 @@ describe('createN8nDelegateSubAgentTool', () => {
 		});
 		expect(runner.runForeground).not.toHaveBeenCalled();
 	});
+
+	it('routes a configured child resume to the exact persisted checkpoint', async () => {
+		runner.resumeForeground.mockResolvedValue(foregroundResult);
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+		});
+		const resumeSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.resumeSubAgent;
+		expect(resumeSubAgent).toBeDefined();
+
+		await expect(
+			resumeSubAgent?.(
+				{
+					subAgentId: 'agent-2',
+					taskName: 'Research API',
+					goal: 'Find behavior.',
+					taskPath: '/root/research_api_0',
+					childCount: 0,
+					childRunId: 'child-run-1',
+					childToolCallId: 'child-tool-call-1',
+					childThreadId: 'child-thread-1',
+					resumeData: { approved: true },
+					resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+					parentThreadId: 'parent-thread-1',
+				},
+				{ runInlineSubAgent: vi.fn(), emitChunk: vi.fn() },
+			),
+		).resolves.toMatchObject({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			runId: 'child-run-1',
+		});
+		expect(runner.resumeForeground).toHaveBeenCalledWith(
+			{
+				taskPath: '/root/research_api_0',
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				threadId: 'child-thread-1',
+				resumeData: { approved: true },
+				resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+				parentThreadId: 'parent-thread-1',
+			},
+			expect.objectContaining({ projectId, credentialProvider }),
+		);
+	});
+
+	it('routes configured child cancellation without resuming the child', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+		});
+		const cancelSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.cancelSubAgent;
+		expect(cancelSubAgent).toBeDefined();
+
+		await cancelSubAgent?.(
+			{
+				subAgentId: 'agent-2',
+				taskName: 'Research API',
+				goal: 'Find behavior.',
+				taskPath: '/root/research_api_0',
+				childCount: 0,
+				childRunId: 'child-run-1',
+				childToolCallId: 'child-tool-call-1',
+				resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+				reason: 'take another approach',
+			},
+			{ runInlineSubAgent: vi.fn(), emitChunk: vi.fn() },
+		);
+
+		expect(runner.cancelForeground).toHaveBeenCalledWith({
+			taskPath: '/root/research_api_0',
+			runId: 'child-run-1',
+			resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+		});
+		expect(runner.resumeForeground).not.toHaveBeenCalled();
+	});
 });
 
 describe('formatSubAgentToolOutput', () => {
@@ -350,6 +430,41 @@ describe('formatSubAgentToolOutput', () => {
 				cost: 0.01,
 			},
 			finishReason: 'stop',
+		});
+	});
+
+	it('preserves the configured child resume context while suspended', () => {
+		const suspendedResult: SubAgentForegroundResult = {
+			taskPath: '/root/research_api_0',
+			threadId: 'child-thread-1',
+			status: 'suspended',
+			resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+			result: {
+				...generateResult,
+				finishReason: 'tool-calls',
+				pendingSuspend: [
+					{
+						runId: 'child-run-1',
+						toolCallId: 'child-tool-call-1',
+						toolName: 'approval_action',
+						input: { action: 'publish' },
+						suspendPayload: { type: 'approval', action: 'publish' },
+					},
+				],
+			},
+		};
+
+		expect(formatSubAgentToolOutput(suspendedResult)).toMatchObject({
+			status: 'suspended',
+			threadId: 'child-thread-1',
+			resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+			pendingSuspend: [
+				{
+					runId: 'child-run-1',
+					toolCallId: 'child-tool-call-1',
+					toolName: 'approval_action',
+				},
+			],
 		});
 	});
 });

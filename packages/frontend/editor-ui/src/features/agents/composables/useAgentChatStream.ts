@@ -1,13 +1,14 @@
 import { ref, reactive, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
 	CancellationResumeData,
 } from '@n8n/api-types';
-import { applyForwardedChildChunk, emptyChildTrace } from '@n8n/api-types';
+import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
@@ -32,7 +33,7 @@ import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thin
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
-import { isFailedDelegateOutput } from '../utils/delegate-tool';
+import { DELEGATE_SUB_AGENT_TOOL_NAME, isFailedDelegateOutput } from '../utils/delegate-tool';
 
 export interface FatalAgentError {
 	message: string;
@@ -63,6 +64,11 @@ type ResumePayload =
 			cancelled: true;
 			text: string;
 	  };
+
+function getApprovalDecision(value: unknown): boolean | undefined {
+	if (!isRecord(value) || typeof value.approved !== 'boolean') return undefined;
+	return value.approved;
+}
 
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
@@ -478,13 +484,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
-					// If this was an interactive tool call, the result IS the user's
-					// resume payload — refresh the matching card so it flips to its
-					// resolved (disabled) state immediately. Display-only n8n chat
-					// cards never suspend, so they are also born here when the tool
-					// settles.
+					// Preserve an optimistically recorded response: a delegated child can
+					// continue and return a normal parent result after its approval was denied.
+					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
 					const updated = rebuildInteractiveFromHistory(found.tc);
-					if (updated) upsertMessageInteractive(found.msg, updated);
+					const preserveDelegateApproval =
+						found.tc.tool === DELEGATE_SUB_AGENT_TOOL_NAME &&
+						isApprovalSuspendInput(found.tc.suspendPayload) &&
+						currentInteractive?.resolvedAt !== undefined;
+					if (updated && !preserveDelegateApproval) {
+						upsertMessageInteractive(found.msg, updated);
+					}
 					markMessageSuccessIfSettled(found.msg);
 				}
 				break;
@@ -492,9 +502,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
-				// The approval tool suspends with its renderable input; integration
-				// actions suspend with a sidecar — keep the card-bearing tool input
-				// and store the sidecar separately.
+				// Keep the model-authored tool input intact. A delegated tool can
+				// suspend with a nested approval payload that renders a different tool.
 				const suspendIsRenderableInput = isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
@@ -502,12 +511,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg = found.msg;
 					tc = found.tc;
 					tc.state = TOOL_CALL_STATE.SUSPENDED;
+					tc.canceled = false;
+					tc.output = undefined;
+					tc.resumeData = undefined;
+					tc.endTime = undefined;
+					tc.displaySummary = undefined;
 					tc.runId = payload.runId;
-					if (suspendIsRenderableInput) {
-						tc.input = payload.input;
-					} else {
-						tc.suspendPayload = payload.input;
-					}
+					tc.suspendPayload = payload.input;
 				} else {
 					msg = ensureCurrent(session);
 					tc = {
@@ -791,6 +801,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.input,
 				);
 				const updated = rebuildInteractiveFromHistory(found.tc);
+				if (updated?.toolName === APPROVAL_TOOL_NAME) {
+					const approved = getApprovalDecision(payload.resumeData);
+					if (approved !== undefined) updated.resolvedValue = { approved };
+				}
 				if (updated) upsertMessageInteractive(found.msg, updated);
 			}
 			markMessageSuccessIfSettled(found.msg);

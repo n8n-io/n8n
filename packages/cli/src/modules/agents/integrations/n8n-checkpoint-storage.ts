@@ -9,7 +9,7 @@ import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
@@ -29,6 +29,7 @@ function stripStateFileData(state: SerializableAgentState): SerializableAgentSta
 type CheckpointStatus =
 	| {
 			status: 'expired';
+			checkpoint?: SerializableAgentState;
 	  }
 	| { status: 'not-found' }
 	| {
@@ -58,10 +59,10 @@ export class N8NCheckpointStorage {
 	getStorage(agentId: string): CheckpointStore {
 		return {
 			save: async (key, state) => await this.save(key, state, agentId),
-			load: async (key) => await this.load(key),
+			load: async (key) => await this.load(key, agentId),
 			claimForResume: async (key: string, state: SerializableAgentState) =>
-				await this.claimForResume(key, state),
-			delete: async (key) => await this.delete(key),
+				await this.claimForResume(key, state, agentId),
+			delete: async (key) => await this.delete(key, agentId),
 		};
 	}
 
@@ -71,15 +72,14 @@ export class N8NCheckpointStorage {
 		if (this.instanceSettings.isLeader) this.startPruning();
 	}
 
-	async save(
-		key: string,
-		checkpointState: SerializableAgentState,
-		agentId: string | null = null,
-	): Promise<void> {
+	async save(key: string, checkpointState: SerializableAgentState, agentId: string): Promise<void> {
 		const state = stripStateFileData(checkpointState);
-		const existing = await this.agentCheckpointRepository.findOneBy({ runId: key });
+		const existing = await this.agentCheckpointRepository.findByRunId(key);
 
 		if (existing) {
+			if (existing.agentId !== agentId) {
+				throw new UnexpectedError('Agent checkpoint is owned by a different agent');
+			}
 			existing.state = JSON.stringify(state);
 			existing.expired = false;
 			await this.agentCheckpointRepository.save(existing);
@@ -94,8 +94,8 @@ export class N8NCheckpointStorage {
 		}
 	}
 
-	async load(key: string): Promise<SerializableAgentState | undefined> {
-		const checkpoint = await this.agentCheckpointRepository.findOneBy({ runId: key });
+	async load(key: string, agentId: string): Promise<SerializableAgentState | undefined> {
+		const checkpoint = await this.agentCheckpointRepository.findByRunIdAndAgentId(key, agentId);
 
 		if (!checkpoint) return undefined;
 
@@ -111,10 +111,15 @@ export class N8NCheckpointStorage {
 		return state;
 	}
 
-	async claimForResume(key: string, checkpointState: SerializableAgentState): Promise<boolean> {
+	async claimForResume(
+		key: string,
+		checkpointState: SerializableAgentState,
+		agentId: string,
+	): Promise<boolean> {
 		const state = stripStateFileData(checkpointState);
 		return await this.agentCheckpointRepository.claimForResume(
 			key,
+			agentId,
 			JSON.stringify(state),
 			JSON.stringify({ ...state, status: 'running' }),
 		);
@@ -133,18 +138,17 @@ export class N8NCheckpointStorage {
 		);
 	}
 
-	async getStatus(key: string): Promise<CheckpointStatus> {
-		const checkpoint = await this.agentCheckpointRepository.findOneBy({ runId: key });
+	async getStatus(key: string, agentId: string): Promise<CheckpointStatus> {
+		const checkpoint = await this.agentCheckpointRepository.findByRunIdAndAgentId(key, agentId);
 		if (!checkpoint) return { status: 'not-found' };
-		if (checkpoint.expired || checkpoint.state === null) return { status: 'expired' };
-		return { status: 'active', checkpoint: jsonParse<SerializableAgentState>(checkpoint.state) };
+		if (checkpoint.state === null) return { status: 'expired' };
+		const state = jsonParse<SerializableAgentState>(checkpoint.state);
+		if (checkpoint.expired) return { status: 'expired', checkpoint: state };
+		return { status: 'active', checkpoint: state };
 	}
 
-	async delete(key: string, agentId?: string): Promise<void> {
-		await this.agentCheckpointRepository.update(
-			{ runId: key, ...(agentId !== undefined ? { agentId } : {}) },
-			{ expired: true, state: null },
-		);
+	async delete(key: string, agentId: string): Promise<void> {
+		await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId);
 	}
 
 	@OnLeaderTakeover()

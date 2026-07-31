@@ -314,6 +314,7 @@ export class AgentChatController {
 		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
 			agentId,
 			chatThreadId(agentId, req.user.id),
+			{ includeUnscoped: true },
 		);
 		return withOpenSuspensions(messagesToDto(messages), checkpoint);
 	}

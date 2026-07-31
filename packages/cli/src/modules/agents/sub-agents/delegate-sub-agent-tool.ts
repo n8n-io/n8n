@@ -90,6 +90,63 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 
 			return formatSubAgentToolOutput(result);
 		},
+		resumeSubAgent: async (request, helpers) => {
+			if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+				return {
+					status: 'failed',
+					taskPath: request.taskPath,
+					answer: '',
+					error: 'Inline sub-agent resumes must be handled by the parent Agent runtime.',
+				};
+			}
+			if (request.childThreadId === undefined || request.resumeContext === undefined) {
+				return {
+					status: 'failed',
+					taskPath: request.taskPath,
+					answer: '',
+					error: 'Configured sub-agent checkpoint metadata is missing or invalid.',
+				};
+			}
+
+			const result = await runner.resumeForeground(
+				{
+					taskPath: request.taskPath,
+					runId: request.childRunId,
+					toolCallId: request.childToolCallId,
+					threadId: request.childThreadId,
+					resumeData: request.resumeData,
+					resumeContext: request.resumeContext,
+					...(request.parentThreadId !== undefined
+						? { parentThreadId: request.parentThreadId }
+						: {}),
+				},
+				{
+					...runContext,
+					...(request.parentAbortSignal !== undefined
+						? { abortSignal: request.parentAbortSignal }
+						: {}),
+					...(request.parentTelemetry !== undefined ? { telemetry: request.parentTelemetry } : {}),
+					onChunk: helpers.emitChunk,
+				},
+			);
+
+			return formatSubAgentToolOutput(result);
+		},
+		cancelSubAgent: async (request) => {
+			if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+				throw new Error(
+					'Inline sub-agent cancellation must be handled by the parent Agent runtime.',
+				);
+			}
+			if (request.resumeContext === undefined) {
+				throw new Error('Configured sub-agent checkpoint metadata is missing or invalid.');
+			}
+			await runner.cancelForeground({
+				taskPath: request.taskPath,
+				runId: request.childRunId,
+				resumeContext: request.resumeContext,
+			});
+		},
 	});
 }
 
@@ -105,5 +162,8 @@ function selectSubAgentSource(options: {
 export function formatSubAgentToolOutput(
 	result: SubAgentForegroundResult,
 ): DelegateSubAgentToolOutput {
-	return generateResultToDelegateSubAgentOutput(result.taskPath, result.result, result.threadId);
+	return {
+		...generateResultToDelegateSubAgentOutput(result.taskPath, result.result, result.threadId),
+		...(result.resumeContext !== undefined ? { resumeContext: result.resumeContext } : {}),
+	};
 }

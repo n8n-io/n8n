@@ -117,6 +117,7 @@ export async function executeTool(
 		const isCancelled = isCancellation(resumeData);
 		const ctx: InterruptibleToolContext = {
 			suspend: async (payload: unknown): Promise<never> => {
+				executionContext.onSuspend?.(payload);
 				return await Promise.resolve({ [SUSPEND_BRAND]: true, payload } as never);
 			},
 			resumeData: isCancelled ? undefined : resumeData,

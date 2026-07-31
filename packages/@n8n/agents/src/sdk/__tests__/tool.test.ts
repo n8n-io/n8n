@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 import { z } from 'zod';
 
 import type { BuiltTelemetry, BuiltTool, InterruptibleToolContext, ToolContext } from '../../types';
+import { parseWithSchema } from '../../utils/parse';
 import { Tool, wrapToolForApproval } from '../tool';
 
 // ---------------------------------------------------------------------------
@@ -212,6 +213,74 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		const result = await wrapped.handler!({ id: 'abc' }, ctx);
 
 		expect(result).toEqual({ declined: true, message: 'Tool "testTool" was not approved' });
+	});
+
+	it('composes its approval gate with an interruptible tool suspension', async () => {
+		const childSuspendPayload = {
+			type: 'approval',
+			toolName: 'childTool',
+			args: { id: 'child-call' },
+			delegateCheckpoint: {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+			},
+		};
+		const originalHandler = vi.fn(async (_input, ctx) => {
+			const interruptCtx = ctx as InterruptibleToolContext;
+			if (interruptCtx.resumeData === undefined) {
+				return await interruptCtx.suspend(childSuspendPayload);
+			}
+			return { childResumeData: interruptCtx.resumeData };
+		});
+		const wrapped = wrapToolForApproval(
+			makeBuiltTool({
+				suspendSchema: z.object({ delegateCheckpoint: z.object({}).passthrough() }).passthrough(),
+				resumeSchema: z.object({ childApproved: z.boolean() }),
+				handler: originalHandler,
+			}),
+			{ requireApproval: true },
+		);
+		expect(wrapped.suspendSchema).toBeDefined();
+		if (!wrapped.suspendSchema) throw new Error('Expected a composed suspend schema');
+		const parsedChildSuspend = await parseWithSchema(wrapped.suspendSchema, childSuspendPayload);
+		expect(parsedChildSuspend).toEqual({ success: true, data: childSuspendPayload });
+		const outerSuspendPayload = {
+			type: 'approval',
+			toolName: 'testTool',
+			args: { id: 'parent-call' },
+		};
+		const outerResumeSchema = wrapped.resolveResumeSchema?.(outerSuspendPayload);
+		const childResumeSchema = wrapped.resolveResumeSchema?.(childSuspendPayload);
+		expect(outerResumeSchema).toBeDefined();
+		expect(childResumeSchema).toBeDefined();
+		if (!outerResumeSchema || !childResumeSchema) {
+			throw new Error('Expected payload-specific resume schemas');
+		}
+		expect(await parseWithSchema(outerResumeSchema, { approved: true })).toMatchObject({
+			success: true,
+		});
+		expect(await parseWithSchema(childResumeSchema, { childApproved: true })).toMatchObject({
+			success: true,
+		});
+
+		const outerApproval = makeCtx({ approved: true });
+		outerApproval.ctx.suspendPayload = outerSuspendPayload;
+		await wrapped.handler!({ id: 'parent-call' }, outerApproval.ctx);
+
+		expect(outerApproval.suspendMock).toHaveBeenCalledWith(childSuspendPayload);
+		expect(originalHandler).toHaveBeenLastCalledWith(
+			{ id: 'parent-call' },
+			expect.objectContaining({
+				resumeData: undefined,
+				suspendPayload: undefined,
+			}),
+		);
+
+		const childApproval = makeCtx({ childApproved: true });
+		childApproval.ctx.suspendPayload = childSuspendPayload;
+		await expect(wrapped.handler!({ id: 'parent-call' }, childApproval.ctx)).resolves.toEqual({
+			childResumeData: { childApproved: true },
+		});
 	});
 });
 
