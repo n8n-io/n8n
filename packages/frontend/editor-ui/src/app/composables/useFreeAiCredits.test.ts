@@ -48,7 +48,7 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => projectsStore,
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => telemetry,
 }));
 

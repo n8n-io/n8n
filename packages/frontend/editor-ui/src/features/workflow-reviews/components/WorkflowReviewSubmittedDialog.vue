@@ -5,14 +5,17 @@ import {
 	N8nDialog,
 	N8nDialogDescription,
 	N8nDialogFooter,
+	N8nLink,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 import { useWorkflowReviewDialogPreferences } from '@/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 
 defineProps<{
 	open: boolean;
+	workflowReviewRequestId: string;
 }>();
 
 const emit = defineEmits<{
@@ -21,11 +24,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const { submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
-
-const description = computed(() => {
-	// TODO(LIGO-597): link to the reviews list route once it exists
-	return i18n.baseText('workflowReviews.submitted.description');
-});
 </script>
 
 <template>
@@ -39,7 +37,18 @@ const description = computed(() => {
 			data-test-id="workflow-review-submitted-dialog"
 			:class="$style.description"
 		>
-			{{ description }}
+			<I18nT keypath="workflowReviews.submitted.description" tag="span" scope="global">
+				<template #submission>
+					<N8nLink
+						:to="{
+							name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+							params: { reviewRequestId: workflowReviewRequestId },
+						}"
+					>
+						{{ i18n.baseText('workflowReviews.submitted.description.submission') }}
+					</N8nLink>
+				</template>
+			</I18nT>
 		</N8nDialogDescription>
 		<N8nDialogFooter :class="$style.footer">
 			<N8nCheckbox

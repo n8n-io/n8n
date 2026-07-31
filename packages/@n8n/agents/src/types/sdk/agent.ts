@@ -1,5 +1,10 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { LanguageModel, OnStepFinishEvent, OnStepStartEvent, smoothStream } from 'ai';
+import type {
+	GenerateTextStepEndEvent,
+	GenerateTextStepStartEvent,
+	LanguageModel,
+	smoothStream,
+} from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
@@ -7,6 +12,7 @@ import type { ProviderId, ProviderCredentials } from '../../runtime/model/provid
 import type {
 	AgentEvent,
 	AgentEventHandler,
+	SubAgentChunkPayload,
 	SubAgentCompletedPayload,
 	SubAgentStartedPayload,
 } from '../runtime/event';
@@ -91,7 +97,7 @@ export type StreamChunk = ContentMetadata &
 		| {
 				/**
 				 * Emitted just before a tool handler starts executing. Bridged from
-				 * the runtime event bus (not part of the AI SDK fullStream). Pairs
+				 * the runtime event bus (not part of the AI SDK stream). Pairs
 				 * with the subsequent `tool-result` to let consumers show a
 				 * mid-flight indicator between "LLM picked a tool" and "result arrived".
 				 */
@@ -137,6 +143,7 @@ export type StreamChunk = ContentMetadata &
 		| { type: 'message'; message: AgentMessage }
 		| ({ type: 'subagent-started' } & SubAgentStartedPayload)
 		| ({ type: 'subagent-completed' } & SubAgentCompletedPayload)
+		| ({ type: 'subagent-chunk' } & SubAgentChunkPayload)
 		| {
 				type: 'finish';
 				finishReason: FinishReason;
@@ -185,8 +192,10 @@ export interface ExecutionOptions {
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
 	executionCounter?: AgentExecutionCounter;
-	onStepStart?: (event: OnStepStartEvent) => void | Promise<void>;
-	onStepFinish?: (event: OnStepFinishEvent) => void | Promise<void>;
+	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
+	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
+	/** @deprecated Use `onStepEnd` instead. */
+	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/**
 	 * Durable-log RFC (resilience phase), opt-in: persist a `running`-status
 	 * checkpoint at every step boundary (after a tool batch settles, before the

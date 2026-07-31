@@ -199,7 +199,7 @@ function classifyVerificationFailure(
 	});
 }
 
-function buildSimulationNote(
+export function buildSimulationNote(
 	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>,
 	planMissing: boolean,
 ): string | undefined {

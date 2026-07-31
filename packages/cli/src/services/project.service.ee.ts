@@ -65,6 +65,7 @@ class ProjectNotFoundError extends NotFoundError {
 export interface ProjectCreateOverrides {
 	id?: string;
 	description?: string | null;
+	customTelemetryTags?: Array<{ key: string; value: string }>;
 }
 
 @Service()
@@ -126,6 +127,12 @@ export class ProjectService {
 	private get agentExecutionService() {
 		return import('@/modules/agents/agent-execution.service.js').then(({ AgentExecutionService }) =>
 			Container.get(AgentExecutionService),
+		);
+	}
+
+	private get agentChatAttachmentService() {
+		return import('@/modules/agents/agent-chat-attachment.service.js').then(
+			({ AgentChatAttachmentService }) => Container.get(AgentChatAttachmentService),
 		);
 	}
 
@@ -238,17 +245,31 @@ export class ProjectService {
 
 		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
 		if (this.moduleRegistry.isActive('agents')) {
-			const [agentRepository, agentKnowledgeService, agentExecutionService] = await Promise.all([
-				this.agentRepository,
-				this.agentKnowledgeService,
-				this.agentExecutionService,
-			]);
+			const [agentRepository, agentKnowledgeService, agentExecutionService, agentChatAttachments] =
+				await Promise.all([
+					this.agentRepository,
+					this.agentKnowledgeService,
+					this.agentExecutionService,
+					this.agentChatAttachmentService,
+				]);
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
 				try {
 					await agentKnowledgeService.deleteAllFilesForAgent(project.id, agent.id);
 				} catch (error) {
 					this.logger.warn('Failed to delete knowledge files on project delete', {
+						agentId: agent.id,
+						projectId: project.id,
+						error: error instanceof Error ? error.message : error,
+					});
+				}
+
+				// Delete chat attachment bytes before the project removal cascades away
+				// the agent_chat_attachments rows that hold the binaryDataId handles.
+				try {
+					await agentChatAttachments.deleteByAgent(agent.id);
+				} catch (error) {
+					this.logger.warn('Failed to delete chat attachments on project delete', {
 						agentId: agent.id,
 						projectId: project.id,
 						error: error instanceof Error ? error.message : error,

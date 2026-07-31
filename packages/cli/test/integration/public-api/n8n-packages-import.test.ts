@@ -236,6 +236,13 @@ describe('POST /n8n-packages/import', () => {
 			variables: {
 				matched: [],
 				missing: [],
+				stubbed: [],
+			},
+			tags: {
+				matched: [],
+				created: [],
+				renamed: [],
+				skipped: [],
 			},
 		});
 
@@ -259,6 +266,9 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
 			.field('variableMissingMode', 'do-nothing')
+			.field('variableParentPolicy', 'project')
+			.field('tagMissingMode', 'do-nothing')
+			.field('tagConflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);

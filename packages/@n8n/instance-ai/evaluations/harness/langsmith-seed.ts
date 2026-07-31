@@ -8,7 +8,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 
-import type { ConversationSeed } from './conversation-seed';
+import type { ConversationSeed, SeedMessage } from './conversation-seed';
 import { parseSeedWorkflowCode } from './parse-seed-workflow';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 
@@ -255,18 +255,21 @@ function redactDataTableRowPayload(value: unknown): Record<string, unknown> {
 	return out;
 }
 
-interface TextBlock {
+// Type aliases, not interfaces: seed content blocks are open by design
+// (`.passthrough()`), and an interface has no index signature so it isn't
+// assignable to that. Converting these back to interfaces breaks the build.
+type TextBlock = {
 	type: 'text';
 	text: string;
-}
-interface ToolCallBlock {
+};
+type ToolCallBlock = {
 	type: 'tool-call';
 	toolCallId: string;
 	toolName: string;
 	state: 'resolved';
 	input: unknown;
 	output: unknown;
-}
+};
 
 /**
  * Reconstruct a thread's seed + live turn. The workspace holding the thread is
@@ -417,11 +420,7 @@ async function reconstructWithClient(
 }
 
 /** Rebuild the native message log for every run before the seed boundary. */
-function buildSeedMessages(
-	rootRuns: Run[],
-	toolRuns: Run[],
-	boundaryMs: number,
-): Array<Record<string, unknown>> {
+function buildSeedMessages(rootRuns: Run[], toolRuns: Run[], boundaryMs: number): SeedMessage[] {
 	const toolsByRoot = new Map<string, Run[]>();
 	for (const tool of toolRuns) {
 		const rootId = asString(metadata(tool).langsmith_root_run_id) ?? tool.trace_id ?? '';
@@ -431,7 +430,9 @@ function buildSeedMessages(
 	}
 
 	const emittedToolCallIds = new Set<string>();
-	const messages: Array<Record<string, unknown>> = [];
+	// Typed, so the compiler enforces the envelope on the machine-producer side
+	// while ConversationSeedSchema enforces it on hand-authored seeds.
+	const messages: SeedMessage[] = [];
 
 	for (const root of rootRuns) {
 		if (new Date(root.start_time ?? NaN).getTime() >= boundaryMs) break;

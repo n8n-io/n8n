@@ -140,7 +140,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						conversation: buildArgs.conversation,
 						messageBudget: buildArgs.messageBudget,
 						credentials: buildArgs.credentials,
-						seedFile: buildArgs.seedFile,
+						conversationSeed: buildArgs.conversationSeed,
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
 						executionScenarios: buildArgs.executionScenarios,
@@ -175,6 +175,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						execArgs.buildTrace,
 						args.pinAiRoots,
 						execArgs.seedContext,
+						args.outputDir,
 					),
 			),
 			tracedExecuteAgent: wrap(
@@ -197,6 +198,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						execArgs.timeoutMs,
 						execArgs.testCaseName,
 						execArgs.buildTrace,
+						args.outputDir,
 					),
 			),
 		};

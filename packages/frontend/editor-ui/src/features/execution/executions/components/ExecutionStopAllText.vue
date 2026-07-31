@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { STOP_MANY_EXECUTIONS_MODAL_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
