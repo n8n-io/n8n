@@ -105,6 +105,42 @@ describe('InstanceAiErrorReporterService', () => {
 		);
 	});
 
+	it('suppresses message-only quota errors that carry no machine-readable code', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = new Error(
+			'Failed to write runtime skill file "/skills/x/SKILL.md": Have reached end of quota; status: 403',
+		);
+
+		service.report(error, { component: 'instance-ai-run', threadId: 't', runId: 'r' });
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(logger.info).toHaveBeenCalledWith(
+			'Instance AI quota exhausted in instance-ai-run',
+			expect.objectContaining({ runId: 'r' }),
+		);
+	});
+
+	it('reports at warning level when the context declares warning severity', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = Object.assign(new Error('No output generated. Check the stream for errors.'), {
+			name: 'AI_NoOutputGeneratedError',
+		});
+
+		service.report(error, {
+			component: 'instance-ai-stream',
+			severity: 'warning',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.objectContaining({ level: 'warning' }),
+		);
+	});
+
 	it('withBoundary rethrows quota-exhausted errors without reporting to Sentry', async () => {
 		const { service, errorReporter } = createService();
 		const error = Object.assign(new Error('Have reached end of quota'), {

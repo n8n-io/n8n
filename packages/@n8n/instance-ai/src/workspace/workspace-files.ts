@@ -134,12 +134,13 @@ export async function writeWorkspaceFile(
 				});
 				return;
 			} catch (fallbackError) {
-				// Keep the underlying error as `cause`: quota-exhausted proxy failures
+				// Keep the original write error as `cause`: quota-exhausted proxy failures
 				// carry their machine-readable code there, which terminal-error
-				// classification reads to surface the out-of-credits message.
+				// classification reads to surface the out-of-credits message. The
+				// fallback error is a plain shell failure without the code.
 				throw new Error(
 					`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}; command fallback failed: ${formatErrorForLog(fallbackError)}`,
-					{ cause: fallbackError },
+					{ cause: error },
 				);
 			}
 		}

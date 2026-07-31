@@ -917,6 +917,8 @@ export class InstanceAiService {
 			if (event.type !== AgentEvent.Error || !event.source) return;
 			this.instanceAiErrorReporter.report(event.error, {
 				component: `instance-ai-${event.source}`,
+				// Best-effort background work: the run itself succeeded.
+				severity: 'warning',
 				threadId,
 				runId,
 			});
@@ -3825,6 +3827,9 @@ export class InstanceAiService {
 					terminalError ?? new Error('Instance AI stream errored'),
 					{
 						component: 'instance-ai-stream',
+						// A masked failure that survived the quota re-check is an upstream
+						// stream death we can't act on — keep it visible without paging.
+						...(isMaskedStreamFailure(terminalError) ? { severity: 'warning' as const } : {}),
 						threadId,
 						runId,
 						tracing,
@@ -5060,6 +5065,7 @@ export class InstanceAiService {
 					terminalError ?? new Error('Instance AI resumed stream errored'),
 					{
 						component: 'instance-ai-stream',
+						...(isMaskedStreamFailure(terminalError) ? { severity: 'warning' as const } : {}),
 						threadId: opts.threadId,
 						runId: opts.runId,
 						tracing: opts.tracing,

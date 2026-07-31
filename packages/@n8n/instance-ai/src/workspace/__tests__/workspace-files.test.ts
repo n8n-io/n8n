@@ -267,14 +267,15 @@ describe('workspace-files', () => {
 	});
 
 	it('keeps a classifiable quota error as cause when both write paths fail', async () => {
-		const quotaError = () =>
-			Object.assign(new Error('Have reached end of quota'), {
-				statusCode: 403,
-				errorCode: 'quota_exhausted',
-			});
-		const commandError = quotaError();
-		const writeFile = vi.fn(async () => await Promise.reject(quotaError()));
-		const executeCommand = vi.fn(async () => await Promise.reject(commandError));
+		const writeError = Object.assign(new Error('Have reached end of quota'), {
+			statusCode: 403,
+			errorCode: 'quota_exhausted',
+		});
+		const writeFile = vi.fn(async () => await Promise.reject(writeError));
+		// The command fallback fails as a plain shell error without the quota code.
+		const executeCommand = vi.fn(
+			async () => await Promise.reject(new Error('Failed to write file: exit 1')),
+		);
 		const target: WorkspaceFileTarget = { filesystem: { writeFile }, sandbox: { executeCommand } };
 
 		const thrown: unknown = await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
@@ -282,7 +283,7 @@ describe('workspace-files', () => {
 		}).catch((error: unknown) => error);
 
 		expect(thrown).toBeInstanceOf(Error);
-		expect((thrown as Error).cause).toBe(commandError);
+		expect((thrown as Error).cause).toBe(writeError);
 		expect(isQuotaExhaustedError(thrown)).toBe(true);
 	});
 

@@ -8,7 +8,24 @@ import {
 	type InstanceAiObservabilityContext,
 } from './observability';
 
-export type InstanceAiErrorReportContext = { component: string } & InstanceAiObservabilityContext;
+export type InstanceAiErrorReportContext = {
+	component: string;
+	/** Report at warning level: known-benign failures that should not page. */
+	severity?: 'warning';
+} & InstanceAiObservabilityContext;
+
+/** Quota rejections the proxy returns as message-only 403s, without a machine-readable code. */
+const QUOTA_MESSAGES = ['Have reached end of quota', 'No instance AI credits quota allotted'];
+
+function hasQuotaExhaustedMessage(error: unknown): boolean {
+	let current: unknown = error;
+	while (current instanceof Error) {
+		const { message } = current;
+		if (QUOTA_MESSAGES.some((quotaMessage) => message.includes(quotaMessage))) return true;
+		current = current.cause;
+	}
+	return false;
+}
 
 /**
  * The ai-assistant-sdk vendors its own ApplicationError, so its client-level
@@ -50,7 +67,7 @@ export class InstanceAiErrorReporterService {
 
 		const observability = buildInstanceAiObservabilityContext(context);
 
-		if (isQuotaExhaustedError(error)) {
+		if (isQuotaExhaustedError(error) || hasQuotaExhaustedMessage(error)) {
 			// Expected condition: the user ran out of AI credits and the run already
 			// surfaces it as `quota_exhausted`. Not worth a Sentry event.
 			this.logger.info(`Instance AI quota exhausted in ${context.component}`, {
@@ -69,15 +86,17 @@ export class InstanceAiErrorReporterService {
 			return;
 		}
 
-		this.logger.error(`Instance AI error in ${context.component}`, {
-			error,
-			component: context.component,
-			...observability,
-		});
+		const logDetails = { error, component: context.component, ...observability };
+		if (context.severity === 'warning') {
+			this.logger.warn(`Instance AI error in ${context.component}`, logDetails);
+		} else {
+			this.logger.error(`Instance AI error in ${context.component}`, logDetails);
+		}
 
 		this.errorReporter.error(error, {
 			tags: { component: context.component, ...observability },
 			extra: observability,
+			...(context.severity ? { level: context.severity } : {}),
 			// Reports fire from the background run loop, where the ambient Sentry
 			// scope can hold an unrelated HTTP request (e.g. a health check).
 			shouldIsolate: true,
