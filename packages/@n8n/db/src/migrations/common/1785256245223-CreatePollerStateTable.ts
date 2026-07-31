@@ -18,8 +18,6 @@ export class CreatePollerStateTable1785256245223 implements ReversibleMigration 
 					.timestampTimezone()
 					.comment('Time before which no poll is attempted; NULL when not backing off.'),
 			)
-			// No index on workflowId: it leads the composite primary key, which covers both
-			// the cascade and every lookup.
 			.withTimestamps.withForeignKey('workflowId', {
 				tableName: 'workflow_entity',
 				columnName: 'id',
