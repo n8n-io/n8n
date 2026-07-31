@@ -439,10 +439,10 @@ describe('project shell import', () => {
 		expect(mappings).toHaveLength(2);
 	});
 
-	it('blocks a package whose projects reconcile and rename the same target tag', async () => {
-		// Each project's plan resolves only its own workflows' tags, so neither plan
-		// sees the other project's claim on the holder row; only the package-wide
-		// gate can catch the contradiction.
+	it('blocks a package where one project would adopt a manually-created tag that another project would rename', async () => {
+		// Each project only resolves the tags its own workflows use, so neither project
+		// sees that the other one also wants to change this same tag; only a check across
+		// the whole package can catch the two projects disagreeing on what should happen to it.
 		const holder = await createTag({ name: 'prod' });
 		const packageBuffer = await buildEntityPackageBuffer({
 			projects: [
