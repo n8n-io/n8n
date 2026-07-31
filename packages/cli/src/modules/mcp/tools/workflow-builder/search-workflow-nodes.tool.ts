@@ -7,15 +7,8 @@ import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_SEARCH_NODES_TOOL } from './constants';
 import { toN8nConnectCoverage } from '../../mcp-ai-gateway.helper';
-import {
-	LIST_N8N_CONNECT_SERVICES_TOOL_NAME,
-	USER_CALLED_MCP_TOOL_EVENT,
-} from '../../mcp.constants';
-import type {
-	N8nConnectCoverage,
-	ToolDefinition,
-	UserCalledMCPToolEventPayload,
-} from '../../mcp.types';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
 const inputSchema = {
 	queries: z
@@ -29,25 +22,6 @@ const inputSchema = {
 		.optional()
 		.describe(
 			'Use agentTool to return only nodes that can be configured as Agent tools; defaults to workflow',
-		),
-} satisfies z.ZodRawShape;
-
-const outputSchema = {
-	results: z
-		.string()
-		.describe('Search results with matching node IDs, discriminators, and related nodes'),
-	n8nConnect: z
-		.object({
-			credentialTypes: z.array(z.string()).describe('Credential types n8n Connect can provide.'),
-			nodes: z
-				.array(z.string())
-				.describe(
-					'Node types n8n Connect may cover. Prefer these when the user has not specified an integration. Candidate coverage only — exact eligibility also depends on the node action, minimum type version, and hidden properties.',
-				),
-		})
-		.optional()
-		.describe(
-			`Present when n8n Connect is available. Candidate coverage — cross-reference against the search results, but call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} for exact eligibility (supported actions, min versions, hidden properties).`,
 		),
 } satisfies z.ZodRawShape;
 
@@ -81,7 +55,6 @@ export const createSearchWorkflowNodesTool = (
 		description:
 			'Search for n8n nodes by service name, trigger type, or utility function. Set usage="agentTool" to return only Agent-compatible tool nodes. Returns node IDs, discriminators (resource/operation/mode), and related nodes needed for get_node_types.',
 		inputSchema,
-		outputSchema,
 		annotations: {
 			title: CODE_BUILDER_SEARCH_NODES_TOOL.displayTitle,
 			readOnlyHint: true,
@@ -120,20 +93,11 @@ export const createSearchWorkflowNodesTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const structured: {
-				results: string;
-				n8nConnect?: N8nConnectCoverage;
-			} = {
-				results,
-			};
 			const coverage = toN8nConnectCoverage(availability);
-			if (coverage) structured.n8nConnect = coverage;
-
 			const text = coverage ? `${results}\n\nn8nConnect: ${JSON.stringify(coverage)}` : results;
 
 			return {
 				content: [{ type: 'text', text }],
-				structuredContent: structured,
 			};
 		} catch (error) {
 			telemetryPayload.results = {

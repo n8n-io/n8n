@@ -47,7 +47,7 @@ describe('get-workflow-node-types MCP tool', () => {
 			{ nodeIds: [{ nodeId: 'n8n-nodes-base.gmail' }] },
 			{} as never,
 		);
-		expect(result.structuredContent).toEqual({ definitions: 'typescript definitions' });
+		expect((result.content[0] as { text: string }).text).toBe('typescript definitions');
 	});
 
 	test('adds n8nConnect block when gateway is available', async () => {
@@ -66,14 +66,6 @@ describe('get-workflow-node-types MCP tool', () => {
 			{} as never,
 		);
 
-		expect(result.structuredContent).toEqual({
-			definitions: 'typescript definitions',
-			n8nConnect: {
-				credentialTypes: ['openAiApi'],
-				nodes: ['@n8n/n8n-nodes-langchain.openAi'],
-			},
-		});
-		// Also mirrored into the unstructured content for text-only clients.
 		expect((result.content[0] as { text: string }).text).toBe(
 			'typescript definitions\n\nn8nConnect: {"credentialTypes":["openAiApi"],"nodes":["@n8n/n8n-nodes-langchain.openAi"]}',
 		);
@@ -85,7 +77,6 @@ describe('get-workflow-node-types MCP tool', () => {
 			{ nodeIds: [{ nodeId: 'n8n-nodes-base.slack' }] },
 			{} as never,
 		);
-		expect(result.structuredContent).toEqual({ definitions: 'typescript definitions' });
 		expect((result.content[0] as { text: string }).text).toBe('typescript definitions');
 	});
 });

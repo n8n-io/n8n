@@ -39,29 +39,6 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
-const availableTechniqueSchema = z.object({
-	technique: z.string(),
-	description: z.string(),
-	hasDocumentation: z.boolean(),
-});
-
-const outputSchema = {
-	technique: z
-		.string()
-		.describe('The requested technique key, or "list" when listing all available techniques.'),
-	message: z.string().describe('Human-readable summary of the response.'),
-	documentation: z
-		.string()
-		.optional()
-		.describe(
-			'Best-practices documentation for the requested technique, when one with documentation was requested.',
-		),
-	availableTechniques: z
-		.array(availableTechniqueSchema)
-		.optional()
-		.describe('All available techniques, returned when "list" was requested.'),
-} satisfies z.ZodRawShape;
-
 function buildListResponse(canvasGroupsEnabled: boolean) {
 	const availableTechniques = Object.entries(TechniqueDescription).map(([key, description]) => ({
 		technique: key,
@@ -87,11 +64,6 @@ function buildListResponse(canvasGroupsEnabled: boolean) {
 	return {
 		text,
 		hasDocumentation: false,
-		structured: {
-			technique: LIST_SENTINEL,
-			message,
-			availableTechniques,
-		},
 	};
 }
 
@@ -99,21 +71,15 @@ function buildTechniqueResponse(technique: WorkflowTechniqueType) {
 	const doc = bestPracticesRegistry[technique];
 
 	if (doc) {
-		const documentation = doc.getDocumentation();
 		return {
-			text: documentation,
+			text: doc.getDocumentation(),
 			hasDocumentation: true,
-			structured: {
-				technique,
-				message: `Best-practices documentation for "${technique}" retrieved.`,
-				documentation,
-			},
 		};
 	}
 
 	const description = TechniqueDescription[technique];
 	const message = `Technique "${technique}" (${description}) does not have detailed best-practices documentation yet — proceed with general n8n knowledge.`;
-	return { text: message, hasDocumentation: false, structured: { technique, message } };
+	return { text: message, hasDocumentation: false };
 }
 
 /**
@@ -130,7 +96,6 @@ export const createGetWorkflowBestPracticesTool = (
 		description:
 			'Required planning step when building a workflow, and only then. Get best-practices guidance (recommended nodes, patterns, and common pitfalls) for a specific workflow technique before searching for nodes or writing code. Call once per relevant technique. Use technique="list" first if unsure which techniques apply.',
 		inputSchema,
-		outputSchema,
 		annotations: {
 			title: MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.displayTitle,
 			readOnlyHint: true,
@@ -163,7 +128,6 @@ export const createGetWorkflowBestPracticesTool = (
 
 			return {
 				content: [{ type: 'text', text: response.text }],
-				structuredContent: response.structured,
 			};
 		} catch (error) {
 			telemetryPayload.results = {
