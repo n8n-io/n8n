@@ -1,5 +1,5 @@
 import type { ProxyServer } from 'n8n-containers/services/proxy';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IDataObject, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { makePollTriggerWorkflow } from './poll-trigger-workflow';
@@ -8,15 +8,43 @@ import type { ApiHelpers } from '../../../services/api-helper';
 
 type PollTriggerWorkflow = ReturnType<typeof makePollTriggerWorkflow>;
 
+const SEED_POLL_ITEMS: IDataObject[] = [{ id: 1 }];
+
+async function programPollResponse(
+	proxy: ProxyServer,
+	path: string,
+	items: IDataObject[],
+	times?: { remainingTimes: number; unlimited: boolean },
+) {
+	await proxy.createExpectation({
+		httpRequest: { method: 'GET', path },
+		httpResponse: {
+			statusCode: 200,
+			headers: { 'Content-Type': ['application/json'] },
+			body: JSON.stringify({ items }),
+		},
+		times,
+	});
+}
+
 // Programs the mock poll response before activation, so the inline seed poll
 // that every fresh activation runs is itself the fire under test.
 export async function expectPollTriggerFires(
 	api: ApiHelpers,
 	proxy: ProxyServer,
 	makeWorkflow: (path: string) => PollTriggerWorkflow,
+	options?: { itemsAfterSeedPoll?: IDataObject[] },
 ): Promise<{ workflowId: string; nodeId: string; path: string }> {
 	const path = `/${nanoid()}`;
-	await proxy.createGetExpectation(path, { items: [{ id: 1 }] });
+	const { itemsAfterSeedPoll } = options ?? {};
+
+	await programPollResponse(
+		proxy,
+		path,
+		SEED_POLL_ITEMS,
+		itemsAfterSeedPoll && { remainingTimes: 1, unlimited: false },
+	);
+	if (itemsAfterSeedPoll) await programPollResponse(proxy, path, itemsAfterSeedPoll);
 
 	const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
 		makeWorkflow(path).toJSON() as IWorkflowBase,
@@ -33,4 +61,70 @@ export async function expectPollTriggerFires(
 	if (!triggerNode) throw new Error('Poll trigger node not found in created workflow');
 
 	return { workflowId, nodeId: triggerNode.id, path };
+}
+
+export async function triggerExecutionIds(
+	api: ApiHelpers,
+	workflowId: string,
+): Promise<Set<string>> {
+	const executions = await api.workflows.getExecutions(workflowId, 50);
+	return new Set(
+		executions.filter((execution) => execution.mode === 'trigger').map((execution) => execution.id),
+	);
+}
+
+async function newTriggerExecutions(api: ApiHelpers, workflowId: string, known: Set<string>) {
+	const executions = await api.workflows.getExecutions(workflowId, 50);
+	return executions.filter((execution) => execution.mode === 'trigger' && !known.has(execution.id));
+}
+
+// Only an execution whose id is absent from `known` proves a fresh fire;
+// `waitForExecution`'s recency fallback would otherwise re-match the
+// activation-seed execution.
+export async function expectNewTriggerExecution(
+	api: ApiHelpers,
+	workflowId: string,
+	known: Set<string>,
+	timeoutMs = 20_000,
+): Promise<void> {
+	await expect
+		.poll(
+			async () => {
+				const [fresh] = await newTriggerExecutions(api, workflowId, known);
+				return fresh?.status ?? null;
+			},
+			{ timeout: timeoutMs },
+		)
+		.toBe('success');
+}
+
+export async function expectNoNewTriggerExecution(
+	api: ApiHelpers,
+	workflowId: string,
+	known: Set<string>,
+	windowMs = 8_000,
+): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, windowMs));
+	expect(await newTriggerExecutions(api, workflowId, known)).toHaveLength(0);
+}
+
+export async function readNodeStaticData(
+	api: ApiHelpers,
+	workflowId: string,
+	nodeName: string,
+): Promise<unknown> {
+	const { staticData } = await api.workflows.getWorkflow(workflowId);
+	const parsed =
+		typeof staticData === 'string' ? (JSON.parse(staticData) as IDataObject) : staticData;
+	return parsed?.[`node:${nodeName}`] ?? null;
+}
+
+export async function clearStaticDataAndReactivate(
+	api: ApiHelpers,
+	workflowId: string,
+): Promise<void> {
+	await api.workflows.deactivate(workflowId);
+	const workflow = await api.workflows.getWorkflow(workflowId);
+	const updated = await api.workflows.update(workflowId, workflow.versionId!, { staticData: {} });
+	await api.workflows.activate(workflowId, updated.versionId!);
 }
