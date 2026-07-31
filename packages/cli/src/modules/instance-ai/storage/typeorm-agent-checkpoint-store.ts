@@ -53,8 +53,8 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		return checkpoint.state;
 	}
 
-	async claimForResume(key: string, _state: SerializableAgentState): Promise<boolean> {
-		return await this.checkpointRepo.claimSuspendedForResume(key);
+	async claimForResume(key: string, state: SerializableAgentState): Promise<boolean> {
+		return await this.checkpointRepo.claimSuspendedForResume(key, state);
 	}
 
 	async delete(key: string): Promise<void> {

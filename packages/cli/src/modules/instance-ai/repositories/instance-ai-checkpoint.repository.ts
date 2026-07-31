@@ -1,4 +1,7 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import { Service } from '@n8n/di';
+import type { SerializableAgentState } from '@n8n/instance-ai';
 import { DataSource, IsNull, Repository } from '@n8n/typeorm';
 
 import { InstanceAiCheckpoint } from '../entities/instance-ai-checkpoint.entity';
@@ -30,7 +33,10 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 	 * concurrent resumes (e.g. two mains claiming the same approval): all but
 	 * one caller return false. Mirrors the pending-confirmation `claim()`.
 	 */
-	async claimSuspendedForResume(key: string): Promise<boolean> {
+	async claimSuspendedForResume(
+		key: string,
+		expectedState: SerializableAgentState,
+	): Promise<boolean> {
 		return await this.manager.transaction(async (manager) => {
 			const repo = manager.getRepository(InstanceAiCheckpoint);
 			const row = await repo.findOne({
@@ -39,9 +45,16 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 					? { lock: { mode: 'pessimistic_write' as const } }
 					: {}),
 			});
-			if (!row?.state || row.state.status !== 'suspended') return false;
+			if (
+				!row?.state ||
+				row.state.status !== 'suspended' ||
+				!isDeepStrictEqual(row.state, expectedState)
+			) {
+				return false;
+			}
 
-			await repo.update({ key }, { state: { ...row.state, status: 'running' } });
+			row.state = { ...row.state, status: 'running' };
+			await repo.save(row);
 			return true;
 		});
 	}
