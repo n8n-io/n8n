@@ -51,6 +51,7 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			default: '',
 			typeOptions: {
 				redactJsonLeaves: true,
+				resolveCredentialJsonLeaves: true,
 			},
 		},
 		{

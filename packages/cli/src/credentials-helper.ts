@@ -8,6 +8,7 @@ import { Service } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
+	CredentialInformation,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	ICredentialsExpressionResolveValues,
@@ -35,6 +36,7 @@ import {
 	UnexpectedError,
 	UserError,
 	isExpression,
+	jsonParse,
 } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
@@ -80,6 +82,8 @@ const mockNodeTypes: INodeTypes = {
 		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
 };
+
+const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
@@ -451,6 +455,40 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return resolvedData;
 	}
 
+	private parseJsonLeafExpressionFields(
+		credentialsProperties: INodeProperties[],
+		decryptedData: ICredentialDataDecryptedObject,
+	): Map<string, string> {
+		const parsedFields = new Map<string, string>();
+
+		for (const property of credentialsProperties) {
+			if (!property.typeOptions?.resolveCredentialJsonLeaves) continue;
+
+			const value = decryptedData[property.name];
+			if (typeof value !== 'string' || value === '') continue;
+
+			const parsed = jsonParse<CredentialInformation | typeof INVALID_JSON_VALUE>(value, {
+				fallbackValue: INVALID_JSON_VALUE,
+			});
+			if (parsed === INVALID_JSON_VALUE) continue;
+
+			parsedFields.set(property.name, value);
+			decryptedData[property.name] = parsed;
+		}
+
+		return parsedFields;
+	}
+
+	private stringifyJsonLeafExpressionFields(
+		decryptedData: ICredentialDataDecryptedObject,
+		parsedFields: Map<string, string>,
+	) {
+		for (const [propertyName, originalValue] of parsedFields) {
+			const serializedValue = JSON.stringify(decryptedData[propertyName]);
+			decryptedData[propertyName] = serializedValue ?? originalValue;
+		}
+	}
+
 	/**
 	 * Returns the decrypted credential data with applied overwrites
 	 */
@@ -610,6 +648,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.usePkce = decryptedDataOriginal.usePkce;
 		}
 
+		const parsedJsonLeafExpressionFields = this.parseJsonLeafExpressionFields(
+			credentialsProperties,
+			decryptedData,
+		);
+
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			isCredential: true,
 		});
@@ -655,6 +698,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 				await workflow.expression.releaseIsolate();
 			}
 		}
+
+		this.stringifyJsonLeafExpressionFields(decryptedData, parsedJsonLeafExpressionFields);
 
 		return decryptedData;
 	}
