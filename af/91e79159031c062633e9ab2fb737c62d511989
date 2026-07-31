@@ -1,0 +1,35 @@
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_e6454ae550915c::t_9c2d123e2d265a 7
+packages/cli/src/public-api/v1/controllers/widgets.public.controller.ts
+  s_e6454ae550915c::t_69e5409ad38068 1-151
+packages/cli/src/public-api/v1/handlers/widgets/spec/paths/createWidget.generated.yml
+  s_e6454ae550915c::t_599f46082f5052 1-35
+packages/cli/src/public-api/v1/handlers/widgets/spec/paths/deleteWidget.generated.yml
+  s_e6454ae550915c::t_f6c2f7ae708caf 1-24
+packages/cli/src/public-api/v1/handlers/widgets/spec/paths/getWidget.generated.yml
+  s_e6454ae550915c::t_451a93b5bc0f1c 1-28
+packages/cli/src/public-api/v1/handlers/widgets/spec/paths/listWidgets.generated.yml
+  s_e6454ae550915c::t_d56ba88249de68 1-49
+packages/cli/src/public-api/v1/handlers/widgets/spec/paths/updateWidget.generated.yml
+  s_e6454ae550915c::t_c787f2f9d1f954 1-41
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_e6454ae550915c::t_2e73b50dfb5b97 9-20
+packages/cli/src/public-api/v1/shared/spec/schemas/widgetPublicDto.generated.yml
+  s_e6454ae550915c::t_d28bc27aa8b791 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "af91e79159031c062633e9ab2fb737c62d511989",
+  "prompts": {},
+  "sessions": {
+    "s_e6454ae550915c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d50437f-80ab-427e-86b5-73792ecfdbf9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
