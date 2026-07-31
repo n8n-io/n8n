@@ -1,0 +1,33 @@
+AGENTS.md
+  s_e138c3c322e106::t_0751069a7deb76 126-127
+  s_e138c3c322e106::t_e853fa5e353e23 267,269
+.agents/skills/reproduce-bug/SKILL.md
+  s_e138c3c322e106::t_847259bac5e17d 33
+packages/testing/playwright/AGENTS.md
+  s_e138c3c322e106::t_58ecf05282e768 386
+  s_e138c3c322e106::t_1d424225b8dc2a 424
+  s_e138c3c322e106::t_1cc4ce488d7e52 425-426
+.agents/skills/design-system/SKILL.md
+  s_e138c3c322e106::t_7e7794ae3ea3f8 20
+.agents/skills/protect-endpoints/SKILL.md
+  s_e138c3c322e106::t_ab1f5f794452f6 73-75,77
+  s_e138c3c322e106::t_f782b2f57e6dda 72
+CONTRIBUTING.md
+  s_e138c3c322e106::t_a41d191ee0766d 308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dcf43d974a33551c07ca91accbf2780fa82c5a86",
+  "prompts": {},
+  "sessions": {
+    "s_e138c3c322e106": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a4243fc-535b-451c-8134-d1d3084d7856",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
