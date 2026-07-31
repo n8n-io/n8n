@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { computed } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import LogsViewConsumedTokenCountText from '@/features/execution/logs/components/LogsViewConsumedTokenCountText.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -42,7 +42,6 @@ const emit = defineEmits<{
 	openNdv: [];
 }>();
 
-const container = useTemplateRef('containerRef');
 const locale = useI18n();
 const now = useTimestamp({ interval: 1000 });
 const nodeTypeStore = useNodeTypesStore();
@@ -145,32 +144,10 @@ const indents = computed(() => {
 
 	return ret;
 });
-
-// Focus when selected: For scrolling into view and for keyboard navigation to work
-watch(
-	() => props.isSelected,
-	(isSelected) => {
-		void nextTick(() => {
-			if (isSelected) {
-				// Don't steal focus if the chat input is currently focused
-				const activeElement = document.activeElement;
-				const isChatInputFocused =
-					activeElement?.getAttribute('data-test-id') === 'chat-input' ||
-					activeElement?.closest('[data-test-id="canvas-chat"]') !== null;
-
-				if (!isChatInputFocused) {
-					container.value?.focus();
-				}
-			}
-		});
-	},
-	{ immediate: true },
-);
 </script>
 
 <template>
 	<div
-		ref="containerRef"
 		role="treeitem"
 		tabindex="-1"
 		:aria-expanded="props.data.children.length > 0 && props.expanded"
