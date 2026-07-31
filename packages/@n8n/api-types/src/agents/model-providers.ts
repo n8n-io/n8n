@@ -14,6 +14,9 @@ export const AGENT_MODEL_PROVIDERS = [
 	'nvidia',
 ] as const;
 
+/** Canonical `provider/model-name` validation shared by API schemas and editor parsing. */
+export const AGENT_MODEL_STRING_REGEX = /^[a-z0-9-]+\/(?:[a-z0-9._:-]+\/)*[a-z0-9._:-]+$/i;
+
 export type AgentModelProvider = (typeof AGENT_MODEL_PROVIDERS)[number];
 
 const AGENT_MODEL_PROVIDER_SET = new Set<string>(AGENT_MODEL_PROVIDERS);
@@ -55,7 +58,7 @@ export interface AgentCatalogModel {
 	id: string;
 	name: string;
 	releaseDate?: string;
-	reasoning: boolean;
+	reasoning?: boolean;
 	toolCall: boolean;
 	cost?: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
 	limits?: { context?: number; output?: number };

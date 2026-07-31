@@ -1,6 +1,6 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { useRouter } from 'vue-router';

@@ -212,6 +212,7 @@ describe('Test Webhook Node', () => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseMode') return 'onReceived';
 				if (paramName === 'authentication') return 'n8nOAuth2';
+				if (paramName === 'httpMethod') return 'GET';
 				return undefined;
 			});
 			req.headers = {};
@@ -240,7 +241,10 @@ describe('Test Webhook Node', () => {
 
 			const result = await node.webhook(context);
 
-			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith('bad-token', WEBHOOK_URL);
+			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith(
+				'bad-token',
+				`${WEBHOOK_URL}?method=GET`,
+			);
 			expect(res.writeHead).toHaveBeenCalledWith(
 				401,
 				expect.objectContaining({
@@ -278,8 +282,14 @@ describe('Test Webhook Node', () => {
 
 			const result = await node.webhook(context);
 
-			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith('good-token', WEBHOOK_URL);
-			expect(context.establishTriggerIdentity).toHaveBeenCalledWith('good-token', WEBHOOK_URL);
+			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith(
+				'good-token',
+				`${WEBHOOK_URL}?method=GET`,
+			);
+			expect(context.establishTriggerIdentity).toHaveBeenCalledWith(
+				'good-token',
+				`${WEBHOOK_URL}?method=GET`,
+			);
 			expect(result.workflowData).toBeDefined();
 			expect(result.workflowData?.[0][0].json.body).toEqual({ hello: 'world' });
 		});

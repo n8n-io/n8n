@@ -18,7 +18,7 @@ import {
 } from '@/app/constants/experiments';
 import { INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT } from '@/experiments/instanceAiTemplateExamples/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {

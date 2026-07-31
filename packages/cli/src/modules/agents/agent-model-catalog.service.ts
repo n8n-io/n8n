@@ -115,7 +115,6 @@ export class AgentModelCatalogService {
 						: {
 								id,
 								name: normalizeLiveModelValue(provider, live.name) || id,
-								reasoning: false,
 								toolCall: true,
 							};
 				}),
@@ -152,7 +151,6 @@ export class AgentModelCatalogService {
 				return {
 					id,
 					name: normalizeLiveModelValue(provider, live.name) || id,
-					reasoning: false,
 					toolCall: true,
 				};
 			}),

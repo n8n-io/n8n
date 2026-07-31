@@ -11,6 +11,7 @@ import {
 import type { Project, User } from '@n8n/db';
 import {
 	UserRepository,
+	WorkflowPublishHistoryRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	WorkflowReviewRequestAuthorRepository,
@@ -53,6 +54,7 @@ let authorRepository: WorkflowReviewRequestAuthorRepository;
 let reviewerRepository: WorkflowReviewRequestReviewerRepository;
 let userRepository: UserRepository;
 let publishedVersionRepository: WorkflowPublishedVersionRepository;
+let publishHistoryRepository: WorkflowPublishHistoryRepository;
 let workflowEntityRepository: WorkflowRepository;
 let policyService: WorkflowReviewPolicyService;
 
@@ -64,6 +66,7 @@ beforeAll(async () => {
 	reviewerRepository = Container.get(WorkflowReviewRequestReviewerRepository);
 	userRepository = Container.get(UserRepository);
 	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+	publishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowEntityRepository = Container.get(WorkflowRepository);
 	policyService = Container.get(WorkflowReviewPolicyService);
 });
@@ -1270,6 +1273,144 @@ describe('GET /workflow-review-requests', () => {
 			workflowVersionId: versionId,
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
+			// Neither applies to a pending review
+			decisionBy: null,
+			approvedVersionPublicationState: null,
+		});
+	});
+
+	test('returns the newest review, closed included, with take=1 and no state filter', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const older = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			state: 'closed',
+			title: 'Older',
+			createdById: owner.id,
+		});
+		await linkRequestToWorkflow(older.id, workflow.id, versionId);
+		const newest = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			state: 'open',
+			title: 'Newest',
+			createdById: owner.id,
+		});
+		await linkRequestToWorkflow(newest.id, workflow.id, versionId);
+		// Both rows are created within the same millisecond, so state the age
+		// explicitly instead of asserting against a timestamp tie.
+		await requestRepository.update(older.id, { createdAt: new Date('2026-01-01T00:00:00.000Z') });
+		await requestRepository.update(newest.id, { createdAt: new Date('2026-01-02T00:00:00.000Z') });
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+
+		expect(response.body.data.data).toHaveLength(1);
+		expect(response.body.data.data[0]).toMatchObject({ id: newest.id, state: 'open' });
+	});
+
+	test('resolves the actor of a changes-requested decision', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			decision: 'changes_requested',
+			title: 'Needs work',
+			createdById: owner.id,
+			updatedById: member.id,
+		});
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+
+		expect(response.body.data.data[0]).toMatchObject({
+			decision: 'changes_requested',
+			decisionBy: {
+				id: member.id,
+				email: member.email,
+				firstName: member.firstName,
+				lastName: member.lastName,
+			},
+			approvedVersionPublicationState: null,
+		});
+	});
+
+	test('returns no actor when the deciding user was deleted', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const reviewer = await createMember();
+		const request = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			decision: 'changes_requested',
+			title: 'Needs work',
+			createdById: owner.id,
+			updatedById: reviewer.id,
+		});
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+		await userRepository.delete(reviewer.id);
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+
+		expect(response.body.data.data[0]).toMatchObject({
+			decision: 'changes_requested',
+			decisionBy: null,
+		});
+	});
+
+	test('reports an approved version that was never published', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			state: 'closed',
+			decision: 'approved',
+			title: 'Approved',
+			createdById: owner.id,
+			updatedById: member.id,
+		});
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+
+		expect(response.body.data.data[0]).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			// Approval is never attributed in the canvas banner
+			decisionBy: null,
+			approvedVersionPublicationState: 'not_published',
+		});
+	});
+
+	test('reports an approved version that has been published', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			state: 'closed',
+			decision: 'approved',
+			title: 'Approved',
+			createdById: owner.id,
+		});
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+		await publishHistoryRepository.addRecord({
+			workflowId: workflow.id,
+			versionId,
+			event: 'activated',
+			userId: owner.id,
+		});
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+
+		expect(response.body.data.data[0]).toMatchObject({
+			approvedVersionPublicationState: 'published',
 		});
 	});
 

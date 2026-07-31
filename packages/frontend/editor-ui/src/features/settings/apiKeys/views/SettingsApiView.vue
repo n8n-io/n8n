@@ -7,7 +7,7 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { DOCS_DOMAIN } from '@/app/constants';
@@ -30,6 +30,7 @@ import {
 	N8nSettingsPageHeader,
 	N8nTabs,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 import ApiKeyOwnerFilter from '../components/ApiKeyOwnerFilter.vue';
@@ -148,6 +149,10 @@ const rotateConfirmApiKey = ref<ApiKey | null>(null);
 const rotating = ref(false);
 
 const canManageAllKeys = computed(() => rbacStore.hasScope('apiKey:manage'));
+// Viewing and revoking own keys is available to everyone; creating and editing
+// stay behind role scopes, so the section explains the restriction instead of hiding.
+const canCreateKeys = computed(() => rbacStore.hasScope('apiKey:create'));
+const canUpdateKeys = computed(() => rbacStore.hasScope('apiKey:update'));
 
 // Badges show the unfiltered totals so a search-narrowed "Mine (0)" doesn't read
 // as "I have no keys" when the user really has keys that just don't match.
@@ -368,9 +373,19 @@ function onOpenScopes(apiKey: ApiKey) {
 							@update:model-value="onOwnerFilterChange"
 						/>
 					</div>
-					<N8nButton size="medium" @click="onCreateApiKey">
-						{{ i18n.baseText('settings.api.create.button') }}
-					</N8nButton>
+					<N8nTooltip
+						:disabled="canCreateKeys"
+						:content="i18n.baseText('settings.api.create.disabledTooltip')"
+					>
+						<N8nButton
+							size="medium"
+							:disabled="!canCreateKeys"
+							data-test-id="api-key-create-button"
+							@click="onCreateApiKey"
+						>
+							{{ i18n.baseText('settings.api.create.button') }}
+						</N8nButton>
+					</N8nTooltip>
 				</div>
 			</div>
 
@@ -382,6 +397,7 @@ function onOpenScopes(apiKey: ApiKey) {
 				:loading="loading"
 				:current-user-id="usersStore.currentUser?.id"
 				:show-owner="canManageAllKeys && ownership === 'all'"
+				:can-update="canUpdateKeys"
 				:class="$style.table"
 				@edit="onEdit"
 				@revoke="onRevokeRequest"
@@ -423,9 +439,14 @@ function onOpenScopes(apiKey: ApiKey) {
 			:button-text="
 				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')
 			"
+			:button-disabled="!canCreateKeys"
 			:description="i18n.baseText('settings.api.create.description')"
 			@click:button="onCreateApiKey"
-		/>
+		>
+			<template #disabledButtonTooltip>
+				{{ i18n.baseText('settings.api.create.disabledTooltip') }}
+			</template>
+		</N8nEmptyState>
 
 		<ApiKeyScopesModal
 			:api-key="scopesModalApiKey"
