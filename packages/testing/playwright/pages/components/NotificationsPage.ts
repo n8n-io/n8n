@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export class NotificationsPage {
 	readonly page: Page;
@@ -53,9 +53,10 @@ export class NotificationsPage {
 	}
 
 	/**
-	 * Clicks the close button on the FIRST notification matching the text.
-	 * Throws if the notification is still on screen afterwards - a toast left
-	 * open covers the top-right of the app and intercepts later clicks.
+	 * Closes every notification matching the text - toasts stack, so the same title
+	 * can be on screen more than once. Throws if any is still there afterwards: a
+	 * toast left open covers the top-right of the app and intercepts later clicks,
+	 * and error toasts (`duration: 0`) never auto-dismiss on their own.
 	 * @param text The text of the notification to close.
 	 * @param options Optional configuration
 	 */
@@ -64,15 +65,19 @@ export class NotificationsPage {
 		options: { timeout?: number } = {},
 	): Promise<void> {
 		const { timeout = 2000 } = options;
-		const notification = this.getNotificationByTitle(text).first();
+		const notifications = this.getNotificationByTitle(text);
+		const deadline = Date.now() + timeout;
 
-		try {
-			await notification.locator('.el-notification__closeBtn').click({ timeout });
-		} catch {
-			// It may have auto-dismissed; the hidden check below is the real contract.
+		while ((await notifications.count()) > 0 && Date.now() < deadline) {
+			// May be mid-dismissal already; the count assertion below is the real contract.
+			await notifications
+				.first()
+				.locator('.el-notification__closeBtn')
+				.click({ timeout: 500 })
+				.catch(() => {});
 		}
 
-		await notification.waitFor({ state: 'hidden', timeout });
+		await expect(notifications).toHaveCount(0, { timeout });
 	}
 
 	/**
@@ -95,7 +100,7 @@ export class NotificationsPage {
 		text: string | RegExp,
 		options: { timeout?: number } = {},
 	): Promise<void> {
-		const { timeout = 3000 } = options;
+		const { timeout = 5000 } = options;
 		await this.waitForNotification(text, { timeout });
 		await this.closeNotificationByText(text, { timeout });
 	}
