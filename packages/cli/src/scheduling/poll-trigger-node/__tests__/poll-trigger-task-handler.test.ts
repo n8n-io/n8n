@@ -151,6 +151,16 @@ describe('PollTriggerTaskHandler', () => {
 			);
 		});
 
+		test('builds the poll execution context fence from the claimed task id and lease epoch', async () => {
+			await handler.execute(buildTask({ id: 'task-42', leaseEpoch: 7 }), report);
+
+			expect(triggerExecutionContextFactory.createPollExecutionContext).toHaveBeenCalledWith(
+				buildWorkflowData(),
+				triggerNode,
+				{ taskId: 'task-42', leaseEpoch: 7 },
+			);
+		});
+
 		test('reads workflow data fresh (non-cached) so the poll cursor is never stale', async () => {
 			await handler.execute(buildTask(), report);
 
