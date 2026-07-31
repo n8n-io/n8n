@@ -79,7 +79,7 @@ describe('TemplatedAuthSimpleView', () => {
 			props: { credentialData: credentialData({ placeholderDefs: '' }) },
 		});
 
-		expect(getByText('Api key')).toBeInTheDocument();
+		expect(getByText('Api Key')).toBeInTheDocument();
 	});
 
 	it('prefills plain inputs with the stored values, like other credential fields', async () => {

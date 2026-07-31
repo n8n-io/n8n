@@ -1,16 +1,16 @@
 <script lang="ts" setup>
+import startCase from 'lodash/startCase';
+
 import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import {
 	cleanPlaceholderValue,
 	extractTemplateMarkers,
-	humanizeMarkerName,
 	parsePlaceholderDefs,
 	parsePlaceholderValues,
 	parseTemplatedAuthField,
 	TEMPLATED_AUTH_REDACTED_VALUE,
 	type TemplatedAuthPlaceholderDef,
-	type TemplatedAuthTemplate,
 } from '@/features/credentials/templatedAuth.utils';
 import {
 	N8nButton,
@@ -57,7 +57,7 @@ const templateText = computed(() =>
 );
 
 const template = computed(() =>
-	parseTemplatedAuthField<TemplatedAuthTemplate>(props.credentialData.template, {}),
+	parseTemplatedAuthField<unknown>(props.credentialData.template, {}),
 );
 
 const markers = computed(() => extractTemplateMarkers(template.value));
@@ -105,7 +105,7 @@ const placeholderProperties = computed<INodeProperties[]>(() =>
 	markers.value.map((name) => {
 		const def = defsByName.value.get(name);
 		return {
-			displayName: def?.title || humanizeMarkerName(name),
+			displayName: def?.title || startCase(name),
 			name,
 			type: 'string',
 			default: '',
@@ -314,7 +314,7 @@ const typeOptions = computed(() => [
 									<N8nInput
 										size="small"
 										:model-value="defFor(name).title"
-										:placeholder="humanizeMarkerName(name)"
+										:placeholder="startCase(name)"
 										@update:model-value="setDefField(name, { title: $event })"
 									/>
 								</N8nInputLabel>

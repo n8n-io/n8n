@@ -1,7 +1,6 @@
 import {
 	cleanPlaceholderValue,
 	extractTemplateMarkers,
-	markerPrefix,
 	parsePlaceholderDefs,
 	parsePlaceholderValues,
 	parseTemplatedAuthField,
@@ -22,17 +21,6 @@ describe('templatedAuth.utils', () => {
 		it('returns empty for markerless or invalid templates', () => {
 			expect(extractTemplateMarkers({ headers: { Accept: 'application/json' } })).toEqual([]);
 			expect(extractTemplateMarkers(undefined)).toEqual([]);
-		});
-	});
-
-	describe('markerPrefix', () => {
-		it('returns the static text before the marker in the same string', () => {
-			expect(markerPrefix(template, 'api_key')).toBe('Key ');
-		});
-
-		it('returns empty when the marker starts the string or is absent', () => {
-			expect(markerPrefix(template, 'api_version')).toBe('');
-			expect(markerPrefix(template, 'missing')).toBe('');
 		});
 	});
 

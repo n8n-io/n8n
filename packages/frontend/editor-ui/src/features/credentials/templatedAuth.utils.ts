@@ -1,4 +1,4 @@
-import { jsonParse } from 'n8n-workflow';
+import { isExpression, jsonParse } from 'n8n-workflow';
 
 /**
  * Helpers for Templated Custom Auth (`httpTemplatedCustomAuth`) credentials:
@@ -7,14 +7,6 @@ import { jsonParse } from 'n8n-workflow';
  */
 
 export const TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE = 'httpTemplatedCustomAuth';
-
-/** Parsed shape of the credential's `template` JSON field: the request parts
- *  merged into the outgoing call, with `{{marker}}`s where values go. */
-export type TemplatedAuthTemplate = {
-	headers?: Record<string, string>;
-	qs?: Record<string, string>;
-	body?: Record<string, unknown>;
-};
 
 /** One entry of the credential's persisted `placeholderDefs` JSON: UI metadata
  *  for a template marker (input label, help text, masking, optional flag). */
@@ -72,7 +64,7 @@ export function extractTemplateMarkers(template: unknown): string[] {
  * (e.g. `Key ` in `Key {{api_key}}`), used to strip a pasted duplicate of
  * that prefix (some dashboards copy `Key abc…` including the scheme word).
  */
-export function markerPrefix(template: unknown, name: string): string {
+function markerPrefix(template: unknown, name: string): string {
 	const marker = new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`);
 	let prefix = '';
 	const visit = (value: unknown): void => {
@@ -94,15 +86,10 @@ export function markerPrefix(template: unknown, name: string): string {
 	return prefix;
 }
 
-/** An n8n expression value (e.g. an external-secrets reference). */
-export function isExpressionValue(value: string): boolean {
-	return value.startsWith('={{');
-}
-
 /** Trim a pasted value and strip a duplicated template prefix. Expressions
  *  (external-secrets references) pass through untouched. */
 export function cleanPlaceholderValue(template: unknown, name: string, value: string): string {
-	if (isExpressionValue(value)) return value;
+	if (isExpression(value)) return value;
 	let cleaned = value.trim();
 	const prefix = markerPrefix(template, name);
 	if (prefix && cleaned.startsWith(prefix)) cleaned = cleaned.slice(prefix.length).trim();
@@ -128,10 +115,4 @@ export function parsePlaceholderValues(raw: unknown): Record<string, string> {
 		if (typeof value === 'string') values[key] = value;
 	}
 	return values;
-}
-
-/** Fallback input label for a marker without a def: `api_key` → "Api key". */
-export function humanizeMarkerName(name: string): string {
-	const spaced = name.replace(/_/g, ' ').trim();
-	return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
