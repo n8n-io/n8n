@@ -198,47 +198,66 @@ export class VariableImporter {
 		);
 	}
 
+	private targetScopes(targets: Array<{ projectId?: string }>, skipProjectId?: string) {
+		const projectIds = new Set<string>();
+		for (const { projectId } of targets) {
+			if (projectId && projectId !== skipProjectId) projectIds.add(projectId);
+		}
+
+		return {
+			touchesGlobal: targets.some(({ projectId }) => !projectId),
+			projectIds,
+		};
+	}
+
 	async assertCanCreate(
 		context: ImportContext,
 		creations: VariableCreation[],
 		projectPendingCreation: boolean,
 	): Promise<void> {
-		const needsGlobal = creations.some((creation) => !creation.projectId);
-		const needsProject = creations.some((creation) => creation.projectId);
+		// A project this import is about to create has no scopes to look up yet; the user becomes its
+		// admin on creation, and `VariablesService.create` re-checks at apply time.
+		const { touchesGlobal, projectIds } = this.targetScopes(
+			creations,
+			projectPendingCreation ? context.projectId : undefined,
+		);
 
-		if (needsGlobal && !hasGlobalScope(context.user, 'variable:create')) {
+		if (touchesGlobal && !hasGlobalScope(context.user, 'variable:create')) {
 			throw new ForbiddenError('You are not allowed to create global variables');
 		}
 
-		// A project this import is about to create has no scopes to look up yet; the user becomes its
-		// admin on creation, and `VariablesService.create` re-checks at apply time.
-		if (needsProject && !projectPendingCreation) {
-			const allowed = await userHasScopes(context.user, ['projectVariable:create'], false, {
-				projectId: context.projectId,
-			});
-			if (!allowed) {
+		for (const projectId of projectIds) {
+			const projectVariableCreationAllowed = await userHasScopes(
+				context.user,
+				['projectVariable:create'],
+				false,
+				{
+					projectId,
+				},
+			);
+			if (!projectVariableCreationAllowed) {
 				throw new ForbiddenError('You are not allowed to create variables in this project');
 			}
 		}
 	}
 
-	/**
-	 * No `projectPendingCreation` counterpart to `assertCanCreate`: an overwrite targets a row that
-	 * already exists, which a project this import is about to create cannot have.
-	 */
 	async assertCanUpdate(context: ImportContext, overwrites: VariableOverwrite[]): Promise<void> {
-		const needsGlobal = overwrites.some((overwrite) => !overwrite.projectId);
-		const needsProject = overwrites.some((overwrite) => overwrite.projectId);
+		const { touchesGlobal, projectIds } = this.targetScopes(overwrites);
 
-		if (needsGlobal && !hasGlobalScope(context.user, 'variable:update')) {
+		if (touchesGlobal && !hasGlobalScope(context.user, 'variable:update')) {
 			throw new ForbiddenError('You are not allowed to update global variables');
 		}
 
-		if (needsProject) {
-			const allowed = await userHasScopes(context.user, ['projectVariable:update'], false, {
-				projectId: context.projectId,
-			});
-			if (!allowed) {
+		for (const projectId of projectIds) {
+			const projectVariableUpdateAllowed = await userHasScopes(
+				context.user,
+				['projectVariable:update'],
+				false,
+				{
+					projectId,
+				},
+			);
+			if (!projectVariableUpdateAllowed) {
 				throw new ForbiddenError('You are not allowed to update variables in this project');
 			}
 		}
