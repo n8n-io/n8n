@@ -1,17 +1,20 @@
-import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
 
 /**
- * E2E proving an `n8nOAuth2` webhook runs *as the caller*: the private credential
- * its HTTP Request node uses is resolved per-user, keyed to the identity in the
- * bearer token rather than to the workflow's owner.
+ * E2E proving an `n8nOAuth2` webhook resolves end-user credentials *per caller*:
+ * the identity in the bearer token decides which stored credential is used, not
+ * the workflow's owner.
  *
- * One workflow, one credential, two callers, opposite outcomes — the member has
- * not connected the credential so their run fails, while the owner's succeeds
- * once connected. `requireExecuteAccess: false` lets the member mint a token for
- * the trigger without holding `workflow:execute`.
+ * The webhook path carries a reactive credential-status gate — once the trigger has
+ * established the caller's identity, an unconnected private credential is answered
+ * with 428 and a connect link instead of executing. So the same workflow and
+ * credential yield opposite outcomes for two callers: the owner succeeds once
+ * connected, while a member who never connected stays gated.
+ *
+ * `requireExecuteAccess: false` lets the member mint a token for the trigger
+ * without holding `workflow:execute`.
  *
  * Combines the `dynamic-credentials` capability (Keycloak as the credential's
  * OAuth2 provider, plus the seeded `system-n8n` resolver) with the webhook
@@ -29,6 +32,11 @@ test.use({
 	},
 	ignoreHTTPSErrors: true, // Keycloak uses a self-signed certificate
 });
+
+interface CredentialGateResponse {
+	readyToExecute: boolean;
+	credentials: Array<{ credentialName: string; status: string; authorizationUrl?: string }>;
+}
 
 test.describe(
 	'Webhook Trigger n8nOAuth2 private credentials @capability:dynamic-credentials @licensed',
@@ -85,7 +93,6 @@ test.describe(
 								// Any authenticated user may mint a token, so the member can call
 								// the trigger without being granted workflow:execute.
 								requireExecuteAccess: false,
-								responseMode: 'onReceived', // respond immediately; execution runs async
 								options: {},
 							},
 						},
@@ -132,8 +139,52 @@ test.describe(
 					)
 					.toBe(200);
 
-				// Leg 1 — a member who has never connected the credential. The run reaches
-				// the HTTP node, which cannot resolve a credential for them, and fails.
+				const callWebhook = async (accessToken: string, caller: string) =>
+					await api.webhooks.trigger(`/webhook/${webhookPath!}`, {
+						method: 'POST',
+						headers: { Authorization: `Bearer ${accessToken}` },
+						data: { caller },
+					});
+
+				// The owner has not connected the credential yet, so the gate answers 428
+				// with a connect link rather than executing.
+				const { tokens: ownerTokens } = await api.mcpOauth.completeAuthorizationCodeFlow({
+					clientName: `webhook-private owner ${nanoid(8)}`,
+					resource,
+				});
+
+				const gated = await callWebhook(ownerTokens.access_token, 'owner');
+				expect(gated.status()).toBe(428);
+
+				const gate = (await gated.json()) as CredentialGateResponse;
+				expect(gate.readyToExecute).toBe(false);
+				const missing = gate.credentials.find((c) => c.credentialName === credential.name);
+				expect(missing?.status).toBe('missing');
+				expect(missing?.authorizationUrl).toBeTruthy();
+				expect(await api.workflows.getExecutions(workflowId)).toHaveLength(0);
+
+				// The link is bound to the owner, so open it with the owner's session: n8n
+				// redirects to Keycloak, and the callback stores the owner's tokens against
+				// the resolver-keyed credential.
+				const providerUrl = await api.dynamicCredentials.resolveProviderUrlFromAuthorizeLink(
+					missing!.authorizationUrl!,
+				);
+				const callbackUrl = await keycloak.completeAuthorizationCodeFlow(providerUrl);
+				await api.dynamicCredentials.completeAuthorizationCallback(callbackUrl);
+
+				// Same token, same trigger — now the gate passes and the HTTP node resolves
+				// the owner's credential against Keycloak.
+				const ownerResponse = await callWebhook(ownerTokens.access_token, 'owner');
+				expect(ownerResponse.status()).toBe(200);
+
+				const ownerExecution = await api.workflows.waitForExecution(workflowId, 20_000);
+				expect((ownerExecution as unknown as { status: string }).status).toBe('success');
+
+				const executionsAfterOwner = (await api.workflows.getExecutions(workflowId)).length;
+
+				// A member who never connected the credential is still gated on the very same
+				// workflow and credential — the stored credential is keyed to the caller, not
+				// to the workflow's owner.
 				const member = await api.publicApi.createUser({
 					email: `webhook-oauth2-member-${nanoid(8)}@test.com`,
 					firstName: 'Webhook',
@@ -146,40 +197,12 @@ test.describe(
 					resource,
 				});
 
-				const memberResponse = await api.webhooks.trigger(`/webhook/${webhookPath!}`, {
-					method: 'POST',
-					headers: { Authorization: `Bearer ${memberTokens.access_token}` },
-					data: { caller: 'member' },
-				});
-				expect(memberResponse.status()).toBe(200); // onReceived — the run fails afterwards
-
-				const memberExecution = await api.workflows.waitForExecution(workflowId, 20_000);
-				expect((memberExecution as unknown as { status: string }).status).toBe('error');
-
-				// Leg 2 — the owner connects the credential for themselves, then calls the
-				// same trigger with their own token.
-				const { tokens: ownerTokens } = await api.mcpOauth.completeAuthorizationCodeFlow({
-					clientName: `webhook-private owner ${nanoid(8)}`,
-					resource,
-				});
-
-				const providerUrl = await api.dynamicCredentials.getAuthorizationUrl(
-					credential.id,
-					SYSTEM_RESOLVER_ID,
-					ownerTokens.access_token,
+				const memberResponse = await callWebhook(memberTokens.access_token, 'member');
+				expect(memberResponse.status()).toBe(428);
+				expect(((await memberResponse.json()) as CredentialGateResponse).readyToExecute).toBe(
+					false,
 				);
-				const callbackUrl = await keycloak.completeAuthorizationCodeFlow(providerUrl);
-				await api.dynamicCredentials.completeAuthorizationCallback(callbackUrl);
-
-				const ownerResponse = await api.webhooks.trigger(`/webhook/${webhookPath!}`, {
-					method: 'POST',
-					headers: { Authorization: `Bearer ${ownerTokens.access_token}` },
-					data: { caller: 'owner' },
-				});
-				expect(ownerResponse.status()).toBe(200);
-
-				const ownerExecution = await api.workflows.waitForExecution(workflowId, 20_000);
-				expect((ownerExecution as unknown as { status: string }).status).toBe('success');
+				expect(await api.workflows.getExecutions(workflowId)).toHaveLength(executionsAfterOwner);
 			} finally {
 				await api.workflows.deactivate(workflowId);
 			}
