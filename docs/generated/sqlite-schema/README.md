@@ -95,6 +95,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [project](project.md) | 9 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
 | [project_secrets_provider_access](project_secrets_provider_access.md) | 5 |  | table |
+| [promotion](promotion.md) | 9 |  | table |
 | [role](role.md) | 7 |  | table |
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
@@ -1180,6 +1181,17 @@ erDiagram
   varchar_36_ projectId PK
   varchar_128_ role
   INTEGER secretsProviderConnectionId PK
+  datetime_3_ updatedAt
+}
+"promotion" {
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT metadata
+  varchar_64_ model
+  varchar_16_ role
+  varchar_64_ state
+  varchar_36_ unitOfWorkId
+  varchar_32_ unitOfWorkType
   datetime_3_ updatedAt
 }
 "role" {

@@ -34,6 +34,12 @@ import ProjectList from './commands/project/list';
 import ProjectMembers from './commands/project/members';
 import ProjectRemoveMember from './commands/project/remove-member';
 import ProjectUpdate from './commands/project/update';
+import PromotionAction from './commands/promotion/action';
+import PromotionApply from './commands/promotion/apply';
+import PromotionGet from './commands/promotion/get';
+import PromotionList from './commands/promotion/list';
+import PromotionSubmit from './commands/promotion/submit';
+import PromotionSync from './commands/promotion/sync';
 import SkillInstall from './commands/skill/install';
 import SourceControlPull from './commands/source-control/pull';
 import TagCreate from './commands/tag/create';
@@ -125,6 +131,13 @@ export const commands = {
 
 	'package:export': PackageExport,
 	'package:import': PackageImport,
+
+	'promotion:submit': PromotionSubmit,
+	'promotion:list': PromotionList,
+	'promotion:get': PromotionGet,
+	'promotion:action': PromotionAction,
+	'promotion:sync': PromotionSync,
+	'promotion:apply': PromotionApply,
 
 	audit: Audit,
 };

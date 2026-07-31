@@ -243,6 +243,9 @@ export {
 } from './packages/import-package-request.dto';
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
 
+export { CreatePromotionRequestDto } from './promotions/create-promotion-request.dto';
+export { PromotionActionRequestDto } from './promotions/promotion-action-request.dto';
+
 export * from './evaluations';
 
 export {

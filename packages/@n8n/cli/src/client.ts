@@ -516,6 +516,35 @@ export class N8nClient {
 		});
 	}
 
+	// ─── Promotions (POC) ──────────────────────────────────────────
+
+	async createPromotion(fields: {
+		model: string;
+		unitOfWork?: { type: string; id: string };
+		options?: Record<string, unknown>;
+	}) {
+		return await this.post<Record<string, unknown>>('/promotions', fields);
+	}
+
+	async listPromotions() {
+		return await this.get<Array<Record<string, unknown>>>('/promotions');
+	}
+
+	async getPromotion(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/${id}`);
+	}
+
+	async runPromotionAction(id: string, action: string, payload?: Record<string, unknown>) {
+		return await this.post<Record<string, unknown>>(
+			`/promotions/${id}/actions/${action}`,
+			payload ? { payload } : {},
+		);
+	}
+
+	async syncPromotion(id: string) {
+		return await this.post<Record<string, unknown>>(`/promotions/${id}/sync`, {});
+	}
+
 	// ─── Audit ─────────────────────────────────────────────────────
 
 	async audit(categories?: string[]) {

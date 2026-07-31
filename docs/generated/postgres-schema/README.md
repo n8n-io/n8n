@@ -95,6 +95,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
+| [public.promotion](public.promotion.md) | 9 |  | BASE TABLE |
 | [public.role](public.role.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
@@ -1193,6 +1194,17 @@ erDiagram
   varchar_36_ projectId FK
   varchar_128_ role
   integer secretsProviderConnectionId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.promotion" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  json metadata
+  varchar_64_ model
+  varchar_16_ role
+  varchar_64_ state
+  varchar_36_ unitOfWorkId
+  varchar_32_ unitOfWorkType
   timestamp_3__with_time_zone updatedAt
 }
 "public.role" {
