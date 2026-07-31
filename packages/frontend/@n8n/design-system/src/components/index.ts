@@ -31,6 +31,8 @@ export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
 export { default as N8nBlockUi } from './N8nBlockUi';
 export { default as N8nButton } from './N8nButton';
+export { default as N8nButtonList } from './N8nButtonList';
+export type { ButtonListOrientation, ButtonListProps } from './N8nButtonList';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
 export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill';
