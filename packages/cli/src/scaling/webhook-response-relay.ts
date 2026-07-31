@@ -133,7 +133,7 @@ export class WebhookResponseRelay {
 	 * @param response Worker response. Mutated and returned.
 	 * @returns The same `response`.
 	 *
-	 * @throws WebhookResponseTooLargeError When:
+	 * @throws {WebhookResponseTooLargeError} When:
 	 * - the response is over the limit and its body cannot be offloaded,
 	 * - or when what is left once the body is offloaded is over the limit on its own,
 	 * - or when the response has no offload path and is over the limit as a whole.
@@ -183,7 +183,7 @@ export class WebhookResponseRelay {
 	 * the reference itself.
 	 * @param context Where the response came from, reported on failure.
 	 * @returns The same `response`.
-	 * @throws OperationalError When `reclaim` is set and the stored content cannot be fetched.
+	 * @throws {OperationalError} When `reclaim` is set and the stored content cannot be fetched.
 	 */
 	async restoreOffloadedBody<T>(
 		response: T,
@@ -250,7 +250,7 @@ export class WebhookResponseRelay {
 	 * Asserts that a payload with no offload path is small enough to travel
 	 * inline inside a queue message.
 	 *
-	 * @throws WebhookResponseTooLargeError When the payload is over the limit.
+	 * @throws {WebhookResponseTooLargeError} When the payload is over the limit.
 	 */
 	assertFitsInline(payload: unknown): void {
 		if (exceedsInlineSize(payload, this.maxInlineBytes)) {
@@ -263,7 +263,7 @@ export class WebhookResponseRelay {
 	/**
 	 * Asserts that a body over the limit has somewhere to be offloaded to.
 	 *
-	 * @throws WebhookResponseTooLargeError When offload is turned off, or when the
+	 * @throws {WebhookResponseTooLargeError} When offload is turned off, or when the
 	 * binary-data mode keeps bytes in memory.
 	 */
 	private assertOffloadAvailable(): void {
@@ -304,7 +304,7 @@ export class WebhookResponseRelay {
 	/**
 	 * @param response Mutated and returned.
 	 *
-	 * @throws When the store does not persist the body, leaving `response` untouched.
+	 * @throws Whatever storing the body fails with, leaving `response` untouched.
 	 *
 	 * @remarks A stored body is deliberately absent from run data, unlike a node's
 	 * binary data, because its lifetime is a single delivery: it is deleted once
@@ -341,8 +341,8 @@ export class WebhookResponseRelay {
 
 	/**
 	 * @returns The stored body's binary-data reference, its `id` set.
-	 * @throws WebhookResponseTooLargeError When the store refuses the body for its own size limit.
-	 * @throws OperationalError When the store reports no id.
+	 * @throws {WebhookResponseTooLargeError} When the store refuses the body for its own size limit.
+	 * @throws {OperationalError} When the store reports no id.
 	 */
 	private async storeBody(
 		location: BinaryData.FileLocation,
