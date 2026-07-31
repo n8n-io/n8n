@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 import { TaskRejectError } from '../errors/task-reject.error';
+import { TaskRequesterAcceptTimeoutError } from '../errors/task-requester-accept-timeout.error';
 import { TaskRunnerExecutionTimeoutError } from '../errors/task-runner-execution-timeout.error';
 import { TaskRunnerUnreachableError } from '../errors/task-runner-unreachable.error';
 import { TaskBroker } from '../task-broker.service';
@@ -236,6 +237,11 @@ describe('TaskBroker', () => {
 				error: expect.any(TaskRunnerUnreachableError),
 			});
 			expect(taskBroker.getTasks().get('task1')).toBeUndefined();
+
+			const [[taskErrorMessage]] = requesterCallback.mock.calls as [
+				[{ error: TaskRunnerUnreachableError }],
+			];
+			expect(taskErrorMessage.error.level).toBe('warning');
 		});
 
 		it('should fail an in-flight task instead of relaying a requester response to an unreachable runner', async () => {
@@ -1583,6 +1589,7 @@ describe('TaskBroker', () => {
 					reason: 'Requester took too long to acknowledge the task',
 				}),
 			);
+			expect(new TaskRequesterAcceptTimeoutError('task1', 'requester1').level).toBe('warning');
 		});
 
 		it('should stop restarting the expiry window after repeated deferrals', async () => {
