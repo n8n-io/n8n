@@ -6,6 +6,6 @@ paths:
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml
-  /workflows/{id}/history:
+  /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml

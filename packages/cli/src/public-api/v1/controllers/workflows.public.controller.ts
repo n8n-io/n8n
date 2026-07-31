@@ -25,7 +25,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 export class WorkflowsPublicController {
 	constructor(private readonly workflowHistoryService: WorkflowHistoryService) {}
 
-	@Get('/:id/history')
+	@Get('/:workflowId/history')
 	@ApiKeyScope('workflow:read')
 	@ProjectScope('workflow:read')
 	@ApiSummary('Retrieve workflow version history')
@@ -38,7 +38,7 @@ export class WorkflowsPublicController {
 	async getWorkflowHistory(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') workflowId: string,
+		@Param('workflowId') workflowId: string,
 		@Query query: ListWorkflowHistoryQueryDto,
 	): Promise<WorkflowVersionHistoryListPublicDto> {
 		let { limit, offset } = query;
