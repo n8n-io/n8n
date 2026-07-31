@@ -446,7 +446,15 @@ How it differs from the manifest flow:
   attempts — failed attempts cost money too) land as `build_cost_usd` /
   `build_turns` row feedback in LangSmith and as `buildCostUsdPerRun` /
   `buildTurnsPerRun` per case in `eval-results.json`, alongside the run-level
-  `summary.mcpBuild` totals. For builder cost comparisons across any runs
+  `summary.mcpBuild` totals.
+- **Per-tool turn attribution.** Builds run `claude` with
+  `--output-format stream-json`, so the per-attempt log under
+  `mcp-build-logs/` is the verbatim NDJSON event stream (`.jsonl`), and each
+  build's `tool_use` calls are counted per MCP tool. The counts land as
+  `buildToolCallsPerRun` per case and `summary.mcpBuild.toolCalls` run-wide in
+  `eval-results.json` (plus `build_tool_calls` in LangSmith experiment
+  metadata) — answering *what the turns were spent on*, including the partial
+  stream of a timed-out build. For builder cost comparisons across any runs
   (MCP vs AIA, builder-model A/Bs), the un-wired helper
   `evaluations/cli/build-cost-report.ts` (run via `pnpm tsx`, one `--results`
   per arm) auto-detects each arm's cost source — these persisted fields, or

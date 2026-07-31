@@ -180,7 +180,11 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// every row of the case like buildDurationMs — dedupe per (iteration, case)
 		// when summing (persist takes the first defined value per iteration).
 		const buildSpendFields = buildSpend
-			? { buildCostUsd: buildSpend.costUsd, buildTurns: buildSpend.turns }
+			? {
+					buildCostUsd: buildSpend.costUsd,
+					buildTurns: buildSpend.turns,
+					buildToolCalls: buildSpend.toolCalls,
+				}
 			: {};
 
 		// Agent-anchored build: scenarios target the agent and a missing workflow is

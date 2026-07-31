@@ -140,7 +140,11 @@ describe('createCasePipeline', () => {
 			build: okBuild(),
 			lane,
 			buildDurationMs: 42,
-			buildSpend: { costUsd: 0.42, turns: 6 },
+			buildSpend: {
+				costUsd: 0.42,
+				turns: 6,
+				toolCalls: { 'mcp__n8n-local__create_workflow_from_code': 2 },
+			},
 		};
 		const orchestrator = makeOrchestrator(cached);
 		const pipeline = createCasePipeline(makeDeps(orchestrator));
@@ -158,6 +162,7 @@ describe('createCasePipeline', () => {
 			// `claude` spend (--build-via-mcp) rides on every row of the case's build.
 			buildCostUsd: 0.42,
 			buildTurns: 6,
+			buildToolCalls: { 'mcp__n8n-local__create_workflow_from_code': 2 },
 		});
 		// Single-scenario case → this was the last row → artifacts deleted eagerly.
 		expect(vi.mocked(cleanupBuild)).toHaveBeenCalledTimes(1);
