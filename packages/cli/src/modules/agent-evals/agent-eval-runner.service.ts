@@ -1,6 +1,7 @@
+import type { AgentEvalRunSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { AgentEvalDataset, AgentEvalResult, AgentEvalRunStatus, User } from '@n8n/db';
+import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
 import {
 	AgentEvalDatasetRepository,
 	AgentEvalResultRepository,
@@ -29,6 +30,8 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
+
 const ROW_PAGE_SIZE = 100;
 // Per-run in-flight cap layered on the shared evaluation queue: keeps one run
 // from flooding the queue (and bounds fan-out when the queue is unlimited).
@@ -50,12 +53,6 @@ interface ResolvedCase {
 interface CaseUsage {
 	inputTokens: number;
 	outputTokens: number;
-}
-
-export interface AgentEvalRunSummary {
-	runId: string;
-	status: AgentEvalRunStatus;
-	counts: { total: number; success: number; error: number; cancelled: number; pending: number };
 }
 
 /**
@@ -85,6 +82,7 @@ export class AgentEvalRunnerService {
 		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
+		private readonly flagGate: AgentEvalsFlagGate,
 	) {}
 
 	/**
@@ -98,14 +96,9 @@ export class AgentEvalRunnerService {
 		user: User,
 		options: { timeoutMs?: number } = {},
 	): Promise<{ runId: string; finished: Promise<void> }> {
-		// Behind 101_agent_evals. `agentEvalsEnabled` is a force-enable-only operator
-		// override, so this treats it as the sole gate for now. When the REST layer
-		// lands it must instead resolve the flag per-user via PostHog (which is the
-		// source of truth for cohort rollout) — a rolled-out user shouldn't need the
-		// env var. Until then this stays hard-gated on the override.
-		if (!this.globalConfig.evaluation.agentEvalsEnabled) {
-			throw new BadRequestError('Agent evals are not enabled on this instance.');
-		}
+		// Per user, since PostHog owns cohort rollout. The REST layer gates too — this
+		// is the backstop for any other caller.
+		await this.flagGate.assertEnabled(user);
 
 		if (this.globalConfig.executions.mode === 'queue') {
 			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
@@ -187,9 +180,10 @@ export class AgentEvalRunnerService {
 		return { runId: run.id, finished };
 	}
 
-	/** Run + per-case status counts, for polling a run's progress. */
-	async getRunSummary(runId: string): Promise<AgentEvalRunSummary> {
-		const run = await this.runRepository.findById(runId);
+	// Scoped to the agent under test, so a bare run id can't read another agent's
+	// progress even if the caller skipped its own check.
+	async getRunSummary(runId: string, agentId: string): Promise<AgentEvalRunSummary> {
+		const run = await this.runRepository.findByIdAndAgentId(runId, agentId);
 		if (!run) throw new NotFoundError(`Agent eval run ${runId} not found.`);
 		// Count in the DB — this is polled by the UI, so never load the full
 		// per-case rows (input/output/toolCalls JSON) just to tally statuses.
