@@ -9,6 +9,9 @@ import type { IDataObject, PollCursor } from 'n8n-workflow';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+/** Narrows a stored cursor, which the persistence layer types more loosely. */
+const toPollCursor = (cursor: PollerCursor): PollCursor => cursor as PollCursor;
+
 @Service()
 export class PollCursorService {
 	constructor(
@@ -28,7 +31,7 @@ export class PollCursorService {
 	/**
 	 * Reads the node's stored cursor, seeding it from the node's static data the first
 	 * time, so a node that polled before durable cursors were enabled resumes where it
-	 * left off. `null` means the node has never polled.
+	 * left off. `null` means the node has no cursor, which is stored as an empty one.
 	 */
 	async readCursor(
 		workflowId: string,
@@ -38,15 +41,10 @@ export class PollCursorService {
 		const stored = await this.transactionRunner.run(
 			{},
 			async (ctx) =>
-				await this.pollerStateRepository.ensureCursor(
-					workflowId,
-					nodeId,
-					nodeStaticData as PollerCursor,
-					ctx,
-				),
+				await this.pollerStateRepository.ensureCursor(workflowId, nodeId, nodeStaticData, ctx),
 		);
 
-		const cursor = stored as PollCursor;
+		const cursor = toPollCursor(stored);
 
 		this.syncNodeStaticData(nodeStaticData, cursor, {});
 
@@ -168,10 +166,10 @@ export class PollCursorService {
 		const previousCursor = await this.pollerStateRepository.ensureCursor(
 			workflowId,
 			nodeId,
-			cursor as PollerCursor,
+			cursor,
 			ctx,
 		);
-		await this.pollerStateRepository.advanceCursor(workflowId, nodeId, cursor as PollerCursor, ctx);
-		return previousCursor as PollCursor;
+		await this.pollerStateRepository.advanceCursor(workflowId, nodeId, cursor, ctx);
+		return toPollCursor(previousCursor);
 	}
 }

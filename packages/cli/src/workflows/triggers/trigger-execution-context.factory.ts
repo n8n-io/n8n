@@ -399,6 +399,7 @@ export class TriggerExecutionContextFactory {
 					);
 					return;
 				}
+				// An empty cursor means the node has none, so it stages nothing to commit.
 				staged.cursor = Object.keys(cursor).length === 0 ? null : { ...cursor };
 			};
 

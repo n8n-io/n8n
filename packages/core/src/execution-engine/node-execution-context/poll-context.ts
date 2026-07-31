@@ -45,6 +45,7 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 			return Object.keys(nodeStaticData).length === 0 ? null : { ...nodeStaticData };
 		},
 		readonly setCursor: IPollFunctions['setCursor'] = (cursor) => {
+			// An empty cursor means the node has none, so there is nothing to write.
 			if (Object.keys(cursor).length === 0) return;
 			const nodeStaticData = this.getWorkflowStaticData('node');
 			for (const key of this.stagedCursorKeys) {
