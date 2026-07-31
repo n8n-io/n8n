@@ -278,6 +278,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * reporter only writes rows while its record is `in_progress`, so row drift
 	 * with no in-flight record is a real divergence, never a normal mid-flight
 	 * state.
+	 *
+	 * Workflows whose most recent record is terminal `failed` are excluded for
+	 * the same reason as in {@link findUnreportedPublishedWorkflowIds}: a
+	 * publication that deterministically fails before reporting leaves the rows
+	 * drifted forever, so re-enqueueing would loop every pass. A user republish
+	 * (a fresh pending record) still recovers.
 	 */
 	async findTriggerStatusDriftedWorkflowIds(): Promise<string[]> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
@@ -296,7 +302,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 				 SELECT 1 FROM ${outboxTableName} o
 				 WHERE o."workflowId" = w."id"
 				 AND o."status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 )`,
+			 )
+			 AND COALESCE((
+				 SELECT o."status" FROM ${outboxTableName} o
+				 WHERE o."workflowId" = w."id"
+				 ORDER BY o."id" DESC LIMIT 1
+			 ), '') <> '${Status.Failed}'`,
 		);
 
 		return rows.map((row) => row.workflowId);

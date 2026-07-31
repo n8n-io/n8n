@@ -429,6 +429,39 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toHaveLength(0);
 	});
 
+	test('leaves a drifted workflow whose most recent publication failed before reporting alone', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('drift-failed-terminal');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// A v2 publish that crashed after advancing the mapping but before the
+		// reporter rewrote the rows: mapping equals `activeVersionId`, the record
+		// is terminal `failed`, and the rows still carry v1. If the failure is
+		// deterministic, re-enqueueing loops — the pass must leave it for a user
+		// republish to recover, exactly like the zero-rows case.
+		const newVersionId = 'version-2-drift-failed';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [{ ...trigger, parameters: { rule: { interval: [{ field: 'hours' }] } } }],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+		await outboxRepository.markFailed(record!.id, 'unexpected error before reporting');
+
+		await reconciler.reconcile();
+
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+		const rows = await triggerStatusRepository.findByWorkflowId(workflow.id);
+		expect(rows[0].versionId).toBe(workflow.versionId);
+	});
+
 	test('leaves drifted and unreported workflows with an in-flight record for that record to converge', async () => {
 		const owner = await createOwner();
 
