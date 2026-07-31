@@ -2091,6 +2091,7 @@ export class InstanceAiService {
 				: await this.modelService.resolveAgentModelConfig(user);
 
 		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
+		const mcpConnectionsEnabled = await this.adapterService.isMcpConnectionsEnabled(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2098,6 +2099,7 @@ export class InstanceAiService {
 			projectId: boundProjectId,
 			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
 			configEvalsEnabled,
+			mcpConnectionsEnabled,
 			modelId,
 		});
 

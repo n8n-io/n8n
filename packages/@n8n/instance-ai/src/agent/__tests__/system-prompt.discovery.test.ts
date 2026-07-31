@@ -145,6 +145,23 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		});
 	});
 
+	describe('MCP registry discovery is gated on the tool being registered', () => {
+		it('nudges the orchestrator to search the registry when the tool is available', () => {
+			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
+
+			expect(prompt).toContain('## MCP Registry');
+			expect(prompt).toContain('mcp-servers');
+		});
+
+		it('omits the section when the tool is not registered', () => {
+			// Naming a tool that is not in the run invites a hallucinated call.
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).not.toContain('## MCP Registry');
+			expect(prompt).not.toContain('mcp-servers');
+		});
+	});
+
 	describe('browser availability state propagates to the prompt', () => {
 		it('includes browser automation rules when browser is available', () => {
 			const prompt = getSystemPrompt({

@@ -6868,6 +6868,8 @@
 	"instanceAi.tools.credentials.search-types": "Searching credential types",
 	"instanceAi.tools.credentials.setup": "Setting up credentials",
 	"instanceAi.tools.credentials.test": "Testing credential",
+	"instanceAi.tools.mcp-servers": "MCP servers",
+	"instanceAi.tools.mcp-servers.search": "Searching MCP servers",
 	"instanceAi.tools.data-tables": "Data tables",
 	"instanceAi.tools.data-tables.list": "Listing data tables",
 	"instanceAi.tools.data-tables.schema": "Reading table schema",

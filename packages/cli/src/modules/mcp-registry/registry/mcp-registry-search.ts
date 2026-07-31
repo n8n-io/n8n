@@ -7,9 +7,13 @@
 import { camelCase } from 'change-case';
 
 import type { McpRegistryServer } from './mcp-registry.types';
-import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
+import {
+	getMcpRegistryCredentialTypeName,
+	MCP_REGISTRY_PACKAGE_NAME,
+} from '../node-description-transform';
 
 export interface McpRegistrySearchResult {
+	slug: string;
 	name: string;
 	title: string;
 	description: string;
@@ -32,15 +36,12 @@ function pickPreferredRemote(
 	return null;
 }
 
-function credentialTypeName(server: McpRegistryServer): string {
-	return `${camelCase(server.slug)}McpOAuth2Api`;
-}
-
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
 	const remote = pickPreferredRemote(server);
 	if (!remote) return null;
-	const credentialType = credentialTypeName(server);
+	const credentialType = getMcpRegistryCredentialTypeName(server);
 	return {
+		slug: server.slug,
 		name: camelCase(server.slug),
 		title: server.title,
 		description: server.tagline,

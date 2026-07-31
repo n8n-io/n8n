@@ -15,6 +15,8 @@ interface SystemPromptOptions {
 	localGateway?: LocalGatewayStatus;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
+	/** Whether the `mcp-servers` tool is registered for this run. */
+	mcpRegistrySearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
 	browserAvailable?: boolean;
@@ -64,6 +66,15 @@ function getToolDiscoverySection(
 ${mcpSearchGuidance}When the available tools do not cover the user's request, remember that you have access to more tools. Use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation. When a loaded skill names a tool you do not see, search for that tool name and load it before proceeding.
 
 Examples: ${mcpExamples}search "n8n docs" for \`n8n-docs\`, search "create tasks" for \`create-tasks\`, search "eval" for \`evals\`.
+`;
+}
+
+function getMcpRegistrySection(mcpRegistrySearchEnabled?: boolean): string {
+	if (!mcpRegistrySearchEnabled) return '';
+	return `
+## MCP Registry
+
+When the user asks for a third-party service and no connected tool covers it, call \`mcp-servers\` with the service name before concluding it is unavailable. Do this proactively — the user does not know the registry exists.
 `;
 }
 
@@ -122,6 +133,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		localGateway,
 		toolSearchEnabled,
 		mcpToolSearchEnabled,
+		mcpRegistrySearchEnabled,
 		licenseHints,
 		browserAvailable,
 		branchReadOnly,
@@ -136,6 +148,7 @@ ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${SECRET_ASK_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
+${getMcpRegistrySection(mcpRegistrySearchEnabled)}
 ## Communication Style
 
 - Be concise.

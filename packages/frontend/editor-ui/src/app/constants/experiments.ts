@@ -1,3 +1,5 @@
+import { INSTANCE_AI_MCP_CONNECTIONS_FLAG } from '@n8n/api-types';
+
 function createExperiment<T extends Record<string, string>>(
 	name: string,
 	variants: T,
@@ -117,7 +119,7 @@ export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExpe
 );
 
 export const INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT = createExperiment(
-	'089_instance_ai_mcp_connections',
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 );
 
 export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
