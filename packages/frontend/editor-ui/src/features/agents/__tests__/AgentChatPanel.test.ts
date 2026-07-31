@@ -41,6 +41,11 @@ vi.mock('@n8n/design-system', () => ({
 	},
 }));
 
+// Reads a Pinia store for notifications — irrelevant to panel behavior.
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showMessage: vi.fn() }),
+}));
+
 vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 	default: {
 		name: 'ChatInputBase',

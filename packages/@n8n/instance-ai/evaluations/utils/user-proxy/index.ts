@@ -131,7 +131,7 @@ export class UserProxyLlm {
 		}
 
 		const det = tryDeterministicConfirmationResponse(event);
-		if (det) {
+		if (det && !this.deferAccessGateToScript(event)) {
 			this.bumpStat('deterministic');
 			return this.rememberResponse(requestId, det);
 		}
@@ -259,6 +259,15 @@ export class UserProxyLlm {
 
 	private fallbackConfirmationResponse(event: CapturedEvent): InstanceAiConfirmRequest {
 		return this.tryScriptedConfirmationResponse(event) ?? buildAutoApprovePayload(event);
+	}
+
+	/** Network-access gates (fetch-url domain, web search) are granted deterministically so the
+	 *  common case spends no LLM call. A pending stage direction may instruct a refusal though,
+	 *  so hand those to the LLM the way plan review already is. */
+	private deferAccessGateToScript(event: CapturedEvent): boolean {
+		const payload = getEventPayload(event);
+		if (!payload.domainAccess && !payload.webSearch) return false;
+		return this.remainingUserScriptTurns().some((turn) => hasStageDirection(turn.text));
 	}
 
 	private tryScriptedConfirmationResponse(

@@ -263,8 +263,9 @@ export class InterruptedRunSweeper {
 				payload: {
 					role: agent.role,
 					result: '',
-					// Matches the live cancel path's wording for spawned agents.
-					error: finish.status === 'cancelled' ? 'Cancelled by user' : AGENT_INTERRUPTED_MESSAGE,
+					...(finish.status === 'cancelled'
+						? { status: 'cancelled' as const }
+						: { error: AGENT_INTERRUPTED_MESSAGE }),
 				},
 			});
 		}
