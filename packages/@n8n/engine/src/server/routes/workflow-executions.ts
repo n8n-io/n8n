@@ -30,8 +30,10 @@ const GraphNodeSchema = z.object({
 const GraphEdgeSchema = z.object({
 	from: z.string(),
 	to: z.string(),
-	outputIndex: z.number().int().nonnegative().optional(),
-	inputIndex: z.number().int().nonnegative().optional(),
+	// Defaulted rather than optional so callers can omit the common 0/0 case while
+	// the engine always sees a fully-populated edge.
+	outputIndex: z.number().int().nonnegative().default(0),
+	inputIndex: z.number().int().nonnegative().default(0),
 	isBackEdge: z.boolean().optional(),
 });
 

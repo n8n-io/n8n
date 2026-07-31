@@ -3,7 +3,13 @@
     "properties": {
         "added": {
             "type": "boolean"
+        },
+        "description": {
+            "type": "string"
+        },
+        "message": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -1,7 +1,19 @@
 import type { Repository } from '@n8n/typeorm';
 
 import type { WorkflowExecution } from './entities';
-import type { ExecutionStore, NewExecutionRecord } from '../execution/execution-store';
+import {
+	ExecutionNotFoundError,
+	type ExecutionRecord,
+	type ExecutionStore,
+	type NewExecutionRecord,
+} from '../execution/execution-store';
+import type { ExecutionStatus } from '../execution/execution.types';
+
+/**
+ * Insert payload accepted by the repository. Derived from the method rather than
+ * imported: TypeORM's `QueryDeepPartialEntity` has no root export.
+ */
+type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
 
 /** TypeORM-backed `ExecutionStore` adapter. */
 export class TypeOrmExecutionStore implements ExecutionStore {
@@ -9,7 +21,21 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 
 	async createExecution(record: NewExecutionRecord): Promise<{ id: string }> {
 		const execution = this.repo.create({ ...record, finishedAt: null });
-		await this.repo.save(execution);
+		// The cast is needed because the insert payload type recurses into the
+		// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
+		// NOTE: prefer insert to save for performance reasons.
+		await this.repo.insert(execution as InsertValues);
 		return { id: execution.id };
+	}
+
+	async loadExecution(id: string): Promise<ExecutionRecord> {
+		const row = await this.repo.findOneBy({ id });
+		if (!row) throw new ExecutionNotFoundError(id);
+		return row;
+	}
+
+	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {
+		const result = await this.repo.update({ id, status: from }, { status: to });
+		return result.affected === 1;
 	}
 }

@@ -3,6 +3,7 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
 	AgentModelSchema,
+	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
 	findVectorStoreToolNameCollisions,
 	isDraftAgentConfig,
@@ -22,6 +23,7 @@ import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
 import type { AgentHistory } from './entities/agent-history.entity';
@@ -78,7 +80,22 @@ export class AgentValidationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
+
+	/**
+	 * Whether n8n Connect (AI Gateway) can serve the model's provider, using only
+	 * the cached gateway config — this static validator must not perform a network
+	 * fetch. Returns `undefined` when support can't be determined (no cached
+	 * config), so the caller can tell "gateway says no" from "could not ask".
+	 */
+	private isAiGatewayModelSupported(model: string): boolean | undefined {
+		const provider = getProviderPrefix(model);
+		if (!provider) return false;
+		const credentialType = this.aiGatewayService.getCredentialTypeForProviderCached(provider);
+		if (credentialType === undefined) return undefined;
+		return credentialType !== null;
+	}
 
 	/**
 	 * Backward-compatible wrapper over {@link validateAgentConfiguration}.
@@ -337,6 +354,21 @@ export class AgentValidationService {
 		}
 
 		const credentialId = config.credential.trim();
+
+		// n8n Connect managed credential: no stored credential to resolve — it is
+		// valid as long as the gateway can serve the selected model's provider.
+		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+			const model = config.model?.trim();
+			// Only flag a definitive "gateway does not serve this provider". When
+			// support can't be determined (no cached gateway config), don't fail
+			// closed — a transient/cold config must not make a working managed agent
+			// look broken and block Publish / chat runs.
+			if (!model || this.isAiGatewayModelSupported(model) === false) {
+				issues.push(agentIssue('incompatible_credential', 'credential'));
+			}
+			return;
+		}
+
 		const credential = await this.findCredentialSafe(findCredential, credentialId);
 		if (!credential) {
 			issues.push(agentIssue('invalid_credential', 'credential'));

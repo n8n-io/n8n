@@ -290,6 +290,28 @@ describe('setupResponseNodePromise', () => {
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
 	});
 
+	test('should apply the status code to binary data responses', async () => {
+		binaryDataService.getAsStream.mockResolvedValue(mock<Readable>());
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: {},
+			statusCode: 201,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.status).toHaveBeenCalledWith(201);
+	});
+
 	test('should not set sandbox CSP header on binary stream responses when sandboxing is disabled', async () => {
 		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
 		const mockStream = mock<Readable>();
@@ -336,6 +358,26 @@ describe('setupResponseNodePromise', () => {
 		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(res.end).toHaveBeenCalledWith(buffer);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should apply the status code to buffer responses', async () => {
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: Buffer.from('created'),
+			headers: {},
+			statusCode: 201,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.status).toHaveBeenCalledWith(201);
 	});
 
 	test('should not set sandbox CSP header on buffer responses when sandboxing is disabled', async () => {
@@ -756,6 +798,111 @@ describe('prepareExecutionData', () => {
 
 			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.data.main).toEqual([
 				[{ json: { existing: 'data' } }],
+			]);
+		});
+
+		test('should replace the seeded stack (not merge) for a Webhook node using n8nOAuth2 auth, preserving runtimeData', () => {
+			const identityWebhookNode = mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				parameters: { authentication: 'n8nOAuth2' },
+			});
+
+			// After the node's webhook() call the identity is already established: the
+			// seeder's placeholder item has been consumed by the hook (leaving an empty
+			// item) and the resolved credentials live on executionData.runtimeData.
+			const existingNodeExecutionStack: IExecuteData[] = [
+				{
+					node: mock<INode>({ name: 'ExistingNode' }),
+					data: {
+						main: [[{ json: {} }]],
+					},
+					source: null,
+				},
+			];
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: existingNodeExecutionStack,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					runtimeData: { version: 1, credentials: { source: 'n8n-oauth' } } as any,
+				},
+			} as IRunExecutionData;
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				identityWebhookNode,
+				webhookResultData,
+				existingRunExecutionData,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+			// The seeded placeholder is discarded; only the webhook's real output remains.
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main).toEqual([
+				[{ json: { data: 'test' } }],
+			]);
+			// The established identity (runtimeData) is preserved across the replace.
+			expect(runExecutionData.executionData?.runtimeData).toEqual({
+				version: 1,
+				credentials: { source: 'n8n-oauth' },
+			});
+		});
+
+		test('should not leak the seeded placeholder into output slot 0 for a multi-method n8nOAuth2 webhook', () => {
+			const identityWebhookNode = mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				parameters: { authentication: 'n8nOAuth2' },
+			});
+
+			// Seeded placeholder sits in output slot 0.
+			const existingNodeExecutionStack: IExecuteData[] = [
+				{
+					node: mock<INode>({ name: 'ExistingNode' }),
+					data: {
+						main: [[{ json: {} }]],
+					},
+					source: null,
+				},
+			];
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: existingNodeExecutionStack,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			} as IRunExecutionData;
+
+			// A multi-method webhook routes the request to a non-first output slot; e.g.
+			// a POST on a ['GET','POST'] node puts the item in slot 1, slot 0 stays empty.
+			const multiMethodResult: IWebhookResponseData = {
+				workflowData: [[], [{ json: { method: 'POST' } }]],
+			};
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				identityWebhookNode,
+				multiMethodResult,
+				existingRunExecutionData,
+			);
+
+			// Slot 0 must be empty (no phantom placeholder firing the GET branch).
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main).toEqual([
+				[],
+				[{ json: { method: 'POST' } }],
 			]);
 		});
 

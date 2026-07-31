@@ -14,7 +14,7 @@ import type { IUpdateInformation } from '@/Interface';
 import CredentialModeSelector, { type CredentialModeOption } from './CredentialModeSelector.vue';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
 	DOCS_DOMAIN,

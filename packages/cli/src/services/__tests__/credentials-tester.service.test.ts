@@ -397,5 +397,23 @@ describe('CredentialsTester', () => {
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('Could not reach');
 		});
+
+		it('preserves credential configuration errors', async () => {
+			mockRoutingNodeResult({
+				reject: new Error('No value set for placeholder {{api_key}}'),
+			});
+
+			const result = await credentialsTester.probeCredentialAuth(
+				'user-id',
+				'httpTemplatedCustomAuth',
+				credentials(),
+				targetUrl,
+			);
+
+			expect(result).toEqual({
+				status: 'Error',
+				message: 'No value set for placeholder {{api_key}}',
+			});
+		});
 	});
 });

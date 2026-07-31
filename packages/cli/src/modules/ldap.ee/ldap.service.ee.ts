@@ -14,12 +14,10 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import {
+	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
-	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
@@ -123,14 +121,8 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			throw new BadRequestError(message);
 		}
 
-		if (
-			ldapConfig.loginEnabled &&
-			!isEmailCurrentAuthenticationMethod() &&
-			!isLdapCurrentAuthenticationMethod()
-		) {
-			throw new BadRequestError(
-				`LDAP cannot be enabled while another authentication method is active (current: ${getCurrentAuthenticationMethod()})`,
-			);
+		if (ldapConfig.loginEnabled) {
+			assertAuthenticationMethodCanBeEnabled('ldap');
 		}
 
 		this.setConfig({ ...ldapConfig });
@@ -181,10 +173,8 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	/** Set the LDAP login enabled to the configuration object */
 	private async setLdapLoginEnabled(enabled: boolean): Promise<void> {
 		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
-		if (enabled && !isEmailCurrentAuthenticationMethod() && !isLdapCurrentAuthenticationMethod()) {
-			throw new InternalServerError(
-				`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${currentAuthenticationMethod})`,
-			);
+		if (enabled) {
+			assertAuthenticationMethodCanBeEnabled('ldap');
 		}
 
 		Container.get(GlobalConfig).sso.ldap.loginEnabled = enabled;

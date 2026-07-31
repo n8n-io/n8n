@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mount } from '@vue/test-utils';
 import { defineComponent } from 'vue';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, waitAllPromises, type MockedStore } from '@/__tests__/utils';
 import type { Role } from '@n8n/permissions';
 import { useRoleDeletion } from './useRoleDeletion';
@@ -20,7 +20,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: mockConfirm }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mockTrack }),
 }));
 

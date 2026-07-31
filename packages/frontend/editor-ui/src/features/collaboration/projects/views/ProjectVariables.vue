@@ -2,7 +2,7 @@
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';

@@ -653,12 +653,14 @@ type TerminalGuardOrderServiceInternals = {
 	};
 	threadPushRef: Map<string, string>;
 	saveAgentTreeSnapshot: Mock;
-	backgroundTasks: { getRunningTasks: Mock };
+	backgroundTasks: { getRunningTasks: Mock; getRunningTasksByParentCheckpoint?: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
 	creditService: { claimRunUsage: Mock };
 	failedInternalFollowUpStreaks: Map<string, number>;
 	schedulePlannedTasks: Mock;
 	drainPendingCheckpointReentries: Mock;
+	createPlannedTaskState: Mock;
+	syncPlannedTasksToUi: Mock;
 	taskProjector: { syncFromWorkflowLoop: Mock };
 	maybeStartWorkflowSetupFollowUp: Mock;
 	finalizeRun: Mock;
@@ -676,6 +678,7 @@ type TerminalGuardOrderServiceInternals = {
 			abortController: AbortController;
 			snapshotStorage: unknown;
 			tracing?: InstanceAiTraceContext;
+			checkpoint?: { isCheckpointFollowUp: boolean; checkpointTaskId: string };
 		},
 	) => Promise<void>;
 };
@@ -3289,6 +3292,70 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			'endRun',
 		]);
 	});
+
+	it('skips post-run scheduling when the resumed run was cancelled', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+		abortController.abort();
+
+		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(service.drainPendingCheckpointReentries).not.toHaveBeenCalled();
+		// The UI projection still runs, so a stopped run's task states reach the client.
+		expect(service.taskProjector.syncFromWorkflowLoop).toHaveBeenCalledWith('thread-a', 'run-1');
+		expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledWith('run-1');
+	});
+
+	it('still marks an abandoned checkpoint terminal when the run was cancelled', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+		service.syncPlannedTasksToUi = vi.fn(async () => {});
+		service.backgroundTasks.getRunningTasksByParentCheckpoint = vi.fn(() => []);
+		const markCheckpointFailed = vi.fn(async () => {});
+		service.createPlannedTaskState = vi.fn(async () => ({
+			plannedTaskService: {
+				getGraph: vi.fn(async () => ({ tasks: [{ id: 'cp-1', status: 'running' }] })),
+				markCheckpointFailed,
+			},
+		}));
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+		abortController.abort();
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				...resumedStreamOpts(abortController),
+				checkpoint: { isCheckpointFollowUp: true, checkpointTaskId: 'cp-1' },
+			},
+		);
+
+		// Without this the checkpoint task stays `running` forever and the plan
+		// graph can never advance, because the cancelled run's context is the only
+		// thing that knows it was a checkpoint follow-up.
+		expect(markCheckpointFailed).toHaveBeenCalledWith('thread-a', 'cp-1', {
+			error: 'Checkpoint run ended without reporting completion',
+		});
+		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
+	});
 });
 
 describe('InstanceAiService — user message persistence on cancel', () => {
@@ -3309,6 +3376,8 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		runState: { clearActiveRun: Mock; hasSuspendedRun: Mock };
 		domainAccessTrackersByThread: Map<string, unknown>;
 		instanceAiErrorReporter: { beginRun: Mock; endRun: Mock };
+		schedulePlannedTasks: Mock;
+		taskProjector: { syncFromWorkflowLoop: Mock };
 	};
 
 	function createCancelPersistenceService(): ExecuteRunInternals {
@@ -3355,6 +3424,121 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		await service.executeRun(fakeUser, 'thread-1', 'run-1', '', abortController);
 
 		expect(service.agentMemory.saveMessages).not.toHaveBeenCalled();
+	});
+
+	it('does not re-arm planned-task scheduling after a cancelled run, but still projects', async () => {
+		const service = createCancelPersistenceService();
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.schedulePlannedTasks = vi.fn(async () => {});
+		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(service.taskProjector.syncFromWorkflowLoop).toHaveBeenCalledWith('thread-1', 'run-1');
+	});
+});
+
+describe('InstanceAiService — planned task settlement', () => {
+	type SettlementService = {
+		cancelRun: (threadId: string, reason?: string) => void;
+		cancelBackgroundTask: (threadId: string, taskId: string) => void;
+		schedulePlannedTasks: Mock;
+		syncPlannedTasksToUi: Mock;
+		eventBus: { publish: Mock };
+		createPlannedTaskState: Mock;
+		saveAgentTreeSnapshot: Mock;
+		cancelAwaitingApprovalPlan: Mock;
+		backgroundTasks: {
+			cancelThread: Mock;
+			cancelTask: Mock;
+		};
+		runState: {
+			getThreadUser: Mock;
+			cancelThread: Mock;
+		};
+		tracing: { finalizeBackgroundTaskTracing: Mock };
+		terminalOutcome: { recordBackgroundTerminalOutcome: Mock };
+		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+	};
+
+	const task = {
+		plannedTaskId: 'task-1',
+		threadId: 'thread-a',
+		runId: 'task-run-1',
+		agentId: 'agent-1',
+		role: 'builder',
+	};
+
+	function createSettlementService() {
+		const service = Object.create(InstanceAiService.prototype) as unknown as SettlementService;
+		const graph = { planRunId: 'plan-run-1', tasks: [] };
+		const plannedTaskService = {
+			markCancelled: vi.fn(async () => graph),
+			markFailed: vi.fn(async () => graph),
+		};
+		Object.assign(service, {
+			createPlannedTaskState: vi.fn(async () => ({ plannedTaskService })),
+			syncPlannedTasksToUi: vi.fn(async () => {}),
+			schedulePlannedTasks: vi.fn(async () => {}),
+			saveAgentTreeSnapshot: vi.fn(async () => {}),
+			cancelAwaitingApprovalPlan: vi.fn(async () => {}),
+			backgroundTasks: {
+				cancelThread: vi.fn(() => [task]),
+				cancelTask: vi.fn(() => task),
+			},
+			runState: {
+				getThreadUser: vi.fn(() => fakeUser),
+				cancelThread: vi.fn(() => ({ active: undefined, suspended: undefined })),
+			},
+			tracing: { finalizeBackgroundTaskTracing: vi.fn(async () => {}) },
+			eventBus: { publish: vi.fn() },
+			terminalOutcome: { recordBackgroundTerminalOutcome: vi.fn(async () => {}) },
+			suspendedThreads: { dropPendingConfirmationsForThread: vi.fn(async () => {}) },
+		});
+		return { service, plannedTaskService, graph };
+	}
+
+	/** cancelRun/cancelBackgroundTask fire settlement with `void`, so let it settle. */
+	const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+
+	it('marks the planned task cancelled but does not re-tick when the whole thread is cancelled', async () => {
+		const { service, plannedTaskService, graph } = createSettlementService();
+
+		service.cancelRun('thread-a');
+		await flush();
+
+		expect(plannedTaskService.markCancelled).toHaveBeenCalledWith('thread-a', 'task-1', {
+			error: undefined,
+		});
+		expect(service.syncPlannedTasksToUi).toHaveBeenCalledWith('thread-a', graph);
+		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(service.eventBus.publish).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				type: 'agent-completed',
+				payload: { role: 'builder', result: '', status: 'cancelled' },
+			}),
+		);
+	});
+
+	it('re-ticks the scheduler when a single background task is cancelled', async () => {
+		const { service, plannedTaskService } = createSettlementService();
+
+		service.cancelBackgroundTask('thread-a', 'task-1');
+		await flush();
+
+		expect(plannedTaskService.markCancelled).toHaveBeenCalled();
+		expect(service.schedulePlannedTasks).toHaveBeenCalledWith(fakeUser, 'thread-a');
+		expect(service.eventBus.publish).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				type: 'agent-completed',
+				payload: { role: 'builder', result: '', status: 'cancelled' },
+			}),
+		);
 	});
 });
 

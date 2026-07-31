@@ -85,17 +85,19 @@ export function resolveTemplatedAuth(
 	if (!isPlainDataObject(values)) {
 		throw new UserError('Simplified Custom Auth placeholder values must be a JSON object');
 	}
+	const placeholderValues = new Map(Object.entries(values));
 	const optionalMarkers = optionalMarkerNames(credentialData);
 
 	const resolve = <T>(part: T): T | typeof OMIT => {
 		if (typeof part === 'string') {
 			const shouldOmit = [...part.matchAll(PLACEHOLDER_MARKER_REGEX)].some(
-				([, name]) => isEmptyPlaceholderValue(values[name]) && optionalMarkers.has(name),
+				([, name]) =>
+					isEmptyPlaceholderValue(placeholderValues.get(name)) && optionalMarkers.has(name),
 			);
 			if (shouldOmit) return OMIT;
 
 			const resolved = part.replace(PLACEHOLDER_MARKER_REGEX, (marker, name: string) => {
-				const value = values[name];
+				const value = placeholderValues.get(name);
 				if (isEmptyPlaceholderValue(value)) {
 					throw new UserError(
 						`No value set for placeholder ${marker} of the Simplified Custom Auth credential`,
