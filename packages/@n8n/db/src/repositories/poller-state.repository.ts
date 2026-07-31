@@ -13,11 +13,6 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		super(PollerState, dataSource.manager);
 	}
 
-	/**
-	 * A node that has never polled returns `null` rather than an empty cursor: several
-	 * poll nodes treat a missing key as "first run" and behave differently from one
-	 * that has run and found nothing.
-	 */
 	async findCursor(
 		workflowId: string,
 		nodeId: string,
