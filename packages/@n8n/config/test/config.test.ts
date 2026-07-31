@@ -540,6 +540,7 @@ describe('GlobalConfig', () => {
 			saveDataManualExecutions: true,
 			maxDisplaySize: 100 * 1024 * 1024,
 			webhookResponseRelaySizeMaxMiB: 64,
+			webhookResponseRelayOffloadEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,
