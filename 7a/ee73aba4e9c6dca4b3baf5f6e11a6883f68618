@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_d1df6ce57b1d24::t_7d3c13e991faa0 318
+  s_d1df6ce57b1d24::t_e76595ad0595a0 40-44
+  s_d1df6ce57b1d24::t_d7b8962e753f18 64
+  s_d1df6ce57b1d24::t_48a58d1b283f11 2,11,24-29
+  s_d1df6ce57b1d24::t_b9b4ca1266bc33 349-354
+  s_d1df6ce57b1d24::t_2c4cc4c74bc640 175
+  s_d1df6ce57b1d24::t_40e263343fb516 209,223-234
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_d1df6ce57b1d24::t_b277c6fc34d976 115-118,125
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_d1df6ce57b1d24::t_1568dfaa79f3cc 249-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7aee73aba4e9c6dca4b3baf5f6e11a6883f68618",
+  "prompts": {},
+  "sessions": {
+    "s_d1df6ce57b1d24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24de4708-d2c3-49e3-8aa5-37a1d6c7a84b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
