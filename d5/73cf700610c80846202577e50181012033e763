@@ -1,0 +1,29 @@
+packages/cli/src/modules/provisioning.ee/provisioning.service.ee.ts
+  h_435b1d7d3e52c0 17,72,105-112,542-550,552
+packages/cli/src/modules/provisioning.ee/__tests__/provisioning.service.ee.test.ts
+  s_5f8ee31a0425aa::t_42894e979324d9 326,329
+  s_5f8ee31a0425aa::t_d1b00ca0e02c75 263-274,284-289
+  s_5f8ee31a0425aa::t_ba00f7f4722860 992-1016
+  s_5f8ee31a0425aa::t_c4618e88fbbe59 262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d573cf700610c80846202577e50181012033e763",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5f8ee31a0425aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac5a410e-6ecd-4cb3-80c7-4ac0e413c63b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

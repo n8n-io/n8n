@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/HttpRequest/test/node/HttpRequestV2.test.ts
+  s_3adc5e3b9c1c50::t_5809d9469d3b0a 104-111
+  s_3adc5e3b9c1c50::t_2d815671f7281b 103
+packages/cli/src/credentials-helper.ts
+  s_3adc5e3b9c1c50::t_5809d9469d3b0a 106-107,123-127
+packages/cli/src/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee.ts
+  s_3adc5e3b9c1c50::t_5809d9469d3b0a 170,356,375-381,406-415
+  s_3adc5e3b9c1c50::t_93e5d4889878ae 181
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/test/ToolHttpRequest.node.test.ts
+  s_3adc5e3b9c1c50::t_5809d9469d3b0a 241-279
+packages/nodes-base/nodes/HttpRequest/V2/HttpRequestV2.node.ts
+  s_3adc5e3b9c1c50::t_5809d9469d3b0a 22-23,652,680-683,707
+  s_3adc5e3b9c1c50::t_93e5d4889878ae 1056-1060
+  s_3adc5e3b9c1c50::t_39870db8638f51 1061
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/utils.ts
+  s_3adc5e3b9c1c50::t_5809d9469d3b0a 115-127
+packages/workflow/src/interfaces.ts
+  s_3adc5e3b9c1c50::t_5809d9469d3b0a 239-240
+packages/cli/src/modules/log-streaming.ee/destinations/__tests__/message-event-bus-destination-webhook.ee.test.ts
+  s_3adc5e3b9c1c50::t_3ce805557fc8ff 121-140,147-173
+  s_3adc5e3b9c1c50::t_c2dabff91bc0a4 141-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "3a81c6e00e2edb11f4083b3617860a57f2f78e49",
+  "prompts": {},
+  "sessions": {
+    "s_3adc5e3b9c1c50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb348-412f-7363-a731-817990745551",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
