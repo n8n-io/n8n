@@ -1,0 +1,31 @@
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_3adc5e3b9c1c50::t_b73eadbffe6732 54
+packages/cli/src/credentials-helper.ts
+  s_3adc5e3b9c1c50::t_b73eadbffe6732 11,39,86-87,458-491,651-655,702
+  s_3adc5e3b9c1c50::t_30911143bc7673 703
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_3adc5e3b9c1c50::t_93e5d4889878ae 278-279
+  s_3adc5e3b9c1c50::t_c2dabff91bc0a4 29,301-304
+  s_3adc5e3b9c1c50::t_b73eadbffe6732 248-277,280-285,288-300,305-307
+  s_3adc5e3b9c1c50::t_032e2fa99eb180 286-287
+  s_3adc5e3b9c1c50::t_9bd1558a706841 247
+  s_3adc5e3b9c1c50::t_28e605767f761a 308
+packages/workflow/src/interfaces.ts
+  s_3adc5e3b9c1c50::t_b73eadbffe6732 1804
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "f8cc8f7b0887d792fb37271343794b1172f3beea",
+  "prompts": {},
+  "sessions": {
+    "s_3adc5e3b9c1c50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb348-412f-7363-a731-817990745551",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
