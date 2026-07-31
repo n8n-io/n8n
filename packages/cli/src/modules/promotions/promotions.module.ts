@@ -9,14 +9,19 @@ export class PromotionsModule implements ModuleInterface {
 		const { DirectPushModel } = await import('./models/direct-push.model.js');
 		const { ApiCollabModel } = await import('./models/api-collab.model.js');
 		const { GitReviewModel } = await import('./models/git-review.model.js');
+		const { GithubReviewModel } = await import('./models/github-review.model.js');
 
 		const registry = Container.get(PromotionModelRegistry);
 		registry.register(Container.get(DirectPushModel));
 		registry.register(Container.get(ApiCollabModel));
 		registry.register(Container.get(GitReviewModel));
+		registry.register(Container.get(GithubReviewModel));
 
 		const { LocalReviewTracker } = await import('./trackers/local-review.tracker.js');
 		Container.get(LocalReviewTracker).init();
+
+		const { GithubPrTracker } = await import('./trackers/github-pr.tracker.js');
+		Container.get(GithubPrTracker).init();
 	}
 
 	async entities() {
