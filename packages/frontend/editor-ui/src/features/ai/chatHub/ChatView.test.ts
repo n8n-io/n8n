@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { emptyChatModelsResponse } from '@n8n/api-types';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -191,6 +192,12 @@ describe('ChatView', () => {
 	}
 
 	beforeEach(async () => {
+		// The error-toast test below asserts on rendered toast content, which needs
+		// the notifier the app registers at bootstrap. Explicit here because it no
+		// longer arrives as a side effect of importing
+		// `@/app/composables/useToast` (N8N-104).
+		registerToastNotifier();
+
 		pinia = createPinia();
 		setActivePinia(pinia);
 

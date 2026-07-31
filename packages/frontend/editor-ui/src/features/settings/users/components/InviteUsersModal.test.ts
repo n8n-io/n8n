@@ -5,7 +5,7 @@ import { ROLE } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { INVITE_USER_MODAL_KEY } from '../users.constants';
-import type { IInviteResponse } from '../users.types';
+import type { IInviteResponse } from '@n8n/stores/invitation.api';
 import InviteUsersModal from './InviteUsersModal.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';

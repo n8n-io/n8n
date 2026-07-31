@@ -14,6 +14,19 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 					{ name: 'node_id', type: 'varchar' },
 					{ name: 'status', type: 'varchar', length: '32' },
 					{
+						name: 'outputs',
+						type: 'jsonb',
+						isNullable: true,
+						comment:
+							'Step outputs, persisted without inspection and reloaded as downstream inputs. Shape is step-type-specific.',
+					},
+					{
+						name: 'error',
+						type: 'jsonb',
+						isNullable: true,
+						comment: 'Name and message of the error that failed this step.',
+					},
+					{
 						name: 'created_at',
 						type: 'timestamptz',
 						precision: 3,
@@ -27,7 +40,13 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 					},
 				],
 				indices: [
-					{ name: 'idx_workflow_step_execution_execution_id', columnNames: ['execution_id'] },
+					// Composite: steps are looked up per execution, usually narrowed to
+					// specific nodes. The leading column also serves execution-only
+					// lookups and the FK's cascading delete.
+					{
+						name: 'idx_workflow_step_execution_execution_id_node_id',
+						columnNames: ['execution_id', 'node_id'],
+					},
 				],
 				foreignKeys: [
 					{
