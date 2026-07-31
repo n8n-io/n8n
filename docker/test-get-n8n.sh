@@ -63,6 +63,7 @@ check_not "unknown flag fails" sh "$SCRIPT" --bogus
 check "--no-start install succeeds" env N8N_DIR="$WORK/a" sh "$SCRIPT" --no-start
 check "compose.yml created" test -f "$WORK/a/compose.yml"
 check ".env created" test -f "$WORK/a/.env"
+check "searxng-settings.yml created" test -f "$WORK/a/searxng-settings.yml"
 if [ "$WINDOWS" -eq 1 ]; then
 	skip ".env is mode 600 (no POSIX file modes on Windows)"
 else
@@ -75,7 +76,7 @@ runner_key="$(env_value "$WORK/a" SANDBOX_RUNNER_API_KEYS)"
 [ "${#api_key}" -ge 32 ] && pass "sandbox API key generated" || fail "sandbox API key generated"
 [ -n "$runner_key" ] && [ "$runner_key" != "$api_key" ] && pass "runner key generated and distinct" ||
 	fail "runner key generated and distinct"
-[ "$(env_value "$WORK/a" N8N_INSTANCE_AI_SANDBOX_API_KEY)" = "$api_key" ] &&
+[ "$(env_value "$WORK/a" N8N_SANDBOX_SERVICE_API_KEY)" = "$api_key" ] &&
 	pass "n8n sandbox key mirrors SANDBOX_API_KEYS" || fail "n8n sandbox key mirrors SANDBOX_API_KEYS"
 [ "$(env_value "$WORK/a" SANDBOX_API_RUNNER_API_KEY)" = "$runner_key" ] &&
 	pass "API-side runner key mirrors runner key" || fail "API-side runner key mirrors runner key"
@@ -86,10 +87,10 @@ env N8N_DIR="$WORK/b" sh "$SCRIPT" --no-start >/dev/null 2>&1
 	fail "secrets unique per install"
 
 # idempotency: re-run leaves files byte-identical and tells the user the URL
-before="$(cat "$WORK/a/.env" "$WORK/a/compose.yml")"
+before="$(cat "$WORK/a/.env" "$WORK/a/compose.yml" "$WORK/a/searxng-settings.yml")"
 rerun_out="$(env N8N_DIR="$WORK/a" sh "$SCRIPT" 2>&1)" && pass "re-run on existing install is a no-op" ||
 	fail "re-run on existing install is a no-op"
-[ "$(cat "$WORK/a/.env" "$WORK/a/compose.yml")" = "$before" ] && pass "re-run leaves files untouched" ||
+[ "$(cat "$WORK/a/.env" "$WORK/a/compose.yml" "$WORK/a/searxng-settings.yml")" = "$before" ] && pass "re-run leaves files untouched" ||
 	fail "re-run leaves files untouched"
 echo "$rerun_out" | grep -q 'http://localhost:5678' && pass "re-run tells the user where n8n runs" ||
 	fail "re-run tells the user where n8n runs"
@@ -160,9 +161,13 @@ if [ "$E2E" -eq 1 ]; then
 	echo "$ps_out" | grep -q '^sandbox-api running' && pass "sandbox-api running" || fail "sandbox-api running"
 	echo "$ps_out" | grep -q '^sandbox-runner-1 running' && pass "sandbox-runner running" || fail "sandbox-runner running"
 	echo "$ps_out" | grep -q '^n8n running' && pass "n8n running" || fail "n8n running"
+	echo "$ps_out" | grep -q '^searxng running' && pass "searxng running" || fail "searxng running"
 
 	check "n8n reaches sandbox-api" \
 		docker compose -f "$E2E_DIR/compose.yml" exec -T n8n wget -qO- http://sandbox-api:8080/healthz
+	docker compose -f "$E2E_DIR/compose.yml" exec -T n8n \
+		wget -qO- 'http://searxng:8080/search?q=test&format=json' 2>/dev/null | grep -q '"results"' &&
+		pass "searxng serves JSON search to n8n" || fail "searxng serves JSON search to n8n"
 	docker compose -f "$E2E_DIR/compose.yml" logs sandbox-runner-1 2>/dev/null |
 		grep -q 'registration stream established' &&
 		pass "runner registered with sandbox-api" || fail "runner registered with sandbox-api"
