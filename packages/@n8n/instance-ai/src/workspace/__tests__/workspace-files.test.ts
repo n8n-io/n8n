@@ -266,7 +266,7 @@ describe('workspace-files', () => {
 		expect(executeCommand).toHaveBeenCalledTimes(3);
 	});
 
-	it('keeps a classifiable quota error as cause when both write paths fail', async () => {
+	it('keeps a classifiable primary quota error as cause when both write paths fail', async () => {
 		const writeError = Object.assign(new Error('Have reached end of quota'), {
 			statusCode: 403,
 			errorCode: 'quota_exhausted',
@@ -285,6 +285,62 @@ describe('workspace-files', () => {
 		expect(thrown).toBeInstanceOf(Error);
 		expect((thrown as Error).cause).toBe(writeError);
 		expect(isQuotaExhaustedError(thrown)).toBe(true);
+	});
+
+	it('keeps a classifiable fallback quota error as cause when the primary error is plain', async () => {
+		const writeError = new Error('Filesystem unavailable');
+		const fallbackError = Object.assign(new Error('Have reached end of quota'), {
+			statusCode: 403,
+			errorCode: 'quota_exhausted',
+		});
+		const writeFile = vi.fn(async () => await Promise.reject(writeError));
+		const executeCommand = vi.fn(async () => await Promise.reject(fallbackError));
+		const target: WorkspaceFileTarget = { filesystem: { writeFile }, sandbox: { executeCommand } };
+
+		const thrown: unknown = await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger: createLogger(),
+		}).catch((error: unknown) => error);
+
+		expect(thrown).toBeInstanceOf(Error);
+		expect((thrown as Error).cause).toBe(fallbackError);
+		expect(isQuotaExhaustedError(thrown)).toBe(true);
+	});
+
+	it('rethrows an abort from the fallback', async () => {
+		const writeError = new Error('Filesystem unavailable');
+		const abortError = new Error('cancelled');
+		abortError.name = 'AbortError';
+		const writeFile = vi.fn(async () => await Promise.reject(writeError));
+		const executeCommand = vi.fn(async () => await Promise.reject(abortError));
+		const target: WorkspaceFileTarget = { filesystem: { writeFile }, sandbox: { executeCommand } };
+
+		await expect(
+			writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', { logger: createLogger() }),
+		).rejects.toBe(abortError);
+	});
+
+	it('rethrows a primary abort without attempting the command fallback', async () => {
+		const abortError = new Error('cancelled');
+		abortError.name = 'AbortError';
+		const writeFile = vi.fn(async () => await Promise.reject(abortError));
+		const executeCommand = vi.fn();
+		const target: WorkspaceFileTarget = { filesystem: { writeFile }, sandbox: { executeCommand } };
+
+		await expect(
+			writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', { logger: createLogger() }),
+		).rejects.toBe(abortError);
+		expect(executeCommand).not.toHaveBeenCalled();
+	});
+
+	it('rethrows an abort on the command-only write path', async () => {
+		const abortError = new Error('cancelled');
+		abortError.name = 'AbortError';
+		const executeCommand = vi.fn(async () => await Promise.reject(abortError));
+		const target: WorkspaceFileTarget = { sandbox: { executeCommand } };
+
+		await expect(
+			writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', { logger: createLogger() }),
+		).rejects.toBe(abortError);
 	});
 
 	it('keeps a classifiable quota error as cause on the command-only write path', async () => {
