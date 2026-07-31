@@ -1,0 +1,21 @@
+packages/@n8n/workflow-sdk/src/prompts/best-practices/guides/data-persistence.ts
+  s_bf52124bf559a9::t_103d65df5e9025 6
+  s_bf52124bf559a9::t_b47955446b69bf 166-167,169
+  s_bf52124bf559a9::t_51220dd34fdc13 168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b7e3f1b68f22100f73eb586b69bf4c90bf3403dc",
+  "prompts": {},
+  "sessions": {
+    "s_bf52124bf559a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d19f7572-af0e-41d7-8374-fe300c96e4be",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
