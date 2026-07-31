@@ -32,6 +32,15 @@ const rootProps = reactivePick(props, 'name', 'required', 'loop', 'dir');
 /** Last pointer event, so consumers can read ctrl/meta (e.g. open-in-new-tab). */
 const lastPointerEvent = ref<MouseEvent>();
 
+/**
+ * reka-ui selects on arrow keys by listening on `window`. Ancestors that call
+ * stopPropagation on keydown (editor keybindings, modals, etc.) block that, so
+ * RovingFocus still moves focus but selection never updates. Track arrows in
+ * capture phase and complete selection on focusin.
+ */
+const arrowKeyPressed = ref(false);
+const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
 function optionKey(value: SegmentValue): string {
 	return `${typeof value}:${String(value)}`;
 }
@@ -55,6 +64,41 @@ function parseRadioIndex(raw: AcceptableValue): number | undefined {
 		return Number(raw);
 	}
 	return undefined;
+}
+
+function onKeyDownCapture(event: KeyboardEvent) {
+	if (ARROW_KEYS.includes(event.key)) {
+		arrowKeyPressed.value = true;
+	}
+}
+
+function onKeyDown(event: KeyboardEvent) {
+	// Keep arrow keys inside the control so canvas/editor shortcuts (node nav, etc.) don't also fire
+	if (ARROW_KEYS.includes(event.key)) {
+		event.stopPropagation();
+	}
+}
+
+function onKeyUpCapture(event: KeyboardEvent) {
+	if (!ARROW_KEYS.includes(event.key)) return;
+	// Match Reka's setTimeout(0) in RadioGroupItem.handleFocus so selection can finish first
+	setTimeout(() => {
+		arrowKeyPressed.value = false;
+	}, 0);
+}
+
+function onItemFocusIn(event: FocusEvent) {
+	if (!arrowKeyPressed.value || props.disabled) return;
+
+	const target = event.target;
+	if (!(target instanceof HTMLElement) || target.getAttribute('role') !== 'radio') {
+		return;
+	}
+	// Skip if already selected (Reka's window listener may have handled it)
+	if (target.getAttribute('data-state') === 'checked') {
+		return;
+	}
+	target.click();
 }
 
 function onItemClickCapture(event: MouseEvent) {
@@ -100,6 +144,9 @@ function onUpdate(raw: AcceptableValue) {
 			orientation="horizontal"
 			:class="$style.group"
 			@update:model-value="onUpdate"
+			@keydown.capture="onKeyDownCapture"
+			@keydown="onKeyDown"
+			@keyup.capture="onKeyUpCapture"
 			@click.capture="onItemClickCapture"
 		>
 			<SegmentControlItem
@@ -110,6 +157,7 @@ function onUpdate(raw: AcceptableValue) {
 				:data-test-id="`radio-button-${option.value}`"
 				:disabled="disabled || option.disabled"
 				:square="squareButtons"
+				@focusin="onItemFocusIn"
 			>
 				<slot name="option" v-bind="option">
 					{{ option.label }}
