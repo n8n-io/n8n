@@ -42,7 +42,7 @@ describe('getDecoratorGeneratedOperations', () => {
 
 		const [operation] = getDecoratorGeneratedOperations();
 
-		expect(operation.config.tags).toEqual(['Widgets', 'Beta']);
+		expect(operation.config.tags).toEqual(['Beta', 'Widgets']);
 	});
 
 	it('omits tags when @ApiTags is absent', () => {
