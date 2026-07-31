@@ -78,10 +78,21 @@ export class PollCursorService {
 	 * Commits an advance made by a poll that emitted no items, so a source that only
 	 * ever moves the cursor is not re-fetched forever.
 	 */
-	async commitCursorOnly(workflowId: string, nodeId: string, cursor: PollCursor): Promise<void> {
-		await this.transactionRunner.run({}, async (ctx) => {
-			await this.stageCursor(workflowId, nodeId, cursor, ctx);
-		});
+	async commitCursorOnly(args: {
+		workflowId: string;
+		nodeId: string;
+		nodeName: string;
+		cursor: PollCursor;
+		nodeStaticData: PollCursor;
+	}): Promise<void> {
+		const { workflowId, nodeId, nodeName, cursor, nodeStaticData } = args;
+
+		const previousCursor = await this.transactionRunner.run(
+			{},
+			async (ctx) => await this.stageCursor(workflowId, nodeId, cursor, ctx),
+		);
+
+		await this.mirrorToStaticData(workflowId, nodeName, cursor, nodeStaticData, previousCursor);
 	}
 
 	/**

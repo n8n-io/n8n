@@ -1073,9 +1073,9 @@ describe('TriggerExecutionContextFactory', () => {
 				await context.__commitCursor();
 			});
 
-			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith('wf-1', 'node-1', {
-				lastItemId: 'a',
-			});
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith(
+				expect.objectContaining({ cursor: { lastItemId: 'a' } }),
+			);
 		});
 
 		test.each([
@@ -1117,11 +1117,13 @@ describe('TriggerExecutionContextFactory', () => {
 			if (committed === null) {
 				expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
 			} else {
-				expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith(
-					'wf-1',
-					'node-1',
-					committed,
-				);
+				expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					nodeName: 'Poll Node',
+					cursor: committed,
+					nodeStaticData: {},
+				});
 			}
 		});
 

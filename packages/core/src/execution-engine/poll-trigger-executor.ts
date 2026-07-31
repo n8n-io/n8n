@@ -122,7 +122,7 @@ export class PollTriggerExecutor {
 							} else if (!testingTrigger) {
 								// A poll that found nothing may still have moved its cursor, and the
 								// advance is committed on its own. The activation poll is left out
-								// because it persists nothing.
+								// because an activation poll that emits nothing persists nothing.
 								try {
 									await commitCursor();
 								} catch (error) {

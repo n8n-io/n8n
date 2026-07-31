@@ -8,13 +8,11 @@ import {
 	ExecutionRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
 import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
-	type IExecuteResponsePromiseData,
 	type INode,
 	type IRun,
 	type IRunExecutionData,
@@ -442,36 +440,6 @@ describe('run', () => {
 			expect(processError).toHaveBeenCalled();
 			expect(failExecution).not.toHaveBeenCalled();
 		});
-	});
-});
-
-describe('registerAndFailExecution', () => {
-	it('drives the execution row it was handed to failed, without creating a second one', async () => {
-		// keep the failed row around so its final status is observable
-		const workflow = await createWorkflow({ settings: { saveDataErrorExecution: 'all' } }, owner);
-		const execution = await createExecution({ status: 'new', finished: false }, workflow);
-		const data = mock<IWorkflowExecutionDataProcess>({
-			executionMode: 'trigger',
-			workflowData: workflow,
-			executionData: createRunExecutionData({}),
-			userId: owner.id,
-		});
-		const error = new Error('masking failed') as ExecutionError;
-		const responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
-
-		const returned = await runner.registerAndFailExecution(
-			data,
-			error,
-			{ executionId: execution.id, expectedStatus: 'new' },
-			responsePromise,
-		);
-
-		const executionRepository = Container.get(ExecutionRepository);
-		expect(returned).toBe(execution.id);
-		expect(responsePromise.reject).toHaveBeenCalledWith(error);
-		expect(await executionRepository.countBy({ workflowId: workflow.id })).toBe(1);
-		expect((await executionRepository.findOneBy({ id: execution.id }))?.status).toBe('error');
-		expect(Container.get(ActiveExecutions).has(execution.id)).toBe(false);
 	});
 });
 

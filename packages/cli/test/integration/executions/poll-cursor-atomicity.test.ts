@@ -109,7 +109,13 @@ describe('poll cursor atomicity', () => {
 	it('persists a standalone cursor advance with no execution row', async () => {
 		await pollCursorService.readCursor(workflow.id, nodeId, { lastItemId: 'a' });
 
-		await pollCursorService.commitCursorOnly(workflow.id, nodeId, { lastItemId: 'b' });
+		await pollCursorService.commitCursorOnly({
+			workflowId: workflow.id,
+			nodeId,
+			nodeName: 'Poll Node',
+			cursor: { lastItemId: 'b' },
+			nodeStaticData: {},
+		});
 
 		expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
 			lastItemId: 'b',
