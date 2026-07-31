@@ -15,7 +15,7 @@ vi.mock('@/app/stores/posthog.store', () => ({
 }));
 
 let isTrialing = false;
-vi.mock('@/app/stores/cloudPlan.store', () => ({
+vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: vi.fn(() => ({
 		userIsTrialing: isTrialing,
 		currentUserCloudInfo: {
