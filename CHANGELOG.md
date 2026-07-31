@@ -1,3 +1,12 @@
+## [2.33.3](https://github.com/n8n-io/n8n/compare/n8n@2.33.2...n8n@2.33.3) (2026-07-31)
+
+
+### Bug Fixes
+
+* **core:** Import security audit risk reporters with a file extension ([#35275](https://github.com/n8n-io/n8n/issues/35275)) ([6a71142](https://github.com/n8n-io/n8n/commit/6a71142f9d45cb8b9f45ca2bbe0da36bad02cca0))
+* **MCP Server Trigger Node:** Save execution data only after tool call completes ([#35284](https://github.com/n8n-io/n8n/issues/35284)) ([77271fa](https://github.com/n8n-io/n8n/commit/77271fa3b20cf66004211b3b76fb44d2df281cdf))
+
+
 ## [2.33.2](https://github.com/n8n-io/n8n/compare/n8n@2.33.1...n8n@2.33.2) (2026-07-30)
 
 
