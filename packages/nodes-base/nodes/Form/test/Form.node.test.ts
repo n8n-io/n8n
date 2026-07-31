@@ -12,6 +12,7 @@ import {
 	createRunExecutionData,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	UserError,
 	Workflow,
 } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -61,6 +62,18 @@ describe('Form Node', () => {
 			await form.execute(mockExecuteFunctions);
 
 			expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalled();
+		});
+
+		it('should fail the node when the redirect response cannot be dispatched', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('page');
+			mockExecuteFunctions.getParentNodes.mockReturnValue([
+				mock<NodeTypeAndVersion>({ type: 'n8n-nodes-base.formTrigger' }),
+			]);
+			mockExecuteFunctions.getChildNodes.mockReturnValue([]);
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
+			mockExecuteFunctions.sendResponse.mockRejectedValue(new UserError('Response not relayed'));
+
+			await expect(form.execute(mockExecuteFunctions)).rejects.toThrow('Response not relayed');
 		});
 
 		it('should throw an error if completion is not the last Form node', async () => {

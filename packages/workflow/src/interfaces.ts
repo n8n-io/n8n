@@ -240,8 +240,8 @@ export abstract class ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
-		workflow: Workflow,
-		node: INode,
+		workflow?: Workflow,
+		node?: INode,
 	): Promise<IHttpRequestOptions>;
 
 	abstract preAuthentication(
@@ -1032,7 +1032,7 @@ type CronRecurrenceRule =
 			activated: true;
 			index: number;
 			intervalSize: number;
-			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
+			typeInterval: 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
 	  };
 
 /**
@@ -1243,7 +1243,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
-		sendResponse(response: IExecuteResponsePromiseData): void;
+		sendResponse(response: IExecuteResponsePromiseData): Promise<void>;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
 		isStreaming(): boolean;
 		/** Returns true if the node is being executed as an AI Agent tool */
@@ -1860,6 +1860,7 @@ export interface INodePropertyTypeOptions {
 	password?: boolean; // Supported by: string
 	copyButton?: boolean; // Supported by: string — renders a readonly value with a click-to-copy affordance
 	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
+	resolveCredentialJsonLeaves?: boolean; // Supported by: json (credential fields only) — resolves expressions in JSON leaf values
 	ignoreCredentialExpressionResolveError?: boolean; // Supported by credentials fields outside execution contexts
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
@@ -2115,6 +2116,9 @@ export interface INodePropertyOptions {
 	// disabledOptions added for compatibility with INodeProperties and INodeCredentialDescription types
 	// it needs to be implemented, if needed
 	disabledOptions?: undefined;
+	// When set, the option is hidden in the editor unless the matching
+	// `N8N_ENV_FEAT_<envFeatureFlag>` flag is enabled.
+	envFeatureFlag?: Uppercase<string>;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -3481,6 +3485,13 @@ export interface IWorkflowExecutionDataProcess {
 	 * apart) and by telemetry.
 	 */
 	source?: WorkflowExecutionSource;
+	/**
+	 * When true, a failure in this run must not dispatch the workflow's error
+	 * workflow (or its own Error Trigger). Set for runs that are a test of the
+	 * workflow rather than a real one, but that still need a production
+	 * execution mode for realistic trigger semantics
+	 */
+	suppressErrorWorkflow?: boolean;
 	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {

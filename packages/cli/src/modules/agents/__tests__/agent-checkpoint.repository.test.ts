@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
+import { Equal, IsNull, Or } from '@n8n/typeorm';
 import { mockEntityManager } from '@test/mocking';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
@@ -35,6 +36,26 @@ describe('AgentCheckpointRepository', () => {
 			await expect(
 				repository.claimForResume('run-1', '{"status":"suspended"}', '{"status":"running"}'),
 			).resolves.toBe(false);
+		});
+	});
+
+	describe('cancelSuspended', () => {
+		it('matches checkpoints scoped to the current agent or unscoped', async () => {
+			vi.spyOn(repository, 'update').mockResolvedValue({ affected: 1 } as never);
+
+			await expect(
+				repository.cancelSuspended('run-1', 'agent-1', '{"status":"suspended"}'),
+			).resolves.toBe(true);
+
+			expect(repository.update).toHaveBeenCalledWith(
+				{
+					runId: 'run-1',
+					agentId: Or(Equal('agent-1'), IsNull()),
+					expired: false,
+					state: '{"status":"suspended"}',
+				},
+				{ expired: true, state: null },
+			);
 		});
 	});
 });

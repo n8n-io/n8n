@@ -22,7 +22,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useExecutionDebugging } from '@/features/execution/executions/composables/useExecutionDebugging';
 import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';

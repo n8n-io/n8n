@@ -9,6 +9,10 @@ import type {
 import { useToast } from '@/app/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import {
+	listenForCredentialChanges,
+	useCredentialsStore,
+} from '@/features/credentials/credentials.store';
+import {
 	createMcpConnection,
 	deleteMcpConnection,
 	fetchMcpConnectionTools,
@@ -22,6 +26,7 @@ import {
 export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	const rootStore = useRootStore();
 	const toast = useToast();
+	const credentialsStore = useCredentialsStore();
 
 	const connections = ref<InstanceAiMcpConnectionResponse[]>([]);
 	const catalog = ref<McpRegistryServerResponse[] | null>(null);
@@ -141,6 +146,19 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 			return false;
 		}
 	}
+
+	// When a credential is deleted, drop its connections and tools, backend does the same.
+	listenForCredentialChanges({
+		store: credentialsStore,
+		onCredentialDeleted: (deletedCredentialId) => {
+			const orphaned = connections.value.filter((c) => c.credentialId === deletedCredentialId);
+			if (orphaned.length === 0) return;
+			connections.value = connections.value.filter((c) => c.credentialId !== deletedCredentialId);
+			for (const connection of orphaned) {
+				clearConnectionTools(connection.id);
+			}
+		},
+	});
 
 	function reset(): void {
 		connections.value = [];

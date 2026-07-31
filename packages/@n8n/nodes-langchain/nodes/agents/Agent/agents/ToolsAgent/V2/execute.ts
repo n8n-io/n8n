@@ -14,7 +14,8 @@ import type { StreamEvent } from '@langchain/core/types/stream';
 import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import { ChatOpenAI } from '@langchain/openai';
 import omit from 'lodash/omit';
-import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 

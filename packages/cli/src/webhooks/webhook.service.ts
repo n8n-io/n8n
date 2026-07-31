@@ -106,6 +106,59 @@ export class WebhookService {
 	}
 
 	/**
+	 * Find every static webhook registered at the given path, regardless of HTTP
+	 * method. Used by the OAuth protected-resource resolver, which knows a resource
+	 * only by its path (the RFC 8707 resource URL carries no method) and so must
+	 * consider every method registered there. Bypasses the per-method cache.
+	 */
+	async findStaticWebhooksByPath(path: string) {
+		return await this.webhookRepository.findStaticWebhooksByPath(path);
+	}
+
+	/**
+	 * Find every dynamic webhook row (all HTTP methods) of the trigger a path
+	 * resolves to, e.g. `<uuid>/user/:id/posts`. The path may be templated
+	 * (`<uuid>/user/:id/posts`) or concrete (`<uuid>/user/42/posts`) — both match
+	 * the same template, because the routing matcher compares only static segments.
+	 * Used by the OAuth resolver, which (unlike {@link findDynamicWebhook}) needs
+	 * every method to derive the trigger's method-set, and the templated path — not
+	 * the concrete one — as the canonical resource identity. Selection mirrors
+	 * {@link findDynamicWebhook} so "which resource" equals "which trigger fires".
+	 */
+	async findDynamicWebhooksByPath(path: string): Promise<WebhookEntity[]> {
+		const [uuidSegment, ...otherSegments] = path.split('/');
+
+		const candidates = await this.webhookRepository.findDynamicWebhooksByWebhookId(
+			uuidSegment,
+			otherSegments.length,
+		);
+
+		if (candidates.length === 0) return [];
+
+		const requestSegments = new Set(otherSegments);
+
+		const { winner } = candidates.reduce<{ winner: string | null; maxMatches: number }>(
+			(acc, dw) => {
+				const allStaticSegmentsMatch = dw.staticSegments.every((s) => requestSegments.has(s));
+
+				if (allStaticSegmentsMatch && dw.staticSegments.length > acc.maxMatches) {
+					acc.maxMatches = dw.staticSegments.length;
+					acc.winner = dw.webhookPath;
+				} else if (dw.staticSegments.length === 0 && acc.winner === null) {
+					acc.winner = dw.webhookPath; // edge case: path is `:var`, matches anything
+				}
+				return acc;
+			},
+			{ winner: null, maxMatches: 0 },
+		);
+
+		if (winner === null) return [];
+
+		// The winning template's rows are one trigger (shared webhookId), one row per method.
+		return candidates.filter((dw) => dw.webhookPath === winner);
+	}
+
+	/**
 	 * Find a matching webhook with one or more dynamic path segments, e.g. `<uuid>/user/:id/posts`.
 	 * It is mandatory for dynamic webhooks to have `<uuid>/` at the base.
 	 */

@@ -10,8 +10,9 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import {
 	HITL_APPROVE_ACTION_ID,
 	HITL_DECLINE_ACTION_ID,
@@ -59,6 +60,13 @@ export function toMultiOptionsCsv(value: unknown): string {
 			.join(',');
 	}
 	return '';
+}
+
+// Display label for a Slack user in pickers. Real names are friendlier but aren't
+// unique in Slack, so the handle is appended to keep same-named users distinguishable.
+// `real_name` is optional, so bots and unconfigured accounts show the handle alone.
+export function formatUserLabel(user: { name: string; real_name?: string }): string {
+	return user.real_name ? `${user.real_name} (@${user.name})` : user.name;
 }
 
 export async function slackApiRequest(

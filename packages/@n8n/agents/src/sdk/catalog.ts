@@ -39,8 +39,8 @@ export interface ModelInfo {
 	name: string;
 	/** Release date in ISO date format when available from models.dev. */
 	releaseDate?: string;
-	/** Whether the model supports reasoning / thinking. */
-	reasoning: boolean;
+	/** Whether the model supports reasoning / thinking, when reported by models.dev. */
+	reasoning?: boolean;
 	/** Whether the model supports tool calling. */
 	toolCall: boolean;
 	/** Cost per million tokens. */
@@ -146,7 +146,7 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 				id: model.id,
 				name: model.name,
 				...(model.release_date !== undefined && { releaseDate: model.release_date }),
-				reasoning: model.reasoning ?? false,
+				...(model.reasoning !== undefined && { reasoning: model.reasoning }),
 				toolCall: model.tool_call ?? false,
 			};
 			if (model.cost?.input !== undefined && model.cost?.output !== undefined) {

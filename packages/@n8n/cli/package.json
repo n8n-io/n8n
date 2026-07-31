@@ -1,7 +1,7 @@
 {
   "name": "@n8n/cli",
   "version": "0.13.0",
-  "description": "[beta] Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
+  "description": "Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
   "license": "LicenseRef-n8n-sustainable-use",
   "bin": {
     "n8n-cli": "bin/n8n-cli.mjs"

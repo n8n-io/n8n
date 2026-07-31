@@ -5,7 +5,7 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { MAX_PREVIEW_EXECUTIONS_IN_MEMORY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';

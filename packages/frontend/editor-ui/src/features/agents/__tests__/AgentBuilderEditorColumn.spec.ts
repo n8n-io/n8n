@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
@@ -8,12 +7,12 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string) =>
 			({
 				'agents.builder.memory.episodicMemory.label': 'Episodic Memory',
-				'agents.builder.memory.episodicMemory.hint':
-					'Stores source-backed memories from previous conversations. Requires OpenAI credential.',
 				'agents.builder.memory.episodicMemory.changeCredential': 'Change credential',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
 			})[key] ?? key,
 	}),
+	// The i18n singleton is used at module load by some transitively-imported utils.
+	i18n: { baseText: (key: string) => key },
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -65,7 +64,11 @@ vi.mock('@n8n/design-system/components/N8nOption', () => ({
 }));
 
 vi.mock('../components/AgentAdvancedPanel.vue', () => ({
-	default: { name: 'AgentAdvancedPanel', template: '<div />' },
+	default: {
+		name: 'AgentAdvancedPanel',
+		template: '<div />',
+		props: ['config', 'disabled', 'collapsible', 'projectId'],
+	},
 }));
 
 vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
@@ -96,10 +99,6 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
 		emits: ['upload-files', 'delete-file'],
 	},
-}));
-
-vi.mock('../components/AgentJsonEditor.vue', () => ({
-	default: { name: 'AgentJsonEditor', template: '<div />' },
 }));
 
 vi.mock('../components/AgentPanelHeader.vue', () => ({
@@ -295,9 +294,6 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 
 		expect(wrapper.text()).toContain('Episodic Memory');
-		expect(wrapper.text()).toContain(
-			'Stores source-backed memories from previous conversations. Requires OpenAI credential.',
-		);
 		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-observational-memory-toggle"]').exists()).toBe(false);
 	});
@@ -316,7 +312,9 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
 		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(true);
+		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
+		expect(advancedPanel.exists()).toBe(true);
+		expect(advancedPanel.props('projectId')).toBe('project-1');
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {
