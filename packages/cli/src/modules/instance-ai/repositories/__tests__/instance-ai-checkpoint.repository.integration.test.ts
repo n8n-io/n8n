@@ -35,6 +35,17 @@ function makeState(toolCallId: string): SerializableAgentState {
 	};
 }
 
+function forThread(state: SerializableAgentState, threadId: string): SerializableAgentState {
+	return {
+		...state,
+		persistence: {
+			...state.persistence,
+			threadId,
+			resourceId: state.persistence?.resourceId ?? 'user-1',
+		},
+	};
+}
+
 describe('InstanceAiCheckpointRepository.claimSuspendedForResume', () => {
 	let checkpointRepository: InstanceAiCheckpointRepository;
 	let threadRepository: InstanceAiThreadRepository;
@@ -76,10 +87,7 @@ describe('InstanceAiCheckpointRepository.claimSuspendedForResume', () => {
 				hostRunId: 'host-run-1',
 				threadId,
 				resourceId: 'user-1',
-				state: {
-					...state,
-					persistence: { ...state.persistence, threadId },
-				},
+				state: forThread(state, threadId),
 				expiredAt: null,
 			}),
 		);
@@ -88,7 +96,7 @@ describe('InstanceAiCheckpointRepository.claimSuspendedForResume', () => {
 	it('allows only one caller to claim the same suspended snapshot', async () => {
 		const state = makeState('tool-call-a');
 		await saveCheckpoint(state);
-		const expectedState = { ...state, persistence: { ...state.persistence, threadId } };
+		const expectedState = forThread(state, threadId);
 
 		const outcomes = await Promise.all([
 			checkpointRepository.claimSuspendedForResume('checkpoint:run-1', expectedState),
@@ -106,15 +114,12 @@ describe('InstanceAiCheckpointRepository.claimSuspendedForResume', () => {
 	it('does not let a delayed claim for snapshot A consume a newer suspension B', async () => {
 		const stateA = makeState('tool-call-a');
 		await saveCheckpoint(stateA);
-		const expectedStateA = { ...stateA, persistence: { ...stateA.persistence, threadId } };
+		const expectedStateA = forThread(stateA, threadId);
 		await expect(
 			checkpointRepository.claimSuspendedForResume('checkpoint:run-1', expectedStateA),
 		).resolves.toBe(true);
 
-		const stateB = {
-			...makeState('tool-call-b'),
-			persistence: { ...stateA.persistence, threadId },
-		};
+		const stateB = forThread(makeState('tool-call-b'), threadId);
 		const row = await checkpointRepository.findOneByOrFail({ key: 'checkpoint:run-1' });
 		row.state = stateB;
 		await checkpointRepository.save(row);
