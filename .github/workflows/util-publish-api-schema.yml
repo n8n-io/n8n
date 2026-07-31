@@ -11,8 +11,7 @@ on:
       - 'packages/@n8n/api-types/src/dto/**/*.ts'            # changes to Zod DTO/schema the OpenAPI doc generator reads
       - 'packages/@n8n/api-types/src/schemas/**/*.ts'
       - 'packages/cli/scripts/build.mjs'                     # changes to the build script that generates the OpenAPI spec
-      - 'packages/cli/package.json'                          # changes to Redocly (bundler) version
-      - 'pnpm-workspace.yaml'                                # changes to Zod or @asteasolutions/zod-to-openapi versions
+      - 'packages/cli/package.json'                          # changes to Redocly or @asteasolutions/zod-to-openapi versions
 
   # Allow manual re-publish
   workflow_dispatch:
