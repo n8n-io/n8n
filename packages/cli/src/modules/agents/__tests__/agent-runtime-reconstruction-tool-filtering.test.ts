@@ -312,6 +312,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			toolCodeByName: {},
 			skills: {},
 			runtimeProfile: 'sub-agent',
+			runType: 'test',
 			user: testUser,
 		});
 
@@ -334,6 +335,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			toolCodeByName: {},
 			skills: {},
 			runtimeProfile: 'sub-agent',
+			runType: 'production',
 		});
 
 		expect(userHasScopes).not.toHaveBeenCalled();

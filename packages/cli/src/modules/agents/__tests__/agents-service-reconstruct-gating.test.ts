@@ -633,6 +633,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 			toolCodeByName: {},
 			skills: {},
 			runtimeProfile: 'sub-agent',
+			runType: 'production',
 			parentAgentIdForDelegation: 'parent-agent-1',
 		});
 
