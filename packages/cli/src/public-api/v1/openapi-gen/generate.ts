@@ -39,8 +39,6 @@ export interface GeneratedArtifact {
 
 /**
  * Lower-cased first char matches the existing hand-written schema-file convention (`tag.yml`)
- * E.g. `TagListPublic` -> `tagListPublic.generated.yml`.
- * `.generated.` marks it build-owned.
  */
 function schemaFileName(componentName: string): string {
 	return `${componentName[0].toLowerCase()}${componentName.slice(1)}.generated.yml`;
@@ -80,11 +78,7 @@ interface OperationTarget {
 /**
  * Generates the whole document from one registry (holding every operation and every shared schema)
  * and slices it back into the committed fragment files: one per operation, plus one per shared
- * component schema under {@link SHARED_SCHEMA_DIR}. Generating a single document — rather than one
- * throwaway document per operation, the pre-registry approach — is what lets zod-to-openapi emit a
- * `$ref` to a shared schema instead of re-inlining it into each operation.
- *
- * Exported for the registry unit test, which drives it with a hand-built registry.
+ * component schema under {@link SHARED_SCHEMA_DIR}.
  */
 export function buildArtifactsFromRegistry(
 	registry: OpenAPIRegistry,
@@ -111,10 +105,6 @@ export function buildArtifactsFromRegistry(
 	operations.forEach(({ outputPath, pathKey, method }) => {
 		const operation = document.paths?.[pathKey]?.[method];
 		rewriteComponentRefs(operation, (componentName) =>
-			// path.posix, not the platform-dependent `path` import: outputPath is always a POSIX-style
-			// virtual path (built with hardcoded '/' in decorator-routes.ts), and the result becomes a
-			// literal $ref string in the generated YAML - path.relative/dirname would emit backslashes
-			// on Windows, producing an invalid $ref and platform-dependent drift in the committed file.
 			path.posix.relative(
 				path.posix.dirname(outputPath),
 				`${SHARED_SCHEMA_DIR}/${schemaFileName(componentName)}`,
@@ -129,11 +119,7 @@ export function buildArtifactsFromRegistry(
 /**
  * Registers every shared response DTO as a named component on `registry`, keyed by DTO class
  * identity (see `getSharedResponseSchemas`) so a schema is only ever "the same" as another when
- * it's the exact same class. The registry and the generated file name still need a plain string
- * though, so this guards against two *different* shared DTO classes coincidentally having the
- * same `.name` and colliding on that string.
- *
- * Exported for the collision-guard unit test, which drives it with two hand-built fake DTOs.
+ * it's the exact same class.
  */
 export function registerSharedSchemas(
 	registry: OpenAPIRegistry,
