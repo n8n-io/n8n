@@ -29,7 +29,7 @@ const baseConfig: AgentJsonConfig = {
 
 const storedCustomTool = {
 	tool_1: { code: 'a', descriptor: { name: 'tool_1', description: 'a', inputSchema: {} } },
-} as Agent['tools'];
+} as unknown as Agent['tools'];
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
