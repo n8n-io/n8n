@@ -206,14 +206,8 @@ export class WebhookResponseRelay {
 					extra: { binaryDataId, ...context },
 				});
 			}
-			this.logger.warn('Failed to restore an offloaded webhook response body', {
-				binaryDataId,
-				...context,
-				error,
-			});
-			response.body = emptyBodyOf(offloaded.kind);
-			clearOffloadMarker(response);
-			return response;
+
+			return this.degradeToEmptyBody(response, offloaded, context, error);
 		}
 
 		clearOffloadMarker(response);
@@ -380,6 +374,24 @@ export class WebhookResponseRelay {
 	private tooLargeForStoreMessage(byteLength: number): string {
 		const sizeInMib = Math.round((byteLength / MIB) * 100) / 100;
 		return `The response is too large for the binary-data store to hold (${sizeInMib} MiB)`;
+	}
+
+	private degradeToEmptyBody<T extends IN8nHttpFullResponse>(
+		response: T,
+		offloaded: OffloadedBody,
+		context: RelayReadContext,
+		error: unknown,
+	): T {
+		this.logger.warn('Failed to restore an offloaded webhook response body', {
+			binaryDataId: offloaded.binaryData.id,
+			...context,
+			error,
+		});
+
+		response.body = emptyBodyOf(offloaded.kind);
+		clearOffloadMarker(response);
+
+		return response;
 	}
 
 	private async deleteStoredBody(binaryDataId: string, context: RelayReadContext): Promise<void> {
