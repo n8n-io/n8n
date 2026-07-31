@@ -49,8 +49,10 @@ export class StepReadyHandler {
 	}
 
 	private async runStep(event: StepReadyEvent): Promise<JsonValue> {
-		const step = await this.stepStore.loadStep(event.stepId);
-		const execution = await this.executionStore.loadExecution(event.executionId);
+		const [step, execution] = await Promise.all([
+			this.stepStore.loadStep(event.stepId),
+			this.executionStore.loadExecution(event.executionId),
+		]);
 
 		const node = execution.graph.nodes.find((candidate) => candidate.id === step.nodeId);
 		if (!node) {
@@ -59,8 +61,8 @@ export class StepReadyHandler {
 			);
 		}
 
-		const inputs = await this.gatherInputs(execution, node);
-		const executor = this.executorFor(node);
+		const inputs = await this.gatherInputs(execution, node, step.id);
+		const executor = this.executorFor(node, step.id);
 		const { outputs } = await executor.execute({
 			node,
 			inputs,
@@ -79,19 +81,31 @@ export class StepReadyHandler {
 	 * Inputs for `node`, taken from its predecessor's output. The trigger's output
 	 * is the payload captured on the execution rather than a step output.
 	 */
-	private async gatherInputs(execution: ExecutionRecord, node: GraphNode): Promise<JsonValue> {
+	private async gatherInputs(
+		execution: ExecutionRecord,
+		node: GraphNode,
+		stepId: string,
+	): Promise<JsonValue> {
 		const predecessorIds = getPredecessorNodeIds(execution.graph, node.id);
-		if (predecessorIds.length === 0) return null;
+		if (predecessorIds.length === 0) {
+			// Steps are planned only for a completed step's successors, so a step
+			// without a predecessor means the graph and the step rows disagree.
+			throw new UnexpectedError(
+				`step ${stepId} runs node ${node.id}, which has no predecessor in the execution graph`,
+			);
+		}
 		if (predecessorIds.length > 1) {
 			throw new UnimplementedError(
-				`step ${node.id} has more than one predecessor; combining inputs from several steps is not supported yet`,
+				`step ${stepId} runs node ${node.id}, which has more than one predecessor; combining inputs from several steps is not supported yet`,
 			);
 		}
 
 		const [predecessorId] = predecessorIds;
+		// The trigger's step row is recorded already-completed and carries no
+		// outputs, so its payload comes off the execution instead.
 		if (isTrigger(execution.graph, predecessorId)) return execution.triggerPayload;
 
-		const outputsByNodeId = await this.stepStore.loadStepOutputs(execution.id, [predecessorId]);
+		const outputsByNodeId = await this.stepStore.loadStepOutputs(execution.id, predecessorIds);
 		return outputsByNodeId[predecessorId] ?? null;
 	}
 
@@ -99,18 +113,18 @@ export class StepReadyHandler {
 	 * The executor for `node`'s step type. Step types the engine runs itself
 	 * (`wait`, `subworkflow`, `batch`) don't reach this seam, and aren't built yet.
 	 */
-	private executorFor(node: GraphNode): IStepExecutor {
+	private executorFor(node: GraphNode, stepId: string): IStepExecutor {
 		if (node.type === 'v1-node') {
 			const executor = this.dependencies.v1StepExecutor;
 			if (!executor) {
 				throw new UnimplementedError(
-					'no executor configured for v1-node steps; the host must supply one in integrated mode',
+					`step ${stepId}: no executor configured for v1-node steps; the host must supply one in integrated mode`,
 				);
 			}
 			return executor;
 		}
 
-		throw new UnimplementedError(`no executor for step type ${node.type}`);
+		throw new UnimplementedError(`step ${stepId}: no executor for step type ${node.type}`);
 	}
 }
 

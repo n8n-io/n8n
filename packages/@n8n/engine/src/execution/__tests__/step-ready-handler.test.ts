@@ -260,6 +260,29 @@ describe('StepReadyHandler', () => {
 		});
 	});
 
+	it('fails the step when its node has no predecessor in the graph', async () => {
+		const stepStore = makeStepStore({ id: 'step-orphan', nodeId: 'orphan' });
+		const executionStore = makeExecutionStore({
+			graph: {
+				nodes: [...graph.nodes, { id: 'orphan', name: 'Orphan', type: 'v1-node' }],
+				edges: graph.edges,
+			},
+		});
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(executionStore, stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle({ ...event, stepId: 'step-orphan' });
+
+		expect(executor.execute).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith('step-orphan', {
+			name: 'UnexpectedError',
+			message: expect.stringContaining('no predecessor') as string,
+			stack: expect.any(String) as string,
+		});
+	});
+
 	it('fails the step when its node is absent from the execution graph', async () => {
 		const stepStore = makeStepStore({ nodeId: 'ghost' });
 		const executor = makeExecutor();
