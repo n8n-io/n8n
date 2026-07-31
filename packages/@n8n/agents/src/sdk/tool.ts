@@ -134,7 +134,8 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				suspend: async (payload, options) =>
 					await interruptCtx.suspend(payload, {
 						...options,
-						resumeSchema: options?.resumeSchema ?? tool.resumeSchema,
+						resumeSchema:
+							options?.resumeSchema ?? tool.resolveResumeSchema?.(payload) ?? tool.resumeSchema,
 					}),
 				resumeData: undefined,
 				suspendPayload: undefined,

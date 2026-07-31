@@ -232,10 +232,12 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 			}
 			return { childResumeData: interruptCtx.resumeData };
 		});
+		const dynamicChildResumeSchema = z.object({ childApproved: z.boolean() });
 		const wrapped = wrapToolForApproval(
 			makeBuiltTool({
 				suspendSchema: z.object({ delegateCheckpoint: z.object({}).passthrough() }).passthrough(),
-				resumeSchema: z.object({ childApproved: z.boolean() }),
+				resumeSchema: z.unknown(),
+				resolveResumeSchema: () => dynamicChildResumeSchema,
 				handler: originalHandler,
 			}),
 			{ requireApproval: true },
