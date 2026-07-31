@@ -138,7 +138,7 @@ export class WebhookResponseRelay {
 		response: IExecuteResponsePromiseData,
 		context: RelayContext,
 	): Promise<IExecuteResponsePromiseData> {
-		if (!isFullResponse(response)) {
+		if (!hasResponseBody(response)) {
 			this.assertFitsInline(response);
 			return response;
 		}
@@ -177,7 +177,7 @@ export class WebhookResponseRelay {
 	 * @throws OperationalError When `reclaim` is set and the stored content cannot be fetched.
 	 */
 	async restoreOffloadedBody<T>(response: T, { reclaim }: { reclaim: boolean }): Promise<T> {
-		if (!isFullResponse(response)) {
+		if (!hasResponseBody(response)) {
 			return response;
 		}
 
@@ -223,7 +223,7 @@ export class WebhookResponseRelay {
 	 * (`database`) or by store lifecycle rules (object stores).
 	 */
 	async deleteOffloadedBody(response: IExecuteResponsePromiseData): Promise<void> {
-		if (isFullResponse(response)) {
+		if (hasResponseBody(response)) {
 			const offloaded = asOffloadedBody(response);
 			if (offloaded) {
 				await this.deleteStoredBody(offloaded.binaryData.id);
@@ -387,7 +387,7 @@ export class WebhookResponseRelay {
  * @returns The same `response`.
  */
 export function decodeRelayedWebhookResponse<T>(response: T): T {
-	if (!isFullResponse(response)) {
+	if (!hasResponseBody(response)) {
 		return response;
 	}
 
@@ -508,7 +508,7 @@ function clearOffloadMarker(response: IN8nHttpFullResponse): void {
 	delete marked[OFFLOADED_BODY_KIND_KEY];
 }
 
-function isFullResponse(response: unknown): response is IN8nHttpFullResponse {
+function hasResponseBody(response: unknown): response is IN8nHttpFullResponse {
 	return typeof response === 'object' && response !== null && 'body' in response;
 }
 
