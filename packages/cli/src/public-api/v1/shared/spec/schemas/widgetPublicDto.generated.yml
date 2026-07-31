@@ -1,0 +1,19 @@
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  description:
+    type: string
+    nullable: true
+  createdAt:
+    type: string
+  updatedAt:
+    type: string
+required:
+  - id
+  - name
+  - description
+  - createdAt
+  - updatedAt

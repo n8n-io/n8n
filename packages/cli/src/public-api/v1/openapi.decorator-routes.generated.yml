@@ -6,6 +6,18 @@ paths:
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml
+  /widgets:
+    get:
+      $ref: ./handlers/widgets/spec/paths/listWidgets.generated.yml
+    post:
+      $ref: ./handlers/widgets/spec/paths/createWidget.generated.yml
+  /widgets/{id}:
+    get:
+      $ref: ./handlers/widgets/spec/paths/getWidget.generated.yml
+    patch:
+      $ref: ./handlers/widgets/spec/paths/updateWidget.generated.yml
+    delete:
+      $ref: ./handlers/widgets/spec/paths/deleteWidget.generated.yml
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
