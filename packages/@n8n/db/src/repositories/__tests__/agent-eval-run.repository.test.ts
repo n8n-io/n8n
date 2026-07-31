@@ -152,6 +152,33 @@ describe('AgentEvalRunRepository', () => {
 		});
 	});
 
+	// A run has no agent column of its own — the agent under test is its
+	// dataset's — so these scoped reads walk the relation.
+	describe('findByIdAndAgentId', () => {
+		it('constrains the run by its dataset’s agent', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			await repo.findByIdAndAgentId('run-1', 'agent-1');
+
+			expect(entityManager.findOne.mock.calls[0]?.[1]).toEqual({
+				where: { id: 'run-1', dataset: { agentId: 'agent-1' } },
+			});
+		});
+	});
+
+	describe('findByDatasetIdAndAgentId', () => {
+		it('constrains the dataset’s runs by that agent, newest first', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+
+			await repo.findByDatasetIdAndAgentId('ds-1', 'agent-1');
+
+			expect(entityManager.find.mock.calls[0]?.[1]).toEqual({
+				where: { datasetId: 'ds-1', dataset: { agentId: 'agent-1' } },
+				order: { createdAt: 'DESC' },
+			});
+		});
+	});
+
 	describe('isCancellationRequested', () => {
 		it('reads only the cancel flag and returns it', async () => {
 			entityManager.findOne.mockResolvedValueOnce({ id: 'run-1', cancelRequested: true });
