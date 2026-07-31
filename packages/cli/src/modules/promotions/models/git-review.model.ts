@@ -15,6 +15,10 @@ interface GitReviewMetadata {
 	branch?: string;
 	/** Destination-side credential bindings: source credential id → local credential id. */
 	bindings?: Record<string, string>;
+	/** Source-side: id of a local workflow review request whose approval satisfies mark-ready. */
+	localReviewId?: string;
+	/** Last observed value per tracked signal, written by the signal dispatcher. */
+	signals?: Record<string, unknown>;
 	[key: string]: unknown;
 }
 
@@ -40,7 +44,9 @@ interface ReviewStateFile {
  * the merge), and the destination tracks a review via an explicit submit with
  * role=destination instead of a repo watcher.
  *
- * Source submit options: `repoUrl` (pushable remote), `baseBranch` (default main).
+ * Source submit options: `repoUrl` (pushable remote), `baseBranch` (default main),
+ * `localReviewId` (optional: track a local workflow review — its approval fires
+ * mark-ready without a manual action).
  * Destination submit options: `role=destination`, `repoUrl`, `branch`.
  */
 @Service()
@@ -63,6 +69,8 @@ export class GitReviewModel implements PromotionModel {
 		const repoUrl = options.repoUrl;
 		if (typeof repoUrl !== 'string') throw new UserError('git-review requires option repoUrl');
 		const baseBranch = typeof options.baseBranch === 'string' ? options.baseBranch : 'main';
+		const localReviewId =
+			typeof options.localReviewId === 'string' ? options.localReviewId : undefined;
 
 		// Save first: the promotion id names the branch and the state file
 		const promotion = await this.repository.save(
@@ -72,7 +80,7 @@ export class GitReviewModel implements PromotionModel {
 				unitOfWorkType: unitOfWork.type,
 				unitOfWorkId: unitOfWork.id,
 				state: 'in_review',
-				metadata: { repoUrl, baseBranch } satisfies GitReviewMetadata,
+				metadata: { repoUrl, baseBranch, localReviewId } satisfies GitReviewMetadata,
 			}),
 		);
 		const branch = `promote/${promotion.id}`;
@@ -209,6 +217,24 @@ export class GitReviewModel implements PromotionModel {
 
 		promotion.state = 'promoted';
 		return await this.repository.save(promotion);
+	}
+
+	/**
+	 * Level-triggered re-evaluation of tracked signals: the tracked local review
+	 * being approved satisfies the source's human gate, so it fires the same
+	 * transition as a manual mark-ready. Guarded by the current state, so
+	 * duplicate or late deliveries are no-ops.
+	 */
+	async onSignal(promotion: Promotion) {
+		if (promotion.role !== 'source' || promotion.state !== 'in_review') return promotion;
+
+		const { signals } = promotion.metadata as GitReviewMetadata;
+		const review = signals?.['local-review'] as { decision?: string } | undefined;
+		if (review?.decision !== 'approved') return promotion;
+
+		return await this.updateSharedState(promotion, 'waiting_on_destination', (file) => {
+			file.approvals.source = true;
+		});
 	}
 
 	/** Both roles reconcile from the state file in the branch. */

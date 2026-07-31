@@ -20,6 +20,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { EventService } from '@/events/event.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -54,6 +55,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
+	const eventService = mock<EventService>();
 	const logger = mock<Logger>();
 	const tx = mock<EntityManager>();
 
@@ -72,6 +74,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		roleService,
 		dbLockService,
 		collaborationService,
+		eventService,
 	);
 
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>

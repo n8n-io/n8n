@@ -30,6 +30,7 @@ import {
 } from '@n8n/permissions';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { EventService } from '@/events/event.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -64,6 +65,7 @@ export class WorkflowReviewRequestService {
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
+		private readonly eventService: EventService,
 	) {}
 
 	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
@@ -243,6 +245,7 @@ export class WorkflowReviewRequestService {
 		);
 
 		this.broadcastReviewStateChanged(workflowId);
+		this.emitReviewUpdated(request, workflowId);
 
 		return this.toSummary(request, workflowVersionId);
 	}
@@ -355,6 +358,7 @@ export class WorkflowReviewRequestService {
 
 		if (changed) {
 			this.broadcastReviewStateChanged(dto.workflowId);
+			this.emitReviewUpdated(updated, dto.workflowId);
 		}
 
 		return this.toSummary(updated, dto.workflowVersionId);
@@ -456,6 +460,7 @@ export class WorkflowReviewRequestService {
 		);
 
 		this.broadcastReviewStateChanged(workflowRow.workflowId);
+		this.emitReviewUpdated(saved, workflowRow.workflowId);
 
 		return this.toSummary(saved, pinnedVersionId);
 	}
@@ -487,6 +492,19 @@ export class WorkflowReviewRequestService {
 			[PROJECT_ADMIN_ROLE_SLUG],
 		);
 		return adminProjectIds.includes(projectId);
+	}
+
+	/**
+	 * Emitted after every committed state/decision change so other backend
+	 * modules can track this review without importing review internals.
+	 */
+	private emitReviewUpdated(request: WorkflowReviewRequest, workflowId: string): void {
+		this.eventService.emit('workflow-review-updated', {
+			workflowReviewRequestId: request.id,
+			workflowId,
+			state: request.state,
+			decision: request.decision,
+		});
 	}
 
 	/**

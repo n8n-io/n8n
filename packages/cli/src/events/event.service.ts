@@ -7,13 +7,15 @@ import type { InstanceAiEventMap } from './maps/instance-ai.event-map';
 import type { QueueMetricsEventMap } from './maps/queue-metrics.event-map';
 import type { RelayEventMap } from './maps/relay.event-map';
 import type { WorkflowPublicationMetricsEventMap } from './maps/workflow-publication-metrics.event-map';
+import type { WorkflowReviewEventMap } from './maps/workflow-review.event-map';
 
 type EventMap = RelayEventMap &
 	QueueMetricsEventMap &
 	AiEventMap &
 	ExecutionDataEventMap &
 	InstanceAiEventMap &
-	WorkflowPublicationMetricsEventMap;
+	WorkflowPublicationMetricsEventMap &
+	WorkflowReviewEventMap;
 
 @Service()
 export class EventService extends TypedEmitter<EventMap> {}

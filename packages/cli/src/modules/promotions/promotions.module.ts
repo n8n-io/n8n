@@ -14,6 +14,9 @@ export class PromotionsModule implements ModuleInterface {
 		registry.register(Container.get(DirectPushModel));
 		registry.register(Container.get(ApiCollabModel));
 		registry.register(Container.get(GitReviewModel));
+
+		const { LocalReviewTracker } = await import('./trackers/local-review.tracker.js');
+		Container.get(LocalReviewTracker).init();
 	}
 
 	async entities() {

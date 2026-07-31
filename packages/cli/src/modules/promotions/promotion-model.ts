@@ -16,6 +16,16 @@ export interface PromotionContext {
 }
 
 /**
+ * An observed change in something a promotion tracks (a local review, a PR,
+ * a peer instance). Trackers translate external events into signals; the
+ * promotion core never knows where a signal came from.
+ */
+export interface PromotionSignal {
+	name: string;
+	payload: Record<string, unknown>;
+}
+
+/**
  * A promotion model (the canvas's "PromotionPath") owns the lifecycle of a
  * promotion: which states exist, which actions are available in each state,
  * and what side effects run on each transition. The core entity/service/API
@@ -41,4 +51,13 @@ export interface PromotionModel {
 
 	/** Reconcile with external state (peer instance, git remote). Manually triggered — no pollers. */
 	sync?(promotion: Promotion, ctx: PromotionContext): Promise<Promotion>;
+
+	/**
+	 * React to a tracked signal. The dispatcher has already stored the observed
+	 * value under `metadata.signals[signal.name]`, so implementations must
+	 * re-evaluate from stored signals (level-triggered), not trust the event
+	 * edge — duplicate or late deliveries are then no-ops. Runs without an
+	 * acting user, so only transitions that need no user context belong here.
+	 */
+	onSignal?(promotion: Promotion, signal: PromotionSignal): Promise<Promotion>;
 }
