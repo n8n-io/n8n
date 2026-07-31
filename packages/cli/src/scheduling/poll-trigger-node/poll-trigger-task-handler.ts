@@ -87,8 +87,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 						return report.notDispatched();
 					}
 
-					// __emit persists the cursor, either to static data or inside the run's own
-					// transaction, and starts the run without waiting on it.
+					// __emit saves the cursor and starts the run without waiting on it.
 					pollFunctions.__emit(pollResponse);
 					this.logger.debug('Poll returned new data; handed off to a new execution', {
 						taskId: task.id,
