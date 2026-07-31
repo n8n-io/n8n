@@ -45,6 +45,14 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
 
+// Their trigger() is a no-op — fired by the execution engine, never the
+// registry — so reconciling them against the registry would re-enqueue forever.
+const PSEUDO_TRIGGER_NODE_TYPES = new Set<string>([
+	MANUAL_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
+]);
+
 /** A single trigger node that failed to (de)register during activation. */
 export type TriggerActivationFailure = {
 	nodeId: INode['id'];
@@ -134,14 +142,6 @@ export class WorkflowTriggerActivator {
 			active: false,
 			nodeTypes: this.nodeTypes,
 		});
-
-		// Their trigger() is a no-op — fired by the execution engine, never the
-		// registry — so reconciling them against the registry would re-enqueue forever.
-		const PSEUDO_TRIGGER_NODE_TYPES = new Set<string>([
-			MANUAL_TRIGGER_NODE_TYPE,
-			EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-			ERROR_TRIGGER_NODE_TYPE,
-		]);
 
 		const inMemoryNodeIds = new Set(
 			[...workflow.getPollNodes(), ...workflow.getTriggerNodes()]
