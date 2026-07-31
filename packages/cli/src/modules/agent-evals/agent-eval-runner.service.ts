@@ -278,9 +278,29 @@ export class AgentEvalRunnerService {
 								return;
 							}
 
+							// An empty input can't produce an execution, so record the verdict
+							// here rather than letting the case hold a queue slot to reach it.
+							// Checked after the stop above, so a cancel still outranks it.
+							if (resolvedCase.input.trim().length === 0) {
+								// Self-contained like `runCase`: one unusable case must not fail
+								// the whole run just because recording its verdict failed.
+								try {
+									await this.resultRepository.markAsError(resultRow.id, 'empty_input', {
+										message: 'Case has no value in the mapped input column.',
+									});
+								} catch (error) {
+									this.logger.error(
+										`[AgentEvalRunner] Could not record empty input for case ${resultRow.id}`,
+										{ error: error instanceof Error ? error.message : String(error) },
+									);
+								}
+								return;
+							}
+
 							// The helper owns release/remove when the run stops while queued;
 							// the finally owns release once a slot is held.
-							const executionId = `${runId}-case-${index}`;
+							// Prefixed so the id is attributable in `n8n.execution.throttled`.
+							const executionId = `agent-eval:${runId}-case-${index}`;
 							if (!(await this.acquireEvaluationSlot(executionId, abort.signal))) {
 								await stopCase(resultRow);
 								return;
@@ -486,7 +506,8 @@ export class AgentEvalRunnerService {
 	 * Execute one case and persist its result. Returns the case's token usage.
 	 * Fully self-contained: a thrown execution or DB error is converted into a
 	 * per-case error so one case can never abort the batch or leave its result
-	 * stuck `running`.
+	 * stuck `running`. Assumes a non-empty input — the caller screens those out
+	 * before taking a queue slot.
 	 */
 	private async runCase(
 		resultRow: AgentEvalResult,
@@ -494,13 +515,6 @@ export class AgentEvalRunnerService {
 		ctx: { agentId: string; projectId: string; user: User; timeoutMs?: number },
 	): Promise<CaseUsage | undefined> {
 		try {
-			if (resolvedCase.input.trim().length === 0) {
-				await this.resultRepository.markAsError(resultRow.id, 'empty_input', {
-					message: 'Case has no value in the mapped input column.',
-				});
-				return undefined;
-			}
-
 			await this.resultRepository.markAsRunning(resultRow.id);
 
 			const execResult = await this.evalAgentExecutionService.executeWithLlmMock(
@@ -568,7 +582,7 @@ export class AgentEvalRunnerService {
 
 		// Validate the mapping against the live columns so a renamed/deleted column
 		// fails loudly here instead of silently turning every case into an
-		// "empty input" error at execution time.
+		// "empty input" error once the run starts.
 		const columnNames = new Set(
 			(await this.dataTableService.getColumns(dataTableId, tableProjectId)).map((c) => c.name),
 		);
