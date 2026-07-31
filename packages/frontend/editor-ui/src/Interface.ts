@@ -873,13 +873,6 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
-export interface CloudPlanState {
-	initialized: boolean;
-	data: Cloud.PlanData | null;
-	usage: InstanceUsage | null;
-	loadingPlan: boolean;
-}
-
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
 
 // The upgrade-CTA vocabulary moved to `@n8n/stores/types/pageRedirection`, alongside
