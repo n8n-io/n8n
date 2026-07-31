@@ -103,13 +103,10 @@ export class PollTriggerExecutor {
 								pollFunctions,
 							);
 
-							// Same as the above `isCurrent` check; last chance to check before
-							// potentially starting the execution. Emitting now if superseded would run
-							// an execution against the old version of the workflow, so drop it.
-							// Bailing out here is safe even though `poll()` may have already advanced
-							// its state in the in-memory static data: persistence only happens inside
-							// `__emit` (`saveStaticData`) or `__commitCursor`, so the dropped call
-							// leaves the stored state untouched and the newly registered poller
+							// Same as the above `isCurrent` check: emitting now would run an execution
+							// against the old workflow version, so drop it. Safe even if `poll()`
+							// already advanced in-memory static data, since persistence only happens
+							// inside `__emit` or `__commitCursor`; the newly registered poller
 							// re-fetches the same events.
 							if (!testingTrigger && !isCurrent()) {
 								this.logger.debug(
