@@ -32,6 +32,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@/features/credentials/templatedAuth.utils';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 
@@ -286,11 +287,17 @@ const sidebarItems = computed(() => {
 						position: 'top',
 					} satisfies IMenuItem,
 				]),
-		{
-			id: 'details',
-			label: i18n.baseText('credentialEdit.credentialEdit.details'),
-			position: 'top',
-		},
+		// Templated Custom Auth keeps its machinery in the Connection pane's
+		// "Edit setup" state, so the Details tab has nothing left to show.
+		...(credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+			? []
+			: [
+					{
+						id: 'details',
+						label: i18n.baseText('credentialEdit.credentialEdit.details'),
+						position: 'top',
+					} satisfies IMenuItem,
+				]),
 	];
 
 	return menuItems;
