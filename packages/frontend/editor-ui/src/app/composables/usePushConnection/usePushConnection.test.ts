@@ -2,9 +2,12 @@ import { usePushConnection } from '@/app/composables/usePushConnection';
 import {
 	testWebhookReceived,
 	builderCreditsUpdated,
+	executionStarted,
 } from '@/app/composables/usePushConnection/handlers';
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
 import type { BuilderCreditsPushMessage } from '@n8n/api-types/push/builder-credits';
+import type { PushMessage } from '@n8n/api-types';
+import { pushHandlerRegistry } from '@n8n/frontend-module-sdk';
 import { useRouter } from 'vue-router';
 import type { OnPushMessageHandler } from '@/app/stores/pushConnection.store';
 import { createPinia, setActivePinia } from 'pinia';
@@ -57,6 +60,7 @@ describe('usePushConnection composable', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		pushHandlerRegistry.clear();
 
 		setActivePinia(createPinia());
 
@@ -94,6 +98,27 @@ describe('usePushConnection composable', () => {
 		// Verify that the correct handler was called.
 		expect(testWebhookReceived).toHaveBeenCalledTimes(1);
 		expect(testWebhookReceived).toHaveBeenCalledWith(testEvent, expect.any(Object));
+	});
+
+	it('delegates to a registered module push handler instead of the built-in switch', async () => {
+		const moduleHandler = vi.fn();
+		pushHandlerRegistry.register('executionStarted', moduleHandler);
+
+		pushConnection.initialize();
+
+		const handler = addEventListener.mock.calls[0][0];
+		const testEvent = {
+			type: 'executionStarted',
+			data: { executionId: '123' },
+		} as unknown as PushMessage;
+
+		handler(testEvent);
+		await Promise.resolve();
+
+		// The module handler owns the type, so the built-in handler is skipped.
+		expect(moduleHandler).toHaveBeenCalledTimes(1);
+		expect(moduleHandler).toHaveBeenCalledWith(testEvent, expect.any(Object));
+		expect(executionStarted).not.toHaveBeenCalled();
 	});
 
 	it('should call removeEventListener when terminate is called', () => {
