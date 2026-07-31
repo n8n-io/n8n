@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.test.ts
+  s_7f6892c82787fb::t_2d35d462f7c0eb 22
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_7f6892c82787fb::t_2d35d462f7c0eb 919,1217,1219,1227
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.test.ts
+  s_7f6892c82787fb::t_2d35d462f7c0eb 60
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_7f6892c82787fb::t_2d35d462f7c0eb 813-816
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.test.ts
+  s_7f6892c82787fb::t_2d35d462f7c0eb 45,72,78
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_7f6892c82787fb::t_2277cab07ac8cd 12
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_7f6892c82787fb::t_2277cab07ac8cd 23
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.test.ts
+  s_7f6892c82787fb::t_2d35d462f7c0eb 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "b534aa28d3e388b4cdddc56354d0d5adce809ed8",
+  "prompts": {},
+  "sessions": {
+    "s_7f6892c82787fb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb348-56e3-7b80-b2fd-c2828872909c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
