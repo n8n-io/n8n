@@ -1409,9 +1409,11 @@ export interface IPollFunctions
 	getCursor(): Promise<PollCursor | null>;
 	/**
 	 * Stages the complete cursor for the current poll, dropping any key a previous
-	 * cursor carried. It is persisted once the poll's items are handed off.
+	 * cursor carried. It is persisted once the poll's items are handed off; a poll
+	 * that emits nothing only persists it when `persistOnEmpty` is set, for a source
+	 * whose cursor must still advance to avoid re-walking an already-seen range.
 	 */
-	setCursor(cursor: PollCursor): void;
+	setCursor(cursor: PollCursor, options?: { persistOnEmpty?: boolean }): void;
 	/** Persists a cursor staged by a poll that emitted no items. Called by the tick engines, never by a node. */
 	__commitCursor?(): Promise<void>;
 	/**

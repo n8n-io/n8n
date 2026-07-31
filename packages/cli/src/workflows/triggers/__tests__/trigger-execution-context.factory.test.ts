@@ -808,7 +808,7 @@ describe('TriggerExecutionContextFactory', () => {
 			const staged = { lastItemId: 'a' };
 
 			await context.__runPoll(async () => {
-				context.setCursor(staged);
+				context.setCursor(staged, { persistOnEmpty: true });
 				staged.lastItemId = 'mutated-after-staging';
 				await context.__commitCursor();
 			});
@@ -836,15 +836,20 @@ describe('TriggerExecutionContextFactory', () => {
 			{
 				title: 'replaced a staged cursor with another',
 				stage: () => {
-					context.setCursor({ lastItemId: 'a', etag: 'v1' });
-					context.setCursor({ lastItemId: 'b' });
+					context.setCursor({ lastItemId: 'a', etag: 'v1' }, { persistOnEmpty: true });
+					context.setCursor({ lastItemId: 'b' }, { persistOnEmpty: true });
 				},
 				committed: { lastItemId: 'b' },
 			},
 			{
 				title: 'staged one cursor',
-				stage: () => context.setCursor({ lastItemId: 'a' }),
+				stage: () => context.setCursor({ lastItemId: 'a' }, { persistOnEmpty: true }),
 				committed: { lastItemId: 'a' },
+			},
+			{
+				title: 'staged a cursor without opting into persistOnEmpty',
+				stage: () => context.setCursor({ lastItemId: 'a' }),
+				committed: null,
 			},
 		])('commits $committed when the poll $title', async ({ stage, committed }) => {
 			buildDurableContext();
@@ -906,7 +911,7 @@ describe('TriggerExecutionContextFactory', () => {
 				buildDurableContext();
 
 				await context.__runPoll(async () => {
-					context.setCursor({ lastItemId: 'a' });
+					context.setCursor({ lastItemId: 'a' }, { persistOnEmpty: true });
 					await carry();
 				});
 				await sleep(0);
@@ -936,7 +941,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 			await expect(
 				context.__runPoll(async () => {
-					context.setCursor({ lastItemId: 'a' });
+					context.setCursor({ lastItemId: 'a' }, { persistOnEmpty: true });
 					await context.__commitCursor();
 				}),
 			).rejects.toThrow(commitError);
