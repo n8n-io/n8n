@@ -69,7 +69,7 @@ const NOT_OFFLOADABLE_GUIDANCE =
 	'In scaling mode a response is relayed to the main instance through the queue, which limits how large it can be. Only a response body can be stored for the main instance to stream instead, so raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX to relay a payload this large.';
 
 const STORE_LIMIT_GUIDANCE =
-	'A response over N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX is stored for the main instance to stream, so the store applies its own size limit above that one. In database mode raise N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE, up to the 1 GB a database column holds, or set N8N_DEFAULT_BINARY_DATA_MODE to s3 or azure, which have no such limit.';
+	'A response over N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX is stored for the main instance to stream, so the store applies its own size limit above that one. In database mode raise N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE, up to the 1 GB a database column holds. The filesystem, s3 and azure modes have no such limit, so setting N8N_DEFAULT_BINARY_DATA_MODE to one of those lifts it, as long as every instance reads the same store.';
 
 export type RelayContext = { workflowId: string; executionId: string };
 

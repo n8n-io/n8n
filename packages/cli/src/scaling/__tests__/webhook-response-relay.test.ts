@@ -287,6 +287,21 @@ describe('WebhookResponseRelay', () => {
 			);
 			expect((error as WebhookResponseTooLargeError).cause).toBeInstanceOf(FileTooLargeError);
 		});
+
+		it('names every store mode without a size limit of its own', async () => {
+			const { relay, binaryDataService } = buildRelay();
+			binaryDataService.store.mockRejectedValue(
+				new FileTooLargeError({ fileSizeMb: 600, maxFileSizeMb: 512, fileId: 'file-1' }),
+			);
+
+			const error = await relay
+				.prepare(fullResponse('x'.repeat(3 * ONE_MIB)), ctx)
+				.catch((e: WebhookResponseTooLargeError) => e);
+
+			expect((error as WebhookResponseTooLargeError).description).toContain(
+				'filesystem, s3 and azure',
+			);
+		});
 	});
 
 	describe('prepare, over the limit with offload turned off', () => {
