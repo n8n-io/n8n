@@ -43,30 +43,25 @@ export function parseTemplatedAuthField<T>(raw: unknown, fallback: T): T {
 	return jsonParse<T>(raw, { fallbackValue: fallback });
 }
 
+/** All string leaves of a parsed template, in depth-first encounter order. */
+function stringLeaves(value: unknown): string[] {
+	if (typeof value === 'string') return [value];
+	if (Array.isArray(value)) return value.flatMap(stringLeaves);
+	if (typeof value === 'object' && value !== null) {
+		return Object.values(value).flatMap(stringLeaves);
+	}
+	return [];
+}
+
 /** All `{{marker}}` names in the template, deduplicated in encounter order. */
 export function extractTemplateMarkers(template: unknown): string[] {
-	const markers: string[] = [];
-	const seen = new Set<string>();
-	const collect = (value: unknown): void => {
-		if (typeof value === 'string') {
-			for (const match of value.matchAll(PLACEHOLDER_MARKER_REGEX)) {
-				if (!seen.has(match[1])) {
-					seen.add(match[1]);
-					markers.push(match[1]);
-				}
-			}
-			return;
-		}
-		if (Array.isArray(value)) {
-			value.forEach(collect);
-			return;
-		}
-		if (typeof value === 'object' && value !== null) {
-			Object.values(value).forEach(collect);
-		}
-	};
-	collect(template);
-	return markers;
+	return [
+		...new Set(
+			stringLeaves(template).flatMap((leaf) =>
+				[...leaf.matchAll(PLACEHOLDER_MARKER_REGEX)].map((match) => match[1]),
+			),
+		),
+	];
 }
 
 /**
@@ -76,24 +71,11 @@ export function extractTemplateMarkers(template: unknown): string[] {
  */
 function markerPrefix(template: unknown, name: string): string {
 	const marker = new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`);
-	let prefix = '';
-	const visit = (value: unknown): void => {
-		if (prefix) return;
-		if (typeof value === 'string') {
-			const match = marker.exec(value);
-			if (match && match.index > 0) prefix = value.slice(0, match.index);
-			return;
-		}
-		if (Array.isArray(value)) {
-			value.forEach(visit);
-			return;
-		}
-		if (typeof value === 'object' && value !== null) {
-			Object.values(value).forEach(visit);
-		}
-	};
-	visit(template);
-	return prefix;
+	for (const leaf of stringLeaves(template)) {
+		const match = marker.exec(leaf);
+		if (match && match.index > 0) return leaf.slice(0, match.index);
+	}
+	return '';
 }
 
 /** Trim a pasted value and strip a duplicated template prefix. Expressions
@@ -111,18 +93,16 @@ export function parsePlaceholderDefs(raw: unknown): TemplatedAuthPlaceholderDef[
 	if (!Array.isArray(parsed)) return [];
 	return parsed.filter(
 		(def): def is TemplatedAuthPlaceholderDef =>
-			typeof def === 'object' &&
-			def !== null &&
-			typeof (def as { name?: unknown }).name === 'string',
+			typeof (def as { name?: unknown } | null)?.name === 'string',
 	);
 }
 
 export function parsePlaceholderValues(raw: unknown): Record<string, string> {
 	const parsed = parseTemplatedAuthField<unknown>(raw, {});
 	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
-	const values: Record<string, string> = {};
-	for (const [key, value] of Object.entries(parsed)) {
-		if (typeof value === 'string') values[key] = value;
-	}
-	return values;
+	return Object.fromEntries(
+		Object.entries(parsed).filter(
+			(entry): entry is [string, string] => typeof entry[1] === 'string',
+		),
+	);
 }

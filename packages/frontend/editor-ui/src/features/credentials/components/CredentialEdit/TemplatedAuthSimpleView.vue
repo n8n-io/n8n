@@ -197,10 +197,10 @@ function onCodesInput(value: string) {
 	emitSetupUpdate('acceptedStatusCodes', codes.length ? JSON.stringify(codes) : '');
 }
 
-const typeOptions = computed(() => [
+const typeOptions = [
 	{ label: i18n.baseText('credentialEdit.templatedAuth.fieldType.secret'), value: 'password' },
 	{ label: i18n.baseText('credentialEdit.templatedAuth.fieldType.plain'), value: 'plain' },
-]);
+];
 </script>
 
 <template>
@@ -274,7 +274,7 @@ const typeOptions = computed(() => [
 						:model-value="templateText"
 						type="textarea"
 						:rows="6"
-						:class="$style.code"
+						:class="$style.mono"
 						data-test-id="templated-auth-template-input"
 						@update:model-value="onTemplateInput"
 					/>
@@ -447,18 +447,15 @@ const typeOptions = computed(() => [
 	flex-direction: column;
 }
 
-.code {
+.mono {
+	:global(input),
 	:global(textarea) {
 		font-family: var(--font-family--monospace);
 		font-size: var(--font-size--2xs);
-		line-height: 1.6;
 	}
-}
 
-.mono {
-	:global(input) {
-		font-family: var(--font-family--monospace);
-		font-size: var(--font-size--2xs);
+	:global(textarea) {
+		line-height: 1.6;
 	}
 }
 
