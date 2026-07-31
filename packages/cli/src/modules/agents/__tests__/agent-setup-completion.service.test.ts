@@ -9,6 +9,7 @@ import type { Telemetry } from '@/telemetry';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -38,16 +39,20 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 function makeService() {
 	const agentValidationService = mock<AgentValidationService>();
 	const telemetry = mock<Telemetry>();
+	const agentRepository = mock<AgentRepository>();
 
 	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 		status: 'valid',
 		issues: [],
 	});
+	// The claim wins by default; tests that model a lost race override this.
+	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 
 	return {
-		service: new AgentSetupCompletionService(agentValidationService, telemetry),
+		service: new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		agentValidationService,
 		telemetry,
+		agentRepository,
 	};
 }
 
@@ -57,8 +62,8 @@ describe('AgentSetupCompletionService', () => {
 	});
 
 	describe('recordIfSetupComplete', () => {
-		it('stamps and reports the configured capabilities once the agent is publishable', async () => {
-			const { service, telemetry } = makeService();
+		it('claims the marker and reports the configured capabilities once the agent is publishable', async () => {
+			const { service, telemetry, agentRepository } = makeService();
 			const agent = makeAgent({
 				schema: {
 					...baseConfig,
@@ -69,11 +74,14 @@ describe('AgentSetupCompletionService', () => {
 			});
 
 			const emit = await service.recordIfSetupComplete(agent, projectId, credentialProvider, user);
-			expect(agent.setupCompletedAt).toBeInstanceOf(Date);
+			// Nothing is claimed or reported until the caller's own write succeeded.
+			expect(agentRepository.claimSetupCompleted).not.toHaveBeenCalled();
 			expect(telemetry.track).not.toHaveBeenCalled();
 
-			emit?.();
+			await emit?.();
 
+			expect(agentRepository.claimSetupCompleted).toHaveBeenCalledWith(agentId, expect.any(Date));
+			expect(agent.setupCompletedAt).toBeInstanceOf(Date);
 			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED, {
 				agent_id: agentId,
 				project_id: projectId,
@@ -89,6 +97,23 @@ describe('AgentSetupCompletionService', () => {
 				trigger_count: 1,
 				status: 'draft',
 			});
+		});
+
+		it('stays silent when a concurrent request already claimed the marker', async () => {
+			const { service, telemetry, agentRepository } = makeService();
+			agentRepository.claimSetupCompleted.mockResolvedValue(false);
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					tools: [{ type: 'custom', id: 'tool-1' }],
+				} as unknown as AgentJsonConfig,
+			});
+
+			const emit = await service.recordIfSetupComplete(agent, projectId, credentialProvider, user);
+			await emit?.();
+
+			expect(agent.setupCompletedAt).toBeNull();
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 
 		it('stays silent for an agent that is publishable but does nothing yet', async () => {
@@ -164,7 +189,7 @@ describe('AgentSetupCompletionService', () => {
 	});
 
 	describe('recordPublishedSetupComplete', () => {
-		it('counts the snapshot being published and reports it as production', () => {
+		it('counts the snapshot being published and reports it as production', async () => {
 			const { service, telemetry } = makeService();
 			const agent = makeAgent({
 				schema: { ...baseConfig, tools: [] } as unknown as AgentJsonConfig,
@@ -179,7 +204,7 @@ describe('AgentSetupCompletionService', () => {
 			// The publish transaction sets these before the caller emits.
 			agent.activeVersionId = 'version-1';
 			agent.versionId = 'version-1';
-			emit?.();
+			await emit?.();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,

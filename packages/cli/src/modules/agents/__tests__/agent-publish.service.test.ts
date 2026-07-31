@@ -116,6 +116,7 @@ function makeService() {
 		configurable: true,
 	});
 
+	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	agentHistoryRepository.saveVersion.mockResolvedValue(makeHistory());
 	customToolsService.snapshotConfiguredTools.mockReturnValue(null);
 	chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
@@ -147,7 +148,7 @@ function makeService() {
 		agentValidationService,
 		credentialsService,
 		telemetry,
-		new AgentSetupCompletionService(agentValidationService, telemetry),
+		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 	);
 
 	return {

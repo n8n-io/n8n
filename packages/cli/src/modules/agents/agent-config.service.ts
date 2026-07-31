@@ -239,8 +239,8 @@ export class AgentConfigService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		// Stamped before the save so the marker rides along with this write, and
-		// emitted only once that write succeeded.
+		// Gate evaluated against the state about to be written; the marker is
+		// claimed and reported only once that write succeeded.
 		const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
 			entity,
 			projectId,
@@ -250,7 +250,7 @@ export class AgentConfigService {
 
 		const saved = await this.agentRepository.save(entity);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
-		emitSetupCompleted?.();
+		await emitSetupCompleted?.();
 
 		if (tasksProvided) {
 			const referencedTaskIds = new Set((validatedConfig.tasks ?? []).map((ref) => ref.id));

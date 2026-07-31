@@ -63,6 +63,7 @@ function makeService() {
 		issues: [],
 	});
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
@@ -82,7 +83,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
-		new AgentSetupCompletionService(agentValidationService, telemetry),
+		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 	);
 
 	return {
@@ -633,7 +634,7 @@ describe('AgentConfigService', () => {
 			).rejects.toThrow('cannot use itself');
 		});
 
-		it('reports setup completion with the marker persisted by the same save', async () => {
+		it('reports setup completion after claiming the marker', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			const agent = makeAgent({ tools: storedCustomTool });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -643,8 +644,7 @@ describe('AgentConfigService', () => {
 				tools: [{ type: 'custom', id: 'tool_1' }],
 			} as unknown as AgentJsonConfig);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
-			expect(saved.setupCompletedAt).toBeInstanceOf(Date);
+			expect(agentRepository.claimSetupCompleted).toHaveBeenCalledWith(agentId, expect.any(Date));
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
 				expect.objectContaining({ agent_id: agentId, tool_count: 1 }),
@@ -665,6 +665,7 @@ describe('AgentConfigService', () => {
 				} as unknown as AgentJsonConfig),
 			).rejects.toThrow('db down');
 
+			expect(agentRepository.claimSetupCompleted).not.toHaveBeenCalled();
 			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 	});

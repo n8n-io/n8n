@@ -8,6 +8,7 @@ import { Telemetry } from '@/telemetry';
 
 import { AgentValidationService } from './agent-validation.service';
 import type { Agent } from './entities/agent.entity';
+import { AgentRepository } from './repositories/agent.repository';
 import {
 	configuredCapabilityKinds,
 	countAgentCapabilities,
@@ -15,8 +16,8 @@ import {
 	type AgentCapabilityCounts,
 } from './utils/agent-capabilities';
 
-/** Called by the caller once its own write has persisted the stamp. */
-type EmitSetupCompleted = () => void;
+/** Called by the caller once its own write has persisted. */
+type EmitSetupCompleted = () => Promise<void>;
 
 /**
  * Marks the first moment an agent is fully set up: it would pass the publish
@@ -24,16 +25,18 @@ type EmitSetupCompleted = () => void;
  *
  * `agents.setupCompletedAt` makes that a once-per-agent fact rather than a
  * per-save one, so the funnel milestone can't be double-counted across
- * sessions, processes or write paths. Both entry points stamp the entity
- * without saving it; the caller persists the stamp as part of the write it was
- * already making, then invokes the returned callback so a failed write never
- * reports a completion.
+ * sessions, processes or write paths. Both entry points only evaluate the gate;
+ * the caller invokes the returned callback once its own write succeeded — so a
+ * failed write never reports a completion — and the callback then claims the
+ * marker with a conditional update. Concurrent requests all attempt the claim,
+ * but only the one that actually flipped the column reports the event.
  */
 @Service()
 export class AgentSetupCompletionService {
 	constructor(
 		private readonly agentValidationService: AgentValidationService,
 		private readonly telemetry: Telemetry,
+		private readonly agentRepository: AgentRepository,
 	) {}
 
 	/**
@@ -57,7 +60,7 @@ export class AgentSetupCompletionService {
 		);
 		if (validation.status !== 'valid') return null;
 
-		return this.stamp(agent, projectId, counts, user);
+		return this.claim(agent, projectId, counts, user);
 	}
 
 	/**
@@ -79,7 +82,7 @@ export class AgentSetupCompletionService {
 		const counts = countAgentCapabilities(config, agent.integrations);
 		if (!this.isPending(agent, counts)) return null;
 
-		return this.stamp(agent, projectId, counts, user);
+		return this.claim(agent, projectId, counts, user);
 	}
 
 	/** Not yet marked, and configured with at least one capability. */
@@ -87,16 +90,20 @@ export class AgentSetupCompletionService {
 		return !agent.setupCompletedAt && totalAgentCapabilities(counts) > 0;
 	}
 
-	private stamp(
+	private claim(
 		agent: Agent,
 		projectId: string,
 		counts: AgentCapabilityCounts,
 		user?: User,
 	): EmitSetupCompleted {
-		agent.setupCompletedAt = new Date();
-
-		return () => {
+		return async () => {
 			try {
+				const completedAt = new Date();
+				const claimed = await this.agentRepository.claimSetupCompleted(agent.id, completedAt);
+				// Another request won the race and already reported the milestone.
+				if (!claimed) return;
+				agent.setupCompletedAt = completedAt;
+
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED, {
 					agent_id: agent.id,
 					project_id: projectId,
@@ -116,7 +123,7 @@ export class AgentSetupCompletionService {
 							: 'draft',
 				});
 			} catch {
-				// Telemetry must never fail a write that already succeeded.
+				// Neither the claim nor the telemetry may fail a write that already succeeded.
 			}
 		};
 	}

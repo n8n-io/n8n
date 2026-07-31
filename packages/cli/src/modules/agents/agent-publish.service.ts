@@ -137,7 +137,7 @@ export class AgentPublishService {
 		);
 
 		// Backstop: a channel connect publishes the agent in the same request that
-		// adds its first capability, bypassing the config-save path. Stamping here
+		// adds its first capability, bypassing the config-save path. Marking here
 		// keeps "setup completed" a superset of "published".
 		const emitSetupCompleted = this.setupCompletionService.recordPublishedSetupComplete(
 			agent,
@@ -183,7 +183,7 @@ export class AgentPublishService {
 			source,
 			version_id: agent.activeVersionId!,
 		});
-		emitSetupCompleted?.();
+		await emitSetupCompleted?.();
 
 		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
