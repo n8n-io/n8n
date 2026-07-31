@@ -375,7 +375,7 @@ export class TriggerExecutionContextFactory {
 			// what it set within one poll sees its own value.
 			const getCursor = async () => {
 				const staged = stagedCursorStore.getStore();
-				if (staged?.cursor !== undefined && staged?.cursor !== null) return { ...staged.cursor };
+				if (staged?.cursor != null) return { ...staged.cursor };
 
 				return await this.pollCursorService.readCursor(
 					workflowData.id,
