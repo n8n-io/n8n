@@ -6,6 +6,13 @@ import type { ChatMessageStatus, ToolCallState } from './constants';
 
 export type { ChatMessageStatus, ToolCallState };
 
+export interface ThinkingSegment {
+	id: string;
+	content: string;
+	startTime?: number;
+	endTime?: number;
+}
+
 export interface ToolCall {
 	tool: string;
 	toolCallId: string;
@@ -32,6 +39,14 @@ export interface ToolCall {
 	 * input).
 	 */
 	suspendPayload?: unknown;
+	/** Live progress of a delegated child, streamed while the delegation runs
+	 *  and restored from history when a `childTrace` was persisted on the
+	 *  parent's execution timeline. */
+	childProgress?: {
+		text: string;
+		reasoningSegments: ThinkingSegment[];
+		steps: Array<{ toolCallId: string; toolName: string; running: boolean }>;
+	};
 }
 
 interface InteractivePayloadBase {
@@ -91,13 +106,6 @@ export interface ChatMessageAttachment {
 	fileId?: string;
 	/** Local file backing the optimistic echo of a just-sent message (no fileId yet). */
 	file?: File;
-}
-
-export interface ThinkingSegment {
-	id: string;
-	content: string;
-	startTime?: number;
-	endTime?: number;
 }
 
 export interface AgentsChatMessage {
