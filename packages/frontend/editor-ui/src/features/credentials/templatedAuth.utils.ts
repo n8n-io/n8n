@@ -4,6 +4,12 @@ import { isExpression, jsonParse } from 'n8n-workflow';
  * Helpers for Templated Custom Auth (`httpTemplatedCustomAuth`) credentials:
  * the template's `{{marker}}`s are the source of truth for which inputs a
  * simple view renders; placeholder defs only contribute labels and masking.
+ *
+ * Markers are NOT n8n expressions: they are plain named placeholders that the
+ * server substitutes per JSON leaf with stored values, never evaluated (an
+ * agent/user-supplied template must not become an eval surface). Expressions
+ * only appear as placeholder *values* (e.g. `={{ $secrets.vault.key }}`),
+ * where the platform's expression handling applies.
  */
 
 export const TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE = 'httpTemplatedCustomAuth';
@@ -18,7 +24,11 @@ export type TemplatedAuthPlaceholderDef = {
 	optional?: boolean;
 };
 
-const TEMPLATE_MARKER_REGEX = /\{\{\s*([\w.-]+)\s*\}\}/g;
+// Must stay in lockstep with PLACEHOLDER_MARKER_REGEX in
+// packages/nodes-base/utils/templated-auth.ts — the resolver defines which
+// markers get substituted; anything else is left literal, so a looser pattern
+// here would render inputs the server never fills.
+const PLACEHOLDER_MARKER_REGEX = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
 /**
  * Server-side redaction sentinel for placeholder-value JSON leaves (see
@@ -39,7 +49,7 @@ export function extractTemplateMarkers(template: unknown): string[] {
 	const seen = new Set<string>();
 	const collect = (value: unknown): void => {
 		if (typeof value === 'string') {
-			for (const match of value.matchAll(TEMPLATE_MARKER_REGEX)) {
+			for (const match of value.matchAll(PLACEHOLDER_MARKER_REGEX)) {
 				if (!seen.has(match[1])) {
 					seen.add(match[1]);
 					markers.push(match[1]);
