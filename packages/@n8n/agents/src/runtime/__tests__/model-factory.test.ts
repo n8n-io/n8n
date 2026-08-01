@@ -393,6 +393,18 @@ describe('createModel', () => {
 			expect(model.includeUsage).toBe(true);
 		});
 
+		it('should create model for wafer via openai-compatible', () => {
+			const model = createModel({
+				id: 'wafer/Kimi-K3',
+				apiKey: 'wafer-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('wafer');
+			expect(model.modelId).toBe('Kimi-K3');
+			expect(model.apiKey).toBe('wafer-test');
+			expect(model.baseURL).toBe('https://pass.wafer.ai/v1');
+			expect(model.includeUsage).toBe(true);
+		});
+
 		it('should create model for vertex Anthropic with project/location/credentials', () => {
 			const credentials = {
 				type: 'service_account',

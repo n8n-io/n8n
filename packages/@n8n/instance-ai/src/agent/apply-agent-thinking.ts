@@ -107,6 +107,11 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 		return;
 	}
 
+	if (provider === 'wafer') {
+		agent.thinking('wafer', { reasoningEffort: 'medium' });
+		return;
+	}
+
 	if (provider === 'openai') {
 		if (isGlm52Model(modelId)) {
 			// Legacy OpenAI-compatible Baseten routing — same GLM effort mapping.

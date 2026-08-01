@@ -127,6 +127,20 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			})(model);
 		},
 	},
+	wafer: {
+		// OpenAI-compatible HTTP (pass.wafer.ai); Bearer auth + chat/completions.
+		build: (creds, model, fetch) => {
+			const { createOpenAICompatible } =
+				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+			return createOpenAICompatible({
+				name: 'wafer',
+				baseURL: creds.baseURL ?? 'https://pass.wafer.ai/v1',
+				apiKey: creds.apiKey,
+				fetch,
+				includeUsage: true,
+			})(model);
+		},
+	},
 	anthropic: {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =

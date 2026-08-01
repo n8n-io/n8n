@@ -149,6 +149,13 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
 	},
+	wafer: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
 	cohere: {
 		thinking: false,
 		promptCaching: false,

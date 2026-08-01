@@ -20,6 +20,7 @@ describe('provider-capabilities', () => {
 		expect(PROVIDER_CAPABILITIES.openrouter.thinking).toBe('reasoningEffort');
 		expect(PROVIDER_CAPABILITIES.baseten.thinking).toBe('reasoningEffort');
 		expect(PROVIDER_CAPABILITIES.fireworks.thinking).toBe('reasoningEffort');
+		expect(PROVIDER_CAPABILITIES.wafer.thinking).toBe('reasoningEffort');
 		expect(PROVIDER_CAPABILITIES.xai.thinking).toBe('reasoningEffort');
 	});
 
@@ -44,6 +45,7 @@ describe('provider-capabilities', () => {
 			'openrouter',
 			'baseten',
 			'fireworks',
+			'wafer',
 			'cohere',
 			'ollama',
 		];

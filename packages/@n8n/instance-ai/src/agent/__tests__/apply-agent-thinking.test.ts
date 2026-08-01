@@ -114,6 +114,14 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
+	it('enables medium reasoning effort for Wafer Kimi-K3', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'wafer/Kimi-K3');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('wafer', {
+			reasoningEffort: 'medium',
+		});
+	});
+
 	it('enables adaptive thinking for Vertex Claude', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'vertex/claude-opus-4-8');

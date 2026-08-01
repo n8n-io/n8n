@@ -157,6 +157,14 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return { fireworks: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
 		},
 	},
+	wafer: {
+		// OpenAI-compatible chat schema; reasoning maps to top-level `reasoning_effort`
+		// via providerOptions.wafer.
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return { wafer: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
+		},
+	},
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {

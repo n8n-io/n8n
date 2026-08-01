@@ -215,6 +215,22 @@ describe('thinkingToProviderOptions', () => {
 			fireworks: { reasoningEffort: 'high' },
 		});
 	});
+
+	it('wafer: maps reasoningEffort to providerOptions.wafer', () => {
+		expect(
+			getProviderQuirks('wafer').thinkingToProviderOptions?.({
+				reasoningEffort: 'high',
+			}),
+		).toEqual({
+			wafer: { reasoningEffort: 'high' },
+		});
+	});
+
+	it('wafer: defaults reasoning effort to medium', () => {
+		expect(getProviderQuirks('wafer').thinkingToProviderOptions?.({})).toEqual({
+			wafer: { reasoningEffort: 'medium' },
+		});
+	});
 });
 
 describe('buildCallProviderOptionDefaults', () => {
@@ -243,6 +259,7 @@ describe('resolveDefaultMaxOutputTokens', () => {
 		'fireworks/accounts/fireworks/models/kimi-k3',
 		'fireworks/accounts/fireworks/routers/kimi-k3-fast',
 		'openrouter/moonshotai/kimi-k3',
+		'wafer/Kimi-K3',
 	] as const)('raises the output cap to the Kimi K3 default for %s', (modelId) => {
 		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS);
 	});

@@ -24,6 +24,7 @@ const PROVIDER_API_KEY_ENV: Record<string, string> = {
 	openai: 'OPENAI_API_KEY',
 	baseten: 'BASETEN_API_KEY',
 	fireworks: 'FIREWORKS_API_KEY',
+	wafer: 'WAFER_API_KEY',
 	xai: 'XAI_API_KEY',
 };
 
