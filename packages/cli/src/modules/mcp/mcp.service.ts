@@ -30,6 +30,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -162,7 +163,13 @@ export class McpService {
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly moduleRegistry: ModuleRegistry,
-	) {}
+		private readonly eventService: EventService,
+	) {
+		// In queue mode, worker responses arrive via ScalingService as this event.
+		this.eventService.on('mcp-worker-response', ({ executionId, runData }) => {
+			this.handleWorkerResponse(executionId, runData);
+		});
+	}
 
 	/**
 	 * Resolves every PostHog-gated MCP feature for a user with a single flags

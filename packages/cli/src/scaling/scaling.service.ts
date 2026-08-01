@@ -479,9 +479,9 @@ export class ScalingService {
 					storedAt: executionData.storedAt,
 				};
 
-				const { McpService } = await import('@/modules/mcp/mcp.service.js');
-				const mcpService = Container.get(McpService);
-				mcpService.handleWorkerResponse(executionId, runData);
+				// Decoupled via event so scaling doesn't depend on the mcp module.
+				// The mcp module subscribes and forwards to its pending response.
+				this.eventService.emit('mcp-worker-response', { executionId, runData });
 			} else {
 				const { McpServer } = await import('@n8n/n8n-nodes-langchain/mcp/core');
 				const mcpServer = McpServer.instance(this.logger);
