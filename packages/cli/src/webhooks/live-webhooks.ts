@@ -138,7 +138,6 @@ export class LiveWebhooks implements IWebhookManager {
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
-			nativeParameterResolution: this.instanceCanResolveNatively,
 		});
 
 		const ownerProjectId = workflowData.shared?.find(
@@ -211,10 +210,15 @@ export class LiveWebhooks implements IWebhookManager {
 
 	/**
 	 * Under `N8N_EXPRESSION_ENGINE=vm` acquisition builds a V8 isolate per
-	 * request. Anything not proven below acquires eagerly.
+	 * request, which is worth skipping when the webhook phase provably evaluates
+	 * nothing: `WorkflowExpression` resolves those values natively. Anything not
+	 * proven below acquires eagerly.
+	 *
+	 * This is the whole of the kill switch: with it off, values still resolve
+	 * natively — same values — but the isolate is there for anything unproven.
 	 */
 	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
-		if (!this.instanceCanResolveNatively) return true;
+		if (!this.expressionEngineConfig.allowWebhookIsolateSkip) return true;
 		if (startNode === null) return true;
 		if (!ISOLATE_SKIP_NODE_TYPES.has(startNode.type)) return true;
 		if (!nodeParametersAreStatic(startNode)) return true;
@@ -224,12 +228,6 @@ export class LiveWebhooks implements IWebhookManager {
 		if (!webhooks?.length) return true;
 
 		return !webhooks.every((webhook) => valuesAreNativelyResolvable(webhook, webhook.resolve));
-	}
-
-	/** The legacy engine has no isolate to save, so it never resolves natively. */
-	private get instanceCanResolveNatively(): boolean {
-		const { engine, preferNativeWebhookResolution } = this.expressionEngineConfig;
-		return engine !== 'legacy' && preferNativeWebhookResolution;
 	}
 
 	private async loadWebhookExecutionData(

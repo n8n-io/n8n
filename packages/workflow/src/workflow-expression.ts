@@ -187,8 +187,12 @@ export class WorkflowExpression {
 	}
 
 	/**
-	 * Off unless the workflow opts in — see
-	 * {@link Workflow.nativeParameterResolution}.
+	 * Resolves a plain `$parameter` template without the engine, where that
+	 * provably yields the same value. Unconditional: it is a pure function of the
+	 * node's parameters and the template, so the only question is whether the
+	 * classification is right — see the parity suites, and the webhook-description
+	 * corpus test in `nodes-base`. What is gated is skipping the isolate, which
+	 * this makes possible; see `LiveWebhooks`.
 	 *
 	 * Reads the workflow's own node, since that is what the `$parameter` proxy
 	 * reads regardless of which node object the caller holds.
@@ -198,8 +202,6 @@ export class WorkflowExpression {
 		parameterValue: unknown,
 		nativeResolver?: NativeParameterResolvers[string],
 	): NativeResolution {
-		if (!this.workflow.nativeParameterResolution) return { resolved: false };
-
 		const ownNode = this.workflow.nodes[node.name];
 		if (ownNode === undefined) return { resolved: false };
 

@@ -53,8 +53,6 @@ export interface WorkflowParameters {
 	staticData?: IDataObject;
 	settings?: IWorkflowSettings;
 	pinData?: IPinData;
-	/** See {@link Workflow.nativeParameterResolution}. */
-	nativeParameterResolution?: boolean;
 }
 
 export class Workflow {
@@ -86,17 +84,8 @@ export class Workflow {
 
 	pinData?: IPinData;
 
-	/**
-	 * Whether description templates that are a plain `$parameter` read may be
-	 * resolved without the expression engine. Opt-in per workflow: a caller sets
-	 * it only when it also relies on the consequence — that no isolate needs
-	 * acquiring. See `LiveWebhooks`, the only caller today.
-	 */
-	readonly nativeParameterResolution: boolean;
-
 	constructor(parameters: WorkflowParameters) {
 		this.id = parameters.id as string; // @tech_debt Ensure this is not optional
-		this.nativeParameterResolution = parameters.nativeParameterResolution ?? false;
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 

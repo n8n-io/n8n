@@ -44,7 +44,7 @@ describe('LiveWebhooks', () => {
 	const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: false });
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
 	const expressionEngineConfig = mock<ExpressionEngineConfig>({
-		preferNativeWebhookResolution: true,
+		allowWebhookIsolateSkip: true,
 	});
 
 	let liveWebhooks: LiveWebhooks;
@@ -52,7 +52,7 @@ describe('LiveWebhooks', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		// `clearAllMocks` resets call history, not properties set on a mock
-		expressionEngineConfig.preferNativeWebhookResolution = true;
+		expressionEngineConfig.allowWebhookIsolateSkip = true;
 		liveWebhooks = new LiveWebhooks(
 			mockLogger(),
 			nodeTypes,
@@ -839,7 +839,7 @@ describe('LiveWebhooks', () => {
 		});
 
 		it('acquires when the kill switch is off', async () => {
-			expressionEngineConfig.preferNativeWebhookResolution = false;
+			expressionEngineConfig.allowWebhookIsolateSkip = false;
 			const request = setupMocks();
 
 			await liveWebhooks.executeWebhook(request, mock<Response>());

@@ -317,26 +317,15 @@ describe('matcher decisions and their parity', () => {
 	);
 });
 
-// The opt-in that makes the isolate skip safe: with it, every caller that reads
-// a description through `workflow.expression` — including ones in other
-// packages, e.g. `getNodeWebhookUrl` in n8n-core — resolves natively.
-describe('Workflow.nativeParameterResolution', () => {
+// What the isolate skip rests on: a read through `workflow.expression` resolves
+// natively wherever provable, for every caller — including ones in other
+// packages, e.g. `getNodeWebhookUrl` in n8n-core. Not gated by anything: the
+// classification decides, and these assert both of its answers.
+describe('resolution through workflow.expression', () => {
 	const isVm = process.env.N8N_EXPRESSION_ENGINE === 'vm';
 
-	const buildOptedInWorkflow = (parameters: INodeParameters) => {
-		const workflow = buildWorkflow(parameters);
-		return new Workflow({
-			id: workflow.id,
-			nodes: Object.values(workflow.nodes),
-			connections: {},
-			active: false,
-			nodeTypes,
-			nativeParameterResolution: true,
-		});
-	};
-
-	it('resolves without an isolate when opted in', () => {
-		const workflow = buildOptedInWorkflow({ path: 'hook', options: {} });
+	it('resolves a description template with no isolate acquired', () => {
+		const workflow = buildWorkflow({ path: 'hook', options: {} });
 		const node = workflow.getNode('Webhook')!;
 
 		// No `acquireIsolate()` anywhere in this test — the point of the feature
@@ -356,8 +345,8 @@ describe('Workflow.nativeParameterResolution', () => {
 		).toBe('hook');
 	});
 
-	it.runIf(isVm)('needs an isolate when not opted in', () => {
-		const workflow = buildWorkflow({ path: 'hook', options: {} });
+	it.runIf(isVm)('needs an isolate once a node parameter is an expression', () => {
+		const workflow = buildWorkflow({ path: 'hook', options: { onlyRunIf: '={{ true }}' } });
 		const node = workflow.getNode('Webhook')!;
 
 		expect(() =>
@@ -365,12 +354,12 @@ describe('Workflow.nativeParameterResolution', () => {
 		).toThrow();
 	});
 
-	it.runIf(isVm)('needs an isolate once a node parameter is an expression', () => {
-		const workflow = buildOptedInWorkflow({ path: 'hook', options: { onlyRunIf: '={{ true }}' } });
-		const node = workflow.getNode('Webhook')!;
+	it.runIf(isVm)('needs an isolate for a node the workflow does not hold', () => {
+		const workflow = buildWorkflow({ path: 'hook', options: {} });
+		const detached = { ...workflow.getNode('Webhook')!, name: 'Not in workflow' };
 
 		expect(() =>
-			workflow.expression.getSimpleParameterValue(node, description().path, 'internal', {}),
+			workflow.expression.getSimpleParameterValue(detached, description().path, 'internal', {}),
 		).toThrow();
 	});
 });
