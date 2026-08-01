@@ -137,8 +137,7 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
-	// The failure path shares the same `if (!recorded) return`, so one case covers both.
-	it('does not report completion when the step was taken over while it ran', async () => {
+	it('does not report completion when the status update is not recorded', async () => {
 		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
 		const queue = makeQueue();
 		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
