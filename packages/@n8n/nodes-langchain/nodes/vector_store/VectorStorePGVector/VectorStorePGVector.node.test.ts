@@ -98,7 +98,7 @@ describe('VectorStorePGVector.node', () => {
 	}
 
 	beforeEach(() => {
-		vi.resetAllMocks();
+		vi.clearAllMocks();
 		MockConfigurePostgres.mockResolvedValue({ db: { $pool: mockPool } } as never);
 		MockPGVectorStore.fromDocuments = vi.fn().mockResolvedValue({ client: { release: vi.fn() } });
 	});
@@ -109,7 +109,8 @@ describe('VectorStorePGVector.node', () => {
 			const node = new PGVectorNode.VectorStorePGVector();
 			const vs = await (node as any).getVectorStoreClient(context, undefined, {}, 0);
 
-			expect(mockPool.query).not.toHaveBeenCalled();
+			expect(mockPool.connect).not.toHaveBeenCalled();
+			expect(mockClient.query).not.toHaveBeenCalled();
 			// initialize() ran (table setup happens before table creation)
 			expect(vs._initializeClient).toHaveBeenCalled();
 			expect(vs.ensureTableInDatabase).toHaveBeenCalled();
@@ -138,7 +139,8 @@ describe('VectorStorePGVector.node', () => {
 			const node = new PGVectorNode.VectorStorePGVector();
 			await (node as any).populateVectorStore(context, {}, [{ pageContent: 'x', metadata: {} }], 0);
 
-			expect(mockPool.query).not.toHaveBeenCalled();
+			expect(mockPool.connect).not.toHaveBeenCalled();
+			expect(mockClient.query).not.toHaveBeenCalled();
 			expect(MockPGVectorStore.fromDocuments).toHaveBeenCalled();
 		});
 
