@@ -962,6 +962,11 @@ export interface InstanceAiBuilderDelegate {
 	>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
+	/** Whether the agent row exists. Used to tell a still-unspent id reservation
+	 *  apart from one whose agent has since been created. Rejects (rather than
+	 *  answering false) when the lookup itself fails, so a transient error cannot
+	 *  be mistaken for "does not exist". */
+	agentExists(agentId: string): Promise<boolean>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────

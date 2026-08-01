@@ -514,6 +514,16 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
+
+/**
+ * The config every agent starts from. Shared because the builder hashes this
+ * shape while the row does not exist yet and compares it against the row it
+ * later creates — a second copy drifting would reject the first `write_config`
+ * with a stale-hash error.
+ */
+export function blankAgentConfig(name: string): AgentJsonConfig {
+	return { name, model: '', instructions: '', tools: [], skills: [] };
+}
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;

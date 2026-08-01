@@ -6,7 +6,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { createAgentSkill } from './useAgentApi';
-import { useAgentDraftContext } from './useAgentDraftContext';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
 	AGENT_TOOLS_MODAL_KEY,
@@ -24,6 +23,7 @@ import type {
 	AgentJsonToolConfig,
 	AgentSkill,
 } from '../types';
+import type { EnsurePersisted } from './useAgentEnsurePersisted';
 
 /**
  * Telemetry seam for the capability actions.
@@ -83,6 +83,14 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 */
 	supportsToolApproval?: boolean;
 	telemetry?: AgentCapabilitiesTelemetry;
+	/**
+	 * Creates the agent when it is still a client-side draft, so a skill can be
+	 * the first thing written to it. Injected rather than taken from the draft
+	 * context because this composable runs inside the providing component, where
+	 * `inject` cannot see that component's own `provide`. Optional: hosts with no
+	 * draft concept (the agent node's NDV) omit it.
+	 */
+	ensurePersisted?: EnsurePersisted;
 }
 
 /**
@@ -103,6 +111,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		localSkills,
 		supportsToolApproval,
 		telemetry,
+		ensurePersisted,
 	} = deps;
 
 	const locale = useI18n();
@@ -110,7 +119,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const { showError, showMessage } = useToast();
-	const draft = useAgentDraftContext();
 
 	function onOpenAddToolModal() {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -439,7 +447,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						try {
 							// Creating a skill can be the very first thing done to a draft, so
 							// the agent may still need writing before it can own one.
-							await draft.ensurePersisted();
+							await ensurePersisted?.();
 							const result = await createAgentSkill(
 								rootStore.restApiContext,
 								targetProjectId,

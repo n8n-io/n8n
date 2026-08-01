@@ -12,6 +12,7 @@ import {
 import {
 	agentSkillSchema,
 	agentTaskSchema,
+	blankAgentConfig,
 	formatZodErrors,
 	PROVIDER_CAPABILITIES,
 	resolvePromptCaching,
@@ -33,6 +34,7 @@ import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -402,6 +404,16 @@ export class AgentsBuilderToolsService {
 							user,
 							telemetryContext,
 						);
+					} catch (e) {
+						return {
+							ok: false,
+							// Only the agent:create scope check is a permission problem; anything
+							// else is a real failure the model may legitimately retry.
+							stage: e instanceof UserError ? 'forbidden' : 'schema',
+							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+					try {
 						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
@@ -436,7 +448,7 @@ export class AgentsBuilderToolsService {
 					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
 					'read_config again before any later inspection or mutation — or ' +
 					'{ ok: false, stage, errors } on failure. ' +
-					'stage is "parse", "stale", "patch", or "schema". On stage: "stale", call read_config and retry ' +
+					'stage is "parse", "stale", "patch", "schema", or "forbidden". On stage: "stale", call read_config and retry ' +
 					'once using its fresh config and configHash.',
 			)
 			.input(
@@ -536,6 +548,16 @@ export class AgentsBuilderToolsService {
 							user,
 							telemetryContext,
 						);
+					} catch (e) {
+						return {
+							ok: false,
+							// Only the agent:create scope check is a permission problem; anything
+							// else is a real failure the model may legitimately retry.
+							stage: e instanceof UserError ? 'forbidden' : 'schema',
+							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+					try {
 						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
@@ -1086,7 +1108,15 @@ export class AgentsBuilderToolsService {
 			throw new UserError('You do not have permission to create agents in this project.');
 		}
 
-		await this.agentsService.create(projectId, pendingAgent.name, { id: agentId, user });
+		try {
+			await this.agentsService.create(projectId, pendingAgent.name, { id: agentId, user });
+		} catch (error) {
+			// Someone else — in practice the config panel sharing this minted id —
+			// created the row first. The postcondition is satisfied either way, so the
+			// caller's write proceeds instead of failing.
+			if (error instanceof ConflictError) return;
+			throw error;
+		}
 
 		if (telemetryContext?.threadId) {
 			this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
@@ -1108,14 +1138,7 @@ export class AgentsBuilderToolsService {
 			// every agent starts from. Returning it keeps `read_config` and the
 			// baseConfigHash handshake working on the first build turn.
 			if (pendingAgent) {
-				const template: AgentJsonConfig = {
-					name: pendingAgent.name,
-					model: '',
-					instructions: '',
-					tools: [],
-					skills: [],
-				};
-				return { ...snapshotFromConfig(template), status: 'draft' };
+				return { ...snapshotFromConfig(blankAgentConfig(pendingAgent.name)), status: 'draft' };
 			}
 			throw new Error('Agent not found');
 		}

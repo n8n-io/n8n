@@ -4,6 +4,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { connectIntegration, disconnectIntegration, getIntegrationStatus } from './useAgentApi';
+import { useAgentDraftContext } from './useAgentDraftContext';
 
 type Status = 'connected' | 'disconnected' | 'unknown';
 
@@ -77,6 +78,7 @@ export function syncAgentIntegrationStatusCache(
 
 export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 	const rootStore = useRootStore();
+	const draft = useAgentDraftContext();
 	const state = getOrCreate(projectId, agentId);
 
 	async function fetchStatus(integrationTypes: string[]): Promise<void> {
@@ -111,6 +113,9 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		credId: string,
 		settings?: AgentIntegrationSettings,
 	): Promise<{ status: string; agent?: Awaited<ReturnType<typeof connectIntegration>>['agent'] }> {
+		// The agent may still be a client-side draft; the channel cannot attach to a
+		// row that does not exist yet.
+		await draft.ensurePersisted();
 		state.loadingMap.value[type] = true;
 		state.errorMessages.value[type] = '';
 		state.errorIsConflict.value[type] = false;

@@ -250,15 +250,7 @@ watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () =>
 	if (showSection('tasks')) void reloadTasks();
 });
 
-async function openTaskModal(task: TaskRow | null) {
-	// The modal writes straight to `/:agentId/tasks`, so a draft has to exist
-	// before it opens rather than failing on confirm.
-	try {
-		await draft.ensurePersisted();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.builder.tasks.loadError'));
-		return;
-	}
+function openTaskModal(task: TaskRow | null) {
 	uiStore.openModalWithData({
 		name: AGENT_TASK_MODAL_KEY,
 		data: {
@@ -273,6 +265,9 @@ async function openTaskModal(task: TaskRow | null) {
 				: undefined,
 			onToggle: (payload: { id: string; enabled: boolean }) => emit('toggle-task', payload),
 			onSaved: () => emit('tasks-changed'),
+			// Persist on save, not on open — cancelling the modal must not create
+			// an empty agent for a draft.
+			ensurePersisted: draft.ensurePersisted,
 		},
 	});
 }

@@ -26,7 +26,7 @@ function makeController({
 	agentPublishService = mock<AgentPublishService>(),
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
-	agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>(),
+	agentConfigService = mock<Pick<AgentConfigService, 'updateConfig' | 'validateConfig'>>(),
 }: {
 	agentsService?: Mocked<
 		Pick<
@@ -37,7 +37,7 @@ function makeController({
 	agentPublishService?: Mocked<AgentPublishService>;
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
-	agentConfigService?: Mocked<Pick<AgentConfigService, 'updateConfig'>>;
+	agentConfigService?: Mocked<Pick<AgentConfigService, 'updateConfig' | 'validateConfig'>>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -164,6 +164,10 @@ describe('AgentsController create', () => {
 			agentPublishService,
 		} = makeController();
 		stubRunnableState(agentValidationService, agentPublishService);
+		agentConfigService.validateConfig.mockResolvedValue({
+			valid: true,
+			config: { instructions: 'Triage inbound tickets.', name: 'Triage Bot' },
+		} as never);
 		agentsService.create.mockResolvedValue({ id: 'minted-id', projectId: 'project-1' } as never);
 		agentsService.findById.mockResolvedValue({
 			id: 'minted-id',
@@ -180,6 +184,10 @@ describe('AgentsController create', () => {
 			} as never,
 		);
 
+		expect(agentConfigService.validateConfig).toHaveBeenCalledWith({
+			instructions: 'Triage inbound tickets.',
+			name: 'Triage Bot',
+		});
 		expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
 			'minted-id',
 			'project-1',
@@ -188,8 +196,35 @@ describe('AgentsController create', () => {
 		);
 	});
 
+	it('rejects an invalid initial config without creating the agent', async () => {
+		const { controller, agentsService, agentConfigService } = makeController();
+		agentConfigService.validateConfig.mockResolvedValue({
+			valid: false,
+			error: 'model is required',
+		});
+
+		await expect(
+			controller.create(
+				req,
+				undefined as never,
+				{
+					name: 'Triage Bot',
+					id: 'minted-id',
+					config: { model: 'nope' },
+				} as never,
+			),
+		).rejects.toThrow('Invalid initial Agent config: model is required');
+
+		expect(agentsService.create).not.toHaveBeenCalled();
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+	});
+
 	it('removes the agent again when its initial config is rejected', async () => {
 		const { controller, agentsService, agentConfigService } = makeController();
+		agentConfigService.validateConfig.mockResolvedValue({
+			valid: true,
+			config: { model: 'nope', name: 'Triage Bot' },
+		} as never);
 		agentsService.create.mockResolvedValue({ id: 'minted-id', projectId: 'project-1' } as never);
 		agentConfigService.updateConfig.mockRejectedValue(new Error('Invalid agent config'));
 

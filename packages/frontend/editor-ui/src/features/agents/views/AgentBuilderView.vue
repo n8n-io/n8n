@@ -11,6 +11,7 @@ import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdow
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
+	blankAgentConfig,
 	MAX_AGENT_FILE_SIZE_BYTES,
 	MAX_AGENT_FILE_SIZE_MB,
 	MAX_AGENT_FILES_PER_UPLOAD,
@@ -266,11 +267,22 @@ const { ensurePersisted } = useAgentEnsurePersisted({
 	isPending: isPendingAgent,
 	getConfig: () => localConfig.value,
 	getName: () => agentName.value || locale.baseText('agents.new.defaultName'),
+	isStale: (p, a) => isStaleAgentTarget(p, a),
 	onCreated: (created) => {
 		agent.value = created;
 		agentName.value = created.name;
 		upsertProjectAgentsListCache(projectId.value, created);
 		agentsEventBus.emit('agentUpdated', { agentId: created.id, source: 'agent-builder' });
+
+		// The agent-scoped loads `initialize()` skipped for the draft never get a
+		// second chance: `initialize` only reruns when `agentId` changes, and the
+		// whole point of minting the id client-side is that it does not.
+		void runAgentScopedLoads();
+	},
+	onConflict: async () => {
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		await Promise.all([fetchAgent(), fetchConfig(targetProjectId, targetAgentId)]);
 	},
 });
 
@@ -353,6 +365,9 @@ async function fetchAgent(
 	const data = await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	agent.value = data;
+	// Successful fetch proves the row exists — even when the Instance AI builder
+	// (not this panel) created it — so later writes must not re-POST a create.
+	isPendingAgent.value = false;
 	agentName.value = data.name;
 }
 
@@ -386,13 +401,7 @@ function seedPendingAgentDraft(targetProjectId: string, targetAgentId: string): 
 		createdAt: now,
 		updatedAt: now,
 	};
-	localConfig.value = {
-		name,
-		model: '',
-		instructions: '',
-		tools: [],
-		skills: [],
-	};
+	localConfig.value = blankAgentConfig(name);
 }
 
 async function fetchAgentFiles(
@@ -641,8 +650,8 @@ function bindPreviewSession() {
 }
 
 function warmAgentKnowledgeSandboxForPage() {
-	// A draft has no row, so warming its sandbox would 404. It warms on the next
-	// initialize, once the first write has created the agent.
+	// A draft has no row, so warming its sandbox would 404. It warms once the
+	// agent is created, via `onCreated` → `runAgentScopedLoads`.
 	if (isPendingAgent.value) return;
 	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value) return;
 
@@ -690,8 +699,12 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	// First save of a draft: the create carries the config, so there is no
 	// separate update to make afterwards.
 	if (isPendingAgent.value) {
-		await ensurePersisted();
-		return undefined;
+		const outcome = await ensurePersisted();
+		// The create carried this snapshot; nothing left to write.
+		if (outcome === 'created') return undefined;
+		// The row already existed with content newer than this draft snapshot —
+		// writing it would clobber what the builder just produced.
+		if (outcome === 'conflict') return 'skipped';
 	}
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// The write landed regardless of staleness below — tell other surfaces
@@ -968,6 +981,7 @@ const caps = useAgentCapabilitiesActions({
 			skill,
 		});
 	},
+	ensurePersisted,
 	telemetry: {
 		trackOpenedToolFromList: builderTelemetry.trackOpenedToolFromList,
 		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,
@@ -1226,6 +1240,46 @@ async function onHeaderAction(action: string) {
 	}
 }
 
+/**
+ * Agent-scoped work that `initialize()` skips for a draft. Shared with
+ * `onCreated` so materializing the row in place still warms files, sessions,
+ * triggers, and the knowledge sandbox — `initialize` itself will not rerun
+ * because the client-minted id stays stable.
+ */
+async function runAgentScopedLoads() {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	try {
+		await Promise.all([
+			fetchAgentFiles(),
+			refreshConfigValidation(projectId.value, agentId.value),
+			fetchConfig(projectId.value, agentId.value),
+		]);
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+
+		persistMissingPersonalisationGradient();
+
+		sessionsStore.stopAutoRefresh();
+		void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
+			sessionsStore.startAutoRefresh();
+		});
+
+		void (async () => {
+			// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
+			// will correct it once the user expands the Triggers section.
+			const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
+			if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+			const triggerTypes = integrations.map((i) => i.type);
+			const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
+			if (connected) connectedTriggers.value = connected;
+		})();
+
+		warmAgentKnowledgeSandboxForPage();
+	} catch (error: unknown) {
+		showError(error, locale.baseText('agents.builder.loadError'));
+	}
+}
+
 async function initialize() {
 	clearTimeout(externalRefreshTimer);
 	// A refresh queued for the previous agent must not fire against this one.
@@ -1262,12 +1316,12 @@ async function initialize() {
 		isPendingAgent.value = false;
 		repointConfigValidation(projectId.value, agentId.value);
 
-		// Kept in parallel: the agent and its config are the two loads the panel
-		// blocks on. `allSettled` so a draft's 404 lands here as a result instead
-		// of an unhandled rejection from the sibling call.
+		// The agent and its config are the two loads the panel blocks on.
+		// `allSettled` so a draft's expected 404 arrives as a result rather than
+		// an unhandled rejection.
 		const targetProjectId = projectId.value;
 		const targetAgentId = agentId.value;
-		const [agentResult] = await Promise.allSettled([
+		const [agentResult, configResult] = await Promise.allSettled([
 			fetchAgent(),
 			fetchConfig(targetProjectId, targetAgentId),
 		]);
@@ -1276,28 +1330,22 @@ async function initialize() {
 			if (!isArtifactMode.value || !isAgentNotFound(agentResult.reason)) {
 				throw agentResult.reason;
 			}
-			// A draft: no files, no sessions, nothing to validate. Everything below
-			// would only 404 against an agent that does not exist yet. Credentials
-			// and the integrations catalog are project-scoped, so those still load.
 			if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+			// A draft: no row, so everything agent-scoped below is skipped. The config
+			// fetch failed for the same reason, so its rejection is expected here.
 			seedPendingAgentDraft(targetProjectId, targetAgentId);
-			builderTelemetry.captureToolsBaseline();
-			builderTelemetry.captureSkillsBaseline();
-			builderTelemetry.captureTasksBaseline();
-			credentialsStore.setCredentials([]);
-			await Promise.all([
-				credentialsStore.fetchAllCredentialsForWorkflow({ projectId: targetProjectId }),
-				credentialsStore.fetchCredentialTypes(false),
-			]).catch(() => undefined);
-			void ensureIntegrationsCatalog(targetProjectId).catch(() => []);
-			return;
+		} else if (configResult.status === 'rejected') {
+			throw configResult.reason;
 		}
 
-		await Promise.all([fetchAgentFiles(), refreshConfigValidation(projectId.value, agentId.value)]);
-		persistMissingPersonalisationGradient();
+		if (!isPendingAgent.value) {
+			await runAgentScopedLoads();
+		}
+
 		builderTelemetry.captureToolsBaseline();
 		builderTelemetry.captureSkillsBaseline();
 		builderTelemetry.captureTasksBaseline();
+
 		// Keep agent credential pickers aligned with the workflow editor: load only
 		// credentials the current user can use in this project context.
 		credentialsStore.setCredentials([]);
@@ -1305,22 +1353,15 @@ async function initialize() {
 			credentialsStore.fetchAllCredentialsForWorkflow({ projectId: projectId.value }),
 			credentialsStore.fetchCredentialTypes(false),
 		]).catch(() => undefined);
+
 		// Stop any in-flight auto-refresh from the previous agent before kicking
 		// off a new fetch — keeps the store tied to the current project/agent.
-		sessionsStore.stopAutoRefresh();
-		void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
-			sessionsStore.startAutoRefresh();
-		});
-		void (async () => {
-			// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
-			// will correct it once the user expands the Triggers section.
-			const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-			const triggerTypes = integrations.map((i) => i.type);
-			const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
-			if (connected) connectedTriggers.value = connected;
-		})();
+		// Non-draft path already restarted refresh inside `runAgentScopedLoads`.
+		if (isPendingAgent.value) {
+			sessionsStore.stopAutoRefresh();
+		}
 
-		if (isPreviewMode.value) bindPreviewSession();
+		if (isPreviewMode.value && !isPendingAgent.value) bindPreviewSession();
 
 		if (!isArtifactMode.value && (route.query.prompt || route.query.expandBuildChat)) {
 			void router.replace({
@@ -1332,6 +1373,11 @@ async function initialize() {
 	} finally {
 		initialized.value = true;
 		void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
+		// Warmup for a normal (non-draft) page load — `initialized` is true here, so
+		// the guard inside warmAgentKnowledgeSandboxForPage does not fire. The sibling
+		// call inside runAgentScopedLoads is inert during initialize (initialized is
+		// still false there) and only does work when that helper is reached from
+		// onCreated after a draft materializes.
 		warmAgentKnowledgeSandboxForPage();
 	}
 }

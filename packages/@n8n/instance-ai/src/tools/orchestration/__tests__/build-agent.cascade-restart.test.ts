@@ -276,6 +276,8 @@ function createBuilderDelegate(
 		listAgents: async () => await Promise.resolve([]),
 
 		resolveAgentName: async () => await Promise.resolve(undefined),
+
+		agentExists: async () => await Promise.resolve(false),
 	};
 }
 

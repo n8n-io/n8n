@@ -1536,7 +1536,8 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		expect(getAgentMock).toHaveBeenCalledTimes(2);
-		expect(fetchConfigMock).toHaveBeenCalledTimes(2);
+		// init fetchConfig + runAgentScopedLoads fetchConfig + replayed external refresh
+		expect(fetchConfigMock).toHaveBeenCalledTimes(3);
 		expect(getAgentMock).toHaveBeenLastCalledWith(
 			{ baseUrl: 'http://localhost:5678' },
 			'p-bus-init',

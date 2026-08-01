@@ -12,6 +12,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentConfigService } from './agent-config.service';
@@ -35,24 +36,32 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 
+		// Validate before create so a rejected config cannot emit USER_CREATED_AGENT
+		// for a row that is then rolled back. Mirrors the MCP create path.
+		const initialConfig = payload.config ? { ...payload.config, name: payload.name } : undefined;
+		if (initialConfig) {
+			const validation = await this.agentConfigService.validateConfig(initialConfig);
+			if (!validation.valid) {
+				throw new BadRequestError(`Invalid initial Agent config: ${validation.error}`);
+			}
+		}
+
 		const agent = await this.agentsService.create(projectId, payload.name, {
 			id: payload.id,
 			user: req.user,
 		});
 
-		if (payload.config) {
-			// A draft's first content arrives with the row. If applying it fails the
-			// agent is removed again, so a rejected config can't leave an empty agent
-			// behind — the same rollback the MCP create path uses.
+		if (initialConfig) {
+			// Backstop for failures validation cannot catch — remove the row so a
+			// rejected config can't leave an empty agent behind.
 			try {
-				await this.agentConfigService.updateConfig(
-					agent.id,
-					projectId,
-					{ ...payload.config, name: payload.name },
-					req.user,
-				);
+				await this.agentConfigService.updateConfig(agent.id, projectId, initialConfig, req.user);
 			} catch (error) {
-				await this.agentsService.delete(agent.id, projectId);
+				try {
+					await this.agentsService.delete(agent.id, projectId);
+				} catch {
+					// Cleanup failed; still surface the original config error.
+				}
 				throw error;
 			}
 		}

@@ -85,8 +85,13 @@ export class CreateAgentDto extends Z.class({
 	 * Client-minted id for an agent drafted in the browser. Sending it keeps the
 	 * id stable from the moment the draft opens, so the thread binding, artifact
 	 * tab and any node reference taken before the first save stay valid.
+	 * Becomes a primary key and is interpolated into `:`-delimited cache keys and
+	 * webhook URLs, so the charset is constrained deliberately.
 	 */
-	id: z.string().min(1).max(36).optional(),
+	id: z
+		.string()
+		.regex(/^[A-Za-z0-9_-]{1,36}$/, 'Agent id must be alphanumeric with - or _')
+		.optional(),
 	/**
 	 * Initial config, so a draft's first content and its row land in one request
 	 * rather than leaving an empty agent behind if the follow-up write fails.

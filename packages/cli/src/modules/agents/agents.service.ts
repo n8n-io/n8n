@@ -1,18 +1,19 @@
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
+	blankAgentConfig,
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
-	type AgentJsonConfig,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { In, ProjectRelationRepository, type User } from '@n8n/db';
+import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { v4 as uuid } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -65,41 +66,43 @@ export class AgentsService {
 		}: { availableInMCP?: boolean; id?: string; user?: User } = {},
 	): Promise<Agent> {
 		if (id && (await this.agentRepository.existsBy({ id }))) {
-			throw new BadRequestError(`Agent with id ${id} exists already.`);
+			throw new ConflictError(`Agent with id ${id} exists already.`);
 		}
-
-		const defaultConfig: AgentJsonConfig = {
-			name,
-			model: '',
-			instructions: '',
-			tools: [],
-			skills: [],
-		};
 
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
 			name,
 			projectId,
-			schema: defaultConfig,
+			schema: blankAgentConfig(name),
 			versionId: uuid(),
 			availableInMCP,
 		});
 
-		const saved = await this.agentRepository.save(agent);
+		try {
+			await this.agentRepository.insert(agent as QueryDeepPartialEntity<Agent>);
+		} catch (error) {
+			// The pre-check above and this insert are not atomic, and two writers
+			// sharing one minted id is the normal case here — not a rare race. Both
+			// callers branch on 409, so a lost race must not surface as a 500.
+			if (isUniqueConstraintError(error)) {
+				throw new ConflictError(`Agent with id ${agent.id} exists already.`);
+			}
+			throw error;
+		}
 
-		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
+		this.logger.debug('Created SDK agent', { agentId: agent.id, projectId });
 
 		// Emitted here rather than at the entry points so every origin — editor,
 		// Instance AI builder, MCP — is counted once, and only when a row actually
 		// exists. Drafts that are abandoned before their first write never reach
 		// this line, which is the point of the event.
 		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
-			agent_id: saved.id,
+			agent_id: agent.id,
 			project_id: projectId,
 			...(user ? { user_id: user.id } : {}),
 		});
 
-		return saved;
+		return agent;
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {

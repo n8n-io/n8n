@@ -18,6 +18,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -347,6 +348,31 @@ describe('AgentsBuilderToolsService', () => {
 				);
 
 				expect(agentsService.create).not.toHaveBeenCalled();
+			});
+
+			it('write_config proceeds when create races with the config panel', async () => {
+				const { service, agentsService } = makeService();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				agentsService.findById.mockResolvedValue(null);
+				agentsService.create.mockRejectedValue(
+					new ConflictError(`Agent with id ${agentId} exists already.`),
+				);
+				agentsService.updateConfig.mockResolvedValue({
+					config: { ...templateConfig, instructions: 'Triage inbound tickets.' },
+					updatedAt: '2026-01-01T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				const result = await getPendingJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(templateConfig),
+						json: JSON.stringify({ ...templateConfig, instructions: 'Triage inbound tickets.' }),
+					},
+					ctx,
+				);
+
+				expect(result).toMatchObject({ ok: true });
+				expect(agentsService.updateConfig).toHaveBeenCalled();
 			});
 		});
 

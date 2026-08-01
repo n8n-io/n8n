@@ -817,9 +817,14 @@ async function resolveTargetForCall(
 			// "New Agent" reserves an id and opens the artifact panel on it before
 			// the user has said what to build. The first create in that conversation
 			// is that agent being named, not a second one — minting a fresh id here
-			// would build into an agent the user cannot see. The reservation is
-			// cleared once the row exists, so a later create still makes a new agent.
-			const reserved = boundTarget?.pending === true ? boundTarget : undefined;
+			// would build into an agent the user cannot see. The `pending` flag alone
+			// is not trusted: clearing it is best-effort (skipped on turn failure /
+			// cancel, and never runs when the config panel created the row), so also
+			// require the row to still be absent before adopting the reservation.
+			const reserved =
+				boundTarget?.pending === true && !(await delegate.agentExists(boundTarget.agentId))
+					? boundTarget
+					: undefined;
 			const created = reserved ?? (await delegate.createAgent(input.name));
 			const target: AgentBuilderTarget = {
 				agentId: created.agentId,

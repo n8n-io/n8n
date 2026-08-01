@@ -181,7 +181,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_CREATED_AGENT: {
 		name: 'Builder created agent',
 		description:
-			'The Instance AI builder created an agent through its delegate. Only fires inside a thread context; the frontend "User created agent" twin covers the UI create paths.',
+			'The Instance AI builder\'s first config-mutating tool created the agent row. Only fires in a thread context. Strict subset of "User created agent" — both fire from the same materialization path, so the two must not be summed.',
 		properties: z.object({
 			agent_id: z.string(),
 			project_id: z.string(),

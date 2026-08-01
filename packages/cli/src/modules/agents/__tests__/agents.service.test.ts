@@ -6,7 +6,9 @@ import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { QueryFailedError } from '@n8n/typeorm';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -58,6 +60,7 @@ function makeService() {
 	const agentExecutionService = mock<AgentExecutionService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.insert.mockResolvedValue({ identifiers: [], generatedMaps: [], raw: [] });
 	agentTaskService.requestReconcile.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
@@ -114,9 +117,9 @@ describe('AgentsService', () => {
 		const saved = makeAgent();
 
 		agentRepository.create.mockReturnValue(saved);
-		agentRepository.save.mockResolvedValue(saved);
 
 		await expect(service.create(projectId, 'Support Agent')).resolves.toBe(saved);
+		expect(agentRepository.insert).toHaveBeenCalledWith(saved);
 		expect(agentRepository.create).toHaveBeenCalledWith({
 			name: 'Support Agent',
 			projectId,
@@ -138,23 +141,36 @@ describe('AgentsService', () => {
 
 		agentRepository.existsBy.mockResolvedValue(false);
 		agentRepository.create.mockReturnValue(saved);
-		agentRepository.save.mockResolvedValue(saved);
 
 		await service.create(projectId, 'Support Agent', { id: 'minted-id' });
 
 		expect(agentRepository.create).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'minted-id' }),
 		);
+		expect(agentRepository.insert).toHaveBeenCalledWith(saved);
 	});
 
 	it('rejects a minted id that is already taken instead of overwriting the agent', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.existsBy.mockResolvedValue(true);
 
-		await expect(service.create(projectId, 'Support Agent', { id: 'taken' })).rejects.toThrow(
-			'Agent with id taken exists already.',
-		);
-		expect(agentRepository.save).not.toHaveBeenCalled();
+		await expect(
+			service.create(projectId, 'Support Agent', { id: 'taken' }),
+		).rejects.toBeInstanceOf(ConflictError);
+		expect(agentRepository.insert).not.toHaveBeenCalled();
+	});
+
+	it('maps a lost insert race on a minted id to ConflictError instead of a 500', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent({ id: 'minted-id' });
+		agentRepository.existsBy.mockResolvedValue(false);
+		agentRepository.create.mockReturnValue(saved);
+		const driverError = Object.assign(new Error('duplicate'), { code: '23505' });
+		agentRepository.insert.mockRejectedValue(new QueryFailedError('insert', [], driverError));
+
+		await expect(
+			service.create(projectId, 'Support Agent', { id: 'minted-id' }),
+		).rejects.toBeInstanceOf(ConflictError);
 	});
 
 	it('reports agent creation with the project and acting user', async () => {
@@ -162,10 +178,10 @@ describe('AgentsService', () => {
 		const saved = makeAgent();
 
 		agentRepository.create.mockReturnValue(saved);
-		agentRepository.save.mockResolvedValue(saved);
 
 		await service.create(projectId, 'Support Agent', { user: mock<User>({ id: 'user-1' }) });
 
+		expect(agentRepository.insert).toHaveBeenCalledWith(saved);
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
 			agent_id: agentId,
 			project_id: projectId,

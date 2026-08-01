@@ -33,6 +33,7 @@ import {
 	updateAgentTask,
 } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
+import type { EnsurePersisted } from '../composables/useAgentEnsurePersisted';
 import {
 	buildCron,
 	DEFAULT_SCHEDULE_PARTS,
@@ -54,6 +55,8 @@ export type AgentTaskModalData = {
 	};
 	onToggle?: (payload: { id: string; enabled: boolean }) => void;
 	onSaved: () => void;
+	/** Creates the agent row when saving against a client-side draft. */
+	ensurePersisted?: EnsurePersisted;
 };
 
 type FrequencyOption = ScheduleFrequency | 'custom';
@@ -320,6 +323,7 @@ async function onSave() {
 	};
 
 	try {
+		await props.data.ensurePersisted?.();
 		if (task.value) {
 			await updateAgentTask(
 				rootStore.restApiContext,

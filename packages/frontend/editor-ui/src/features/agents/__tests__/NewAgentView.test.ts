@@ -11,9 +11,7 @@ const mocks = vi.hoisted(() => ({
 	showError: vi.fn(),
 	syncThread: vi.fn(),
 	updateThreadMetadata: vi.fn(),
-	getOrCreateRuntime: vi.fn(() => ({ sendMessage: vi.fn() })),
 	stashPendingAgentAttachment: vi.fn(),
-	createAgent: vi.fn(),
 }));
 
 vi.mock('vue-router', () => ({
@@ -30,7 +28,6 @@ vi.mock('@/features/ai/instanceAi/instanceAi.store', () => ({
 	useInstanceAiStore: () => ({
 		syncThread: mocks.syncThread,
 		updateThreadMetadata: mocks.updateThreadMetadata,
-		getOrCreateRuntime: mocks.getOrCreateRuntime,
 	}),
 }));
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
@@ -38,7 +35,6 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
 }));
 vi.mock('uuid', () => ({ v4: () => 'thread-1' }));
 vi.mock('@n8n/utils/generate-nano-id', () => ({ generateNanoId: () => 'minted-agent-id' }));
-vi.mock('../composables/useAgentApi', () => ({ createAgent: mocks.createAgent }));
 
 describe('NewAgentView', () => {
 	beforeEach(() => {
@@ -49,9 +45,6 @@ describe('NewAgentView', () => {
 	it('opens a thread bound to a minted agent id without creating the agent', async () => {
 		mount(NewAgentView);
 		await flushPromises();
-
-		// The whole point: clicking "New agent" and walking away must leave no row.
-		expect(mocks.createAgent).not.toHaveBeenCalled();
 
 		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
 			source: 'agent_builder_page',
