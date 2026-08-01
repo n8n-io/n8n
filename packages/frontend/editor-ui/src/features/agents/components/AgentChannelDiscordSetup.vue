@@ -59,9 +59,11 @@ const settingsFormRef = ref<InstanceType<typeof AgentIntegrationSettingsForm>>()
 const DISCORD_APP_SETUP_URL = 'https://discord.com/developers/applications';
 
 /**
- * Ordered deliberately: Discord verifies the interactions endpoint by sending
- * a signed ping, which n8n can only answer once the credential is connected.
- * Registering the URL is therefore the last step, not part of app setup.
+ * Connecting comes last so it is the step that finishes the wizard, but the
+ * interactions URL can only be *registered* in Discord afterwards: Discord
+ * verifies it with a signed ping that n8n can answer only once the credential
+ * is connected. Step three therefore hands over the URL and says when to use
+ * it, rather than asking the user to save it there and then.
  */
 const steps = computed(() => [
 	{
@@ -75,14 +77,14 @@ const steps = computed(() => [
 		description: i18n.baseText('agents.channels.discord.setup.createBot.description'),
 	},
 	{
-		id: 'create-credential',
-		title: i18n.baseText('agents.channels.discord.setup.createCredential.title'),
-		description: i18n.baseText('agents.channels.discord.setup.createCredential.description'),
-	},
-	{
 		id: 'interactions-endpoint',
 		title: i18n.baseText('agents.channels.discord.setup.interactionsEndpoint.title'),
 		description: i18n.baseText('agents.channels.discord.setup.interactionsEndpoint.description'),
+	},
+	{
+		id: 'create-credential',
+		title: i18n.baseText('agents.channels.discord.setup.createCredential.title'),
+		description: i18n.baseText('agents.channels.discord.setup.createCredential.description'),
 	},
 ]);
 
@@ -147,41 +149,6 @@ defineExpose({ credentialId, currentSettings, validationError });
 						{{ i18n.baseText('agents.channels.discord.setup.createBot.hint') }}
 					</N8nText>
 
-					<div v-else-if="step.id === 'create-credential'" :class="$style.credentialStep">
-						<AgentIntegrationCredentialConnection
-							v-if="!connected"
-							v-model="credentialId"
-							:integration-type="integration.type"
-							:integration-label="integration.label"
-							:credentials="credentials"
-							:credential-permissions="credentialPermissions"
-							:credentials-loading="credentialsLoading"
-							:disabled="loading"
-							:force-new-credential="forceNewCredential"
-							:class="$style.cred"
-							@create="emit('create')"
-							@edit="emit('edit')"
-						/>
-						<N8nButton
-							variant="subtle"
-							size="medium"
-							:loading="loading"
-							:disabled="!canConnect"
-							data-testid="discord-connect-button"
-							@click="emit('connect')"
-						>
-							{{ i18n.baseText('generic.connect') }}
-						</N8nButton>
-						<N8nText
-							v-if="!isPublished"
-							:class="$style.hint"
-							size="small"
-							data-testid="discord-publish-notice"
-						>
-							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
-						</N8nText>
-					</div>
-
 					<div v-else-if="step.id === 'interactions-endpoint'" :class="$style.urlField">
 						<label for="discord-interactions-url" :class="$style.urlLabel">
 							<N8nText size="small" bold>
@@ -212,6 +179,54 @@ defineExpose({ credentialId, currentSettings, validationError });
 						</N8nInput>
 						<N8nText :class="$style.hint" size="small">
 							{{ i18n.baseText('agents.channels.discord.setup.interactionsEndpoint.hint') }}
+						</N8nText>
+					</div>
+
+					<div v-else-if="step.id === 'create-credential'" :class="$style.credentialStep">
+						<AgentIntegrationCredentialConnection
+							v-if="!connected"
+							v-model="credentialId"
+							:integration-type="integration.type"
+							:integration-label="integration.label"
+							:credentials="credentials"
+							:credential-permissions="credentialPermissions"
+							:credentials-loading="credentialsLoading"
+							:disabled="loading"
+							:force-new-credential="forceNewCredential"
+							:class="$style.cred"
+							@create="emit('create')"
+							@edit="emit('edit')"
+						/>
+						<N8nButton
+							variant="subtle"
+							size="medium"
+							:loading="loading"
+							:disabled="!canConnect"
+							data-testid="discord-connect-button"
+							@click="emit('connect')"
+						>
+							{{ i18n.baseText('generic.connect') }}
+						</N8nButton>
+						<!-- Connect failures belong next to the button that caused them, not
+						     at the far bottom of the panel where the stepper hides them. -->
+						<N8nText v-if="errorMessage" :class="$style.errorText" size="small">
+							{{ errorMessage }}
+							<a
+								v-if="credentialId && !errorIsConflict"
+								:class="$style.link"
+								href="#"
+								@click.prevent="emit('edit')"
+							>
+								{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}
+							</a>
+						</N8nText>
+						<N8nText
+							v-if="!isPublished"
+							:class="$style.hint"
+							size="small"
+							data-testid="discord-publish-notice"
+						>
+							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
 						</N8nText>
 					</div>
 				</div>
@@ -276,7 +291,9 @@ defineExpose({ credentialId, currentSettings, validationError });
 			:project-id="projectId"
 			:agent-id="agentId"
 		/>
-		<N8nText v-if="errorMessage" :class="$style.errorText" size="small">
+		<!-- Edit mode has no stepper, so the bottom of the panel is already where
+		     the action is; setup mode renders its own copy under the button. -->
+		<N8nText v-if="errorMessage && mode === 'edit'" :class="$style.errorText" size="small">
 			{{ errorMessage }}
 			<a
 				v-if="credentialId && !errorIsConflict"

@@ -1,0 +1,65 @@
+{
+	"bot": {
+		"id": "900000000000000001",
+		"username": "n8n-agent",
+		"bot": true
+	},
+	"user": {
+		"id": "400000000000000001",
+		"username": "alice_dev",
+		"global_name": "Alice"
+	},
+	"mention": {
+		"id": "500000000000000011",
+		"channel_id": "700000000000000001",
+		"guild_id": "800000000000000001",
+		"author": {
+			"id": "400000000000000001",
+			"username": "alice_dev",
+			"global_name": "Alice"
+		},
+		"content": "<@900000000000000001> hello agent",
+		"timestamp": "2026-06-21T00:00:00.000Z",
+		"mentions": [{ "id": "900000000000000001" }],
+		"mention_roles": [],
+		"attachments": []
+	},
+	"followUp": {
+		"id": "500000000000000012",
+		"channel_id": "600000000000000001",
+		"guild_id": "800000000000000001",
+		"author": {
+			"id": "400000000000000001",
+			"username": "alice_dev",
+			"global_name": "Alice"
+		},
+		"content": "follow up",
+		"timestamp": "2026-06-21T00:00:01.000Z",
+		"mentions": [],
+		"mention_roles": [],
+		"attachments": [],
+		"thread": {
+			"id": "600000000000000001",
+			"parent_id": "700000000000000001"
+		}
+	},
+	"selfMessage": {
+		"id": "500000000000000013",
+		"channel_id": "600000000000000001",
+		"guild_id": "800000000000000001",
+		"author": {
+			"id": "900000000000000001",
+			"username": "n8n-agent",
+			"bot": true
+		},
+		"content": "bot echo",
+		"timestamp": "2026-06-21T00:00:02.000Z",
+		"mentions": [],
+		"mention_roles": [],
+		"attachments": [],
+		"thread": {
+			"id": "600000000000000001",
+			"parent_id": "700000000000000001"
+		}
+	}
+}

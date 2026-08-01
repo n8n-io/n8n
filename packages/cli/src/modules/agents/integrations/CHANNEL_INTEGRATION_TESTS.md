@@ -34,6 +34,7 @@ Each platform adapter uses a different HTTP client, so the interception mechanis
 | Telegram | native `fetch` | replace `globalThis.fetch` | `installFetchStub` (replay-test-helpers) |
 | Slack | `@slack/web-api` (axios) | `nock` at the HTTP layer | inline in slack `replay-test-context` |
 | Linear | `@linear/sdk` (GraphQL over fetch) | replace `globalThis.fetch` | `installFetchStub` |
+| Discord | native `fetch` | replace `globalThis.fetch` | `installFetchStub` |
 
 Responses are answered from two sources, in order of preference:
 
@@ -55,6 +56,14 @@ so response stubs only need to be valid enough for the real adapter to proceed.
   reconstructs the streamed text and records it as a synthetic `chat.postMessage` so assertions can
   treat the reply as one outbound post. `webhookVerifier: () => true` bypasses signature checks (the
   fixtures carry sanitized signatures); passing `botUserId` skips the `auth.test` lookup.
+- **Discord** — messages arrive over a Gateway WebSocket in production, and discord.js builds its
+  client inside `startGatewayListener`, so there is nothing to inject. Tests instead post to the
+  adapter's forwarded-Gateway-event path (`x-discord-gateway-token` header + a
+  `GATEWAY_MESSAGE_CREATE` body), which parses and dispatches through the same code as the socket
+  handler. Production never enables that forwarding mode — it would put the bot token on the wire.
+  Button clicks use the real HTTP interaction path with `verifySignature` stubbed, since signing
+  every fixture would test `discord-interactions` rather than n8n. Note that a channel mention makes
+  the adapter open a thread, so the reply lands on `/channels/<threadId>/messages`.
 - **Linear** — webhooks are HMAC-signed (`linear-signature`) and timestamp-checked, so the helper
   refreshes `webhookTimestamp` and signs the body. `@linear/sdk` strictly deserializes typed
   entities and lazily fetches relationships, so the GraphQL stub returns fully-shaped entities

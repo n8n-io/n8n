@@ -4,6 +4,10 @@ import { join } from 'path';
 
 import { runSharedChannelIntegrationContract } from './helpers/channel-integration-contract';
 import {
+	createDiscordReplayContext,
+	type DiscordReplayFixtures,
+} from './helpers/discord/replay-test-context';
+import {
 	createSlackReplayContext,
 	type SlackReplayFixtures,
 } from './helpers/slack/replay-test-context';
@@ -17,6 +21,9 @@ const slackFixtures = jsonParse<SlackReplayFixtures>(
 );
 const telegramFixtures = jsonParse<TelegramReplayFixtures>(
 	readFileSync(join(__dirname, 'fixtures/telegram/basic.json'), 'utf8'),
+);
+const discordFixtures = jsonParse<DiscordReplayFixtures>(
+	readFileSync(join(__dirname, 'fixtures/discord/basic.json'), 'utf8'),
 );
 
 runSharedChannelIntegrationContract({
@@ -91,4 +98,36 @@ runSharedChannelIntegrationContract({
 		respondTarget: { threadId: 'telegram:123456' },
 	},
 	createContext: async () => await createTelegramReplayContext(telegramFixtures),
+});
+
+// A Discord channel mention is answered inside a thread the adapter opens off
+// that message, so the thread ID carries a third segment the other platforms
+// don't have, and the agent sees the text with its own `<@id>` mention removed.
+runSharedChannelIntegrationContract({
+	name: 'Discord',
+	fixtures: discordFixtures,
+	expected: {
+		message: 'hello agent',
+		followUpMessage: 'follow up',
+		integrationType: 'discord',
+		context: {
+			integrationConnectionId: 'discord:cred-discord',
+			platform: 'discord',
+			messageId: '500000000000000011',
+			interactingUserId: '400000000000000001',
+			agentUserId: '900000000000000001',
+			target: {
+				type: 'thread',
+				threadId: 'discord:800000000000000001:700000000000000001:600000000000000001',
+				channelId: 'discord:800000000000000001:700000000000000001',
+			},
+		},
+		resourceId: '400000000000000001',
+		firstPost: { content: 'Got it' },
+		respondPost: { content: 'Action response' },
+		respondTarget: {
+			threadId: 'discord:800000000000000001:700000000000000001:600000000000000001',
+		},
+	},
+	createContext: async () => await createDiscordReplayContext(discordFixtures),
 });

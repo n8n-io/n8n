@@ -305,8 +305,8 @@ describe('finish_setup tool', () => {
 		const ctx = makeCtx();
 
 		await expect(
-			tool.handler!({ channels: [{ integrationType: 'discord' }] }, ctx as never),
-		).rejects.toThrow('Unsupported chat channel "discord"');
+			tool.handler!({ channels: [{ integrationType: 'carrier-pigeon' }] }, ctx as never),
+		).rejects.toThrow('Unsupported chat channel "carrier-pigeon"');
 		expect(ctx.suspend).not.toHaveBeenCalled();
 	});
 

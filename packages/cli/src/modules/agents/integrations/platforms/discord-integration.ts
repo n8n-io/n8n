@@ -9,10 +9,21 @@ import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
 	type ApprovalDecisionMessageParams,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
+	type PlatformAgentContext,
+	type PlatformContextQueryParams,
 } from '../agent-chat-integration';
+import type { ChatInstance } from '../chat-integration.service';
 import type { SuspendComponent } from '../component-mapper';
 import { loadDiscordAdapter } from '../esm-loader';
-import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
+import {
+	resolveIntegrationActionDefinitions,
+	resolveIntegrationContextQueryDefinitions,
+} from '../integration-tool-definitions';
+import { executeDiscordContextQuery } from './discord-operations';
+import { startTypingIndicator } from './typing-indicator';
 
 /**
  * How long a single Gateway listener runs before {@link DiscordIntegration}
@@ -28,6 +39,16 @@ import { resolveIntegrationActionDefinitions } from '../integration-tool-definit
  */
 const GATEWAY_SESSION_MS = 12 * 60 * 60 * 1000;
 
+/** Discord's typing indicator expires after ~10s, so keep it alive on an interval. */
+const DISCORD_TYPING_REFRESH_MS = 8000;
+
+/**
+ * Pinned rather than read from `DISCORD_API_URL`: the adapter falls back to that
+ * env var for every option we omit, and on a multi-tenant instance a stray host
+ * variable must not redirect bot tokens.
+ */
+const DISCORD_API_URL = 'https://discord.com/api/v10';
+
 /** Minimal shape of the ESM-only `@chat-adapter/discord` adapter we depend on. */
 interface DiscordGatewayAdapter {
 	startGatewayListener(
@@ -38,8 +59,16 @@ interface DiscordGatewayAdapter {
 	): Promise<{ ok: boolean; text: () => Promise<string> }>;
 }
 
-interface DiscordGatewaySession {
+interface DiscordConnection {
 	adapter: DiscordGatewayAdapter;
+	/**
+	 * Kept because context queries hit the Discord REST API directly and only
+	 * receive a descriptor, not the credential.
+	 */
+	botToken: string;
+}
+
+interface DiscordGatewaySession extends DiscordConnection {
 	abort?: AbortController;
 	running?: Promise<void>;
 }
@@ -101,12 +130,25 @@ export class DiscordIntegration extends AgentChatIntegration {
 	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
 		'respond',
 		'send_dm',
+		'send_channel_message',
 		'edit_message',
 	]);
+
+	readonly contextToolDefinitions = resolveIntegrationContextQueryDefinitions([
+		'get_current_message_context',
+		'get_current_subject',
+		'search_channels',
+	]);
+
+	readonly contextToolGuidance = [
+		'Use search_channels to turn a channel name such as "general" into a channel ID. It searches every Discord server the bot has been invited to, so the same name can appear more than once — the guildName on each result tells them apart.',
+	];
 
 	readonly actionToolGuidance = [
 		'For edit_message, pass the messageId returned by a previous Discord action or get_current_message_context. The current Discord conversation is selected automatically.',
 		'After a Discord button callback, edit the source message promptly so stale buttons are removed.',
+		'For send_channel_message, channelId must be shaped "discord:<guildId>:<channelId>" — pass the value returned by search_channels or get_current_message_context. A bare Discord channel ID copied from the Discord app is rejected.',
+		'A Discord mention is answered inside a thread created off that message. Use send_channel_message when the reply belongs in the channel itself rather than that thread.',
 	];
 
 	readonly needsShortCallbackData = true;
@@ -121,11 +163,11 @@ export class DiscordIntegration extends AgentChatIntegration {
 	readonly deleteActionMessageBeforeResume = false;
 
 	/**
-	 * Adapters built by {@link createAdapter}, awaiting the `onConnected` hook
+	 * Connections built by {@link createAdapter}, awaiting the `onConnected` hook
 	 * that runs once the Chat instance has been initialized. Keyed like
 	 * {@link sessions}.
 	 */
-	private readonly pendingAdapters = new Map<string, DiscordGatewayAdapter>();
+	private readonly pendingConnections = new Map<string, DiscordConnection>();
 
 	/** Live connections on this main, keyed by `agentId:credentialId`. */
 	private readonly sessions = new Map<string, DiscordGatewaySession>();
@@ -153,10 +195,13 @@ export class DiscordIntegration extends AgentChatIntegration {
 			publicKey,
 			applicationId,
 			mentionRoleIds: [],
-			apiUrl: 'https://discord.com/api/v10',
+			apiUrl: DISCORD_API_URL,
 		});
 
-		this.pendingAdapters.set(this.sessionKey(ctx), adapter as unknown as DiscordGatewayAdapter);
+		this.pendingConnections.set(this.sessionKey(ctx), {
+			adapter: adapter as unknown as DiscordGatewayAdapter,
+			botToken,
+		});
 
 		return adapter;
 	}
@@ -174,19 +219,31 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 	async onConnected(ctx: AgentChatIntegrationContext): Promise<void> {
 		const key = this.sessionKey(ctx);
-		const adapter = this.pendingAdapters.get(key);
-		this.pendingAdapters.delete(key);
-		if (!adapter) return;
+		const connection = this.pendingConnections.get(key);
+		this.pendingConnections.delete(key);
+		if (!connection) return;
 
-		this.sessions.set(key, { adapter });
+		this.sessions.set(key, { ...connection });
 		if (this.instanceSettings.isLeader) this.startGateway(key);
 	}
 
 	async onDisconnected(ctx: AgentChatIntegrationContext): Promise<void> {
 		const key = this.sessionKey(ctx);
-		this.pendingAdapters.delete(key);
+		this.pendingConnections.delete(key);
 		await this.stopGateway(key);
 		this.sessions.delete(key);
+	}
+
+	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		const { agentId, integration } = params.descriptor;
+		const session = this.sessions.get(`${agentId}:${integration.credentialId}`);
+
+		return await executeDiscordContextQuery({
+			apiUrl: DISCORD_API_URL,
+			botToken: session?.botToken,
+			query: params.query,
+			input: params.input,
+		});
 	}
 
 	@OnLeaderTakeover()
@@ -198,6 +255,57 @@ export class DiscordIntegration extends AgentChatIntegration {
 	@OnShutdown()
 	async stopAllGateways(): Promise<void> {
 		for (const key of this.sessions.keys()) await this.stopGateway(key);
+	}
+
+	/**
+	 * The adapter hands us `message.content` verbatim, so a channel mention
+	 * arrives as `<@applicationId> what's the status?`. Discord sets
+	 * `botUserId` to the application ID, which is the same snowflake the
+	 * mention encodes.
+	 */
+	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
+		const adapter = chat.getAdapter(this.type);
+		if (!isRecord(adapter)) return {};
+		const agentUserId = adapter.botUserId;
+		return typeof agentUserId === 'string' && agentUserId ? { agentUserId } : {};
+	}
+
+	prepareInboundText(text: string, context: PlatformAgentContext): string {
+		const trimmed = text.trim();
+		if (!context.agentUserId) return trimmed;
+		return stripDiscordSelfMention(trimmed, context.agentUserId);
+	}
+
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		return {
+			platformAgentContext: this.getPlatformAgentContext(params.chat),
+			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
+		};
+	}
+
+	async createResumeExecutionContext(params: {
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return {
+			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
+		};
+	}
+
+	private startTyping(
+		thread: BridgeMessageContextParams['thread'],
+		logger: BridgeMessageContextParams['logger'],
+		agentId: string,
+	) {
+		return startTypingIndicator(thread, {
+			logger,
+			agentId,
+			platform: 'Discord',
+			refreshMs: DISCORD_TYPING_REFRESH_MS,
+		});
 	}
 
 	formatApprovalDecisionMessage({ approved, raw, user }: ApprovalDecisionMessageParams): string {
@@ -357,4 +465,22 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 		return '';
 	}
+}
+
+/**
+ * Drop the agent's own mention so the model sees "what's the status?" rather
+ * than "<@1234567890> what's the status?". Discord encodes a user mention as
+ * `<@id>`, or `<@!id>` in the legacy nickname form. Role mentions (`<@&id>`)
+ * are left alone — they are somebody else's mention, not ours.
+ */
+function stripDiscordSelfMention(text: string, userId: string): string {
+	return text
+		.replace(new RegExp(`(^|\\s)<@!?${escapeRegExp(userId)}>`, 'g'), '$1')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+/** Application IDs come from a user-editable credential field, so never trust them as a pattern. */
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
