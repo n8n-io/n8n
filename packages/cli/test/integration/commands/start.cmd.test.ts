@@ -91,7 +91,7 @@ afterAll(async () => {
 	);
 	Container.get(WorkflowPublicationOutboxConsumer).stopPolling();
 	Container.get(WorkflowPublicationOutboxCleanupService).stopCleanup();
-	Container.get(WorkflowPublicationReconciler).stopReconciler();
+	Container.get(WorkflowPublicationReconciler).shutdown();
 	await Container.get(ActiveWorkflowManager).removeAll();
 	await testDb.terminate();
 });
