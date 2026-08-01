@@ -24,6 +24,13 @@ type ColumnOptions = {
 	metadataColumnName: string;
 };
 
+async function createVectorExtension(pool: pg.Pool, extensionSchemaName?: string) {
+	const sql = extensionSchemaName
+		? `CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA "${extensionSchemaName}"`
+		: 'CREATE EXTENSION IF NOT EXISTS vector';
+	await pool.query(sql);
+}
+
 const sharedFields: INodeProperties[] = [
 	{
 		displayName: 'Table Name',
@@ -32,6 +39,14 @@ const sharedFields: INodeProperties[] = [
 		default: 'n8n_vectors',
 		description:
 			'The table name to store the vectors in. If table does not exist, it will be created.',
+	},
+	{
+		displayName: 'Create Extension',
+		name: 'createExtension',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to create the pgvector (vector) extension if it doesn\'t already exist. Requires superuser privileges. Off by default.',
 	},
 ];
 
@@ -270,6 +285,13 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			'cosine',
 		) as DistanceStrategy;
 
+		if (context.getNodeParameter('createExtension', itemIndex, false)) {
+			await createVectorExtension(
+				pool,
+				(config as { extensionSchemaName?: string }).extensionSchemaName,
+			);
+		}
+
 		return await ExtendedPGVectorStore.initialize(embeddings, config);
 	},
 
@@ -305,6 +327,13 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			contentColumnName: 'text',
 			metadataColumnName: 'metadata',
 		}) as ColumnOptions;
+
+		if (context.getNodeParameter('createExtension', itemIndex, false)) {
+			await createVectorExtension(
+				pool,
+				(config as { extensionSchemaName?: string }).extensionSchemaName,
+			);
+		}
 
 		const vectorStore = await PGVectorStore.fromDocuments(documents, embeddings, config);
 		vectorStore.client?.release();
