@@ -22,6 +22,7 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	}),
 	baseten: apiKeyCreds,
 	fireworks: apiKeyCreds,
+	wafer: apiKeyCreds,
 	anthropic: apiKeyCreds,
 	google: apiKeyCreds,
 	/**
