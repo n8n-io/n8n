@@ -923,6 +923,79 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(createdCredentialIds.has('cred-fresh')).toBe(true);
 	});
 
+	it("workflows(action='setup'): registers the created credential for test bypass when the direction says it works", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+			credentialWorks: true,
+		});
+		const { client, setThreadCredentialAllowlist } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now, with a token that works.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: ['cred-old'] },
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-works', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		// The bypass must be registered in the SAME call that appends the new id, so
+		// it lands before the product runs the credential test on the resume.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			'thread-1',
+			['cred-old', 'cred-fresh'],
+			['cred-fresh'],
+		);
+		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBe(1);
+	});
+
+	it("workflows(action='setup'): leaves the credential test alone when the direction says nothing about validity", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const { client, setThreadCredentialAllowlist } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-no-works', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		// Two args, not three-with-undefined: the request must stay byte-identical
+		// to before for every case that doesn't opt into the bypass.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh']);
+		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBeUndefined();
+	});
+
 	it("workflows(action='setup'): declines a zero-candidate credential slot when no credentialCreation is configured", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({

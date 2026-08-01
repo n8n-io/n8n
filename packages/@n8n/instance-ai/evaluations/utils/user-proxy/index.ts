@@ -66,7 +66,11 @@ export type ProxyDecisionCategory =
 	| 'deterministic'
 	| 'repeat'
 	| 'fallback-no-decision'
-	| 'fallback-unencoded';
+	| 'fallback-unencoded'
+	/** A created credential was registered as passing its connection test. Counted
+	 *  so a case relying on that can assert the bypass fired instead of trusting a
+	 *  green — the agent-visible result is deliberately indistinguishable. */
+	| 'credential-test-bypassed';
 
 export type ProxyDecisionStats = Partial<Record<ProxyDecisionCategory, number>>;
 
@@ -120,6 +124,9 @@ export class UserProxyLlm {
 	 *  grows as `createCredential` mints new ones, since the allowlist endpoint
 	 *  replaces the whole list rather than appending. */
 	private allowlistedCredentialIds: string[];
+	/** Ids the backend should resolve as passing their connection test — grows as
+	 *  the proxy creates credentials a stage direction described as working. */
+	private bypassCredentialTestIds: string[] = [];
 	/** Defaults to a fresh Map when the caller doesn't share one from pre-run
 	 *  seeding — see `CredentialCreationConfig.nameCounts`. */
 	private readonly createdCredentialNameCounts: Map<string, number>;
@@ -233,7 +240,7 @@ export class UserProxyLlm {
 	 * both this and any later turn can see it. Arrow field (not a method) so
 	 * it stays correctly bound when passed as a bare `CreateCredentialFn`.
 	 */
-	private createCredential: CreateCredentialFn = async (credentialType) => {
+	private createCredential: CreateCredentialFn = async (credentialType, options) => {
 		if (!this.credentialCreation) {
 			// encodeConfirmationDecision only receives this function at all when
 			// `this.credentialCreation` is set (see respondToConfirmation) — a
@@ -250,7 +257,26 @@ export class UserProxyLlm {
 		);
 		createdCredentialIds?.add(created.id);
 		this.allowlistedCredentialIds = [...this.allowlistedCredentialIds, created.id];
-		await client.setThreadCredentialAllowlist(threadId, this.allowlistedCredentialIds);
+		// A "works" credential still carries a placeholder token, so its real
+		// connection test would fail and the setup card would refuse to apply it.
+		// Registering the bypass here — in the allowlist call the creation already
+		// makes — keeps it strictly before the confirmation response is sent, which
+		// is when the product runs that test. Keep this ordering if you refactor.
+		if (options?.works === true) {
+			this.bypassCredentialTestIds = [...this.bypassCredentialTestIds, created.id];
+			this.bumpStat('credential-test-bypassed');
+		}
+		// Call with two args in the default case so the request stays byte-identical
+		// to before for every case that doesn't opt into the bypass.
+		if (this.bypassCredentialTestIds.length > 0) {
+			await client.setThreadCredentialAllowlist(
+				threadId,
+				this.allowlistedCredentialIds,
+				this.bypassCredentialTestIds,
+			);
+		} else {
+			await client.setThreadCredentialAllowlist(threadId, this.allowlistedCredentialIds);
+		}
 		return created;
 	};
 

@@ -34,6 +34,15 @@ const applySetupWizardDecisionSchema = z.object({
 	 * user to engage with a credential slot instead of leaving it deferred.
 	 */
 	nodeCredentialsJson: z.string().optional(),
+	/**
+	 * Whether the credential the user sets up on this card actually works. Only
+	 * meaningful alongside `nodeCredentialsJson` for a slot with no existing
+	 * candidate (the harness creates one). `true` → the harness makes its
+	 * connection test pass, so the build proceeds as it would with a working
+	 * account; omitted/`false` → the placeholder token fails its test for real,
+	 * which is the default and what the honesty cases rely on.
+	 */
+	credentialWorks: z.boolean().optional(),
 });
 
 const approveOrRejectDecisionSchema = z.object({
@@ -226,7 +235,10 @@ export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user
 
 /** Creates a real credential of the given type for the "manual, zero existing"
  *  case — see `UserProxyConfig.credentialCreation` in `user-proxy/index.ts`. */
-export type CreateCredentialFn = (credentialType: string) => Promise<{ id: string; name: string }>;
+export type CreateCredentialFn = (
+	credentialType: string,
+	options?: { works?: boolean },
+) => Promise<{ id: string; name: string }>;
 
 /**
  * Shared safety net around `createCredential`: missing config and a thrown
@@ -239,6 +251,7 @@ async function tryCreateCredential(
 	credentialType: string,
 	actionLabel: string,
 	onFailure?: (raw: string, error: unknown) => void,
+	options?: { works?: boolean },
 ): Promise<{ id: string; name: string } | undefined> {
 	if (!createCredential) {
 		onFailure?.(
@@ -250,7 +263,7 @@ async function tryCreateCredential(
 		return undefined;
 	}
 	try {
-		return await createCredential(credentialType);
+		return await createCredential(credentialType, options);
 	} catch (error) {
 		onFailure?.(actionLabel, error);
 		return undefined;
@@ -280,6 +293,7 @@ export async function encodeConfirmationDecision(
 						onParseFailure,
 						setupContext,
 						createCredential,
+						{ works: decision.credentialWorks === true },
 					)
 				: undefined;
 			return {
@@ -447,6 +461,7 @@ async function parseNodeCredentialsJson(
 	onFailure?: (raw: string, error: unknown) => void,
 	setupContext?: SetupWizardParseContext,
 	createCredential?: CreateCredentialFn,
+	createOptions?: { works?: boolean },
 ): Promise<Record<string, Record<string, string>>> {
 	let parsed: unknown;
 	try {
@@ -495,6 +510,7 @@ async function parseNodeCredentialsJson(
 					credentialType,
 					'apply_setup_wizard',
 					onFailure,
+					createOptions,
 				);
 				if (created) (result[node.nodeName] ??= {})[credentialType] = created.id;
 				continue;
