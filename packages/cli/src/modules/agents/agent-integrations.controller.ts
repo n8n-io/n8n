@@ -242,6 +242,16 @@ export class AgentIntegrationsController {
 		res: Response,
 	) {
 		const { agentId, platform } = req.params;
+		// The Discord adapter accepts `x-discord-gateway-token` as an alternative to
+		// Ed25519 verification and dispatches the body straight into its Gateway
+		// handler. n8n never enables that forwarding mode, so a request carrying the
+		// header can only be an attempt to bypass signature checks — and with the bot
+		// token it would let the caller forge a message from any author. 404 rather
+		// than 401 so the route gives nothing away.
+		if (platform === 'discord' && req.headers['x-discord-gateway-token'] !== undefined) {
+			res.status(404).json({ error: 'Not found' });
+			return;
+		}
 		const webhookHandler = this.chatIntegrationService.getWebhookHandler(agentId, platform);
 
 		if (!webhookHandler) {

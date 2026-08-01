@@ -202,14 +202,6 @@ export class ChatIntegrationService {
 			await integrationImpl.onBeforeConnect(ctx);
 		}
 
-		// Delegate adapter construction to the platform implementation.
-		const adapter = recordAdapterCalls(integration.type, await integrationImpl.createAdapter(ctx));
-		channelIntegrationRecorder.startFetchRecording();
-
-		// Dynamic imports — chat packages are ESM-only, use loader to bypass CJS transform
-		const { Chat } = await loadChatSdk();
-		const { createMemoryState } = await loadMemoryState();
-
 		let state: StateAdapter | undefined;
 		let chat!: ChatSdk;
 		let bridge!: AgentChatBridge;
@@ -221,6 +213,17 @@ export class ChatIntegrationService {
 		// initialization starts, disconnect the state directly. Once initialize()
 		// starts, chat.shutdown() owns cleanup for adapters, timers, and state.
 		try {
+			// Delegate adapter construction to the platform implementation.
+			const adapter = recordAdapterCalls(
+				integration.type,
+				await integrationImpl.createAdapter(ctx),
+			);
+			channelIntegrationRecorder.startFetchRecording();
+
+			// Dynamic imports — chat packages are ESM-only, use loader to bypass CJS transform
+			const { Chat } = await loadChatSdk();
+			const { createMemoryState } = await loadMemoryState();
+
 			state = this.chatSubscriptionStateService.createStateAdapter({
 				agentId,
 				integration,
@@ -271,6 +274,19 @@ export class ChatIntegrationService {
 				});
 			}
 			bridge?.dispose();
+
+			// Mirror of the `onConnected` call below. A platform that stashed
+			// per-connection state during `createAdapter` — Discord keeps the
+			// decrypted bot token there — must get the chance to release it, or a
+			// failed connect strands it for the life of the process.
+			if (integrationImpl.onDisconnected) {
+				await integrationImpl.onDisconnected(ctx).catch((hookError: unknown) => {
+					this.logger.warn(
+						`[ChatIntegrationService] onDisconnected after failed connect threw: ${hookError instanceof Error ? hookError.message : String(hookError)}`,
+					);
+				});
+			}
+
 			throw error;
 		}
 

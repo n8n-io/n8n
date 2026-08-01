@@ -814,4 +814,25 @@ describe('AgentIntegrationsController integration credentials', () => {
 			},
 		});
 	});
+
+	it('rejects Discord webhooks carrying an x-discord-gateway-token header', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const { controller } = makeController({ chatIntegrationService });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: { 'x-discord-gateway-token': 'some-token' },
+			} as never,
+			res as never,
+		);
+
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({ error: 'Not found' });
+		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
+	});
 });

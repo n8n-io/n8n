@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { unsupportedQuery } from '../integration-helpers';
+import { connectionUnavailable, unsupportedQuery } from '../integration-helpers';
 
 const PLATFORM = 'discord';
 
@@ -51,10 +51,10 @@ interface DiscordChannel {
  *
  * `@chat-adapter/discord` exposes no client or request helper (unlike the Slack
  * adapter, whose `client` backs Slack's channel search), so there is nothing to
- * borrow. Telegram's integration reaches the Bot API the same way for
- * `setWebhook`. Global `fetch` matches what the adapter itself uses for every
- * Discord call, and the host is a fixed constant here, so there is no
- * user-controlled URL to guard against.
+ * borrow. Global `fetch` matches what the adapter itself uses for every Discord
+ * call, and the host is a module constant here, so there is no user-controlled
+ * URL to guard. Telegram routes its Bot API calls through `OutboundHttp` with
+ * SSRF protection for the opposite reason: its host comes from the credential.
  */
 async function discordApiGet<T>(apiUrl: string, botToken: string, path: string): Promise<T> {
 	const response = await fetch(`${apiUrl}${path}`, {
@@ -127,7 +127,7 @@ export async function executeDiscordContextQuery(params: {
 	input: Record<string, unknown>;
 }): Promise<unknown> {
 	if (params.query !== 'search_channels') return unsupportedQuery(PLATFORM, params.query);
-	if (!params.botToken) return unsupportedQuery(PLATFORM, params.query);
+	if (!params.botToken) return connectionUnavailable();
 
 	return await searchDiscordChannels({
 		apiUrl: params.apiUrl,

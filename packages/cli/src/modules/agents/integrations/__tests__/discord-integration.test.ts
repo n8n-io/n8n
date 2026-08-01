@@ -126,10 +126,10 @@ describe('DiscordIntegration', () => {
 			});
 		});
 
-		it('reports the query as unsupported when the agent has no live connection', async () => {
+		it('reports the connection as unavailable when the agent has no live connection', async () => {
 			await expect(integration.executeContextQuery(searchQuery())).resolves.toMatchObject({
 				ok: false,
-				error: { code: 'UNSUPPORTED_QUERY' },
+				error: { code: 'CONNECTION_NOT_AVAILABLE' },
 			});
 		});
 	});

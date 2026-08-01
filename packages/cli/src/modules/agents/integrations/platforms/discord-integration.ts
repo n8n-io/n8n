@@ -22,22 +22,13 @@ import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
 } from '../integration-tool-definitions';
+import {
+	DiscordGateway,
+	type DiscordConnection,
+	type DiscordGatewayAdapter,
+} from './discord-gateway';
 import { executeDiscordContextQuery } from './discord-operations';
 import { startTypingIndicator } from './typing-indicator';
-
-/**
- * How long a single Gateway listener runs before {@link DiscordIntegration}
- * re-arms it. The adapter's listener is duration-bounded (it destroys the
- * discord.js client when the timer fires), so a long-running n8n process has
- * to restart it in a loop.
- *
- * Must stay below 2^31-1 ms: Node clamps larger `setTimeout` delays to 1ms,
- * which would tear the socket down immediately and log only at info level.
- * 12 hours keeps the ~1-3s reconnect gap rare; discord.js recovers from
- * transient disconnects on its own, so this loop is a safety net rather than
- * the primary resilience mechanism.
- */
-const GATEWAY_SESSION_MS = 12 * 60 * 60 * 1000;
 
 /** Discord's typing indicator expires after ~10s, so keep it alive on an interval. */
 const DISCORD_TYPING_REFRESH_MS = 8000;
@@ -48,30 +39,6 @@ const DISCORD_TYPING_REFRESH_MS = 8000;
  * variable must not redirect bot tokens.
  */
 const DISCORD_API_URL = 'https://discord.com/api/v10';
-
-/** Minimal shape of the ESM-only `@chat-adapter/discord` adapter we depend on. */
-interface DiscordGatewayAdapter {
-	startGatewayListener(
-		options: { waitUntil?: (task: Promise<unknown>) => void },
-		durationMs?: number,
-		abortSignal?: AbortSignal,
-		webhookUrl?: string,
-	): Promise<{ ok: boolean; text: () => Promise<string> }>;
-}
-
-interface DiscordConnection {
-	adapter: DiscordGatewayAdapter;
-	/**
-	 * Kept because context queries hit the Discord REST API directly and only
-	 * receive a descriptor, not the credential.
-	 */
-	botToken: string;
-}
-
-interface DiscordGatewaySession extends DiscordConnection {
-	abort?: AbortController;
-	running?: Promise<void>;
-}
 
 /**
  * Discord platform integration.
@@ -164,19 +131,16 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 	/**
 	 * Connections built by {@link createAdapter}, awaiting the `onConnected` hook
-	 * that runs once the Chat instance has been initialized. Keyed like
-	 * {@link sessions}.
+	 * that runs once the Chat instance has been initialized. Keyed by
+	 * `agentId:credentialId`.
 	 */
 	private readonly pendingConnections = new Map<string, DiscordConnection>();
 
-	/** Live connections on this main, keyed by `agentId:credentialId`. */
-	private readonly sessions = new Map<string, DiscordGatewaySession>();
+	private readonly gateway: DiscordGateway;
 
-	constructor(
-		private readonly logger: Logger,
-		private readonly instanceSettings: InstanceSettings,
-	) {
+	constructor(logger: Logger, instanceSettings: InstanceSettings) {
 		super();
+		this.gateway = new DiscordGateway(logger, instanceSettings);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
@@ -206,41 +170,29 @@ export class DiscordIntegration extends AgentChatIntegration {
 		return adapter;
 	}
 
-	/**
-	 * Fail the connect before the agent is published when the credential
-	 * predates the agent-channel fields. The adapter's own error tells the user
-	 * to set `DISCORD_PUBLIC_KEY`, which is misleading advice inside n8n.
-	 */
-	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		this.extractBotToken(ctx.credential);
-		this.extractPublicKey(ctx.credential);
-		this.extractApplicationId(ctx.credential);
-	}
-
 	async onConnected(ctx: AgentChatIntegrationContext): Promise<void> {
 		const key = this.sessionKey(ctx);
 		const connection = this.pendingConnections.get(key);
 		this.pendingConnections.delete(key);
 		if (!connection) return;
 
-		this.sessions.set(key, { ...connection });
-		if (this.instanceSettings.isLeader) this.startGateway(key);
+		await this.gateway.discard(key);
+		this.gateway.register(key, connection);
 	}
 
 	async onDisconnected(ctx: AgentChatIntegrationContext): Promise<void> {
 		const key = this.sessionKey(ctx);
 		this.pendingConnections.delete(key);
-		await this.stopGateway(key);
-		this.sessions.delete(key);
+		await this.gateway.discard(key);
 	}
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
 		const { agentId, integration } = params.descriptor;
-		const session = this.sessions.get(`${agentId}:${integration.credentialId}`);
+		const botToken = this.gateway.botTokenFor(`${agentId}:${integration.credentialId}`);
 
 		return await executeDiscordContextQuery({
 			apiUrl: DISCORD_API_URL,
-			botToken: session?.botToken,
+			botToken,
 			query: params.query,
 			input: params.input,
 		});
@@ -248,13 +200,13 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 	@OnLeaderTakeover()
 	startAllGateways(): void {
-		for (const key of this.sessions.keys()) this.startGateway(key);
+		this.gateway.startAll();
 	}
 
 	@OnLeaderStepdown()
 	@OnShutdown()
 	async stopAllGateways(): Promise<void> {
-		for (const key of this.sessions.keys()) await this.stopGateway(key);
+		await this.gateway.pauseAll();
 	}
 
 	/**
@@ -333,77 +285,6 @@ export class DiscordIntegration extends AgentChatIntegration {
 		return normalized;
 	}
 
-	// ---------------------------------------------------------------------------
-	// Gateway ownership (leader only)
-	// ---------------------------------------------------------------------------
-
-	/**
-	 * Idempotent: the guard keeps a leader takeover racing a connect from
-	 * opening a second socket. Discord accepts a duplicate identify for the
-	 * same bot, so a second socket would deliver every message twice and the
-	 * agent would answer twice.
-	 */
-	private startGateway(key: string): void {
-		const session = this.sessions.get(key);
-		if (!session || session.abort) return;
-
-		const abort = new AbortController();
-		session.abort = abort;
-		session.running = this.runGatewayLoop(key, session, abort);
-	}
-
-	private async runGatewayLoop(
-		key: string,
-		session: DiscordGatewaySession,
-		abort: AbortController,
-	): Promise<void> {
-		while (!abort.signal.aborted) {
-			let listener: Promise<unknown> | undefined;
-
-			// `webhookUrl` is deliberately omitted: the adapter's forwarding mode
-			// POSTs the raw bot token in a header and skips Ed25519 verification.
-			// Direct mode keeps both the token and the dispatch in-process.
-			const response = await session.adapter.startGatewayListener(
-				{
-					waitUntil: (task: Promise<unknown>) => {
-						listener = task;
-					},
-				},
-				GATEWAY_SESSION_MS,
-				abort.signal,
-				undefined,
-			);
-
-			if (!response.ok) {
-				this.logger.error(
-					`[DiscordIntegration] Gateway listener failed to start for ${key}: ${await response.text()}`,
-				);
-				break;
-			}
-
-			await listener?.catch((error: unknown) => {
-				this.logger.warn(
-					`[DiscordIntegration] Gateway listener for ${key} ended with an error: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			});
-		}
-
-		session.abort = undefined;
-	}
-
-	private async stopGateway(key: string): Promise<void> {
-		const session = this.sessions.get(key);
-		if (!session?.abort) return;
-
-		// `abort` stays set until the loop has drained, so the `startGateway`
-		// guard still reports the socket as occupied and a takeover racing this
-		// stepdown cannot start a second one mid-teardown.
-		session.abort.abort();
-		await session.running?.catch(() => {});
-		session.abort = undefined;
-		session.running = undefined;
-	}
-
 	private sessionKey(ctx: AgentChatIntegrationContext): string {
 		return `${ctx.agentId}:${ctx.credentialId}`;
 	}
@@ -420,6 +301,12 @@ export class DiscordIntegration extends AgentChatIntegration {
 		);
 	}
 
+	/**
+	 * Validated by us rather than left to the adapter: its own error tells the
+	 * user to set `DISCORD_PUBLIC_KEY`, which is misleading advice inside n8n.
+	 * Runs during `createAdapter`, so a credential predating the agent-channel
+	 * fields fails the connect before the agent is published.
+	 */
 	private extractPublicKey(credential: Record<string, unknown>): string {
 		return this.requireCredentialField(
 			credential,
