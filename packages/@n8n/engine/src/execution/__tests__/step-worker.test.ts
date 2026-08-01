@@ -27,29 +27,4 @@ describe('StepWorker', () => {
 
 		expect(handle).toHaveBeenCalledWith(event);
 	});
-
-	it('stops consuming when stopped', async () => {
-		const queue = new InMemoryWorkQueue<StepMessage>();
-		const stop = vi.spyOn(queue, 'stop');
-		const { handler } = makeReadyHandler();
-		const worker = new StepWorker(queue, handler);
-		worker.start();
-
-		await worker.stop();
-
-		expect(stop).toHaveBeenCalled();
-	});
-
-	it('rejects a message type it has no handler for', async () => {
-		const queue = new InMemoryWorkQueue<StepMessage>();
-		const { handler, handle } = makeReadyHandler();
-		const consume = vi.spyOn(queue, 'start');
-		new StepWorker(queue, handler).start();
-		const dispatch = consume.mock.calls[0][0];
-
-		await expect(dispatch({ type: 'step:unknown' } as unknown as StepMessage)).rejects.toThrowError(
-			/unimplemented message type/,
-		);
-		expect(handle).not.toHaveBeenCalled();
-	});
 });

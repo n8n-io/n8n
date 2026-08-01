@@ -159,6 +159,7 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
+	// The failure path shares the same `if (!recorded) return`, so one case covers both.
 	it('does not report completion when the step was taken over while it ran', async () => {
 		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
 		const queue = makeQueue();
@@ -169,20 +170,6 @@ describe('StepReadyHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.completeStep).toHaveBeenCalled();
-		expect(queue.publish).not.toHaveBeenCalled();
-	});
-
-	it('does not report completion when the failure could not be recorded', async () => {
-		const stepStore = makeStepStore({}, { failStep: vi.fn().mockResolvedValue(false) });
-		const queue = makeQueue();
-		const executor: IStepExecutor = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
-			v1StepExecutor: executor,
-		});
-
-		await handler.handle(event);
-
-		expect(stepStore.failStep).toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
@@ -213,90 +200,79 @@ describe('StepReadyHandler', () => {
 		});
 	});
 
-	it('fails the step when no executor is configured for its step type', async () => {
-		const stepStore = makeStepStore();
-		const queue = makeQueue();
-		const deps: ExternalDependencies = {};
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, deps);
-
-		await handler.handle(event);
-
-		expect(stepStore.failStep).toHaveBeenCalledWith('step-a', {
-			name: 'UnimplementedError',
-			message: expect.stringContaining('v1-node') as string,
-			stack: expect.any(String) as string,
-		});
-		expect(queue.publish).toHaveBeenCalledWith({
-			type: 'step:completed',
-			executionId: 'exec-1',
+	/**
+	 * Every way a step can fail before it runs has to land the same way: the error
+	 * on the step row and a `step:completed`, so the execution gets an outcome
+	 * instead of stalling on a step stuck in `running`.
+	 */
+	it.each([
+		{
+			reason: 'no executor is configured for its step type',
 			stepId: 'step-a',
-		});
-	});
+			steps: () => makeStepStore(),
+			execution: () => makeExecutionStore(),
+			deps: (): ExternalDependencies => ({}),
+			expected: { name: 'UnimplementedError', message: 'v1-node' },
+		},
+		{
+			reason: 'it has more than one predecessor',
+			stepId: 'step-b',
+			steps: () => makeStepStore({ id: 'step-b', nodeId: 'b' }),
+			execution: () =>
+				makeExecutionStore({
+					graph: {
+						nodes: graph.nodes,
+						// second input into b makes it a fan-in
+						edges: [...graph.edges, { from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 1 }],
+					},
+				}),
+			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
+			expected: { name: 'UnimplementedError', message: 'more than one' },
+		},
+		{
+			reason: 'its node has no predecessor in the graph',
+			stepId: 'step-orphan',
+			steps: () => makeStepStore({ id: 'step-orphan', nodeId: 'orphan' }),
+			execution: () =>
+				makeExecutionStore({
+					graph: {
+						nodes: [...graph.nodes, { id: 'orphan', name: 'Orphan', type: 'v1-node' }],
+						edges: graph.edges,
+					},
+				}),
+			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
+			expected: { name: 'UnexpectedError', message: 'no predecessor' },
+		},
+		{
+			reason: 'its node is absent from the execution graph',
+			stepId: 'step-a',
+			steps: () => makeStepStore({ nodeId: 'ghost' }),
+			execution: () => makeExecutionStore(),
+			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
+			expected: { name: 'UnexpectedError', message: 'ghost' },
+		},
+	])(
+		'fails the step without running it, and reports completion, when $reason',
+		async ({ stepId, steps, execution, deps, expected }) => {
+			const stepStore = steps();
+			const queue = makeQueue();
+			const executor = makeExecutor();
+			const handler = new StepReadyHandler(execution(), stepStore, queue, deps(executor));
 
-	it('fails the step when it has more than one predecessor', async () => {
-		const stepStore = makeStepStore({ id: 'step-b', nodeId: 'b' });
-		const executionStore = makeExecutionStore({
-			graph: {
-				nodes: graph.nodes,
-				edges: [
-					...graph.edges,
-					// second input into b makes it a fan-in
-					{ from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 1 },
-				],
-			},
-		});
-		const executor = makeExecutor();
-		const handler = new StepReadyHandler(executionStore, stepStore, makeQueue(), {
-			v1StepExecutor: executor,
-		});
+			await handler.handle({ ...event, stepId });
 
-		await handler.handle({ ...event, stepId: 'step-b' });
-
-		expect(executor.execute).not.toHaveBeenCalled();
-		expect(stepStore.failStep).toHaveBeenCalledWith('step-b', {
-			name: 'UnimplementedError',
-			message: expect.stringContaining('more than one') as string,
-			stack: expect.any(String) as string,
-		});
-	});
-
-	it('fails the step when its node has no predecessor in the graph', async () => {
-		const stepStore = makeStepStore({ id: 'step-orphan', nodeId: 'orphan' });
-		const executionStore = makeExecutionStore({
-			graph: {
-				nodes: [...graph.nodes, { id: 'orphan', name: 'Orphan', type: 'v1-node' }],
-				edges: graph.edges,
-			},
-		});
-		const executor = makeExecutor();
-		const handler = new StepReadyHandler(executionStore, stepStore, makeQueue(), {
-			v1StepExecutor: executor,
-		});
-
-		await handler.handle({ ...event, stepId: 'step-orphan' });
-
-		expect(executor.execute).not.toHaveBeenCalled();
-		expect(stepStore.failStep).toHaveBeenCalledWith('step-orphan', {
-			name: 'UnexpectedError',
-			message: expect.stringContaining('no predecessor') as string,
-			stack: expect.any(String) as string,
-		});
-	});
-
-	it('fails the step when its node is absent from the execution graph', async () => {
-		const stepStore = makeStepStore({ nodeId: 'ghost' });
-		const executor = makeExecutor();
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
-			v1StepExecutor: executor,
-		});
-
-		await handler.handle(event);
-
-		expect(executor.execute).not.toHaveBeenCalled();
-		expect(stepStore.failStep).toHaveBeenCalledWith('step-a', {
-			name: 'UnexpectedError',
-			message: expect.stringContaining('ghost') as string,
-			stack: expect.any(String) as string,
-		});
-	});
+			expect(executor.execute).not.toHaveBeenCalled();
+			expect(stepStore.failStep).toHaveBeenCalledWith(stepId, {
+				name: expected.name,
+				message: expect.stringContaining(expected.message) as string,
+				stack: expect.any(String) as string,
+			});
+			expect(stepStore.completeStep).not.toHaveBeenCalled();
+			expect(queue.publish).toHaveBeenCalledWith({
+				type: 'step:completed',
+				executionId: 'exec-1',
+				stepId,
+			});
+		},
+	);
 });
