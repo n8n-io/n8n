@@ -69,17 +69,29 @@ function makeExecutor(result: unknown = { outputs: [[{ json: { ok: true } }]] })
 const event = { type: 'step:ready', executionId: 'exec-1', stepId: 'step-a' } as const;
 
 describe('StepReadyHandler', () => {
-	it('runs the step through the executor, records its outputs and reports completion', async () => {
+	it('claims the step, runs it through the executor, records its outputs and reports completion', async () => {
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
 		const executor = makeExecutor({ outputs: [[{ json: { ok: true } }]] });
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+		const executionStore = makeExecutionStore({ triggerPayload: { body: { hello: 'world' } } });
+		const handler = new StepReadyHandler(executionStore, stepStore, queue, {
 			v1StepExecutor: executor,
 		});
 
 		await handler.handle(event);
 
 		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
+		// 'a' sits directly behind the trigger, so its inputs are the trigger payload
+		expect(executor.execute).toHaveBeenCalledWith({
+			node: { id: 'a', name: 'A', type: 'v1-node', config: { some: 'config' } },
+			inputs: { body: { hello: 'world' } },
+			context: {
+				executionId: 'exec-1',
+				stepId: 'step-a',
+				workflowId: 'wf-1',
+				mode: 'production',
+			},
+		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
@@ -89,41 +101,7 @@ describe('StepReadyHandler', () => {
 		});
 	});
 
-	it('hands the executor the graph node and a context describing the execution', async () => {
-		const executor = makeExecutor();
-		const handler = new StepReadyHandler(makeExecutionStore(), makeStepStore(), makeQueue(), {
-			v1StepExecutor: executor,
-		});
-
-		await handler.handle(event);
-
-		expect(executor.execute).toHaveBeenCalledWith({
-			node: { id: 'a', name: 'A', type: 'v1-node', config: { some: 'config' } },
-			inputs: null,
-			context: {
-				executionId: 'exec-1',
-				stepId: 'step-a',
-				workflowId: 'wf-1',
-				mode: 'production',
-			},
-		});
-	});
-
-	it('passes the trigger payload as inputs when the predecessor is the trigger', async () => {
-		const executor = makeExecutor();
-		const executionStore = makeExecutionStore({ triggerPayload: { body: { hello: 'world' } } });
-		const handler = new StepReadyHandler(executionStore, makeStepStore(), makeQueue(), {
-			v1StepExecutor: executor,
-		});
-
-		await handler.handle(event);
-
-		expect(executor.execute).toHaveBeenCalledWith(
-			expect.objectContaining({ inputs: { body: { hello: 'world' } } }),
-		);
-	});
-
-	it('passes the predecessor step outputs as inputs for a non-trigger predecessor', async () => {
+	it('reads inputs from the predecessor step outputs when the predecessor is not the trigger', async () => {
 		const executor = makeExecutor();
 		// step 'b', whose only predecessor is 'a'
 		const stepStore = makeStepStore(
