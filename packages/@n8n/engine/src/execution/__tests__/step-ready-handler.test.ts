@@ -177,6 +177,30 @@ describe('StepReadyHandler', () => {
 		});
 	});
 
+	// A v1 node runs user code, which can reject with anything — a non-Error still
+	// has to land as a recorded failure rather than escaping the handler.
+	it('records a non-Error rejection as a failure', async () => {
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const executor: IStepExecutor = { execute: vi.fn().mockRejectedValue('just a string') };
+		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.failStep).toHaveBeenCalledWith('step-a', {
+			name: 'Error',
+			message: 'just a string',
+		});
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:completed',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
 	/**
 	 * Every way a step can fail before it runs has to land the same way: the error
 	 * on the step row and a `step:completed`, so the execution gets an outcome
