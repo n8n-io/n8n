@@ -27,7 +27,6 @@ import { NodeTypes } from '@/node-types';
 import { CacheService } from '@/services/cache/cache.service';
 
 import type { Method } from './webhook.types';
-import { WebhookDescriptionResolver } from './webhook-description-resolver';
 
 @Service()
 export class WebhookService {
@@ -36,7 +35,6 @@ export class WebhookService {
 		private readonly webhookRepository: WebhookRepository,
 		private readonly cacheService: CacheService,
 		private readonly nodeTypes: NodeTypes,
-		private readonly descriptionResolver: WebhookDescriptionResolver,
 	) {}
 
 	async populateCache() {
@@ -334,12 +332,11 @@ export class WebhookService {
 				continue;
 			}
 
-			let nodeWebhookPath = this.descriptionResolver.simple(
-				workflow,
+			let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
 				node,
-				webhookDescription,
-				'path',
+				webhookDescription.path,
 				mode,
+				{},
 			);
 			if (nodeWebhookPath === undefined) {
 				this.logger.error(
@@ -357,21 +354,17 @@ export class WebhookService {
 				nodeWebhookPath = nodeWebhookPath.slice(0, -1);
 			}
 
-			const isFullPath = this.descriptionResolver.simple<boolean>(
-				workflow,
+			const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
 				node,
-				webhookDescription,
-				'isFullPath',
+				webhookDescription.isFullPath,
 				'internal',
 				{},
 				undefined,
 				false,
 			) as boolean;
-			const restartWebhook = this.descriptionResolver.simple<boolean>(
-				workflow,
+			const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
 				node,
-				webhookDescription,
-				'restartWebhook',
+				webhookDescription.restartWebhook,
 				'internal',
 				{},
 				undefined,
@@ -385,11 +378,9 @@ export class WebhookService {
 				restartWebhook,
 			);
 
-			const webhookMethods = this.descriptionResolver.simple(
-				workflow,
+			const webhookMethods = workflow.expression.getSimpleParameterValue(
 				node,
-				webhookDescription,
-				'httpMethod',
+				webhookDescription.httpMethod,
 				mode,
 				{},
 				undefined,

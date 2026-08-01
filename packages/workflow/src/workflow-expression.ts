@@ -7,10 +7,13 @@ import type {
 	INodeParameterResourceLocator,
 	INodeParameters,
 	IWorkflowDataProxyAdditionalKeys,
+	NativeParameterResolvers,
 	NodeParameterValue,
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './interfaces';
+import type { NativeResolution } from './node-parameters/native-parameter-resolution';
+import { resolveNativeParameterValue } from './node-parameters/native-parameter-resolution';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type { Workflow } from './workflow';
@@ -184,6 +187,28 @@ export class WorkflowExpression {
 	}
 
 	/**
+	 * Resolves a plain `$parameter` template without the engine where that
+	 * provably yields the same value, so a caller that proved a whole webhook
+	 * description resolvable can skip acquiring an isolate. Off unless the
+	 * workflow opts in — see {@link Workflow.nativeParameterResolution}.
+	 *
+	 * Reads the workflow's own node, since that is what the `$parameter` proxy
+	 * reads regardless of which node object the caller holds.
+	 */
+	private resolveNatively(
+		node: INode,
+		parameterValue: unknown,
+		nativeResolver?: NativeParameterResolvers[string],
+	): NativeResolution {
+		if (!this.workflow.nativeParameterResolution) return { resolved: false };
+
+		const ownNode = this.workflow.nodes[node.name];
+		if (ownNode === undefined) return { resolved: false };
+
+		return resolveNativeParameterValue(ownNode, parameterValue, nativeResolver);
+	}
+
+	/**
 	 * Resolves value of parameter. But does not work for workflow-data.
 	 */
 	getSimpleParameterValue(
@@ -193,10 +218,14 @@ export class WorkflowExpression {
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
 		defaultValue?: boolean | number | string | unknown[],
+		nativeResolver?: NativeParameterResolvers[string],
 	): boolean | number | string | undefined | unknown[] {
 		if (parameterValue === undefined) {
 			return defaultValue;
 		}
+
+		const native = this.resolveNatively(node, parameterValue, nativeResolver);
+		if (native.resolved) return native.value as boolean | number | string | undefined | unknown[];
 
 		const runIndex = 0;
 		const itemIndex = 0;
@@ -227,10 +256,14 @@ export class WorkflowExpression {
 		executeData?: IExecuteData,
 		defaultValue: NodeParameterValueType | undefined = undefined,
 		selfData = {},
+		nativeResolver?: NativeParameterResolvers[string],
 	): NodeParameterValueType | undefined {
 		if (parameterValue === undefined) {
 			return defaultValue;
 		}
+
+		const native = this.resolveNatively(node, parameterValue, nativeResolver);
+		if (native.resolved) return native.value as NodeParameterValueType | undefined;
 
 		const runIndex = 0;
 		const itemIndex = 0;

@@ -1,4 +1,3 @@
-import type { ExpressionEngineConfig } from '@n8n/config';
 import { WebhookEntity } from '@n8n/db';
 import type { WebhookRepository } from '@n8n/db';
 import type {
@@ -15,7 +14,6 @@ import { mock } from 'vitest-mock-extended';
 import config from '@/config';
 import type { NodeTypes } from '@/node-types';
 import type { CacheService } from '@/services/cache/cache.service';
-import { WebhookDescriptionResolver } from '@/webhooks/webhook-description-resolver';
 import { WebhookService } from '@/webhooks/webhook.service';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>
@@ -30,16 +28,7 @@ describe('WebhookService', () => {
 	const webhookRepository = mock<WebhookRepository>();
 	const cacheService = mock<CacheService>();
 	const nodeTypes = mock<NodeTypes>();
-	const descriptionResolver = new WebhookDescriptionResolver(
-		mock<ExpressionEngineConfig>({ engine: 'vm', preferNativeWebhookResolution: true }),
-	);
-	const webhookService = new WebhookService(
-		mock(),
-		webhookRepository,
-		cacheService,
-		nodeTypes,
-		descriptionResolver,
-	);
+	const webhookService = new WebhookService(mock(), webhookRepository, cacheService, nodeTypes);
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
 	beforeEach(() => {
@@ -471,64 +460,6 @@ describe('WebhookService', () => {
 				node: 'Webhook',
 				workflowId: 'test-workflow',
 			});
-		});
-
-		// `LiveWebhooks` may run this without an isolate acquired, so every read
-		// here has to go through the resolver, not straight to the engine.
-		test('should read a natively resolvable description without the expression engine', async () => {
-			// Set before constructing the workflow: its constructor fills in
-			// node-type defaults, which is what the native path reads back.
-			nodeTypes.getByNameAndVersion.mockReturnValue({
-				description: {
-					properties: [
-						{ displayName: 'Path', name: 'path', type: 'string', default: '' },
-						{ displayName: 'Method', name: 'httpMethod', type: 'string', default: 'GET' },
-					],
-					webhooks: [
-						{
-							name: 'default',
-							httpMethod: '={{$parameter["httpMethod"] || "GET"}}',
-							path: '={{$parameter["path"]}}',
-							isFullPath: true,
-							restartWebhook: false,
-						},
-					],
-				},
-			} as unknown as INodeType);
-
-			const workflowWithNode = new Workflow({
-				id: 'test-workflow',
-				nodes: [
-					{
-						id: '1',
-						name: 'Webhook',
-						type: 'n8n-nodes-base.webhook',
-						typeVersion: 2,
-						position: [0, 0],
-						parameters: { path: 'my-path', httpMethod: 'PATCH' },
-					},
-				],
-				connections: {},
-				active: true,
-				nodeTypes,
-			});
-			const node = workflowWithNode.getNode('Webhook')!;
-			const engine = vi.spyOn(workflowWithNode.expression, 'getSimpleParameterValue');
-
-			const webhooks = webhookService.getNodeWebhooks(workflowWithNode, node, additionalData);
-
-			expect(webhooks).toHaveLength(1);
-			expect(webhooks[0]).toMatchObject({
-				httpMethod: 'PATCH',
-				path: 'test-workflow/webhook/my-path',
-			});
-
-			// Plain values may still go to the engine — it returns them without
-			// evaluating anything. No expression may.
-			const expressionsEvaluated = engine.mock.calls.filter(
-				([, value]) => typeof value === 'string' && value.startsWith('='),
-			);
-			expect(expressionsEvaluated).toEqual([]);
 		});
 
 		test('should trim surrounding whitespace and slashes from the path', async () => {

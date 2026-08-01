@@ -1,4 +1,3 @@
-import { Container } from '@n8n/di';
 import type {
 	IWebhookData,
 	INode,
@@ -10,15 +9,15 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 
-import { WebhookDescriptionResolver } from './webhook-description-resolver';
+/** Drops the one object-valued entry, `resolve`, which is never evaluated. */
+const descriptionValue = (value: IWebhookDescription[string]) =>
+	typeof value === 'object' ? undefined : value;
 
 /**
  * A helper class that holds the context for the webhook execution.
  * Provides quality of life methods for evaluating expressions.
  */
 export class WebhookExecutionContext {
-	private readonly descriptionResolver = Container.get(WebhookDescriptionResolver);
-
 	constructor(
 		readonly workflow: Workflow,
 		readonly workflowStartNode: INode,
@@ -35,16 +34,15 @@ export class WebhookExecutionContext {
 		executeData?: IExecuteData,
 		defaultValue?: T,
 	): T | undefined {
-		return this.descriptionResolver.simple<T>(
-			this.workflow,
+		return this.workflow.expression.getSimpleParameterValue(
 			this.workflowStartNode,
-			this.webhookData.webhookDescription,
-			propertyName,
+			descriptionValue(this.webhookData.webhookDescription[propertyName]),
 			this.executionMode,
 			this.additionalKeys,
 			executeData,
 			defaultValue,
-		);
+			this.webhookData.webhookDescription.resolve?.[propertyName],
+		) as T | undefined;
 	}
 
 	/**
@@ -55,15 +53,15 @@ export class WebhookExecutionContext {
 		executeData?: IExecuteData,
 		defaultValue?: T,
 	): T | undefined {
-		return this.descriptionResolver.complex<T>(
-			this.workflow,
+		return this.workflow.expression.getComplexParameterValue(
 			this.workflowStartNode,
-			this.webhookData.webhookDescription,
-			propertyName,
+			descriptionValue(this.webhookData.webhookDescription[propertyName]),
 			this.executionMode,
 			this.additionalKeys,
 			executeData,
 			defaultValue,
-		);
+			{},
+			this.webhookData.webhookDescription.resolve?.[propertyName],
+		) as T | undefined;
 	}
 }

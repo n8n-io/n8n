@@ -139,6 +139,7 @@ export class LiveWebhooks implements IWebhookManager {
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
+			nativeParameterResolution: this.instanceCanResolveNatively,
 		});
 
 		const ownerProjectId = workflowData.shared?.find(
@@ -215,7 +216,7 @@ export class LiveWebhooks implements IWebhookManager {
 	 * evaluate. Anything not proven below acquires eagerly.
 	 */
 	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
-		if (!this.expressionEngineConfig.preferNativeWebhookResolution) return true;
+		if (!this.instanceCanResolveNatively) return true;
 		if (startNode === null) return true;
 		if (!ISOLATE_SKIP_NODE_TYPES.has(startNode.type)) return true;
 		if (!nodeParametersAreStatic(startNode)) return true;
@@ -225,6 +226,12 @@ export class LiveWebhooks implements IWebhookManager {
 		if (!webhooks?.length) return true;
 
 		return !webhooks.every((webhook) => valuesAreNativelyResolvable(webhook, webhook.resolve));
+	}
+
+	/** The legacy engine has no isolate to save, so it never resolves natively. */
+	private get instanceCanResolveNatively(): boolean {
+		const { engine, preferNativeWebhookResolution } = this.expressionEngineConfig;
+		return engine !== 'legacy' && preferNativeWebhookResolution;
 	}
 
 	private async loadWebhookExecutionData(

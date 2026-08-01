@@ -1,59 +1,74 @@
-import { Container } from '@n8n/di';
 import type { INode, IWebhookData, IWorkflowDataProxyAdditionalKeys, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { WebhookDescriptionResolver } from '../webhook-description-resolver';
 import { WebhookExecutionContext } from '../webhook-execution-context';
 
-// Every description-field read goes through this class, and every one of those
-// has to reach `WebhookDescriptionResolver` — a read that bypassed it would call
-// the expression engine on a request that skipped acquiring an isolate.
+// Every description-field read goes through this class, so this is where
+// `resolve` has to be applied. Miss one field and a request that skipped
+// acquiring an isolate gets a 500 instead of a response.
 describe('WebhookExecutionContext', () => {
-	const descriptionResolver = mock<WebhookDescriptionResolver>();
-	Container.set(WebhookDescriptionResolver, descriptionResolver);
-
-	const workflow = mock<Workflow>();
+	const responseData = () => 'noData';
+	const workflow = mock<Workflow>({
+		expression: mock<Workflow['expression']>(),
+	});
 	const node = mock<INode>({ name: 'Webhook', parameters: {} });
-	const webhookDescription = {
-		name: 'default',
-		httpMethod: 'POST',
-		path: '={{$parameter["path"]}}',
-	};
-	const additionalKeys = mock<IWorkflowDataProxyAdditionalKeys>();
 
 	const context = new WebhookExecutionContext(
 		workflow,
 		node,
-		{ webhookDescription } as unknown as IWebhookData,
+		// A plain object, not `mock<IWebhookData>`: a deep mock auto-creates
+		// `resolve[field]` for every field, defeating the point of these tests.
+		{
+			webhookDescription: {
+				name: 'default',
+				httpMethod: 'POST',
+				path: '={{$parameter["path"]}}',
+				responseData: '={{(function (p) { return p.responseData; })($parameter)}}',
+				resolve: { responseData },
+			},
+		} as unknown as IWebhookData,
 		'trigger',
-		additionalKeys,
+		mock<IWorkflowDataProxyAdditionalKeys>(),
 	);
 
-	it('delegates a simple value to the resolver', () => {
-		context.evaluateSimpleWebhookDescriptionExpression('path', undefined, 'fallback');
+	it('passes the declared resolver when evaluating a simple value', () => {
+		context.evaluateSimpleWebhookDescriptionExpression('responseData');
 
-		expect(descriptionResolver.simple).toHaveBeenCalledWith(
-			workflow,
+		expect(workflow.expression.getSimpleParameterValue).toHaveBeenCalledWith(
 			node,
-			webhookDescription,
-			'path',
+			expect.any(String),
 			'trigger',
-			additionalKeys,
+			expect.anything(),
 			undefined,
-			'fallback',
+			undefined,
+			responseData,
 		);
 	});
 
-	it('delegates a complex value to the resolver', () => {
+	it('passes the declared resolver when evaluating a complex value', () => {
 		context.evaluateComplexWebhookDescriptionExpression('responseData');
 
-		expect(descriptionResolver.complex).toHaveBeenCalledWith(
-			workflow,
+		expect(workflow.expression.getComplexParameterValue).toHaveBeenCalledWith(
 			node,
-			webhookDescription,
-			'responseData',
+			expect.any(String),
 			'trigger',
-			additionalKeys,
+			expect.anything(),
+			undefined,
+			undefined,
+			{},
+			responseData,
+		);
+	});
+
+	it('passes no resolver for a field that declares none', () => {
+		context.evaluateSimpleWebhookDescriptionExpression('path');
+
+		expect(workflow.expression.getSimpleParameterValue).toHaveBeenLastCalledWith(
+			node,
+			'={{$parameter["path"]}}',
+			'trigger',
+			expect.anything(),
+			undefined,
 			undefined,
 			undefined,
 		);

@@ -330,3 +330,61 @@ describe('matcher decisions and their parity', () => {
 		},
 	);
 });
+
+// The opt-in that makes the isolate skip safe: with it, every caller that reads
+// a description through `workflow.expression` — including ones in other
+// packages, e.g. `getNodeWebhookUrl` in n8n-core — resolves natively.
+describe('Workflow.nativeParameterResolution', () => {
+	const isVm = process.env.N8N_EXPRESSION_ENGINE === 'vm';
+
+	const buildOptedInWorkflow = (parameters: INodeParameters) => {
+		const workflow = buildWorkflow(parameters);
+		return new Workflow({
+			id: workflow.id,
+			nodes: Object.values(workflow.nodes),
+			connections: {},
+			active: false,
+			nodeTypes,
+			nativeParameterResolution: true,
+		});
+	};
+
+	it('resolves without an isolate when opted in', () => {
+		const workflow = buildOptedInWorkflow({ path: 'hook', options: {} });
+		const node = workflow.getNode('Webhook')!;
+
+		// No `acquireIsolate()` anywhere in this test — the point of the feature
+		expect(
+			workflow.expression.getSimpleParameterValue(node, description().path, 'internal', {}),
+		).toBe('hook');
+		expect(
+			workflow.expression.getSimpleParameterValue(
+				node,
+				'={{(function (p) { return p.path; })($parameter)}}',
+				'internal',
+				{},
+				undefined,
+				undefined,
+				(parameters) => parameters.path as string,
+			),
+		).toBe('hook');
+	});
+
+	it.runIf(isVm)('needs an isolate when not opted in', () => {
+		const workflow = buildWorkflow({ path: 'hook', options: {} });
+		const node = workflow.getNode('Webhook')!;
+
+		expect(() =>
+			workflow.expression.getSimpleParameterValue(node, description().path, 'internal', {}),
+		).toThrow();
+	});
+
+	it.runIf(isVm)('needs an isolate once a node parameter is an expression', () => {
+		const workflow = buildOptedInWorkflow({ path: 'hook', options: { onlyRunIf: '={{ true }}' } });
+		const node = workflow.getNode('Webhook')!;
+
+		expect(() =>
+			workflow.expression.getSimpleParameterValue(node, description().path, 'internal', {}),
+		).toThrow();
+	});
+});
