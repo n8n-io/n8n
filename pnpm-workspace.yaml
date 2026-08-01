@@ -40,14 +40,14 @@ catalog:
   lodash: 4.18.1
   luxon: 3.4.4
   mime-types: 3.0.2
-  mysql2: 3.17.0
-  nanoid: 3.3.8
+  mysql2: 3.23.1
+  nanoid: 3.3.12
   nodemailer: 7.0.11
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   run-script-os: 1.1.6
-  sanitize-html: 2.17.4
+  sanitize-html: 2.17.5
   simple-git: 3.36.0
   tsdown: ^0.16.5
   tsx: ^4.19.3
