@@ -34,11 +34,10 @@ import type {
 
 /**
  * Trigger types whose `webhook()` provably evaluates nothing beyond their own
- * parameters and webhook description. Only extend after reviewing the node's
- * `webhook()`: a parameter scan cannot see `evaluateExpression()` on values with
- * no `=` prefix, nor helpers that resolve expressions themselves (e.g.
- * `httpRequestWithAuthentication`). Credential decryption is fine — it acquires
- * its own isolate.
+ * parameters and webhook description. Only extend after reading the node's
+ * `webhook()`: a parameter scan cannot see `evaluateExpression()` on values
+ * without an `=` prefix, nor helpers that resolve expressions themselves (e.g.
+ * `httpRequestWithAuthentication`).
  */
 const ISOLATE_SKIP_NODE_TYPES = new Set<string>([WEBHOOK_NODE_TYPE]);
 
@@ -212,8 +211,7 @@ export class LiveWebhooks implements IWebhookManager {
 
 	/**
 	 * Under `N8N_EXPRESSION_ENGINE=vm` acquisition builds a V8 isolate per
-	 * request, so it is worth skipping when there is provably nothing to
-	 * evaluate. Anything not proven below acquires eagerly.
+	 * request. Anything not proven below acquires eagerly.
 	 */
 	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
 		if (!this.instanceCanResolveNatively) return true;

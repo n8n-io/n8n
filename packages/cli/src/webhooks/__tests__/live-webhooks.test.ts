@@ -632,8 +632,7 @@ describe('LiveWebhooks', () => {
 			},
 		];
 
-		// Mirrors the real Webhook node: plain `$parameter` templates, plus a
-		// `resolve` entry for the one that inlines a function body.
+		// Mirrors the real Webhook node's description.
 		const nativelyResolvableWebhooks: IWebhookDescription[] = [
 			{
 				name: 'default',

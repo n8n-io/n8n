@@ -3,9 +3,9 @@ import { mock } from 'vitest-mock-extended';
 
 import { WebhookExecutionContext } from '../webhook-execution-context';
 
-// Every description-field read goes through this class, so this is where
-// `resolve` has to be applied. Miss one field and a request that skipped
-// acquiring an isolate gets a 500 instead of a response.
+// Every description-field read goes through this class, so `resolve` has to be
+// applied on each one: a field that misses it 500s on a request that skipped
+// acquiring an isolate.
 describe('WebhookExecutionContext', () => {
 	const responseData = () => 'noData';
 	const workflow = mock<Workflow>({

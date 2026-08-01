@@ -13,24 +13,16 @@ import {
 import { createEmptyRunExecutionData } from '../../src/run-execution-data-factory';
 import { Workflow } from '../../src/workflow';
 
-// Native (engine-free) resolution of node-description templates, and its parity
-// with evaluating the same templates through the expression engine.
-//
 // Parity is the whole safety argument: `LiveWebhooks` skips acquiring an
-// isolate when a description resolves natively, so a native result that
-// differs from the engine's would silently change webhook behaviour. This file
-// runs under both vitest projects (legacy-engine and vm-engine, see
-// vitest.config.ts), so it pins native == legacy AND native == vm.
-//
-// The fixtures are webhook descriptions because that is the first consumer, but
-// nothing under test knows what a webhook is.
+// isolate when a description resolves natively, so a native result that differs
+// from the engine's would silently change webhook behaviour. This file runs
+// under both vitest projects (see vitest.config.ts), so it pins native ==
+// legacy AND native == vm.
 
-// A stand-in for the base Webhook node, declaring the parameters the
-// description templates read. Declaring them matters: the `Workflow`
-// constructor runs `NodeHelpers.getNodeParameters`, which drops values the node
-// type does not declare — and the engine's `$parameter` proxy reads that same
-// post-processed object, which is exactly why native resolution can stand in
-// for it.
+// Declaring the parameters matters: the `Workflow` constructor runs
+// `NodeHelpers.getNodeParameters`, which drops values the node type does not
+// declare — and the engine's `$parameter` proxy reads that same post-processed
+// object, which is exactly why native resolution can stand in for it.
 const webhookNodeType: INodeType = {
 	description: {
 		displayName: 'Webhook',
@@ -111,7 +103,6 @@ const evaluateWithEngine = (workflow: Workflow, node: INode, template: string) =
 		{},
 	);
 
-/** Mirrors the shapes real webhook descriptions use. */
 const description = (extra: Partial<IWebhookDescription> = {}): IWebhookDescription => ({
 	name: 'default',
 	path: '={{$parameter["path"]}}',
@@ -184,9 +175,6 @@ describe('resolveNativeParameterValue over a description', () => {
 });
 
 describe('native resolution matches the expression engine', () => {
-	// Every shape the base Webhook node's description uses, over parameter sets
-	// that exercise the interesting branches (missing keys, falsy values, arrays,
-	// nested objects, inlined function bodies).
 	const parameterSets: Array<[string, INodeParameters]> = [
 		[
 			'fully configured',
@@ -228,8 +216,6 @@ describe('native resolution matches the expression engine', () => {
 		'inlinedFunction',
 	];
 
-	// Same shape as the real description, including a field whose template
-	// inlines a function body and is backed by a resolver.
 	const inlinedFunction = (parameters: INodeParameters) =>
 		(parameters.responseCode as number | undefined) ??
 		((parameters.options as INodeParameters | undefined)?.noResponseBody ? 204 : 200);

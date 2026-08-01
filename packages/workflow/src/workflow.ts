@@ -89,9 +89,8 @@ export class Workflow {
 	/**
 	 * Whether description templates that are a plain `$parameter` read may be
 	 * resolved without the expression engine. Opt-in per workflow: a caller sets
-	 * it only when it also relies on the consequence — under
-	 * `N8N_EXPRESSION_ENGINE=vm`, that no isolate needs acquiring. See
-	 * `LiveWebhooks`, the only caller today.
+	 * it only when it also relies on the consequence — that no isolate needs
+	 * acquiring. See `LiveWebhooks`, the only caller today.
 	 */
 	readonly nativeParameterResolution: boolean;
 

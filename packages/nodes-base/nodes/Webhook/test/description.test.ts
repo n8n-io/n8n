@@ -5,8 +5,7 @@ import { defaultWebhookDescription } from '../description';
 import { Webhook } from '../Webhook.node';
 
 // Pins what lets `LiveWebhooks` resolve this description without the expression
-// engine (and so, under `N8N_EXPRESSION_ENGINE=vm`, without an isolate per
-// request): every field is natively resolvable, and each `resolve` entry returns
+// engine: every field is natively resolvable, and each `resolve` entry returns
 // exactly what its template returns through the engine.
 
 const webhookNode = new Webhook();
@@ -40,8 +39,6 @@ const nodeWithParameters = (parameters: INodeParameters) => {
 
 describe('defaultWebhookDescription', () => {
 	it('is fully resolvable without the expression engine', () => {
-		// A new field that is neither a plain `$parameter` read nor has a `resolve`
-		// entry flips this to false: still correct, just back to acquiring.
 		expect(
 			valuesAreNativelyResolvable(defaultWebhookDescription, defaultWebhookDescription.resolve),
 		).toBe(true);

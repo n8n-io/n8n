@@ -31,11 +31,9 @@ const PARAMETER_PATH_TEMPLATE_RE =
 const SEGMENT_RE = /\[\s*(?:'([^'\\\r\n]*)'|"([^"\\\r\n]*)"|(\d+))\s*\]|\.([A-Za-z_$][\w$]*)/g;
 
 export interface ParameterPathTemplate {
-	/** Property keys to walk, in order. */
 	path: string[];
-	/** Value to fall back to when the lookup is falsy, from a `|| <literal>` tail. */
 	fallback?: unknown;
-	/** Whether the template had a `||` tail at all. */
+	/** Separate from `fallback`, which is legitimately `undefined` for `|| undefined`. */
 	hasFallback: boolean;
 }
 
@@ -102,11 +100,8 @@ export type NativeResolution = { resolved: true; value: unknown } | { resolved: 
 const NOT_RESOLVED: NativeResolution = { resolved: false };
 
 /**
- * Resolves a description value from the description's own `resolver` if it
- * declares one, otherwise from a plain `$parameter` template. Both read
- * `node.parameters` directly, which only stands in for the `$parameter` proxy
- * while the parameters are static and `node` is the workflow's own node object —
- * the proxy reads `workflow.nodes[node.name]`, defaults and all.
+ * `node` must be the workflow's own node object: the `$parameter` proxy reads
+ * `workflow.nodes[node.name]`, defaults and all.
  */
 export function resolveNativeParameterValue(
 	node: Pick<INode, 'parameters'>,
@@ -126,8 +121,8 @@ export function resolveNativeParameterValue(
 }
 
 /**
- * Checked over all values at any depth, not the subset a caller happens to read:
- * a template added to a description later must not silently invalidate a caller
+ * Checks every value at any depth, not the subset a caller happens to read: a
+ * template added to a description later must not silently invalidate a caller
  * that skipped acquiring an isolate on the strength of this.
  */
 export function valuesAreNativelyResolvable(

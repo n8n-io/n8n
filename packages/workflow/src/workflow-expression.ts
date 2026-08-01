@@ -187,10 +187,8 @@ export class WorkflowExpression {
 	}
 
 	/**
-	 * Resolves a plain `$parameter` template without the engine where that
-	 * provably yields the same value, so a caller that proved a whole webhook
-	 * description resolvable can skip acquiring an isolate. Off unless the
-	 * workflow opts in — see {@link Workflow.nativeParameterResolution}.
+	 * Off unless the workflow opts in — see
+	 * {@link Workflow.nativeParameterResolution}.
 	 *
 	 * Reads the workflow's own node, since that is what the `$parameter` proxy
 	 * reads regardless of which node object the caller holds.

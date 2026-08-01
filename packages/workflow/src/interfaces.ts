@@ -2999,8 +2999,7 @@ export type WebhookType = 'default' | 'setup';
  * field. Backend-only: functions do not survive the JSON serialization that
  * ships descriptions to the editor, which keeps using the templates. Only needed
  * for a field `matchParameterPathTemplate` cannot read; derive template and
- * resolver from the same function so there is nothing to keep in sync — see
- * `defaultWebhookDescription` in the Webhook node.
+ * resolver from the same function so there is nothing to keep in sync.
  */
 export type NativeParameterResolvers = Record<
 	string,
@@ -3028,7 +3027,7 @@ export interface IWebhookDescription {
 	nodeType?: 'webhook' | 'form' | 'mcp';
 	ndvHideUrl?: string | boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: string | boolean; // If true the method will not be displayed in the editor
-	/** See {@link NativeParameterResolvers}. Not serialized to the editor. */
+	/** See {@link NativeParameterResolvers}. */
 	resolve?: NativeParameterResolvers;
 }
 

@@ -63,10 +63,9 @@ export class ExpressionEngineConfig {
 	idleTimeout?: number;
 
 	/**
-	 * Whether to resolve webhook description fields without the expression engine
-	 * where that provably yields the same value — which lets a production webhook
-	 * request skip acquiring an isolate. Anything unprovable still uses the
-	 * engine; off means everything does.
+	 * Resolve webhook description fields without the engine where that provably
+	 * yields the same value, letting the request skip acquiring an isolate.
+	 * Anything unprovable still uses the engine; off means everything does.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_PREFER_NATIVE_WEBHOOK_RESOLUTION')
 	preferNativeWebhookResolution: boolean = true;
