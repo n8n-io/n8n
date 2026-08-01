@@ -111,14 +111,35 @@ export class WebhookService {
 	 *
 	 * Selection mirrors {@link findWebhook}, method first: narrowing by method only at
 	 * the end would let a static row for another method shadow the dynamic template that
-	 * actually routes. Without a method, only an unambiguous path resolves. `method` is
-	 * untrusted input, hence `string` rather than {@link Method}. Bypasses the cache.
+	 * actually routes. Without a method, only a path naming exactly one trigger resolves,
+	 * which costs the dynamic probe even on a static hit. `method` is untrusted input,
+	 * hence `string` rather than {@link Method}. Bypasses the cache.
 	 */
 	async findTriggerWebhooksByPath(path: string, method?: string): Promise<WebhookEntity[]> {
 		const staticWebhooks = await this.webhookRepository.findStaticWebhooksByPath(path);
-		const staticMatch = this.pickServedWebhook(staticWebhooks, method);
-		if (staticMatch) return this.rowsOfSameTrigger(staticWebhooks, staticMatch);
 
+		if (method) {
+			const staticMatch = staticWebhooks.find((webhook) => webhook.method === method);
+			if (staticMatch) return this.rowsOfSameTrigger(staticWebhooks, staticMatch);
+			return await this.findDynamicTriggerWebhooks(path, method);
+		}
+
+		// Without a method the path must name one trigger across *both* kinds: a concrete
+		// path can be served statically on one method and by a dynamic template on
+		// another, so accepting a lone static row here would answer an ambiguous probe.
+		const candidates = [...staticWebhooks, ...(await this.findDynamicTriggerWebhooks(path))];
+		const [first] = candidates;
+		if (!first) return [];
+
+		const oneTrigger = this.rowsOfSameTrigger(candidates, first);
+		return oneTrigger.length === candidates.length ? oneTrigger : [];
+	}
+
+	/** Rows of the dynamic trigger whose template the path resolves to, if any. */
+	private async findDynamicTriggerWebhooks(
+		path: string,
+		method?: string,
+	): Promise<WebhookEntity[]> {
 		const [uuidSegment, ...otherSegments] = path.split('/');
 		const candidates = await this.webhookRepository.findDynamicWebhooksByWebhookId(
 			uuidSegment,
@@ -126,16 +147,9 @@ export class WebhookService {
 		);
 
 		const eligible = method ? candidates.filter((dw) => dw.method === method) : candidates;
-		const dynamicMatch = this.pickMatchingTemplate(eligible, new Set(otherSegments));
-		if (!dynamicMatch) return [];
+		const match = this.pickMatchingTemplate(eligible, new Set(otherSegments));
 
-		return this.rowsOfSameTrigger(candidates, dynamicMatch);
-	}
-
-	/** The row serving the given method, or the only row when no method is known. */
-	private pickServedWebhook(webhooks: WebhookEntity[], method?: string) {
-		if (method) return webhooks.find((webhook) => webhook.method === method);
-		return webhooks.length === 1 ? webhooks[0] : undefined;
+		return match ? this.rowsOfSameTrigger(candidates, match) : [];
 	}
 
 	/** Every row of the trigger `row` belongs to — one per method it listens on. */

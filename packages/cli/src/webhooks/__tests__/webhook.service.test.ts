@@ -167,8 +167,27 @@ describe('WebhookService', () => {
 		test('should resolve an unambiguous path without a method', async () => {
 			const only = triggerRow({ webhookPath: 'orders' });
 			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([only]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([]);
 
 			expect(await webhookService.findTriggerWebhooksByPath('orders')).toEqual([only]);
+		});
+
+		test('should refuse a selector-less path a dynamic template also serves', async () => {
+			// the concrete path is static on GET and templated on POST, so without a method
+			// there is no single trigger to name — a lone static row must not be accepted
+			const webhookId = uuid();
+			const concretePath = `${webhookId}/orders/42`;
+			const staticGet = triggerRow({ webhookPath: concretePath, method: 'GET' });
+			const dynamicPost = triggerRow({
+				webhookPath: 'orders/:id',
+				method: 'POST',
+				webhookId,
+				workflowId: 'wf-2',
+			});
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([staticGet]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([dynamicPost]);
+
+			expect(await webhookService.findTriggerWebhooksByPath(concretePath)).toEqual([]);
 		});
 
 		test('should fall through to dynamic when no static row serves the method', async () => {

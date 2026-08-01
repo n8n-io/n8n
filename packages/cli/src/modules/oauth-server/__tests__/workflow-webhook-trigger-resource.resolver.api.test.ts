@@ -444,6 +444,21 @@ describe('protected resource metadata for webhook triggers', () => {
 			expect(response.body.resource).toBe(resourceUrlFor(`${webhookId}/orders/:id`, 'POST'));
 		});
 
+		test('should refuse a selector-less probe a dynamic template also serves', async () => {
+			// The concrete path is static on GET and templated on POST, so without a method
+			// there is no single trigger to name — the lone static row must not answer.
+			const webhookId = randomUUID();
+			const concretePath = `${webhookId}/orders/42`;
+			await createPublishedWebhookWorkflow(concretePath, webhookNode(), { methods: ['GET'] });
+			await createPublishedDynamicWebhookWorkflow(webhookId, 'orders/:id', webhookNode(), {
+				methods: ['POST'],
+			});
+
+			const response = await testServer.restlessAgent.get(prmPathFor(concretePath));
+
+			expect(response.statusCode).toBe(404);
+		});
+
 		test('should mint a token whose audience is the template and reject another trigger', async () => {
 			// distinct triggers -> distinct templates (the (webhookPath, method) key is
 			// global, so two dynamic triggers can't share a template+method)
