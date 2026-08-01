@@ -9,6 +9,7 @@ import type {
 } from '@n8n/instance-ai';
 import { type Scope } from '@n8n/permissions';
 import { Like } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -91,6 +92,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			...(session.telemetry ? { telemetry: session.telemetry } : {}),
 			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
 			abortSignal: session.abortSignal,
+			...(session.pendingAgent ? { pendingAgent: session.pendingAgent } : {}),
 		};
 	}
 
@@ -110,10 +112,13 @@ export class InstanceAiBuilderDelegateAdapterService {
 		};
 
 		return {
-			createAgent: async (name) => {
+			// Mints the id without writing a row. The agent is created by the
+			// builder's first config-mutating tool, so a build that only converses,
+			// errors, or is abandoned leaves nothing behind. The scope check still
+			// runs here so a user without `agent:create` cannot start the flow.
+			createAgent: async (_name) => {
 				await assertProjectScope('agent:create');
-				const agent = await this.agentsService.create(projectId, name);
-				return { agentId: agent.id, projectId };
+				return { agentId: generateNanoId(), projectId };
 			},
 
 			streamBuild: async (agentId, message, session) => {

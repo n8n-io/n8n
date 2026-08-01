@@ -99,12 +99,17 @@ export const createAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	name: string,
+	options: { id?: string; config?: AgentJsonConfig } = {},
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2`,
-		{ name },
+		{
+			name,
+			...(options.id ? { id: options.id } : {}),
+			...(options.config ? { config: options.config } : {}),
+		},
 	);
 };
 

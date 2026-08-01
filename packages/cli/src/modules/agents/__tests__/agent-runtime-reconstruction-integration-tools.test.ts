@@ -312,6 +312,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<SubAgentCleanupService>(),
 			mock<EventService>(),
 			agentExecutionService,
+			telemetry,
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

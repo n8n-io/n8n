@@ -13,6 +13,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
 import { getAgentTasks } from '../composables/useAgentApi';
+import { useAgentDraftContext } from '../composables/useAgentDraftContext';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY, AGENT_TASK_MODAL_KEY } from '../constants';
@@ -74,6 +75,7 @@ const toast = useToast();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
+const draft = useAgentDraftContext();
 
 const projectIdRef = computed(() => props.projectId);
 const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } =
@@ -218,6 +220,12 @@ const subAgentIssueMessages = computed(() =>
 );
 
 async function reloadTasks() {
+	// A draft has no row and therefore no tasks; fetching would 404 and render
+	// "Agent not found" where the empty list belongs.
+	if (draft.isPending.value) {
+		taskBodies.value = [];
+		return;
+	}
 	taskErrorMessage.value = '';
 	try {
 		taskBodies.value = await getAgentTasks(
@@ -242,7 +250,15 @@ watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () =>
 	if (showSection('tasks')) void reloadTasks();
 });
 
-function openTaskModal(task: TaskRow | null) {
+async function openTaskModal(task: TaskRow | null) {
+	// The modal writes straight to `/:agentId/tasks`, so a draft has to exist
+	// before it opens rather than failing on confirm.
+	try {
+		await draft.ensurePersisted();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.tasks.loadError'));
+		return;
+	}
 	uiStore.openModalWithData({
 		name: AGENT_TASK_MODAL_KEY,
 		data: {

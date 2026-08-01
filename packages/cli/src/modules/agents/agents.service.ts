@@ -9,8 +9,10 @@ import { Logger } from '@n8n/backend-common';
 import { In, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { v4 as uuid } from 'uuid';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -28,6 +30,7 @@ import {
 } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { EventService } from '@/events/event.service';
+import { Telemetry } from '@/telemetry';
 
 @Service()
 export class AgentsService {
@@ -43,13 +46,28 @@ export class AgentsService {
 		private readonly subAgentCleanupService: SubAgentCleanupService,
 		private readonly eventService: EventService,
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly telemetry: Telemetry,
 	) {}
 
+	/**
+	 * `id` lets a caller supply an id it minted earlier — a browser draft, or a
+	 * builder target bound to a thread before any config existed. The entity's
+	 * `@BeforeInsert` only generates one when it is absent, so the supplied id
+	 * becomes the primary key.
+	 */
 	async create(
 		projectId: string,
 		name: string,
-		{ availableInMCP = false }: { availableInMCP?: boolean } = {},
+		{
+			availableInMCP = false,
+			id,
+			user,
+		}: { availableInMCP?: boolean; id?: string; user?: User } = {},
 	): Promise<Agent> {
+		if (id && (await this.agentRepository.existsBy({ id }))) {
+			throw new BadRequestError(`Agent with id ${id} exists already.`);
+		}
+
 		const defaultConfig: AgentJsonConfig = {
 			name,
 			model: '',
@@ -59,6 +77,7 @@ export class AgentsService {
 		};
 
 		const agent = this.agentRepository.create({
+			...(id ? { id } : {}),
 			name,
 			projectId,
 			schema: defaultConfig,
@@ -69,6 +88,16 @@ export class AgentsService {
 		const saved = await this.agentRepository.save(agent);
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
+
+		// Emitted here rather than at the entry points so every origin — editor,
+		// Instance AI builder, MCP — is counted once, and only when a row actually
+		// exists. Drafts that are abandoned before their first write never reach
+		// this line, which is the point of the event.
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
+			agent_id: saved.id,
+			project_id: projectId,
+			...(user ? { user_id: user.id } : {}),
+		});
 
 		return saved;
 	}

@@ -29,6 +29,15 @@ const agentBuilderTargetSchema = z.object({
 	 * bindings persisted before this field existed carry none.
 	 */
 	ref: z.string().optional(),
+	/**
+	 * This conversation minted the id, so the row may not exist yet — the
+	 * builder's first config-mutating tool creates it. Stays set after the agent
+	 * materializes: the create is guarded by an existence check, so a later turn
+	 * costs nothing, and a target the user deleted mid-conversation is rebuilt
+	 * rather than hard-failing. Never set for an adopted `agentId`, where a
+	 * missing agent must still be an error.
+	 */
+	pending: z.boolean().optional(),
 });
 
 export type AgentBuilderTarget = z.infer<typeof agentBuilderTargetSchema>;

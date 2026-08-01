@@ -117,6 +117,7 @@ const createAgentSkillMock = vi.fn();
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
+const createAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const deleteAgentMock = vi.fn().mockResolvedValue(undefined);
@@ -128,6 +129,7 @@ const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
+	createAgent: createAgentMock,
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
@@ -278,6 +280,8 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 		ensureLoaded: vi.fn().mockResolvedValue([]),
 		refresh: vi.fn(),
 	}),
+	upsertProjectAgentsListCache: vi.fn(),
+	removeProjectAgentFromListCache: vi.fn(),
 }));
 
 const instanceAiAvailableRef = ref(true);
@@ -523,7 +527,10 @@ function resetViewMocks() {
 	mockConfig.value = withDefaultLlm(intendedConfig);
 	updateConfigMock.mockReset();
 	updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
+	getAgentMock.mockReset();
 	getAgentMock.mockResolvedValue(makeAgentResponse());
+	createAgentMock.mockReset();
+	createAgentMock.mockResolvedValue(makeAgentResponse());
 	getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
@@ -1569,6 +1576,74 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		expect(showErrorMock).toHaveBeenCalledWith(replayError, 'agents.builder.loadError');
+		wrapper.unmount();
+	});
+
+	it('renders the template config for a draft agent that has no row yet', async () => {
+		const { ResponseError } = await import('@n8n/rest-api-client');
+		getAgentMock.mockRejectedValue(new ResponseError('not found', { httpStatusCode: 404 }));
+
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-draft',
+				artifactAgentId: 'a-draft',
+				artifactAgentName: 'Triage Bot',
+			},
+		});
+
+		// A draft renders instead of erroring, and nothing agent-scoped is fetched.
+		expect(showErrorMock).not.toHaveBeenCalled();
+		expect(listAgentFilesMock).not.toHaveBeenCalled();
+		expect(warmAgentKnowledgeSandboxMock).not.toHaveBeenCalled();
+
+		const vm = wrapper.vm as unknown as {
+			isPendingAgent: boolean;
+			localConfig: { name: string; model: string; instructions: string };
+		};
+		expect(vm.isPendingAgent).toBe(true);
+		expect(vm.localConfig).toMatchObject({ name: 'Triage Bot', model: '', instructions: '' });
+
+		wrapper.unmount();
+	});
+
+	it('creates the draft on its first config save instead of updating a missing agent', async () => {
+		const { ResponseError } = await import('@n8n/rest-api-client');
+		getAgentMock.mockRejectedValue(new ResponseError('not found', { httpStatusCode: 404 }));
+		createAgentMock.mockResolvedValue(makeAgentResponse({ id: 'a-draft', name: 'Triage Bot' }));
+
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-draft',
+				artifactAgentId: 'a-draft',
+				artifactAgentName: 'Triage Bot',
+			},
+		});
+
+		const vm = wrapper.vm as unknown as {
+			saveConfig: (snapshot: {
+				type: 'config';
+				projectId: string;
+				agentId: string;
+				config: TestAgentConfig;
+			}) => Promise<void>;
+		};
+		await vm.saveConfig({
+			type: 'config',
+			projectId: 'p-draft',
+			agentId: 'a-draft',
+			config: { ...intendedConfig, instructions: 'Triage inbound tickets.' } as TestAgentConfig,
+		});
+
+		expect(createAgentMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p-draft',
+			'Triage Bot',
+			expect.objectContaining({ id: 'a-draft' }),
+		);
+		expect(updateConfigMock).not.toHaveBeenCalled();
+
 		wrapper.unmount();
 	});
 

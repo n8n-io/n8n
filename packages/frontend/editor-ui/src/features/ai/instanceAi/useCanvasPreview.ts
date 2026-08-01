@@ -83,6 +83,12 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		return tab?.type === 'agent' ? (tab.projectId ?? null) : null;
 	});
 
+	/** Tab label for the active agent — the only name source for an agent the builder has not written yet. */
+	const activeAgentName = computed(() => {
+		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'agent' ? tab.name : null;
+	});
+
 	const executionResultsByWorkflow = computed(() => {
 		const results = new Map<string, ExecutionResult>();
 		for (const message of thread.messages) {
@@ -430,6 +436,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		activeDataTableProjectId,
 		activeAgentId,
 		activeAgentProjectId,
+		activeAgentName,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,

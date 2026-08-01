@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { AgentConfigService } from '../agent-config.service';
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentsService } from '../agents.service';
@@ -25,6 +26,7 @@ function makeController({
 	agentPublishService = mock<AgentPublishService>(),
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
+	agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>(),
 }: {
 	agentsService?: Mocked<
 		Pick<
@@ -35,6 +37,7 @@ function makeController({
 	agentPublishService?: Mocked<AgentPublishService>;
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
+	agentConfigService?: Mocked<Pick<AgentConfigService, 'updateConfig'>>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -46,10 +49,12 @@ function makeController({
 		controller: new AgentsController(
 			agentsService as unknown as AgentsService,
 			agentRunnableStateService,
+			agentConfigService as unknown as AgentConfigService,
 		),
 		agentsService,
 		agentPublishService,
 		agentValidationService,
+		agentConfigService,
 	};
 }
 
@@ -110,6 +115,97 @@ describe('AgentsController list', () => {
 		expect(agentsService.findByProjectIdPaginated).toHaveBeenCalledWith('project-1', query);
 		expect(agentsService.findByProjectId).not.toHaveBeenCalled();
 		expect(res.json).toHaveBeenCalledWith(response);
+	});
+});
+
+describe('AgentsController create', () => {
+	const user = { id: 'user-1' };
+	const req = { params: { projectId: 'project-1' }, user } as never;
+
+	function stubRunnableState(
+		agentValidationService: Mocked<AgentValidationService>,
+		agentPublishService: Mocked<AgentPublishService>,
+	) {
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'invalid',
+			issues: [],
+		});
+		agentPublishService.hasPublishHistory.mockResolvedValue(false);
+	}
+
+	it('forwards the client-minted id and acting user to the service', async () => {
+		const { controller, agentsService, agentValidationService, agentPublishService } =
+			makeController();
+		stubRunnableState(agentValidationService, agentPublishService);
+		agentsService.create.mockResolvedValue({ id: 'minted-id', projectId: 'project-1' } as never);
+		agentsService.findById.mockResolvedValue(null);
+
+		await controller.create(
+			req,
+			undefined as never,
+			{
+				name: 'Triage Bot',
+				id: 'minted-id',
+			} as never,
+		);
+
+		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Triage Bot', {
+			id: 'minted-id',
+			user,
+		});
+	});
+
+	it('applies an initial config so the row and its first content land together', async () => {
+		const {
+			controller,
+			agentsService,
+			agentConfigService,
+			agentValidationService,
+			agentPublishService,
+		} = makeController();
+		stubRunnableState(agentValidationService, agentPublishService);
+		agentsService.create.mockResolvedValue({ id: 'minted-id', projectId: 'project-1' } as never);
+		agentsService.findById.mockResolvedValue({
+			id: 'minted-id',
+			projectId: 'project-1',
+		} as never);
+
+		await controller.create(
+			req,
+			undefined as never,
+			{
+				name: 'Triage Bot',
+				id: 'minted-id',
+				config: { instructions: 'Triage inbound tickets.' },
+			} as never,
+		);
+
+		expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
+			'minted-id',
+			'project-1',
+			{ instructions: 'Triage inbound tickets.', name: 'Triage Bot' },
+			user,
+		);
+	});
+
+	it('removes the agent again when its initial config is rejected', async () => {
+		const { controller, agentsService, agentConfigService } = makeController();
+		agentsService.create.mockResolvedValue({ id: 'minted-id', projectId: 'project-1' } as never);
+		agentConfigService.updateConfig.mockRejectedValue(new Error('Invalid agent config'));
+
+		await expect(
+			controller.create(
+				req,
+				undefined as never,
+				{
+					name: 'Triage Bot',
+					id: 'minted-id',
+					config: { model: 'nope' },
+				} as never,
+			),
+		).rejects.toThrow('Invalid agent config');
+
+		expect(agentsService.delete).toHaveBeenCalledWith('minted-id', 'project-1');
 	});
 });
 

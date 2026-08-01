@@ -18,6 +18,7 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 } from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -57,7 +58,12 @@ import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
-import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import {
+	removeProjectAgentFromListCache,
+	upsertProjectAgentsListCache,
+} from '../composables/useProjectAgentsList';
+import { useAgentEnsurePersisted } from '../composables/useAgentEnsurePersisted';
+import { provideAgentDraftContext } from '../composables/useAgentDraftContext';
 import { useInstanceAiAgentPreviewHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
 import {
@@ -86,6 +92,8 @@ const props = withDefaults(
 		artifactMode?: boolean;
 		artifactProjectId?: string;
 		artifactAgentId?: string;
+		/** Name to show for an agent whose row does not exist yet (see `isPendingAgent`). */
+		artifactAgentName?: string;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
 	}>(),
@@ -93,6 +101,7 @@ const props = withDefaults(
 		artifactMode: false,
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
+		artifactAgentName: undefined,
 		artifactEditingLocked: false,
 	},
 );
@@ -188,6 +197,13 @@ const agentFilesLoading = ref(false);
 const agentFilesUploading = ref(false);
 const deletingAgentFileId = ref<string | null>(null);
 const lastKnowledgeSandboxWarmupKey = ref<string | null>(null);
+/**
+ * The agent id exists but its row does not — a draft opened from "New Agent"
+ * that nobody has written to yet. The panel renders the template config, and
+ * the first write of any kind creates the agent via `ensurePersisted`.
+ * Only reachable in artifact mode; the full-page route always opens a real agent.
+ */
+const isPendingAgent = ref(false);
 
 watch(agentName, (name) => {
 	documentTitle.set(name || locale.baseText('agents.heading'));
@@ -243,6 +259,22 @@ const builderTelemetry = useAgentBuilderTelemetry({
 	connectedTriggers,
 });
 const toolTelemetry = useAgentToolTelemetry(agentId);
+
+const { ensurePersisted } = useAgentEnsurePersisted({
+	projectId: () => projectId.value,
+	agentId: () => agentId.value,
+	isPending: isPendingAgent,
+	getConfig: () => localConfig.value,
+	getName: () => agentName.value || locale.baseText('agents.new.defaultName'),
+	onCreated: (created) => {
+		agent.value = created;
+		agentName.value = created.name;
+		upsertProjectAgentsListCache(projectId.value, created);
+		agentsEventBus.emit('agentUpdated', { agentId: created.id, source: 'agent-builder' });
+	},
+});
+
+provideAgentDraftContext({ isPending: isPendingAgent, ensurePersisted });
 
 /**
  * The backend owns runnable validation so the chat entry point either opens
@@ -324,6 +356,45 @@ async function fetchAgent(
 	agentName.value = data.name;
 }
 
+function isAgentNotFound(error: unknown): boolean {
+	return error instanceof ResponseError && error.httpStatusCode === 404;
+}
+
+/**
+ * Populate the panel from the template config for a draft — an agent id with no
+ * row behind it — so it renders and can be edited before anything is persisted.
+ */
+function seedPendingAgentDraft(targetProjectId: string, targetAgentId: string): void {
+	const name = props.artifactAgentName ?? locale.baseText('agents.new.defaultName');
+	const now = new Date().toISOString();
+	isPendingAgent.value = true;
+	agentName.value = name;
+	agent.value = {
+		resourceType: 'agent',
+		id: targetAgentId,
+		name,
+		projectId: targetProjectId,
+		isCompiled: false,
+		isRunnable: false,
+		hasPublishHistory: false,
+		availableInMCP: false,
+		versionId: null,
+		activeVersionId: null,
+		activeVersion: null,
+		tools: {},
+		skills: {},
+		createdAt: now,
+		updatedAt: now,
+	};
+	localConfig.value = {
+		name,
+		model: '',
+		instructions: '',
+		tools: [],
+		skills: [],
+	};
+}
+
 async function fetchAgentFiles(
 	targetProjectId: string = projectId.value,
 	targetAgentId: string = agentId.value,
@@ -392,6 +463,7 @@ async function onUploadAgentFiles(files: File[]) {
 	const targetAgentId = agentId.value;
 	agentFilesUploading.value = true;
 	try {
+		await ensurePersisted();
 		const uploadedFiles = await uploadAgentFiles(
 			rootStore.restApiContext,
 			targetProjectId,
@@ -569,6 +641,9 @@ function bindPreviewSession() {
 }
 
 function warmAgentKnowledgeSandboxForPage() {
+	// A draft has no row, so warming its sandbox would 404. It warms on the next
+	// initialize, once the first write has created the agent.
+	if (isPendingAgent.value) return;
 	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value) return;
 
 	const targetProjectId = projectId.value;
@@ -612,6 +687,12 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	// The AI may be mutating this agent right now — a save queued just before
 	// the lock engaged must not persist its now-stale full config over it.
 	if (props.artifactEditingLocked) return 'skipped';
+	// First save of a draft: the create carries the config, so there is no
+	// separate update to make afterwards.
+	if (isPendingAgent.value) {
+		await ensurePersisted();
+		return undefined;
+	}
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).
@@ -633,6 +714,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 
 async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<'skipped' | undefined> {
 	if (props.artifactEditingLocked) return 'skipped';
+	await ensurePersisted();
 	const result = await updateAgentSkill(
 		rootStore.restApiContext,
 		snapshot.projectId,
@@ -699,6 +781,7 @@ const agentAvailableInMcp = computed(
 async function saveMcpAvailability(
 	snapshot: McpAvailabilitySnapshot,
 ): Promise<'skipped' | undefined> {
+	await ensurePersisted();
 	await mcpStore.toggleAgentMcpAccess(snapshot.agentId, snapshot.enabled);
 	if (snapshot.enabled) {
 		mcp.trackMcpAccessEnabledForAgent(snapshot.agentId);
@@ -1098,13 +1181,16 @@ async function onHeaderAction(action: string) {
 		skillAutosave.cancelPendingAutosave();
 		const capturedProjectId = projectId.value;
 
-		try {
-			await deleteAgent(rootStore.restApiContext, capturedProjectId, agentId.value);
-			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
-			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
-		} catch (error) {
-			showError(error, 'Could not delete agent');
-			return;
+		// A draft has nothing to delete — discarding it is just navigating away.
+		if (!isPendingAgent.value) {
+			try {
+				await deleteAgent(rootStore.restApiContext, capturedProjectId, agentId.value);
+				removeProjectAgentFromListCache(capturedProjectId, agentId.value);
+				favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
+			} catch (error) {
+				showError(error, 'Could not delete agent');
+				return;
+			}
 		}
 
 		// Clear local agent state before router.replace so the component teardown
@@ -1173,14 +1259,41 @@ async function initialize() {
 		agentFilesLoading.value = false;
 		agentFilesUploading.value = false;
 		deletingAgentFileId.value = null;
+		isPendingAgent.value = false;
 		repointConfigValidation(projectId.value, agentId.value);
 
-		await Promise.all([
+		// Kept in parallel: the agent and its config are the two loads the panel
+		// blocks on. `allSettled` so a draft's 404 lands here as a result instead
+		// of an unhandled rejection from the sibling call.
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		const [agentResult] = await Promise.allSettled([
 			fetchAgent(),
-			fetchConfig(projectId.value, agentId.value),
-			fetchAgentFiles(),
-			refreshConfigValidation(projectId.value, agentId.value),
+			fetchConfig(targetProjectId, targetAgentId),
 		]);
+
+		if (agentResult.status === 'rejected') {
+			if (!isArtifactMode.value || !isAgentNotFound(agentResult.reason)) {
+				throw agentResult.reason;
+			}
+			// A draft: no files, no sessions, nothing to validate. Everything below
+			// would only 404 against an agent that does not exist yet. Credentials
+			// and the integrations catalog are project-scoped, so those still load.
+			if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+			seedPendingAgentDraft(targetProjectId, targetAgentId);
+			builderTelemetry.captureToolsBaseline();
+			builderTelemetry.captureSkillsBaseline();
+			builderTelemetry.captureTasksBaseline();
+			credentialsStore.setCredentials([]);
+			await Promise.all([
+				credentialsStore.fetchAllCredentialsForWorkflow({ projectId: targetProjectId }),
+				credentialsStore.fetchCredentialTypes(false),
+			]).catch(() => undefined);
+			void ensureIntegrationsCatalog(targetProjectId).catch(() => []);
+			return;
+		}
+
+		await Promise.all([fetchAgentFiles(), refreshConfigValidation(projectId.value, agentId.value)]);
 		persistMissingPersonalisationGradient();
 		builderTelemetry.captureToolsBaseline();
 		builderTelemetry.captureSkillsBaseline();

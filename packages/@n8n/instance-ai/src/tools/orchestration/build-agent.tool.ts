@@ -130,7 +130,11 @@ function buildOutboundMessage(message: string, workflowContext?: SessionWorkflow
 
 /** Builder sessions are keyed per assistant thread + target agent; the resume
  *  leg must reconstruct the same `threadId` byte-identically after a restart. */
-function builderSessionFor(context: OrchestrationContext, agentId: string) {
+function builderSessionFor(
+	context: OrchestrationContext,
+	agentId: string,
+	target?: AgentBuilderTarget,
+) {
 	const telemetry = context.tracing?.getTelemetry?.({
 		agentRole: BUILDER_SUB_AGENT_ROLE,
 		functionId: 'instance-ai.subagent.agent-builder',
@@ -147,6 +151,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
 			: {}),
 		abortSignal: context.abortSignal,
+		...(target?.pending ? { pendingAgent: { name: target.name ?? 'New Agent' } } : {}),
 	};
 }
 
@@ -484,7 +489,12 @@ async function runBuilderConsumeLoop(params: {
 	// should not wait on display-name I/O.
 	try {
 		const freshName = await delegate.resolveAgentName(target.agentId);
-		if (freshName && freshName !== target.name) {
+		// A name resolves only once the row exists, which is also the moment the
+		// reservation is spent: from here a fresh `name` must create a second
+		// agent rather than adopt this one.
+		const materialized = Boolean(freshName) && target.pending === true;
+		if (materialized) delete target.pending;
+		if (freshName && (freshName !== target.name || materialized)) {
 			target.name = freshName;
 			publishAgentSpawned(context, builderAgentId, target);
 			if (context.domainContext) {
@@ -618,7 +628,7 @@ async function handleResume(
 		};
 	}
 
-	const session = builderSessionFor(context, target.agentId);
+	const session = builderSessionFor(context, target.agentId, target);
 
 	const openSuspensions = await delegate.findOpenSuspensions(target.agentId, session);
 	if (openSuspensions.length === 0) {
@@ -804,12 +814,19 @@ async function resolveTargetForCall(
 		}
 
 		if (input.name) {
-			const created = await delegate.createAgent(input.name);
+			// "New Agent" reserves an id and opens the artifact panel on it before
+			// the user has said what to build. The first create in that conversation
+			// is that agent being named, not a second one — minting a fresh id here
+			// would build into an agent the user cannot see. The reservation is
+			// cleared once the row exists, so a later create still makes a new agent.
+			const reserved = boundTarget?.pending === true ? boundTarget : undefined;
+			const created = reserved ?? (await delegate.createAgent(input.name));
 			const target: AgentBuilderTarget = {
 				agentId: created.agentId,
 				projectId: created.projectId,
 				name: input.name,
 				ref: key,
+				pending: true,
 			};
 			domainContext.agentBuilderTarget = target;
 			await saveAgentBuilderTarget(domainContext, target);
@@ -915,7 +932,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const boundTarget = resolution.target;
 			const bindAfterTurn = resolution.bindAfterTurn;
 
-			const session = builderSessionFor(context, boundTarget.agentId);
+			const session = builderSessionFor(context, boundTarget.agentId, boundTarget);
 			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext);
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 

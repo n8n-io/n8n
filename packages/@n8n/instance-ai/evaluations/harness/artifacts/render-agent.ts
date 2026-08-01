@@ -2,6 +2,14 @@ import type { AgentArtifact } from './types';
 
 /** Render the agent artifact: sanitized config + every authored skill's full content. */
 export function renderAgentArtifact(artifact: AgentArtifact): string {
+	if (artifact.notCreated) {
+		return [
+			'## Agent config',
+			'',
+			'(the builder started on this agent but never wrote any configuration, so no agent was created)',
+		].join('\n');
+	}
+
 	const lines: string[] = ['## Agent config', ''];
 	lines.push('```json', JSON.stringify(artifact.config, null, 2), '```', '');
 

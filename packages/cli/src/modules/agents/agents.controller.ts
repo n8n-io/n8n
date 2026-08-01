@@ -14,6 +14,7 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentConfigService } from './agent-config.service';
 import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { AgentsService } from './agents.service';
 
@@ -22,6 +23,7 @@ export class AgentsController {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentRunnableStateService: AgentRunnableStateService,
+		private readonly agentConfigService: AgentConfigService,
 	) {}
 
 	@Post('/')
@@ -33,8 +35,30 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 
-		const agent = await this.agentsService.create(projectId, payload.name);
-		return await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
+		const agent = await this.agentsService.create(projectId, payload.name, {
+			id: payload.id,
+			user: req.user,
+		});
+
+		if (payload.config) {
+			// A draft's first content arrives with the row. If applying it fails the
+			// agent is removed again, so a rejected config can't leave an empty agent
+			// behind — the same rollback the MCP create path uses.
+			try {
+				await this.agentConfigService.updateConfig(
+					agent.id,
+					projectId,
+					{ ...payload.config, name: payload.name },
+					req.user,
+				);
+			} catch (error) {
+				await this.agentsService.delete(agent.id, projectId);
+				throw error;
+			}
+		}
+
+		const created = (await this.agentsService.findById(agent.id, projectId)) ?? agent;
+		return await this.agentRunnableStateService.addRunnableState(created, projectId, req.user);
 	}
 
 	@Get('/')

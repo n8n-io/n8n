@@ -59,6 +59,11 @@ export interface ArtifactHandler<TArtifact = unknown> {
 export interface AgentArtifact {
 	config: unknown;
 	skills: Record<string, AgentSkill>;
+	/**
+	 * The builder announced this agent but never wrote any config, so no row was
+	 * ever created. Distinct from a fetch failure — this is what the build did.
+	 */
+	notCreated?: boolean;
 }
 
 /**

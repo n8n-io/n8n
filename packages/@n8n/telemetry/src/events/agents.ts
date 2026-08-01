@@ -334,10 +334,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_AGENT: {
 		name: 'User created agent',
 		description:
-			'A draft agent was created, from the blank new-agent page or inline from a workflow surface (source carries the entry point).',
+			'An agent row was created. Rows are only written once real configuration exists — clicking a new-agent entry point and walking away creates nothing — so this counts agents people actually built, not entry-point clicks. Emitted from the backend, covering the editor, the Instance AI builder, and MCP alike. Use "User clicked new agent" for entry-point questions.',
 		properties: z.object({
 			agent_id: z.string(),
-			source: z.string(),
+			project_id: z.string(),
+			user_id: z.string().optional(),
 		}),
 	},
 	USER_SUBMITTED_MESSAGE_TO_AGENT: {

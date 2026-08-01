@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { useAgentCreate } from './useAgentCreate';
 import type { AgentResource } from '../types';
@@ -9,7 +8,6 @@ const { upsertProjectAgentsListCache } = vi.hoisted(() => ({
 	upsertProjectAgentsListCache: vi.fn(),
 }));
 const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
-const { track } = vi.hoisted(() => ({ track: vi.fn() }));
 const { openBuilder } = vi.hoisted(() => ({ openBuilder: vi.fn() }));
 const { saveCurrentWorkflow } = vi.hoisted(() => ({ saveCurrentWorkflow: vi.fn() }));
 
@@ -19,7 +17,6 @@ vi.mock('./useAgentNavigation', () => ({
 	useAgentNavigation: () => ({ openBuilder }),
 }));
 vi.mock('@/app/composables/useToast', () => ({ useToast: () => ({ showError }) }));
-vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({ saveCurrentWorkflow }),
 }));
@@ -45,7 +42,6 @@ describe('useAgentCreate', () => {
 		const onCreated = vi.fn();
 		const { createAndSelect } = useAgentCreate({
 			projectId: 'project-1',
-			telemetrySource: 'ndv_banner',
 			setReference,
 			onCreated,
 		});
@@ -65,10 +61,6 @@ describe('useAgentCreate', () => {
 		expect(setReference.mock.invocationCallOrder[0]).toBeLessThan(
 			onCreated.mock.invocationCallOrder[0],
 		);
-		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
-			agent_id: 'agent-1',
-			source: 'ndv_banner',
-		});
 		expect(showError).not.toHaveBeenCalled();
 		// Staying in flow: no workflow save, no builder navigation.
 		expect(saveCurrentWorkflow).not.toHaveBeenCalled();
@@ -79,7 +71,6 @@ describe('useAgentCreate', () => {
 		const setReference = vi.fn();
 		const { createAndOpenBuilder } = useAgentCreate({
 			projectId: 'project-1',
-			telemetrySource: 'ndv_banner',
 			getOriginNodeId: () => 'node-7',
 			setReference,
 		});
@@ -102,7 +93,6 @@ describe('useAgentCreate', () => {
 		const setReference = vi.fn();
 		const { createAndOpenBuilder, isCreating } = useAgentCreate({
 			projectId: 'project-1',
-			telemetrySource: 'ndv_banner',
 			setReference,
 		});
 
@@ -117,7 +107,6 @@ describe('useAgentCreate', () => {
 		const setReference = vi.fn();
 		const { createAndSelect } = useAgentCreate({
 			projectId: '',
-			telemetrySource: 'node_picker',
 			setReference,
 		});
 
@@ -133,7 +122,6 @@ describe('useAgentCreate', () => {
 		const setReference = vi.fn();
 		const { createAndSelect, isCreating } = useAgentCreate({
 			projectId: 'project-1',
-			telemetrySource: 'node_picker',
 			setReference,
 		});
 
@@ -151,7 +139,6 @@ describe('useAgentCreate', () => {
 		);
 		const { createAndSelect } = useAgentCreate({
 			projectId: 'project-1',
-			telemetrySource: 'node_picker',
 			setReference: vi.fn(),
 		});
 

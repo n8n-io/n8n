@@ -50,14 +50,14 @@ const ctx = {
 	parentTelemetry: undefined,
 };
 
-type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'> &
+type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId' | 'create'> &
 	Pick<AgentConfigService, 'updateConfig'> &
 	Pick<AgentCustomToolsService, 'buildCustomTool'> &
 	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
 	Pick<AgentSkillsService, 'createSkills'>;
 
 function makeService() {
-	const agentsService = mock<Pick<AgentsService, 'findById' | 'findByProjectId'>>();
+	const agentsService = mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'create'>>();
 	const agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>();
 	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
 	const agentIntegrationPersistenceService =
@@ -66,6 +66,7 @@ function makeService() {
 	const purposeServices = {
 		findById: agentsService.findById,
 		findByProjectId: agentsService.findByProjectId,
+		create: agentsService.create,
 		updateConfig: agentConfigService.updateConfig,
 		buildCustomTool: agentCustomToolsService.buildCustomTool,
 		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
@@ -249,6 +250,105 @@ describe('AgentsBuilderToolsService', () => {
 				.getTools(agentId, projectId, credentialProvider, user)
 				.json.find((tool) => tool.name === name)!;
 		}
+
+		function getPendingJsonTool(
+			service: AgentsBuilderToolsService,
+			name: string,
+			pendingName = 'Triage Bot',
+		) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user, undefined, { name: pendingName })
+				.json.find((tool) => tool.name === name)!;
+		}
+
+		describe('pending target', () => {
+			const templateConfig: AgentJsonConfig = {
+				name: 'Triage Bot',
+				model: '',
+				instructions: '',
+				tools: [],
+				skills: [],
+			};
+
+			it('read_config returns the template for an agent that has no row yet', async () => {
+				const { service, agentsService } = makeService();
+				agentsService.findById.mockResolvedValue(null);
+
+				const result = (await getPendingJsonTool(service, BUILDER_TOOLS.READ_CONFIG).handler!(
+					{},
+					ctx,
+				)) as { ok: boolean; config: AgentJsonConfig };
+
+				expect(result.ok).toBe(true);
+				expect(result.config).toEqual(templateConfig);
+			});
+
+			it('write_config creates the agent under the minted id before persisting its config', async () => {
+				const { service, agentsService } = makeService();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				agentsService.findById.mockResolvedValue(null);
+				agentsService.updateConfig.mockResolvedValue({
+					config: { ...templateConfig, instructions: 'Triage inbound tickets.' },
+					updatedAt: '2026-01-01T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				const result = await getPendingJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(templateConfig),
+						json: JSON.stringify({ ...templateConfig, instructions: 'Triage inbound tickets.' }),
+					},
+					ctx,
+				);
+
+				expect(result).toMatchObject({ ok: true });
+				expect(agentsService.create).toHaveBeenCalledWith(projectId, 'Triage Bot', {
+					id: agentId,
+					user,
+				});
+				expect(agentsService.create.mock.invocationCallOrder[0]).toBeLessThan(
+					agentsService.updateConfig.mock.invocationCallOrder[0],
+				);
+			});
+
+			it('refuses to materialize a draft for a user without agent:create', async () => {
+				const { service, agentsService } = makeService();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				agentsService.findById.mockResolvedValue(null);
+
+				const result = await getPendingJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(templateConfig),
+						json: JSON.stringify({ ...templateConfig, instructions: 'Triage inbound tickets.' }),
+					},
+					ctx,
+				);
+
+				expect(result).toMatchObject({ ok: false });
+				expect(agentsService.create).not.toHaveBeenCalled();
+			});
+
+			it('does not create a second agent once the row exists', async () => {
+				const { service, agentsService } = makeService();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				agentsService.findById.mockResolvedValue(makeAgent(templateConfig));
+				agentsService.updateConfig.mockResolvedValue({
+					config: { ...templateConfig, instructions: 'Triage inbound tickets.' },
+					updatedAt: '2026-01-01T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getPendingJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(templateConfig),
+						json: JSON.stringify({ ...templateConfig, instructions: 'Triage inbound tickets.' }),
+					},
+					ctx,
+				);
+
+				expect(agentsService.create).not.toHaveBeenCalled();
+			});
+		});
 
 		it('registers MCP-specific tools in the builder toolset', () => {
 			const { service } = makeService();

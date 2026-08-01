@@ -81,6 +81,19 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
 
 export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
+	/**
+	 * Client-minted id for an agent drafted in the browser. Sending it keeps the
+	 * id stable from the moment the draft opens, so the thread binding, artifact
+	 * tab and any node reference taken before the first save stay valid.
+	 */
+	id: z.string().min(1).max(36).optional(),
+	/**
+	 * Initial config, so a draft's first content and its row land in one request
+	 * rather than leaving an empty agent behind if the follow-up write fails.
+	 * Left untyped like `UpdateAgentConfigDto` — `AgentConfigService.validateConfig`
+	 * owns validation for both paths.
+	 */
+	config: z.record(z.unknown()).optional(),
 }) {}
 
 export class UpdateAgentConfigDto extends Z.class({

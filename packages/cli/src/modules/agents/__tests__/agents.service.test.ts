@@ -3,6 +3,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -21,6 +22,7 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { EventService } from '@/events/event.service';
+import type { Telemetry } from '@/telemetry';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -63,6 +65,8 @@ function makeService() {
 	Container.set(AgentTaskService, agentTaskService);
 	Container.set(ChatIntegrationService, chatIntegrationService);
 
+	const telemetry = mock<Telemetry>();
+
 	const service = new AgentsService(
 		mockLogger(),
 		agentRepository,
@@ -75,10 +79,12 @@ function makeService() {
 		subAgentCleanupService,
 		eventService,
 		agentExecutionService,
+		telemetry,
 	);
 
 	return {
 		service,
+		telemetry,
 		agentRepository,
 		projectRelationRepository,
 		agentKnowledgeService,
@@ -123,6 +129,47 @@ describe('AgentsService', () => {
 			},
 			versionId: expect.any(String),
 			availableInMCP: false,
+		});
+	});
+
+	it('persists under a client-minted id so references taken before the first save stay valid', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent({ id: 'minted-id' });
+
+		agentRepository.existsBy.mockResolvedValue(false);
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+
+		await service.create(projectId, 'Support Agent', { id: 'minted-id' });
+
+		expect(agentRepository.create).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'minted-id' }),
+		);
+	});
+
+	it('rejects a minted id that is already taken instead of overwriting the agent', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.existsBy.mockResolvedValue(true);
+
+		await expect(service.create(projectId, 'Support Agent', { id: 'taken' })).rejects.toThrow(
+			'Agent with id taken exists already.',
+		);
+		expect(agentRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('reports agent creation with the project and acting user', async () => {
+		const { service, agentRepository, telemetry } = makeService();
+		const saved = makeAgent();
+
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+
+		await service.create(projectId, 'Support Agent', { user: mock<User>({ id: 'user-1' }) });
+
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: 'user-1',
 		});
 	});
 

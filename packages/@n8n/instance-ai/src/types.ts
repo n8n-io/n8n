@@ -908,6 +908,14 @@ export interface BuilderDelegateSession {
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
 	abortSignal: AbortSignal;
+	/**
+	 * The target agent id was minted for this conversation and has no row yet —
+	 * the builder's first config-mutating tool creates it under this name, so a
+	 * turn that only converses leaves no empty agent behind. Set only for targets
+	 * this conversation created; an adopted `agentId` must still fail when it does
+	 * not exist.
+	 */
+	pendingAgent?: { name: string };
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */

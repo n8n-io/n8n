@@ -293,6 +293,8 @@ describe('build-agent tool', () => {
 			runId: 'run-1',
 			modelConfig: context.modelId,
 			abortSignal: context.abortSignal,
+			// The row is written by the builder's first config tool, not by the create.
+			pendingAgent: { name: 'Support Agent' },
 		});
 	});
 
@@ -623,6 +625,61 @@ describe('build-agent tool', () => {
 		});
 	});
 
+	describe('reserved draft from the New Agent page', () => {
+		function reservedTarget(): AgentBuilderTarget {
+			return {
+				agentId: 'reserved-1',
+				projectId: 'proj-1',
+				name: 'New Agent',
+				pending: true,
+			};
+		}
+
+		it('names the reserved draft instead of creating a second agent behind the open panel', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = reservedTarget();
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Built it.'));
+
+			await runTool(context, { message: 'Build an agent that does XY', name: 'XY Bot' });
+
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'reserved-1',
+				'Build an agent that does XY',
+				expect.objectContaining({ pendingAgent: { name: 'XY Bot' } }),
+			);
+			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(
+				context.domainContext,
+				expect.objectContaining({ agentId: 'reserved-1', name: 'XY Bot', ref: 'xy-bot' }),
+			);
+		});
+
+		it('creates a second agent once the reservation has been spent', async () => {
+			const { context, delegate } = makeContext();
+			// No `pending`: the draft already materialized on an earlier turn.
+			context.domainContext!.agentBuilderTarget = {
+				agentId: 'reserved-1',
+				projectId: 'proj-1',
+				name: 'XY Bot',
+				ref: 'xy-bot',
+			};
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-2',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Built it.'));
+
+			await runTool(context, { message: 'Now build a second one', name: 'Other Bot' });
+
+			expect(delegate.createAgent).toHaveBeenCalledWith('Other Bot');
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'agent-2',
+				'Now build a second one',
+				expect.anything(),
+			);
+		});
+	});
+
 	describe('deferred agentId-path binding', () => {
 		it('does not persist the target when the agentId path fails before the stream settles', async () => {
 			const { context, delegate } = makeContext();
@@ -674,6 +731,8 @@ describe('build-agent tool', () => {
 				projectId: 'proj-1',
 				name: 'New Agent',
 				ref: 'new-agent',
+				// Still reserved: the turn never got far enough to write the row.
+				pending: true,
 			});
 		});
 
@@ -810,8 +869,8 @@ describe('build-agent tool', () => {
 			});
 		});
 
-		it('does not republish or re-save when the resolved name matches the current target name', async () => {
-			const { context, delegate, publishedEvents } = makeContext();
+		it('re-saves without the reservation once the agent exists, even when the name is unchanged', async () => {
+			const { context, delegate } = makeContext();
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -821,9 +880,14 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build it', name: 'New Agent' });
 
-			expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
-			// Only the create-path bind — no refresh save.
-			expect(saveAgentBuilderTarget).toHaveBeenCalledTimes(1);
+			// Two saves: the create-path bind, then the post-turn one that clears the
+			// reservation so the next create makes a second agent instead of
+			// adopting this one.
+			expect(saveAgentBuilderTarget).toHaveBeenCalledTimes(2);
+			expect(saveAgentBuilderTarget).toHaveBeenLastCalledWith(
+				context.domainContext,
+				expect.not.objectContaining({ pending: true }),
+			);
 		});
 
 		it('keeps a successful turn intact and logs a warning when the post-turn refresh fails', async () => {
@@ -899,6 +963,7 @@ describe('build-agent tool', () => {
 				projectId: 'proj-1',
 				name: 'Support Triage',
 				ref: 'support-triage',
+				pending: true,
 			});
 			expect(result).toMatchObject({
 				ok: true,
@@ -1018,6 +1083,7 @@ describe('build-agent tool', () => {
 				projectId: 'proj-1',
 				name: 'Second',
 				ref: 'second',
+				pending: true,
 			});
 		});
 

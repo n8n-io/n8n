@@ -6,6 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { createAgentSkill } from './useAgentApi';
+import { useAgentDraftContext } from './useAgentDraftContext';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
 	AGENT_TOOLS_MODAL_KEY,
@@ -109,6 +110,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const { showError, showMessage } = useToast();
+	const draft = useAgentDraftContext();
 
 	function onOpenAddToolModal() {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -435,6 +437,9 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						let versionId: string | null;
 						let skillId: string;
 						try {
+							// Creating a skill can be the very first thing done to a draft, so
+							// the agent may still need writing before it can own one.
+							await draft.ensurePersisted();
 							const result = await createAgentSkill(
 								rootStore.restApiContext,
 								targetProjectId,

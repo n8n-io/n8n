@@ -8,6 +8,7 @@ import { sanitizeAgentJsonConfig } from '@n8n/api-types';
 
 import { renderAgentArtifact } from './render-agent';
 import type { AgentArtifact, ArtifactHandler } from './types';
+import { N8nApiError } from '../../clients/n8n-client';
 
 export const agentHandler: ArtifactHandler<AgentArtifact> = {
 	type: 'agent',
@@ -20,11 +21,22 @@ export const agentHandler: ArtifactHandler<AgentArtifact> = {
 	async fetch(ref, client) {
 		// Agent routes are project-scoped; the harness builds in the user's personal project.
 		const projectId = await client.getPersonalProjectId();
-		const [config, skills] = await Promise.all([
-			client.getAgentConfig(projectId, ref.id),
-			client.getAgentSkills(projectId, ref.id),
-		]);
-		return { config: sanitizeAgentJsonConfig(config), skills }; // sanitize at fetch -> no secrets retained
+		try {
+			const [config, skills] = await Promise.all([
+				client.getAgentConfig(projectId, ref.id),
+				client.getAgentSkills(projectId, ref.id),
+			]);
+			return { config: sanitizeAgentJsonConfig(config), skills }; // sanitize at fetch -> no secrets retained
+		} catch (error) {
+			// The ref comes from `agent-spawned`, published when the builder session
+			// is constructed — before it has written anything. An agent row only
+			// exists once the builder writes config, so a 404 here means the build
+			// produced no agent. That's a gradeable outcome, not a harness failure.
+			if (error instanceof N8nApiError && error.status === 404) {
+				return { config: null, skills: {}, notCreated: true };
+			}
+			throw error;
+		}
 	},
 	renderArtifact(artifact) {
 		return renderAgentArtifact(artifact);

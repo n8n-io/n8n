@@ -8,7 +8,10 @@ import type { NodeCatalogService } from '@/node-catalog';
 import type { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
-import { AgentsBuilderService } from '../builder/agents-builder.service';
+import {
+	AgentsBuilderService,
+	type InstanceAiBuilderSessionOptions,
+} from '../builder/agents-builder.service';
 import type { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
@@ -36,10 +39,13 @@ function checkpointRow(
 	} as AgentCheckpoint;
 }
 
-function makeService(agentCheckpointRepository: Mocked<AgentCheckpointRepository>) {
+function makeService(
+	agentCheckpointRepository: Mocked<AgentCheckpointRepository>,
+	agentsService: Mocked<AgentsService> = mock<AgentsService>(),
+) {
 	return new AgentsBuilderService(
 		mock<Logger>(),
-		mock<AgentsService>(),
+		agentsService,
 		mock<NodeCatalogService>(),
 		mock<AgentsBuilderToolsService>(),
 		mock<N8nMemory>(),
@@ -47,6 +53,23 @@ function makeService(agentCheckpointRepository: Mocked<AgentCheckpointRepository
 		mock<N8NCheckpointStorage>(),
 		agentCheckpointRepository,
 	);
+}
+
+function buildSession(overrides: Partial<InstanceAiBuilderSessionOptions> = {}) {
+	return {
+		threadId: 'ia-builder:thread-1:agent-1',
+		hostThreadId: 'thread-1',
+		runId: 'run-1',
+		modelConfig: 'anthropic/claude-sonnet-4-5',
+		abortSignal: new AbortController().signal,
+		...overrides,
+	} as InstanceAiBuilderSessionOptions;
+}
+
+async function drain(stream: AsyncGenerator<unknown>): Promise<void> {
+	for await (const _chunk of stream) {
+		// consume
+	}
 }
 
 describe('AgentsBuilderService checkpoint lookup', () => {
@@ -91,5 +114,38 @@ describe('AgentsBuilderService checkpoint lookup', () => {
 		});
 
 		expect(result?.persistence?.threadId).toBe('thread-target');
+	});
+});
+
+describe('AgentsBuilderService pending targets', () => {
+	it('refuses to build against an agent that does not exist', async () => {
+		const agentsService = mock<AgentsService>();
+		agentsService.findById.mockResolvedValue(null);
+		const service = makeService(mock<AgentCheckpointRepository>(), agentsService);
+
+		await expect(
+			drain(service.buildAgent('agent-1', 'project-1', 'hi', mock(), mock(), buildSession())),
+		).rejects.toThrow('Agent "agent-1" not found');
+	});
+
+	it('builds against a pending target, so the row is only written by the first config tool', async () => {
+		const agentsService = mock<AgentsService>();
+		agentsService.findById.mockResolvedValue(null);
+		const service = makeService(mock<AgentCheckpointRepository>(), agentsService);
+
+		// Fails later, at model resolution — the point is that the missing-agent
+		// guard no longer rejects the turn before any tool can run.
+		await expect(
+			drain(
+				service.buildAgent(
+					'agent-1',
+					'project-1',
+					'build me a triage bot',
+					mock(),
+					mock(),
+					buildSession({ pendingAgent: { name: 'Triage Bot' } }),
+				),
+			),
+		).rejects.not.toThrow('Agent "agent-1" not found');
 	});
 });

@@ -354,15 +354,17 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 	});
 
 	describe('createAgent', () => {
-		it('enforces agent:create scope and delegates to AgentsService', async () => {
+		it('mints an id without writing a row, so an abandoned build leaves no empty agent', async () => {
 			const { delegate, agentsService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			agentsService.create.mockResolvedValue(mock<Agent>({ id: 'agent-9', name: 'New agent' }));
 
 			const result = await delegate.createAgent('New agent');
 
-			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'New agent');
-			expect(result).toEqual({ agentId: 'agent-9', projectId: 'project-1' });
+			expect(agentsService.create).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				agentId: expect.stringMatching(/^[\w-]{16}$/),
+				projectId: 'project-1',
+			});
 		});
 
 		it('rejects when the user lacks agent:create scope', async () => {

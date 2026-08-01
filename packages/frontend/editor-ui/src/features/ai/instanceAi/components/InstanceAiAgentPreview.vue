@@ -7,6 +7,8 @@ import { useThread } from '../instanceAi.store';
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
+	/** Tab label, used to name a draft the builder has not written to the DB yet. */
+	agentName?: string;
 }>();
 
 // === Editing lock ===
@@ -33,6 +35,7 @@ const isAgentBuilding = computed(() => {
 			artifact-mode
 			:artifact-project-id="props.projectId"
 			:artifact-agent-id="props.agentId"
+			:artifact-agent-name="props.agentName"
 			:artifact-editing-locked="isAgentBuilding"
 		/>
 	</div>

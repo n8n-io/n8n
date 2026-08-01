@@ -75,6 +75,13 @@ export interface InstanceAiBuilderSessionOptions {
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only the host's consumption of it. */
 	abortSignal: AbortSignal;
+	/**
+	 * The target agent was minted for this conversation and has no row yet — the
+	 * first config-mutating tool creates it under this name. Set only for targets
+	 * the orchestrator created itself; an adopted `agentId` must keep 404-ing, or
+	 * a hallucinated id would silently conjure an agent.
+	 */
+	pendingAgent?: { name: string };
 }
 
 @Service()
@@ -206,8 +213,11 @@ export class AgentsBuilderService {
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): Promise<RuntimeAgent> {
+		// Nothing below reads the entity — the prompt, tools, memory and checkpoint
+		// storage all key off the id string. This is purely a guard, so a pending
+		// target (id minted, row not written until the first config write) passes.
 		const agent = await this.agentsService.findById(agentId, projectId);
-		if (!agent) {
+		if (!agent && !session.pendingAgent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
@@ -240,6 +250,7 @@ export class AgentsBuilderService {
 			credentialProvider,
 			user,
 			{ threadId: session.hostThreadId, runId: session.runId },
+			session.pendingAgent,
 		);
 
 		const { Agent, Memory, createPlannerTodosTool } = await import('@n8n/agents');

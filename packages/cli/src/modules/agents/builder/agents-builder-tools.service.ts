@@ -27,7 +27,9 @@ import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Operation } from 'fast-json-patch';
+import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
@@ -119,6 +121,14 @@ interface AgentConfigSnapshotWithStatus extends AgentConfigSnapshot {
 interface BuilderTelemetryContext {
 	threadId?: string;
 	runId?: string;
+}
+
+/**
+ * A build target whose id exists but whose row does not — the agent is created
+ * by the first config-mutating tool. Absent for targets that already exist.
+ */
+export interface PendingBuilderAgent {
+	name: string;
 }
 
 function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot {
@@ -250,10 +260,25 @@ export class AgentsBuilderToolsService {
 		credentialProvider: CredentialProvider,
 		user: User,
 		telemetryContext?: BuilderTelemetryContext,
+		pendingAgent?: PendingBuilderAgent,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId, credentialProvider, user, telemetryContext),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider, user, telemetryContext),
+			json: this.getJsonTools(
+				agentId,
+				projectId,
+				credentialProvider,
+				user,
+				telemetryContext,
+				pendingAgent,
+			),
+			shared: this.getSharedTools(
+				agentId,
+				projectId,
+				credentialProvider,
+				user,
+				telemetryContext,
+				pendingAgent,
+			),
 		};
 	}
 
@@ -263,6 +288,7 @@ export class AgentsBuilderToolsService {
 		credentialProvider: CredentialProvider,
 		user: User,
 		telemetryContext?: BuilderTelemetryContext,
+		pendingAgent?: PendingBuilderAgent,
 	): BuiltTool[] {
 		const track: BuilderTrackFn = (entry, properties) =>
 			this.telemetry.track(entry, {
@@ -283,7 +309,11 @@ export class AgentsBuilderToolsService {
 			.handler(async () => {
 				try {
 					// `status` is telemetry plumbing — keep it out of the LLM-facing result.
-					const { status: _status, ...snapshot } = await this.getConfigSnapshot(agentId, projectId);
+					const { status: _status, ...snapshot } = await this.getConfigSnapshot(
+						agentId,
+						projectId,
+						pendingAgent,
+					);
 					return { ok: true, ...snapshot };
 				} catch (e) {
 					return {
@@ -323,7 +353,7 @@ export class AgentsBuilderToolsService {
 					}
 					let snapshot: AgentConfigSnapshotWithStatus;
 					try {
-						snapshot = await this.getConfigSnapshot(agentId, projectId);
+						snapshot = await this.getConfigSnapshot(agentId, projectId, pendingAgent);
 					} catch (e) {
 						return {
 							ok: false,
@@ -365,6 +395,13 @@ export class AgentsBuilderToolsService {
 						applyNativeWebSearchDefaultOn(zodResult.data),
 					);
 					try {
+						await this.materializeIfPending(
+							agentId,
+							projectId,
+							pendingAgent,
+							user,
+							telemetryContext,
+						);
 						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
@@ -428,7 +465,7 @@ export class AgentsBuilderToolsService {
 
 					let snapshot: AgentConfigSnapshotWithStatus;
 					try {
-						snapshot = await this.getConfigSnapshot(agentId, projectId);
+						snapshot = await this.getConfigSnapshot(agentId, projectId, pendingAgent);
 					} catch (e) {
 						return {
 							ok: false,
@@ -492,6 +529,13 @@ export class AgentsBuilderToolsService {
 					);
 
 					try {
+						await this.materializeIfPending(
+							agentId,
+							projectId,
+							pendingAgent,
+							user,
+							telemetryContext,
+						);
 						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
@@ -769,6 +813,7 @@ export class AgentsBuilderToolsService {
 		credentialProvider: CredentialProvider,
 		user: User,
 		telemetryContext?: BuilderTelemetryContext,
+		pendingAgent?: PendingBuilderAgent,
 	): BuiltTool[] {
 		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
@@ -791,6 +836,7 @@ export class AgentsBuilderToolsService {
 			.handler(async ({ code }: { code: string }, ctx) => {
 				try {
 					const descriptor = await this.secureRuntime.describeToolSecurely(code);
+					await this.materializeIfPending(agentId, projectId, pendingAgent, user, telemetryContext);
 					const built = await this.agentCustomToolsService.buildCustomTool(
 						agentId,
 						projectId,
@@ -850,6 +896,7 @@ export class AgentsBuilderToolsService {
 				// Each skill is already validated against `.input()` (agentSkillSchema
 				// shapes) by the tool runtime before the handler runs.
 				try {
+					await this.materializeIfPending(agentId, projectId, pendingAgent, user, telemetryContext);
 					const created = await this.agentSkillsService.createSkills(agentId, projectId, skills);
 					return {
 						ok: true,
@@ -918,13 +965,20 @@ export class AgentsBuilderToolsService {
 					// a failed read must not block the mutation.
 					let oldSnapshot: AgentConfigSnapshotWithStatus | null = null;
 					try {
-						oldSnapshot = await this.getConfigSnapshot(agentId, projectId);
+						oldSnapshot = await this.getConfigSnapshot(agentId, projectId, pendingAgent);
 					} catch {
 						// Skip diff telemetry; the mutation below must still run.
 					}
 
 					let created: Awaited<ReturnType<AgentTaskService['createTasks']>>;
 					try {
+						await this.materializeIfPending(
+							agentId,
+							projectId,
+							pendingAgent,
+							user,
+							telemetryContext,
+						);
 						// Adds a `{ type:'task', id, enabled }` ref per task to the agent config
 						// and creates every body in one transaction. Enabled by default; each
 						// task starts running once the agent is (re)published via publish_agent.
@@ -1006,12 +1060,65 @@ export class AgentsBuilderToolsService {
 		];
 	}
 
+	/**
+	 * Create the row for a pending target on its first mutation. Until then the
+	 * builder works against a minted id with nothing on disk, so a turn that only
+	 * converses — or fails before writing anything — leaves no empty agent behind.
+	 *
+	 * Re-checks existence rather than trusting `pendingAgent`, since the config
+	 * panel sharing this id may have created the row first.
+	 *
+	 * This is the only place a builder run inserts an agent — the id may have
+	 * been reserved by the UI rather than handed out by the delegate — so
+	 * `agent:create` is enforced here rather than at whoever minted the id.
+	 */
+	private async materializeIfPending(
+		agentId: string,
+		projectId: string,
+		pendingAgent: PendingBuilderAgent | undefined,
+		user: User,
+		telemetryContext?: BuilderTelemetryContext,
+	): Promise<void> {
+		if (!pendingAgent) return;
+		if (await this.agentsService.findById(agentId, projectId)) return;
+
+		if (!(await userHasScopes(user, ['agent:create'], false, { projectId }))) {
+			throw new UserError('You do not have permission to create agents in this project.');
+		}
+
+		await this.agentsService.create(projectId, pendingAgent.name, { id: agentId, user });
+
+		if (telemetryContext?.threadId) {
+			this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
+				thread_id: telemetryContext.threadId,
+				agent_id: agentId,
+				project_id: projectId,
+			});
+		}
+	}
+
 	private async getConfigSnapshot(
 		agentId: string,
 		projectId: string,
+		pendingAgent?: PendingBuilderAgent,
 	): Promise<AgentConfigSnapshotWithStatus> {
 		const agent = await this.agentsService.findById(agentId, projectId);
-		if (!agent) throw new Error('Agent not found');
+		if (!agent) {
+			// A pending target has no row yet, but its config is known: the template
+			// every agent starts from. Returning it keeps `read_config` and the
+			// baseConfigHash handshake working on the first build turn.
+			if (pendingAgent) {
+				const template: AgentJsonConfig = {
+					name: pendingAgent.name,
+					model: '',
+					instructions: '',
+					tools: [],
+					skills: [],
+				};
+				return { ...snapshotFromConfig(template), status: 'draft' };
+			}
+			throw new Error('Agent not found');
+		}
 
 		const config = composeJsonConfig(agent);
 		const status: 'draft' | 'production' =
