@@ -66,8 +66,13 @@ describe('VectorStorePGVector.node', () => {
 		password: 'test',
 	};
 
+	const mockClient = {
+		query: vi.fn().mockResolvedValue({ rows: [] }),
+		release: vi.fn(),
+	};
 	const mockPool = {
 		query: vi.fn().mockResolvedValue({ rows: [] }),
+		connect: vi.fn().mockResolvedValue(mockClient),
 	};
 
 	const defaultParams: Record<string, unknown> = {
@@ -115,8 +120,13 @@ describe('VectorStorePGVector.node', () => {
 			const node = new PGVectorNode.VectorStorePGVector();
 			const vs = await (node as any).getVectorStoreClient(context, undefined, {}, 0);
 
-			expect(mockPool.query).toHaveBeenCalledTimes(1);
-			expect(mockPool.query).toHaveBeenCalledWith(EXTENSION_SQL);
+			expect(mockPool.connect).toHaveBeenCalledTimes(1);
+			const queries = mockClient.query.mock.calls.map((c) => c[0]);
+			expect(queries).toContain(EXTENSION_SQL);
+			expect(
+				queries.some((q) => typeof q === 'string' && q.includes('pg_advisory_xact_lock')),
+			).toBe(true);
+			expect(mockClient.release).toHaveBeenCalled();
 			// table creation runs after the extension is created
 			expect(vs.ensureTableInDatabase).toHaveBeenCalled();
 		});
@@ -137,8 +147,13 @@ describe('VectorStorePGVector.node', () => {
 			const node = new PGVectorNode.VectorStorePGVector();
 			await (node as any).populateVectorStore(context, {}, [{ pageContent: 'x', metadata: {} }], 0);
 
-			expect(mockPool.query).toHaveBeenCalledTimes(1);
-			expect(mockPool.query).toHaveBeenCalledWith(EXTENSION_SQL);
+			expect(mockPool.connect).toHaveBeenCalledTimes(1);
+			const queries = mockClient.query.mock.calls.map((c) => c[0]);
+			expect(queries).toContain(EXTENSION_SQL);
+			expect(
+				queries.some((q) => typeof q === 'string' && q.includes('pg_advisory_xact_lock')),
+			).toBe(true);
+			expect(mockClient.release).toHaveBeenCalled();
 			expect(MockPGVectorStore.fromDocuments).toHaveBeenCalled();
 		});
 	});
