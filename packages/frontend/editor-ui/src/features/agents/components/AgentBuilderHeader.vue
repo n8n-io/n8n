@@ -25,6 +25,7 @@ import { AGENT_PREVIEW_VIEW, PROJECT_AGENTS } from '@/features/agents/constants'
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 import AgentPublishButton from './AgentPublishButton.vue';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 
@@ -56,6 +57,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const router = useRouter();
+const agentTelemetry = useAgentTelemetry();
 
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
 onMounted(() => {
@@ -119,6 +121,7 @@ function onSwitcherSelect(id: string) {
 }
 
 function onCreateAgent() {
+	agentTelemetry.trackClickedNewAgent('dropdown');
 	void router.push(instanceAiCreateAgentRoute(props.projectId));
 }
 

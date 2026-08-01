@@ -12,6 +12,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
 
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
@@ -379,6 +380,23 @@ describe('useGlobalEntityCreation', () => {
 
 			const teamWithoutScope = agentEntry?.submenu?.find((s) => s.id === 'agent-3');
 			expect(teamWithoutScope?.disabled).toBe(true);
+		});
+
+		it('tracks the new-agent click on select, but not for the submenu title', () => {
+			enableAgentsModule();
+
+			const { handleSelect } = useGlobalEntityCreation();
+			handleSelect('agent-personal');
+
+			expect(trackMock).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT,
+				expect.objectContaining({ source: 'dropdown' }),
+			);
+
+			trackMock.mockReset();
+			handleSelect('agent-title');
+
+			expect(trackMock).not.toHaveBeenCalled();
 		});
 
 		it('omits the agent entry from the global shape when the module is inactive', () => {

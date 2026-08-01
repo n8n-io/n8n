@@ -26,6 +26,11 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 	}),
 }));
 
+const trackClickedNewAgent = vi.fn();
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({ trackClickedNewAgent }),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 	i18n: { baseText: (k: string) => k },
@@ -157,6 +162,7 @@ describe('AgentBuilderHeader', () => {
 		ensureLoadedMock.mockReset();
 		routerPush.mockReset();
 		routerResolve.mockClear();
+		trackClickedNewAgent.mockReset();
 		agentsListRef.value = null;
 	});
 
@@ -341,5 +347,6 @@ describe('AgentBuilderHeader', () => {
 		await wrapper.find('[data-testid="agent-header-new-agent"]').trigger('click');
 
 		expect(routerPush).toHaveBeenCalledWith(instanceAiCreateAgentRoute('p1'));
+		expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown');
 	});
 });

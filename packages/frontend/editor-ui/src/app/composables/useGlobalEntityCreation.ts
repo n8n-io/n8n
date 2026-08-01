@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { useRouter } from 'vue-router';
@@ -70,6 +71,7 @@ export const useGlobalEntityCreation = () => {
 	const i18n = useI18n();
 	const toast = useToast();
 	const telemetry = useTelemetry();
+	const agentTelemetry = useAgentTelemetry();
 
 	const isCreatingProject = ref(false);
 
@@ -452,6 +454,15 @@ export const useGlobalEntityCreation = () => {
 
 		if (id.startsWith(DATA_TABLE_MENU_ID) && id !== 'data-table-title') {
 			telemetry.track('User clicked sidebar add data table button');
+			return;
+		}
+
+		// Navigation happens through the item's `route`; this only records the
+		// intent half of the create-agent funnel, which is otherwise invisible for
+		// this menu — the agent row itself is not written until the user
+		// configures something.
+		if (id.startsWith(AGENTS_MENU_ID) && id !== 'agent-title') {
+			agentTelemetry.trackClickedNewAgent('dropdown');
 			return;
 		}
 
