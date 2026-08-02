@@ -40,6 +40,7 @@ export {
 	ExecutionNotFoundError,
 	ExecutionStartHandler,
 	OrchestrationWorker,
+	StepCompletedHandler,
 	StepNotFoundError,
 	StepReadyHandler,
 	StepWorker,

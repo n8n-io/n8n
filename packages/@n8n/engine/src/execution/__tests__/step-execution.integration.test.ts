@@ -17,6 +17,7 @@ import { InMemoryWorkQueue, type OrchestrationMessage, type StepMessage } from '
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
+import { StepCompletedHandler } from '../step-completed-handler';
 import { StepReadyHandler } from '../step-ready-handler';
 import { StepWorker } from '../step-worker';
 
@@ -72,6 +73,7 @@ describe('step execution (integration)', () => {
 		const orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
+			new StepCompletedHandler(executionStore, stepStore, stepQueue),
 		);
 		const stepWorker = new StepWorker(
 			stepQueue,
@@ -144,6 +146,82 @@ describe('step execution (integration)', () => {
 			stack: expect.stringContaining('TypeError: credentials missing') as string,
 		});
 		expect(step?.outputs).toBeNull();
+	});
+
+	it('runs a chain of steps, feeding each output forward, and finishes the execution', async () => {
+		const chainGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const { executionStore, stepStore } = stores();
+		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
+		const stepQueue = new InMemoryWorkQueue<StepMessage>();
+
+		// The run is over when the execution is recorded finished, not when the first
+		// step completes — there are two hops here.
+		let done!: () => void;
+		const finished = new Promise<void>((resolve) => (done = resolve));
+		const finishExecution = executionStore.finishExecution.bind(executionStore);
+		vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
+			const recorded = await finishExecution(id, status);
+			done();
+			return recorded;
+		});
+
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const orchestrationWorker = new OrchestrationWorker(
+			orchestrationQueue,
+			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
+			new StepCompletedHandler(executionStore, stepStore, stepQueue),
+		);
+		const stepWorker = new StepWorker(
+			stepQueue,
+			new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {
+				v1StepExecutor: executor,
+			}),
+		);
+		orchestrationWorker.start();
+		stepWorker.start();
+
+		const { executionId } = await new StartExecutionService(
+			new AllowAllAdmittance(),
+			executionStore,
+			orchestrationQueue,
+		).start({
+			workflowId: 'wf-chain',
+			graph: chainGraph,
+			triggerPayload: { body: { name: 'ada' } },
+		});
+		await finished;
+
+		await stepWorker.stop();
+		await orchestrationWorker.stop();
+
+		// both nodes ran, in order, each on what came before it
+		expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-b']);
+		expect(requests[0].inputs).toEqual({ body: { name: 'ada' } });
+		expect(requests[1].inputs).toEqual([[{ json: { ran: 'node-a' } }]]);
+
+		const execution = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: executionId } });
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
 	it('is idempotent across duplicate step:ready deliveries', async () => {
