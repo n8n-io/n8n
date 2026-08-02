@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nLoading, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -109,12 +109,24 @@ async function onLoadMore() {
 
 const deciding = ref(false);
 
+const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
+
+/** Says why the decision buttons are disabled; empty when the viewer can decide. */
+const ineligibilityHint = computed(() => {
+	if (!detail.value || detail.value.viewerCanDecide) return '';
+	// Any reason other than 'author' gets the generic permission hint, so new
+	// backend reasons degrade gracefully instead of breaking the UI.
+	return detail.value.viewerDecisionIneligibilityReason === 'author'
+		? i18n.baseText('workflowReviews.detail.decision.ineligible.author')
+		: i18n.baseText('workflowReviews.detail.decision.ineligible.missingPublishPermission');
+});
+
 async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
 	deciding.value = true;
 	try {
 		await store.decideOnReview(id, decision);
 	} catch (error) {
-		showError(error, 'Could not submit review decision');
+		showError(error, i18n.baseText('workflowReviews.detail.decision.error'));
 		// The decision failed because someone else already decided (409), so
 		// refetch. Otherwise the item keeps showing as open and every retry
 		// re-fails.
@@ -212,27 +224,32 @@ onUnmounted(() => {
 						>
 							{{ i18n.baseText('workflowReviews.detail.placeholder') }}
 						</N8nText>
-						<!-- TODO(LIGO-892): placeholder actions with intentionally hardcoded copy.
-							Real design: disabled-with-explanation for non-admin authors ("you
-							contributed a version to this review"), i18n, and a `viewerCanDecide`
-							capability field from the backend. -->
-						<div v-if="selectedItem.state === 'open'" :class="$style.decisionActions">
-							<N8nButton
-								:disabled="deciding"
-								data-test-id="workflow-review-approve-button"
-								@click="onDecide(selectedItem.id, 'approved')"
-							>
-								Approve
-							</N8nButton>
-							<N8nButton
-								type="secondary"
-								:disabled="deciding"
-								data-test-id="workflow-review-request-changes-button"
-								@click="onDecide(selectedItem.id, 'changes_requested')"
-							>
-								Request changes
-							</N8nButton>
-						</div>
+						<!-- Gated on the loaded detail (not the list-item fallback): only the
+							detail carries the viewer's decision eligibility. -->
+						<N8nTooltip
+							v-if="detail && detail.state === 'open'"
+							:disabled="!ineligibilityHint"
+							:content="ineligibilityHint"
+							:show-after="300"
+						>
+							<div :class="$style.decisionActions">
+								<N8nButton
+									:disabled="deciding || !viewerCanDecide"
+									data-test-id="workflow-review-approve-button"
+									@click="onDecide(detail.id, 'approved')"
+								>
+									{{ i18n.baseText('workflowReviews.detail.decision.approve') }}
+								</N8nButton>
+								<N8nButton
+									type="secondary"
+									:disabled="deciding || !viewerCanDecide"
+									data-test-id="workflow-review-request-changes-button"
+									@click="onDecide(detail.id, 'changes_requested')"
+								>
+									{{ i18n.baseText('workflowReviews.detail.decision.requestChanges') }}
+								</N8nButton>
+							</div>
+						</N8nTooltip>
 					</div>
 					<N8nText
 						v-else-if="!showSidebar"
