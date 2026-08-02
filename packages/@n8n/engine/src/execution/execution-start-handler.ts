@@ -1,6 +1,7 @@
 import { findTriggerNode, getPredecessorNodeIds, getSuccessorNodeIds } from '../graph';
 import type { ExecutionEnqueuedEvent, StepMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
+import { finishExecutionIfDone } from './finish-execution';
 import type { StepStore } from './step-store';
 
 /**
@@ -54,6 +55,13 @@ export class ExecutionStartHandler {
 		// Published only after the rows exist, so a consumer can always load the
 		// step. The trigger's row is already completed, so it isn't announced.
 		const successorSteps = created.filter(({ nodeId }) => nodeId !== trigger.id);
+		if (successorSteps.length === 0) {
+			// Nothing to run, so no step will ever report completion — this is the only
+			// chance to notice the execution is already over.
+			await finishExecutionIfDone(this.executionStore, this.stepStore, event.executionId);
+			return;
+		}
+
 		for (const { id: stepId } of successorSteps) {
 			await this.stepQueue.publish({
 				type: 'step:ready',

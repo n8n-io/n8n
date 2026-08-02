@@ -1,6 +1,7 @@
 import { getPredecessorNodeIds, getSuccessorNodeIds } from '../graph';
 import type { StepCompletedEvent, StepMessage, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import { finishExecutionIfDone } from './finish-execution';
 import type { StepStore } from './step-store';
 
 /**
@@ -34,7 +35,7 @@ export class StepCompletedHandler {
 		// and the execution gets tested for completion then.
 		if (planned > 0) return;
 
-		await this.finishIfDone(execution.id);
+		await finishExecutionIfDone(this.executionStore, this.stepStore, execution.id);
 	}
 
 	/** Plans the ready successors of `nodeId`, returning how many were queued. */
@@ -62,22 +63,6 @@ export class StepCompletedHandler {
 		}
 
 		return created.length;
-	}
-
-	/**
-	 * Records the execution's outcome once no step is left to run: `failed` if any
-	 * step failed, `completed` otherwise.
-	 *
-	 * TODO(CAT-3910): "nothing queued or running" has a false-empty window — a step
-	 * can be completed while its successors are not yet planned — so a concurrent
-	 * handler can finish the execution early. Unreachable while the queue dispatches
-	 * sequentially.
-	 */
-	private async finishIfDone(executionId: string): Promise<void> {
-		if (await this.stepStore.hasActiveSteps(executionId)) return;
-
-		const failed = await this.stepStore.hasFailedSteps(executionId);
-		await this.executionStore.finishExecution(executionId, failed ? 'failed' : 'completed');
 	}
 
 	/** Successors of `nodeId` whose every predecessor has completed. */
