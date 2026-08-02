@@ -183,6 +183,31 @@ export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
 	});
 }
 
+/**
+ * Pull a full envelope's `createdAt` back into the past when the author put it in
+ * the future.
+ *
+ * The shorthand stamps its own ascending pre-live timestamps, so it can't get this
+ * wrong; a full envelope keeps what it was authored with, and a future stamp sorts
+ * the seeded turn AFTER the live turn — the agent then sees its own history out of
+ * order, and the judge grades a transcript that never happened. Clamped into the
+ * same ascending slot the shorthand uses, so relative order is preserved.
+ *
+ * Inline (hand-authored) seeds only — a `replay` seed is reconstructed from a real
+ * trace and never reaches this schema, so nothing here can reject a real timestamp.
+ */
+export function clampFutureSeedTimestamps(messages: unknown[]): unknown[] {
+	const now = Date.now();
+	const base = now - (messages.length + 1) * 1000;
+	return messages.map((message, index) => {
+		if (!isRecord(message) || typeof message.createdAt !== 'string') return message;
+		const at = Date.parse(message.createdAt);
+		// Unparseable is the envelope schema's error to report, not ours to paper over.
+		if (Number.isNaN(at) || at < now) return message;
+		return { ...message, createdAt: new Date(base + index * 1000).toISOString() };
+	});
+}
+
 // ---------------------------------------------------------------------------
 // Workflow id remapping
 // ---------------------------------------------------------------------------

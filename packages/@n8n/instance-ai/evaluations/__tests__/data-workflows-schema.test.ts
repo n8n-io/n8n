@@ -143,6 +143,50 @@ describe('EvalTestCaseSchema', () => {
 		).toThrow(/mode/);
 	});
 
+	// A future stamp would sort the seeded turn after the live turn, so the agent
+	// sees its own history out of order and the judge grades a transcript that
+	// never happened.
+	it('pulls a future envelope createdAt back before the live turn', () => {
+		const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: {
+				mode: 'inline',
+				messages: [
+					{
+						id: 'm1',
+						type: 'llm',
+						role: 'user',
+						createdAt: future,
+						content: [{ type: 'text', text: 'build it' }],
+					},
+				],
+			},
+		});
+		const seed = inlineSeedOf(parsed);
+		expect(Date.parse(String(seed.messages[0].createdAt))).toBeLessThan(Date.now());
+	});
+
+	it('leaves an authored past createdAt exactly as written', () => {
+		const authored = '2026-06-29T09:00:00.000Z';
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: {
+				mode: 'inline',
+				messages: [
+					{
+						id: 'm1',
+						type: 'llm',
+						role: 'user',
+						createdAt: authored,
+						content: [{ type: 'text', text: 'build it' }],
+					},
+				],
+			},
+		});
+		expect(inlineSeedOf(parsed).messages[0].createdAt).toBe(authored);
+	});
+
 	// Both arms are strict, so a seed mixing them fails instead of having the
 	// wrong-arm field stripped — which would run the case unseeded and grade it
 	// as a build from scratch.
