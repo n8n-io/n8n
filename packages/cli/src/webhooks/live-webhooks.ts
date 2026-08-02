@@ -33,15 +33,6 @@ import type {
 } from './webhook.types';
 
 /**
- * Trigger types whose `webhook()` provably evaluates nothing beyond their own
- * parameters and webhook description. Only extend after reading the node's
- * `webhook()`: a parameter scan cannot see `evaluateExpression()` on values
- * without an `=` prefix, nor helpers that resolve expressions themselves (e.g.
- * `httpRequestWithAuthentication`).
- */
-const ISOLATE_SKIP_NODE_TYPES = new Set<string>([WEBHOOK_NODE_TYPE]);
-
-/**
  * Service for handling the execution of live webhooks, i.e. webhooks
  * that belong to activated workflows and use the production URL
  * (https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls)
@@ -220,7 +211,11 @@ export class LiveWebhooks implements IWebhookManager {
 	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
 		if (!this.expressionEngineConfig.allowWebhookIsolateSkip) return true;
 		if (startNode === null) return true;
-		if (!ISOLATE_SKIP_NODE_TYPES.has(startNode.type)) return true;
+		// Only this trigger's `webhook()` has been read for expression evaluation it
+		// does beyond its own parameters and description — a parameter scan cannot
+		// see `evaluateExpression()` on values without an `=` prefix, nor helpers
+		// that resolve expressions themselves (e.g. `httpRequestWithAuthentication`)
+		if (startNode.type !== WEBHOOK_NODE_TYPE) return true;
 		if (!nodeParametersAreStatic(startNode)) return true;
 
 		const webhooks = this.nodeTypes.getByNameAndVersion(startNode.type, startNode.typeVersion)

@@ -94,7 +94,11 @@ export { NativeMethods } from './native-methods';
 export * from './node-parameters/filter-parameter';
 export * from './node-parameters/parameter-type-validation';
 export * from './node-parameters/node-parameter-value-type-guard';
-export * from './node-parameters/native-parameter-resolution';
+export {
+	nodeParametersAreStatic,
+	resolveNativeParameterValue,
+	valuesAreNativelyResolvable,
+} from './node-parameters/native-parameter-resolution';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
