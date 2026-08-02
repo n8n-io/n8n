@@ -77,7 +77,7 @@ describe('ExecutionStartHandler', () => {
 		// one batch: the trigger completed, then each successor queued
 		expect(createSteps).toHaveBeenCalledTimes(1);
 		expect(createSteps).toHaveBeenCalledWith([
-			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed' },
+			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed', outputs: [null] },
 			{ executionId: 'exec-1', nodeId: 'a', status: 'queued' },
 			{ executionId: 'exec-1', nodeId: 'b', status: 'queued' },
 		]);
@@ -124,7 +124,7 @@ describe('ExecutionStartHandler', () => {
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(createSteps).toHaveBeenCalledWith([
-			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed' },
+			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed', outputs: [null] },
 			{ executionId: 'exec-1', nodeId: 'b', status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
@@ -185,7 +185,7 @@ describe('ExecutionStartHandler', () => {
 		expect(executionStore.transitionStatus).not.toHaveBeenCalledWith('exec-1', 'running', 'failed');
 		expect(createSteps).toHaveBeenCalledTimes(1);
 		expect(createSteps).toHaveBeenCalledWith([
-			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed' },
+			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed', outputs: [null] },
 		]);
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		// nothing will ever report completion, so the execution has to finish here or

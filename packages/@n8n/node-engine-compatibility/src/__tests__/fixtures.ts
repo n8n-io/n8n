@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue, StepExecutionRequest, WorkflowGraph } from '@n8n/engine';
+import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
 import type {
@@ -235,11 +235,12 @@ export const v1Workflow = (
 export const stepRequest = (
 	graph: WorkflowGraph,
 	nodeId: string,
-	inputs: JsonValue,
+	inputs: StepSlots,
 ): StepExecutionRequest => ({
 	node: graph.nodes.find((n) => n.id === nodeId)!,
 	inputs,
 	context: { executionId: 'exec-1', stepId: 'step-1', workflowId: 'wf-1', mode: 'manual' },
 });
 
-export const items = (...objects: JsonObject[]): JsonValue => [objects.map((json) => ({ json }))];
+/** One output/input slot holding the given objects as items. */
+export const items = (...objects: JsonObject[]): StepSlots => [objects.map((json) => ({ json }))];

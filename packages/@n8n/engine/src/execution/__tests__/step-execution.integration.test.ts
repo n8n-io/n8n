@@ -116,9 +116,9 @@ describe('step execution (integration)', () => {
 		expect(step?.outputs).toEqual([[{ json: { greeting: 'hi' } }]]);
 		expect(step?.error).toBeNull();
 
-		// the trigger payload reaches the executor as the step's inputs
+		// the trigger payload reaches the executor on input slot 0
 		expect(requests).toHaveLength(1);
-		expect(requests[0].inputs).toEqual({ body: { name: 'ada' } });
+		expect(requests[0].inputs).toEqual([{ body: { name: 'ada' } }]);
 		expect(requests[0].node.id).toBe('node-a');
 		expect(requests[0].context).toEqual({
 			executionId,
@@ -214,7 +214,8 @@ describe('step execution (integration)', () => {
 
 		// both nodes ran, in order, each on what came before it
 		expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-b']);
-		expect(requests[0].inputs).toEqual({ body: { name: 'ada' } });
+		expect(requests[0].inputs).toEqual([{ body: { name: 'ada' } }]);
+		// node-a's output slot 0 arrives on node-b's input slot 0
 		expect(requests[1].inputs).toEqual([[{ json: { ran: 'node-a' } }]]);
 
 		const execution = await dataSource

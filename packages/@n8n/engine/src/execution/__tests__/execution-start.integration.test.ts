@@ -83,7 +83,7 @@ describe('execution start (integration)', () => {
 		const { executionId } = await startExecution.start({
 			workflowId: 'wf-1',
 			graph,
-			triggerPayload: null,
+			triggerPayload: { body: { name: 'ada' } },
 		});
 		await ready;
 
@@ -98,6 +98,8 @@ describe('execution start (integration)', () => {
 		const triggerStep = steps.find((s) => s.nodeId === 'trigger');
 		const firstStep = steps.find((s) => s.nodeId === 'step-a');
 		expect(triggerStep?.status).toBe('completed');
+		// the payload is the trigger step's output slot 0, read like any other predecessor's
+		expect(triggerStep?.outputs).toEqual([{ body: { name: 'ada' } }]);
 		expect(firstStep?.status).toBe('queued');
 
 		// step:ready references the durable step-record id, not the node id.

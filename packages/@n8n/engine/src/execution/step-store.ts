@@ -1,11 +1,13 @@
 import type { JsonValue } from '../common';
-import type { StepStatus } from './execution.types';
+import type { StepSlots, StepStatus } from './execution.types';
 
 /** A new step to persist. `id` and timestamps are assigned by the store. */
 export interface NewStepRecord {
 	executionId: string;
 	nodeId: string;
 	status: StepStatus;
+	/** Only for a step recorded already-completed, such as the trigger. */
+	outputs?: StepSlots;
 }
 
 /** The error that failed a step, as persisted on its row. */
@@ -28,7 +30,7 @@ export interface StepRecord {
 	nodeId: string;
 	status: StepStatus;
 	/** Outputs of a completed step; `null` until it completes. */
-	outputs: JsonValue | null;
+	outputs: StepSlots | null;
 	/** The error that failed the step; `null` unless it failed. */
 	error: StepError | null;
 }
@@ -73,7 +75,7 @@ export interface StepStore {
 	 * longer holds the claim — the outcome and the status are written together,
 	 * so they can't be observed apart.
 	 */
-	completeStep(id: string, outputs: JsonValue): Promise<boolean>;
+	completeStep(id: string, outputs: StepSlots): Promise<boolean>;
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
@@ -89,7 +91,7 @@ export interface StepStore {
 	loadStepOutputs(
 		executionId: string,
 		nodeIds: string[],
-	): Promise<Record<string, JsonValue | null>>;
+	): Promise<Record<string, StepSlots | null>>;
 
 	/**
 	 * Which of `nodeIds` have a completed step in the execution. Returns the

@@ -34,8 +34,9 @@ export class ExecutionStartHandler {
 			return;
 		}
 
-		// The trigger's output was captured at execution start; record it as
-		// already completed so successors can treat it as a satisfied predecessor.
+		// The trigger ran before the execution was enqueued, so its step is recorded
+		// already completed, carrying the captured payload as its outputs — that way
+		// successors read it exactly as they read any other predecessor's.
 		// Planned together with the successors so a fan-out is one round trip.
 		// The trigger is the only node that has completed, so a successor sitting
 		// behind anything else isn't ready yet — `StepCompletedHandler` plans it once
@@ -44,7 +45,13 @@ export class ExecutionStartHandler {
 			getPredecessorNodeIds(execution.graph, nodeId).every((id) => id === trigger.id),
 		);
 		const created = await this.stepStore.createSteps([
-			{ executionId: event.executionId, nodeId: trigger.id, status: 'completed' },
+			{
+				executionId: event.executionId,
+				nodeId: trigger.id,
+				status: 'completed',
+				// slot 0, so a successor edge from output 0 picks it up like any other
+				outputs: [execution.triggerPayload],
+			},
 			...successorNodeIds.map((nodeId) => ({
 				executionId: event.executionId,
 				nodeId,

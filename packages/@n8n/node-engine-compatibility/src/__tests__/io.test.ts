@@ -31,12 +31,11 @@ describe('fromStepInputs', () => {
 		expect(fromStepInputs([[{ json }]])).toEqual([[{ json: { json } }]]);
 	});
 
-	it('yields a single empty item list for non-array payloads', () => {
-		expect(fromStepInputs({})).toEqual([[]]);
-		expect(fromStepInputs(null)).toEqual([[]]);
+	it('yields an empty item list for a slot that was not taken', () => {
+		expect(fromStepInputs([null, [{ json: { a: 1 } }]])).toEqual([[], [{ json: { a: 1 } }]]);
 	});
 
-	it('yields an empty item list for non-array elements', () => {
+	it('yields an empty item list for a slot that is not a list of items', () => {
 		expect(fromStepInputs(['nope'])).toEqual([[]]);
 	});
 });

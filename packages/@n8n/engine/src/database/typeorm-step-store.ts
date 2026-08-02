@@ -2,8 +2,7 @@ import { In, type Repository } from '@n8n/typeorm';
 
 import type { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
-import type { JsonValue } from '../common';
-import type { StepStatus } from '../execution/execution.types';
+import type { StepSlots, StepStatus } from '../execution/execution.types';
 import {
 	StepNotFoundError,
 	type NewStepRecord,
@@ -53,7 +52,7 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.transition(id, 'queued', 'running');
 	}
 
-	async completeStep(id: string, outputs: JsonValue): Promise<boolean> {
+	async completeStep(id: string, outputs: StepSlots): Promise<boolean> {
 		return await this.transition(id, 'running', 'completed', { outputs });
 	}
 
@@ -69,7 +68,7 @@ export class TypeOrmStepStore implements StepStore {
 		id: string,
 		from: StepStatus,
 		to: StepStatus,
-		fields: { outputs?: JsonValue; error?: StepError } = {},
+		fields: { outputs?: StepSlots; error?: StepError } = {},
 	): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
 		return result.affected === 1;
@@ -78,8 +77,8 @@ export class TypeOrmStepStore implements StepStore {
 	async loadStepOutputs(
 		executionId: string,
 		nodeIds: string[],
-	): Promise<Record<string, JsonValue | null>> {
-		const outputsByNodeId: Record<string, JsonValue | null> = {};
+	): Promise<Record<string, StepSlots | null>> {
+		const outputsByNodeId: Record<string, StepSlots | null> = {};
 		for (const nodeId of nodeIds) outputsByNodeId[nodeId] = null;
 		if (nodeIds.length === 0) return outputsByNodeId;
 

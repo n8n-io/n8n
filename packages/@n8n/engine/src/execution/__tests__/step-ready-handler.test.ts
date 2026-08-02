@@ -74,21 +74,26 @@ const event = { type: 'step:ready', executionId: 'exec-1', stepId: 'step-a' } as
 
 describe('StepReadyHandler', () => {
 	it('claims the step, runs it through the executor, records its outputs and reports completion', async () => {
-		const stepStore = makeStepStore();
+		// the trigger is an ordinary completed predecessor: its payload is its outputs
+		const stepStore = makeStepStore(
+			{},
+			{
+				loadStepOutputs: vi.fn().mockResolvedValue({ trigger: [{ body: { hello: 'world' } }] }),
+			},
+		);
 		const queue = makeQueue();
 		const executor = makeExecutor({ outputs: [[{ json: { ok: true } }]] });
-		const executionStore = makeExecutionStore({ triggerPayload: { body: { hello: 'world' } } });
-		const handler = new StepReadyHandler(executionStore, stepStore, queue, {
+		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: executor,
 		});
 
 		await handler.handle(event);
 
 		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
-		// 'a' sits directly behind the trigger, so its inputs are the trigger payload
+		expect(stepStore.loadStepOutputs).toHaveBeenCalledWith('exec-1', ['trigger']);
 		expect(executor.execute).toHaveBeenCalledWith({
 			node: { id: 'a', name: 'A', type: 'v1-node', config: { some: 'config' } },
-			inputs: { body: { hello: 'world' } },
+			inputs: [{ body: { hello: 'world' } }],
 			context: {
 				executionId: 'exec-1',
 				stepId: 'step-a',
@@ -121,6 +126,76 @@ describe('StepReadyHandler', () => {
 		expect(stepStore.loadStepOutputs).toHaveBeenCalledWith('exec-1', ['a']);
 		expect(executor.execute).toHaveBeenCalledWith(
 			expect.objectContaining({ inputs: [[{ json: { from: 'a' } }]] }),
+		);
+	});
+
+	/** trigger -> a -> m and trigger -> c -> m, so `m` fans in on two input slots. */
+	const fanInGraph: WorkflowGraph = {
+		nodes: [
+			...graph.nodes,
+			{ id: 'c', name: 'C', type: 'v1-node' },
+			{ id: 'm', name: 'M', type: 'v1-node' },
+		],
+		edges: [
+			...graph.edges,
+			{ from: 'trigger', to: 'c', outputIndex: 0, inputIndex: 0 },
+			// a's *second* output feeds m's first input; c's first feeds m's second
+			{ from: 'a', to: 'm', outputIndex: 1, inputIndex: 0 },
+			{ from: 'c', to: 'm', outputIndex: 0, inputIndex: 1 },
+		],
+	};
+
+	it('routes each incoming edge from its output slot into its input slot', async () => {
+		const executor = makeExecutor();
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{
+				loadStepOutputs: vi.fn().mockResolvedValue({
+					a: [[{ json: { slot: 'a0' } }], [{ json: { slot: 'a1' } }]],
+					c: [[{ json: { slot: 'c0' } }]],
+				}),
+			},
+		);
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ graph: fanInGraph }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				// a's slot 1, not its slot 0, and c's slot 0 second
+				inputs: [[{ json: { slot: 'a1' } }], [{ json: { slot: 'c0' } }]],
+			}),
+		);
+	});
+
+	it('reads an output slot the predecessor never took as null', async () => {
+		const executor = makeExecutor();
+		const stepStore = makeStepStore(
+			// m reads a's output 1, but a only took output 0
+			{ id: 'step-m', nodeId: 'm' },
+			{
+				loadStepOutputs: vi.fn().mockResolvedValue({
+					a: [[{ json: { slot: 'a0' } }]],
+					c: [[{ json: { slot: 'c0' } }]],
+				}),
+			},
+		);
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ graph: fanInGraph }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({ inputs: [null, [{ json: { slot: 'c0' } }]] }),
 		);
 	});
 
@@ -255,52 +330,19 @@ describe('StepReadyHandler', () => {
 			expected: { name: 'UnimplementedError', message: 'v1-node' },
 		},
 		{
-			reason: 'more than one edge feeds it (fan-in)',
+			reason: 'two edges arrive at the same input slot',
 			stepId: 'step-b',
 			steps: () => makeStepStore({ id: 'step-b', nodeId: 'b' }),
 			execution: () =>
 				makeExecutionStore({
 					graph: {
 						nodes: graph.nodes,
-						// second input into b makes it a fan-in
-						edges: [...graph.edges, { from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 1 }],
+						// the trigger joins 'a' on input 0, which v1 would run 'b' twice for
+						edges: [...graph.edges, { from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 }],
 					},
 				}),
 			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnimplementedError', message: 'connection slots' },
-		},
-		{
-			reason: 'one node feeds it through two edges',
-			stepId: 'step-b',
-			steps: () => makeStepStore({ id: 'step-b', nodeId: 'b' }),
-			execution: () =>
-				makeExecutionStore({
-					graph: {
-						nodes: graph.nodes,
-						// 'a' connected to b twice still counts per edge, not per node
-						edges: [...graph.edges, { from: 'a', to: 'b', outputIndex: 1, inputIndex: 1 }],
-					},
-				}),
-			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnimplementedError', message: 'connection slots' },
-		},
-		{
-			reason: "its edge leaves the predecessor's second output",
-			stepId: 'step-b',
-			steps: () => makeStepStore({ id: 'step-b', nodeId: 'b' }),
-			execution: () =>
-				makeExecutionStore({
-					graph: {
-						nodes: graph.nodes,
-						edges: [
-							graph.edges[0],
-							// the pass-through would hand b all of a's outputs, not slot 1
-							{ from: 'a', to: 'b', outputIndex: 1, inputIndex: 0 },
-						],
-					},
-				}),
-			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnimplementedError', message: 'connection slots' },
+			expected: { name: 'UnimplementedError', message: 'more than one edge into input 0' },
 		},
 		{
 			reason: 'its node has no predecessor in the graph',

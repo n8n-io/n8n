@@ -8,8 +8,7 @@ import {
 	UpdateDateColumn,
 } from '@n8n/typeorm';
 
-import type { JsonValue } from '../../common';
-import type { StepStatus } from '../../execution/execution.types';
+import type { StepSlots, StepStatus } from '../../execution/execution.types';
 import type { StepError } from '../../execution/step-store';
 import { generateId } from '../generate-id';
 
@@ -31,7 +30,7 @@ export class WorkflowStepExecution {
 	status!: StepStatus;
 
 	@Column('jsonb', { nullable: true })
-	outputs!: JsonValue | null;
+	outputs!: StepSlots | null;
 
 	@Column('jsonb', { nullable: true })
 	error!: StepError | null;

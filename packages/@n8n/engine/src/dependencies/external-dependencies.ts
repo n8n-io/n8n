@@ -1,5 +1,4 @@
-import type { JsonValue } from '../common';
-import type { ExecutionMode } from '../execution';
+import type { ExecutionMode, StepSlots } from '../execution';
 import type { GraphNode } from '../graph';
 
 /**
@@ -36,14 +35,15 @@ export interface StepExecutionContext {
 export interface StepExecutionRequest {
 	/** The graph node to run; `node.config` is the step-type-specific payload. */
 	node: GraphNode;
-	/** Inputs gathered from predecessor steps; opaque to the engine but serializable. */
-	inputs: JsonValue;
+	/** Inputs by input slot, gathered from predecessor steps. Slot contents are
+	 * opaque to the engine but must be serializable. */
+	inputs: StepSlots;
 	context: StepExecutionContext;
 }
 
 export interface StepExecutionResult {
-	/** Step outputs; persisted by the engine without inspection. */
-	outputs: JsonValue;
+	/** Outputs by output slot; persisted by the engine without inspection. */
+	outputs: StepSlots;
 }
 
 /**
