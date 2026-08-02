@@ -32,7 +32,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 const showError = vi.fn();
 const showMessage = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError,
 		showMessage,

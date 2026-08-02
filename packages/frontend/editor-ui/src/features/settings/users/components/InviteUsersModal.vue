@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import Modal from '@/app/components/Modal.vue';
 import type { FormFieldValueUpdate, IFormInputs } from '@/Interface';
 import type { IInviteResponse } from '@n8n/stores/invitation.api';

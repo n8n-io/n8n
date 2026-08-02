@@ -2,7 +2,7 @@ import '@/app/polyfills';
 import SourceControlInitializationErrorMessage from '@/features/integrations/sourceControl.ee/components/SourceControlInitializationErrorMessage.vue';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';

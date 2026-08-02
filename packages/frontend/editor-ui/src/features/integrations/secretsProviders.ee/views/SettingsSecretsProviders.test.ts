@@ -32,7 +32,7 @@ vi.mock('vue-router', async () => {
 const mockShowMessage = vi.fn();
 const mockShowError = vi.fn();
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showMessage: mockShowMessage,
 		showError: mockShowError,
