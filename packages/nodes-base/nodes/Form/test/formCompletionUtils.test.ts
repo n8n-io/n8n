@@ -295,6 +295,9 @@ describe('formCompletionUtils', () => {
 			for (const parentNodes of parentNodesTestCases) {
 				mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodes);
 				mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+					if (typeof arg === 'string' && arg.includes('.isExecuted')) {
+						return true;
+					}
 					if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
 						return expectedBinaryResponse;
 					} else if (arg === `{{ $(${JSON.stringify(nodeNameWithFile)}).first().binary }}`) {
@@ -359,6 +362,9 @@ describe('formCompletionUtils', () => {
 			for (const parentNodes of parentNodesTestCases) {
 				mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodes);
 				mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+					if (typeof arg === 'string' && arg.includes('.isExecuted')) {
+						return true;
+					}
 					if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
 						return expectedBinaryResponse;
 					} else if (arg === `{{ $(${JSON.stringify(nodeNameWithFile)}).first().binary }}`) {
@@ -519,6 +525,9 @@ describe('formCompletionUtils', () => {
 
 			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithMultipleBinaryFiles);
 			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (typeof arg === 'string' && arg.includes('.isExecuted')) {
+					return true;
+				}
 				if (arg === `{{ $(${JSON.stringify(nodeNameWithFile)}).first().binary }}`) {
 					return expectedBinaryResponse;
 				} else {
@@ -554,6 +563,12 @@ describe('formCompletionUtils', () => {
 			});
 			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithMultipleBinaryFiles);
 			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).isExecuted }}`) {
+					return true;
+				}
+				if (arg === `{{ $(${JSON.stringify(nodeNameWithFile)}).isExecuted }}`) {
+					return false;
+				}
 				if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
 					return expectedBinaryResponse;
 				}
@@ -595,6 +610,9 @@ describe('formCompletionUtils', () => {
 			});
 			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithSingleNodeFile);
 			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (typeof arg === 'string' && arg.includes('.isExecuted')) {
+					return true;
+				}
 				if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
 					return expectedBinaryResponse;
 				}
@@ -640,6 +658,9 @@ describe('formCompletionUtils', () => {
 			});
 			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithSingleNodeFile);
 			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (typeof arg === 'string' && arg.includes('.isExecuted')) {
+					return true;
+				}
 				if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
 					return expectedBinaryResponse;
 				}

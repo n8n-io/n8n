@@ -700,6 +700,224 @@ describe('Form Node', () => {
 		});
 	});
 
+	// Reproduces #35380: Form completion with returnBinary after Switch/If
+	// where an unexecuted branch parent (Code1) is still listed in getParentNodes.
+	describe('webhook completion with unexecuted conditional branch parents (#35380)', () => {
+		const triggerName = 'Form Trigger';
+		const code1Name = 'Code1';
+		const convertName = 'Convert to File';
+		const formName = 'Form';
+
+		const triggerNode = {
+			id: 'trigger-id',
+			name: triggerName,
+			type: FORM_TRIGGER_NODE_TYPE,
+			typeVersion: 2.6,
+			disabled: false,
+			position: [0, 0],
+			parameters: {
+				formTitle: 'Contact',
+				authentication: 'none',
+				options: { appendAttribution: false },
+			},
+		} satisfies INode & NodeTypeAndVersion;
+
+		const code1Node: INode = {
+			id: 'code1-id',
+			name: code1Name,
+			type: 'n8n-nodes-base.code',
+			typeVersion: 2,
+			position: [200, -100],
+			parameters: {},
+		};
+
+		const convertNode: INode = {
+			id: 'convert-id',
+			name: convertName,
+			type: 'n8n-nodes-base.convertToFile',
+			typeVersion: 1,
+			position: [400, 0],
+			parameters: {},
+		};
+
+		const formNode: INode = {
+			id: 'form-id',
+			name: formName,
+			type: FORM_NODE_TYPE,
+			typeVersion: 2.5,
+			position: [600, 0],
+			parameters: {},
+		};
+
+		const triggerOutput: INodeExecutionData = {
+			json: { formMode: 'test' },
+		};
+
+		const convertOutput: INodeExecutionData = {
+			json: {},
+			binary: {
+				data: {
+					data: 'ZmlsZSBjb250ZW50',
+					fileName: 'file.txt',
+					mimeType: 'text/plain',
+				},
+			},
+		};
+
+		const workflow = new Workflow({
+			id: 'workflow-id',
+			name: 'Conditional Form workflow',
+			nodes: [triggerNode, code1Node, convertNode, formNode],
+			connections: {
+				[triggerName]: {
+					main: [
+						[
+							{ node: code1Name, type: 'main', index: 0 },
+							{ node: convertName, type: 'main', index: 0 },
+						],
+					],
+				},
+				[code1Name]: {
+					main: [[{ node: convertName, type: 'main', index: 0 }]],
+				},
+				[convertName]: {
+					main: [[{ node: formName, type: 'main', index: 0 }]],
+				},
+			},
+			active: false,
+			nodeTypes: mock<INodeTypes>(),
+		});
+
+		// Path B taken: Code1 never ran; Convert to File has binary.
+		const runExecutionData = createRunExecutionData({
+			resultData: {
+				runData: {
+					[triggerName]: [
+						{
+							startTime: 1,
+							executionTime: 1,
+							executionIndex: 0,
+							source: [],
+							data: { main: [[triggerOutput]] },
+						},
+					],
+					[convertName]: [
+						{
+							startTime: 2,
+							executionTime: 1,
+							executionIndex: 1,
+							source: [],
+							data: { main: [[convertOutput]] },
+						},
+					],
+				},
+			},
+		});
+
+		beforeAll(async () => await workflow.expression.acquireIsolate());
+		afterAll(async () => await workflow.expression.releaseIsolate());
+
+		it('should complete returnBinary when an unexecuted branch parent is among parents', async () => {
+			const context = mock<IWebhookFunctions>();
+			context.getNode.mockReturnValue(formNode);
+			// All ancestors including unexecuted Code1 (as getParentNodes returns)
+			context.getParentNodes.mockReturnValue([triggerNode, code1Node, convertNode]);
+			context.getWorkflowSettings.mockReturnValue({});
+			context.evaluateExpression.mockImplementation((expression) =>
+				workflow.expression.resolveSimpleParameterValue(
+					`=${expression}`,
+					{},
+					runExecutionData,
+					0,
+					0,
+					formNode.name,
+					[convertOutput],
+					'manual',
+					{},
+				),
+			);
+
+			const response = mock<Response>();
+			context.getResponseObject.mockReturnValue(response);
+			context.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
+			context.getNodeParameter.mockImplementation((name) => {
+				if (name === 'operation') return 'completion';
+				if (name === 'defineForm') return 'fields';
+				if (name === 'formFields.values') return [];
+				if (name === 'options') return { formTitle: '' };
+				if (name === 'respondWith') return 'returnBinary';
+				if (name === 'inputDataFieldName') return 'data';
+				if (name === 'completionTitle') return 'Done';
+				if (name === 'completionMessage') return 'Thanks';
+				return undefined;
+			});
+
+			await form.webhook(context);
+
+			expect(response.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					formTitle: 'Contact',
+					responseBinary: encodeURIComponent(
+						JSON.stringify([
+							{
+								data: 'file content',
+								fileName: 'file.txt',
+								type: 'text/plain',
+							},
+						]),
+					),
+				}),
+			);
+		});
+
+		it('should complete completionMessage when an unexecuted branch parent is among parents', async () => {
+			const context = mock<IWebhookFunctions>();
+			context.getNode.mockReturnValue(formNode);
+			context.getParentNodes.mockReturnValue([triggerNode, code1Node, convertNode]);
+			context.getWorkflowSettings.mockReturnValue({});
+			context.evaluateExpression.mockImplementation((expression) =>
+				workflow.expression.resolveSimpleParameterValue(
+					`=${expression}`,
+					{},
+					runExecutionData,
+					0,
+					0,
+					formNode.name,
+					[convertOutput],
+					'manual',
+					{},
+				),
+			);
+
+			const response = mock<Response>();
+			context.getResponseObject.mockReturnValue(response);
+			context.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
+			context.getNodeParameter.mockImplementation((name) => {
+				if (name === 'operation') return 'completion';
+				if (name === 'defineForm') return 'fields';
+				if (name === 'formFields.values') return [];
+				if (name === 'options') return { formTitle: '' };
+				if (name === 'respondWith') return 'text';
+				if (name === 'completionTitle') return 'Done';
+				if (name === 'completionMessage') return 'Thanks';
+				if (name === 'responseText') return '';
+				return undefined;
+			});
+
+			await form.webhook(context);
+
+			expect(response.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					formTitle: 'Contact',
+					title: 'Done',
+					message: 'Thanks',
+				}),
+			);
+		});
+	});
+
 	describe('webhook method - n8nUserAuth propagation', () => {
 		const authedUser = {
 			id: 'user-1',

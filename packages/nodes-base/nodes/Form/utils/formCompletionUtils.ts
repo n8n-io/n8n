@@ -27,13 +27,17 @@ const getBinaryDataFromNode = (
 	nodeName: string,
 ): IDataObject | undefined => {
 	try {
-		return context.evaluateExpression(`{{ ${getNodeReference(nodeName)}.first().binary }}`) as
-			| IDataObject
-			| undefined;
+		const nodeRef = getNodeReference(nodeName);
+		// Skip parents on inactive Switch/If branches (and other unexecuted ancestors).
+		// `.first()` throws ExpressionError when the node has no run data.
+		const isExecuted = context.evaluateExpression(`{{ ${nodeRef}.isExecuted }}`) as boolean;
+		if (!isExecuted) {
+			return undefined;
+		}
+		return context.evaluateExpression(`{{ ${nodeRef}.first().binary }}`) as IDataObject | undefined;
 	} catch {
-		// Parent nodes without run data (e.g. branches of another Form Trigger,
-		// or nodes that ran before a resumed waiting form in queue mode) throw
-		// an ExpressionError — treat them as having no binary data.
+		// Safety net for unexpected expression failures (e.g. other Form Trigger
+		// branches, or nodes that ran before a resumed waiting form in queue mode).
 		return undefined;
 	}
 };
