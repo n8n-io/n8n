@@ -36,7 +36,7 @@ export class OpenAiApi implements ICredentialType {
 			name: 'url',
 			type: 'string',
 			default: 'https://api.openai.com/v1',
-			description: 'Override the default base URL for the API',
+			description: 'Override the default base URL for the API. Use this for OpenAI-compatible gateways such as DaoXE (`https://api.daoxe.com/v1`).',
 		},
 		{
 			displayName: 'Add Custom Header',
