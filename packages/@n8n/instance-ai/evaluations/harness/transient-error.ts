@@ -11,6 +11,8 @@
 // baseline instead of counting as silent failures.
 // ---------------------------------------------------------------------------
 
+import type { EvalAttribution } from './attribution';
+
 /** Max attempts (initial try + retries) for a scenario execution hitting transient errors. */
 export const MAX_EXEC_ATTEMPTS = 5;
 
@@ -62,9 +64,10 @@ export function shouldRetryScenarioExecution(message: string, attempt: number): 
 
 /**
  * Marker prefix for the rootCause stamped on a scenario whose execution was
- * aborted by the per-iteration budget/timeout. The lang-tracer side keys its
- * `infra_incomplete` attribution off `failureCategory: "framework_issue"` plus
- * a timeout-flavoured rootCause — keep the wording stable across both repos.
+ * aborted by the per-iteration budget/timeout. lang-tracer used to key an infra
+ * attribution off this plus `failureCategory: "framework_issue"`; it now reads
+ * our `attribution` directly and this is only the fallback for rows written by
+ * an older pinned harness commit. Keep the wording stable across both repos.
  */
 export const BUDGET_TIMEOUT_ROOT_CAUSE =
 	'Scenario execution exceeded its per-iteration time budget and was aborted before a verdict';
@@ -75,17 +78,20 @@ export const BUDGET_TIMEOUT_ROOT_CAUSE =
  * Any error that escapes `executeScenario` (after its own retries) is an
  * infra/framework problem, never an agent verdict, so it is always
  * `framework_issue`. A budget/timeout abort additionally carries a
- * timeout-flavoured `rootCause` so partial-result consumers can route it to an
- * infra/incomplete bucket instead of counting it against product quality.
+ * timeout-flavoured `rootCause`, kept for readers on the legacy contract.
  */
 export function classifyScenarioExecutionError(errorMessage: string): {
 	failureCategory: 'framework_issue';
+	/** Infra by construction — see above. Sent verbatim to lang-tracer, which no
+	 *  longer has to infer it from the timeout-flavoured rootCause. */
+	attribution: EvalAttribution;
 	rootCause: string | undefined;
 	reasoning: string;
 } {
 	const timedOut = isExecutionTimeout(errorMessage);
 	return {
 		failureCategory: 'framework_issue',
+		attribution: 'framework_issue',
 		rootCause: timedOut ? `${BUDGET_TIMEOUT_ROOT_CAUSE}: ${errorMessage}` : undefined,
 		reasoning: `Scenario execution error: ${errorMessage}`,
 	};
@@ -116,9 +122,10 @@ const TRANSIENT_FAILURE_TOKEN =
 	/\bInternal server error\b|\bOverloaded\b|\bService Unavailable\b|\bBad Gateway\b|\b(?:HTTP|status(?: code)?)\s*[:=]?\s*(?:429|500|502|503|529)\b/i;
 
 /**
- * Root cause stamped on a build that died on a provider outage. lang-tracer keys
- * `infra_incomplete` attribution off this exact prefix, so the wording is a
- * cross-repo contract — same arrangement as `BUDGET_TIMEOUT_ROOT_CAUSE`.
+ * Root cause stamped on a build that died on a provider outage. lang-tracer keyed
+ * an infra attribution off this exact prefix; it now reads our `attribution`
+ * instead, so this is the legacy-contract fallback — same arrangement as
+ * `BUDGET_TIMEOUT_ROOT_CAUSE`.
  */
 export const PROVIDER_OUTAGE_ROOT_CAUSE =
 	'Model provider was unavailable during the build (transient upstream 5xx/429), so the agent produced no output';
