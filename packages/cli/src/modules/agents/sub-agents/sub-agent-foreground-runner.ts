@@ -8,6 +8,8 @@ import {
 	type BuiltTelemetry,
 	type CredentialProvider,
 	type GenerateResult,
+	type SerializableAgentState,
+	type StreamChunk,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
@@ -51,6 +53,8 @@ export interface SubAgentForegroundRunContext {
 	 * (model fetch, MCP fetch, tool execution contexts).
 	 */
 	instrumentation?: AgentRuntimeInstrumentation;
+	/** Optional callback to forward child stream chunks to the parent chat. */
+	onChunk?: (chunk: StreamChunk) => void;
 }
 
 export interface SubAgentForegroundResult {
@@ -142,6 +146,7 @@ export class SubAgentForegroundRunner {
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				recorder.record(value);
+				context.onChunk?.(value);
 				if (value.type === 'tool-call-suspended') {
 					childSuspended = true;
 				}
@@ -171,9 +176,7 @@ export class SubAgentForegroundRunner {
 						messages: [],
 						finishReason: 'error',
 						error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
-						getState: () => {
-							throw new Error('getState is not implemented for sub-agent foreground runner');
-						},
+						getState: () => resultStream.getState(),
 					},
 				};
 			}
@@ -182,6 +185,7 @@ export class SubAgentForegroundRunner {
 				resultStream.runId,
 				messageRecord,
 				structuredOutput,
+				() => resultStream.getState(),
 			);
 
 			return {
@@ -271,6 +275,7 @@ function buildGenerateResultFromRecord(
 	runId: string,
 	record: MessageRecord,
 	structuredOutput: unknown,
+	getState: () => SerializableAgentState,
 ): GenerateResult {
 	const messages = createAssistantMessages(record.assistantResponse);
 	const finishReason = toKnownFinishReason(record.finishReason);
@@ -289,9 +294,7 @@ function buildGenerateResultFromRecord(
 			: {}),
 		...(structuredOutput !== undefined ? { structuredOutput } : {}),
 		...(record.error !== null ? { error: record.error } : {}),
-		getState: () => {
-			throw new Error('getState is not implemented for sub-agent foreground runner');
-		},
+		getState,
 	};
 	return result;
 }

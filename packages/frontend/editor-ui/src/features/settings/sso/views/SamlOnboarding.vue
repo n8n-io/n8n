@@ -5,7 +5,7 @@ import type { IFormBoxConfig } from '@n8n/design-system';
 import AuthView from '@/features/core/auth/views/AuthView.vue';
 import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 const router = useRouter();

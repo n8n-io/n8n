@@ -54,6 +54,7 @@ export function toAiSdkProviderTools(tools?: BuiltProviderTool[]): Record<string
 			id: t.name,
 			args: t.args,
 			inputSchema: t.inputSchema ?? z.any(),
+			isProviderExecuted: true,
 		};
 		result[t.name] = providerTool;
 	}

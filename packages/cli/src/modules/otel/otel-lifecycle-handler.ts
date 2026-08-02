@@ -8,7 +8,7 @@ import type {
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { ICustomTelemetryTag, IWorkflowBase } from 'n8n-workflow';
+import type { ICustomTelemetryTag, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { ExecutionLevelTracer } from './execution-level-tracer';
 import type { CustomAttributes } from './execution-level-tracer.types';
@@ -54,15 +54,11 @@ export class OtelLifecycleHandler {
 		this.tracer.refreshTracer();
 	}
 
-	private isPublishedWorkflow(workflow: IWorkflowBase): boolean {
-		return !!(workflow.activeVersionId ?? workflow.active);
-	}
-
-	private shouldTrace(ctx: { type: string; workflow: IWorkflowBase }): boolean {
+	private shouldTrace(ctx: { type: string; mode: WorkflowExecuteMode }): boolean {
 		const { enabled, productionExecutionsOnly, includeNodeSpans } =
 			this.otelSettingsService.getSettings();
 		if (!enabled) return false;
-		if (productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return false;
+		if (productionExecutionsOnly && ctx.mode === 'manual') return false;
 		if ((ctx.type === 'nodeExecuteBefore' || ctx.type === 'nodeExecuteAfter') && !includeNodeSpans)
 			return false;
 		return true;

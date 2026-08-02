@@ -1806,8 +1806,14 @@ ${results.map((r, i) => renderTestCase(r, i)).join('')}
 // Write report to disk
 // ---------------------------------------------------------------------------
 
-export function writeWorkflowReport(results: WorkflowTestCaseResult[]): string {
-	const reportDir = path.join(__dirname, '..', '..', '.data');
+/**
+ * Write the HTML report into `outputDir` (--output-dir), falling back to the
+ * package-level `.data` directory. The stable filename makes the fallback
+ * unsafe for concurrent runs against one checkout, so callers that have a
+ * per-run directory must pass it (see run/reporters.ts).
+ */
+export function writeWorkflowReport(results: WorkflowTestCaseResult[], outputDir?: string): string {
+	const reportDir = outputDir ?? path.join(__dirname, '..', '..', '.data');
 	if (!fs.existsSync(reportDir)) {
 		fs.mkdirSync(reportDir, { recursive: true });
 	}

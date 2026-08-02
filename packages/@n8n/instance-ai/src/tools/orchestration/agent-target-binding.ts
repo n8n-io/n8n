@@ -1,16 +1,10 @@
 /**
  * Thread-persisted agent-builder target binding. Mirrors the workflow source
- * file bindings, but as a single thread-level record: one ACTIVE agent
- * target per thread (the most recently created or explicitly targeted agent
- * — `build-agent` calls with `name`/`agentId` rebind it), matching
- * `context.agentBuilderTarget` semantics. Persisting the target in thread
- * metadata lets follow-up turns keep editing the same agent instead of
- * creating a new one.
- *
- * Alongside the single active target, a session registry of every agent
- * targeted in this conversation is also kept in thread metadata. This lets
- * `build-agent` recognize a `name` that was already built/targeted earlier
- * in the conversation and switch back to it instead of creating a duplicate.
+ * file bindings: one ACTIVE agent target per thread (the most recently created
+ * or explicitly targeted agent), plus a session registry of every agent
+ * targeted in this conversation keyed by a model-authored ref. Persisting the
+ * target in thread metadata lets follow-up turns keep editing the same agent
+ * instead of creating a new one — including after a cancelled build.
  */
 import { z } from 'zod';
 
@@ -29,16 +23,37 @@ const agentBuilderTargetSchema = z.object({
 	projectId: z.string(),
 	/** Agent display name when known — lets the FE label the agent artifact. */
 	name: z.string().optional(),
+	/**
+	 * Model-authored addressing key, and the registry's key. Optional: the
+	 * editor/preview handoffs seed a target from an agentId alone, and active
+	 * bindings persisted before this field existed carry none.
+	 */
+	ref: z.string().optional(),
 });
 
 export type AgentBuilderTarget = z.infer<typeof agentBuilderTargetSchema>;
 
-/** Ordered oldest-first, most recently saved last; deduped by `agentId`. */
-const agentBuilderTargetRegistrySchema = z.array(agentBuilderTargetSchema);
+const agentBuilderTargetRegistrySchema = z.record(z.string(), agentBuilderTargetSchema);
+
+/** Normalize an addressing key so "Support Triage", "support_triage" and
+ *  "Support-Triage" all address the same agent. Unicode letters/digits are kept
+ *  so a non-Latin agent name still yields a usable key. */
+export function normalizeAgentRef(value: string): string {
+	return value
+		.trim()
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N}]+/gu, '-')
+		.replace(/^-+|-+$/g, '');
+}
 
 function parseTarget(raw: unknown): AgentBuilderTarget | undefined {
 	const parsed = agentBuilderTargetSchema.safeParse(raw);
 	return parsed.success ? parsed.data : undefined;
+}
+
+function parseRegistry(raw: unknown): Record<string, AgentBuilderTarget> {
+	const parsed = agentBuilderTargetRegistrySchema.safeParse(raw);
+	return parsed.success ? parsed.data : {};
 }
 
 async function readThreadTarget(
@@ -92,17 +107,32 @@ export async function saveAgentBuilderTarget(
 	await patchThread(context.threadMemory, {
 		threadId: context.threadId,
 		update: ({ metadata = {} }) => {
-			const parsed = agentBuilderTargetRegistrySchema.safeParse(metadata[REGISTRY_METADATA_KEY]);
-			const existingRegistry = parsed.success ? parsed.data : [];
-			const previous = existingRegistry.find((entry) => entry.agentId === target.agentId);
-			// An agentId-path save carries no name; keep the name recorded when the
-			// agent was created so switch-back-by-name keeps working.
-			const entry: AgentBuilderTarget =
-				target.name === undefined && previous?.name !== undefined
-					? { ...target, name: previous.name }
-					: target;
-			const registry = existingRegistry.filter((e) => e.agentId !== target.agentId);
-			registry.push(entry);
+			const existingRegistry = parseRegistry(metadata[REGISTRY_METADATA_KEY]);
+			const previousByAgentId = Object.values(existingRegistry).find(
+				(entry) => entry.agentId === target.agentId,
+			);
+			// An agentId-path / display-name refresh may omit name or ref; keep the
+			// values recorded when the agent was first addressed so lookup and the
+			// FE artifact label stay correct.
+			const entry: AgentBuilderTarget = {
+				...target,
+				...(target.name === undefined && previousByAgentId?.name !== undefined
+					? { name: previousByAgentId.name }
+					: {}),
+				...(target.ref === undefined && previousByAgentId?.ref !== undefined
+					? { ref: previousByAgentId.ref }
+					: {}),
+			};
+			const registry = { ...existingRegistry };
+			if (entry.ref) {
+				const normalized = normalizeAgentRef(entry.ref);
+				// Drop any prior keys that pointed at this agentId so a changed
+				// addressing key doesn't leave a stale alias.
+				for (const [key, existing] of Object.entries(registry)) {
+					if (existing.agentId === entry.agentId) delete registry[key];
+				}
+				registry[normalized] = { ...entry, ref: normalized };
+			}
 			return {
 				metadata: {
 					...metadata,
@@ -117,23 +147,14 @@ export async function saveAgentBuilderTarget(
 	});
 }
 
-/** Trimmed, case-insensitive comparison — the orchestrator LLM may paraphrase
- *  an agent name's casing/whitespace, and that must not create a duplicate. */
-export function agentNamesMatch(a: string | undefined, b: string | undefined): boolean {
-	if (a === undefined || b === undefined) return false;
-	return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
-
 /**
- * Find an agent already targeted in this conversation by its display name
- * (most recently targeted wins on duplicates). Lets `build-agent` switch
- * back to a previously built agent by name instead of creating a duplicate.
+ * Find an agent already targeted in this conversation by its addressing key.
  * Best-effort: returns undefined without thread persistence or on a
- * malformed registry.
+ * malformed/empty registry.
  */
-export async function findSessionAgentByName(
+export async function getSessionAgentByRef(
 	context: InstanceAiContext,
-	name: string,
+	ref: string,
 ): Promise<AgentBuilderTarget | undefined> {
 	if (!context.threadMemory || !context.threadId) return undefined;
 
@@ -142,13 +163,6 @@ export async function findSessionAgentByName(
 	// prior targets. Let a `getThread` rejection propagate though (AGENT-353):
 	// silently returning undefined there would cause a duplicate agent.
 	const thread = await getThread(context.threadMemory, context.threadId);
-	const parsed = agentBuilderTargetRegistrySchema.safeParse(
-		thread?.metadata?.[REGISTRY_METADATA_KEY],
-	);
-	const registry = parsed.success ? parsed.data : [];
-
-	for (let i = registry.length - 1; i >= 0; i--) {
-		if (agentNamesMatch(registry[i].name, name)) return registry[i];
-	}
-	return undefined;
+	const registry = parseRegistry(thread?.metadata?.[REGISTRY_METADATA_KEY]);
+	return registry[normalizeAgentRef(ref)];
 }

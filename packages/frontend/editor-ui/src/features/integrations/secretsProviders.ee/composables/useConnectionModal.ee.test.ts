@@ -32,7 +32,7 @@ vi.mock('@n8n/stores/rbac.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: mockShowError,
 		showMessage: mockShowMessage,

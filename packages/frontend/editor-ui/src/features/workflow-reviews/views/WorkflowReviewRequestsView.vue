@@ -1,24 +1,28 @@
 <script lang="ts" setup>
-import { onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
+import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import { useReviewInboxStore } from '../reviewInbox.store';
+import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
 const store = useReviewInboxStore();
 const {
 	probeSettled,
 	showSidebar,
-	selectedItem,
 	items,
-	activeState,
-	selectedId,
+	activeTab,
+	detail,
+	detailLoading,
+	detailNotFound,
 	loading,
 	loadingMore,
 	hasMore,
@@ -26,6 +30,28 @@ const {
 	openCount,
 	closedCount,
 } = storeToRefs(store);
+
+const route = useRoute();
+const router = useRouter();
+
+function firstParam(value: string | string[] | undefined): string | null {
+	const param = Array.isArray(value) ? value[0] : value;
+	return param || null;
+}
+
+const selectedReviewId = computed(() => firstParam(route.params.reviewRequestId));
+
+function stateFromQuery(value: unknown): WorkflowReviewRequestState {
+	return value === 'closed' ? 'closed' : 'open';
+}
+
+// Hydrate the tab before probing so the first list fetch uses the URL state.
+store.activeTab = stateFromQuery(route.query[REVIEW_INBOX_QUERY_PARAM.state]);
+
+const selectedListItem = computed(
+	() => items.value.find((item) => item.id === selectedReviewId.value) ?? null,
+);
+const selectedItem = computed(() => detail.value ?? selectedListItem.value);
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -40,12 +66,37 @@ function handleListError(error: unknown) {
 	showError(error, i18n.baseText('workflowReviews.error.load'));
 }
 
-async function onActiveStateChange(state: WorkflowReviewRequestState) {
-	try {
-		await store.setActiveState(state);
-	} catch (error) {
-		await handleListError(error);
-	}
+watch(
+	selectedReviewId,
+	(id) => {
+		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
+		if (id) void store.fetchDetail(id).catch(handleListError);
+		else store.clearDetail();
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => route.query[REVIEW_INBOX_QUERY_PARAM.state],
+	(next) => {
+		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
+		void store.setActiveTab(stateFromQuery(next)).catch(handleListError);
+	},
+);
+
+function onSelect(id: string) {
+	void router.replace({ params: { reviewRequestId: id }, query: route.query });
+}
+
+function onClearSelection() {
+	void router.replace({ params: { reviewRequestId: '' }, query: route.query });
+}
+
+function onActiveTabChange(tab: WorkflowReviewRequestState) {
+	const query = { ...route.query };
+	if (tab === 'closed') query[REVIEW_INBOX_QUERY_PARAM.state] = tab;
+	else delete query[REVIEW_INBOX_QUERY_PARAM.state];
+	void router.replace({ query });
 }
 
 async function onLoadMore() {
@@ -53,6 +104,30 @@ async function onLoadMore() {
 		await store.loadMore();
 	} catch (error) {
 		await handleListError(error);
+	}
+}
+
+const deciding = ref(false);
+
+async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
+	deciding.value = true;
+	try {
+		await store.decideOnReview(id, decision);
+	} catch (error) {
+		showError(error, 'Could not submit review decision');
+		// The decision failed because someone else already decided (409), so
+		// refetch. Otherwise the item keeps showing as open and every retry
+		// re-fails.
+		try {
+			await Promise.all([
+				store.fetchList({ reset: true }),
+				selectedReviewId.value ? store.fetchDetail(selectedReviewId.value) : undefined,
+			]);
+		} catch (refetchError) {
+			handleListError(refetchError);
+		}
+	} finally {
+		deciding.value = false;
 	}
 }
 
@@ -77,17 +152,17 @@ onUnmounted(() => {
 			<WorkflowReviewRequestsSidebar
 				v-if="showSidebar"
 				:items="items"
-				:active-state="activeState"
+				:active-tab="activeTab"
 				:open-count="openCount"
 				:closed-count="closedCount"
-				:selected-id="selectedId"
+				:selected-id="selectedReviewId"
 				:loading="loading"
 				:loading-more="loadingMore"
 				:has-more="hasMore"
 				:is-empty="isEmpty"
-				@select="store.selectItem"
-				@clear="store.clearSelection"
-				@update:active-state="onActiveStateChange"
+				@select="onSelect"
+				@clear="onClearSelection"
+				@update:active-tab="onActiveTabChange"
 				@load-more="onLoadMore"
 			/>
 
@@ -115,14 +190,50 @@ onUnmounted(() => {
 
 				<div :class="$style.mainBody">
 					<N8nLoading v-if="!probeSettled" :loading="true" :rows="3" />
-					<N8nText
-						v-else-if="selectedItem"
-						color="text-light"
-						size="medium"
-						data-test-id="workflow-review-request-detail-stub"
+					<div
+						v-else-if="selectedReviewId && detailNotFound"
+						data-test-id="workflow-review-detail-not-found"
 					>
-						{{ i18n.baseText('workflowReviews.detail.placeholder') }}
-					</N8nText>
+						<N8nHeading bold tag="h3" size="large">
+							{{ i18n.baseText('workflowReviews.detail.notFound.title') }}
+						</N8nHeading>
+						<N8nText color="text-light" size="medium">
+							{{ i18n.baseText('workflowReviews.detail.notFound.body') }}
+						</N8nText>
+					</div>
+					<!-- Must precede the selectedItem branch: on a deep link the review is not
+						in the list yet, so selectedItem is null while the detail loads. -->
+					<N8nLoading v-else-if="selectedReviewId && detailLoading" :loading="true" :rows="3" />
+					<div v-else-if="selectedItem">
+						<N8nText
+							color="text-light"
+							size="medium"
+							data-test-id="workflow-review-request-detail-stub"
+						>
+							{{ i18n.baseText('workflowReviews.detail.placeholder') }}
+						</N8nText>
+						<!-- TODO(LIGO-892): placeholder actions with intentionally hardcoded copy.
+							Real design: disabled-with-explanation for non-admin authors ("you
+							contributed a version to this review"), i18n, and a `viewerCanDecide`
+							capability field from the backend. -->
+						<div v-if="selectedItem.state === 'open'" :class="$style.decisionActions">
+							<N8nButton
+								:disabled="deciding"
+								data-test-id="workflow-review-approve-button"
+								@click="onDecide(selectedItem.id, 'approved')"
+							>
+								Approve
+							</N8nButton>
+							<N8nButton
+								type="secondary"
+								:disabled="deciding"
+								data-test-id="workflow-review-request-changes-button"
+								@click="onDecide(selectedItem.id, 'changes_requested')"
+							>
+								Request changes
+							</N8nButton>
+						</div>
+					</div>
 					<N8nText
 						v-else-if="!showSidebar"
 						color="text-light"
@@ -137,7 +248,7 @@ onUnmounted(() => {
 						size="medium"
 						data-test-id="workflow-reviews-empty-state"
 					>
-						{{ i18n.baseText(`workflowReviews.emptyState.body.${activeState}`) }}
+						{{ i18n.baseText(`workflowReviews.emptyState.body.${activeTab}`) }}
 					</N8nText>
 					<N8nText
 						v-else
@@ -183,5 +294,11 @@ onUnmounted(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
+}
+
+.decisionActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--sm);
 }
 </style>
