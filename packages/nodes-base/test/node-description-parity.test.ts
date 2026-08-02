@@ -14,14 +14,14 @@ import { join } from 'node:path';
 
 import { n8n as declaredNodes } from '../package.json';
 
-// Native resolution of a webhook description is only as good as the
-// classification behind it, and the templates it classifies are a closed set:
-// node authors write them, they live in this repo. So rather than sampling
-// shapes (that is `native-parameter-resolution-parity.test.ts` in n8n-workflow),
-// this walks EVERY webhook description of EVERY node here and asserts that
-// whatever the classifier claims it can read natively resolves to what the
-// expression engine resolves. A node author adding a template shape we would
-// misread fails this test rather than a production webhook.
+// Native resolution is only as good as the classification behind it, and the
+// templates it classifies are a closed set: node authors write them, they live
+// in this repo. So rather than sampling shapes (that is
+// `native-parameter-resolution-parity.test.ts` in n8n-workflow), this walks
+// EVERY node description here and asserts that whatever the classifier claims
+// it can read natively resolves to what the expression engine resolves. A node
+// author adding a template shape we would misread fails this test rather than a
+// production webhook or a wrong subtitle in the editor.
 
 /** Node classes are declared as built paths; tests run from source. */
 const sourcePath = (distPath: string) =>
@@ -132,7 +132,7 @@ const buildWorkflow = (description: INodeTypeDescription, parameters: INodeParam
 
 const nodeFiles: string[] = declaredNodes.nodes;
 
-const withWebhooks = (
+const descriptions = (
 	await Promise.all(
 		nodeFiles.map(async (file) => {
 			try {
@@ -142,52 +142,82 @@ const withWebhooks = (
 			}
 		}),
 	)
-)
-	.flat()
-	.filter(({ description }) => description.webhooks?.length);
+).flat();
+
+/**
+ * Every node-authored template read through `getSimpleParameterValue` /
+ * `getComplexParameterValue`, which is the whole surface native resolution
+ * reaches: webhook description fields, plus `subtitle` (rendered in the editor
+ * for ~370 nodes) and dynamic `inputs`/`outputs` (read by the execution engine
+ * and the canvas).
+ */
+function templatesOf(description: INodeTypeDescription) {
+	const templates: Array<{
+		field: string;
+		value: unknown;
+		resolver?: NativeParameterResolvers[string];
+	}> = [
+		{ field: 'subtitle', value: description.subtitle },
+		{ field: 'inputs', value: description.inputs },
+		{ field: 'outputs', value: description.outputs },
+	];
+
+	for (const [index, webhook] of (description.webhooks ?? []).entries()) {
+		const resolvers = (webhook as IWebhookDescription).resolve as
+			| NativeParameterResolvers
+			| undefined;
+
+		for (const [field, value] of Object.entries(webhook)) {
+			if (field === 'resolve') continue;
+			templates.push({ field: `webhooks[${index}].${field}`, value, resolver: resolvers?.[field] });
+		}
+	}
+
+	return templates;
+}
 
 /** Counts what was actually compared, so the suite cannot pass vacuously. */
-let comparisons = 0;
+const comparisons = { subtitle: 0, other: 0 };
 
-describe('webhook description parity across all nodes', () => {
+describe('node description parity across all nodes', () => {
 	it('found the corpus', () => {
-		expect(withWebhooks.length).toBeGreaterThan(50);
+		expect(descriptions.length).toBeGreaterThan(400);
+		expect(
+			descriptions.filter(({ description }) => description.webhooks?.length).length,
+		).toBeGreaterThan(50);
 	});
 
 	describe.each(['defaults', 'values', 'falsy'] as const)('with %s parameters', (fill) => {
-		test.each(withWebhooks)('$description.name ($file)', ({ description }) => {
+		test.each(descriptions)('$description.name ($file)', ({ description }) => {
 			const workflow = buildWorkflow(description, buildParameters(description.properties, fill));
 			const node = workflow.getNode('Node')!;
 
-			for (const webhook of description.webhooks as IWebhookDescription[]) {
-				const resolvers = webhook.resolve as NativeParameterResolvers | undefined;
+			for (const { field, value, resolver } of templatesOf(description)) {
+				const native = resolveNativeParameterValue(node, value, resolver);
+				if (!native.resolved) continue; // engine's job, nothing to compare
 
-				for (const [field, value] of Object.entries(webhook)) {
-					if (field === 'resolve') continue;
+				const viaEngine = workflow.expression.resolveSimpleParameterValue(
+					value as string,
+					{},
+					createEmptyRunExecutionData(),
+					0,
+					0,
+					node.name,
+					[],
+					'internal',
+					{},
+				);
 
-					const native = resolveNativeParameterValue(node, value, resolvers?.[field]);
-					if (!native.resolved) continue; // engine's job, nothing to compare
+				if (field === 'subtitle') comparisons.subtitle++;
+				else comparisons.other++;
 
-					const viaEngine = workflow.expression.resolveSimpleParameterValue(
-						value as string,
-						{},
-						createEmptyRunExecutionData(),
-						0,
-						0,
-						node.name,
-						[],
-						'internal',
-						{},
-					);
-
-					comparisons++;
-					expect({ field, value: native.value }).toEqual({ field, value: viaEngine });
-				}
+				expect({ field, value: native.value }).toEqual({ field, value: viaEngine });
 			}
 		});
 	});
 
 	it('compared a meaningful number of fields', () => {
-		expect(comparisons).toBeGreaterThan(50);
+		expect(comparisons.subtitle).toBeGreaterThan(200);
+		expect(comparisons.other).toBeGreaterThan(50);
 	});
 });
