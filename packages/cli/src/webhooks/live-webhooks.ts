@@ -211,10 +211,8 @@ export class LiveWebhooks implements IWebhookManager {
 	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
 		if (!this.expressionEngineConfig.allowWebhookIsolateSkip) return true;
 		if (startNode === null) return true;
-		// Only this trigger's `webhook()` has been read for expression evaluation it
-		// does beyond its own parameters and description — a parameter scan cannot
-		// see `evaluateExpression()` on values without an `=` prefix, nor helpers
-		// that resolve expressions themselves (e.g. `httpRequestWithAuthentication`)
+		// Extend only after reading a trigger's `webhook()`: the scans below cannot
+		// see `evaluateExpression()` calls or helpers that evaluate internally
 		if (startNode.type !== WEBHOOK_NODE_TYPE) return true;
 		if (!nodeParametersAreStatic(startNode)) return true;
 
