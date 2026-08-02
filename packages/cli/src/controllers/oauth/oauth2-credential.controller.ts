@@ -10,6 +10,7 @@ import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse } from 'n8n-workflow';
 
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
@@ -24,6 +25,7 @@ export class OAuth2CredentialController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 		private readonly eventService: EventService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	/** Get Authorization url */
@@ -56,7 +58,7 @@ export class OAuth2CredentialController {
 
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
 
-			const isPkce = oauthCredentials.grantType === 'pkce';
+			const isPkce = oauthCredentials.grantType === 'pkce' || oauthCredentials.usePkce === true;
 			const isBodyAuth = oauthCredentials.authentication === 'body';
 
 			const body: Record<string, string> = { ...(oAuthOptions.body ?? {}) };
@@ -109,6 +111,11 @@ export class OAuth2CredentialController {
 				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
 
+			const expiresInSeconds = Number(tokenResponse.expires_in);
+			if (Number.isFinite(expiresInSeconds) && expiresInSeconds > 0) {
+				oauthTokenData.n8n_expires_at = String(Date.now() + expiresInSeconds * 1000);
+			}
+
 			if (typeof state.resource === 'string') {
 				oauthTokenData.resource = state.resource;
 			}
@@ -149,6 +156,11 @@ export class OAuth2CredentialController {
 						user: { id: state.userId },
 						credentialType: credential.type,
 						credentialId: credential.id,
+						supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
+						usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+							credential.type,
+							decryptedDataOriginal,
+						),
 					});
 				}
 

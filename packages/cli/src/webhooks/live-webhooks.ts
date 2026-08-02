@@ -161,7 +161,7 @@ export class LiveWebhooks implements IWebhookManager {
 
 			return await new Promise((resolve, reject) => {
 				const executionMode = 'webhook';
-				void WebhookHelpers.executeWebhook(
+				WebhookHelpers.executeWebhook(
 					workflow,
 					webhookData,
 					activeWorkflowData, // Use activeWorkflowData instead of workflowData
@@ -180,7 +180,7 @@ export class LiveWebhooks implements IWebhookManager {
 						await this.workflowStaticDataService.saveStaticData(workflow);
 						resolve(data);
 					},
-				);
+				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
 			await workflow.expression.releaseIsolate();
@@ -236,8 +236,10 @@ export class LiveWebhooks implements IWebhookManager {
 		}
 
 		const webhook = await this.webhookService.findWebhook(httpMethod, path);
-		const webhookMethods = await this.getWebhookMethods(path);
 		if (webhook === null) {
+			// Only fetch the allowed methods when building the 404, to keep the
+			// happy path free of this uncached query
+			const webhookMethods = await this.getWebhookMethods(path);
 			throw new WebhookNotFoundError({ path, httpMethod, webhookMethods }, { hint: 'production' });
 		}
 

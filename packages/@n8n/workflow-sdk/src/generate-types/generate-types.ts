@@ -94,8 +94,8 @@ function buildNodeConfigType(
 const ICON_TS_TYPE = "{ type: 'icon' | 'emoji'; value: string }";
 
 /**
- * Runtime shape for `type: 'workflowSelector'` properties.
- * The UI hardcodes two modes (see useWorkflowResourceLocatorModes.ts): `list` and `id`.
+ * Runtime shape for `type: 'workflowSelector'` and `type: 'agentSelector'` properties.
+ * Both hardcode two modes (`list` and `id`); see useResourceLocatorModes.ts.
  * Stored as an INodeParameterResourceLocator, or as an Expression string.
  */
 const WORKFLOW_SELECTOR_TS_TYPE =
@@ -654,6 +654,9 @@ export function discoverSchemasForNode(
 			// JSON files directly in the version directory (nodes without resource/operation)
 			if (entry.isFile() && entry.name.endsWith('.json')) {
 				const operationName = entry.name.replace('.json', '');
+				// `output.<variant>.json` files are context-conditional layout
+				// variants (e.g. with-parser), not operations — skip them here.
+				if (operationName.includes('.')) continue;
 				const filePath = path.join(versionDir, entry.name);
 
 				try {
@@ -703,38 +706,66 @@ export function discoverSchemasForNode(
 	return schemas;
 }
 
+/** Pad "1" / "2.3" to the on-disk "1.0.0" / "2.3.0" directory format. */
+function padVersion(version: number): string {
+	return String(version).split('.').concat(['0', '0']).slice(0, 3).join('.');
+}
+
+/** Parse a `vX.Y.Z` directory name into a comparable [X, Y, Z] tuple. */
+function parseVersionDir(name: string): number[] {
+	return name.slice(1).split('.').map(Number);
+}
+
+function compareVersionTuplesDesc(a: number[], b: number[]): number {
+	for (let i = 0; i < Math.max(a.length, b.length); i++) {
+		const diff = (b[i] ?? 0) - (a[i] ?? 0);
+		if (diff !== 0) return diff;
+	}
+	return 0;
+}
+
 /**
- * Find the best matching version directory for a given version
- * Tries exact match first (v{version}.0.0), then scans for closest lower version
+ * Find the best matching version directory for a given version.
+ * Tries an exact full-semver match first (2.3 → v2.3.0), then the nearest
+ * same-major dir (closest below, then closest above — a v2.x node must not
+ * lose its schemas just because only a higher v2 minor was recorded), then
+ * the newest lower-major dir.
+ *
+ * NOTE: unlike n8n-core's runtime resolver this never falls forward to a
+ * NEWER major — generated types should not describe a next-generation API
+ * shape; converging the two is tracked in the harmonization spec.
  *
  * @param schemaDir Path to the __schema__ directory
  * @param version Target version number
  * @returns Path to version directory, or undefined if not found
  */
 function findVersionDirectory(schemaDir: string, version: number): string | undefined {
-	// Try exact match first: v1.0.0, v2.0.0, etc.
-	const exactPath = path.join(schemaDir, `v${version}.0.0`);
+	const exactPath = path.join(schemaDir, `v${padVersion(version)}`);
 	if (fs.existsSync(exactPath)) {
 		return exactPath;
 	}
 
-	// Scan for available versions and find closest lower
+	const target = padVersion(version).split('.').map(Number);
 	try {
 		const entries = fs.readdirSync(schemaDir, { withFileTypes: true });
 		const versionDirs = entries
 			.filter((e) => e.isDirectory() && /^v\d+(\.\d+)*$/.test(e.name))
-			.map((e) => {
-				const match = e.name.match(/^v(\d+)/);
-				return {
-					name: e.name,
-					majorVersion: match ? parseInt(match[1], 10) : 0,
-				};
-			})
-			.filter((v) => v.majorVersion <= version)
-			.sort((a, b) => b.majorVersion - a.majorVersion);
+			.map((e) => ({ name: e.name, tuple: parseVersionDir(e.name) }));
 
-		if (versionDirs.length > 0) {
-			return path.join(schemaDir, versionDirs[0].name);
+		const sameMajor = versionDirs.filter((v) => v.tuple[0] === target[0]);
+		const best =
+			sameMajor
+				.filter((v) => compareVersionTuplesDesc(v.tuple, target) >= 0)
+				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple))[0] ??
+			sameMajor
+				.filter((v) => compareVersionTuplesDesc(v.tuple, target) < 0)
+				.sort((a, b) => compareVersionTuplesDesc(b.tuple, a.tuple))[0] ??
+			versionDirs
+				.filter((v) => v.tuple[0] < target[0])
+				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple))[0];
+
+		if (best) {
+			return path.join(schemaDir, best.name);
 		}
 	} catch {
 		// Ignore read errors
@@ -1002,6 +1033,7 @@ function mapNestedPropertyTypeInner(
 		case 'icon':
 			return ICON_TS_TYPE;
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_TS_TYPE;
 		case 'credentialsSelect':
 			// credentialsSelect is a string value (credential type name)
@@ -1709,6 +1741,7 @@ function mapPropertyTypeInner(
 			return ICON_TS_TYPE;
 
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_TS_TYPE;
 
 		case 'credentialsSelect':
@@ -1886,10 +1919,13 @@ export function getPropertiesForCombination(
  */
 interface VersionCondition {
 	_cnd: {
+		eq?: number;
+		not?: number;
 		gt?: number;
 		gte?: number;
 		lt?: number;
 		lte?: number;
+		between?: { from: number; to: number };
 	};
 }
 
@@ -1904,11 +1940,14 @@ function versionMatchesCondition(version: number, condition: number | VersionCon
 
 	// It's a conditional expression like { _cnd: { gte: 3.1 } }
 	if (condition._cnd) {
-		const { gt, gte, lt, lte } = condition._cnd;
+		const { eq, not, gt, gte, lt, lte, between } = condition._cnd;
+		if (eq !== undefined && version !== eq) return false;
+		if (not !== undefined && version === not) return false;
 		if (gt !== undefined && !(version > gt)) return false;
 		if (gte !== undefined && !(version >= gte)) return false;
 		if (lt !== undefined && !(version < lt)) return false;
 		if (lte !== undefined && !(version <= lte)) return false;
+		if (between !== undefined && !(version >= between.from && version <= between.to)) return false;
 		return true;
 	}
 

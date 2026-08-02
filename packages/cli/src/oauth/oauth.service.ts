@@ -264,7 +264,12 @@ export class OauthService {
 		// Private credentials are connected per-user, so executing users can authorize
 		// their own account without edit rights. Shared/static credentials store the
 		// token on the shared credential itself, so connecting them still requires edit.
-		const existingCredential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const existingCredential = await this.credentialsFinderService.findCredentialById(
+			credentialId,
+			{
+				includeInstanceCredentials: true,
+			},
+		);
 		const requiredScope = existingCredential?.isResolvable
 			? 'credential:connect'
 			: 'credential:update';
@@ -273,6 +278,7 @@ export class OauthService {
 			credentialId,
 			req.user,
 			[requiredScope],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -427,8 +433,12 @@ export class OauthService {
 	/** Get a credential without user check */
 	protected async getCredentialWithoutUser(
 		credentialId: string,
+		options: { onlyProjectCredentials?: boolean } = {},
 	): Promise<CredentialsEntity | null> {
-		return await this.credentialsRepository.findOneBy({ id: credentialId });
+		return await this.credentialsRepository.findOneBy({
+			id: credentialId,
+			...(options.onlyProjectCredentials ? { usageScope: 'project' as const } : {}),
+		});
 	}
 
 	/**
@@ -549,7 +559,7 @@ export class OauthService {
 			}
 			return [
 				{ ...decoded, ...decryptedState },
-				await this.getCredentialWithoutUser(decryptedState.cid),
+				await this.getCredentialWithoutUser(decryptedState.cid, { onlyProjectCredentials: true }),
 			];
 		}
 
@@ -569,6 +579,7 @@ export class OauthService {
 			decryptedState.cid,
 			req.user,
 			['credential:update'],
+			{ includeInstanceCredentials: true },
 		);
 
 		return [{ ...decoded, ...decryptedState }, credential];
@@ -681,6 +692,49 @@ export class OauthService {
 		return oauthCredentials;
 	}
 
+	private credentialIsAccessibleToProject(credential: CredentialsEntity, projectId: string) {
+		return credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
+	}
+
+	private resolveOAuth2Resource(
+		oauthCredentials: OAuth2CredentialData,
+		oauthTokenData: ClientOAuth2TokenData,
+	) {
+		// oauthTokenData.resource: persisted resource from the original token exchange.
+		// oauthCredentials.resource: resolved resource from discovery/validation during setup.
+		// oauthCredentials.resourceUrl: raw credential input used before a resolved value exists.
+		return oauthTokenData.resource ?? oauthCredentials.resource ?? oauthCredentials.resourceUrl;
+	}
+
+	private createOAuth2ClientForRefresh(oauthCredentials: OAuth2CredentialData, resource?: string) {
+		const scopes = oauthCredentials.scope
+			?.split(' ')
+			.map((s) => s.trim())
+			.filter(Boolean);
+
+		return new ClientOAuth2({
+			clientId: oauthCredentials.clientId,
+			...resolveClientAuthOptions(oauthCredentials),
+			accessTokenUri: oauthCredentials.accessTokenUrl,
+			scopes: scopes?.length ? scopes : undefined,
+			...(resource ? { resource } : {}),
+			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
+			authentication: oauthCredentials.authentication ?? 'header',
+		});
+	}
+
+	private mergeRefreshedOAuthTokenData(
+		oauthTokenData: ClientOAuth2TokenData,
+		refreshedData: ClientOAuth2TokenData,
+		resource?: string,
+	) {
+		return {
+			...oauthTokenData,
+			...refreshedData,
+			...(!refreshedData.resource && resource ? { resource } : {}),
+		};
+	}
+
 	/**
 	 * Refresh the OAuth2 token stored on a credential by id, persist the refreshed token data,
 	 * and return the new auth headers to inject into outbound requests.
@@ -690,32 +744,19 @@ export class OauthService {
 		projectId: string,
 	): Promise<Record<string, string> | null> {
 		const credential = await this.credentialsRepository.findOne({
-			where: { id: credentialId },
+			where: { id: credentialId, usageScope: 'project' },
 			relations: { shared: true },
 		});
 		if (!credential) return null;
 
-		const isAccessible =
-			credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
-		if (!isAccessible) return null;
+		if (!this.credentialIsAccessibleToProject(credential, projectId)) return null;
 
 		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
 		if (!oauthTokenData) return null;
 
-		const scopes = oauthCredentials.scope
-			?.split(' ')
-			.map((s) => s.trim())
-			.filter(Boolean);
-
-		const oAuthClient = new ClientOAuth2({
-			clientId: oauthCredentials.clientId,
-			...resolveClientAuthOptions(oauthCredentials),
-			accessTokenUri: oauthCredentials.accessTokenUrl,
-			scopes: scopes?.length ? scopes : undefined,
-			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
-			authentication: oauthCredentials.authentication ?? 'header',
-		});
+		const resource = this.resolveOAuth2Resource(oauthCredentials, oauthTokenData);
+		const oAuthClient = this.createOAuth2ClientForRefresh(oauthCredentials, resource);
 
 		const token = oAuthClient.createToken(
 			{
@@ -740,8 +781,14 @@ export class OauthService {
 			return null;
 		}
 
+		const refreshedTokenData = this.mergeRefreshedOAuthTokenData(
+			oauthTokenData,
+			refreshed.data,
+			resource,
+		);
+
 		try {
-			await this.encryptAndSaveData(credential, { oauthTokenData: refreshed.data });
+			await this.encryptAndSaveData(credential, { oauthTokenData: refreshedTokenData });
 		} catch (error) {
 			this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
 				credentialId,
@@ -869,6 +916,7 @@ export class OauthService {
 			await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 
 		const toUpdate: ICredentialDataDecryptedObject = {};
+		const toDelete: string[] = [];
 
 		let authorizationServerUrl = oauthCredentials.serverUrl;
 		let discoveredScopes: string[] | undefined;
@@ -893,6 +941,7 @@ export class OauthService {
 				oauthCredentials,
 				authorizationServerUrl!,
 				toUpdate,
+				toDelete,
 				discoveredScopes,
 			);
 		}
@@ -915,7 +964,7 @@ export class OauthService {
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
 		const flowState: OauthFlowState = { csrfSecret, stateData: csrfData };
-		if (oauthCredentials.grantType === 'pkce') {
+		if (this.shouldUsePkce(oauthCredentials)) {
 			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
 				...oAuthOptions.query,
@@ -929,8 +978,8 @@ export class OauthService {
 
 		// Only persist DCR-driven updates to the credential. CSRF/PKCE state lives in the cache
 		// to avoid cross-user races on shared credentials.
-		if (Object.keys(toUpdate).length > 0) {
-			await this.encryptAndSaveData(credential, toUpdate);
+		if (Object.keys(toUpdate).length > 0 || toDelete.length > 0) {
+			await this.encryptAndSaveData(credential, toUpdate, toDelete);
 		}
 
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
@@ -948,6 +997,7 @@ export class OauthService {
 		oauthCredentials: OAuth2CredentialData,
 		authorizationServerUrl: string,
 		toUpdate: ICredentialDataDecryptedObject,
+		toDelete: string[],
 		discoveredResourceScopes?: string[],
 	): Promise<void> {
 		// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
@@ -1026,16 +1076,21 @@ export class OauthService {
 			toUpdate.scope = scope;
 		}
 
-		const { grantType, authentication } = this.selectGrantTypeAndAuthenticationMethod(
+		const { grantType, authentication, usePkce } = this.selectGrantTypeAndAuthenticationMethod(
 			metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
 			metadataValidation.data.token_endpoint_auth_methods_supported ?? [],
 			metadataValidation.data.code_challenge_methods_supported ?? [],
 		);
 		oauthCredentials.grantType = grantType;
 		toUpdate.grantType = grantType;
+		oauthCredentials.usePkce = usePkce;
+		toUpdate.usePkce = usePkce;
 		if (authentication) {
 			oauthCredentials.authentication = authentication;
 			toUpdate.authentication = authentication;
+		} else {
+			delete oauthCredentials.authentication;
+			toDelete.push('authentication');
 		}
 
 		const { grant_types, token_endpoint_auth_method } = this.mapGrantTypeAndAuthenticationMethod(
@@ -1074,9 +1129,12 @@ export class OauthService {
 		const { client_id, client_secret } = registrationValidation.data;
 		oauthCredentials.clientId = client_id;
 		toUpdate.clientId = client_id;
-		if (client_secret) {
+		if (authentication && client_secret) {
 			oauthCredentials.clientSecret = client_secret;
 			toUpdate.clientSecret = client_secret;
+		} else {
+			delete oauthCredentials.clientSecret;
+			toDelete.push('clientSecret');
 		}
 	}
 
@@ -1263,6 +1321,13 @@ export class OauthService {
 		return options;
 	}
 
+	private shouldUsePkce(credential: OAuth2CredentialData): boolean {
+		return (
+			credential.grantType === 'pkce' ||
+			(credential.grantType === 'authorizationCode' && credential.usePkce === true)
+		);
+	}
+
 	/**
 	 * Fetches a `.well-known` discovery document and returns its parsed JSON body.
 	 * Only a 200 is accepted (RFC 8414 / RFC 9728 / OpenID Connect discovery endpoints respond with 200).
@@ -1355,7 +1420,11 @@ export class OauthService {
 		grantTypes: string[],
 		tokenEndpointAuthMethods: string[],
 		codeChallengeMethods: string[],
-	): { grantType: OAuth2GrantType; authentication?: OAuth2AuthenticationMethod } {
+	): {
+		grantType: OAuth2GrantType;
+		authentication?: OAuth2AuthenticationMethod;
+		usePkce: boolean;
+	} {
 		const supportsPkce = codeChallengeMethods.includes('S256');
 
 		if (grantTypes.includes('authorization_code')) {
@@ -1365,44 +1434,53 @@ export class OauthService {
 				supportsPkce &&
 				(tokenEndpointAuthMethods.length === 0 || tokenEndpointAuthMethods.includes('none'))
 			) {
-				return { grantType: 'pkce' };
+				return { grantType: 'pkce', usePkce: true };
 			}
 
-			if (tokenEndpointAuthMethods.includes('client_secret_basic')) {
-				return { grantType: 'authorizationCode', authentication: 'header' };
-			}
-
-			if (tokenEndpointAuthMethods.includes('client_secret_post')) {
-				return { grantType: 'authorizationCode', authentication: 'body' };
+			const authentication = this.selectClientSecretAuthenticationMethod(tokenEndpointAuthMethods);
+			if (authentication) {
+				return {
+					grantType: 'authorizationCode',
+					authentication,
+					usePkce: supportsPkce,
+				};
 			}
 
 			// S256 advertised alongside only unrecognized methods: fall back to public-client PKCE.
 			if (supportsPkce) {
-				return { grantType: 'pkce' };
+				return { grantType: 'pkce', usePkce: true };
 			}
 
 			// Server omitted token_endpoint_auth_methods_supported: default to client_secret_basic (RFC 8414).
 			if (tokenEndpointAuthMethods.length === 0) {
-				return { grantType: 'authorizationCode', authentication: 'header' };
+				return { grantType: 'authorizationCode', authentication: 'header', usePkce: false };
 			}
 		}
 
 		if (grantTypes.includes('client_credentials')) {
-			if (tokenEndpointAuthMethods.includes('client_secret_basic')) {
-				return { grantType: 'clientCredentials', authentication: 'header' };
-			}
-
-			if (tokenEndpointAuthMethods.includes('client_secret_post')) {
-				return { grantType: 'clientCredentials', authentication: 'body' };
+			const authentication = this.selectClientSecretAuthenticationMethod(tokenEndpointAuthMethods);
+			if (authentication) {
+				return { grantType: 'clientCredentials', authentication, usePkce: false };
 			}
 
 			// Server omitted token_endpoint_auth_methods_supported: default to client_secret_basic (RFC 8414).
 			if (tokenEndpointAuthMethods.length === 0) {
-				return { grantType: 'clientCredentials', authentication: 'header' };
+				return { grantType: 'clientCredentials', authentication: 'header', usePkce: false };
 			}
 		}
 
 		throw new BadRequestError('No supported grant type and authentication method found');
+	}
+
+	private selectClientSecretAuthenticationMethod(
+		tokenEndpointAuthMethods: string[],
+	): OAuth2AuthenticationMethod | undefined {
+		for (const authMethod of tokenEndpointAuthMethods) {
+			if (authMethod === 'client_secret_basic') return 'header';
+			if (authMethod === 'client_secret_post') return 'body';
+		}
+
+		return undefined;
 	}
 
 	private mapGrantTypeAndAuthenticationMethod(

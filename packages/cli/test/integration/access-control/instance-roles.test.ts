@@ -1,7 +1,13 @@
-import { mockInstance, randomCredentialPayload, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	mockInstance,
+	randomCredentialPayload,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, ScopeRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
@@ -153,6 +159,134 @@ describe('Instance (global) custom role authorization', () => {
 			);
 
 			await agent.get(`/roles/${GLOBAL_MEMBER_ROLE.slug}/members`).expect(403);
+		});
+	});
+
+	describe('project-role administration (role:manageProject)', () => {
+		// A custom global role granted ONLY role:manageProject — the least-privilege
+		// "project role administrator". It must manage project roles yet be barred
+		// from every other roleType, and never gain role:manage's global reach.
+		const MANAGE_PROJECT = ['role:manageProject'];
+
+		test('role:manageProject can create a project role', async () => {
+			const { agent } = await createGlobalRoleUser(
+				testServer,
+				MANAGE_PROJECT,
+				'Project Role Manager',
+			);
+
+			await agent
+				.post('/roles')
+				.send({
+					displayName: 'Created Project Role',
+					roleType: 'project',
+					scopes: ['workflow:read'],
+				})
+				.expect(200);
+		});
+
+		test('role:manageProject cannot create a global role', async () => {
+			const { agent } = await createGlobalRoleUser(
+				testServer,
+				MANAGE_PROJECT,
+				'Project Role Manager',
+			);
+
+			await agent
+				.post('/roles')
+				.send({ displayName: 'Blocked Global Role', roleType: 'global', scopes: ['workflow:read'] })
+				.expect(403);
+		});
+
+		test('role:manageProject can update and delete a project role', async () => {
+			const { agent } = await createGlobalRoleUser(
+				testServer,
+				MANAGE_PROJECT,
+				'Project Role Manager',
+			);
+			const projectRole = await createCustomRoleWithScopeSlugs(['workflow:read'], {
+				roleType: 'project',
+				displayName: 'Editable Project Role',
+			});
+
+			await agent.patch(`/roles/${projectRole.slug}`).send({ displayName: 'Renamed' }).expect(200);
+			await agent.delete(`/roles/${projectRole.slug}`).expect(200);
+		});
+
+		test('role:manageProject cannot update or delete a global role', async () => {
+			const { agent } = await createGlobalRoleUser(
+				testServer,
+				MANAGE_PROJECT,
+				'Project Role Manager',
+			);
+			const globalRole = await createCustomRoleWithScopeSlugs(['workflow:read'], {
+				roleType: 'global',
+				displayName: 'Off-Limits Global Role',
+			});
+
+			await agent.patch(`/roles/${globalRole.slug}`).send({ displayName: 'Nope' }).expect(403);
+			await agent.delete(`/roles/${globalRole.slug}`).expect(403);
+		});
+
+		test('role:manageProject can read assignments and project members for a project role', async () => {
+			const { agent } = await createGlobalRoleUser(
+				testServer,
+				MANAGE_PROJECT,
+				'Project Role Manager',
+			);
+			const owner = await createOwner();
+			const project = await createTeamProject('Project Role Members', owner);
+			const projectRole = await createCustomRoleWithScopeSlugs(['workflow:read'], {
+				roleType: 'project',
+				displayName: 'Assignable Project Role',
+			});
+
+			await agent.get(`/roles/${projectRole.slug}/assignments`).expect(200);
+			await agent.get(`/roles/${projectRole.slug}/assignments/${project.id}/members`).expect(200);
+		});
+
+		test('role:manageProject cannot read assignments or project members for a global role', async () => {
+			const { agent } = await createGlobalRoleUser(
+				testServer,
+				MANAGE_PROJECT,
+				'Project Role Manager',
+			);
+			const owner = await createOwner();
+			const project = await createTeamProject('Global Role Members', owner);
+
+			await agent.get(`/roles/${GLOBAL_MEMBER_ROLE.slug}/assignments`).expect(403);
+			await agent
+				.get(`/roles/${GLOBAL_MEMBER_ROLE.slug}/assignments/${project.id}/members`)
+				.expect(403);
+		});
+
+		test('role:manage still manages roles of every roleType (backwards compatible)', async () => {
+			const { agent } = await createGlobalRoleUser(
+				testServer,
+				['role:manage'],
+				'Full Role Manager',
+			);
+
+			const project = await agent
+				.post('/roles')
+				.send({
+					displayName: 'Manage Project Role',
+					roleType: 'project',
+					scopes: ['workflow:read'],
+				})
+				.expect(200);
+			const global = await agent
+				.post('/roles')
+				.send({ displayName: 'Manage Global Role', roleType: 'global', scopes: ['role:read'] })
+				.expect(200);
+
+			await agent.delete(`/roles/${project.body.data.slug}`).expect(200);
+			await agent.delete(`/roles/${global.body.data.slug}`).expect(200);
+		});
+
+		test('role:manageProject is present in the scope catalog after startup sync', async () => {
+			const scopes = await Container.get(ScopeRepository).findByList(['role:manageProject']);
+			expect(scopes).toHaveLength(1);
 		});
 	});
 

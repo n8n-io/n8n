@@ -22,8 +22,12 @@ export function createDeleteFileTool(filesystem: WorkspaceFilesystem): BuiltTool
 				success: z.boolean().describe('Whether the deletion was successful'),
 			}),
 		)
-		.handler(async (input) => {
-			await filesystem.deleteFile(input.path, { recursive: input.recursive, force: input.force });
+		.handler(async (input, ctx) => {
+			await filesystem.deleteFile(input.path, {
+				recursive: input.recursive,
+				force: input.force,
+				abortSignal: ctx.abortSignal,
+			});
 			return { success: true };
 		})
 		.build();

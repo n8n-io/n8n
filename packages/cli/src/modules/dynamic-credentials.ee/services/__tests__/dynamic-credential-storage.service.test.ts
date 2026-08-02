@@ -148,7 +148,7 @@ describe('DynamicCredentialStorageService', () => {
 				).rejects.toThrow(CredentialStorageError);
 				await expect(
 					service.storeIfNeeded(metadata, dynamicData, credentialContext),
-				).rejects.toThrow('Failed to store dynamic credentials data');
+				).rejects.toThrow('Failed to store end-user credential data');
 			});
 		});
 
@@ -162,7 +162,7 @@ describe('DynamicCredentialStorageService', () => {
 				).rejects.toThrow(CredentialStorageError);
 				await expect(
 					service.storeIfNeeded(metadata, dynamicData, credentialContext),
-				).rejects.toThrow('Failed to store dynamic credentials data');
+				).rejects.toThrow('Failed to store end-user credential data');
 			});
 
 			it('resolver instance is not found in registry', async () => {
@@ -192,7 +192,7 @@ describe('DynamicCredentialStorageService', () => {
 				).rejects.toThrow(CredentialStorageError);
 				await expect(
 					service.storeIfNeeded(metadata, dynamicData, credentialContext),
-				).rejects.toThrow('Failed to store dynamic credentials data');
+				).rejects.toThrow('Failed to store end-user credential data');
 			});
 		});
 

@@ -16,7 +16,10 @@ import {
 	persistVerificationOutcome,
 } from './verification/finalize-result';
 import { prepareVerificationRun } from './verification/prepare-run';
+import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
+import { runScriptedGateVerification } from './verification/scripted-gate-run';
+import { executionNodeErrorSchema } from '../../workflow-loop/workflow-loop-state';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -98,6 +101,7 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })).optional(),
 	simulationNote: z.string().optional(),
 	lastNodeExecuted: z.string().optional(),
+	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
 	data: z.record(z.unknown()).optional(),
@@ -111,14 +115,11 @@ type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema>;
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 	return new Tool('verify-built-workflow')
 		.description(
-			'Run a built workflow using sidecar verification context from the build outcome. ' +
-				'Call when the current turn is responsible for post-build verification. ' +
-				'Use this as the standard verifier for workflows produced by the workflow-builder. ' +
-				'It supports manual, schedule, form, webhook, chat, and other event triggers with build-outcome pin data, mocked credential context, or trigger-shaped inputData. ' +
+			'Standard post-build verifier: runs a built workflow with sidecar verification context from the build outcome ' +
+				'(pin data, mocked credentials, trigger-shaped inputData; all trigger types supported). ' +
 				'Use `executions(action="run")` only for ad hoc runs outside build verification. ' +
-				'CRITICAL: `inputData` shape depends on the trigger type; see the per-trigger guidance on the inputData field. ' +
-				'Passing the wrong shape (e.g. wrapping form fields under `formFields`) produces null downstream values that ' +
-				'look like an expression bug but are not. Do not patch the workflow; re-run verify with the correct shape.',
+				'CRITICAL: `inputData` shape depends on the trigger type (see the field description) — a wrong shape produces ' +
+				'null downstream values that look like an expression bug; re-run verify with the correct shape instead of patching the workflow.',
 		)
 		.input(verifyBuiltWorkflowInputSchema)
 		.output(verifyBuiltWorkflowOutputSchema)
@@ -126,7 +127,18 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const targetResult = await resolveVerificationTarget(input, context);
 			if (targetResult.kind === 'blocked') return targetResult.result;
 			const { target } = targetResult;
-			const { input: resolvedInput, buildOutcome, workflowId, workflowTaskService } = target;
+			const { input: resolvedInput, workflowId, workflowTaskService } = target;
+
+			// Credentials assigned after the build never rebuild the plan, so
+			// refresh stale mocked-credential verdicts before pinning.
+			const buildOutcome = await reconcileStaleCredentialPlan({
+				buildOutcome: target.buildOutcome,
+				workflowId,
+				domainContext: target.domainContext,
+				workflowTaskService,
+				logger: context.logger,
+				fallbackModelConfig: context.modelId,
+			});
 
 			if (buildOutcome.nodeSimulationPlan === undefined) {
 				return await handleMissingSimulationPlan({
@@ -146,22 +158,45 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 			const { prepared } = preparedResult;
 
-			const result = await target.domainContext.executionService.run(
-				workflowId,
-				resolvedInput.inputData,
-				{
-					timeout: resolvedInput.timeout,
-					verificationPinData: prepared.verificationPinData,
-				},
-			);
+			// A scripted gate replaces the halt with one loop-safe pass per decision;
+			// otherwise run the single standard pass (halted gates pin zero items).
+			const { result, analysis } = prepared.gateScript
+				? await runScriptedGateVerification({
+						script: prepared.gateScript,
+						prepared,
+						executionService: target.domainContext.executionService,
+						workflowId,
+						inputData: resolvedInput.inputData,
+						timeout: resolvedInput.timeout,
+						abortSignal: context.abortSignal,
+						buildOutcome,
+						stateBefore: target.stateBefore,
+						runId: context.runId,
+					})
+				: await (async () => {
+						const runResult = await target.domainContext.executionService.run(
+							workflowId,
+							resolvedInput.inputData,
+							{
+								timeout: resolvedInput.timeout,
+								verificationPinData: prepared.verificationPinData,
+								isVerificationRun: true,
+								abortSignal: context.abortSignal,
+							},
+						);
+						return {
+							result: runResult,
+							analysis: analyzeVerificationResult({
+								result: runResult,
+								buildOutcome,
+								simulatedNodes: prepared.simulatedNodes,
+								haltedGateNames: prepared.haltedGateNames,
+								stateBefore: target.stateBefore,
+								runId: context.runId,
+							}),
+						};
+					})();
 
-			const analysis = analyzeVerificationResult({
-				result,
-				buildOutcome,
-				simulatedNodes: prepared.simulatedNodes,
-				stateBefore: target.stateBefore,
-				runId: context.runId,
-			});
 			await persistVerificationOutcome({
 				input: resolvedInput,
 				context,
@@ -185,10 +220,11 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				simulatedNodes:
 					analysis.reachedSimulatedNodes.length > 0 ? analysis.reachedSimulatedNodes : undefined,
 				simulationNote: analysis.simulationNote,
+				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 				coverageNote: analysis.coverageNote,
 				...(resolvedInput.includeData ? { data: result.data } : {}),
-				error: result.error,
+				error: analysis.errorMessage,
 				remediation: analysis.remediation,
 				guidance: analysis.remediation?.guidance,
 			};

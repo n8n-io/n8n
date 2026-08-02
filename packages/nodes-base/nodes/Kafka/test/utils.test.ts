@@ -1,16 +1,16 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import type * as _importType0 from 'n8n-workflow';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { createResultError, createResultOk } from '@n8n/utils/result';
 import type {
 	ITriggerFunctions,
 	IRun,
 	INode,
 	Logger,
-	IDeferredPromise,
 	ICredentialDataDecryptedObject,
 	NodeEgressFilter,
 } from 'n8n-workflow';
-import { createResultError, createResultOk } from '@n8n/utils/result';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeOperationError } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
 import type { LookupFunction } from 'node:net';
@@ -29,13 +29,9 @@ import {
 } from '../utils';
 
 vi.mock('@kafkajs/confluent-schema-registry');
-vi.mock('n8n-workflow', async () => {
-	const actual = await vi.importActual<typeof _importType0>('n8n-workflow');
-	return {
-		...actual,
-		sleep: vi.fn().mockResolvedValue(undefined),
-	};
-});
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn().mockResolvedValue(undefined),
+}));
 
 const mockedSleep = vi.mocked(sleep);
 

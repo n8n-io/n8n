@@ -1,13 +1,15 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
 	INode,
 	ITriggerFunctions,
 	IWorkflowExecuteAdditionalData,
+	SchedulingFunctions,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { UnexpectedError, createDeferredPromise } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -40,6 +42,11 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 		readonly emit: ITriggerFunctions['emit'] = throwOnEmit,
 		readonly emitError: ITriggerFunctions['emitError'] = throwOnEmitError,
 		readonly saveFailedExecution: ITriggerFunctions['saveFailedExecution'] = throwOnSaveFailedExecution,
+		schedulingFunctions: SchedulingFunctions = getSchedulingFunctions(
+			workflow.id,
+			workflow.timezone,
+			node.id,
+		),
 	) {
 		super(workflow, node, additionalData, mode);
 
@@ -49,7 +56,7 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 			...getSSHTunnelFunctions(),
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
-			...getSchedulingFunctions(workflow.id, workflow.timezone, node.id),
+			...schedulingFunctions,
 		};
 	}
 

@@ -56,6 +56,13 @@ export class WebhookTriggerRegistrar {
 
 	/**
 	 * Resolve workflow-defined webhook triggers.
+	 *
+	 * NOTE: evaluates each webhook node's `path`/`httpMethod` expressions, so
+	 * when the vm expression engine is active the caller must hold an acquired
+	 * isolate (`workflow.expression.acquireIsolate()`) around this call — it
+	 * throws `No bridge acquired for this context` at runtime otherwise. This
+	 * method cannot bracket internally because it is sync. Unlike
+	 * {@link getNodesWithUnregisteredWebhooks}, which brackets itself.
 	 */
 	getWebhookTriggers(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
 		return WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
@@ -169,34 +176,44 @@ export class WebhookTriggerRegistrar {
 		additionalData: IWorkflowExecuteAdditionalData,
 		desiredNodes: Set<INode['id']>,
 	): Promise<Set<INode['id']>> {
-		const desiredWebhooks = this.getWebhookTriggers(workflow, additionalData).filter(
-			(webhookData) => desiredNodes.has(workflow.getNode(webhookData.node)?.id ?? ''),
-		);
-		if (desiredWebhooks.length === 0) {
-			return new Set();
-		}
-
-		const registeredKeys = new Set(
-			(await this.webhookService.getRegisteredWebhooks(workflow.id)).map((webhook) =>
-				this.buildWebhookKey(webhook.method, webhook.webhookPath),
-			),
-		);
-
-		const unregistered = new Set<INode['id']>();
-		for (const webhookData of desiredWebhooks) {
-			const node = workflow.getNode(webhookData.node);
-			if (!node) {
-				continue;
+		// Resolving webhook triggers evaluates each node's `path`/`httpMethod`
+		// expressions (e.g. the Form Trigger's dynamic path), which needs an isolate.
+		// Only release if this call newly acquired it: acquire is idempotent per
+		// caller but release is not reference-counted, so releasing an isolate a
+		// caller up-stack still holds would return their bridge to the pool mid-use.
+		const ownsIsolate = await workflow.expression.acquireIsolate();
+		try {
+			const desiredWebhooks = this.getWebhookTriggers(workflow, additionalData).filter(
+				(webhookData) => desiredNodes.has(workflow.getNode(webhookData.node)?.id ?? ''),
+			);
+			if (desiredWebhooks.length === 0) {
+				return new Set();
 			}
 
-			const webhook = this.buildNormalizedWebhook(workflow, webhookData);
-			const key = this.buildWebhookKey(webhook.method, webhook.webhookPath);
-			if (!registeredKeys.has(key)) {
-				unregistered.add(node.id);
-			}
-		}
+			const registeredKeys = new Set(
+				(await this.webhookService.getRegisteredWebhooks(workflow.id)).map((webhook) =>
+					this.buildWebhookKey(webhook.method, webhook.webhookPath),
+				),
+			);
 
-		return unregistered;
+			const unregistered = new Set<INode['id']>();
+			for (const webhookData of desiredWebhooks) {
+				const node = workflow.getNode(webhookData.node);
+				if (!node) {
+					continue;
+				}
+
+				const webhook = this.buildNormalizedWebhook(workflow, webhookData);
+				const key = this.buildWebhookKey(webhook.method, webhook.webhookPath);
+				if (!registeredKeys.has(key)) {
+					unregistered.add(node.id);
+				}
+			}
+
+			return unregistered;
+		} finally {
+			if (ownsIsolate) await workflow.expression.releaseIsolate();
+		}
 	}
 
 	/**

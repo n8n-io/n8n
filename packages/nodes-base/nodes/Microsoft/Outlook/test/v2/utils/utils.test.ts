@@ -274,6 +274,19 @@ describe('Test MicrosoftOutlookV2, validateMailbox', () => {
 		expect(() => validateMailbox("o'connor@contoso.com", node)).not.toThrow();
 	});
 
+	it('should accept the widened Entra UPN special characters (! ^ ~ # with @)', () => {
+		expect(() => validateMailbox('o!brien@contoso.com', node)).not.toThrow();
+		expect(() => validateMailbox('joe^smith@contoso.com', node)).not.toThrow();
+		expect(() => validateMailbox('jane~doe@contoso.com', node)).not.toThrow();
+		expect(() => validateMailbox('a#b@contoso.com', node)).not.toThrow();
+	});
+
+	it('should accept a B2B guest (#EXT#) UPN', () => {
+		expect(() =>
+			validateMailbox('user_contoso.com#EXT#@tenant.onmicrosoft.com', node),
+		).not.toThrow();
+	});
+
 	it('should reject a bare host/domain (not a valid mailbox identifier)', () => {
 		expect(() => validateMailbox('contoso.onmicrosoft.com', node)).toThrow(
 			'The mailbox is not valid',
@@ -303,10 +316,13 @@ describe('Test MicrosoftOutlookV2, validateMailbox', () => {
 		expect(() => validateMailbox('https://evil.com', node)).toThrow('The mailbox is not valid');
 	});
 
-	it('should reject other URL-unsafe characters (?, #, space)', () => {
+	it('should reject URL-unsafe characters (?, space, colon, slash)', () => {
+		// `#` is now a legal UPN local-part char, so it is no longer part of this proof;
+		// these characters are genuinely rejected (not a GUID, not in the UPN set).
 		expect(() => validateMailbox('a?b', node)).toThrow('The mailbox is not valid');
-		expect(() => validateMailbox('a#b', node)).toThrow('The mailbox is not valid');
 		expect(() => validateMailbox('a b@contoso.com', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('a:b', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('a/b', node)).toThrow('The mailbox is not valid');
 	});
 
 	it('should reject a drive-style "!"-bearing id (proves the drive shape was not lifted)', () => {

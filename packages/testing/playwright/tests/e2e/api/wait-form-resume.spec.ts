@@ -61,6 +61,53 @@ test.describe(
 			});
 		});
 
+		test.describe('resume url endpoint redirect', () => {
+			test('should redirect a form-resume request from webhook-waiting to form-waiting', async ({
+				api,
+			}) => {
+				const { webhookPath, workflowId } =
+					await api.workflows.importWorkflowFromFile('wait-form-resume.json');
+
+				// Trigger workflow via webhook to reach waiting state
+				const triggerResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
+					method: 'POST',
+				});
+				expect(triggerResponse.ok()).toBe(true);
+
+				const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting');
+				expect(execution).toBeDefined();
+
+				// Read the signed form-waiting URL captured by the Set node
+				const fullExecution = await api.workflows.getExecution(execution.id);
+				const executionData = flatted.parse(fullExecution.data);
+				const formUrl = executionData.resultData.runData['Capture Form URL'][0].data.main[0][0].json
+					.formUrl as string;
+
+				// Simulate a user who used `$execution.resumeUrl` (webhook-waiting) instead of
+				// `$execution.resumeFormUrl`. Both carry the same opaque resume token, so
+				// rewriting the endpoint segment yields a valid webhook-waiting resume URL.
+				const webhookWaitingUrl = formUrl.replace('/form-waiting/', '/webhook-waiting/');
+				expect(webhookWaitingUrl).toContain('/webhook-waiting/');
+				const { pathname, search } = new URL(webhookWaitingUrl);
+				const resumePath = `${pathname}${search}`;
+
+				// Without following the redirect, the request is answered with a 307 to form-waiting
+				const redirectResponse = await api.webhooks.trigger(resumePath, {
+					maxRedirects: 0,
+					maxNotFoundRetries: 0,
+				});
+				expect(redirectResponse.status()).toBe(307);
+				const location = redirectResponse.headers().location;
+				expect(location).toContain('/form-waiting/');
+				expect(location).not.toContain('/webhook-waiting/');
+
+				// Following the redirect renders the form served by form-waiting
+				const formResponse = await api.webhooks.trigger(resumePath, { maxNotFoundRetries: 0 });
+				expect(formResponse.ok()).toBe(true);
+				expect(await formResponse.text()).toContain('Test Form');
+			});
+		});
+
 		test.describe('manual execution form popup', () => {
 			test('should open form when Wait node enters waiting state', async ({ n8n }) => {
 				await n8n.start.fromBlankCanvas();

@@ -17,6 +17,7 @@ import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
 
@@ -154,6 +155,7 @@ describe('FrontendService', () => {
 
 	const securityConfig = mock<SecurityConfig>({
 		blockFileAccessToN8nFiles: false,
+		postMessageAllowedOrigins: '',
 	});
 
 	const pushConfig = mock<PushConfig>({
@@ -187,6 +189,8 @@ describe('FrontendService', () => {
 		getPublishedCount: vi.fn().mockResolvedValue(7),
 	});
 
+	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -215,13 +219,14 @@ describe('FrontendService', () => {
 				ownershipService,
 				aiUsageService,
 				workflowRepository,
+				workflowReviewPolicyService,
 			),
 			license,
 		};
 	};
 
 	beforeEach(() => {
-		originalEnv = process.env;
+		originalEnv = { ...process.env };
 		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
 	});
@@ -229,6 +234,25 @@ describe('FrontendService', () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		process.env = originalEnv;
+	});
+
+	describe('credentials overwrite reload handler', () => {
+		it('registers a reload handler that regenerates types', async () => {
+			const { service } = createMockService();
+
+			expect(credentialsOverwrites.registerReloadHandler).toHaveBeenCalledWith(
+				expect.any(Function),
+			);
+
+			// The registered handler is what CredentialsOverwrites invokes after a
+			// reload; it must regenerate the credential types.
+			const handler = vi.mocked(credentialsOverwrites.registerReloadHandler).mock.calls[0][0];
+			const generateTypesSpy = vi.spyOn(service, 'generateTypes').mockResolvedValue();
+
+			await handler();
+
+			expect(generateTypesSpy).toHaveBeenCalled();
+		});
 	});
 
 	describe('getSettings', () => {
@@ -241,6 +265,39 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should normalize configured postMessage origins', async () => {
+			securityConfig.postMessageAllowedOrigins =
+				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url, data:text/html;foo';
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+			expect(settings.security.postMessageAllowedOrigins).toEqual([
+				'https://example.com',
+				'https://app.example.com',
+				'http://localhost:5678',
+				'not a url',
+				'data:text/html;foo',
+			]);
+
+			securityConfig.postMessageAllowedOrigins = '';
+		});
+
+		it('should refresh the workflow reviews policy on every settings fetch', async () => {
+			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
+			workflowReviewPolicyService.get
+				.mockResolvedValueOnce({ enabled: true })
+				.mockResolvedValueOnce({ enabled: false });
+			const { service } = createMockService();
+
+			const initialSettings = await service.getSettings();
+			expect(initialSettings.workflowReviews).toEqual({ enabled: true });
+
+			const refreshedSettings = await service.getSettings();
+			expect(refreshedSettings.workflowReviews).toEqual({ enabled: false });
+			expect(workflowReviewPolicyService.get).toHaveBeenCalledTimes(2);
 		});
 
 		it('should cache dynamic banner filters for 30 seconds', async () => {
@@ -421,6 +478,30 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
+		});
+
+		it('should surface useWorkflowPublicationService from workflows config', async () => {
+			globalConfig.workflows = {
+				...globalConfig.workflows,
+				useWorkflowPublicationService: true,
+			} as GlobalConfig['workflows'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.useWorkflowPublicationService).toBe(true);
+		});
+
+		it('should default useWorkflowPublicationService to false when flag is off', async () => {
+			globalConfig.workflows = {
+				...globalConfig.workflows,
+				useWorkflowPublicationService: false,
+			} as GlobalConfig['workflows'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.useWorkflowPublicationService).toBe(false);
 		});
 	});
 

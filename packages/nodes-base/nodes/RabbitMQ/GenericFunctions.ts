@@ -1,7 +1,7 @@
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import * as amqplib from 'amqplib';
 import type {
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IDataObject,
 	IExecuteFunctions,
@@ -9,8 +9,9 @@ import type {
 	IRun,
 	ITriggerFunctions,
 } from 'n8n-workflow';
-import { jsonParse, sleep } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import type { ExchangeType, Options, RabbitMQCredentials, TriggerOptions } from './types';
 
 const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'] as const;

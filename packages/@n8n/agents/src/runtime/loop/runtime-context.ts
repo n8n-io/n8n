@@ -2,15 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from './agent-runtime';
-import type {
-	AgentExecutionCounter,
-	AnthropicThinkingConfig,
-	BuiltTool,
-	GoogleThinkingConfig,
-	JSONObject,
-	OpenAIThinkingConfig,
-	XaiThinkingConfig,
-} from '../../types';
+import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions, ModelConfig } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
 import { isZodSchema } from '../../utils/zod';
@@ -24,11 +16,12 @@ import {
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
+import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prompt-cache';
 import {
-	buildCallPromptCacheOptions,
-	getModelProvider,
-	mergeProviderOptions,
-} from '../model/prompt-cache';
+	getProviderQuirks,
+	PROVIDER_QUIRKS,
+	providerIdFromModelId,
+} from '../model/provider-quirks';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
@@ -56,13 +49,14 @@ export function getModelIdString(model: ModelConfig): string {
 export interface StaticLoopContext {
 	model: LanguageModel;
 	aiProviderTools: ReturnType<typeof toAiSdkProviderTools>;
+	reasoning: AgentRuntimeConfig['reasoning'];
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
 }
 
 /**
  * Builds the per-run and per-iteration dependencies the agentic loop hands to
- * the LLM call: the model instance, provider/thinking options, structured
+ * the LLM call: the model instance, reasoning, provider options, structured
  * output spec, and the effective tool surface (base + deferred + recall tools,
  * mapped to AI SDK shapes). Keeps tool/model assembly out of the loop body.
  */
@@ -104,6 +98,7 @@ export class RuntimeContextBuilder {
 		return {
 			model,
 			aiProviderTools,
+			reasoning: this.config.reasoning,
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
 		};
@@ -189,7 +184,8 @@ export class RuntimeContextBuilder {
 		if (!isRawJsonSchemaOutput) return providerOptions;
 
 		const result: Record<string, Record<string, unknown>> = { ...providerOptions };
-		for (const provider of ['openai', 'groq']) {
+		for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
+			if (!quirks.relaxStrictJsonSchemaForRawOutput) continue;
 			// Keep any caller-provided value (spread last so it wins).
 			result[provider] = { strictJsonSchema: false, ...result[provider] };
 		}
@@ -271,52 +267,15 @@ export class RuntimeContextBuilder {
 
 	/** Build the providerOptions object for thinking/reasoning config. */
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
-		if (!this.config.thinking) return undefined;
+		const quirks = getProviderQuirks(providerIdFromModelId(this.modelId));
 
-		const provider = getModelProvider(this.modelId);
-		const thinking = this.config.thinking;
-
-		switch (provider) {
-			case 'anthropic': {
-				const cfg = thinking as AnthropicThinkingConfig;
-				if (cfg.mode === 'adaptive') {
-					return {
-						anthropic: {
-							thinking: {
-								type: 'adaptive',
-								display: cfg.display ?? 'summarized',
-							},
-						},
-					};
-				}
-				return {
-					anthropic: {
-						thinking: { type: 'enabled', budgetTokens: cfg.budgetTokens ?? 10000 },
-					},
-				};
-			}
-			case 'openai': {
-				const cfg = thinking as OpenAIThinkingConfig;
-				return { openai: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
-			}
-			case 'google': {
-				const cfg = thinking as GoogleThinkingConfig;
-				return {
-					google: {
-						thinkingConfig: {
-							...(cfg.thinkingBudget !== undefined && { thinkingBudget: cfg.thinkingBudget }),
-							...(cfg.thinkingLevel !== undefined && { thinkingLevel: cfg.thinkingLevel }),
-						},
-					},
-				};
-			}
-			case 'xai': {
-				const cfg = thinking as XaiThinkingConfig;
-				return { xai: { reasoningEffort: cfg.reasoningEffort ?? 'high' } };
-			}
-			default:
-				return undefined;
+		if (this.config.thinking) {
+			return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
 		}
+		if (this.config.reasoning) {
+			return quirks.reasoningToProviderOptions?.(this.config.reasoning, this.modelId);
+		}
+		return undefined;
 	}
 
 	/**

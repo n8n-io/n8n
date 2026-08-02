@@ -159,6 +159,31 @@ describe('ExecutionLevelTracer', () => {
 			expect(spans[0].attributes['n8n.execution.error_type']).toBe('Error');
 		});
 
+		it('should recover execution error type from serialized task runner errors', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-serialized-error',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+
+			tracer.endWorkflow({
+				executionId: 'exec-serialized-error',
+				status: 'error',
+				mode: 'manual',
+				error: {
+					message: 'unknown is not defined [line 1]',
+					description: 'ReferenceError',
+					constructor: { name: 'Object' },
+					stack: 'ReferenceError: unknown is not defined',
+				},
+				isRetry: false,
+			});
+
+			const span = otel.getFinishedSpans()[0];
+			expect(span.attributes['n8n.execution.error_type']).toBe('ReferenceError');
+			expect(span.events[0].attributes?.['exception.type']).toBe('ReferenceError');
+		});
+
 		it('should set retry attributes', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-3',
@@ -371,6 +396,80 @@ describe('ExecutionLevelTracer', () => {
 			// `recordException` receives the `Error` from `toRecordableException` (not `getErrorType`).
 			expect(nodeSpan.events[0].attributes?.['exception.message']).toBe('connection refused');
 			expect(nodeSpan.events[0].attributes?.['exception.type']).toBe('TypeError');
+		});
+
+		it('should recover exception type from serialized JavaScript task runner errors', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-js-error',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			const codeNode = { id: 'n1', name: 'Code', type: 'n8n-nodes-base.code', typeVersion: 2 };
+			tracer.startNode({
+				executionId: 'exec-js-error',
+				node: codeNode,
+			});
+
+			tracer.endNode({
+				executionId: 'exec-js-error',
+				node: codeNode,
+				inputItemCount: 1,
+				outputItemCount: 0,
+				error: {
+					message: 'unknown is not defined [line 1]',
+					description: 'ReferenceError',
+					constructor: { name: 'Object' },
+					stack: 'ReferenceError: unknown is not defined',
+				},
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-js-error',
+				status: 'error',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			expect(nodeSpan.events[0].attributes?.['exception.message']).toBe(
+				'unknown is not defined [line 1]',
+			);
+			expect(nodeSpan.events[0].attributes?.['exception.type']).toBe('ReferenceError');
+		});
+
+		it('should not record Object as the exception type for serialized Python task runner errors', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-python-error',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			const codeNode = { id: 'n1', name: 'Code', type: 'n8n-nodes-base.code', typeVersion: 2 };
+			tracer.startNode({
+				executionId: 'exec-python-error',
+				node: codeNode,
+			});
+
+			tracer.endNode({
+				executionId: 'exec-python-error',
+				node: codeNode,
+				inputItemCount: 1,
+				outputItemCount: 0,
+				error: {
+					message: 'Intentional error',
+					description: '',
+					constructor: { name: 'Object' },
+					stack: 'Traceback (most recent call last):\nValueError: Intentional error',
+				},
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-python-error',
+				status: 'error',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			expect(nodeSpan.events[0].attributes?.['exception.message']).toBe('Intentional error');
+			expect(nodeSpan.events[0].attributes?.['exception.type']).toBe('UnknownError');
 		});
 
 		it('should warn and not create a span when startNode has no parent workflow span', () => {

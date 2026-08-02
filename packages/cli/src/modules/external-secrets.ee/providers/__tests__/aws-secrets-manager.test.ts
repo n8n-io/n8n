@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest';
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
+import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp, HttpTransport } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 import type { Agent as HttpAgent } from 'node:http';
@@ -9,6 +10,19 @@ import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets
 
 vi.mock('@aws-sdk/client-secrets-manager');
 
+function createAwsSdkError(
+	name: string,
+	options: { httpStatusCode?: number; Code?: string; code?: string | number } = {},
+): Error {
+	return Object.assign(new Error(name), {
+		name,
+		...(options.Code !== undefined ? { Code: options.Code } : {}),
+		...(options.code !== undefined ? { code: options.code } : {}),
+		$metadata:
+			options.httpStatusCode !== undefined ? { httpStatusCode: options.httpStatusCode } : {},
+	});
+}
+
 describe('AwsSecretsManager', () => {
 	const region = 'eu-central-1';
 	const accessKeyId = 'FAKE-ACCESS-KEY-ID';
@@ -17,13 +31,60 @@ describe('AwsSecretsManager', () => {
 	const context = mock<AwsSecretsManagerContext>();
 	const listSecretsSpy = vi.spyOn(SecretsManager.prototype, 'listSecrets');
 	const batchGetSpy = vi.spyOn(SecretsManager.prototype, 'batchGetSecretValue');
+	const logger = mock<Logger>();
 
 	let awsSecretsManager: AwsSecretsManager;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		logger.scoped.mockReturnValue(logger);
 
-		awsSecretsManager = new AwsSecretsManager();
+		awsSecretsManager = new AwsSecretsManager(logger);
+	});
+
+	describe('error context', () => {
+		it('extracts legacy Code property', () => {
+			const error = Object.assign(new Error('Access denied'), { Code: 'AccessDenied' });
+
+			expect(awsSecretsManager['getAwsErrorCode'](error)).toBe('AccessDenied');
+			expect(awsSecretsManager['awsErrorContext'](error)).toEqual({ errorCode: 'AccessDenied' });
+		});
+
+		it('extracts string and numeric error codes from code property', () => {
+			expect(
+				awsSecretsManager['getAwsErrorCode'](
+					Object.assign(new Error('Connection failed'), { code: 'ECONNREFUSED' }),
+				),
+			).toBe('ECONNREFUSED');
+			expect(
+				awsSecretsManager['getAwsErrorCode'](Object.assign(new Error('Timeout'), { code: 408 })),
+			).toBe(408);
+		});
+
+		it('extracts AWS SDK exception name and HTTP status code', () => {
+			expect(
+				awsSecretsManager['awsErrorContext'](
+					createAwsSdkError('AccessDeniedException', { httpStatusCode: 403 }),
+				),
+			).toEqual({
+				errorCode: 'AccessDeniedException',
+				statusCode: 403,
+			});
+		});
+
+		it('falls back to Error.name for generic errors', () => {
+			expect(awsSecretsManager['getAwsErrorCode'](new Error('Something went wrong'))).toBe('Error');
+			expect(awsSecretsManager['awsErrorContext'](new Error('Something went wrong'))).toEqual({
+				errorCode: 'Error',
+			});
+		});
+
+		it('returns empty context for non-error values', () => {
+			expect(awsSecretsManager['getAwsErrorCode']('not an error')).toBeUndefined();
+			expect(awsSecretsManager['getAwsErrorCode'](null)).toBeUndefined();
+			expect(awsSecretsManager['awsErrorContext']('not an error')).toEqual({});
+			expect(awsSecretsManager['awsErrorContext'](null)).toEqual({});
+		});
 	});
 
 	describe('transport wiring', () => {
@@ -66,12 +127,29 @@ describe('AwsSecretsManager', () => {
 			await awsSecretsManager.init(context);
 
 			listSecretsSpy.mockImplementation(() => {
-				throw new Error('Invalid credentials');
+				throw createAwsSdkError('AccessDeniedException', {
+					httpStatusCode: 403,
+					Code: 'AccessDenied',
+				});
 			});
 
 			await awsSecretsManager.connect();
 
 			expect(awsSecretsManager.state).toBe('error');
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to connect AWS Secrets Manager provider',
+				expect.objectContaining({
+					providerName: 'awsSecretsManager',
+					providerDisplayName: 'AWS Secrets Manager',
+					operation: 'connect',
+					region,
+					authMethod: 'iamUser',
+					errorName: 'AccessDeniedException',
+					errorCode: 'AccessDenied',
+					statusCode: 403,
+				}),
+			);
 		});
 	});
 
@@ -196,5 +274,34 @@ describe('AwsSecretsManager', () => {
 		expect(awsSecretsManager.getSecret('secret1')).toBe('secret1-value');
 		expect(awsSecretsManager.getSecret('secret2')).toBe('secret2-value');
 		expect(awsSecretsManager.getSecret('secret3')).toBe('secret3-value');
+	});
+
+	it('should log and rethrow update failures', async () => {
+		context.settings = {
+			region,
+			authMethod: 'iamUser',
+			accessKeyId,
+			secretAccessKey,
+		};
+		await awsSecretsManager.init(context);
+
+		listSecretsSpy.mockImplementation(() => {
+			throw new Error('Failed to list secrets');
+		});
+
+		await expect(awsSecretsManager.update()).rejects.toThrow('Failed to list secrets');
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to update AWS Secrets Manager provider secrets',
+			expect.objectContaining({
+				providerName: 'awsSecretsManager',
+				providerDisplayName: 'AWS Secrets Manager',
+				operation: 'update',
+				region,
+				authMethod: 'iamUser',
+				errorName: expect.any(String),
+				errorCode: expect.any(String),
+			}),
+		);
 	});
 });

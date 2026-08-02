@@ -46,12 +46,18 @@ throw new UnexpectedError('message', { extra: { context } });
 - SQLite/PostgreSQL only (app DB)
 - Exception: DB nodes (MySQL Node, etc.) can use DB-specific features
 
+**GitHub Workflows:**
+- Every workflow declares a least-privilege top-level `permissions:` block
+  (usually `contents: read`); jobs needing more override at job level
+
 **Commands:**
 ```bash
 pnpm build > build.log 2>&1  # Always redirect
 pnpm typecheck               # Before commit
 pnpm lint                    # Before commit
 ```
+> Secrets: pnpm command lines may be recorded verbatim (opt-in dev metrics) —
+> pass sensitive values via env vars, never inline on the command line.
 
 ## Key Packages
 

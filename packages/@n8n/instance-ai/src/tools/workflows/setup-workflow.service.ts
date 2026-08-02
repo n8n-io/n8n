@@ -8,18 +8,26 @@
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
-import type { IConnections, INode } from 'n8n-workflow';
-import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
+import type { IConnections, ICredentialsDisplayOptions, INode } from 'n8n-workflow';
+import {
+	getCredentialActivationParameters as getCredentialActivationParametersByDisplayOptions,
+	getParentNodes,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import {
+	AI_GATEWAY_CREDENTIAL,
+	N8N_CONNECT_DISPLAY_NAME,
 	assignCredentialToNode,
 	isAiGatewayManagedCredential,
 	resolveCredentialForApply,
 	toSetupNodeCredential,
 	type SetupNodeCredential,
 } from './credential-utils';
+import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
 import type { SetupRequest } from './setup-workflow.schema';
+import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { InstanceAiContext } from '../../types';
 
 // ── Credential cache ────────────────────────────────────────────────────────
@@ -122,6 +130,75 @@ export async function getValidCredentialTypes(
 	}
 
 	return types;
+}
+
+/**
+ * Adapter over the n8n-workflow helper of the same name for the loosely-typed
+ * descriptions the node service returns; see it for semantics.
+ */
+export function getCredentialActivationParameters(
+	displayOptions: Record<string, unknown> | undefined,
+): IDataObject {
+	return getCredentialActivationParametersByDisplayOptions(
+		displayOptions as ICredentialsDisplayOptions | undefined,
+	);
+}
+
+export type CredentialActivationState = 'active' | 'activatable' | 'unreachable';
+
+/**
+ * Whether a credential is the node's active slot (`active`), can become it by
+ * writing its activation parameters (`activatable`), or can't be reached from
+ * this node at all (`unreachable`, e.g. gated to another node version via
+ * `@version`).
+ */
+export function getCredentialActivationState(
+	node: NodeJSON,
+	credential: { displayOptions?: Record<string, unknown> },
+): CredentialActivationState {
+	if (!credential.displayOptions) return 'active';
+	const displayOptions = credential.displayOptions as DisplayOptions;
+	const nodeVersion = node.typeVersion ?? 1;
+	const parameters = (node.parameters as Record<string, unknown>) ?? {};
+	if (matchesDisplayOptions({ parameters, nodeVersion }, displayOptions)) return 'active';
+	const activated = {
+		...parameters,
+		...getCredentialActivationParameters(credential.displayOptions),
+	};
+	return matchesDisplayOptions({ parameters: activated, nodeVersion }, displayOptions)
+		? 'activatable'
+		: 'unreachable';
+}
+
+/**
+ * Fallback for a slot whose credential type n8n credits doesn't support: the
+ * first declared sibling type that is supported, unassigned, not backed by a
+ * stored user credential, and reachable by a parameter switch. The async/loosely-
+ * typed counterpart of the shared `resolveSupportedCredentialActivation`.
+ */
+export async function resolveSupportedSiblingCredentialType(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	unsupportedType: string,
+	isSupported: (credentialType: string) => Promise<boolean>,
+	hasStoredCredential: (credentialType: string) => boolean,
+): Promise<string | undefined> {
+	let nodeDesc: NodeDescription | undefined;
+	try {
+		nodeDesc = await context.nodeService.getDescription(node.type, node.typeVersion ?? 1);
+	} catch {
+		return undefined;
+	}
+	for (const credential of nodeDesc?.credentials ?? []) {
+		if (!credential.name || credential.name === unsupportedType) continue;
+		const assigned = (node.credentials as Record<string, unknown> | undefined)?.[credential.name];
+		if (assigned !== undefined && assigned !== null) continue;
+		if (hasStoredCredential(credential.name)) continue;
+		if (!(await isSupported(credential.name))) continue;
+		if (getCredentialActivationState(node, credential) === 'unreachable') continue;
+		return credential.name;
+	}
+	return undefined;
 }
 
 /**
@@ -290,6 +367,12 @@ async function resolveCredentialTypes(
 interface CredentialState {
 	existingCredentials: Array<{ id: string; name: string }>;
 	isAutoApplied: boolean;
+	/**
+	 * True when the auto-apply picked the AI Gateway managed option instead
+	 * of a stored credential. Downstream writes `AI_GATEWAY_CREDENTIAL` to
+	 * the node rather than an `{ id, name }` stored reference.
+	 */
+	autoAppliedGateway?: true;
 	credentialTestResult?: { success: boolean; message?: string };
 }
 
@@ -324,14 +407,44 @@ async function resolveCredentialState(
 		typeof existingOnNode?.id === 'string' && existingOnNode.id ? existingOnNode.id : undefined;
 	const hasExistingOnNode =
 		existingCredentialId !== undefined || isAiGatewayManagedCredential(existingOnNode);
-	// Only auto-apply when there is exactly one candidate. With multiple
-	// candidates, picking the first is a silent guess — surface the list
-	// so the setup wizard can prompt the user to choose.
-	const isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
+	let isAutoApplied = false;
+	let autoAppliedGateway: true | undefined;
+
+	// Auto-apply n8n credits only when the user has no credentials of their own
+	// for this type: none assigned on the node (`hasExistingOnNode`) and none
+	// stored (`existingCredentials`). Any user-defined credential wins — we never
+	// override a saved key with the managed gateway.
+	if (
+		!hasExistingOnNode &&
+		existingCredentials.length === 0 &&
+		context.credentialService.isAiGatewayCredentialType
+	) {
+		const gatewaySupported = await context.credentialService
+			.isAiGatewayCredentialType(credentialType)
+			.catch(() => false);
+		if (gatewaySupported) {
+			isAutoApplied = true;
+			autoAppliedGateway = true;
+		}
+	}
+
+	// Fall back to auto-applying the sole stored credential when n8n credits
+	// is not available. With multiple candidates, picking the first is a
+	// silent guess — surface the list so the setup wizard can prompt.
+	if (!isAutoApplied) {
+		isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
+	}
 
 	const credToTest =
-		existingCredentialId ?? (isAutoApplied ? existingCredentials[0]?.id : undefined);
-	if (!credToTest) return { existingCredentials, isAutoApplied };
+		existingCredentialId ??
+		(isAutoApplied && !autoAppliedGateway ? existingCredentials[0]?.id : undefined);
+	if (!credToTest) {
+		return {
+			existingCredentials,
+			isAutoApplied,
+			...(autoAppliedGateway ? { autoAppliedGateway } : {}),
+		};
+	}
 
 	let testabilityPromise = cache?.testability.get(credentialType);
 	if (!testabilityPromise) {
@@ -363,11 +476,23 @@ function buildRequestCredentials(
 	isAutoApplied: boolean,
 	credentialType: string | undefined,
 	existingCredentials: Array<{ id: string; name: string }>,
+	autoAppliedGateway: true | undefined,
 ): { credentials?: RequestNodeCredentials } {
-	const autoCredential =
-		isAutoApplied && credentialType && existingCredentials.length > 0
-			? { [credentialType]: { id: existingCredentials[0].id, name: existingCredentials[0].name } }
-			: undefined;
+	let autoCredential: Record<string, SetupNodeCredential> | undefined;
+	if (isAutoApplied && credentialType) {
+		if (autoAppliedGateway) {
+			autoCredential = {
+				[credentialType]: { ...AI_GATEWAY_CREDENTIAL, name: N8N_CONNECT_DISPLAY_NAME },
+			};
+		} else if (existingCredentials.length > 0) {
+			autoCredential = {
+				[credentialType]: {
+					id: existingCredentials[0].id,
+					name: existingCredentials[0].name,
+				},
+			};
+		}
+	}
 
 	if (nodeCredentials && Object.keys(nodeCredentials).length > 0) {
 		return {
@@ -400,10 +525,17 @@ async function resolveAppliedCredentialState(
 	}
 	const state = await resolveCredentialState(context, node, credentialType, cache, workflowId);
 	if (state.isAutoApplied && nodeCredentials) {
-		nodeCredentials[credentialType] = {
-			id: state.existingCredentials[0].id,
-			name: state.existingCredentials[0].name,
-		};
+		if (state.autoAppliedGateway) {
+			nodeCredentials[credentialType] = {
+				...AI_GATEWAY_CREDENTIAL,
+				name: N8N_CONNECT_DISPLAY_NAME,
+			};
+		} else {
+			nodeCredentials[credentialType] = {
+				id: state.existingCredentials[0].id,
+				name: state.existingCredentials[0].name,
+			};
+		}
 	}
 	return state;
 }
@@ -445,7 +577,7 @@ async function buildRequestForCredentialType(
 			)
 		: undefined;
 
-	const { existingCredentials, isAutoApplied, credentialTestResult } =
+	const { existingCredentials, isAutoApplied, credentialTestResult, autoAppliedGateway } =
 		await resolveAppliedCredentialState(
 			context,
 			node,
@@ -488,6 +620,7 @@ async function buildRequestForCredentialType(
 				isAutoApplied,
 				credentialType,
 				existingCredentials,
+				autoAppliedGateway,
 			),
 		},
 		...(credentialType ? { credentialType } : {}),
@@ -764,7 +897,11 @@ export async function applyNodeCredentials(
 	}
 
 	try {
-		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+			versionId: saved.versionId,
+			checksum: saved.checksum,
+		});
 	} catch (error) {
 		// If the final save fails, mark all previously-applied nodes as failed
 		const saveError = `Failed to save workflow after credential apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -807,7 +944,11 @@ export async function applyNodeParameters(
 	}
 
 	try {
-		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+			versionId: saved.versionId,
+			checksum: saved.checksum,
+		});
 	} catch (error) {
 		const saveError = `Failed to save workflow after parameter apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of result.applied) {
@@ -819,6 +960,48 @@ export async function applyNodeParameters(
 	return result;
 }
 
+/**
+ * Attribution funnel: record who configured a credential and whether it is n8n
+ * Connect vs BYOK, so analytics can compare agent-driven vs manual assignment
+ * (the manual canvas emits the same event with `source: 'user'`).
+ *
+ * `instance-ai-auto` mirrors the auto-apply rules in `buildSetupRequests`: Instance
+ * AI defaults a credential unprompted only when the node had none and the user did
+ * not have to choose — n8n Connect when the user has no stored credential of the
+ * type (rule 3), or their sole stored credential (rule 2). Anything else — a
+ * credential picked among several, or n8n Connect chosen despite having stored keys
+ * — is a user-confirmed choice.
+ */
+async function trackCredentialAssignment(
+	context: InstanceAiContext,
+	opts: {
+		credType: string;
+		nodeType: string;
+		workflowId: string;
+		credential: SetupNodeCredential;
+		hadPriorCredential: boolean;
+	},
+): Promise<void> {
+	if (!context.trackTelemetry) return;
+	const isGateway = isAiGatewayManagedCredential(opts.credential);
+	let source: 'instance-ai-auto' | 'instance-ai-confirmed' = 'instance-ai-confirmed';
+	if (!opts.hadPriorCredential) {
+		const stored = await context.credentialService
+			.list({ type: opts.credType, ...(opts.workflowId ? { workflowId: opts.workflowId } : {}) })
+			.catch(() => []);
+		// Gateway auto-applies when no stored key exists; a BYOK key auto-applies
+		// when it is the user's only one for the type.
+		if (isGateway ? stored.length === 0 : stored.length === 1) source = 'instance-ai-auto';
+	}
+	context.trackTelemetry('Node credential assigned', {
+		credential_type: opts.credType,
+		node_type: opts.nodeType,
+		workflow_id: opts.workflowId,
+		credential_kind: isGateway ? 'n8n_connect' : 'own',
+		source,
+	});
+}
+
 /** Resolve and apply each credential in credsMap onto the node; returns whether all succeeded. */
 async function applyCredentialsToNode(
 	context: InstanceAiContext,
@@ -826,14 +1009,29 @@ async function applyCredentialsToNode(
 	nodeName: string,
 	credsMap: Record<string, string>,
 	result: ApplyResult,
+	workflowId: string,
 ): Promise<boolean> {
 	let nodeSucceeded = true;
 	for (const [credType, credId] of Object.entries(credsMap)) {
+		const hadPriorCredential = node.credentials?.[credType] !== undefined;
 		const resolved = await resolveCredentialForApply(credType, credId, context);
 		if (resolved.resolved) {
 			assignCredentialToNode(node, credType, resolved.credential);
+			await trackCredentialAssignment(context, {
+				credType,
+				nodeType: node.type,
+				workflowId,
+				credential: resolved.credential,
+				hadPriorCredential,
+			});
 		} else {
 			nodeSucceeded = false;
+			context.trackTelemetry?.('Node credential assignment failed', {
+				credential_type: credType,
+				node_type: node.type,
+				workflow_id: workflowId,
+				error: resolved.error,
+			});
 			result.failed.push({
 				nodeName,
 				error: resolved.error,
@@ -885,13 +1083,21 @@ export async function applyNodeChanges(
 		const nodeName = node.name;
 
 		const credsMap = nodeCredentials?.[nodeName];
-		if (credsMap && (await applyCredentialsToNode(context, node, nodeName, credsMap, result))) {
+		if (
+			credsMap &&
+			(await applyCredentialsToNode(context, node, nodeName, credsMap, result, workflowId))
+		) {
 			appliedNodes.add(nodeName);
 		}
 
 		const params = nodeParameters?.[nodeName];
-		if (params && applyParametersToNode(node, nodeName, params, result)) {
-			appliedNodes.add(nodeName);
+		if (params) {
+			// A display name typed into a list-mode resource locator can never
+			// resolve (list values are opaque picker IDs) — store it as name mode.
+			coerceWrongKindListModeParams(context.nodeTypesProvider, node, params);
+			if (applyParametersToNode(node, nodeName, params, result)) {
+				appliedNodes.add(nodeName);
+			}
 		}
 
 		// Drop credential entries that are no longer valid for the node's current
@@ -903,7 +1109,11 @@ export async function applyNodeChanges(
 
 	// Single save for all changes
 	try {
-		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+			versionId: saved.versionId,
+			checksum: saved.checksum,
+		});
 		result.applied = [...appliedNodes];
 	} catch (error) {
 		const saveError = `Failed to save workflow: ${error instanceof Error ? error.message : 'Unknown error'}`;

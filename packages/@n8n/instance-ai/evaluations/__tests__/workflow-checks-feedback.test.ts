@@ -79,12 +79,12 @@ describe('CheckOutcome → LangSmith Feedback projection', () => {
 	it('drops N/A even when comment is present', () => {
 		const single: CheckOutcome[] = [
 			{
-				name: 'response_matches_workflow_changes',
+				name: 'response_describes_changes_accurately',
 				description: 'LLM check',
 				kind: 'llm',
-				dimension: 'nodes_craftsmanship',
+				dimension: 'communication',
 				status: 'n_a',
-				comment: 'Skipped: no agent text response',
+				comment: 'Skipped: no agent narration available',
 			},
 		];
 		expect(extractCheckFeedback(single)).toEqual([]);

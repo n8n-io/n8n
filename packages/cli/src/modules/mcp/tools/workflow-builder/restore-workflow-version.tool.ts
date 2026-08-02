@@ -13,6 +13,7 @@ import { WorkflowAccessError } from '../../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getMcpWorkflowVersion } from '../workflow-history.utils';
 import { getMcpWorkflow } from '../workflow-validation.utils';
+import { buildRestoreVersionMetadata } from './version-metadata';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to restore'),
@@ -98,9 +99,13 @@ export const createRestoreWorkflowVersionTool = (
 				nodeGroups: version.nodeGroups ?? [],
 			});
 
+			const versionMetadata = buildRestoreVersionMetadata(version);
+
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 				forceSave: true,
 				source: 'n8n-mcp',
+				versionName: versionMetadata.name,
+				versionDescription: versionMetadata.description,
 			});
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});

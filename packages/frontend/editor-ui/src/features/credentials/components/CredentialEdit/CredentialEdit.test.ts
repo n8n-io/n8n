@@ -14,7 +14,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { NewCredentialsModal } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
-import { within, waitFor } from '@testing-library/vue';
+import { within, waitFor, screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 import type { Scope } from '@n8n/permissions';
@@ -38,7 +38,7 @@ vi.mock('vue-router', async () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 		showMessage: vi.fn(),
@@ -53,6 +53,18 @@ vi.mock('@/features/resolvers/composables/usePrivateCredentials', async () => {
 	const { ref } = await vi.importActual<typeof import('vue')>('vue');
 	return { usePrivateCredentials: () => ({ isEnabled: ref(true) }) };
 });
+
+// N8nDialog (reka-ui) doesn't render its portalled content in jsdom, so stub the
+// type-to-confirm dialog with a plain element that surfaces its title + message.
+vi.mock('./TypeToConfirmDialog.vue', () => ({
+	default: {
+		name: 'TypeToConfirmDialog',
+		props: ['open', 'title', 'message', 'confirmLabel', 'confirmKeyword', 'loading'],
+		emits: ['confirm', 'update:open'],
+		template:
+			'<div v-if="open" data-test-id="credential-type-to-confirm-dialog">{{ title }} {{ message }}</div>',
+	},
+}));
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
@@ -833,33 +845,35 @@ describe('CredentialEdit', () => {
 		});
 	});
 
-	test('should use the requested credential type when node has multiple credential types', async () => {
-		const alphaCredType: ICredentialType = {
-			name: 'alphaApi',
-			displayName: 'Alpha API',
-			properties: [
-				{
-					displayName: 'Alpha Key',
-					name: 'alphaKey',
-					type: 'string',
-					default: '',
-				},
-			],
-		};
+	const alphaCredType: ICredentialType = {
+		name: 'alphaApi',
+		displayName: 'Alpha API',
+		properties: [
+			{
+				displayName: 'Alpha Key',
+				name: 'alphaKey',
+				type: 'string',
+				default: '',
+			},
+		],
+	};
 
-		const betaCredType: ICredentialType = {
-			name: 'betaApi',
-			displayName: 'Beta API',
-			properties: [
-				{
-					displayName: 'Beta Token',
-					name: 'betaToken',
-					type: 'string',
-					default: '',
-				},
-			],
-		};
+	const betaCredType: ICredentialType = {
+		name: 'betaApi',
+		displayName: 'Beta API',
+		properties: [
+			{
+				displayName: 'Beta Token',
+				name: 'betaToken',
+				type: 'string',
+				default: '',
+			},
+		],
+	};
 
+	// Renders the new-credential modal (auth selector on) requesting the beta type
+	// of an alpha/beta node; returns the credentials store for assertions.
+	const renderDualCredModal = (mockNodeType: INodeTypeDescription) => {
 		const pinia = createTestingPinia({
 			initialState: {
 				[STORES.UI]: {
@@ -902,15 +916,30 @@ describe('CredentialEdit', () => {
 		workflowsStore.workflowId = 'test-workflow-id';
 		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 		ndvStore.activeNode = {
-			name: 'DualCredTest',
-			type: 'n8n-nodes-base.dualCredTest',
+			name: mockNodeType.displayName,
+			type: mockNodeType.name,
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
 		} as INode;
 
 		const nodeTypesStore = mockedStore(useNodeTypesStore);
-		const mockNodeType = {
+		nodeTypesStore.getNodeType = () => mockNodeType;
+
+		renderComponent({
+			props: {
+				activeId: 'betaApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		return credStore;
+	};
+
+	test('should use the requested credential type when node has multiple credential types', async () => {
+		const credStore = renderDualCredModal({
 			displayName: 'Dual Credential Test',
 			name: 'n8n-nodes-base.dualCredTest',
 			group: ['transform'],
@@ -924,17 +953,50 @@ describe('CredentialEdit', () => {
 				{ name: 'betaApi', required: true },
 			],
 			properties: [],
-		} as unknown as INodeTypeDescription;
-		nodeTypesStore.getNodeType = () => mockNodeType;
+		} as unknown as INodeTypeDescription);
 
-		renderComponent({
-			props: {
-				activeId: 'betaApi',
-				modalName: CREDENTIAL_EDIT_MODAL_KEY,
-				mode: 'new',
-			},
-			pinia,
-		});
+		await retry(() =>
+			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({
+				credentialTypeName: 'betaApi',
+			}),
+		);
+	});
+
+	test('should use the requested credential type when the node has multiple auth options', async () => {
+		const credStore = renderDualCredModal({
+			displayName: 'Dual Auth Test',
+			name: 'n8n-nodes-base.dualAuthTest',
+			group: ['transform'],
+			version: 1,
+			description: 'Test node',
+			defaults: { name: 'Dual Auth Test' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: 'alphaApi',
+					required: true,
+					displayOptions: { show: { authentication: ['alpha'] } },
+				},
+				{
+					name: 'betaApi',
+					required: true,
+					displayOptions: { show: { authentication: ['beta'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{ name: 'Alpha', value: 'alpha' },
+						{ name: 'Beta', value: 'beta' },
+					],
+					default: 'alpha',
+				},
+			],
+		} as unknown as INodeTypeDescription);
 
 		await retry(() =>
 			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({
@@ -944,7 +1006,10 @@ describe('CredentialEdit', () => {
 	});
 
 	describe('saving credentials', () => {
-		const createPiniaForSaveTest = (credentialModalState: Partial<NewCredentialsModal> = {}) =>
+		const createPiniaForSaveTest = (
+			credentialModalState: Partial<NewCredentialsModal> = {},
+			projectsState: Record<string, unknown> = {},
+		) =>
 			createTestingPinia({
 				initialState: {
 					[STORES.UI]: {
@@ -973,6 +1038,7 @@ describe('CredentialEdit', () => {
 							type: 'personal',
 							scopes: ['credential:create', 'credential:read', 'credential:update'],
 						},
+						...projectsState,
 					},
 				},
 			});
@@ -980,8 +1046,9 @@ describe('CredentialEdit', () => {
 		const setupNewCredential = (
 			credentialType: ICredentialType,
 			credentialModalState: Partial<NewCredentialsModal> = {},
+			projectsState: Record<string, unknown> = {},
 		) => {
-			const pinia = createPiniaForSaveTest(credentialModalState);
+			const pinia = createPiniaForSaveTest(credentialModalState, projectsState);
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes = {
 				[credentialType.name]: credentialType,
@@ -1094,6 +1161,49 @@ describe('CredentialEdit', () => {
 				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
 			});
 			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+		});
+
+		test('creates the credential in the project the modal was opened for', async () => {
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType;
+			const { credentialsStore, pinia } = setupNewCredential(
+				credentialType,
+				{ projectId: 'team-project' },
+				{
+					currentProject: null,
+					myProjects: [
+						{
+							id: 'team-project',
+							name: 'Team project',
+							type: 'team',
+							scopes: ['credential:create', 'credential:read', 'credential:update'],
+						},
+					],
+				},
+			);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() =>
+				expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'testApi' }),
+					'team-project',
+					undefined,
+				),
+			);
 		});
 
 		test('keeps the modal open after saving credentials by default', async () => {
@@ -1416,9 +1526,8 @@ describe('CredentialEdit', () => {
 			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
 		});
 
-		describe('switching a connected private credential to static', () => {
-			test('shows the confirmation modal when the current user just connected, even if the server count is stale', async () => {
-				confirmMock.mockResolvedValue('confirm');
+		describe('switching a connected end-user credential to Fixed', () => {
+			test('shows the type-to-confirm dialog with a pluralized person count when the current user just connected, even if the server count is stale', async () => {
 				const pinia = createPiniaForBannerTest();
 				// connectedByMe reflects the in-session connection; connectedUserCount is the
 				// stale server value (0) that does not yet include the current user.
@@ -1426,6 +1535,7 @@ describe('CredentialEdit', () => {
 					isResolvable: true,
 					connectedByMe: true,
 					connectedUserCount: 0,
+					scopes: ['credential:update', 'credential:createEndUser'],
 				});
 
 				const { getByTestId } = renderComponent({
@@ -1439,19 +1549,24 @@ describe('CredentialEdit', () => {
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 
-				await userEvent.click(getByTestId('credential-type-card-fixed'));
+				await userEvent.click(getByTestId('credential-type-select'));
+				await userEvent.click(getByTestId('credential-type-option-fixed'));
 
-				await retry(() => expect(confirmMock).toHaveBeenCalled());
-				expect(confirmMock.mock.calls[0][0]).toContain('1 user(s)');
+				await waitFor(() =>
+					expect(screen.getByTestId('credential-type-to-confirm-dialog')).toBeInTheDocument(),
+				);
+				expect(screen.getByTestId('credential-type-to-confirm-dialog')).toHaveTextContent(
+					'1 person will lose their connection',
+				);
 			});
 
-			test('does not show the confirmation modal when no users are connected', async () => {
-				confirmMock.mockResolvedValue('confirm');
+			test('does not show the confirmation dialog when no users are connected', async () => {
 				const pinia = createPiniaForBannerTest();
 				const credentialsStore = setupOAuthCredential({
 					isResolvable: true,
 					connectedByMe: false,
 					connectedUserCount: 0,
+					scopes: ['credential:update', 'credential:createEndUser'],
 				});
 
 				const { getByTestId } = renderComponent({
@@ -1465,9 +1580,10 @@ describe('CredentialEdit', () => {
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 
-				await userEvent.click(getByTestId('credential-type-card-fixed'));
+				await userEvent.click(getByTestId('credential-type-select'));
+				await userEvent.click(getByTestId('credential-type-option-fixed'));
 
-				expect(confirmMock).not.toHaveBeenCalled();
+				expect(screen.queryByTestId('credential-type-to-confirm-dialog')).not.toBeInTheDocument();
 			});
 		});
 
@@ -1482,6 +1598,7 @@ describe('CredentialEdit', () => {
 					isResolvable: false,
 					connectedByMe: true,
 					oauthTokenData: false,
+					scopes: ['credential:update', 'credential:createEndUser'],
 				});
 
 				const { queryByTestId, getByTestId } = renderComponent({
@@ -1494,9 +1611,10 @@ describe('CredentialEdit', () => {
 				});
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
-				await retry(() => expect(getByTestId('credential-type-card-end-user')).toBeVisible());
+				await retry(() => expect(getByTestId('credential-type-select')).toBeVisible());
 
-				await userEvent.click(getByTestId('credential-type-card-end-user'));
+				await userEvent.click(getByTestId('credential-type-select'));
+				await userEvent.click(getByTestId('credential-type-option-endUser'));
 
 				await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
 				expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();

@@ -56,6 +56,8 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 		this.initRecordOutcomeMetrics();
 		this.initTriggerMetrics();
 		this.initCleanupMetrics();
+		this.initReconciliationMetrics();
+		this.initGhostSweepMetrics();
 	}
 
 	private initOutboxGauges() {
@@ -188,5 +190,54 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 				duration.observe({ result }, durationMs * Time.milliseconds.toSeconds);
 			},
 		);
+	}
+
+	private initReconciliationMetrics() {
+		const prefix = this.config.prefix;
+
+		const deficient = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_deficient_workflows_total`,
+			help: 'Total number of workflows re-enqueued by trigger reconciliation because their in-memory triggers were missing.',
+		});
+
+		const surplus = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_surplus_workflows_total`,
+			help: 'Total number of registered workflows torn down by trigger reconciliation because they were no longer published.',
+		});
+
+		const versionSkew = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_version_skew_workflows_total`,
+			help: 'Total number of workflows re-enqueued by reconciliation because their published version diverged from the active version.',
+		});
+
+		const duration = new promClient.Histogram({
+			name: `${prefix}workflow_publication_reconciliation_duration_seconds`,
+			help: 'Duration in seconds of a trigger reconciliation pass by result.',
+			labelNames: ['result'],
+			buckets: DURATION_BUCKETS_SECONDS,
+		});
+
+		this.eventService.on(
+			'workflow-publication-reconciliation',
+			({ result, deficientCount, surplusCount, versionSkewCount, durationMs }) => {
+				deficient.inc(deficientCount);
+				surplus.inc(surplusCount);
+				versionSkew.inc(versionSkewCount);
+				duration.observe({ result }, durationMs * Time.milliseconds.toSeconds);
+			},
+		);
+	}
+
+	private initGhostSweepMetrics() {
+		const prefix = this.config.prefix;
+
+		const removed = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_ghost_trigger_workflows_total`,
+			help: 'Total number of workflows whose ghost triggers were torn down because they were registered on a non-leader instance.',
+		});
+
+		this.eventService.on('workflow-publication-ghost-trigger-sweep', ({ removedCount }) => {
+			removed.inc(removedCount);
+		});
 	}
 }

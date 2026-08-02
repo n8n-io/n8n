@@ -7,6 +7,7 @@
 | attempts | integer | 0 | false |  |  | Execution attempts started so far; compared against maxAttempts. |
 | claimedBy | varchar(255) |  | true |  |  | Id of the instance currently holding the lease; NULL when unclaimed. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| dispatchedAt | timestamp(3) with time zone |  | true |  |  | When the current attempt handed off its effect; NULL until then. Splits dispatch-attempted (startedAt) from effect-happened, so the reaper completes a dispatched occurrence rather than redelivering it. |
 | errorMessage | text |  | true |  |  | Failure detail from the last attempt. |
 | finishedAt | timestamp(3) with time zone |  | true |  |  | When the occurrence reached a terminal state; drives retention pruning. |
 | id | bigint |  | false |  |  |  |
@@ -14,6 +15,7 @@
 | leaseEpoch | integer | 0 | false |  |  | Fencing token bumped on each claim; lets a reaped worker detect it lost ownership and not overwrite the new owner's results. |
 | leaseExpiresAt | timestamp(3) with time zone |  | true |  |  | When the current lease expires; the reaper reclaims running occurrences past this. |
 | maxAttempts | integer | 1 | false |  |  | Attempt ceiling; once attempts reaches it, a failure is final rather than retried. |
+| missedAfter | timestamp(3) with time zone |  | true |  |  | When this occurrence stops being worth running (runAt plus the job's misfire grace). NULL means no deadline. |
 | payload | json | '{}'::json | false |  |  | Handler input copied from the job. A snapshot, so editing the job later doesn't change runs already queued. |
 | runAt | timestamp(3) with time zone |  | false |  |  | Earliest time the executor may pick this up; starts at scheduledFor and is pushed out by retry backoff. |
 | scheduledFor | timestamp(3) with time zone |  | false |  |  | The logical fire time this occurrence represents; unique per job, so the same instant cannot be queued twice. |
@@ -48,6 +50,7 @@
 | IDX_scheduled_task_finishedAt | CREATE INDEX "IDX_scheduled_task_finishedAt" ON public.scheduled_task USING btree ("finishedAt") WHERE ("finishedAt" IS NOT NULL) |
 | IDX_scheduled_task_jobId_scheduledFor | CREATE UNIQUE INDEX "IDX_scheduled_task_jobId_scheduledFor" ON public.scheduled_task USING btree ("jobId", "scheduledFor") |
 | IDX_scheduled_task_leaseExpiresAt | CREATE INDEX "IDX_scheduled_task_leaseExpiresAt" ON public.scheduled_task USING btree ("leaseExpiresAt") WHERE ((status)::text = 'running'::text) |
+| IDX_scheduled_task_missedAfter | CREATE INDEX "IDX_scheduled_task_missedAfter" ON public.scheduled_task USING btree ("missedAfter") WHERE (((status)::text = 'pending'::text) AND ("missedAfter" IS NOT NULL)) |
 | IDX_scheduled_task_runAt | CREATE INDEX "IDX_scheduled_task_runAt" ON public.scheduled_task USING btree ("runAt") WHERE ((status)::text = 'pending'::text) |
 | PK_d690af24e57e30594c1948af1e6 | CREATE UNIQUE INDEX "PK_d690af24e57e30594c1948af1e6" ON public.scheduled_task USING btree (id) |
 
@@ -62,6 +65,7 @@ erDiagram
   integer attempts
   varchar_255_ claimedBy
   timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone dispatchedAt
   text errorMessage
   timestamp_3__with_time_zone finishedAt
   bigint id
@@ -69,6 +73,7 @@ erDiagram
   integer leaseEpoch
   timestamp_3__with_time_zone leaseExpiresAt
   integer maxAttempts
+  timestamp_3__with_time_zone missedAfter
   json payload
   timestamp_3__with_time_zone runAt
   timestamp_3__with_time_zone scheduledFor
@@ -86,10 +91,14 @@ erDiagram
   varchar_16_ kind
   timestamp_3__with_time_zone lastFiredAt
   integer maxAttempts
+  integer misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_255_ name
   timestamp_3__with_time_zone nextRunAt
   varchar_36_ nodeId
   json payload
+  integer recurrenceSize
+  varchar_16_ recurrenceUnit
   varchar_128_ taskType
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt

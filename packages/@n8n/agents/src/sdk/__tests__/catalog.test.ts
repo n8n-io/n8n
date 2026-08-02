@@ -22,6 +22,11 @@ describe('fetchProviderCatalog', () => {
 								name: 'GPT-5',
 								tool_call: true,
 							},
+							'gpt-4.1-mini': {
+								id: 'gpt-4.1-mini',
+								name: 'GPT-4.1 mini',
+								reasoning: false,
+							},
 						},
 					},
 					'amazon-bedrock': {
@@ -61,6 +66,8 @@ describe('fetchProviderCatalog', () => {
 		const catalog = await fetchProviderCatalog();
 
 		expect(catalog.openai.models['gpt-5'].toolCall).toBe(true);
+		expect(catalog.openai.models['gpt-5']).not.toHaveProperty('reasoning');
+		expect(catalog.openai.models['gpt-4.1-mini'].reasoning).toBe(false);
 		expect(catalog['aws-bedrock'].models['anthropic.claude-sonnet-4-5-v1:0'].name).toBe(
 			'Claude Sonnet 4.5',
 		);
@@ -69,6 +76,75 @@ describe('fetchProviderCatalog', () => {
 		expect(catalog['amazon-bedrock']).toBeUndefined();
 		expect(catalog.azure).toBeUndefined();
 		expect(catalog['azure-cognitive-services']).toBeUndefined();
+	});
+
+	it('drops models marked deprecated on models.dev', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					anthropic: {
+						id: 'anthropic',
+						name: 'Anthropic',
+						models: {
+							'claude-3-haiku-20240307': {
+								id: 'claude-3-haiku-20240307',
+								name: 'Claude Haiku 3',
+								status: 'deprecated',
+							},
+							'claude-sonnet-4-6': {
+								id: 'claude-sonnet-4-6',
+								name: 'Claude Sonnet 4.6',
+							},
+							'claude-beta-model': {
+								id: 'claude-beta-model',
+								name: 'Claude Beta Model',
+								status: 'beta',
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.anthropic.models['claude-3-haiku-20240307']).toBeUndefined();
+		expect(catalog.anthropic.models['claude-sonnet-4-6'].name).toBe('Claude Sonnet 4.6');
+		expect(catalog.anthropic.models['claude-beta-model'].name).toBe('Claude Beta Model');
+	});
+
+	it('omits a provider whose models are all deprecated', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					anthropic: {
+						id: 'anthropic',
+						name: 'Anthropic',
+						models: {
+							'claude-3-haiku-20240307': {
+								id: 'claude-3-haiku-20240307',
+								name: 'Claude Haiku 3',
+								status: 'deprecated',
+							},
+						},
+					},
+					openai: {
+						id: 'openai',
+						name: 'OpenAI',
+						models: {
+							'gpt-5': { id: 'gpt-5', name: 'GPT-5' },
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.anthropic).toBeUndefined();
+		expect(catalog.openai.models['gpt-5'].name).toBe('GPT-5');
 	});
 
 	it('strips the "(latest)" suffix from model names and drops duplicate pinned snapshots', async () => {

@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { ElDialog } from 'element-plus';
 import { N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
 import { APP_MODALS_ELEMENT_ID, CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 
 const props = withDefaults(
@@ -45,11 +46,13 @@ const bodyKey = computed(() =>
 
 		<div :class="$style.content">
 			<N8nText tag="p" size="medium">
-				{{ i18n.baseText(bodyKey).split('{documentation}')[0]
-				}}<N8nLink :href="CUSTOM_ROLES_DOCS_URL" :new-window="true">{{
-					i18n.baseText('generic.documentation')
-				}}</N8nLink
-				>{{ i18n.baseText(bodyKey).split('{documentation}')[1] || '' }}
+				<I18nT :keypath="bodyKey" tag="span">
+					<template #documentation>
+						<N8nLink :href="CUSTOM_ROLES_DOCS_URL" :new-window="true">{{
+							i18n.baseText('generic.documentation')
+						}}</N8nLink>
+					</template>
+				</I18nT>
 			</N8nText>
 		</div>
 	</ElDialog>

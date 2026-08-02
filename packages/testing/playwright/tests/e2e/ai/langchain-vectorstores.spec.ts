@@ -1,12 +1,4 @@
 import { test, expect } from '../../../fixtures/base';
-import type { n8nPage } from '../../../pages/n8nPage';
-
-// Helper functions for common operations
-async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 10000) {
-	await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-		timeout,
-	});
-}
 
 test.use({ capability: 'proxy' });
 test.describe(
@@ -30,7 +22,10 @@ test.describe(
 				await n8n.canvas.deselectAll();
 
 				await n8n.canvas.executeNode('Populate VS');
-				await waitForWorkflowSuccess(n8n);
+				await expect(n8n.canvas.getNodeSuccessStatusIndicator('Populate VS')).toBeVisible({
+					timeout: 30_000,
+				});
+				await n8n.notifications.quickCloseAll();
 
 				const assertInputOutputTextExists = async (text: string) => {
 					await expect(n8n.ndv.getOutputPanel()).toContainText(text);

@@ -2,10 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
+import { UserError } from 'n8n-workflow';
 
 import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
 import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionService } from './oauth-session.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @RestController('/consent')
 export class OAuthConsentController {
@@ -21,7 +23,7 @@ export class OAuthConsentController {
 			const sessionToken = this.getAndValidateSessionToken(req, res);
 			if (!sessionToken) return;
 
-			const consentDetails = await this.consentService.getConsentDetails(sessionToken);
+			const consentDetails = await this.consentService.getConsentDetails(sessionToken, req.user);
 
 			if (!consentDetails) {
 				this.sendInvalidSessionError(res, true);
@@ -30,7 +32,15 @@ export class OAuthConsentController {
 
 			if (!consentDetails.ok) {
 				this.oauthSessionService.clearSession(res);
-				this.sendErrorResponse(res, 422, 'Authorization target is no longer available');
+				if (consentDetails.reason === 'forbidden') {
+					this.sendErrorResponse(
+						res,
+						403,
+						'You do not have sufficient permissions to authorize this request',
+					);
+				} else {
+					this.sendErrorResponse(res, 422, 'Authorization target is no longer available');
+				}
 				return;
 			}
 
@@ -40,6 +50,9 @@ export class OAuthConsentController {
 					clientId: consentDetails.clientId,
 					redirectUri: consentDetails.redirectUri,
 					resourceName: consentDetails.resourceName,
+					scopes: consentDetails.scopes,
+					previousScopes: consentDetails.previousScopes,
+					scopeTools: consentDetails.scopeTools,
 				},
 			});
 		} catch (error) {
@@ -61,8 +74,9 @@ export class OAuthConsentController {
 
 			const result = await this.consentService.handleConsentDecision(
 				sessionToken,
-				req.user.id,
+				req.user,
 				payload.approved,
+				payload.scopes,
 			);
 
 			this.oauthSessionService.clearSession(res);
@@ -76,8 +90,17 @@ export class OAuthConsentController {
 		} catch (error) {
 			this.logger.error('Failed to process consent', { error });
 			this.oauthSessionService.clearSession(res);
+			if (error instanceof ForbiddenError) {
+				this.sendErrorResponse(
+					res,
+					403,
+					'You do not have sufficient permissions to authorize this request',
+				);
+				return;
+			}
 			const message = error instanceof Error ? error.message : 'Failed to process authorization';
-			this.sendErrorResponse(res, 500, message);
+			// UserError = invalid input (e.g. bad scope selection), not a server fault
+			this.sendErrorResponse(res, error instanceof UserError ? 400 : 500, message);
 		}
 	}
 

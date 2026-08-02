@@ -631,6 +631,22 @@ export const instanceAiTestConfig = {
 	},
 } as const;
 
+/**
+ * Variant of `instanceAiTestConfig` for the cross-main smoke test. Unlike the
+ * single-main pin above, it deliberately does NOT set `mains`/`workers`, so it
+ * inherits the running project's topology: the `multi-main` project supplies
+ * 2 mains + a worker, while every other project supplies 1 main (the spec then
+ * skips via `mainUrls.length < 2`). It only exercises a conversational turn, so
+ * it never touches the unsupported agent-triggered worker-offload execution path.
+ */
+export const instanceAiMultiMainConfig = {
+	timezoneId: instanceAiTestConfig.timezoneId,
+	capability: {
+		services: instanceAiTestConfig.capability.services,
+		env: instanceAiTestConfig.capability.env,
+	},
+} as const;
+
 export const test = base.extend<InstanceAiFixtures>({
 	anthropicApiKey: async ({}, use) => {
 		await use(ANTHROPIC_API_KEY);

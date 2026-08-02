@@ -31,6 +31,7 @@ export const PACKAGES_REQUIRING_ZOD_PEER = [
 	'packages/workflow',
 	'packages/core',
 	'packages/@n8n/agents',
+	'packages/@n8n/json-schema-to-zod',
 ];
 
 /** Pure, testable core: return a problem string for a manifest, or null if OK. */

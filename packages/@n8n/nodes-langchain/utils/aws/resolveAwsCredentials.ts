@@ -14,6 +14,8 @@ import { UserError, type ISupplyDataFunctions } from 'n8n-workflow';
 export type ResolvedAwsCredentials = {
 	region: AWSRegion;
 	credentials: AwsCredentialIdentity | AwsCredentialIdentityProvider;
+	/** Runtime endpoint override from the credential (Bedrock inference), if the user set one. */
+	bedrockRuntimeEndpoint?: string;
 };
 
 export async function resolveAwsCredentials(
@@ -26,6 +28,10 @@ export async function resolveAwsCredentials(
 
 	if (authentication !== 'assumeRole') {
 		const creds = (await context.getCredentials('aws')) as AwsIamCredentialsType;
+
+		// Validate before the region is interpolated into service endpoint URLs downstream.
+		assertSupportedAwsRegion(creds.region);
+
 		const identity: AwsCredentialIdentity = {
 			accessKeyId: creds.accessKeyId,
 			secretAccessKey: creds.secretAccessKey,
@@ -33,7 +39,11 @@ export async function resolveAwsCredentials(
 				? { sessionToken: creds.sessionToken }
 				: {}),
 		};
-		return { region: creds.region, credentials: identity };
+		return {
+			region: creds.region,
+			credentials: identity,
+			bedrockRuntimeEndpoint: creds.bedrockRuntimeEndpoint,
+		};
 	}
 
 	const creds = (await context.getCredentials('awsAssumeRole')) as AwsAssumeRoleCredentialsType;
@@ -102,5 +112,9 @@ export async function resolveAwsCredentials(
 		},
 	});
 
-	return { region: creds.region, credentials: provider };
+	return {
+		region: creds.region,
+		credentials: provider,
+		bedrockRuntimeEndpoint: creds.bedrockRuntimeEndpoint,
+	};
 }

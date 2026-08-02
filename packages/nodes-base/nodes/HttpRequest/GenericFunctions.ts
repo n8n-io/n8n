@@ -313,4 +313,4 @@ export const getAllowedDomains = (
 	node: INode,
 	credentialData: ICredentialDataDecryptedObject,
 ): string | undefined =>
-	getCredentialAllowedDomains({ node, credentialData, surface: 'HTTP Request' });
+	getCredentialAllowedDomains({ node, credentialData, surface: 'HTTP Request or GraphQL' });

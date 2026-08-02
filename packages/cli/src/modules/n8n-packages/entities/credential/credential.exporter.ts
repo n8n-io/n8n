@@ -1,4 +1,4 @@
-import type { User } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -20,6 +20,9 @@ export interface CredentialExportRequest {
 	user: User;
 	requirements: WorkflowCredentialRequirement[];
 	writer: PackageWriter;
+	// Contains a map of projectId to export location
+	// p123 -> /project/p123/
+	projectTargetsById?: Map<string, string>;
 }
 
 export interface CredentialExportResult {
@@ -35,7 +38,16 @@ export class CredentialExporter {
 	) {}
 
 	async export(request: CredentialExportRequest): Promise<CredentialExportResult> {
-		const allocator = new UniqueFilenameAllocator('credentials', 'credential');
+		// One allocator per base directory: `credentials/` and each
+		// `projects/<slug>/credentials/` suffix collisions independently.
+		const allocators = new Map<string, UniqueFilenameAllocator>();
+		const allocatorFor = (baseDir: string) => {
+			const existing = allocators.get(baseDir);
+			if (existing) return existing;
+			const created = new UniqueFilenameAllocator(baseDir, 'credential');
+			allocators.set(baseDir, created);
+			return created;
+		};
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
 
@@ -56,7 +68,8 @@ export class CredentialExporter {
 			};
 
 			if (credential) {
-				const target = allocator.allocate(name);
+				const baseDir = this.resolveBaseDir(credential, request.projectTargetsById);
+				const target = allocatorFor(baseDir).allocate(name);
 				request.writer.writeDirectory(target);
 				request.writer.writeFile(
 					`${target}/credential.json`,
@@ -69,6 +82,23 @@ export class CredentialExporter {
 		}
 
 		return { entries, requirements };
+	}
+
+	/**
+	 * Namespaces a credential under its OWNER project when that project is part of
+	 * the export; otherwise (owned by a non-exported project, or global) it stays at
+	 * the top-level `credentials/`. Owner = the `credential:owner` sharing's project.
+	 */
+	private resolveBaseDir(
+		credential: CredentialsEntity,
+		projectTargetsById?: Map<string, string>,
+	): string {
+		if (!projectTargetsById || projectTargetsById.size === 0) return 'credentials';
+		const ownerProjectId = credential.shared?.find(
+			(sharing) => sharing.role === 'credential:owner',
+		)?.projectId;
+		const prefix = ownerProjectId ? projectTargetsById.get(ownerProjectId) : undefined;
+		return prefix ? `${prefix}/credentials` : 'credentials';
 	}
 
 	private groupByCredentialId(

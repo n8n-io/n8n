@@ -192,6 +192,97 @@ export const userRLC: INodeProperties = {
 	],
 };
 
+export const advancedInteractivityNotice: INodeProperties = {
+	displayName: 'Advanced Interactivity',
+	name: 'advancedInteractivityNotice',
+	type: 'notice',
+	default: '',
+	// Renders as a section-header divider (like "Options"), not a notice box.
+	typeOptions: {
+		sectionHeader: true,
+	},
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+		},
+	},
+};
+
+export const captureResponderField: INodeProperties = {
+	displayName: 'Capture Who Responded',
+	name: 'captureResponder',
+	type: 'boolean',
+	default: false,
+	// Approval only: the form response types need the plain link button. Both auth modes
+	// carry a signing secret, so either works for the interactive callback.
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+		},
+	},
+	description:
+		"Whether to use Slack interactive buttons so the responder's identity (ID, name, email) is captured and returned with the response. Requires the Slack app to have Interactivity enabled (Request URL pointed at this n8n instance), a signing secret on the credential, and the users:read and users:read.email scopes.",
+};
+
+export const approversField: INodeProperties = {
+	displayName: 'Restrict Who Can Approve',
+	name: 'approvers',
+	type: 'multiOptions',
+	typeOptions: {
+		loadOptionsMethod: 'getUsers',
+	},
+	default: [],
+	// Only meaningful for the interactive-button flow (approval + capture responder).
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description:
+		'Restrict who can approve or decline: a click from anyone not listed is ignored and they get a private notice. Leave empty to let anyone respond. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+};
+
+export const unauthorizedReplyField: INodeProperties = {
+	displayName: 'Unauthorized Reply',
+	name: 'unauthorizedReplyText',
+	type: 'string',
+	default: 'You are not authorized to respond to this request.',
+	// Same gating as the approver list — only the interactive-button flow can reject a click.
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description:
+		'Private (ephemeral) message shown to someone who clicks a button but is not in the approver list',
+};
+
+export const postDecisionBehaviorField: INodeProperties = {
+	displayName: 'After Decision',
+	name: 'postDecisionBehavior',
+	type: 'options',
+	default: 'showOutcome',
+	options: [
+		{ name: 'Show Outcome and Remove Buttons', value: 'showOutcome' },
+		{ name: 'Remove Buttons Only', value: 'removeButtons' },
+		{ name: 'Keep Message Unchanged', value: 'keepMessage' },
+	],
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description: 'What happens to the original message once someone approves or declines',
+};
+
 export const replyToMessageField: INodeProperties = {
 	displayName: 'Reply to a Message',
 	name: 'thread_ts',
@@ -220,6 +311,72 @@ export const replyToMessageField: INodeProperties = {
 					default: false,
 					description:
 						'Whether the reply should be made visible to everyone in the channel or conversation',
+				},
+			],
+		},
+	],
+};
+
+// Shared between the pre-2.6 (always shown) and 2.6+ (access-token only) variants below.
+const botProfileField: INodeProperties = {
+	displayName: 'Custom Bot Profile Photo',
+	name: 'botProfile',
+	type: 'fixedCollection',
+	default: {
+		imageValues: [
+			{
+				profilePhotoType: '',
+			},
+		],
+	},
+	description:
+		'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user.',
+	options: [
+		{
+			name: 'imageValues',
+			displayName: 'Add Bot Profile Photo',
+			values: [
+				{
+					displayName: 'Profile Photo Type',
+					name: 'profilePhotoType',
+					type: 'options',
+					options: [
+						{
+							name: 'Image URL',
+							value: 'image',
+						},
+						{
+							name: 'Emoji Code',
+							value: 'emoji',
+						},
+					],
+					default: '',
+					placeholder: 'Select a type…',
+				},
+				{
+					displayName: 'Emoji Code',
+					name: 'icon_emoji',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							profilePhotoType: ['emoji'],
+						},
+					},
+					description:
+						'Only used if sending message as a bot. Use emoji codes like +1, not an actual emoji like 👍. <a target="_blank" href=" https://www.webfx.com/tools/emoji-cheat-sheet/">List of common emoji codes</a>',
+				},
+				{
+					displayName: 'Image URL',
+					name: 'icon_url',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							profilePhotoType: ['image'],
+						},
+					},
+					description: 'Only used if sending message as a bot',
 				},
 			],
 		},
@@ -602,68 +759,25 @@ export const messageFields: INodeProperties[] = [
 					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending Slack messages.',
 			},
 			{
-				displayName: 'Custom Bot Profile Photo',
-				name: 'botProfile',
-				type: 'fixedCollection',
-				default: {
-					imageValues: [
-						{
-							profilePhotoType: '',
-						},
-					],
-				},
-				description:
-					'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user.',
-				options: [
-					{
-						name: 'imageValues',
-						displayName: 'Add Bot Profile Photo',
-						values: [
-							{
-								displayName: 'Profile Photo Type',
-								name: 'profilePhotoType',
-								type: 'options',
-								options: [
-									{
-										name: 'Image URL',
-										value: 'image',
-									},
-									{
-										name: 'Emoji Code',
-										value: 'emoji',
-									},
-								],
-								default: '',
-								placeholder: 'Select a type…',
-							},
-							{
-								displayName: 'Emoji Code',
-								name: 'icon_emoji',
-								type: 'string',
-								default: '',
-								displayOptions: {
-									show: {
-										profilePhotoType: ['emoji'],
-									},
-								},
-								description:
-									'Only used if sending message as a bot. Use emoji codes like +1, not an actual emoji like 👍. <a target="_blank" href=" https://www.webfx.com/tools/emoji-cheat-sheet/">List of common emoji codes</a>',
-							},
-							{
-								displayName: 'Image URL',
-								name: 'icon_url',
-								type: 'string',
-								default: '',
-								displayOptions: {
-									show: {
-										profilePhotoType: ['image'],
-									},
-								},
-								description: 'Only used if sending message as a bot',
-							},
-						],
+				...botProfileField,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lte: 2.5 } }],
 					},
-				],
+				},
+			},
+			{
+				// Slack ignores icon_url/icon_emoji on user tokens, and the OAuth2 credential
+				// authenticates as the user, so from 2.6 this is only offered for token auth.
+				...botProfileField,
+				description:
+					'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user. Add chat:write.customize scope on Slack API',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.6 } }],
+						'/authentication': ['accessToken'],
+					},
+				},
 			},
 			{
 				displayName: 'Link User and Channel Names',
@@ -685,14 +799,14 @@ export const messageFields: INodeProperties[] = [
 				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to enable unfurling of primarily text-based content',
+				description: 'Whether to unfurl primarily text-based content in the message',
 			},
 			{
 				displayName: 'Unfurl Media',
 				name: 'unfurl_media',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to disable unfurling of media content',
+				description: 'Whether to unfurl media content in the message',
 			},
 			{
 				displayName: 'Send as Ephemeral Message',

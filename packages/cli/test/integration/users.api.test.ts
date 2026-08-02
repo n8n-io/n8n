@@ -601,6 +601,7 @@ describe('GET /users', () => {
 							id: project.id,
 							role: 'project:admin',
 							name: project.name,
+							icon: null,
 						},
 					]),
 				);
@@ -1384,7 +1385,7 @@ describe('PATCH /users/:id/role', () => {
 	let memberAgent: SuperAgentTest;
 	let authlessAgent: SuperAgentTest;
 
-	const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
+	const { NO_ADMIN_ON_OWNER, NO_USER, CANNOT_CHANGE_OWN_ROLE } =
 		UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
 	beforeAll(async () => {
@@ -1593,7 +1594,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_OWNER_ON_OWNER);
+			expect(response.body.message).toBe(CANNOT_CHANGE_OWN_ROLE);
 		});
 
 		test('should fail to demote self to member', async () => {
@@ -1602,7 +1603,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_OWNER_ON_OWNER);
+			expect(response.body.message).toBe(CANNOT_CHANGE_OWN_ROLE);
 		});
 
 		test('should fail to promote member to admin if not licensed', async () => {

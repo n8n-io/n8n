@@ -1,5 +1,6 @@
 import type { ConversationTurn, TranscriptTurn } from '../types';
 import {
+	agentTurnsAsText,
 	conversationUserTurnsAsText,
 	lastAgentText,
 	perTurnToolCallCounts,
@@ -27,6 +28,35 @@ describe('userTurnsAsText', () => {
 			{ userMessage: 'a webhook', steps: [{ kind: 'agent-text', text: 'done' }] },
 		];
 		expect(userTurnsAsText(transcript)).toBe('Turn 1: build it\n\nTurn 2: a webhook');
+	});
+});
+
+describe('agentTurnsAsText', () => {
+	it('returns empty string on empty transcript', () => {
+		expect(agentTurnsAsText([])).toBe('');
+	});
+
+	it('returns the lone narration as plain text when only one turn narrates', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'build a webhook', steps: [{ kind: 'agent-text', text: 'Added a webhook.' }] },
+		];
+		expect(agentTurnsAsText(transcript)).toBe('Added a webhook.');
+	});
+
+	it('numbers narration by conversation turn, dropping turns with no agent text', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'build it', steps: [{ kind: 'agent-text', text: 'Added a webhook.' }] },
+			{
+				userMessage: 'tweak',
+				steps: [{ kind: 'tool-call', toolName: 'build-workflow', args: {} }],
+			},
+			{ userMessage: 'add a filter', steps: [{ kind: 'agent-text', text: 'Added a filter.' }] },
+		];
+		// Turn 2 has no narration, so it's skipped — but turn 3 keeps its turn number
+		// so each claim still aligns with the user turn that prompted it.
+		expect(agentTurnsAsText(transcript)).toBe(
+			'Turn 1: Added a webhook.\n\nTurn 3: Added a filter.',
+		);
 	});
 });
 

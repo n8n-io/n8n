@@ -156,6 +156,244 @@ describe('N8nLlmTracing', () => {
 			expect(estimateTokensFromStringList).toHaveBeenCalledWith(prompts, 'gpt-4o');
 		});
 
+		it('should mask declared header values in persisted input data', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				redactedHeaders: ['x-secret-header'],
+			});
+
+			const llm: Serialized = {
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain', 'chat_models', 'openai'],
+				kwargs: {
+					model: 'gpt-4',
+					configuration: {
+						baseURL: 'https://api.openai.com/v1',
+						defaultHeaders: {
+							'User-Agent': 'n8n',
+							'x-secret-header': 'My_secret_API_key123456789',
+						},
+					},
+				},
+			};
+
+			await tracer.handleLLMStart(llm, ['hello'], 'run-123');
+
+			const inputArg = mockExecutionFunctions.addInputData.mock.calls[0][1] as Array<
+				Array<{ json: { options: { configuration: { defaultHeaders: Record<string, string> } } } }>
+			>;
+			const persistedHeaders = inputArg[0][0].json.options.configuration.defaultHeaders;
+
+			// declared header name stays, value is masked
+			expect(persistedHeaders['x-secret-header']).toBe('**********');
+			expect(persistedHeaders['x-secret-header']).not.toBe('My_secret_API_key123456789');
+			// non-declared header is untouched
+			expect(persistedHeaders['User-Agent']).toBe('n8n');
+
+			// stored run details are masked the same way
+			const storedOptions = tracer.runsMap['run-123'].options as {
+				configuration: { defaultHeaders: Record<string, string> };
+			};
+			expect(storedOptions.configuration.defaultHeaders['x-secret-header']).toBe('**********');
+
+			// The original serialized object is not mutated
+			expect(
+				(llm.kwargs.configuration as { defaultHeaders: Record<string, string> }).defaultHeaders[
+					'x-secret-header'
+				],
+			).toBe('My_secret_API_key123456789');
+		});
+
+		it('should mask declared header values inside clientOptions', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				redactedHeaders: ['x-secret-header'],
+			});
+
+			const llm: Serialized = {
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain', 'chat_models', 'anthropic'],
+				kwargs: {
+					model: 'claude',
+					clientOptions: {
+						defaultHeaders: {
+							'User-Agent': 'n8n',
+							'x-secret-header': 'My_secret_API_key123456789',
+						},
+					},
+				},
+			};
+
+			await tracer.handleLLMStart(llm, ['hello'], 'run-123');
+
+			const inputArg = mockExecutionFunctions.addInputData.mock.calls[0][1] as Array<
+				Array<{ json: { options: { clientOptions: { defaultHeaders: Record<string, string> } } } }>
+			>;
+			const persistedHeaders = inputArg[0][0].json.options.clientOptions.defaultHeaders;
+
+			expect(persistedHeaders['x-secret-header']).toBe('**********');
+			expect(persistedHeaders['User-Agent']).toBe('n8n');
+		});
+
+		it('should always mask the Authorization header value', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+
+			const llm: Serialized = {
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain', 'chat_models', 'openai'],
+				kwargs: {
+					model: 'llama3',
+					// top-level header map and nested wrapper
+					headers: { authorization: 'Bearer top-secret', Cookie: 'session=abc' },
+					configuration: {
+						defaultHeaders: { Authorization: 'Bearer nested-secret', 'x-api-key': 'sk-123' },
+					},
+				},
+			};
+
+			await tracer.handleLLMStart(llm, ['hello'], 'run-123');
+
+			const inputArg = mockExecutionFunctions.addInputData.mock.calls[0][1] as Array<
+				Array<{
+					json: {
+						options: {
+							headers: Record<string, string>;
+							configuration: { defaultHeaders: Record<string, string> };
+						};
+					};
+				}>
+			>;
+			const persisted = inputArg[0][0].json.options;
+			// Matched case-insensitively, in both container shapes
+			expect(persisted.headers.authorization).toBe('**********');
+			expect(persisted.headers.Cookie).toBe('**********');
+			expect(persisted.configuration.defaultHeaders.Authorization).toBe('**********');
+			expect(persisted.configuration.defaultHeaders['x-api-key']).toBe('**********');
+		});
+
+		it('should mask the Authorization header value at any nesting depth', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+
+			const llm: Serialized = {
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain', 'chat_models', 'openai'],
+				kwargs: {
+					configuration: { httpAgent: { headers: { Authorization: 'Bearer deep-secret' } } },
+				},
+			};
+
+			await tracer.handleLLMStart(llm, ['hello'], 'run-123');
+
+			const inputArg = mockExecutionFunctions.addInputData.mock.calls[0][1] as Array<
+				Array<{
+					json: { options: { configuration: { httpAgent: { headers: Record<string, string> } } } };
+				}>
+			>;
+			expect(inputArg[0][0].json.options.configuration.httpAgent.headers.Authorization).toBe(
+				'**********',
+			);
+		});
+
+		it('should redact header values inside an array element', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+
+			const llm: Serialized = {
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain', 'chat_models', 'openai'],
+				kwargs: {
+					transports: [{ headers: { Authorization: 'Bearer array-secret' } }],
+				},
+			};
+
+			await tracer.handleLLMStart(llm, ['hello'], 'run-123');
+
+			const inputArg = mockExecutionFunctions.addInputData.mock.calls[0][1] as Array<
+				Array<{ json: { options: { transports: Array<{ headers: Record<string, string> }> } } }>
+			>;
+			expect(inputArg[0][0].json.options.transports[0].headers.Authorization).toBe('**********');
+		});
+
+		it('should match a declared header name case-insensitively', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				redactedHeaders: ['X-Secret-Header'],
+			});
+
+			const llm: Serialized = {
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain', 'chat_models', 'openai'],
+				kwargs: {
+					configuration: { defaultHeaders: { 'x-secret-header': 'My_secret_API_key123456789' } },
+				},
+			};
+
+			await tracer.handleLLMStart(llm, ['hello'], 'run-123');
+
+			const inputArg = mockExecutionFunctions.addInputData.mock.calls[0][1] as Array<
+				Array<{ json: { options: { configuration: { defaultHeaders: Record<string, string> } } } }>
+			>;
+			expect(inputArg[0][0].json.options.configuration.defaultHeaders['x-secret-header']).toBe(
+				'**********',
+			);
+		});
+
+		it('should not mask a non-header field that shares a declared name', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				redactedHeaders: ['model'],
+			});
+
+			const llm: Serialized = {
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain', 'chat_models', 'openai'],
+				kwargs: {
+					model: 'gpt-4',
+					configuration: { defaultHeaders: { model: 'header-value' } },
+				},
+			};
+
+			await tracer.handleLLMStart(llm, ['hello'], 'run-123');
+
+			const inputArg = mockExecutionFunctions.addInputData.mock.calls[0][1] as Array<
+				Array<{
+					json: {
+						options: { model: string; configuration: { defaultHeaders: Record<string, string> } };
+					};
+				}>
+			>;
+			const persisted = inputArg[0][0].json.options;
+			// Top-level model field stays; only the header-container occurrence is masked
+			expect(persisted.model).toBe('gpt-4');
+			expect(persisted.configuration.defaultHeaders.model).toBe('**********');
+		});
+
+		it('should leave headers unchanged when nothing is declared', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+
+			const llm: Serialized = {
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain', 'chat_models', 'openai'],
+				kwargs: {
+					configuration: {
+						defaultHeaders: { 'x-secret-header': 'My_secret_API_key123456789' },
+					},
+				},
+			};
+
+			await tracer.handleLLMStart(llm, ['hello'], 'run-123');
+
+			const inputArg = mockExecutionFunctions.addInputData.mock.calls[0][1] as Array<
+				Array<{ json: { options: { configuration: { defaultHeaders: Record<string, string> } } } }>
+			>;
+			expect(inputArg[0][0].json.options.configuration.defaultHeaders['x-secret-header']).toBe(
+				'My_secret_API_key123456789',
+			);
+		});
+
 		it('should use parent run index when set', async () => {
 			const tracer = new N8nLlmTracing(mockExecutionFunctions);
 			tracer.setParentRunIndex(5);

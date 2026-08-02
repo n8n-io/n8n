@@ -1,22 +1,15 @@
-import {
-	deepCopy,
-	type IDeferredPromise,
-	type IRun,
-	type ITriggerFunctions,
-	jsonParse,
-} from 'n8n-workflow';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { deepCopy, type IRun, type ITriggerFunctions, jsonParse } from 'n8n-workflow';
 import type { EventContext } from 'rhea';
 
 type MessageId = string | number | Buffer | undefined;
 
 interface HandleMessageOptions {
 	lastMessageId: MessageId;
-	pullMessagesNumber: number;
 	jsonConvertByteArrayToString?: boolean;
 	jsonParseBody?: boolean;
 	onlyBody?: boolean;
 	parallelProcessing?: boolean;
-	sleepTime?: number;
 }
 
 export async function handleMessage(
@@ -66,13 +59,5 @@ export async function handleMessage(
 		this.emit([this.helpers.returnJsonArray([data as any])]);
 	}
 
-	if (!context.receiver?.has_credit()) {
-		setTimeout(
-			() => {
-				context.receiver?.add_credit(options.pullMessagesNumber);
-			},
-			(options.sleepTime as number) || 10,
-		);
-	}
 	return { messageId: context.message.message_id };
 }

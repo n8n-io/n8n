@@ -1,37 +1,25 @@
 <script setup lang="ts">
 /**
  * Behavior panel — execution-behavior knobs that used to live in the old
- * AgentOverviewPanel: native web search, reasoning depth (provider-gated),
- * and tool-call concurrency.
- *
- * Thinking is always visible as a toggle but disabled (with a tooltip) when
- * the selected provider doesn't support it. The sub-control differs by
- * provider: Anthropic takes a `budgetTokens` number, OpenAI takes a
- * `reasoningEffort` low/medium/high select.
+ * AgentOverviewPanel: native web search, reasoning depth, and tool-call
+ * concurrency.
  */
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import {
-	N8nCollapsiblePanel,
-	N8nInputNumber2,
-	N8nSelect,
-	N8nSwitch2,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { AGENT_REASONING_LEVELS, type AgentReasoningLevel } from '@n8n/api-types';
+import { N8nIcon, N8nInputNumber2, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
 
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useModelCatalog } from '../composables/useModelCatalog';
 import type { AgentJsonConfig } from '../types';
 import {
 	PROVIDER_CAPABILITIES,
-	REASONING_EFFORT_OPTIONS,
 	ANTHROPIC_CACHE_TTL_OPTIONS,
-	type ReasoningEffort,
 	type AnthropicCacheTtl,
 } from '../provider-capabilities';
-import { parseProvider } from '../utils/model-string';
+import { modelToString, parseModelString, parseProvider } from '../utils/model-string';
 import {
 	getNativeWebSearchArgs,
 	getWebSearchMethod,
@@ -40,11 +28,12 @@ import {
 	type WebSearchMethod,
 	withWebSearchConfig,
 } from '../utils/nativeWebSearch';
+import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
+const { catalog, ensureLoaded } = useModelCatalog();
 const DEFAULT_CAPABILITIES = {
-	thinking: false,
 	promptCaching: false,
 	webSearch: false,
 	providerTools: [],
@@ -54,8 +43,17 @@ const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
 type SearchContextSize = (typeof SEARCH_CONTEXT_SIZE_OPTIONS)[number];
 type WebSearchSelectValue = 'off' | WebSearchMethod;
 
+function normalizeReasoningLevel(value: unknown): AgentReasoningLevel {
+	return AGENT_REASONING_LEVELS.find((level) => level === value) ?? 'medium';
+}
+
 const props = withDefaults(
-	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; collapsible?: boolean }>(),
+	defineProps<{
+		config: AgentJsonConfig | null;
+		disabled?: boolean;
+		collapsible?: boolean;
+		projectId?: string;
+	}>(),
 	{
 		disabled: false,
 		collapsible: false,
@@ -66,8 +64,31 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const isExpanded = ref(!props.collapsible);
 
 const provider = computed(() => parseProvider(props.config?.model));
+const selectedModel = computed(() => parseModelString(modelToString(props.config?.model)));
+const selectedCatalogModel = computed(() => {
+	if (!selectedModel.value) return undefined;
+	return catalog.value[selectedModel.value.provider]?.models[selectedModel.value.name];
+});
+const isReasoningUnavailable = computed(
+	() => !selectedModel.value || selectedCatalogModel.value?.reasoning === false,
+);
+const reasoningHintKey = computed(() => {
+	if (!selectedModel.value) return 'agents.builder.advanced.reasoning.noModelHint';
+	if (selectedCatalogModel.value?.reasoning === false) {
+		return 'agents.builder.advanced.reasoning.unsupportedHint';
+	}
+	return 'agents.builder.advanced.reasoning.hint';
+});
 const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
 const hasNativeWebSearch = computed(() => Boolean(capabilities.value.webSearch));
+
+watch(
+	() => props.projectId,
+	(projectId) => {
+		if (projectId) void ensureLoaded(projectId);
+	},
+	{ immediate: true },
+);
 
 // ---------------------------------------------------------------------------
 // Generic helper for numeric config fields
@@ -157,8 +178,6 @@ const CONCURRENCY_DEFAULT = 5;
 const MAX_ITERATIONS_MIN = 1;
 const MAX_ITERATIONS_MAX = 200;
 const MAX_ITERATIONS_DEFAULT = 30;
-const BUDGET_TOKENS_MIN = 1;
-const BUDGET_TOKENS_DEFAULT = 1024;
 const PROMPT_CACHING_TTL_DEFAULT: AnthropicCacheTtl = '1h';
 
 const {
@@ -174,7 +193,7 @@ const {
 } = makeNumberField('maxIterations', { displayDefault: MAX_ITERATIONS_DEFAULT });
 
 // ---------------------------------------------------------------------------
-// Thinking — provider-gated, handled separately
+// Reasoning
 // ---------------------------------------------------------------------------
 
 const webSearchEnabled = ref(props.config?.config?.webSearch?.enabled === true);
@@ -191,11 +210,9 @@ const fallbackWebSearchProvider = ref<FallbackWebSearchProvider>(
 	props.config?.config?.webSearch?.provider === 'searxng' ? 'searxng' : 'brave',
 );
 const fallbackWebSearchCredential = ref(props.config?.config?.webSearch?.credential ?? '');
-const thinkingCfg = computed(() => props.config?.config?.thinking ?? null);
-const thinkingEnabled = ref(thinkingCfg.value !== null);
-const budgetTokens = ref(thinkingCfg.value?.budgetTokens ?? BUDGET_TOKENS_DEFAULT);
-const reasoningEffort = ref<ReasoningEffort>(
-	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
+const reasoningEnabled = ref(props.config?.config?.reasoning !== undefined);
+const reasoningLevel = ref<AgentReasoningLevel>(
+	normalizeReasoningLevel(props.config?.config?.reasoning),
 );
 
 function anthropicTtlFrom(cfg: AgentJsonConfig | null): AnthropicCacheTtl {
@@ -225,10 +242,8 @@ watch(
 	() => props.config,
 	(cfg) => {
 		if (!cfg) return;
-		const t = cfg.config?.thinking ?? null;
-		thinkingEnabled.value = t !== null;
-		budgetTokens.value = t?.budgetTokens ?? BUDGET_TOKENS_DEFAULT;
-		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
+		reasoningEnabled.value = cfg.config?.reasoning !== undefined;
+		reasoningLevel.value = normalizeReasoningLevel(cfg.config?.reasoning);
 		anthropicTtl.value = anthropicTtlFrom(cfg);
 		syncConcurrency(cfg);
 		syncMaxIterations(cfg);
@@ -333,51 +348,27 @@ function onFallbackCredentialChange(value: string) {
 	);
 }
 
-function emitThinking() {
-	const cap = capabilities.value.thinking;
-	if (!cap) return;
-	const thinking =
-		cap === 'budgetTokens'
-			? { provider: 'anthropic' as const, budgetTokens: budgetTokens.value }
-			: { provider: 'openai' as const, reasoningEffort: reasoningEffort.value };
-	emit('update:config', { config: { ...props.config?.config, thinking } });
+function emitReasoning() {
+	emit('update:config', {
+		config: { ...props.config?.config, reasoning: reasoningLevel.value },
+	});
 }
 
-function onThinkingToggle(value: boolean) {
-	if (!capabilities.value.thinking) return;
-	thinkingEnabled.value = value;
+function onReasoningToggle(value: boolean) {
+	reasoningEnabled.value = value;
 	if (!value) {
 		const rest = { ...(props.config?.config ?? {}) };
-		delete rest.thinking;
+		delete rest.reasoning;
 		emit('update:config', { config: rest });
 		return;
 	}
-	emitThinking();
+	emitReasoning();
 }
 
-const emitBudget = useDebounceFn(emitThinking, 500);
-function onBudgetChange(n: number) {
-	if (isNaN(n) || n < BUDGET_TOKENS_MIN) return;
-	budgetTokens.value = n;
-	void emitBudget();
+function onReasoningLevelChange(value: AgentReasoningLevel) {
+	reasoningLevel.value = value;
+	emitReasoning();
 }
-
-function onReasoningEffortChange(value: ReasoningEffort) {
-	reasoningEffort.value = value;
-	emitThinking();
-}
-
-const thinkingDisabledReason = computed(() =>
-	capabilities.value.thinking
-		? ''
-		: i18n.baseText('agents.builder.advanced.thinking.unsupportedTooltip', {
-				interpolate: {
-					provider:
-						provider.value ||
-						i18n.baseText('agents.builder.advanced.thinking.unsupportedProviderFallback'),
-				},
-			}),
-);
 
 function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 	anthropicTtl.value = value;
@@ -391,23 +382,38 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 </script>
 
 <template>
-	<N8nCollapsiblePanel
-		v-model="isExpanded"
+	<div
 		:class="$style.panel"
-		:disabled="!props.collapsible"
+		:data-state="isExpanded ? 'open' : 'closed'"
 		data-testid="agent-behavior-panel"
 	>
-		<template #title>
-			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.advanced.title') }}</N8nText>
-		</template>
-		<div :class="$style.content">
+		<button
+			type="button"
+			:class="[$style.header, { [$style.collapsibleHeader]: props.collapsible }]"
+			:aria-expanded="isExpanded"
+			:aria-disabled="!props.collapsible"
+			data-testid="agent-advanced-trigger"
+			@click="props.collapsible && (isExpanded = !isExpanded)"
+		>
+			<N8nText tag="h3" :bold="true" data-testid="agent-advanced-title">{{
+				i18n.baseText('agents.builder.advanced.title')
+			}}</N8nText>
+			<N8nIcon
+				v-if="props.collapsible"
+				icon="chevron-down"
+				size="small"
+				:class="$style.chevron"
+				data-testid="agent-advanced-chevron"
+			/>
+		</button>
+		<div v-show="isExpanded" :class="$style.content" data-testid="agent-advanced-content">
 			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.webSearch.label')
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
 							{{ i18n.baseText('agents.builder.advanced.webSearch.hint') }}
 						</N8nText>
 					</div>
@@ -449,10 +455,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:class="$style.row"
 					>
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.webSearch.maxUses.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.webSearch.maxUses.hint') }}
 							</N8nText>
 						</div>
@@ -477,10 +483,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:class="$style.row"
 					>
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.webSearch.externalAccess.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.webSearch.externalAccess.hint') }}
 							</N8nText>
 						</div>
@@ -502,7 +508,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						v-if="webSearchMethod === 'native' && capabilities.webSearch === 'openai.web_search'"
 						:class="$style.row"
 					>
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.webSearch.contextSize.label')
 						}}</N8nText>
 						<N8nSelect
@@ -529,10 +535,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 
 					<div v-if="webSearchMethod !== 'native'" :class="$style.row">
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.webSearch.credential.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.webSearch.credential.hint') }}
 							</N8nText>
 						</div>
@@ -558,67 +564,45 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
-						<N8nText size="small" :bold="true">{{
-							i18n.baseText('agents.builder.advanced.thinking.label')
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+							i18n.baseText('agents.builder.advanced.reasoning.label')
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">
-							{{ i18n.baseText('agents.builder.advanced.thinking.hint') }}
+						<N8nText
+							size="small"
+							:class="shared.dataEntrySubLabel"
+							data-testid="agent-reasoning-hint"
+						>
+							{{ i18n.baseText(reasoningHintKey) }}
 						</N8nText>
 					</div>
-					<N8nTooltip
-						:content="thinkingDisabledReason"
-						:disabled="!!capabilities.thinking"
-						placement="top"
-					>
-						<N8nSwitch2
-							:model-value="thinkingEnabled"
-							:disabled="!capabilities.thinking || props.disabled"
-							:class="$style.switchControl"
-							data-testid="agent-thinking-toggle"
-							@update:model-value="(v) => onThinkingToggle(Boolean(v))"
-						/>
-					</N8nTooltip>
+					<N8nSwitch2
+						:model-value="reasoningEnabled"
+						:disabled="props.disabled || isReasoningUnavailable"
+						:class="$style.switchControl"
+						data-testid="agent-reasoning-toggle"
+						@update:model-value="(v) => onReasoningToggle(Boolean(v))"
+					/>
 				</div>
 
 				<div
-					v-if="thinkingEnabled && capabilities.thinking"
+					v-if="reasoningEnabled"
 					:class="$style.subSettings"
-					data-testid="agent-thinking-settings"
+					data-testid="agent-reasoning-settings"
 				>
-					<div v-if="capabilities.thinking === 'budgetTokens'" :class="$style.row">
-						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
-								i18n.baseText('agents.builder.advanced.budgetTokens.label')
-							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
-								{{ i18n.baseText('agents.builder.advanced.budgetTokens.hint') }}
-							</N8nText>
-						</div>
-						<N8nInputNumber2
-							:model-value="budgetTokens"
-							:min="BUDGET_TOKENS_MIN"
-							:precision="0"
-							:disabled="props.disabled"
-							:class="$style.shortInput"
-							data-testid="agent-budget-tokens-input"
-							@update:model-value="onBudgetChange"
-						/>
-					</div>
-
-					<div v-if="capabilities.thinking === 'reasoningEffort'" :class="$style.row">
-						<N8nText size="small" :bold="true">{{
+					<div :class="$style.row">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.reasoningEffort.label')
 						}}</N8nText>
 						<N8nSelect
-							:model-value="reasoningEffort"
+							:model-value="reasoningLevel"
 							size="small"
-							:disabled="props.disabled"
+							:disabled="props.disabled || isReasoningUnavailable"
 							:class="$style.shortInput"
 							data-testid="agent-reasoning-effort-select"
-							@update:model-value="onReasoningEffortChange"
+							@update:model-value="onReasoningLevelChange"
 						>
 							<N8nOption
-								v-for="opt in REASONING_EFFORT_OPTIONS"
+								v-for="opt in AGENT_REASONING_LEVELS"
 								:key="opt"
 								:value="opt"
 								:label="opt"
@@ -631,10 +615,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 			<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
 							{{ i18n.baseText('agents.builder.advanced.promptCaching.hint') }}
 						</N8nText>
 					</div>
@@ -658,10 +642,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
+					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 						i18n.baseText('agents.builder.advanced.concurrency.label')
 					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
+					<N8nText size="small" :class="shared.dataEntrySubLabel">
 						{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
 					</N8nText>
 				</div>
@@ -679,10 +663,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
+					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 						i18n.baseText('agents.builder.advanced.maxIterations.label')
 					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
+					<N8nText size="small" :class="shared.dataEntrySubLabel">
 						{{ i18n.baseText('agents.builder.advanced.maxIterations.hint') }}
 					</N8nText>
 				</div>
@@ -698,7 +682,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				/>
 			</div>
 		</div>
-	</N8nCollapsiblePanel>
+	</div>
 </template>
 
 <style module>
@@ -707,23 +691,44 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 }
 
 .panel.panel {
-	border: 0;
-	border-radius: 0;
-	background-color: transparent;
-	scroll-margin-bottom: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
-.panel.panel > :first-child {
-	padding: 0;
-	min-height: auto;
+.header {
+	all: unset;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	width: 100%;
 }
 
-.panel.panel > :first-child h3 {
+.header h3 {
 	margin: 0;
 }
 
-.panel.panel > [data-state] > :first-child {
-	padding: var(--spacing--sm) 0 0;
+.collapsibleHeader {
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: 2px solid var(--color--primary);
+		outline-offset: 2px;
+		border-radius: var(--radius--sm);
+	}
+}
+
+.chevron {
+	flex-shrink: 0;
+	color: var(--text-color--subtler);
+	transform: rotate(0deg);
+	transition: transform var(--animation--duration) var(--animation--easing);
+}
+
+.panel[data-state='open'] .chevron {
+	transform: rotate(180deg);
 }
 
 .content {

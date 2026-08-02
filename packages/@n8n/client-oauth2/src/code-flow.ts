@@ -1,6 +1,6 @@
+import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from '@n8n/utils/client-assertion';
 import * as qs from 'querystring';
 
-import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from './client-assertion';
 import type { ClientOAuth2, ClientOAuth2Options } from './client-oauth2';
 import type { ClientOAuth2Token } from './client-oauth2-token';
 import { DEFAULT_HEADERS, DEFAULT_URL_BASE } from './constants';
@@ -81,8 +81,7 @@ export class CodeFlow {
 		const data =
 			typeof url.search === 'string' ? qs.parse(url.search.substring(1)) : url.search || {};
 
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
+		// @ts-expect-error parsed query is loosely typed
 		const error = getAuthError(data);
 		if (error) throw error;
 

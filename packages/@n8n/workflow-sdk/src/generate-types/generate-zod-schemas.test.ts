@@ -14,7 +14,7 @@ import {
 	mergeDisplayOptions,
 	extractDefaultsForDisplayOptions,
 } from './generate-zod-schemas';
-import * as schemaHelpers from '../validation/schema-helpers';
+import * as schemaHelpers from '../validation/node-parameter-schema/schema-helpers';
 
 describe('mapPropertyToZodSchema for resourceLocator', () => {
 	it('returns resourceLocatorValueSchema when no modes are specified', () => {
@@ -2457,5 +2457,27 @@ describe('mapPropertyToZodSchema for workflowSelector', () => {
 		expect(schema).toContain('__rl: z.literal(true)');
 		expect(schema).toContain("z.literal('list')");
 		expect(schema).toContain("z.literal('id')");
+	});
+});
+
+describe('mapPropertyToZodSchema for agentSelector', () => {
+	it('emits a resource-locator-shaped union (not z.unknown) like workflowSelector', () => {
+		const prop = {
+			name: 'agentId',
+			displayName: 'Agent',
+			type: 'agentSelector',
+			default: { mode: 'list', value: '' },
+			required: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+		expect(schema).toContain('value: z.union([z.string(), z.number()])');
+		expect(schema).toContain('cachedResultName: z.string().optional()');
+		expect(schema).toContain('expressionSchema');
 	});
 });

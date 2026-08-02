@@ -4,8 +4,8 @@ import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { MAX_PREVIEW_EXECUTIONS_IN_MEMORY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -265,10 +265,11 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 			});
 		} catch (error) {
 			if (requestId === latestLoadRequestId) {
+				// No toast: the host renders the load error state, and WorkflowExecutionsView
+				// already toasts its own failed fetch of the same execution.
 				loadError.value = error instanceof Error ? error : new Error(String(error));
 				documentStore.value = null;
 				execution.value = null;
-				toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
 			}
 		} finally {
 			if (requestId === latestLoadRequestId) {

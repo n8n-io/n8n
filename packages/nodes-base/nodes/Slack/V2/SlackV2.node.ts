@@ -26,6 +26,7 @@ import { fileFields, fileOperations } from './FileDescription';
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
+	formatUserLabel,
 	getMessageContent,
 	getTarget,
 	createSendAndWaitMessageBody,
@@ -34,14 +35,20 @@ import {
 	toMultiOptionsCsv,
 } from './GenericFunctions';
 import {
+	advancedInteractivityNotice,
+	approversField,
+	captureResponderField,
 	channelRLC,
 	messageFields,
 	messageOperations,
+	postDecisionBehaviorField,
 	replyToMessageField,
 	sendToSelector,
+	unauthorizedReplyField,
 	userRLC,
 } from './MessageDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
+import { slackSendAndWaitWebhook } from './SlackHitlWebhook';
 import { starFields, starOperations } from './StarDescription';
 import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
@@ -50,7 +57,6 @@ import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descr
 import {
 	getSendAndWaitProperties,
 	SEND_AND_WAIT_WAITING_TOOLTIP,
-	sendAndWaitWebhook,
 } from '../../../utils/sendAndWait/utils';
 
 export class SlackV2 implements INodeType {
@@ -59,7 +65,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
+			version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6],
 			defaults: {
 				name: 'Slack',
 			},
@@ -169,7 +175,13 @@ export class SlackV2 implements INodeType {
 						},
 					],
 					undefined,
-					undefined,
+					[
+						advancedInteractivityNotice,
+						captureResponderField,
+						approversField,
+						unauthorizedReplyField,
+						postDecisionBehaviorField,
+					],
 					{ extraOptions: [replyToMessageField] },
 				).filter((p) => p.name !== 'subject'),
 				...starOperations,
@@ -225,18 +237,27 @@ export class SlackV2 implements INodeType {
 					});
 				return { results, paginationToken: cursor };
 			},
-			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
-				const users = (await slackApiRequestAllItems.call(
-					this,
-					'members',
-					'GET',
-					'/users.list',
-				)) as Array<{ id: string; name: string }>;
+			async getUsers(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const qs = { limit: 200, cursor: paginationToken };
+				const { data: users, cursor } = await slackApiRequestAllItemsWithRateLimit<{
+					id: string;
+					name: string;
+					real_name?: string;
+				}>(this, 'members', 'GET', '/users.list', {}, qs, {
+					onFail: 'stop',
+					maxRetries: 2,
+					fallbackDelay: 30_000,
+				});
 				const results: INodeListSearchItems[] = users
 					.map((c) => ({
-						name: c.name,
+						name: formatUserLabel(c),
 						value: c.id,
 					}))
+					// the label carries both real name and handle, so either matches the filter
 					.filter(
 						(c) =>
 							!filter ||
@@ -248,7 +269,7 @@ export class SlackV2 implements INodeType {
 						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
 						return 0;
 					});
-				return { results };
+				return { results, paginationToken: cursor };
 			},
 		},
 		loadOptions: {
@@ -256,9 +277,13 @@ export class SlackV2 implements INodeType {
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await slackApiRequestAllItems.call(this, 'members', 'GET', '/users.list');
+				const { data: users } = await slackApiRequestAllItemsWithRateLimit<{
+					id: string;
+					name: string;
+					real_name?: string;
+				}>(this, 'members', 'GET', '/users.list', {}, { limit: 200 }, { onFail: 'stop' });
 				for (const user of users) {
-					const userName = user.name;
+					const userName = formatUserLabel(user);
 					const userId = user.id;
 					returnData.push({
 						name: userName,
@@ -266,11 +291,12 @@ export class SlackV2 implements INodeType {
 					});
 				}
 
+				// case-insensitive, so lowercase handle fallbacks aren't sorted below every real name
 				returnData.sort((a, b) => {
-					if (a.name < b.name) {
+					if (a.name.toLowerCase() < b.name.toLowerCase()) {
 						return -1;
 					}
-					if (a.name > b.name) {
+					if (a.name.toLowerCase() > b.name.toLowerCase()) {
 						return 1;
 					}
 					return 0;
@@ -365,7 +391,7 @@ export class SlackV2 implements INodeType {
 		},
 	};
 
-	webhook = sendAndWaitWebhook;
+	webhook = slackSendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

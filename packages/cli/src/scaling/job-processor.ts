@@ -15,31 +15,35 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
-	IExecuteResponsePromiseData,
 	IExecutionContext,
 	INodeExecutionData,
 	IRun,
+	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 	CloseFunction,
 	GenericValue,
 } from 'n8n-workflow';
 import {
-	BINARY_ENCODING,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
+	NodeOperationError,
 	Workflow,
 	UnexpectedError,
 	createRunExecutionData,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { prepareExecutionDataForDbUpdate } from '@/execution-lifecycle/shared/shared-hook-functions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import type {
@@ -53,6 +57,7 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+import { WebhookResponseRelay } from './webhook-response-relay';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -71,6 +76,7 @@ export class JobProcessor {
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly eventService: EventService,
+		private readonly webhookResponseRelay: WebhookResponseRelay,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -178,6 +184,8 @@ export class JobProcessor {
 				retryOf: execution.retryOf,
 				pushRef,
 				userId: execution.data.manualData?.userId,
+				source: execution.data.manualData?.source,
+				suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
 			},
 			executionId,
 		);
@@ -190,15 +198,27 @@ export class JobProcessor {
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
+			// An MCP Service call takes its result from the execution's stored data, so a
+			// response relayed to main has no reader. Relaying one would also reach main
+			// mid-execution, resolving the call on data the run has not finished writing.
+			if (job.data.isMcpExecution && job.data.mcpSessionId && job.data.mcpType !== 'trigger') {
+				return;
+			}
+
+			const relayed = await this.webhookResponseRelay.prepare(response, {
+				workflowId: job.data.workflowId,
+				executionId,
+			});
+
 			// Check if this is an MCP execution - broadcast response to all mains
 			if (job.data.isMcpExecution && job.data.mcpSessionId) {
 				const msg: McpResponseMessage = {
 					kind: 'mcp-response',
 					executionId,
-					mcpType: job.data.mcpType ?? 'service',
+					mcpType: 'trigger',
 					sessionId: job.data.mcpSessionId,
 					messageId: job.data.mcpMessageId ?? '',
-					response,
+					response: relayed,
 					workerId: this.instanceSettings.hostId,
 				};
 
@@ -210,7 +230,7 @@ export class JobProcessor {
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,
-				response: this.encodeWebhookResponse(response),
+				response: relayed,
 				workerId: this.instanceSettings.hostId,
 			};
 
@@ -350,18 +370,30 @@ export class JobProcessor {
 
 			let toolResult: unknown;
 			try {
-				toolResult = await this.invokeTool(
+				// The execution's isolate window closed when the run finished, but the
+				// tool's parameters may still contain expressions (e.g. $fromAI), so
+				// the tool call needs its own isolate window.
+				toolResult = await withExpressionIsolate(
 					workflow,
-					sourceNodeName,
-					toolArgs,
-					additionalData,
-					// The execution context (e.g. the OAuth identity for private credentials)
-					// is established on the main and loaded with the execution here; pass it
-					// through so the tool node can resolve dynamic credentials on the worker.
-					execution.data?.executionData?.runtimeData,
+					async () =>
+						await this.invokeTool(
+							workflow,
+							sourceNodeName,
+							toolArgs,
+							additionalData,
+							run.data,
+							// The execution context (e.g. the OAuth identity for private credentials)
+							// is established on the main and loaded with the execution here; pass it
+							// through so the tool node can resolve dynamic credentials on the worker.
+							execution.data?.executionData?.runtimeData,
+						),
 				);
+
+				// A tool result is not a response, so it has no offload path: this limit
+				// is all that keeps it from travelling through the queue unbounded.
+				this.webhookResponseRelay.assertFitsInline(toolResult);
 			} catch (error) {
-				this.logger.error('Tool node execution failed for MCP Trigger', {
+				this.logger.error('Tool call failed for MCP Trigger', {
 					executionId,
 					toolName,
 					sourceNodeName,
@@ -373,6 +405,36 @@ export class JobProcessor {
 							? { message: error.message, name: error.name }
 							: { message: String(error) },
 				};
+			}
+
+			// Persist the tool call's run data, since the save hook fired before it ran.
+			try {
+				const toolRunData = run.data.resultData?.runData;
+				await this.executionPersistence.updateExistingExecution(
+					executionId,
+					{
+						...prepareExecutionDataForDbUpdate({
+							runData: run,
+							workflowData: execution.workflowData,
+							workflowStatusFinal: run.status,
+							retryOf: execution.retryOf ?? undefined,
+						}),
+						// The save hook computed this marker before the tool ran, so recompute it now
+						// that the tool task may carry dynamic-credential flags.
+						usedPrivateCredentials:
+							runDataUsedDynamicCredentials(toolRunData) ||
+							runDataAttemptedDynamicCredentials(toolRunData),
+					},
+					// A cancel racing the tool call must keep its status; skip the tool-run persist
+					// entirely rather than write over `canceled` (matches the completion hook).
+					{ requireNotCanceled: true },
+				);
+			} catch (error) {
+				this.logger.error('Failed to persist tool call run data for MCP Trigger', {
+					executionId,
+					sourceNodeName,
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 
 			const mcpMsg: McpResponseMessage = {
@@ -447,18 +509,6 @@ export class JobProcessor {
 		return Object.values(this.runningJobs).map(({ run, ...summary }) => summary);
 	}
 
-	private encodeWebhookResponse(
-		response: IExecuteResponsePromiseData,
-	): IExecuteResponsePromiseData {
-		if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
-			response.body = {
-				'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
-			};
-		}
-
-		return response;
-	}
-
 	/**
 	 * Invoke a tool directly for MCP Trigger in queue mode.
 	 * For nodes with supplyData (e.g. native langchain tool nodes), creates a
@@ -475,6 +525,7 @@ export class JobProcessor {
 		>
 			? T
 			: never,
+		runExecutionData: IRunExecutionData,
 		executionContext?: IExecutionContext,
 	): Promise<unknown> {
 		const toolNode = workflow.getNode(sourceNodeName);
@@ -498,12 +549,15 @@ export class JobProcessor {
 			],
 		];
 
-		// Create minimal run execution data, carrying the established execution
-		// context so the tool node's `getExecutionContext()` exposes it to dynamic
-		// credential resolution (otherwise resolution fails with
-		// MissingExecutionContextError for private credentials in queue mode).
-		const runExecutionData = createRunExecutionData({});
-		if (executionContext && runExecutionData.executionData) {
+		// `executionData` must exist for output recording; init it if the run lacks it.
+		runExecutionData.executionData ??= {
+			contextData: {},
+			nodeExecutionStack: [],
+			metadata: {},
+			waitingExecution: {},
+			waitingExecutionSource: {},
+		};
+		if (executionContext) {
 			runExecutionData.executionData.runtimeData = executionContext;
 		}
 
@@ -518,6 +572,11 @@ export class JobProcessor {
 
 		const closeFunctions: CloseFunction[] = [];
 
+		// Parent = the node the tool feeds (the MCP trigger), so the recorded run
+		// data's `source` points back at it, as in direct mode.
+		const [parentNodeName] = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
+		const parentNode = parentNodeName ? (workflow.getNode(parentNodeName) ?? undefined) : undefined;
+
 		// Create SupplyDataContext for the tool node
 		const context = new SupplyDataContext(
 			workflow,
@@ -531,6 +590,8 @@ export class JobProcessor {
 			NodeConnectionTypes.AiTool,
 			executeData,
 			closeFunctions,
+			undefined,
+			parentNode,
 		);
 
 		try {
@@ -550,7 +611,21 @@ export class JobProcessor {
 					[{ json: validatedToolArgs as INodeExecutionData['json'] }],
 				]);
 
-				const result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
+				let result: Awaited<ReturnType<NonNullable<typeof nodeType.execute>>>;
+				try {
+					result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
+				} catch (error) {
+					// Record the failure so the tool node shows as errored, not stuck
+					// "running"; rethrow so the caller returns an error to the client.
+					context.addOutputData(
+						NodeConnectionTypes.AiTool,
+						0,
+						error instanceof NodeOperationError
+							? error
+							: new NodeOperationError(toolNode, error as Error),
+					);
+					throw error;
+				}
 
 				let response: IDataObject | IDataObject[] | GenericValue | GenericValue[] = [];
 				if (Array.isArray(result)) {

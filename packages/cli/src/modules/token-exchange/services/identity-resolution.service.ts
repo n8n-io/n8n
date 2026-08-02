@@ -3,16 +3,18 @@ import {
 	AuthIdentity,
 	AuthIdentityRepository,
 	GLOBAL_MEMBER_ROLE,
-	GLOBAL_ROLES,
 	UserRepository,
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { GLOBAL_OWNER_ROLE_SLUG, isBuiltInRole } from '@n8n/permissions';
 import { createHash } from 'node:crypto';
 
 import { EventService } from '@/events/event.service';
+import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 
+import { TokenExchangeConfig } from '../token-exchange.config';
 import { TokenExchangeAuthError } from '../token-exchange.errors';
 import type { ExternalTokenClaims } from '../token-exchange.schemas';
 import { TokenExchangeFailureReason } from '../token-exchange.types';
@@ -27,12 +29,6 @@ const INVALID_PASSWORD_PLACEHOLDER = '!token-exchange-no-password';
 
 /** Maximum length for first/last name columns in the database. */
 const MAX_NAME_LENGTH = 32;
-
-type GlobalRoleKey = keyof typeof GLOBAL_ROLES;
-
-function isGlobalRole(role: string): role is GlobalRoleKey {
-	return role in GLOBAL_ROLES;
-}
 
 function trimName(value: string | undefined, fallback = ''): string {
 	return (value ?? fallback).slice(0, MAX_NAME_LENGTH);
@@ -53,8 +49,37 @@ export class IdentityResolutionService {
 		private readonly eventService: EventService,
 		private readonly userService: UserService,
 		private readonly trustedKeyService: TrustedKeyService,
+		private readonly roleService: RoleService,
+		private readonly config: TokenExchangeConfig,
 	) {
 		this.logger = logger.scoped('token-exchange');
+	}
+
+	private assertKeyMayActAsUser(user: User, allowedRoles?: string[]) {
+		if (this.config.excludeOwner && user.role?.slug === GLOBAL_OWNER_ROLE_SLUG) {
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				'User role is not allowed for this key',
+			);
+		}
+		if (allowedRoles?.length && !allowedRoles.includes(user.role?.slug ?? '')) {
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				'User role is not allowed for this key',
+			);
+		}
+	}
+
+	private assertEmailVerified(
+		claims: ExternalTokenClaims,
+		tokenContext: { requireVerifiedEmail: boolean },
+	) {
+		if (tokenContext?.requireVerifiedEmail && !claims.email_verified) {
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.EmailNotVerified,
+				'Email is not verified',
+			);
+		}
 	}
 
 	/**
@@ -71,8 +96,8 @@ export class IdentityResolutionService {
 	 */
 	async resolve(
 		claims: ExternalTokenClaims,
-		allowedRoles?: string[],
-		tokenContext?: { kid: string; issuer: string },
+		allowedRoles: string[] | undefined,
+		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
 	): Promise<User> {
 		const email = claims.email?.toLowerCase();
 
@@ -101,8 +126,8 @@ export class IdentityResolutionService {
 			this.eventService.emit('token-exchange-identity-rebound', {
 				userId: identity.user.id,
 				sub: claims.sub,
-				kid: tokenContext?.kid ?? '',
-				issuer: tokenContext?.issuer ?? claims.iss,
+				kid: tokenContext.kid,
+				issuer: tokenContext.issuer,
 			});
 			return await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext);
 		}
@@ -135,10 +160,12 @@ export class IdentityResolutionService {
 		claims: ExternalTokenClaims,
 		identity: AuthIdentity,
 		allowedRoles: string[] | undefined,
-		tokenContext: { kid: string; issuer: string } | undefined,
+		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean } | undefined,
 	): Promise<User> {
+		this.assertKeyMayActAsUser(identity.user, allowedRoles);
+
 		this.logger.debug('Resolved user by auth identity', { sub: claims.sub });
-		const resolvedRole = this.resolveRoleForExistingUser(
+		const resolvedRole = await this.resolveRoleForExistingUser(
 			claims.role,
 			allowedRoles,
 			identity.user.role?.slug,
@@ -152,13 +179,15 @@ export class IdentityResolutionService {
 		email: string,
 		existingUser: User,
 		allowedRoles: string[] | undefined,
-		tokenContext: { kid: string; issuer: string } | undefined,
+		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
 	): Promise<User> {
 		this.logger.debug('Linking external identity to existing user by email', {
 			sub: claims.sub,
 			email,
 		});
-		const resolvedRole = this.resolveRoleForExistingUser(
+		this.assertKeyMayActAsUser(existingUser, allowedRoles);
+		this.assertEmailVerified(claims, tokenContext);
+		const resolvedRole = await this.resolveRoleForExistingUser(
 			claims.role,
 			allowedRoles,
 			existingUser.role?.slug,
@@ -182,11 +211,12 @@ export class IdentityResolutionService {
 		claims: ExternalTokenClaims,
 		email: string,
 		allowedRoles: string[] | undefined,
-		tokenContext: { kid: string; issuer: string } | undefined,
+		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
 	): Promise<User> {
+		this.assertEmailVerified(claims, tokenContext);
 		this.logger.debug('JIT provisioning new user', { sub: claims.sub, email });
 
-		const jitRole = this.resolveRoleForNewUser(claims.role, allowedRoles);
+		const jitRole = await this.resolveRoleForNewUser(claims.role, allowedRoles);
 		const targetRole = jitRole ? { slug: jitRole } : GLOBAL_MEMBER_ROLE;
 
 		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
@@ -234,11 +264,11 @@ export class IdentityResolutionService {
 	 * by the key's allowedRoles — OAuth flows must be strict to surface
 	 * misconfiguration early.
 	 */
-	private resolveRoleForExistingUser(
+	private async resolveRoleForExistingUser(
 		roleClaim: ExternalTokenClaims['role'],
 		allowedRoles: string[] | undefined,
 		currentRole: string | undefined,
-	): GlobalRoleKey | undefined {
+	): Promise<string | undefined> {
 		if (roleClaim === undefined) return undefined;
 
 		// Never modify the role of an existing owner via token exchange
@@ -255,9 +285,20 @@ export class IdentityResolutionService {
 			return undefined;
 		}
 
-		if (!isGlobalRole(role)) {
+		if (!(await this.roleService.isGlobalRole(role))) {
 			this.logger.warn('Unknown role claim ignored', { role });
 			return undefined;
+		}
+
+		// Gate custom roles on the custom-roles license. Unlike unknown roles, an
+		// unlicensed custom role is a valid-but-unentitled claim: throwing (rather
+		// than ignoring) surfaces the misconfiguration instead of silently keeping
+		// the stale role.
+		if (!isBuiltInRole(role) && !this.roleService.isRoleLicensed(role)) {
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				`Role '${role}' is not available in the current license`,
+			);
 		}
 
 		if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
@@ -277,10 +318,10 @@ export class IdentityResolutionService {
 	 * `global:member`. Unlike existing users, invalid or disallowed roles
 	 * throw because we have no fallback role to preserve.
 	 */
-	private resolveRoleForNewUser(
+	private async resolveRoleForNewUser(
 		roleClaim: ExternalTokenClaims['role'],
 		allowedRoles: string[] | undefined,
-	): GlobalRoleKey | undefined {
+	): Promise<string | undefined> {
 		if (roleClaim === undefined) return undefined;
 
 		const role = roleClaim;
@@ -292,10 +333,19 @@ export class IdentityResolutionService {
 			);
 		}
 
-		if (!isGlobalRole(role)) {
+		if (!(await this.roleService.isGlobalRole(role))) {
 			throw new TokenExchangeAuthError(
 				TokenExchangeFailureReason.RoleNotAllowed,
 				`Unrecognized role '${role}' cannot be assigned to new user`,
+			);
+		}
+
+		// JIT provisioning bypasses changeUserRole, so gate custom roles on the
+		// custom-roles license here to prevent an entitlement bypass.
+		if (!isBuiltInRole(role) && !this.roleService.isRoleLicensed(role)) {
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				`Role '${role}' is not available in the current license`,
 			);
 		}
 
@@ -317,8 +367,8 @@ export class IdentityResolutionService {
 	private async syncProfile(
 		user: User,
 		claims: ExternalTokenClaims,
-		resolvedRole?: GlobalRoleKey,
-		tokenContext?: { kid: string; issuer: string },
+		resolvedRole?: string,
+		tokenContext?: { kid: string; issuer: string; requireVerifiedEmail: boolean },
 	): Promise<User> {
 		let needsReload = false;
 

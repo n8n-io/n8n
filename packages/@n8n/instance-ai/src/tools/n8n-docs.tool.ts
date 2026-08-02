@@ -1,4 +1,4 @@
-import { Tool } from '@n8n/agents';
+import { isAbortError, Tool } from '@n8n/agents';
 
 import type { InstanceAiContext } from '../types';
 import {
@@ -80,8 +80,12 @@ function emptyLookupResult(
 	};
 }
 
-async function handleSearch(context: Pick<InstanceAiContext, 'logger'>, input: N8nDocsSearchInput) {
-	const registry = await getN8nDocsRegistry(context);
+async function handleSearch(
+	context: Pick<InstanceAiContext, 'logger'>,
+	input: N8nDocsSearchInput,
+	abortSignal?: AbortSignal,
+) {
+	const registry = await getN8nDocsRegistry(context, abortSignal);
 	if (!registry.registry) return emptyLookupResult(input, registry);
 
 	const maxResults = clamp(input.maxResults, DEFAULT_MAX_RESULTS, MAX_RESULTS);
@@ -97,8 +101,12 @@ async function handleSearch(context: Pick<InstanceAiContext, 'logger'>, input: N
 	};
 }
 
-async function handleLookup(context: Pick<InstanceAiContext, 'logger'>, input: N8nDocsLookupInput) {
-	const registry = await getN8nDocsRegistry(context);
+async function handleLookup(
+	context: Pick<InstanceAiContext, 'logger'>,
+	input: N8nDocsLookupInput,
+	abortSignal?: AbortSignal,
+) {
+	const registry = await getN8nDocsRegistry(context, abortSignal);
 	if (!registry.registry) return emptyLookupResult(input, registry);
 
 	const maxPages = clamp(input.maxPages, DEFAULT_MAX_PAGES, MAX_PAGES);
@@ -113,7 +121,7 @@ async function handleLookup(context: Pick<InstanceAiContext, 'logger'>, input: N
 	const readErrors: string[] = [];
 
 	const readResults = await Promise.allSettled(
-		pagesToRead.map(async (match) => await readN8nDocsEntry(match, maxContentLength)),
+		pagesToRead.map(async (match) => await readN8nDocsEntry(match, maxContentLength, abortSignal)),
 	);
 
 	for (const [index, result] of readResults.entries()) {
@@ -121,6 +129,10 @@ async function handleLookup(context: Pick<InstanceAiContext, 'logger'>, input: N
 		if (!match) continue;
 		if (result.status === 'fulfilled') {
 			documents.push(result.value);
+		} else if (isAbortError(result.reason) || abortSignal?.aborted) {
+			throw result.reason instanceof Error
+				? result.reason
+				: new Error('This operation was aborted');
 		} else {
 			readErrors.push(`${match.title}: ${getFetchErrorMessage(result.reason)}`);
 		}
@@ -142,8 +154,12 @@ async function handleLookup(context: Pick<InstanceAiContext, 'logger'>, input: N
 	};
 }
 
-async function handleRead(context: Pick<InstanceAiContext, 'logger'>, input: N8nDocsReadInput) {
-	const registry = await getN8nDocsRegistry(context);
+async function handleRead(
+	context: Pick<InstanceAiContext, 'logger'>,
+	input: N8nDocsReadInput,
+	abortSignal?: AbortSignal,
+) {
+	const registry = await getN8nDocsRegistry(context, abortSignal);
 	if (!registry.registry) {
 		return {
 			url: input.url,
@@ -179,7 +195,7 @@ async function handleRead(context: Pick<InstanceAiContext, 'logger'>, input: N8n
 		url: toPublicDocsUrl(entry.url),
 		registryUrl: N8N_DOCS_REGISTRY_URL,
 		registryFetchedAt: docsRegistry.fetchedAt,
-		documents: [await readN8nDocsEntry(entry, maxContentLength)],
+		documents: [await readN8nDocsEntry(entry, maxContentLength, abortSignal)],
 		...(registry.hint ? { hint: registry.hint } : {}),
 	};
 }
@@ -187,18 +203,19 @@ async function handleRead(context: Pick<InstanceAiContext, 'logger'>, input: N8n
 export function createN8nDocsTool(context: Pick<InstanceAiContext, 'logger'>) {
 	return new Tool(N8N_DOCS_TOOL_ID)
 		.description(
-			`Search and read current n8n documentation from docs.n8n.io. Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
+			`Search and read current n8n documentation from docs.n8n.io. Load via \`load_tool\` before calling (search "n8n docs" if not visible). Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
 		)
 		.input(n8nDocsToolInputSchema)
-		.handler(async (input) => {
+		.handler(async (input, ctx) => {
 			const parsedInput = n8nDocsRuntimeInputSchema.parse(input);
+			const abortSignal = ctx.abortSignal;
 			switch (parsedInput.action) {
 				case 'lookup':
-					return await handleLookup(context, parsedInput);
+					return await handleLookup(context, parsedInput, abortSignal);
 				case 'search':
-					return await handleSearch(context, parsedInput);
+					return await handleSearch(context, parsedInput, abortSignal);
 				case 'read':
-					return await handleRead(context, parsedInput);
+					return await handleRead(context, parsedInput, abortSignal);
 			}
 		})
 		.build();

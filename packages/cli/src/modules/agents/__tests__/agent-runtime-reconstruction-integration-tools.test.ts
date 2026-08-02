@@ -13,22 +13,27 @@ import type {
 	User,
 	CredentialsEntity,
 	ProjectRelationRepository,
-	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { EventService } from '@/events/event.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -37,6 +42,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
+import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
@@ -62,6 +68,7 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
+import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -113,8 +120,6 @@ function makeRuntimeReconstructionService(
 		mock<AgentFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
-		mock<UserRepository>(),
-		mock<WorkflowFinderService>(),
 		mock<UrlService>(),
 		mock<N8NCheckpointStorage>(),
 		mock<AgentSecureRuntime>(),
@@ -127,6 +132,9 @@ function makeRuntimeReconstructionService(
 		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
+		mock<CredentialsFinderService>(),
+		mock<WorkflowFinderService>(),
+		mock<AgentChatAttachmentService>(),
 	);
 }
 
@@ -243,6 +251,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentSkillsService,
 			runtimeCacheService,
 			credentialsService,
+			mock<WorkflowRepository>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
@@ -251,14 +260,13 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
-			agentRepository,
 			n8nCheckpointStorage,
 			agentExecutionService,
 			telemetry,
 			runtimeCacheService,
-			credentialsService,
-			agentRuntimeReconstructionService,
 			mock<IntegrationMessageContextService>(),
+			mock<AgentRunTracingService>(),
+			mock<ExternalHooks>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -266,23 +274,41 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 			chatIntegrationRegistry,
 		);
+		agentValidationService = new AgentValidationService(
+			agentRepository,
+			agentTaskRepository,
+			agentTaskSnapshotRepository,
+			mock<NodeTypes>(),
+			mock<WorkflowRepository>(),
+			chatIntegrationRegistry,
+			mock<AiGatewayService>(),
+		);
 		agentPublishService = new AgentPublishService(
 			logger,
 			agentRepository,
 			agentHistoryRepository,
 			agentTaskSnapshotRepository,
+			agentTaskRepository,
 			agentCustomToolsService,
 			runtimeCacheService,
+			mock<SubAgentCleanupService>(),
+			agentValidationService,
+			credentialsService,
+			telemetry,
 		);
-		agentTestChatService = new AgentTestChatService(n8nMemory);
-		agentValidationService = new AgentValidationService(agentRepository, mock<AiService>());
+		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,
 			projectRelationRepository,
+			mock<AgentChatAttachmentService>(),
 			agentKnowledgeService,
 			runtimeCacheService,
 			agentTestChatService,
+			agentTaskRepository,
+			mock<SubAgentCleanupService>(),
+			mock<EventService>(),
+			agentExecutionService,
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(
@@ -330,6 +356,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				on: vi.fn(),
 				hasCheckpointStorage: vi.fn().mockReturnValue(true),
 				checkpoint: vi.fn(),
+				fileStore: vi.fn(),
 			};
 
 			const reconstructionService = makeRuntimeReconstructionService();
@@ -340,7 +367,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 						agentId: string;
 						projectId: string;
 						credentialProvider: unknown;
-						userId: string;
 						runtimeProfile: 'top-level';
 						config: AgentJsonConfig;
 						subAgentDelegation: {
@@ -356,7 +382,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentId,
 				projectId,
 				credentialProvider: mock(),
-				userId: 'user-1',
 				runtimeProfile: 'top-level',
 				config: {
 					name: 'Test Agent',

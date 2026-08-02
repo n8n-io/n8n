@@ -104,6 +104,7 @@ describe('DeleteUserModal', () => {
 			state: mockUsersList,
 			isLoading: false,
 			execute: vi.fn(),
+			executeImmediate: vi.fn(),
 			isReady: true,
 			error: null,
 			then: vi.fn(),

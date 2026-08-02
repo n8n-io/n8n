@@ -110,7 +110,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				error,
 			});
 			throw new CredentialStorageError(
-				`Failed to store dynamic credentials data for "${credentialStoreMetadata.name}"`,
+				`Failed to store end-user credential data for "${credentialStoreMetadata.name}"`,
 				{ cause: error },
 			);
 		}

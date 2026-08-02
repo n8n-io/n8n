@@ -1,11 +1,19 @@
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	applyBranchReadOnlyOverrides,
+	buildFetchUrlGrantKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	errorPayloadSchema,
+	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
 	instanceAiEventSchema,
 	isDisplayableConfirmationRequest,
+	InstanceAiEnsureThreadRequest,
+	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
+	isKnownInstanceAiErrorCode,
+	parseDomainAccessGrants,
+	WEB_SEARCH_GRANT_KEY,
 	workflowSetupNodeSchema,
 	type InstanceAiConfirmationInputType,
 	type InstanceAiConfirmationRequestPayload,
@@ -44,6 +52,38 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+});
+
+describe('errorPayloadSchema', () => {
+	it('accepts a payload without a code', () => {
+		expect(errorPayloadSchema.parse({ content: 'boom' })).toEqual({ content: 'boom' });
+	});
+
+	it('accepts the quota_exhausted code', () => {
+		const payload = { content: 'out of credits', code: 'quota_exhausted' as const };
+		expect(errorPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('accepts an unknown code and preserves it (forward-compatible)', () => {
+		// A newer service may emit an error code an older client doesn't recognize.
+		// The wire schema must not reject it, otherwise the whole error event is
+		// dropped by instanceAiEventSchema.safeParse before the reducer's
+		// unknown-code fallback can render a generic error.
+		const parsed = errorPayloadSchema.safeParse({ content: 'boom', code: 'some_future_code' });
+		expect(parsed.success).toBe(true);
+		expect(parsed.success && parsed.data.code).toBe('some_future_code');
+	});
+});
+
+describe('isKnownInstanceAiErrorCode', () => {
+	it('is true for a recognized code', () => {
+		expect(isKnownInstanceAiErrorCode('quota_exhausted')).toBe(true);
+	});
+
+	it('is false for an unknown code or undefined', () => {
+		expect(isKnownInstanceAiErrorCode('some_future_code')).toBe(false);
+		expect(isKnownInstanceAiErrorCode(undefined)).toBe(false);
 	});
 });
 
@@ -263,6 +303,14 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+				}),
+			),
+		).toBe(true);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {
@@ -327,5 +375,91 @@ describe('isDisplayableConfirmationRequest', () => {
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
 		expect(Object.keys(handled)).toHaveLength(6);
+	});
+});
+
+describe('instance-ai launch schema', () => {
+	it('requires a known source', () => {
+		expect(
+			() =>
+				new InstanceAiEnsureThreadRequest({
+					projectId: 'project-1',
+				} as unknown as ConstructorParameters<typeof InstanceAiEnsureThreadRequest>[0]),
+		).toThrow();
+		expect(
+			() =>
+				new InstanceAiEnsureThreadRequest({
+					projectId: 'project-1',
+					source: 'totally-made-up',
+				} as unknown as ConstructorParameters<typeof InstanceAiEnsureThreadRequest>[0]),
+		).toThrow();
+	});
+
+	it.each(INSTANCE_AI_THREAD_SOURCES)('accepts taxonomy source %s', (source) => {
+		const parsed = new InstanceAiEnsureThreadRequest({
+			projectId: 'project-1',
+			source,
+		});
+		expect(parsed.source).toBe(source);
+	});
+
+	it('parses an ensure-thread request with launch fields', () => {
+		const parsed = new InstanceAiEnsureThreadRequest({
+			projectId: 'project-1',
+			origin: 'external',
+			source: 'website-template',
+			sourceContext: { templateId: '42' },
+		});
+		expect(parsed.origin).toBe('external');
+		expect(parsed.source).toBe('website-template');
+		expect(parsed.sourceContext).toEqual({ templateId: '42' });
+	});
+
+	it('rejects an oversized sourceContext', () => {
+		const big = { blob: 'x'.repeat(3000) };
+		expect(
+			() =>
+				new InstanceAiEnsureThreadRequest({
+					projectId: 'project-1',
+					source: 'assistant_page',
+					sourceContext: big,
+				}),
+		).toThrow();
+	});
+});
+
+describe('domain-access grant keys', () => {
+	it('builds and parses per-host grant keys round-trip', () => {
+		const key = buildFetchUrlGrantKey('example.com');
+		expect(key).toBe('fetch-url:example.com');
+
+		const parsed = parseDomainAccessGrants(new Set([key]));
+		expect(parsed.approvedDomains.has('example.com')).toBe(true);
+		expect(parsed.allDomainsApproved).toBe(false);
+		expect(parsed.webSearchApproved).toBe(false);
+	});
+
+	it('parses the blanket allow-all and web-search keys', () => {
+		const parsed = parseDomainAccessGrants(
+			new Set([FETCH_URL_ALLOW_ALL_GRANT_KEY, WEB_SEARCH_GRANT_KEY]),
+		);
+		expect(parsed.allDomainsApproved).toBe(true);
+		expect(parsed.webSearchApproved).toBe(true);
+		expect(parsed.approvedDomains.size).toBe(0);
+	});
+
+	it('ignores unrelated grant keys (e.g. executions:run)', () => {
+		const parsed = parseDomainAccessGrants(
+			new Set([buildFetchUrlGrantKey('a.com'), 'executions:run:wf-1']),
+		);
+		expect(parsed.approvedDomains).toEqual(new Set(['a.com']));
+		expect(parsed.allDomainsApproved).toBe(false);
+		expect(parsed.webSearchApproved).toBe(false);
+	});
+
+	it('does not treat the allow-all key as a host', () => {
+		const parsed = parseDomainAccessGrants(new Set([FETCH_URL_ALLOW_ALL_GRANT_KEY]));
+		expect(parsed.approvedDomains.size).toBe(0);
+		expect(parsed.allDomainsApproved).toBe(true);
 	});
 });

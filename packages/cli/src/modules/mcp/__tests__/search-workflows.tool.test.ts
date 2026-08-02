@@ -13,6 +13,7 @@ import { v4 as uuid } from 'uuid';
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import z from 'zod';
 import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
 import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
 
@@ -254,6 +255,44 @@ describe('search-workflows MCP tool', () => {
 				canExecute: false,
 				availableInMCP: true,
 			});
+		});
+	});
+
+	describe('output schema', () => {
+		// Regression: the advertised output schema for each workflow item must allow
+		// extra properties. The data layer (workflowService.getMany) can surface fields
+		// beyond the declared set; without passthrough the client rejects the whole
+		// response with `-32602 ... must NOT have additional properties`.
+		// All other MCP schemas (nodeSchema, tagSchema, workflowDetails) are passthrough.
+		test('tolerates unknown properties on workflow items (passthrough)', () => {
+			const workflowService = mockInstance(WorkflowService, { getMany: vi.fn() });
+			const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+			const tool = createSearchWorkflowsTool(
+				user,
+				workflowService as unknown as WorkflowService,
+				telemetry,
+			);
+
+			expect(tool.config.outputSchema).toBeDefined();
+			const schema = z.object(tool.config.outputSchema as z.ZodRawShape);
+			const item = {
+				id: 'a',
+				name: 'Alpha',
+				description: null,
+				active: true,
+				createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
+				updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
+				triggerCount: 0,
+				scopes: [],
+				canExecute: false,
+				availableInMCP: true,
+				tags: [],
+				resource: 'workflow', // unknown field surfaced by the data layer
+			};
+
+			const parsed = schema.parse({ data: [item], count: 1 });
+
+			expect(parsed.data[0]).toHaveProperty('resource', 'workflow');
 		});
 	});
 });

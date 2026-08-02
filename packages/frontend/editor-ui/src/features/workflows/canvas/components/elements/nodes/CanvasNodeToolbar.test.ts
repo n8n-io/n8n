@@ -106,6 +106,27 @@ describe('CanvasNodeToolbar', () => {
 		expect(queryByTestId('execute-node-button')).not.toBeInTheDocument();
 	});
 
+	it('should render execute and disable node buttons for the agent render type', () => {
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						data: {
+							render: {
+								type: CanvasNodeRenderType.Agent,
+								options: { agentId: { __rl: true, mode: 'list', value: 'agent-1' } },
+							},
+						},
+					}),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(getByTestId('execute-node-button')).toBeInTheDocument();
+		expect(getByTestId('disable-node-button')).toBeInTheDocument();
+	});
+
 	it('should emit "run" when execute node button is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			global: {
@@ -279,8 +300,9 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	describe('Add to AI button', () => {
-		// The focused-nodes experiment and the instance-wide AI flags gate the
-		// button; enable both so only the per-editor host override varies.
+		// The focused-nodes experiment (cloud-only, gated in the store) and the
+		// instance-wide AI flags gate the button; enable both so only the
+		// per-editor host override varies.
 		const setupAiStores = () => {
 			const testingPinia = createTestingPinia();
 			setActivePinia(testingPinia);
@@ -320,6 +342,95 @@ describe('CanvasNodeToolbar', () => {
 			});
 
 			expect(queryByTestId('add-to-ai-button')).not.toBeInTheDocument();
+		});
+
+		// Regression for ADO-5013: the focused-nodes experiment is cloud-only —
+		// the store-level gate (see focusedNodes.store.ts) turns the feature off
+		// on self-hosted instances even when AI Assistant is licensed.
+		it('should hide when the focused-nodes feature is off (e.g. self-hosted)', () => {
+			const testingPinia = setupAiStores();
+			mockedStore(useFocusedNodesStore).isFeatureEnabled = false;
+
+			const { queryByTestId } = renderComponent({
+				pinia: testingPinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			expect(queryByTestId('add-to-ai-button')).not.toBeInTheDocument();
+		});
+	});
+
+	// ADO-5556: All icon-only node hover actions (except "Add to n8n AI") lack an
+	// explanatory tooltip. They only carry a native `title`/`aria-label`, so no
+	// styled tooltip appears on hover to label the control.
+	describe('hover action tooltips (ADO-5556)', () => {
+		it('should show a tooltip labelling the execute step action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('execute-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute step'));
+		});
+
+		it('should show a tooltip labelling the deactivate action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('disable-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Deactivate'));
+		});
+
+		it('should show a tooltip labelling the delete action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('delete-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Delete'));
+		});
+
+		it('should show a tooltip labelling the more actions button on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('overflow-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('More actions'));
 		});
 	});
 

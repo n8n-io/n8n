@@ -514,6 +514,42 @@ describe('SourceControlService', () => {
 	});
 
 	describe('pullWorkfolder', () => {
+		it('adds workflow review details to the pull result when auto-publish is blocked', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const workflowStatus = mock<SourceControlledFile>({
+				id: 'workflow-1',
+				type: 'workflow',
+				status: 'modified',
+				location: 'remote',
+				conflict: false,
+			});
+			mockStatusService.getStatus.mockResolvedValueOnce([workflowStatus]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([
+				{
+					id: 'workflow-1',
+					name: 'workflow-1.json',
+					publishingError: 'Workflow review is open',
+					publishingErrorDetails: {
+						reason: 'review_pending',
+						workflowReviewRequestId: 'review-1',
+					},
+				},
+			]);
+
+			const result = await sourceControlService.pullWorkfolder(user, {
+				force: true,
+				autoPublish: 'all',
+			});
+
+			expect(result.statusResult[0]).toMatchObject({
+				publishingError: 'Workflow review is open',
+				publishingErrorDetails: {
+					reason: 'review_pending',
+					workflowReviewRequestId: 'review-1',
+				},
+			});
+		});
+
 		it('does not filter locally created credentials', async () => {
 			// ARRANGE
 			const user = mock<User>();
@@ -560,6 +596,85 @@ describe('SourceControlService', () => {
 
 			// ASSERT
 			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
+		});
+
+		it('imports data tables before deleting them', async () => {
+			// ARRANGE — a reconciled collision emits a single "modified" entry (no
+			// "deleted" for the old id), so ordering is defense in depth: should a
+			// "deleted" entry ever coincide with an adoption again, import must run
+			// first so the delete no-ops instead of dropping local rows.
+			const user = mock<User>();
+			const statuses = [
+				mock<SourceControlledFile>({
+					status: 'modified',
+					location: 'remote',
+					type: 'datatable',
+					conflict: false,
+					id: 'dtNew',
+				}),
+				mock<SourceControlledFile>({
+					status: 'deleted',
+					location: 'remote',
+					type: 'datatable',
+					conflict: false,
+					id: 'dtOld',
+				}),
+			];
+			mockStatusService.getStatus.mockResolvedValueOnce(statuses);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			const callOrder: string[] = [];
+			sourceControlImportService.importDataTablesFromWorkFolder.mockImplementation(async () => {
+				callOrder.push('import');
+				return { imported: [], reconciliationFailures: [] };
+			});
+			sourceControlImportService.deleteDataTablesNotInWorkFolder.mockImplementation(async () => {
+				callOrder.push('delete');
+			});
+
+			// ACT
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			// ASSERT
+			expect(sourceControlImportService.importDataTablesFromWorkFolder).toHaveBeenCalledWith(
+				[statuses[0]],
+				user.id,
+			);
+			expect(sourceControlImportService.deleteDataTablesNotInWorkFolder).toHaveBeenCalledWith([
+				statuses[1],
+			]);
+			expect(callOrder).toEqual(['import', 'delete']);
+		});
+
+		it('surfaces data table conflicts discovered at import time on the pull result', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			const statuses = [
+				mock<SourceControlledFile>({
+					status: 'modified',
+					location: 'remote',
+					type: 'datatable',
+					conflict: false,
+					id: 'dtNew',
+				}),
+			];
+			mockStatusService.getStatus.mockResolvedValueOnce(statuses);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+			sourceControlImportService.importDataTablesFromWorkFolder.mockResolvedValue({
+				imported: [],
+				reconciliationFailures: [{ id: 'dtNew', name: 'Test Table' }],
+			});
+
+			// ACT
+			const result = await sourceControlService.pullWorkfolder(user, {
+				force: true,
+				autoPublish: 'none',
+			});
+
+			// ASSERT
+			expect(result.statusCode).toBe(200);
+			const dataTableEntry = result.statusResult.find((f) => f.id === 'dtNew');
+			expect(dataTableEntry?.conflict).toBe(true);
 		});
 	});
 

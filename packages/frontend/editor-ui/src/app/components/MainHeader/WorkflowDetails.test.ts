@@ -15,7 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -57,13 +57,14 @@ vi.mock('vue-router', async (importOriginal) => ({
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
+		addEventListener: vi.fn().mockReturnValue(vi.fn()),
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
-	const showToast = vi.fn();
+	const showToast = vi.fn(() => ({ close: vi.fn() }));
 	return {
 		useToast: () => ({
 			showError,
@@ -599,6 +600,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
 			expect(toast.showToast).toHaveBeenCalledTimes(1);
+			const archiveToast = vi.mocked(toast.showToast).mock.results[0].value;
 			const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
 			expect(toastConfig.message).toContain('archive-toast-delete-permanently-link');
 			expect(toastConfig.onClick).toBeDefined();
@@ -610,6 +612,8 @@ describe('WorkflowDetails', () => {
 				expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
 			});
 			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
+			// Archive toast is dismissed immediately so its stale CTA doesn't linger.
+			expect(archiveToast.close).toHaveBeenCalledTimes(1);
 		});
 
 		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {

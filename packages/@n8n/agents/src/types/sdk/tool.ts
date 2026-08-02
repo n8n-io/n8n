@@ -30,11 +30,18 @@ export interface ToolExecutionContext {
 	abortSignal?: AbortSignal;
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: AgentExecutionCounter;
+	/**
+	 * Checkpointed suspend payload for a resumed interruptible tool call,
+	 * restored from persistence. Only set when the tool is being resumed.
+	 */
+	suspendPayload?: unknown;
 }
 
 export interface ToolContext {
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
+	/** Exact model-facing name of the tool being executed. */
+	toolName?: string;
 	/** Agent run ID and persistence scope for the current execution. */
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
@@ -62,6 +69,8 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	cancellation?: { message: string };
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
+	/** Exact model-facing name of the tool being executed. */
+	toolName?: string;
 	/** Agent run ID for the current execution. */
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
@@ -74,6 +83,8 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	abortSignal?: ToolExecutionContext['abortSignal'];
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
+	/** The payload this tool passed to `suspend()` when it suspended, restored from the checkpoint. Only set when the tool is being resumed. */
+	suspendPayload?: S;
 }
 
 export interface BuiltTool {
@@ -115,6 +126,8 @@ export interface BuiltTool {
 	readonly mcpTool?: boolean;
 	/** Name of the MCP server this tool belongs to. Set when mcpTool is true. */
 	readonly mcpServerName?: string;
+	/** Original, unprefixed tool name reported by the MCP server. */
+	readonly mcpToolName?: string;
 	/**
 	 * Provider-specific options forwarded to the AI SDK's `tool()` call.
 	 * Keyed by provider name (e.g. `anthropic`, `openai`).

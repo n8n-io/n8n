@@ -1,9 +1,9 @@
-import type { Page } from '@playwright/test';
 import type { ProxyServer } from 'n8n-containers/services/proxy';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test as base, expect } from '../../../fixtures/base';
 import { PublicFormPage } from '../../../pages/PublicFormPage';
+import type { ApiHelpers } from '../../../services/api-helper';
 import type { CredentialResponse } from '../../../services/credential-api-helper';
 
 interface SlackBlock {
@@ -105,9 +105,9 @@ async function getFormUrlFromSlack(proxyServer: ProxyServer) {
 	return extractFormUrl(blocks!);
 }
 
-async function clickApprovalLink(page: Page, url: string) {
+async function clickApprovalLink(api: ApiHelpers, url: string) {
 	console.log('Clicking approval URL:', url);
-	const response = await page.request.get(url, {
+	const response = await api.webhooks.trigger(url, {
 		headers: { 'User-Agent': NOT_A_BOT_USER_AGENT },
 	});
 	console.log('Response status:', response.status());
@@ -151,7 +151,7 @@ test.describe(
 			const { approveUrl } = await getApprovalUrlsFromSlack(services.proxy);
 			expect(approveUrl).toContain('signature=');
 
-			await clickApprovalLink(n8n.page, approveUrl!);
+			await clickApprovalLink(n8n.api, approveUrl!);
 
 			await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
 		});
@@ -174,7 +174,7 @@ test.describe(
 			const { rejectUrl } = await getApprovalUrlsFromSlack(services.proxy);
 			expect(rejectUrl).toContain('signature=');
 
-			await clickApprovalLink(n8n.page, rejectUrl!);
+			await clickApprovalLink(n8n.api, rejectUrl!);
 
 			await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
 		});
@@ -265,7 +265,7 @@ test.describe(
 			const { approveUrl } = await getApprovalUrlsFromSlack(services.proxy);
 			expect(approveUrl).toContain('signature=');
 
-			await clickApprovalLink(n8n.page, approveUrl!);
+			await clickApprovalLink(n8n.api, approveUrl!);
 
 			const execution = await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'success', 10000);
 			expect(execution.status).toBe('success');

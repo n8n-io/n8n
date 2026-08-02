@@ -20,7 +20,7 @@ export const DOMAIN_RESTRICTION_FIELDS: INodeProperties[] = [
 			{
 				name: 'All',
 				value: 'all',
-				description: 'Allow all requests when used in the HTTP Request node',
+				description: 'Allow all requests when used in the HTTP Request or GraphQL node',
 			},
 			{
 				name: 'Specific Domains',
@@ -30,11 +30,12 @@ export const DOMAIN_RESTRICTION_FIELDS: INodeProperties[] = [
 			{
 				name: 'None',
 				value: 'none',
-				description: 'Block all requests when used in the HTTP Request node',
+				description: 'Block all requests when used in the HTTP Request or GraphQL node',
 			},
 		],
 		default: 'all',
-		description: 'Control which domains this credential can be used with in HTTP Request nodes',
+		description:
+			'Control which domains this credential can be used with in HTTP Request or GraphQL nodes',
 	},
 	{
 		displayName: 'Allowed Domains',

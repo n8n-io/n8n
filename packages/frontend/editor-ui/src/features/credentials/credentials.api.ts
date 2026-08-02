@@ -1,6 +1,7 @@
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from './credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
@@ -9,7 +10,6 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 import axios from 'axios';
-import { sleep } from 'n8n-workflow';
 import type { CreateCredentialDto } from '@n8n/api-types';
 
 async function fetchCredentialTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
@@ -95,6 +95,10 @@ export async function deleteCredential(context: IRestApiContext, id: string): Pr
 
 export async function disconnectMyConnection(context: IRestApiContext, id: string): Promise<void> {
 	await makeRestApiRequest(context, 'DELETE', `/credentials/${id}/my-connection`);
+}
+
+export async function disconnectOauthToken(context: IRestApiContext, id: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/credentials/${id}/oauth-token`);
 }
 
 export async function updateCredential(

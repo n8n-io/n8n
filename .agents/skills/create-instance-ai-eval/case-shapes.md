@@ -7,15 +7,16 @@ eval [README](../../../packages/@n8n/instance-ai/evaluations/README.md); this is
 the opinionated *how* and the traps.
 
 Example cases in the corpus get renamed and churned, so this file names as few
-files as possible — prefer `grep`-ing the corpus by tag/field. The one stable
-pointer worth naming: **`applies-each-change-when-asked`** for a well-built
-director conversation.
+cases as possible — search the LangTracer suite by tag/field instead (the
+`search_test_cases` MCP tool, or export the suite and grep). The one stable
+pointer worth naming: **`applies-each-change-when-asked`** (in the
+`baseline` suite) for a well-built director conversation.
 
 The schema
-([`schema.ts`](../../../packages/@n8n/instance-ai/evaluations/data/workflows/schema.ts))
+([`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts))
 enforces the rules you must respect:
 
-- `seedFile`, `priorConversation`, `seedThread` are **mutually exclusive** — pick
+- `conversationSeed`, `priorConversation`, `seedThread` are **mutually exclusive** — pick
   one seeding mode.
 - A case needs a `conversation` **or** a `seedThread` (which supplies the live
   turn from the trace).
@@ -32,7 +33,7 @@ These test *how the agent converses*, not just what it builds: does it ask the
 right clarifying question, avoid re-asking, honour a mid-build correction,
 respect plan approval, batch bundled changes? They're graded by
 `processExpectations` and are often **build-only** (no `executionScenarios`).
-Tag them `behaviour` and grep that tag for patterns.
+Tag them `behaviour` and search the suite for that tag for patterns.
 
 ### How multi-turn works
 
@@ -40,6 +41,19 @@ Mode is chosen automatically from `conversation`:
 
 - **Single-prompt (auto-approve):** one `user` turn, no `assistant` turns — the
   prompt is sent and every confirmation is auto-approved. Plain build cases.
+  **Caveat: only *confirmations* are auto-approved — a genuine clarifying
+  `ask-user` *question* is never answered**, so the build hangs until the
+  per-iteration timeout and reports as `BUILD FAILED: Run timed out` with no
+  scored result (nothing to grade). If a prompt is vague enough that the agent
+  is likely to ask a setup/topology question before building (an unspecified
+  data source, delivery channel, or one-vs-two-workflow split), author it
+  **multi-turn** with a `[bracketed]` director note in turn 1 that pre-answers
+  those questions so the agent proceeds to build. A single-prompt build case
+  only works when the prompt leaves nothing the agent must ask about. Real sourced
+  prompts are frequently terse ("i want to create a webhook", "convert a topic
+  into a YouTube script") and almost always trigger a clarifying question —
+  **default a terse sourced prompt to multi-turn** with a director note that
+  pre-answers the setup/topology it omits.
 - **Multi-turn:** anything else. A **user-proxy LLM** plays the user — answers
   questions, audits the agent's plan against your script, and sends follow-ups
   (capped by `messageBudget`).
@@ -114,7 +128,7 @@ of mocked) set the type's `EVAL_*` env var — e.g. `EVAL_SLACK_ACCESS_TOKEN`,
 Only a closed set of types is valid — declaring anything else fails at case-load
 with a pointer to add a template. From
 [`credentials/seeder.ts`](../../../packages/@n8n/instance-ai/evaluations/credentials/seeder.ts):
-`slackApi`, `notionApi`, `githubApi`, `gmailOAuth2Api`,
+`slackApi`, `notionApi`, `githubApi`, `gmailOAuth2`,
 `microsoftTeamsOAuth2Api`, `whatsAppTriggerApi`, `httpHeaderAuth`,
 `httpBasicAuth`. Need another? Add a `CredentialTemplate` to `seeder.ts` (a
 `defaultName`, optional `envVar`, and `buildData(token)`); that extends
@@ -135,7 +149,7 @@ Pick the lightest mode that fits:
 |---|---|---|
 | Reproduce a real conversation (common case) | `seedThread` — fetch + reconstruct its LangSmith trace at run time; nothing committed | supplies its own live turn (omit `conversation`) |
 | Prelude is just "what was discussed" (no tool calls, no workflows) | `priorConversation` — prose turns, authored inline | a normal `conversation` for the live turn |
-| A synthetic/sanitised fixture you want durable in git | `seedFile` — a committed seed JSON (never real conversation data) | a normal `conversation` for the live turn |
+| Prior work already exists (a workflow to repair) | `conversationSeed` — prior messages + the workflows they reference, in the case body | a normal `conversation` for the live turn |
 | Shallow 2–3 turn prelude where the agent's live replies matter | none — a plain multi-turn `conversation` re-drives it live | — |
 
 All three modes are implemented and wired (`harness/conversation-seed.ts` +
@@ -161,7 +175,7 @@ after the correction. Asserting on the seeded prelude itself proves nothing.
 ### Which mode — and when to avoid seedThread
 
 Default to a **synthetic** case (an authored prompt + director script, or a
-`priorConversation` / `seedFile` prelude): it's durable, carries no real user
+`priorConversation` / `conversationSeed` prelude): it's durable, carries no real user
 data, never expires, and you control the setup exactly. Reach for **`seedThread`** only when
 the misbehaviour genuinely needs real prior context that's impractical to
 synthesize — a long accumulated thread, specific built workflows/tables — **and**
@@ -205,12 +219,30 @@ which user turn goes live.
   trace's last message replays (first authored turn = expected assistant reply as
   proxy reference; subsequent `user` turns become follow-ups). Omit it to replay
   just the live turn and stop.
-- **Transient — keep out of CI.** LangSmith base-tier traces retain ~14 days, so
-  a `seedThread` case only runs while its trace lives. Tag it `seeded`, not
-  `full`/`pr`; the resolver fails loudly when a trace has aged out.
+- **Transient — don't commit it, keep out of CI.** LangSmith base-tier traces
+  retain ~14 days and threads can be deleted or pruned, so a committed `seedThread`
+  case goes dead the moment its trace disappears. Treat it as a **local, throwaway
+  reproduction**: don't commit it — run it to confirm the failure, then encode a
+  durable synthetic case as the artifact. If you do keep one for a local run, tag
+  it `seeded`, not `full`/`pr`; the resolver fails loudly when a trace has aged out.
 - **Multi-workflow limitation.** Verification targets the primary created
   workflow (`workflowsCreated[0]`); if the live turn creates several, assert on
   the first or lean on `processExpectations`.
+- **Only agent-built workflows are restored.** Reconstruction recreates workflows
+  the agent *built* in-thread (a build event before the boundary) — not a workflow
+  that pre-existed the conversation. So a debugging/diagnosis thread ("why does my
+  HTTP node fail?"), where the agent only inspects or patches an existing workflow,
+  seeds with **no workflow to inspect**. Reproduce the target workflow yourself
+  (a synthetic case whose `executionScenarios` precondition builds the stand-in),
+  or grade the live turn with `processExpectations` only.
+- **Can't be pushed to a lang-tracer suite either.** The case-write API rejects
+  every seeding mode (`seedThread` / `conversationSeed` / `priorConversation`), so
+  `eval:langtracer-push` silently lists them under `skipped:`. Combined with the
+  don't-commit rule above, a `seedThread` case has **no durable home by design** —
+  the durable artifact is always the synthetic case you derive from it. (`conversationSeed`
+  and `priorConversation` carry no thread dependency and can't be pushed either, so
+  — unlike a normal case — they're the one exception to the skill's "push, don't
+  commit the JSON" rule: they live as committed artifacts.)
 
 ### `priorConversation` — prose prelude
 
@@ -224,11 +256,20 @@ which user turn goes live.
 Plain text only — no tool calls, no restored workflows. Paired with a normal
 `conversation` for the live turn.
 
-### `seedFile` — durable synthetic fixture
+### `conversationSeed` — durable synthetic fixture
 
-For a **synthetic, sanitised** fixture pinned in git (never a real user's
-conversation): hand-author `data/workflows/seeds/<name>.seed.json` (schema in
+For a **synthetic, sanitised** seed pinned in git (never a real user's
+conversation): author the prior messages, plus the workflows they reference, in
+the case body (schema in
 [`harness/conversation-seed.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts)
-— `messages` + optional `workflows` + `dataTables`) and point `seedFile` at it.
-Real conversations belong in `seedThread`, which keeps their content out of the
-repo.
+— `messages` + optional `workflows` + `dataTables`). Real conversations belong in
+`seedThread`, which keeps their content out of the repo.
+
+Two constraints that bite: a workflow `id` must be ≥8 characters (the id remap
+refuses shorter ones), and a seeded `build-workflow` tool call's
+`output.workflowId` must match the seeded workflow's `id` — otherwise the remap
+separates them and the agent can't find the workflow it should act on.
+
+The seed sits in the case body, not a sibling file, so it travels with the case
+whether it comes off disk, out of a LangTracer suite, or from a dispatched case
+body.

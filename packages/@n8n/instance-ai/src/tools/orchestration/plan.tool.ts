@@ -17,7 +17,6 @@ const plannedTaskSchema = z.object({
 			'Task IDs that must succeed before this task can start. ' +
 				'Workflows that consume outputs depend on workflows that produce them; independent workflows run in parallel.',
 		),
-	tools: z.array(z.string()).optional().describe('Required tool subset for delegate tasks'),
 	workflowId: z
 		.string()
 		.optional()
@@ -109,8 +108,9 @@ function validatePlanningContext(
 		});
 		return (
 			'Error: `create-tasks` requires `planningContext`. For initial plan-worthy work, load the ' +
-			'`planning` skill first, perform discovery with normal tools, then call `create-tasks` with ' +
-			'`planningContext.source: "planning-skill"`. For planned-task replan follow-ups, use ' +
+			'`planning` skill first, perform discovery with normal tools, load `create-tasks` via ' +
+			'`load_tool`, then call `create-tasks` with `planningContext.source: "planning-skill"`. ' +
+			'For planned-task replan follow-ups, load `create-tasks` if needed, then use ' +
 			'`planningContext.source: "replan"`.'
 		);
 	}
@@ -122,8 +122,9 @@ function validatePlanningContext(
 				source: planningContext.source,
 			});
 			return (
-				'Error: `<planned-task-follow-up type="replan">` turns must call `create-tasks` with ' +
-				'`planningContext.source: "replan"` when scheduling multiple dependent tasks.'
+				'Error: `<planned-task-follow-up type="replan">` turns must load `create-tasks` via ' +
+				'`load_tool` if needed, then call `create-tasks` with `planningContext.source: "replan"` ' +
+				'when scheduling multiple dependent tasks.'
 			);
 		}
 		return undefined;
@@ -137,7 +138,8 @@ function validatePlanningContext(
 		return (
 			'Error: `planningContext.source: "replan"` is only valid in planned-task replan follow-up turns. ' +
 			'For initial plan-worthy work, load the `planning` skill, perform discovery with normal tools, ' +
-			'then call `create-tasks` with `planningContext.source: "planning-skill"`.'
+			'load `create-tasks` via `load_tool`, then call `create-tasks` with ' +
+			'`planningContext.source: "planning-skill"`.'
 		);
 	}
 
@@ -148,6 +150,7 @@ export function createPlanTool(context: OrchestrationContext) {
 	return new Tool('create-tasks')
 		.description(
 			'Submit a dependency-aware task graph for detached multi-step execution. ' +
+				'Load via `load_tool` before calling (search "create tasks" if not visible). ' +
 				'Use after loading the `planning` skill for initial plan-worthy work, or during ' +
 				'`<planned-task-follow-up type="replan">` when multiple dependent tasks still need scheduling. ' +
 				'Requires `planningContext.source` to be `planning-skill` or `replan` as appropriate. ' +
@@ -325,7 +328,7 @@ export function createPlanTool(context: OrchestrationContext) {
 			// graph cannot dispatch, and the next `create-tasks` call overwrites
 			// it with the revised graph.
 			return {
-				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,
+				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks, load create-tasks via load_tool if needed, and call create-tasks again.`,
 				taskCount: 0,
 			};
 		})

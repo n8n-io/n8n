@@ -89,7 +89,7 @@ export class AgentTasksController {
 		@Param('taskId') taskId: string,
 	): Promise<{ success: true }> {
 		await this.getAgentOrThrow(agentId, req.params.projectId);
-		await this.agentTaskService.runNow(agentId, taskId, req.user.id);
+		await this.agentTaskService.runNow(agentId, taskId, req.user);
 		return { success: true };
 	}
 }

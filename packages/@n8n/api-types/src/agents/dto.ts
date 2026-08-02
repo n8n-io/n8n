@@ -1,7 +1,15 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { interactiveResumeDataSchema } from '../agent-builder-interactive';
+import {
+	MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH,
+	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
+	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
+	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
+} from './agent-chat-attachments.constants';
+import { AgentVectorStoreConfigSchema } from './agent-json-config.schema';
+import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
@@ -18,6 +26,7 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
+		availableInMCP: z.boolean().optional(),
 	})
 	.strict();
 
@@ -54,6 +63,22 @@ export class ListAgentsQueryDto extends Z.class({
 	sortBy: z.enum(AGENTS_LIST_SORT_OPTIONS).optional(),
 }) {}
 
+export class AgentProviderModelsQueryDto extends Z.class({
+	credentialId: z.string().min(1).max(64).optional(),
+}) {}
+
+/**
+ * Target selector for bulk-toggling agents' MCP availability. Exactly one of
+ * `agentIds`, `projectId`, or `allAgents` must be provided (mirrors the
+ * workflows equivalent, `UpdateWorkflowsAvailabilityDto`).
+ */
+export class UpdateAgentsMcpAvailabilityDto extends Z.class({
+	availableInMCP: z.boolean(),
+	agentIds: z.array(z.string().min(1)).min(1).max(100).optional(),
+	projectId: z.string().min(1).optional(),
+	allAgents: z.literal(true).optional(),
+}) {}
+
 export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
 }) {}
@@ -75,84 +100,6 @@ export class UpdateAgentTaskDto extends Z.class({
 	objective: agentTaskSchema.shape.objective.optional(),
 	cronExpression: agentTaskSchema.shape.cronExpression.optional(),
 }) {}
-
-export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 65_536;
-export const AGENT_SKILL_REFERENCE_MAX_COUNT = 20;
-export const AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES = 65_536;
-export const AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES = 262_144;
-
-const agentSkillStringArraySchema = z.array(z.string().trim().min(1));
-
-const utf8ByteLength = (value: string) => new TextEncoder().encode(value).byteLength;
-
-const agentSkillReferenceSchema = z
-	.object({
-		path: z
-			.string()
-			.min(1)
-			.max(512)
-			.refine((path) => {
-				const normalized = path.replaceAll('\\', '/');
-				const segments = normalized.split('/');
-				return (
-					path === normalized &&
-					normalized.startsWith('references/') &&
-					(normalized.endsWith('.md') || normalized.endsWith('.markdown')) &&
-					segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
-				);
-			}, 'Reference path must be a markdown file under references/'),
-		content: z.string().min(1),
-	})
-	.strict()
-	.superRefine((reference, ctx) => {
-		if (utf8ByteLength(reference.content) > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: `Reference content must be ${AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES} bytes or fewer`,
-				path: ['content'],
-			});
-		}
-	});
-
-const agentSkillReferencesSchema = z
-	.array(agentSkillReferenceSchema)
-	.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
-	.superRefine((references, ctx) => {
-		const paths = new Set<string>();
-		let totalBytes = 0;
-		for (const [index, reference] of references.entries()) {
-			totalBytes += utf8ByteLength(reference.content);
-			if (paths.has(reference.path)) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: `Duplicate reference path "${reference.path}"`,
-					path: [index, 'path'],
-				});
-			}
-			paths.add(reference.path);
-		}
-		if (totalBytes > AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: `Reference content must total ${AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES} bytes or fewer`,
-			});
-		}
-	});
-
-const agentSkillShape = {
-	name: z.string().min(1).max(128),
-	description: z.string().min(1).max(512),
-	instructions: z.string().min(1).max(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH),
-	allowedTools: agentSkillStringArraySchema.optional(),
-	references: agentSkillReferencesSchema.optional(),
-	scripts: z.never().optional(),
-	templates: z.never().optional(),
-	assets: z.never().optional(),
-	examples: z.never().optional(),
-	other: z.never().optional(),
-};
-
-export const agentSkillSchema = z.object(agentSkillShape).strict();
 
 const updateAgentSkillShape = {
 	name: agentSkillShape.name.optional(),
@@ -196,26 +143,75 @@ export class UpdateAgentSkillDto extends Z.class(updateAgentSkillShape) {
 	}
 }
 
-export class AgentChatMessageDto extends Z.class({
-	message: z.string().min(1),
-	sessionId: z.string().min(1).optional(),
-}) {}
+export const agentChatAttachmentSchema = z.object({
+	fileName: z.string().min(1).max(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH),
+	mimeType: z.string().min(1).max(MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH),
+	// Base64; cap sized so the decoded payload stays within the size limit.
+	data: z
+		.string()
+		.min(1)
+		.max(
+			MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH,
+			`Attachment exceeds ${MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB} MB limit`,
+		),
+});
 
-export class AgentBuildResumeDto extends Z.class({
-	runId: z.string().min(1),
-	toolCallId: z.string().min(1),
-	resumeData: interactiveResumeDataSchema,
-}) {}
+export type AgentChatAttachmentPayload = z.infer<typeof agentChatAttachmentSchema>;
+
+const agentChatMessageShape = {
+	// `message` may be empty when at least one attachment is present
+	// (attachment-only sends) — see the schema-level refinement below.
+	message: z.string(),
+	sessionId: z.string().min(1).optional(),
+	attachments: z
+		.array(agentChatAttachmentSchema)
+		.max(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)
+		.optional(),
+};
+
+const agentChatMessageSchema = z
+	.object(agentChatMessageShape)
+	.refine((value) => value.message.trim().length > 0 || (value.attachments?.length ?? 0) > 0, {
+		message: 'Message text or at least one attachment is required',
+		path: ['message'],
+	});
+
+/**
+ * Validate via `parse`/`safeParse` (what the controller registry's `@Body`
+ * middleware calls) — they apply the refined schema. The inherited `schema`
+ * static cannot hold the refinement (a `ZodEffects` is not assignable to the
+ * base class's `ZodObject`) and misses the text-or-attachment invariant.
+ */
+export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
+	constructor(data: z.infer<typeof agentChatMessageSchema>) {
+		super(agentChatMessageSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return agentChatMessageSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return agentChatMessageSchema.parse(data);
+	}
+}
 
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),
+	// Deliberately untyped at this boundary: the possible resume shapes overlap
+	// (e.g. credential's `{approved}` matches questions' `{approved, answers}`
+	// and a non-discriminated union would parse against whichever member
+	// matches first, silently stripping fields the "wrong" schema doesn't
+	// know about). Each interactive tool validates its own resume payload via
+	// `.resume(schema)`.
 	resumeData: z.unknown(),
 }) {}
 
 export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
-	credentialId: z.string().min(1),
+	// Empty string targets a draft integration entry (`credentialId: ''`).
+	credentialId: z.string(),
 }) {}
 
 export class PublishAgentDto extends Z.class({
@@ -229,3 +225,13 @@ export class RevertAgentToVersionDto extends Z.class({
 export class CreateSlackAgentAppDto extends Z.class({
 	appConfigurationToken: z.string().min(1),
 }) {}
+
+export class TestAgentVectorStoreDto extends Z.class({
+	vectorStore: AgentVectorStoreConfigSchema,
+}) {}
+
+export interface VectorStoreTestResult {
+	success: boolean;
+	message?: string;
+	warning?: string;
+}

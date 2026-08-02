@@ -1,8 +1,11 @@
 import {
 	isDisplayableConfirmationRequest,
 	type InstanceAiConfirmationRequestEvent,
+	type InstanceAiErrorEvent,
 	type InstanceAiEvent,
 } from '@n8n/api-types';
+
+type InstanceAiErrorCode = NonNullable<InstanceAiErrorEvent['payload']['code']>;
 
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 
@@ -59,7 +62,12 @@ function formatWorkSummaryCounts(workSummary?: WorkSummary): string {
 }
 
 function hasText(event: InstanceAiEvent): boolean {
-	return event.type === 'text-delta' && event.payload.text.trim().length > 0;
+	// The durable log stores coalesced text-block facts, never deltas, so
+	// flag-on guard reads must recognize both shapes of streamed text.
+	return (
+		(event.type === 'text-delta' || event.type === 'text-block') &&
+		event.payload.text.trim().length > 0
+	);
 }
 
 export class InstanceAiTerminalResponseGuard {
@@ -71,6 +79,7 @@ export class InstanceAiTerminalResponseGuard {
 		options: {
 			workSummary?: WorkSummary;
 			errorMessage?: string;
+			errorCode?: InstanceAiErrorCode;
 			suppressCompletedFallback?: boolean;
 		} = {},
 	): TerminalResponseDecision {
@@ -159,6 +168,7 @@ export class InstanceAiTerminalResponseGuard {
 			visibility.hasRootText ? 'errored-after-text' : 'errored-silent',
 			options.errorMessage ??
 				'I hit an error before I could finish that response. Please try again.',
+			options.errorCode,
 		);
 	}
 
@@ -259,6 +269,7 @@ export class InstanceAiTerminalResponseGuard {
 		status: TerminalResponseStatus,
 		reason: TerminalResponseDecision['reason'],
 		content: string,
+		code?: InstanceAiErrorCode,
 	): TerminalResponseDecision {
 		return {
 			status,
@@ -270,7 +281,7 @@ export class InstanceAiTerminalResponseGuard {
 				runId: this.options.runId,
 				agentId: this.options.rootAgentId,
 				responseId: this.fallbackResponseId(status),
-				payload: { content },
+				payload: { content, ...(code ? { code } : {}) },
 			},
 		};
 	}

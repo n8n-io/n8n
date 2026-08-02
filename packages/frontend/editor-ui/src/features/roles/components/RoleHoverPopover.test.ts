@@ -8,8 +8,12 @@ import type { Role } from '@n8n/permissions';
 import RoleHoverPopover from './RoleHoverPopover.vue';
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { TOTAL_PROJECT_PERMISSIONS } from '@/features/roles/project/projectRoleScopes';
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: vi.fn(),
+}));
 
 const mockPush = vi.fn();
 
@@ -70,15 +74,14 @@ const renderComponent = createComponentRenderer(RoleHoverPopover, {
 });
 
 describe('RoleHoverPopover', () => {
-	let usersStore: MockedStore<typeof useUsersStore>;
 	let settingsStore: MockedStore<typeof useSettingsStore>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
-		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.isCustomRolesFeatureEnabled = true;
+		vi.mocked(hasPermission).mockReturnValue(false);
 	});
 
 	describe('Rendering', () => {
@@ -117,9 +120,8 @@ describe('RoleHoverPopover', () => {
 	});
 
 	describe('Button text based on permissions', () => {
-		it('should show "View and edit role" for admin with custom role', () => {
-			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
-			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
+		it('should show "View and edit role" when user has role:manage and role is custom', () => {
+			vi.mocked(hasPermission).mockReturnValue(true);
 
 			const { getByText } = renderComponent({
 				props: { role: mockCustomRole },
@@ -128,9 +130,8 @@ describe('RoleHoverPopover', () => {
 			expect(getByText('View and edit role')).toBeInTheDocument();
 		});
 
-		it('should show "View role" for non-admin', () => {
-			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
-			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
+		it('should show "View role" when user lacks role:manage', () => {
+			vi.mocked(hasPermission).mockReturnValue(false);
 
 			const { getByText } = renderComponent({
 				props: { role: mockCustomRole },
@@ -139,9 +140,28 @@ describe('RoleHoverPopover', () => {
 			expect(getByText('View role')).toBeInTheDocument();
 		});
 
-		it('should show "View role" for system role even if admin', () => {
-			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
-			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
+		it('should disable the button when user lacks role:manage', () => {
+			vi.mocked(hasPermission).mockReturnValue(false);
+
+			const { getByRole } = renderComponent({
+				props: { role: mockCustomRole },
+			});
+
+			expect(getByRole('button', { name: /view role/i })).toBeDisabled();
+		});
+
+		it('should not disable the button when user has role:manage', () => {
+			vi.mocked(hasPermission).mockReturnValue(true);
+
+			const { getByRole } = renderComponent({
+				props: { role: mockCustomRole },
+			});
+
+			expect(getByRole('button', { name: /view and edit role/i })).not.toBeDisabled();
+		});
+
+		it('should show "View role" for system role even when user has role:manage', () => {
+			vi.mocked(hasPermission).mockReturnValue(true);
 
 			const { getByText } = renderComponent({
 				props: { role: mockSystemRole },
@@ -152,9 +172,8 @@ describe('RoleHoverPopover', () => {
 	});
 
 	describe('Button click behavior', () => {
-		it('should navigate to role settings for admin with custom role', async () => {
-			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
-			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
+		it('should navigate to role settings when user has role:manage and role is custom', async () => {
+			vi.mocked(hasPermission).mockReturnValue(true);
 
 			const { getByText } = renderComponent({
 				props: { role: mockCustomRole },
@@ -169,26 +188,23 @@ describe('RoleHoverPopover', () => {
 			});
 		});
 
-		it('should navigate to view route for non-admin', async () => {
-			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
-			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
+		it('should not navigate when user lacks role:manage because the button is disabled', async () => {
+			vi.mocked(hasPermission).mockReturnValue(false);
 
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { role: mockCustomRole },
 			});
 
-			await userEvent.click(getByText('View role'));
+			const button = getByRole('button', { name: /view role/i });
+			expect(button).toBeDisabled();
 
-			expect(mockPush).toHaveBeenCalledWith({
-				name: 'ProjectRoleViewView',
-				params: { roleSlug: 'project:custom-role' },
-				query: { from: VIEWS.PROJECT_SETTINGS },
-			});
+			await userEvent.click(button);
+
+			expect(mockPush).not.toHaveBeenCalled();
 		});
 
-		it('should navigate to view route for system role even if admin', async () => {
-			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
-			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
+		it('should navigate to view route for system role even when user has role:manage', async () => {
+			vi.mocked(hasPermission).mockReturnValue(true);
 
 			const { getByText } = renderComponent({
 				props: { role: mockSystemRole },
@@ -207,8 +223,7 @@ describe('RoleHoverPopover', () => {
 	describe('Upgrade modal (no enterprise license)', () => {
 		beforeEach(() => {
 			settingsStore.isCustomRolesFeatureEnabled = false;
-			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
-			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
+			vi.mocked(hasPermission).mockReturnValue(true);
 		});
 
 		it('should show upgrade modal instead of navigating when clicking on a custom role', async () => {

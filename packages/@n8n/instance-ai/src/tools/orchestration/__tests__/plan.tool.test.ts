@@ -22,7 +22,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model' as OrchestrationContext['modelId'],
-		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),
@@ -261,7 +260,7 @@ describe('createPlanTool — planning context guard', () => {
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain(
-			'must call `create-tasks` with `planningContext.source: "replan"`',
+			'must load `create-tasks` via `load_tool` if needed, then call `create-tasks`',
 		);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
 	});

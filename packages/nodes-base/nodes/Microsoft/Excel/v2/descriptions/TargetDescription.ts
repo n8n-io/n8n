@@ -45,7 +45,8 @@ export const userTargetRLC: INodeProperties = {
 			hint: 'The user principal name (UPN) or object ID of the user whose drive holds the workbooks',
 		},
 	],
-	description: 'The user whose drive the Service Principal should act on',
+	description:
+		"The user whose drive the Service Principal should act on. Evaluated per input item — an expression can target a different user for each item. Operations that write all rows in one request (append, update, upsert) use the first item's target.",
 	displayOptions: {
 		show: {
 			authentication: ['microsoftEntraServicePrincipalApi'],
@@ -69,7 +70,8 @@ export const driveTargetRLC: INodeProperties = {
 			hint: "The drive's own ID (looks like `b!…`), not a file or folder ID. Get it from `GET /users/{upn}/drive` (the `id` field).",
 		},
 	],
-	description: 'The drive the Service Principal should act on',
+	description:
+		"The drive the Service Principal should act on. Evaluated per input item — an expression can target a different drive for each item. Operations that write all rows in one request (append, update, upsert) use the first item's target.",
 	displayOptions: {
 		show: {
 			authentication: ['microsoftEntraServicePrincipalApi'],

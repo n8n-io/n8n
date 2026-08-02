@@ -90,6 +90,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages/AAMkAGI2TG93AAA=/attachments',
+				0,
 				{
 					'@odata.type': '#microsoft.graph.fileAttachment',
 					name: 'test-file.txt',
@@ -132,11 +133,14 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 
 			microsoftApiRequestSpy.mockResolvedValue({});
 
-			await execute.call(mockExecuteFunctions, 0, [{ json: {} }]);
+			// Non-zero index: pins that the operation forwards the PASSED index (not a
+			// hardcoded 0). The getNodeParameter mock is index-insensitive.
+			await execute.call(mockExecuteFunctions, 2, [{ json: {} }]);
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages/AAMkAGI2TG93AAA=/attachments',
+				2,
 				{
 					'@odata.type': '#microsoft.graph.fileAttachment',
 					name: 'custom-name.pdf',
@@ -222,6 +226,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages/AAMkAGI2TG93BBB=/attachments/createUploadSession',
+				0,
 				{
 					AttachmentItem: {
 						attachmentType: 'file',

@@ -109,7 +109,10 @@ During recording, the fixture's `transform` callback strips LLM request bodies d
 
 ### Shared State Across Runs
 
-A single test may trigger multiple n8n "runs" — the orchestrator run, a background task follow-up, or a delegated sub-agent. The `TraceIndex` and `IdRemapper` are shared across all runs within one test (keyed by the test slug), so cursor positions and ID mappings persist correctly.
+A single test may trigger multiple n8n "runs" — the orchestrator run, a planned
+task follow-up, or an eval-setup background task. The `TraceIndex` and
+`IdRemapper` are shared across all runs within one test (keyed by the test slug),
+so cursor positions and ID mappings persist correctly.
 
 ## Two-Tier Tool Strategy
 
@@ -170,7 +173,7 @@ Some tools pass through without wrapping:
 | Tool | Why |
 |------|-----|
 | `create-tasks` | Pure text orchestration, no IDs |
-| `delegate` | Must spawn real sub-agent (which gets its own wrapping) |
+| `eval-setup-with-agent` | Must spawn real background agent (which gets its own wrapping) |
 | `update-tasks` | Orchestration bookkeeping |
 
 ## Trace Format
@@ -375,7 +378,7 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 | **System prompt changes** (different 80-char prefix) | The proxy's body matcher uses an 80-character substring of the system prompt. If this prefix changes, MockServer can't match the request to a recorded response and returns a 404. | Test fails with HTTP error from proxy or empty LLM response. |
 | **Tool schema changes** (renamed fields, changed types, new required inputs) | Recorded tool inputs/outputs have the old shape. Renamed ID fields (e.g. `workflowId` → `wfId`) break `IdRemapper` path matching. New **required** input fields break because the frozen LLM response can't provide them — tool Zod validation rejects the input. For example, recordings that used inline `build-workflow` source must be re-recorded because the tool now requires `filePath`. New **optional** input fields (with defaults) are safe — the tool executes fine without them. | Renamed IDs: `IdRemapper` fails to learn mappings → "workflow not found". New required fields: Zod validation error in tool execute. |
 | **Tool removal or renaming** | The frozen LLM response still references the old tool name. If the agent runtime can't find the tool to dispatch to, the call fails. The `TraceIndex` also expects the old name and would report a mismatch if a different tool executes in its place. | Tool dispatch error or "Tool mismatch at step N" from `TraceIndex.next()`. |
-| **Agent orchestration code changes** (tool distribution, delegation routing) | The recorded LLM responses are fixed, but the code that *acts on* them can change. For example, if a tool moves from the orchestrator to a sub-agent, or `delegate` now routes to a different role, the per-role trace cursors diverge because tools execute under different `agentRole` keys than the recording expects. | "Trace exhausted for role X" or tool mismatch. |
+| **Agent orchestration code changes** (tool distribution, routing) | The recorded LLM responses are fixed, but the code that *acts on* them can change. For example, if a tool moves from the orchestrator to a background agent, or orchestration routing changes, the per-role trace cursors diverge because tools execute under different `agentRole` keys than the recording expects. | "Trace exhausted for role X" or tool mismatch. |
 
 ### Design Decisions That Maximize Robustness
 
@@ -385,7 +388,7 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 
 3. **Per-role trace cursors** — The `TraceIndex` groups events by `agentRole` with independent cursors. This handles interleaved orchestrator and sub-agent calls naturally, without requiring a single global sequence that breaks when parallelism changes.
 
-4. **Shared state across runs** — The `TraceIndex` and `IdRemapper` are shared across all runs within one test (orchestrator run, background task follow-up, delegated sub-agent). This means a workflowId learned in run 1 is available for remapping in run 2.
+4. **Shared state across runs** — The `TraceIndex` and `IdRemapper` are shared across all runs within one test (orchestrator run, planned follow-up, eval-setup background task). This means a workflowId learned in run 1 is available for remapping in run 2.
 
 5. **Request body stripping** — During recording, LLM request bodies are replaced with just the prompt prefix. This means the recorded expectations don't encode tool results, conversation history, or any other dynamic content. Replay stays deterministic regardless of what tools return.
 

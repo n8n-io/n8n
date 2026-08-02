@@ -39,6 +39,10 @@ interface PasswordResetToken {
 	hash: string;
 }
 
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 interface CreateAuthMiddlewareOptions {
 	/**
 	 * If true, MFA is not enforced
@@ -58,8 +62,13 @@ interface CreateAuthMiddlewareOptions {
 
 @Service()
 export class AuthService {
-	// The browser-id check needs to be skipped on these endpoints
-	private skipBrowserIdCheckEndpoints: string[];
+	/**
+	 * Endpoints exempt from the browser-id check on GET requests. Strings are
+	 * matched exactly against `baseUrl + route path`; RegExps cover routes
+	 * whose controller prefix carries resolved params (e.g. a `:projectId`
+	 * that express substitutes into `req.baseUrl`).
+	 */
+	private skipBrowserIdCheckEndpoints: Array<string | RegExp>;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -84,6 +93,11 @@ export class AuthService {
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
 
+			// The dynamic-credential authorize link is a top-level browser navigation
+			// (link click / redirect), so it can't carry the browser-id header. The
+			// GET method guard below keeps this GET-only; POST authorize is unaffected.
+			`/${restEndpoint}/credentials/:id/authorize`,
+
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
@@ -95,6 +109,13 @@ export class AuthService {
 
 			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
 			`/${restEndpoint}/instance-ai/events/:threadId`,
+
+			// Agent chat attachments render via <img> tags, which can't send the
+			// browser-id header. The controller prefix carries a resolved
+			// :projectId in req.baseUrl, so this one needs a pattern.
+			new RegExp(
+				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/chat/attachments/:attachmentId$`,
+			),
 		];
 	}
 
@@ -311,13 +332,19 @@ export class AuthService {
 		throw new AuthError('Unauthorized');
 	}
 
+	private endpointSkipsBrowserIdCheck(endpoint: string): boolean {
+		return this.skipBrowserIdCheckEndpoints.some((entry) =>
+			typeof entry === 'string' ? entry === endpoint : entry.test(endpoint),
+		);
+	}
+
 	private validateBrowserId(
 		jwtPayload: IssuedJWT,
 		browserId: string | undefined,
 		endpoint: string,
 		method: string,
 	) {
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		if (method === 'GET' && this.endpointSkipsBrowserIdCheck(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&

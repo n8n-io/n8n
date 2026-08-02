@@ -1,4 +1,10 @@
 <script lang="ts" setup>
+import {
+	N8nButton,
+	N8nIcon,
+	N8nText,
+	N8nAnimatedCollapsibleContent as AnimatedCollapsibleContent,
+} from '@n8n/design-system';
 /**
  * PlanReviewPanel.vue
  *
@@ -6,11 +12,9 @@
  * expandable specs, dependency info, and approve/ask-for-edits/deny controls.
  * "Ask for edits" hands off feedback collection to the main chat input.
  */
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 export interface PlannedTaskArg {
@@ -120,7 +124,7 @@ function handleDeny() {
 <template>
 	<CollapsibleRoot
 		v-model:open="isExpanded"
-		:class="$style.root"
+		:class="[$style.root, showActions && $style.awaitingInput]"
 		:aria-busy="isShimmering ? 'true' : undefined"
 		:data-loading="isShimmering ? 'true' : undefined"
 		data-test-id="instance-ai-plan-review"
@@ -270,6 +274,12 @@ function handleDeny() {
 	overflow: hidden;
 	background-color: var(--color--background--light-3);
 	max-width: 90%;
+}
+
+// Highlight that the plan is waiting for the user's review; read-only /
+// resolved / building cards keep the regular border.
+.awaitingInput {
+	border: 2px solid var(--color--primary);
 }
 
 .expiredHint {

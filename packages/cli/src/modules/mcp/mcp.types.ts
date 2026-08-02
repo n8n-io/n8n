@@ -1,4 +1,5 @@
 import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { WorkflowPublishBlockedReason } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
@@ -23,6 +24,11 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	};
 	handler: ToolCallback<InputArgs>;
 };
+
+/** Registers a tool on the per-request server if the granted scopes cover it. */
+export type RegisterToolFn = <InputArgs extends z.ZodRawShape>(
+	tool: ToolDefinition<InputArgs>,
+) => void;
 
 // Shared MCP tool types
 export const SEARCH_WORKFLOWS_SORT_BY_VALUES = [
@@ -94,6 +100,7 @@ export type UserConnectedToMCPEventPayload = {
 	mcp_connection_status: 'success' | 'error';
 	mcp_apps_enabled?: boolean;
 	mcp_apps_variant?: McpAppsTelemetryVariant;
+	mcp_canvas_groups_enabled?: boolean;
 	error?: string;
 };
 
@@ -120,8 +127,18 @@ export type UserCalledMCPToolEventPayload = {
 		success: boolean;
 		data?: unknown;
 		error?: string | Record<string, unknown>;
-		error_reason?: WorkflowNotFoundReason;
+		error_reason?: WorkflowNotFoundReason | WorkflowPublishBlockedReason;
 	};
+};
+
+/**
+ * n8n Connect coverage snapshot surfaced in tool output when the
+ * gateway is available: the credential and node types it can provide managed
+ * credentials for.
+ */
+export type N8nConnectCoverage = {
+	credentialTypes: string[];
+	nodes: string[];
 };
 
 export type MCPTriggersMap = {

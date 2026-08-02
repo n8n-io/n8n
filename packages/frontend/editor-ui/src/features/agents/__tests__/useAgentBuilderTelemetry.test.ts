@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import type { AgentJsonConfig, AgentResource } from '../types';
 
@@ -97,6 +98,67 @@ describe('useAgentBuilderTelemetry', () => {
 			part: 'subAgents',
 			configVersion: expect.any(String),
 			status: 'draft',
+		});
+	});
+
+	it('flushConfigEdits emits vectorStores config edits', async () => {
+		const initialConfig: AgentJsonConfig = {
+			name: 'Agent One',
+			model: 'gpt-4',
+			instructions: 'Help users.',
+			vectorStores: [],
+		};
+		const nextConfig: AgentJsonConfig = {
+			...initialConfig,
+			vectorStores: [
+				{
+					provider: 'qdrant',
+					name: 'product_docs',
+					credential: 'qdrant-cred',
+					useWhen: 'Search product docs',
+					embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
+					collectionName: 'docs',
+				},
+			],
+		};
+		const { deps, telemetry } = makeTelemetryDeps(initialConfig);
+
+		telemetry.recordConfigEdit({ vectorStores: nextConfig.vectorStores });
+		deps.savedConfig.value = nextConfig;
+		deps.localConfig.value = nextConfig;
+		telemetry.flushConfigEdits();
+
+		await vi.waitFor(() => expect(agentTelemetryMock.trackEditedConfig).toHaveBeenCalledOnce());
+		expect(agentTelemetryMock.trackEditedConfig).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			part: 'vectorStores',
+			configVersion: expect.any(String),
+			status: 'draft',
+		});
+	});
+
+	it('flushConfigEdits tags a model edit with the credential kind', async () => {
+		const initialConfig: AgentJsonConfig = {
+			name: 'Agent One',
+			model: 'openai/gpt-5',
+			instructions: 'Help users.',
+			credential: 'own-cred',
+		};
+		const nextConfig: AgentJsonConfig = { ...initialConfig, credential: AI_GATEWAY_MANAGED_TAG };
+		const { deps, telemetry } = makeTelemetryDeps(initialConfig);
+
+		telemetry.recordConfigEdit({ credential: AI_GATEWAY_MANAGED_TAG });
+		deps.savedConfig.value = nextConfig;
+		deps.localConfig.value = nextConfig;
+		telemetry.flushConfigEdits();
+
+		await vi.waitFor(() => expect(agentTelemetryMock.trackEditedConfig).toHaveBeenCalledOnce());
+		expect(agentTelemetryMock.trackEditedConfig).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			part: 'model',
+			configVersion: expect.any(String),
+			status: 'draft',
+			credentialKind: 'n8n_credits',
 		});
 	});
 

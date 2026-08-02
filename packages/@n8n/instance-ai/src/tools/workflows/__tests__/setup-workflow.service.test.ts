@@ -27,7 +27,11 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			getWorkflowHead: vi.fn(),
 			getWorkflowSnapshot: vi.fn(),
 			createFromWorkflowJSON: vi.fn(),
-			updateFromWorkflowJSON: vi.fn(),
+			updateFromWorkflowJSON: vi.fn().mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-next',
+				checksum: 'checksum-next',
+			}),
 			archive: vi.fn(),
 			unarchive: vi.fn(),
 			publish: vi.fn(),
@@ -68,6 +72,9 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			insertRows: vi.fn(),
 			updateRows: vi.fn(),
 			deleteRows: vi.fn(),
+		},
+		workflowTemplateService: {
+			getTemplate: vi.fn(),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 		...overrides,
@@ -393,6 +400,110 @@ describe('buildSetupRequests', () => {
 		const result = await buildSetupRequests(context, node);
 
 		expect(result[0].isAutoApplied).toBeFalsy();
+	});
+
+	it('auto-applies the n8n Connect credential when no stored one exists and the type is gateway-supported', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBe(true);
+		expect(result[0].node.credentials?.slackApi).toEqual({
+			id: null,
+			name: 'n8n credits',
+			__aiGatewayManaged: true,
+		});
+	});
+
+	it('does not fire the n8n Connect auto-apply when the type is not gateway-supported', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(false);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.slackApi).toBeUndefined();
+	});
+
+	it('prefers a stored credential over n8n Connect when the user already has one', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		// User has a stored credential of this type — it wins; the managed
+		// gateway is never applied over a saved key.
+		expect(result[0].isAutoApplied).toBe(true);
+		expect(result[0].node.credentials?.slackApi).toEqual({
+			id: 'cred-1',
+			name: 'My Slack',
+		});
+	});
+
+	it('respects an explicit stored credential on the node even when gateway supports the type', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.slackApi).toEqual({
+			id: 'cred-1',
+			name: 'My Slack',
+		});
+	});
+
+	it('does not emit assignment telemetry at proposal (build) time', async () => {
+		const track = vi.fn();
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+
+		await buildSetupRequests(context, makeNode());
+
+		// Attribution fires when the credential is actually written to the node
+		// (applyCredentialsToNode), not when it is proposed here.
+		expect(track).not.toHaveBeenCalled();
+	});
+
+	it('does not auto-apply n8n Connect when a stored credential exists for the type', async () => {
+		const track = vi.fn();
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		const isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = isAiGatewayCredentialType;
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+
+		await buildSetupRequests(context, makeNode());
+
+		// Stored key wins — the gateway lookup is skipped and nothing is tracked
+		// at proposal time.
+		expect(isAiGatewayCredentialType).not.toHaveBeenCalled();
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it('uses credential cache to avoid duplicate fetches', async () => {
@@ -1037,7 +1148,11 @@ describe('applyNodeChanges', () => {
 		(context.credentialService.get as Mock).mockImplementation(
 			async (id: string) => await Promise.resolve({ id, name: `Cred ${id}` }),
 		);
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		const result = await applyNodeChanges(
 			context,
@@ -1057,7 +1172,11 @@ describe('applyNodeChanges', () => {
 		const wfJson = makeWorkflowJSON([makeNode({ name: 'Slack', id: 'n1' })]);
 		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
 		(context.credentialService.get as Mock).mockResolvedValue(undefined);
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		const result = await applyNodeChanges(context, 'wf-1', {
 			Slack: { slackApi: 'nonexistent' },
@@ -1065,6 +1184,122 @@ describe('applyNodeChanges', () => {
 
 		expect(result.failed).toHaveLength(1);
 		expect(result.failed[0].nodeName).toBe('Slack');
+	});
+
+	it('emits source instance-ai-confirmed and kind own when a credential is picked among several', async () => {
+		const track = vi.fn();
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+		const wfJson = makeWorkflowJSON([makeNode({ name: 'Slack', id: 'n1' })]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as Mock).mockResolvedValue({ id: 'cred-1', name: 'My Slack' });
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack' },
+			{ id: 'cred-2', name: 'Other Slack' },
+		]);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+
+		await applyNodeChanges(context, 'wf-1', { Slack: { slackApi: 'cred-1' } });
+
+		expect(track).toHaveBeenCalledWith('Node credential assigned', {
+			credential_type: 'slackApi',
+			node_type: 'n8n-nodes-base.slack',
+			workflow_id: 'wf-1',
+			credential_kind: 'own',
+			source: 'instance-ai-confirmed',
+		});
+	});
+
+	it("emits source instance-ai-auto and kind own when the user's sole stored credential is applied", async () => {
+		const track = vi.fn();
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+		const wfJson = makeWorkflowJSON([makeNode({ name: 'Slack', id: 'n1' })]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as Mock).mockResolvedValue({ id: 'cred-1', name: 'My Slack' });
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack' },
+		]);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+
+		await applyNodeChanges(context, 'wf-1', { Slack: { slackApi: 'cred-1' } });
+
+		expect(track).toHaveBeenCalledWith('Node credential assigned', {
+			credential_type: 'slackApi',
+			node_type: 'n8n-nodes-base.slack',
+			workflow_id: 'wf-1',
+			credential_kind: 'own',
+			source: 'instance-ai-auto',
+		});
+	});
+
+	it('keeps source instance-ai-confirmed when the node already had a credential', async () => {
+		const track = vi.fn();
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+		const wfJson = makeWorkflowJSON([
+			makeNode({ name: 'Slack', id: 'n1', credentials: { slackApi: { id: 'old', name: 'Old' } } }),
+		]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as Mock).mockResolvedValue({ id: 'cred-1', name: 'My Slack' });
+		// A sole stored credential would otherwise classify as auto — the prior
+		// credential on the node short-circuits that to confirmed.
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack' },
+		]);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+
+		await applyNodeChanges(context, 'wf-1', { Slack: { slackApi: 'cred-1' } });
+
+		expect(track).toHaveBeenCalledWith(
+			'Node credential assigned',
+			expect.objectContaining({ source: 'instance-ai-confirmed' }),
+		);
+		expect(context.credentialService.list).not.toHaveBeenCalled();
+	});
+
+	it('tags source instance-ai-auto when n8n Connect is applied and the user has no credential of their own', async () => {
+		const track = vi.fn();
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+		const wfJson = makeWorkflowJSON([makeNode({ name: 'Slack', id: 'n1' })]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+
+		await applyNodeChanges(context, 'wf-1', { Slack: { slackApi: AI_GATEWAY_MANAGED_TAG } });
+
+		expect(track).toHaveBeenCalledWith(
+			'Node credential assigned',
+			expect.objectContaining({
+				credential_type: 'slackApi',
+				credential_kind: 'n8n_connect',
+				source: 'instance-ai-auto',
+			}),
+		);
+	});
+
+	it('tags source instance-ai-confirmed when n8n Connect is chosen despite the user having a stored credential', async () => {
+		const track = vi.fn();
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+		const wfJson = makeWorkflowJSON([makeNode({ name: 'Slack', id: 'n1' })]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack' },
+		]);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+
+		await applyNodeChanges(context, 'wf-1', { Slack: { slackApi: AI_GATEWAY_MANAGED_TAG } });
+
+		expect(track).toHaveBeenCalledWith(
+			'Node credential assigned',
+			expect.objectContaining({
+				credential_kind: 'n8n_connect',
+				source: 'instance-ai-confirmed',
+			}),
+		);
 	});
 
 	it('rolls back applied nodes on save failure', async () => {
@@ -1106,7 +1341,11 @@ describe('applyNodeChanges', () => {
 				},
 			],
 		});
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		await applyNodeChanges(context, 'wf-1');
 
@@ -1135,7 +1374,11 @@ describe('applyNodeChanges', () => {
 			id: 'cred-1',
 			name: 'My Header Auth',
 		});
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		await applyNodeChanges(context, 'wf-1', {
 			'HTTP Request': { httpHeaderAuth: 'cred-1' },
@@ -1155,7 +1398,11 @@ describe('applyNodeChanges', () => {
 		const node = makeNode({ name: 'Gemini', type: 'n8n-nodes-base.lmChatGoogleGemini' });
 		const wfJson = makeWorkflowJSON([node]);
 		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		const result = await applyNodeChanges(context, 'wf-1', {
 			Gemini: { googlePalmApi: AI_GATEWAY_MANAGED_TAG },
@@ -1184,7 +1431,11 @@ describe('applyNodeChanges', () => {
 			group: [],
 			credentials: [],
 		});
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		const result = await applyNodeChanges(context, 'wf-1', undefined, {
 			'HTTP Request': { url: 'https://example.com/api' },
@@ -1220,7 +1471,11 @@ describe('applyNodeChanges', () => {
 			group: [],
 			credentials: [],
 		});
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		const result = await applyNodeChanges(context, 'wf-1', undefined, {
 			channelId: { __rl: true, mode: 'name', value: '#berlin-weather-rain' },
@@ -1260,7 +1515,11 @@ describe('applyNodeChanges', () => {
 			group: [],
 			credentials: [],
 		});
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		await applyNodeChanges(context, 'wf-1');
 

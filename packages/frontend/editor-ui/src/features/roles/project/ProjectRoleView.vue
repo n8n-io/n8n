@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import {
 	N8nButton,
 	N8nFormInput,
@@ -22,6 +22,7 @@ import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
+import { PROJECT_CUSTOM_ROLE_SCOPES } from '@n8n/permissions';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -59,6 +60,7 @@ const {
 					[],
 			),
 		),
+	filterScopes: (scopes) => scopes.filter((s) => PROJECT_CUSTOM_ROLE_SCOPES.has(s)),
 	fetchError: 'Error fetching role',
 });
 
@@ -149,6 +151,7 @@ async function createProjectRole() {
 		telemetry.track('User successfully created new role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'project',
 			permissions: role.scopes,
 		});
 
@@ -206,6 +209,7 @@ async function updateProjectRole(slug: string) {
 		telemetry.track('User updated role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'project',
 			permissions_from: initialState.value?.scopes,
 			permissions_to: role.scopes,
 		});
@@ -238,7 +242,9 @@ function setPreset(slug: string) {
 		return;
 	}
 
-	form.value.scopes = structuredClone(toRaw(preset.scopes));
+	form.value.scopes = structuredClone(toRaw(preset.scopes)).filter((s) =>
+		PROJECT_CUSTOM_ROLE_SCOPES.has(s),
+	);
 }
 
 async function deleteRole() {
