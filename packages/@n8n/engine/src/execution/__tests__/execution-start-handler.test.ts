@@ -94,6 +94,44 @@ describe('ExecutionStartHandler', () => {
 		});
 	});
 
+	it('skips a trigger successor that also sits behind another node', async () => {
+		// trigger feeds both a and b, but a also waits on b, so only b can start
+		const graph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'T', type: 'trigger' },
+				{ id: 'a', name: 'A', type: 'v1-node' },
+				{ id: 'b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'b', to: 'a', outputIndex: 0, inputIndex: 1 },
+			],
+		};
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue(record(graph)),
+		});
+		const createSteps = vi.fn().mockResolvedValue([
+			{ id: 'step-trigger', nodeId: 'trigger' },
+			{ id: 'step-b', nodeId: 'b' },
+		]);
+		const stepStore = makeStepStore(createSteps);
+		const stepQueue = makeStepQueue();
+		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
+
+		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+		expect(createSteps).toHaveBeenCalledWith([
+			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed' },
+			{ executionId: 'exec-1', nodeId: 'b', status: 'queued' },
+		]);
+		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:ready',
+			executionId: 'exec-1',
+			stepId: 'step-b',
+		});
+	});
+
 	it('is a no-op when the execution cannot be claimed (duplicate delivery)', async () => {
 		const executionStore = makeExecutionStore({
 			transitionStatus: vi.fn().mockResolvedValue(false),

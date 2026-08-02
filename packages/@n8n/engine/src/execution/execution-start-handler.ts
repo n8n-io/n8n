@@ -1,4 +1,4 @@
-import { findTriggerNode, getSuccessorNodeIds } from '../graph';
+import { findTriggerNode, getPredecessorNodeIds, getSuccessorNodeIds } from '../graph';
 import type { ExecutionEnqueuedEvent, StepMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
 import type { StepStore } from './step-store';
@@ -36,8 +36,13 @@ export class ExecutionStartHandler {
 		// The trigger's output was captured at execution start; record it as
 		// already completed so successors can treat it as a satisfied predecessor.
 		// Planned together with the successors so a fan-out is one round trip.
-		const successorNodeIds = getSuccessorNodeIds(execution.graph, trigger.id);
-		const [, ...successorSteps] = await this.stepStore.createSteps([
+		// The trigger is the only node that has completed, so a successor sitting
+		// behind anything else isn't ready yet — `StepCompletedHandler` plans it once
+		// that predecessor finishes.
+		const successorNodeIds = getSuccessorNodeIds(execution.graph, trigger.id).filter((nodeId) =>
+			getPredecessorNodeIds(execution.graph, nodeId).every((id) => id === trigger.id),
+		);
+		const created = await this.stepStore.createSteps([
 			{ executionId: event.executionId, nodeId: trigger.id, status: 'completed' },
 			...successorNodeIds.map((nodeId) => ({
 				executionId: event.executionId,
@@ -46,7 +51,9 @@ export class ExecutionStartHandler {
 			})),
 		]);
 
-		// Published only after the rows exist, so a consumer can always load the step.
+		// Published only after the rows exist, so a consumer can always load the
+		// step. The trigger's row is already completed, so it isn't announced.
+		const successorSteps = created.filter(({ nodeId }) => nodeId !== trigger.id);
 		for (const { id: stepId } of successorSteps) {
 			await this.stepQueue.publish({
 				type: 'step:ready',
