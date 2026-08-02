@@ -130,6 +130,9 @@ describe('VectorStorePGVector.node', () => {
 			expect(mockClient.release).toHaveBeenCalled();
 			// table creation runs after the extension is created
 			expect(vs.ensureTableInDatabase).toHaveBeenCalled();
+			const extensionCallOrder = mockClient.query.mock.invocationCallOrder[0];
+			const tableInitCallOrder = (vs.ensureTableInDatabase as any).mock.invocationCallOrder[0];
+			expect(extensionCallOrder).toBeLessThan(tableInitCallOrder);
 		});
 	});
 
@@ -157,6 +160,9 @@ describe('VectorStorePGVector.node', () => {
 			).toBe(true);
 			expect(mockClient.release).toHaveBeenCalled();
 			expect(MockPGVectorStore.fromDocuments).toHaveBeenCalled();
+			const extensionCallOrder = mockClient.query.mock.invocationCallOrder[0];
+			const fromDocsCallOrder = (MockPGVectorStore.fromDocuments as any).mock.invocationCallOrder[0];
+			expect(extensionCallOrder).toBeLessThan(fromDocsCallOrder);
 		});
 	});
 });
