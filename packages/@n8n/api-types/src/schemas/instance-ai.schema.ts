@@ -1557,6 +1557,7 @@ export const INSTANCE_AI_MODEL_CREDENTIAL_TYPES = [
 	'openRouterApi',
 	'basetenApi',
 	'fireworksApi',
+	'togetherAiApi',
 	'cohereApi',
 ] as const;
 

@@ -156,6 +156,20 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
 	},
+	morph: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
+	togetherai: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
 	cohere: {
 		thinking: false,
 		promptCaching: false,
