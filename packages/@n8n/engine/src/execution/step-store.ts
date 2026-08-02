@@ -44,11 +44,14 @@ export class StepNotFoundError extends Error {
 /** Persistence interface for step records. */
 export interface StepStore {
 	/**
-	 * Persist new step records; returns their generated ids, in input order.
-	 * Batched rather than one-per-call so planning a fan-out costs a single
-	 * round trip and cannot half-persist.
+	 * Persist new step records, batched so planning a fan-out costs a single round
+	 * trip. Returns the rows actually created, in input order.
+	 *
+	 * A node already planned for the execution is skipped rather than fatal, so a
+	 * concurrent planner that reached it first doesn't cost the caller its other
+	 * rows. The caller owns — and so announces — only what it gets back.
 	 */
-	createSteps(records: NewStepRecord[]): Promise<Array<{ id: string }>>;
+	createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>>;
 
 	/** Load a single step by id. Throws `StepNotFoundError` if absent. */
 	loadStep(id: string): Promise<StepRecord>;
@@ -81,11 +84,23 @@ export interface StepStore {
 	 *
 	 * This is for gathering a step's inputs, so it deliberately can't answer
 	 * "have all predecessors completed?" — the two are indistinguishable from a
-	 * `null` here. Readiness belongs to whoever plans the next step
-	 * (TODO(CAT-2871)), and will need its own method.
+	 * `null` here. Use `loadCompletedNodeIds` for that.
 	 */
 	loadStepOutputs(
 		executionId: string,
 		nodeIds: string[],
 	): Promise<Record<string, JsonValue | null>>;
+
+	/**
+	 * Which of `nodeIds` have a completed step in the execution. Returns the
+	 * subset rather than a yes/no so one query can answer readiness for several
+	 * candidate steps at once.
+	 */
+	loadCompletedNodeIds(executionId: string, nodeIds: string[]): Promise<Set<string>>;
+
+	/** Whether the execution has any step still `queued` or `running`. */
+	hasActiveSteps(executionId: string): Promise<boolean>;
+
+	/** Whether any of the execution's steps failed. */
+	hasFailedSteps(executionId: string): Promise<boolean>;
 }

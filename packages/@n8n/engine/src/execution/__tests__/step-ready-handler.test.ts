@@ -34,6 +34,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
+		finishExecution: vi.fn().mockResolvedValue(true),
 	};
 }
 
@@ -54,6 +55,9 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
 		loadStepOutputs: vi.fn().mockResolvedValue({}),
+		loadCompletedNodeIds: vi.fn().mockResolvedValue(new Set()),
+		hasActiveSteps: vi.fn().mockResolvedValue(false),
+		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		...overrides,
 	} satisfies StepStore;
 }

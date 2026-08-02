@@ -11,6 +11,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
+		finishExecution: vi.fn().mockResolvedValue(true),
 		...overrides,
 	};
 }
@@ -28,6 +29,9 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		completeStep: vi.fn(),
 		failStep: vi.fn(),
 		loadStepOutputs: vi.fn(),
+		loadCompletedNodeIds: vi.fn(),
+		hasActiveSteps: vi.fn().mockResolvedValue(false),
+		hasFailedSteps: vi.fn().mockResolvedValue(false),
 	};
 }
 
@@ -58,9 +62,11 @@ describe('ExecutionStartHandler', () => {
 		const executionStore = makeExecutionStore({
 			loadExecution: vi.fn().mockResolvedValue(record(graph)),
 		});
-		const createSteps = vi
-			.fn()
-			.mockResolvedValue([{ id: 'step-trigger' }, { id: 'step-a' }, { id: 'step-b' }]);
+		const createSteps = vi.fn().mockResolvedValue([
+			{ id: 'step-trigger', nodeId: 'trigger' },
+			{ id: 'step-a', nodeId: 'a' },
+			{ id: 'step-b', nodeId: 'b' },
+		]);
 		const stepStore = makeStepStore(createSteps);
 		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
@@ -127,7 +133,7 @@ describe('ExecutionStartHandler', () => {
 		const executionStore = makeExecutionStore({
 			loadExecution: vi.fn().mockResolvedValue(record(graph)),
 		});
-		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger' }]);
+		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
 		const stepStore = makeStepStore(createSteps);
 		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);

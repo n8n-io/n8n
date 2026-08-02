@@ -1,6 +1,7 @@
 import { In, type Repository } from '@n8n/typeorm';
 
 import type { WorkflowStepExecution } from './entities';
+import { generateId } from './generate-id';
 import type { JsonValue } from '../common';
 import type { StepStatus } from '../execution/execution.types';
 import {
@@ -15,11 +16,29 @@ import {
 export class TypeOrmStepStore implements StepStore {
 	constructor(private readonly repo: Repository<WorkflowStepExecution>) {}
 
-	async createSteps(records: NewStepRecord[]): Promise<Array<{ id: string }>> {
-		const steps = records.map((record) => this.repo.create(record));
-		// NOTE: prefer insert to save for performance reasons.
-		await this.repo.insert(steps);
-		return steps.map(({ id }) => ({ id }));
+	async createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>> {
+		if (records.length === 0) return [];
+
+		// Ids are assigned here, not by the entity's insert hook, so the rows that
+		// survived the insert can be picked out of what RETURNING gives back.
+		const rows = records.map((record) => ({ ...record, id: generateId() }));
+
+		// `orIgnore` is the unique key doing its job: a node another planner already
+		// queued is skipped, leaving the rest of the batch to land.
+		const result = await this.repo
+			.createQueryBuilder()
+			.insert()
+			// Copies, because TypeORM writes the RETURNING values back onto whatever
+			// it is given — which would overwrite the ids we are about to match on.
+			.values(rows.map((row) => ({ ...row })))
+			.orIgnore()
+			.returning(['id'])
+			.execute();
+
+		// `raw` is the driver's untyped result; RETURNING was asked for `id` alone.
+		const inserted = new Set((result.raw as Array<{ id: string }>).map(({ id }) => id));
+
+		return rows.filter(({ id }) => inserted.has(id)).map(({ id, nodeId }) => ({ id, nodeId }));
 	}
 
 	async loadStep(id: string): Promise<StepRecord> {
@@ -73,5 +92,29 @@ export class TypeOrmStepStore implements StepStore {
 		for (const row of rows) outputsByNodeId[row.nodeId] = row.outputs;
 
 		return outputsByNodeId;
+	}
+
+	async loadCompletedNodeIds(executionId: string, nodeIds: string[]): Promise<Set<string>> {
+		if (nodeIds.length === 0) return new Set();
+
+		const rows = await this.repo.find({
+			where: { executionId, nodeId: In(nodeIds), status: 'completed' },
+			select: ['nodeId'],
+		});
+
+		return new Set(rows.map((row) => row.nodeId));
+	}
+
+	async hasActiveSteps(executionId: string): Promise<boolean> {
+		// `count({ where })`, not `countBy`, for the reason given in `loadStep`.
+		const active = await this.repo.count({
+			where: { executionId, status: In<StepStatus>(['queued', 'running']) },
+		});
+		return active > 0;
+	}
+
+	async hasFailedSteps(executionId: string): Promise<boolean> {
+		const failed = await this.repo.count({ where: { executionId, status: 'failed' } });
+		return failed > 0;
 	}
 }
