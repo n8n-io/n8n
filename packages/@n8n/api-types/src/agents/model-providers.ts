@@ -10,6 +10,7 @@ export const AGENT_MODEL_PROVIDERS = [
 	'openrouter',
 	'baseten',
 	'fireworks',
+	'togetherai',
 	'deepseek',
 	'cohere',
 	'mistral',

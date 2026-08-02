@@ -59,7 +59,7 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY; wafer/* → EVALS_WAFER_KEY; vertex/* → EVALS_VERTEX_SA_JSON (+ vertex-project/location). With model-url (Azure Foundry Anthropic): EVALS_AZURE_FOUNDRY_KEY.'
+        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY; wafer/* → EVALS_WAFER_KEY; morph/* → EVALS_MORPH_KEY; togetherai/* → EVALS_TOGETHER_KEY; vertex/* → EVALS_VERTEX_SA_JSON (+ vertex-project/location). With model-url (Azure Foundry Anthropic): EVALS_AZURE_FOUNDRY_KEY.'
         required: false
         type: string
         default: ''
@@ -119,7 +119,7 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, anthropic/claude-opus-4-8 (+ model-url for Azure Foundry), vertex/claude-opus-4-8, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, wafer/Kimi-K3, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, anthropic/claude-opus-4-8 (+ model-url for Azure Foundry), vertex/claude-opus-4-8, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, wafer/Kimi-K3, morph/morph-kimik3, morph/morph-kimik3-fast, morph/morph-glm52-744b, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct, togetherai/meta-llama/Llama-3.3-70B-Instruct-Turbo.'
         required: false
         default: ''
       model-url:
@@ -218,6 +218,8 @@ jobs:
           EVALS_BASETEN_KEY: ${{ secrets.EVALS_BASETEN_KEY }}
           EVALS_FIREWORKS_KEY: ${{ secrets.EVALS_FIREWORKS_KEY }}
           EVALS_WAFER_KEY: ${{ secrets.EVALS_WAFER_KEY }}
+          EVALS_MORPH_KEY: ${{ secrets.EVALS_MORPH_KEY }}
+          EVALS_TOGETHER_KEY: ${{ secrets.EVALS_TOGETHER_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
           EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
           EVALS_VERTEX_PROJECT: ${{ secrets.EVALS_VERTEX_PROJECT }}
@@ -319,6 +321,18 @@ jobs:
               exit 1
             fi
             MODEL_API_KEY="$EVALS_WAFER_KEY"
+          elif [[ "$INSTANCE_AI_MODEL" == morph/* ]]; then
+            if [ -z "$EVALS_MORPH_KEY" ]; then
+              echo "::error::model is morph/* but EVALS_MORPH_KEY secret is empty"
+              exit 1
+            fi
+            MODEL_API_KEY="$EVALS_MORPH_KEY"
+          elif [[ "$INSTANCE_AI_MODEL" == togetherai/* ]]; then
+            if [ -z "$EVALS_TOGETHER_KEY" ]; then
+              echo "::error::model is togetherai/* but EVALS_TOGETHER_KEY secret is empty"
+              exit 1
+            fi
+            MODEL_API_KEY="$EVALS_TOGETHER_KEY"
           elif [[ "$INSTANCE_AI_MODEL" == vertex/* ]]; then
             # Vertex Claude: GCP service-account JSON + project/location.
             # Lane agent uses N8N_INSTANCE_AI_VERTEX_*; MODEL_API_KEY stays
@@ -564,6 +578,8 @@ jobs:
           EVALS_BASETEN_KEY: ${{ secrets.EVALS_BASETEN_KEY }}
           EVALS_FIREWORKS_KEY: ${{ secrets.EVALS_FIREWORKS_KEY }}
           EVALS_WAFER_KEY: ${{ secrets.EVALS_WAFER_KEY }}
+          EVALS_MORPH_KEY: ${{ secrets.EVALS_MORPH_KEY }}
+          EVALS_TOGETHER_KEY: ${{ secrets.EVALS_TOGETHER_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
           EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
@@ -578,7 +594,7 @@ jobs:
           # a time, otherwise only the first line is registered.
           for v in "$EVALS_ANTHROPIC_KEY" "$EVALS_OPENAI_KEY" "$EVALS_OPENROUTER_KEY" \
                    "$EVALS_XAI_KEY" "$EVALS_BASETEN_KEY" "$EVALS_FIREWORKS_KEY" \
-                   "$EVALS_WAFER_KEY" \
+                   "$EVALS_WAFER_KEY" "$EVALS_MORPH_KEY" "$EVALS_TOGETHER_KEY" \
                    "$EVALS_AZURE_FOUNDRY_KEY" "$EVALS_VERTEX_SA_JSON" "$DAYTONA_API_KEY" \
                    "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" "$N8N_ENCRYPTION_KEY" \
                    "$EVALS_LANGSMITH_API_KEY"; do

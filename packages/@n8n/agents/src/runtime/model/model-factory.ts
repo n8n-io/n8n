@@ -141,6 +141,36 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			})(model);
 		},
 	},
+	morph: {
+		// OpenAI-compatible HTTP (api.morphllm.com/v1). Morph also speaks Anthropic
+		// Messages at /v1/messages; we use chat/completions for the agent runtime.
+		build: (creds, model, fetch) => {
+			const { createOpenAICompatible } =
+				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+			return createOpenAICompatible({
+				name: 'morph',
+				baseURL: creds.baseURL ?? 'https://api.morphllm.com/v1',
+				apiKey: creds.apiKey,
+				fetch,
+				includeUsage: true,
+			})(model);
+		},
+	},
+	togetherai: {
+		// OpenAI-compatible HTTP (api.together.ai/v1). Avoid @ai-sdk/togetherai so we
+		// stay on the shared openai-compatible path used by Fireworks/Baseten/Morph.
+		build: (creds, model, fetch) => {
+			const { createOpenAICompatible } =
+				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+			return createOpenAICompatible({
+				name: 'togetherai',
+				baseURL: creds.baseURL ?? 'https://api.together.ai/v1',
+				apiKey: creds.apiKey,
+				fetch,
+				includeUsage: true,
+			})(model);
+		},
+	},
 	anthropic: {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =

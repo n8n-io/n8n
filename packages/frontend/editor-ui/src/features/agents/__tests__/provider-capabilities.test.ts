@@ -21,6 +21,8 @@ describe('provider-capabilities', () => {
 		expect(PROVIDER_CAPABILITIES.baseten.thinking).toBe('reasoningEffort');
 		expect(PROVIDER_CAPABILITIES.fireworks.thinking).toBe('reasoningEffort');
 		expect(PROVIDER_CAPABILITIES.wafer.thinking).toBe('reasoningEffort');
+		expect(PROVIDER_CAPABILITIES.morph.thinking).toBe('reasoningEffort');
+		expect(PROVIDER_CAPABILITIES.togetherai.thinking).toBe('reasoningEffort');
 		expect(PROVIDER_CAPABILITIES.xai.thinking).toBe('reasoningEffort');
 	});
 
@@ -46,6 +48,8 @@ describe('provider-capabilities', () => {
 			'baseten',
 			'fireworks',
 			'wafer',
+			'morph',
+			'togetherai',
 			'cohere',
 			'ollama',
 		];

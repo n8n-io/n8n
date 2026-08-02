@@ -122,6 +122,25 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
+	it.each(['morph/morph-kimik3', 'morph/morph-kimik3-fast', 'morph/morph-glm52-744b'] as const)(
+		'enables medium reasoning effort for Morph %s',
+		(modelId) => {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, modelId);
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('morph', {
+				reasoningEffort: 'medium',
+			});
+		},
+	);
+
+	it('enables medium reasoning effort for Together AI', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'togetherai/riqwanthahamir-d900/deepseek-v4-flash');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('togetherai', {
+			reasoningEffort: 'medium',
+		});
+	});
+
 	it('enables adaptive thinking for Vertex Claude', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'vertex/claude-opus-4-8');

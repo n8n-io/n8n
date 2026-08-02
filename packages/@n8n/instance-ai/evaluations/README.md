@@ -304,6 +304,8 @@ Not yet covered: an automatic "unexpected artifact" fail (a build producing an a
 | `BASETEN_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `baseten/` |
 | `FIREWORKS_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `fireworks/` |
 | `WAFER_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `wafer/` |
+| `MORPH_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `morph/` |
+| `TOGETHER_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `togetherai/` |
 | `N8N_INSTANCE_AI_VERTEX_PROJECT` | No | GCP project for `vertex/*` (also `GOOGLE_VERTEX_PROJECT`) |
 | `N8N_INSTANCE_AI_VERTEX_LOCATION` | No | Vertex location for `vertex/*` (default `global`) |
 | `N8N_INSTANCE_AI_VERTEX_CREDENTIALS` | No | Service-account JSON for `vertex/*`; empty uses ADC |
@@ -872,7 +874,7 @@ Evals run automatically on PRs that change Instance AI code (path-filtered). The
 
 The job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts. When `LANGSMITH_API_KEY` is set via the `EVALS_LANGSMITH_API_KEY` secret, runs also land as LangSmith experiments tagged with commit SHA + branch, so you can compare against master side-by-side.
 
-For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`) and set the `model` input. Supported experiment models include `anthropic/claude-opus-5`, `anthropic/claude-sonnet-4-6`, `vertex/claude-opus-4-8`, `openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openrouter/moonshotai/kimi-k3`, `wafer/Kimi-K3`, `xai/grok-4.5`, `baseten/zai-org/GLM-5.2`, `baseten/zai-org/GLM-5.2-Fast`, and `fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct`. CI routes the matching provider key from repo secrets (`EVALS_*_KEY`; Baseten uses `EVALS_BASETEN_KEY`, Fireworks uses `EVALS_FIREWORKS_KEY`, Wafer uses `EVALS_WAFER_KEY`).
+For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`) and set the `model` input. Supported experiment models include `anthropic/claude-opus-5`, `anthropic/claude-sonnet-4-6`, `vertex/claude-opus-4-8`, `openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openrouter/moonshotai/kimi-k3`, `wafer/Kimi-K3`, `morph/morph-kimik3`, `morph/morph-kimik3-fast`, `morph/morph-glm52-744b`, `xai/grok-4.5`, `baseten/zai-org/GLM-5.2`, `baseten/zai-org/GLM-5.2-Fast`, `fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct`, and `togetherai/meta-llama/Llama-3.3-70B-Instruct-Turbo`. CI routes the matching provider key from repo secrets (`EVALS_*_KEY`; Baseten uses `EVALS_BASETEN_KEY`, Fireworks uses `EVALS_FIREWORKS_KEY`, Wafer uses `EVALS_WAFER_KEY`, Morph uses `EVALS_MORPH_KEY`, Together AI uses `EVALS_TOGETHER_KEY`).
 
 `lanes` / `eval-concurrency` default to **10 / 32** (Anthropic-sized). For `baseten/*` models they auto-throttle to **1 / 2** (~0.5M TPM / ~12 RPM — fits [Baseten Basic verified](https://docs.baseten.co/inference/model-apis/rate-limits-and-budgets) 500k TPM / 120 RPM); override the inputs to raise them if your workspace has Pro/Enterprise headroom.
 

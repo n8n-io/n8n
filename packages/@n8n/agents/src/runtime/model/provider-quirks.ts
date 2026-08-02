@@ -165,6 +165,26 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return { wafer: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
 		},
 	},
+	morph: {
+		// Morph OpenAI chat accepts `reasoning: { effort }` (not `reasoning_effort`).
+		// See https://docs.morphllm.com/sdk/components/fast-models
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return {
+				morph: {
+					reasoning: { effort: cfg.reasoningEffort ?? 'medium' },
+				},
+			};
+		},
+	},
+	togetherai: {
+		// OpenAI-compatible chat schema; reasoning maps to top-level `reasoning_effort`
+		// via providerOptions.togetherai.
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return { togetherai: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
+		},
+	},
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
@@ -205,12 +225,17 @@ export const FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS = 8_192;
 export const ANTHROPIC_PROXY_MAX_OUTPUT_TOKENS = 64_000;
 
 function isGlm52Model(modelId: string): boolean {
-	const modelName = modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId;
-	return modelName.toLowerCase().includes('glm-5.2');
+	const modelName = (
+		modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId
+	).toLowerCase();
+	// Baseten/Z.AI: `zai-org/GLM-5.2`; Morph: `morph-glm52-744b`.
+	return modelName.includes('glm-5.2') || modelName.includes('glm52');
 }
 
 function isKimiK3Model(modelId: string): boolean {
-	return modelId.toLowerCase().includes('kimi-k3');
+	const id = modelId.toLowerCase();
+	// OpenRouter/Fireworks/Wafer: `kimi-k3`; Morph: `morph-kimik3` / `morph-kimik3-fast`.
+	return id.includes('kimi-k3') || id.includes('kimik3');
 }
 
 /**
@@ -220,11 +245,14 @@ function isKimiK3Model(modelId: string): boolean {
  */
 export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
 	const provider = providerIdFromModelId(modelId);
-	if ((provider === 'baseten' || provider === 'openai') && isGlm52Model(modelId)) {
+	if (
+		(provider === 'baseten' || provider === 'openai' || provider === 'morph') &&
+		isGlm52Model(modelId)
+	) {
 		return GLM_52_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
-	// Covers direct Fireworks/OpenRouter ids and Anthropic-proxy LanguageModels
-	// (`anthropic/accounts/fireworks/models/kimi-k3`).
+	// Covers direct Fireworks/OpenRouter/Wafer/Morph ids and Anthropic-proxy
+	// LanguageModels (`anthropic/accounts/fireworks/models/kimi-k3`).
 	if (isKimiK3Model(modelId)) {
 		if (provider === 'anthropic') {
 			return ANTHROPIC_PROXY_MAX_OUTPUT_TOKENS - FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS;

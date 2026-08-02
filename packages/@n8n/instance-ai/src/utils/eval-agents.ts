@@ -25,6 +25,8 @@ const PROVIDER_API_KEY_ENV: Record<string, string> = {
 	baseten: 'BASETEN_API_KEY',
 	fireworks: 'FIREWORKS_API_KEY',
 	wafer: 'WAFER_API_KEY',
+	morph: 'MORPH_API_KEY',
+	togetherai: 'TOGETHER_API_KEY',
 	xai: 'XAI_API_KEY',
 };
 

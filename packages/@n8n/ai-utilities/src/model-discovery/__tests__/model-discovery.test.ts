@@ -182,6 +182,7 @@ describe('model-discovery', () => {
 		['deepseek', 'https://api.deepseek.com/models'],
 		['fireworks', 'https://api.fireworks.ai/inference/v1/models'],
 		['openrouter', 'https://openrouter.ai/api/v1/models'],
+		['togetherai', 'https://api.together.ai/v1/models'],
 		['xai', 'https://api.x.ai/v1/models'],
 		['vercel', 'https://ai-gateway.vercel.sh/v1/models'],
 	] as const)('%s', (provider, expectedUrl) => {
@@ -225,6 +226,7 @@ describe('model-discovery', () => {
 			'nvidia',
 			'openai',
 			'openrouter',
+			'togetherai',
 			'vercel',
 			'xai',
 		]);

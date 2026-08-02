@@ -76,6 +76,11 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 		credentialTypes: ['fireworksApi'],
 		isAggregator: true,
 	},
+	togetherai: {
+		displayName: 'Together AI',
+		credentialTypes: ['togetherAiApi'],
+		isAggregator: true,
+	},
 	deepseek: {
 		displayName: 'DeepSeek',
 		credentialTypes: ['deepSeekApi'],

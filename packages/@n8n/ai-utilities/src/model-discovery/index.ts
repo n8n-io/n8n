@@ -9,6 +9,7 @@ import { listMistralModels } from './providers/mistral';
 import { listNvidiaModels } from './providers/nvidia';
 import { listOpenAiModels } from './providers/openai';
 import { listOpenRouterModels } from './providers/openrouter';
+import { listTogetherAiModels } from './providers/togetherai';
 import { listVercelModels } from './providers/vercel';
 import { listXaiModels } from './providers/xai';
 import type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';
@@ -36,6 +37,7 @@ export const MODEL_DISCOVERY_PROVIDERS: Record<string, ListModelsFn> = {
 	nvidia: listNvidiaModels,
 	openai: listOpenAiModels,
 	openrouter: listOpenRouterModels,
+	togetherai: listTogetherAiModels,
 	vercel: listVercelModels,
 	xai: listXaiModels,
 };
@@ -66,6 +68,7 @@ export { listMistralModels } from './providers/mistral';
 export { listNvidiaModels } from './providers/nvidia';
 export { listOpenAiModels, shouldIncludeOpenAiModel } from './providers/openai';
 export { listOpenRouterModels } from './providers/openrouter';
+export { listTogetherAiModels } from './providers/togetherai';
 export { listVercelModels } from './providers/vercel';
 export { listXaiModels } from './providers/xai';
 export type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';

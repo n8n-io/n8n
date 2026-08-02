@@ -405,6 +405,30 @@ describe('createModel', () => {
 			expect(model.includeUsage).toBe(true);
 		});
 
+		it('should create model for morph via openai-compatible', () => {
+			const model = createModel({
+				id: 'morph/morph-kimik3',
+				apiKey: 'morph-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('morph');
+			expect(model.modelId).toBe('morph-kimik3');
+			expect(model.apiKey).toBe('morph-test');
+			expect(model.baseURL).toBe('https://api.morphllm.com/v1');
+			expect(model.includeUsage).toBe(true);
+		});
+
+		it('should create model for togetherai via openai-compatible', () => {
+			const model = createModel({
+				id: 'togetherai/riqwanthahamir-d900/deepseek-v4-flash',
+				apiKey: 'tgp-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('togetherai');
+			expect(model.modelId).toBe('riqwanthahamir-d900/deepseek-v4-flash');
+			expect(model.apiKey).toBe('tgp-test');
+			expect(model.baseURL).toBe('https://api.together.ai/v1');
+			expect(model.includeUsage).toBe(true);
+		});
+
 		it('should create model for vertex Anthropic with project/location/credentials', () => {
 			const credentials = {
 				type: 'service_account',

@@ -231,6 +231,38 @@ describe('thinkingToProviderOptions', () => {
 			wafer: { reasoningEffort: 'medium' },
 		});
 	});
+
+	it('morph: maps reasoningEffort to reasoning.effort', () => {
+		expect(
+			getProviderQuirks('morph').thinkingToProviderOptions?.({
+				reasoningEffort: 'high',
+			}),
+		).toEqual({
+			morph: { reasoning: { effort: 'high' } },
+		});
+	});
+
+	it('morph: defaults reasoning effort to medium', () => {
+		expect(getProviderQuirks('morph').thinkingToProviderOptions?.({})).toEqual({
+			morph: { reasoning: { effort: 'medium' } },
+		});
+	});
+
+	it('togetherai: maps reasoningEffort to providerOptions.togetherai', () => {
+		expect(
+			getProviderQuirks('togetherai').thinkingToProviderOptions?.({
+				reasoningEffort: 'high',
+			}),
+		).toEqual({
+			togetherai: { reasoningEffort: 'high' },
+		});
+	});
+
+	it('togetherai: defaults reasoning effort to medium', () => {
+		expect(getProviderQuirks('togetherai').thinkingToProviderOptions?.({})).toEqual({
+			togetherai: { reasoningEffort: 'medium' },
+		});
+	});
 });
 
 describe('buildCallProviderOptionDefaults', () => {
@@ -251,6 +283,7 @@ describe('resolveDefaultMaxOutputTokens', () => {
 		'baseten/zai-org/GLM-5.2-Fast',
 		'openai/zai-org/GLM-5.2',
 		'openai/zai-org/GLM-5.2-Fast',
+		'morph/morph-glm52-744b',
 	] as const)('raises the output cap for GLM 5.2 models (%s)', (modelId) => {
 		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(GLM_52_DEFAULT_MAX_OUTPUT_TOKENS);
 	});
@@ -260,6 +293,8 @@ describe('resolveDefaultMaxOutputTokens', () => {
 		'fireworks/accounts/fireworks/routers/kimi-k3-fast',
 		'openrouter/moonshotai/kimi-k3',
 		'wafer/Kimi-K3',
+		'morph/morph-kimik3',
+		'morph/morph-kimik3-fast',
 	] as const)('raises the output cap to the Kimi K3 default for %s', (modelId) => {
 		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS);
 	});
