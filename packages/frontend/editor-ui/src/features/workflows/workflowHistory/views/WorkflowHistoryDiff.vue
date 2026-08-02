@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { IWorkflowDb } from '@/Interface';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { N8nText } from '@n8n/design-system';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';

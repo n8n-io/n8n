@@ -13,7 +13,7 @@ import {
 } from 'reka-ui';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useClipboard } from '@n8n/composables/useClipboard';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { ArtifactTab } from '../useCanvasPreview';
 
 const props = withDefaults(
