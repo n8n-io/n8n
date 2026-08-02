@@ -126,21 +126,19 @@ describe('WorkflowReviewDecisionEligibilityService', () => {
 			expect(authorRepository.isAuthor).not.toHaveBeenCalled();
 		});
 
-		// decide() throws ConflictError via assertRequestUpdatable for these, so the
-		// capability must not claim otherwise — checked before any permission lookup.
+		// The capability answers "who", not "when": a closed request still reports the
+		// viewer's own eligibility honestly, and callers gate on state separately.
 		it.each([
 			['a closed request', { state: 'closed' as const }],
 			['an approved request', { decision: 'approved' as const }],
-		])('reports %s as ineligible without any lookup', async (_label, overrides) => {
+		])('still reports viewer eligibility for %s', async (_label, overrides) => {
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
 				mock<WorkflowReviewRequest>({ id: requestId, projectId, ...overrides }),
 				workflowId,
 			);
 
-			expect(eligibility).toEqual({ canDecide: false, reason: 'request_not_open' });
-			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
-			expect(authorRepository.isAuthor).not.toHaveBeenCalled();
+			expect(eligibility).toEqual({ canDecide: true, reason: null });
 		});
 
 		it('reports a review with no linked workflow as ineligible without any lookup', async () => {

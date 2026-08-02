@@ -51,21 +51,21 @@ export class WorkflowReviewDecisionEligibilityService {
 
 	/**
 	 * Advisory read-time snapshot of whether the viewer could decide the request,
-	 * mirroring `decide()`'s checks in order (publish on the pinned workflow
-	 * first, then authorship) so the surfaced reason matches the error the
-	 * endpoint would return. The endpoint remains the source of truth and
+	 * mirroring `decide()`'s authorization checks in order (publish on the pinned
+	 * workflow first, then authorship) so the surfaced reason matches the error
+	 * the endpoint would return. The endpoint remains the source of truth and
 	 * re-checks under its lock.
+	 *
+	 * Deliberately viewer-scoped: `decide()`'s `assertRequestUpdatable` lifecycle
+	 * guard is not mirrored here. It is shared with the update path and is not
+	 * viewer-specific, and folding it in would erase whether the viewer is
+	 * eligible at all on a closed request. Callers gate on `state`/`decision`.
 	 */
 	async resolveViewerEligibility(
 		user: User,
 		request: WorkflowReviewRequest,
 		pinnedWorkflowId: string | null,
 	): Promise<WorkflowReviewViewerEligibility> {
-		// mirror decide()'s assertRequestUpdatable
-		if (request.state === 'closed' || request.decision === 'approved') {
-			return { canDecide: false, reason: 'request_not_open' };
-		}
-
 		// No linked workflow means decide() would 404 before any permission check
 		if (!pinnedWorkflowId) {
 			return { canDecide: false, reason: 'missing_publish_permission' };

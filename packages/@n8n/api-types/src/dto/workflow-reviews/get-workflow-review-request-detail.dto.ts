@@ -31,17 +31,17 @@ export interface WorkflowReviewRequestWorkflowDetail {
  * map reasons to copy; unknown future reasons should fall back to a generic
  * hint.
  */
-export type WorkflowReviewDecisionIneligibilityReason =
-	| 'author'
-	| 'missing_publish_permission'
-	| 'request_not_open';
+export type WorkflowReviewDecisionIneligibilityReason = 'author' | 'missing_publish_permission';
 
 export interface WorkflowReviewRequestDetail extends WorkflowReviewInboxItem {
 	description: string | null;
 	workflows: WorkflowReviewRequestWorkflowDetail[];
 	/**
-	 * Whether the viewer may decide this review, per the decision endpoint's
-	 * rules.
+	 * Whether the viewer is eligible to decide, per the decision endpoint's
+	 * authorization rules. Answers "who", not "when": it ignores the request
+	 * lifecycle, so callers must gate on `state`/`decision` as well — a closed or
+	 * already approved request is undecidable no matter who asks. Advisory
+	 * snapshot; the endpoint re-checks on submission.
 	 */
 	viewerCanDecide: boolean;
 	/** Set if `viewerCanDecide` is false. */
