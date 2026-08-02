@@ -55,7 +55,7 @@ const selectedItem = computed(() => detail.value ?? selectedListItem.value);
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
 
 documentTitle.set(i18n.baseText('workflowReviews.page.title'));
 
@@ -109,12 +109,54 @@ async function onLoadMore() {
 
 const deciding = ref(false);
 
+// backend activation messages are inconsistently punctuated
+function asSentence(message: string) {
+	const trimmed = message.trim();
+	return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+/**
+ * A decision that closes the review drops its card from the open list, which
+ * would leave the detail on screen with nothing selected in the sidebar. Follow
+ * it to the closed tab instead, keeping the selection. The `state` query watcher
+ * refetches the list from here.
+ */
+function followClosedReview(id: string) {
+	if (activeTab.value === 'closed') return;
+	void router.replace({
+		params: { reviewRequestId: id },
+		query: { ...route.query, [REVIEW_INBOX_QUERY_PARAM.state]: 'closed' },
+	});
+}
+
 async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
 	deciding.value = true;
 	try {
-		await store.decideOnReview(id, decision);
+		const { autoPublish, state } = await store.decideOnReview(id, decision);
+		if (state === 'closed') {
+			followClosedReview(id);
+		}
+
+		if (autoPublish?.status === 'published') {
+			showMessage({
+				type: 'success',
+				title: i18n.baseText('workflowReviews.decision.approved.published.title'),
+				message: i18n.baseText('workflowReviews.decision.approved.published.message'),
+			});
+		} else if (autoPublish?.status === 'failed') {
+			// The approval itself succeeded and is not reverted; the workflow can
+			// be published through the regular publish flow, which is the retry.
+			showMessage({
+				type: 'warning',
+				duration: 0,
+				title: i18n.baseText('workflowReviews.decision.approved.publishFailed.title'),
+				message: i18n.baseText('workflowReviews.decision.approved.publishFailed.message', {
+					interpolate: { message: asSentence(autoPublish.message) },
+				}),
+			});
+		}
 	} catch (error) {
-		showError(error, 'Could not submit review decision');
+		showError(error, i18n.baseText('workflowReviews.decision.error.title'));
 		// The decision failed because someone else already decided (409), so
 		// refetch. Otherwise the item keeps showing as open and every retry
 		// re-fails.

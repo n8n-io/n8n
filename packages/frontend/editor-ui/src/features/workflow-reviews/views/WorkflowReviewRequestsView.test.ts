@@ -1,4 +1,8 @@
-import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
+import type {
+	DecideWorkflowReviewRequestResponse,
+	WorkflowReviewInboxItem,
+	WorkflowReviewRequestDetail,
+} from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
@@ -20,6 +24,7 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 }));
 
 const showError = vi.fn();
+const showMessage = vi.fn();
 
 const router = createRouter({
 	history: createMemoryHistory(),
@@ -63,7 +68,10 @@ describe('WorkflowReviewRequestsView', () => {
 	beforeEach(async () => {
 		createTestingPinia();
 		showError.mockReset();
-		vi.mocked(useToast).mockReturnValue({ showError } as unknown as ReturnType<typeof useToast>);
+		showMessage.mockReset();
+		vi.mocked(useToast).mockReturnValue({ showError, showMessage } as unknown as ReturnType<
+			typeof useToast
+		>);
 		await router.push('/workflow-review-requests');
 		await router.isReady();
 
@@ -263,12 +271,24 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	describe('decision actions', () => {
+		const decisionResponse = (
+			overrides: Partial<DecideWorkflowReviewRequestResponse> = {},
+		): DecideWorkflowReviewRequestResponse => ({
+			id: 'req-1',
+			state: 'closed',
+			decision: 'approved',
+			workflowVersionId: null,
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-02T00:00:00.000Z',
+			...overrides,
+		});
+
 		beforeEach(async () => {
 			await router.replace('/workflow-review-requests/req-1');
 			store.probeSettled = true;
 			store.showSidebar = true;
 			store.detail = createDetail();
-			store.decideOnReview.mockResolvedValue(undefined);
+			store.decideOnReview.mockResolvedValue(decisionResponse());
 		});
 
 		it('renders both action buttons for an open review', async () => {
@@ -310,6 +330,145 @@ describe('WorkflowReviewRequestsView', () => {
 			expect(store.decideOnReview).toHaveBeenCalledWith('req-1', 'changes_requested');
 		});
 
+		it('shows a success toast when the approval published the workflow', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ autoPublish: { status: 'published' } }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(showMessage).toHaveBeenCalledWith({
+				type: 'success',
+				title: 'Review approved',
+				message: 'The reviewed workflow version has been published.',
+			});
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('shows a warning toast with the reason when the auto-publish failed', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ autoPublish: { status: 'failed', message: 'Version not found' } }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(showMessage).toHaveBeenCalledWith({
+				type: 'warning',
+				duration: 0,
+				title: 'Review approved, but the workflow is not published',
+				message: 'Version not found. Publish the workflow manually to retry.',
+			});
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('does not double up punctuation on an already-terminated message', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({
+					autoPublish: { status: 'failed', message: 'Cannot activate an archived workflow.' },
+				}),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Cannot activate an archived workflow. Publish the workflow manually to retry.',
+				}),
+			);
+		});
+
+		it('shows no publish toast when requesting changes', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ state: 'open', decision: 'changes_requested' }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-request-changes-button').click();
+			await waitAllPromises();
+
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('follows a closed review to the closed tab, keeping it selected', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ autoPublish: { status: 'published' } }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.fullPath).toBe(
+				'/workflow-review-requests/req-1?state=closed',
+			);
+			expect(router.currentRoute.value.params.reviewRequestId).toBe('req-1');
+		});
+
+		// The review closes on approval whether or not the publish succeeded, and a
+		// failure is exactly when the card is needed to retry from.
+		it('follows the review to the closed tab even when the auto-publish failed', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ autoPublish: { status: 'failed', message: 'Version not found' } }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.fullPath).toBe(
+				'/workflow-review-requests/req-1?state=closed',
+			);
+		});
+
+		it('stays on the open tab when the review stays open', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ state: 'open', decision: 'changes_requested' }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-request-changes-button').click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.fullPath).toBe('/workflow-review-requests/req-1');
+		});
+
+		it('does not renavigate when already on the closed tab', async () => {
+			await router.replace('/workflow-review-requests/req-1?state=closed');
+			store.activeTab = 'closed';
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+			const replaceSpy = vi.spyOn(router, 'replace');
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(replaceSpy).not.toHaveBeenCalled();
+			expect(router.currentRoute.value.fullPath).toBe(
+				'/workflow-review-requests/req-1?state=closed',
+			);
+		});
+
 		it('shows an error toast when the decision fails', async () => {
 			const error = new Error('forbidden');
 			store.decideOnReview.mockRejectedValueOnce(error);
@@ -342,8 +501,8 @@ describe('WorkflowReviewRequestsView', () => {
 			let resolveDecision!: () => void;
 			store.decideOnReview.mockImplementationOnce(
 				async () =>
-					await new Promise<void>((resolve) => {
-						resolveDecision = resolve;
+					await new Promise<DecideWorkflowReviewRequestResponse>((resolve) => {
+						resolveDecision = () => resolve(decisionResponse());
 					}),
 			);
 
