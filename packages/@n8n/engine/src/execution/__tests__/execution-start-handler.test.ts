@@ -92,6 +92,8 @@ describe('ExecutionStartHandler', () => {
 			executionId: 'exec-1',
 			stepId: 'step-b',
 		});
+		// work is outstanding, so the execution is provably unfinished
+		expect(executionStore.finishExecution).not.toHaveBeenCalled();
 	});
 
 	it('skips a trigger successor that also sits behind another node', async () => {
@@ -186,5 +188,36 @@ describe('ExecutionStartHandler', () => {
 			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed' },
 		]);
 		expect(stepQueue.publish).not.toHaveBeenCalled();
+		// nothing will ever report completion, so the execution has to finish here or
+		// it stays `running` forever
+		expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'completed');
+	});
+
+	it('finishes the execution when no first step is ready to plan', async () => {
+		// a cycle: 'a' waits on 'b', which waits on 'a', so neither can start
+		const graph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'T', type: 'trigger' },
+				{ id: 'a', name: 'A', type: 'v1-node' },
+				{ id: 'b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'b', to: 'a', outputIndex: 0, inputIndex: 1, isBackEdge: true },
+			],
+		};
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue(record(graph)),
+		});
+		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
+		const stepStore = makeStepStore(createSteps);
+		const stepQueue = makeStepQueue();
+		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
+
+		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+		expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'completed');
 	});
 });
