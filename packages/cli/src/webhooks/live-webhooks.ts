@@ -143,6 +143,7 @@ export class LiveWebhooks implements IWebhookManager {
 		if (this.webhookPhaseNeedsIsolate(startNode)) {
 			await workflow.expression.acquireIsolate();
 		}
+
 		try {
 			const webhookData = this.webhookService
 				.getNodeWebhooks(workflow, startNode as INode, additionalData)
@@ -194,7 +195,6 @@ export class LiveWebhooks implements IWebhookManager {
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
-			// No-op when nothing was acquired for this workflow's expression instance.
 			await workflow.expression.releaseIsolate();
 		}
 	}
@@ -204,15 +204,11 @@ export class LiveWebhooks implements IWebhookManager {
 	 * request, which is worth skipping when the webhook phase provably evaluates
 	 * nothing: `WorkflowExpression` resolves those values natively. Anything not
 	 * proven below acquires eagerly.
-	 *
-	 * This is the whole of the kill switch: with it off, values still resolve
-	 * natively — same values — but the isolate is there for anything unproven.
 	 */
 	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
 		if (!this.expressionEngineConfig.allowWebhookIsolateSkip) return true;
 		if (startNode === null) return true;
-		// Extend only after reading a trigger's `webhook()`: the scans below cannot
-		// see `evaluateExpression()` calls or helpers that evaluate internally
+		// Extend only after reviewing webhook() for evaluateExpression() calls or internal evals.
 		if (startNode.type !== WEBHOOK_NODE_TYPE) return true;
 		if (!nodeParametersAreStatic(startNode)) return true;
 

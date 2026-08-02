@@ -65,8 +65,7 @@ export class ExpressionEngineConfig {
 	/**
 	 * Whether a production webhook request may skip acquiring an isolate when its
 	 * trigger provably evaluates no expression during the webhook phase. Off
-	 * acquires one for every request, as before — description fields still
-	 * resolve without the engine where provable, which changes no value.
+	 * acquires one for every request.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_ALLOW_WEBHOOK_ISOLATE_SKIP')
 	allowWebhookIsolateSkip: boolean = true;
