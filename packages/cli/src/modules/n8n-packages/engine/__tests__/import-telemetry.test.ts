@@ -101,6 +101,7 @@ const scope = (input: {
 				variableId: `id-of-${name}`,
 				name,
 				value: 'from-package',
+				usedByWorkflows: [],
 			})),
 		},
 		variableResult: {
