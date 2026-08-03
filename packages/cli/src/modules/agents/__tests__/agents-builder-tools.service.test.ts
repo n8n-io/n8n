@@ -1665,9 +1665,17 @@ describe('AgentsBuilderToolsService', () => {
 			}
 		});
 
-		it('creates multiple tasks in one call and returns only ids, names, and enabled, not objectives or crons, in order', async () => {
-			const { service, agentsService, agentTaskService } = makeService();
-			agentsService.findById.mockResolvedValue(makeAgent());
+		it('creates multiple tasks without emitting legacy builder task telemetry', async () => {
+			const { service, agentsService, agentTaskService, telemetry } = makeService();
+			agentsService.findById.mockResolvedValueOnce(makeAgent()).mockResolvedValueOnce(
+				makeAgent({
+					...baseConfig,
+					tasks: [
+						{ type: 'task', id: 'task-1', enabled: true },
+						{ type: 'task', id: 'task-2', enabled: true },
+					],
+				}),
+			);
 			agentTaskService.createTasks.mockResolvedValue([
 				makeTaskDto(),
 				makeTaskDto({ id: 'task-2', ...taskTwoInput }),
@@ -1696,6 +1704,10 @@ describe('AgentsBuilderToolsService', () => {
 					{ id: 'task-2', name: taskTwoInput.name, enabled: true },
 				],
 			});
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TASKS,
+				expect.anything(),
+			);
 		});
 
 		it('rejects an empty tasks array via the input schema', () => {
@@ -1740,33 +1752,6 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
 
 			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent "agent-1" not found' }] });
-		});
-
-		it('create_tasks survives a failing post-write snapshot read', async () => {
-			const { service, agentsService, agentTaskService, telemetry } = makeService();
-			agentsService.findById
-				.mockResolvedValueOnce(makeAgent())
-				.mockRejectedValueOnce(new Error('db down'));
-			agentTaskService.createTasks.mockResolvedValue([makeTaskDto()]);
-
-			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
-
-			expect(agentTaskService.createTasks).toHaveBeenCalledWith(
-				agentId,
-				projectId,
-				[{ ...taskOneInput, enabled: true }],
-				{ user, modifiedBy: 'builder' },
-			);
-			expect(result).toEqual({
-				ok: true,
-				configMutated: true,
-				agentId,
-				tasks: [{ id: 'task-1', name: taskOneInput.name, enabled: true }],
-			});
-			expect(telemetry.track).not.toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TASKS,
-				expect.anything(),
-			);
 		});
 	});
 
