@@ -391,7 +391,7 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions,
 		observationTasks: Array<Promise<unknown>>,
 		executionCounter?: AgentExecutionCounter,
-		telemetry?: BuiltTelemetry,
+		_telemetry?: BuiltTelemetry,
 	): void {
 		const { memory, episodicMemory } = this.config;
 		if (
