@@ -3918,9 +3918,7 @@ describe('InstanceAiService — editor handoff context resources', () => {
 	it('traces the attached resources, which the raw message no longer shows', () => {
 		const source = InstanceAiService.toString();
 
-		// `traceInput.message` is the user's text before enrichment, so the
-		// context block never reaches the trace — this is the only record that
-		// the editor handed over a resource.
+		// The context block never reaches the trace, so this is the only record.
 		expect(source).toContain('resourceAttachments: contextAttachments.map');
 	});
 });

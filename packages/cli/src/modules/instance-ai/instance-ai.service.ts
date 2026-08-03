@@ -3305,8 +3305,8 @@ export class InstanceAiService {
 							})),
 						}
 					: {}),
-				// Kind + id only: `message` here is the user's raw text, so without this the
-				// trace has no record that the editor handed the agent a resource to work on.
+				// `message` is the user's raw text, so without this the trace has no
+				// record that the editor handed the agent a resource.
 				...(contextAttachments.length
 					? {
 							resourceAttachments: contextAttachments.map((attachment) => ({
