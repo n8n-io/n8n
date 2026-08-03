@@ -2,7 +2,7 @@
 import type { AcceptableValue } from 'reka-ui';
 import { RadioGroupRoot } from 'reka-ui';
 import { reactiveOmit, reactivePick } from '@vueuse/core';
-import { computed, onMounted, onUnmounted, ref, useAttrs } from 'vue';
+import { computed, ref, useAttrs } from 'vue';
 
 import type { SegmentControlProps, SegmentOption } from './SegmentControl.types';
 import SegmentControlItem from './SegmentControlItem.vue';
@@ -33,20 +33,11 @@ const rootProps = reactivePick(props, 'name', 'required', 'loop', 'dir');
 const lastPointerEvent = ref<MouseEvent>();
 
 /**
- * reka-ui selects on arrow keys by listening on `window`. Ancestors that call
- * stopPropagation on keydown (editor keybindings, modals, etc.) block that, so
- * RovingFocus still moves focus but selection never updates. Track arrows in
- * capture phase and complete selection on focusin.
- *
- * Clear via window keyup (not group keyup) so the flag cannot stick when focus
- * leaves before keyup; also clear on focus leave and tab hide.
+ * reka-ui selects on arrow keys via a window keydown listener. Ancestors (and
+ * our own stopPropagation below) block that, so RovingFocus still moves focus
+ * but selection never updates. After keydown, click the focused radio.
  */
-const arrowKeyPressed = ref(false);
 const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-
-function clearArrowKeyPressed() {
-	arrowKeyPressed.value = false;
-}
 
 function optionKey(value: SegmentValue): string {
 	return `${typeof value}:${String(value)}`;
@@ -66,70 +57,31 @@ function findOptionByRadioValue(raw: AcceptableValue): SegmentOption<SegmentValu
 	return props.options?.find((option) => optionKey(option.value) === raw);
 }
 
-function onKeyDownCapture(event: KeyboardEvent) {
-	if (ARROW_KEYS.includes(event.key)) {
-		arrowKeyPressed.value = true;
-	}
-}
-
 function onKeyDown(event: KeyboardEvent) {
-	// Keep arrow keys inside the control so canvas/editor shortcuts (node nav, etc.) don't also fire
-	if (ARROW_KEYS.includes(event.key)) {
-		event.stopPropagation();
-	}
-}
-
-function onWindowKeyUpCapture(event: KeyboardEvent) {
 	if (!ARROW_KEYS.includes(event.key)) return;
-	// Match Reka's setTimeout(0) in RadioGroupItem.handleFocus so selection can finish first
-	setTimeout(clearArrowKeyPressed, 0);
-}
 
-function onVisibilityChange() {
-	if (document.visibilityState !== 'visible') {
-		clearArrowKeyPressed();
-	}
-}
+	// Keep arrow keys inside the control so canvas/editor shortcuts don't also fire
+	event.stopPropagation();
+	if (props.disabled) return;
 
-function onGroupFocusOut(event: FocusEvent) {
 	const group = event.currentTarget;
 	if (!(group instanceof HTMLElement)) return;
 
-	const next = event.relatedTarget;
-	if (next instanceof Node && group.contains(next)) return;
-
-	// Defer so intra-group moves with a null relatedTarget can settle first
-	requestAnimationFrame(() => {
-		if (!group.contains(document.activeElement)) {
-			clearArrowKeyPressed();
+	// RovingFocus has already moved focus by the time this timeout runs
+	setTimeout(() => {
+		const active = document.activeElement;
+		if (!(active instanceof HTMLElement) || !group.contains(active)) {
+			return;
 		}
-	});
+		if (active.getAttribute('role') !== 'radio') {
+			return;
+		}
+		if (active.getAttribute('data-state') === 'checked') {
+			return;
+		}
+		active.click();
+	}, 0);
 }
-
-function onItemFocusIn(event: FocusEvent) {
-	if (!arrowKeyPressed.value || props.disabled) return;
-
-	const target = event.target;
-	if (!(target instanceof HTMLElement) || target.getAttribute('role') !== 'radio') {
-		return;
-	}
-	// Skip if already selected (Reka's window listener may have handled it)
-	if (target.getAttribute('data-state') === 'checked') {
-		return;
-	}
-	target.click();
-}
-
-onMounted(() => {
-	window.addEventListener('keyup', onWindowKeyUpCapture, true);
-	document.addEventListener('visibilitychange', onVisibilityChange);
-});
-
-onUnmounted(() => {
-	window.removeEventListener('keyup', onWindowKeyUpCapture, true);
-	document.removeEventListener('visibilitychange', onVisibilityChange);
-	clearArrowKeyPressed();
-});
 
 function onItemClickCapture(event: MouseEvent) {
 	const target = event.target;
@@ -169,9 +121,7 @@ function onUpdate(raw: AcceptableValue) {
 			orientation="horizontal"
 			:class="$style.group"
 			@update:model-value="onUpdate"
-			@keydown.capture="onKeyDownCapture"
 			@keydown="onKeyDown"
-			@focusout="onGroupFocusOut"
 			@click.capture="onItemClickCapture"
 		>
 			<SegmentControlItem
@@ -182,7 +132,6 @@ function onUpdate(raw: AcceptableValue) {
 				:data-test-id="`radio-button-${option.value}`"
 				:disabled="disabled || option.disabled"
 				:square="squareButtons"
-				@focusin="onItemFocusIn"
 			>
 				<slot name="option" v-bind="option">
 					{{ option.label }}
