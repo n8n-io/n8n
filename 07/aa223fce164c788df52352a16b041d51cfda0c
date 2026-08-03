@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_e147ac69a1b555::t_208704931c69ea 144
+  s_e147ac69a1b555::t_9b4e10688cf7c1 26
+packages/cli/src/modules/agents/goal-graph/__tests__/wrap-tool.test.ts
+  s_e147ac69a1b555::t_5027817e50b49c 79
+packages/cli/src/modules/agents/builder/skills/index.ts
+  ai_agent 17
+  s_e147ac69a1b555::t_938e56e11ddfe7 5,12-16,26
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_e147ac69a1b555::t_64417db1751353 16-17
+  s_e147ac69a1b555::t_8047c90dfbd3b1 236-238
+packages/cli/src/modules/agents/builder/skills/goal-graph.skill.ts
+  s_e147ac69a1b555::t_c3cb407ae83bd9 1-146
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_e147ac69a1b555::t_67f008d03a3558 257
+  s_e147ac69a1b555::t_b31763788da011 139
+  s_e147ac69a1b555::t_9d8b1fd111b086 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "07aa223fce164c788df52352a16b041d51cfda0c",
+  "prompts": {},
+  "sessions": {
+    "s_e147ac69a1b555": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7562036f-e467-4db1-896f-cf0793efaf64",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
