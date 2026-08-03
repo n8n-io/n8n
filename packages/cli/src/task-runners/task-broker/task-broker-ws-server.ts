@@ -8,6 +8,7 @@ import { jsonStringify, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
 import { WsStatusCodes } from '@/constants';
+import { EventService } from '@/events/event.service';
 import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
 	DisconnectAnalyzer,
@@ -53,6 +54,7 @@ export class TaskBrokerWsServer {
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 		private readonly globalConfig: GlobalConfig,
+		private readonly eventService: EventService,
 	) {}
 
 	start() {
@@ -204,6 +206,13 @@ export class TaskBrokerWsServer {
 			// Stop routing to the runner before the disconnect analysis, which may be slow.
 			this.runnerConnections.delete(id);
 			connection.close(code);
+
+			if (reason === 'failed-heartbeat-check' || reason === 'runner-unresponsive') {
+				this.eventService.emit('runner-disconnected', {
+					reason,
+					mode: this.taskRunnersConfig.mode,
+				});
+			}
 
 			const inFlightTaskIds = this.taskBroker.getInFlightTaskIds(id);
 

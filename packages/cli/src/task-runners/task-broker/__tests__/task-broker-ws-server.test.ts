@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type WebSocket from 'ws';
 
 import { WsStatusCodes } from '@/constants';
+import type { EventService } from '@/events/event.service';
 import type { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import type { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
@@ -30,19 +31,22 @@ const createServer = ({
 	disconnectAnalyzer = mock<DefaultTaskRunnerDisconnectAnalyzer>(),
 	heartbeatInterval = 30,
 	runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>(),
+	eventService = mock<EventService>(),
 }: {
 	taskBroker?: TaskBroker;
 	disconnectAnalyzer?: DefaultTaskRunnerDisconnectAnalyzer;
 	heartbeatInterval?: number;
 	runnerLifecycleEvents?: TaskRunnerLifecycleEvents;
+	eventService?: EventService;
 } = {}) =>
 	new TaskBrokerWsServer(
 		mock(),
 		taskBroker,
 		disconnectAnalyzer,
-		mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval }),
+		mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval, mode: 'internal' }),
 		runnerLifecycleEvents,
 		globalConfig,
+		eventService,
 	);
 
 const wsMessage = (message: unknown) => Buffer.from(JSON.stringify(message));
@@ -324,6 +328,37 @@ describe('TaskBrokerWsServer', () => {
 
 			expect(ws.close).not.toHaveBeenCalled();
 		});
+	});
+
+	describe('disconnect reporting', () => {
+		it.each(['failed-heartbeat-check', 'runner-unresponsive'] as const)(
+			'should report a runner disconnected for reason %s',
+			async (reason) => {
+				const eventService = mock<EventService>();
+				const server = createServer({ eventService });
+				server.runnerConnections.set('test-runner', mockWs());
+
+				await server.removeConnection('test-runner', { reason });
+
+				expect(eventService.emit).toHaveBeenCalledWith('runner-disconnected', {
+					reason,
+					mode: 'internal',
+				});
+			},
+		);
+
+		it.each(['shutting-down', 'unknown'] as const)(
+			'should not report a runner disconnected for reason %s',
+			async (reason) => {
+				const eventService = mock<EventService>();
+				const server = createServer({ eventService });
+				server.runnerConnections.set('test-runner', mockWs());
+
+				await server.removeConnection('test-runner', { reason });
+
+				expect(eventService.emit).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('sendMessage', () => {
