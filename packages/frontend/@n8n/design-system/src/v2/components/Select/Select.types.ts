@@ -103,6 +103,21 @@ export type SelectEmits<
 	M extends boolean,
 > = Omit<SelectRootEmits, 'update:modelValue'> & GetModelValueEmits<A, VK, M>;
 
+/**
+ * The payload `N8nSelect2Item`'s own item slots receive: `item` is that
+ * component's declared props, not a caller-supplied entry.
+ *
+ * Exported so the SFC can declare its slots with a named type rather than
+ * letting them be inferred — inference wraps slot props in `LooseRequired` from
+ * `@vue/shared`, a transitive dependency the compiler cannot name portably, and
+ * the component's declaration is then silently skipped (TS2883).
+ */
+export type SelectItemSlotProps = (props: {
+	item: SelectItemBaseProps;
+	ui: Record<string, unknown>;
+}) => unknown;
+
+/** `N8nSelect2`'s item slots, which forward a caller-supplied entry instead. */
 type SlotProps = (props: { item: SelectItemProps; ui: Record<string, unknown> }) => unknown;
 
 export type SelectSlots<

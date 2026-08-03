@@ -13,10 +13,21 @@ import { computed, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import type { SelectItemBaseProps, SelectValue } from './Select.types';
+import type { SelectItemBaseProps, SelectItemSlotProps, SelectValue } from './Select.types';
 
 defineOptions({ inheritAttrs: false });
 const props = defineProps<SelectItemBaseProps>();
+
+// Declared rather than inferred from the template: inferring slot props wraps
+// them in `LooseRequired` from @vue/shared, a transitive dependency the compiler
+// cannot name portably (TS2883), so this component's declaration is otherwise
+// skipped.
+defineSlots<{
+	'item-leading'?: SelectItemSlotProps;
+	'item-label'?: (props: { item: SelectItemBaseProps }) => unknown;
+	'item-trailing'?: SelectItemSlotProps;
+}>();
+
 const $style = useCssModule();
 
 function isAcceptable(value?: SelectValue) {

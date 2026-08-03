@@ -2,20 +2,13 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
-import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
 import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
+import type { TabsProps } from './Tabs.types';
 import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
-interface TabsProps {
-	modelValue?: Value;
-	options?: Array<TabOptions<Value>>;
-	size?: 'small' | 'medium';
-	variant?: 'modern' | 'legacy';
-}
-
-withDefaults(defineProps<TabsProps>(), {
+withDefaults(defineProps<TabsProps<Value>>(), {
 	modelValue: undefined,
 	options: () => [],
 	size: 'medium',
