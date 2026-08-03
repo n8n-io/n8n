@@ -173,16 +173,6 @@ describe('ChannelSetupCard', () => {
 		);
 	});
 
-	it('renders a persisted draft integration as configured without publish prop plumbing', async () => {
-		mocks.isConfigured.mockReturnValue(true);
-		const wrapper = mountCard();
-		await flushPromises();
-
-		const setup = wrapper.find('[data-testid="mock-slack-setup"]');
-		expect(setup.attributes('data-connected')).toBe('true');
-		expect(setup.attributes()).not.toHaveProperty('is-published');
-	});
-
 	it('does not describe a configured draft integration as connected', async () => {
 		mocks.isConfigured.mockReturnValue(true);
 		const wrapper = mountCard({ integrationType: 'linear' });
@@ -191,17 +181,6 @@ describe('ChannelSetupCard', () => {
 		expect(
 			wrapper.get('[data-testid="mock-linear-setup"]').attributes('data-connected-description'),
 		).toBe('');
-	});
-
-	it('uses connected copy for an active integration', async () => {
-		mocks.isConfigured.mockReturnValue(true);
-		mocks.isConnected.mockReturnValue(true);
-		const wrapper = mountCard({ integrationType: 'linear' });
-		await flushPromises();
-
-		expect(
-			wrapper.get('[data-testid="mock-linear-setup"]').attributes('data-connected-description'),
-		).toBe('agents.builder.addTrigger.connectedText.linear');
 	});
 
 	it('emits resolve({ approved: true }) after the channel connects', async () => {

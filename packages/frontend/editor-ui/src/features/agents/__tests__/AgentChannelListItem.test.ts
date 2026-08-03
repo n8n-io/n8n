@@ -31,26 +31,16 @@ function mountItem(configured: boolean, connected: boolean) {
 }
 
 describe('AgentChannelListItem', () => {
-	it('shows a configured draft without the connected activity indicator', () => {
-		const wrapper = mountItem(true, false);
+	it.each([
+		{ configured: true, connected: false, label: 'agents.channels.modal.configured' },
+		{ configured: true, connected: true, label: 'agents.channels.modal.connected' },
+		{ configured: false, connected: false, label: 'generic.connect' },
+	])('renders the channel state for $label', ({ configured, connected, label }) => {
+		const wrapper = mountItem(configured, connected);
 
-		expect(wrapper.text()).toContain('agents.channels.modal.configured');
-		expect(wrapper.text()).not.toContain('agents.channels.modal.connected');
-		expect(wrapper.text()).not.toContain('generic.connect');
-		expect(wrapper.find('[data-testid="agent-channel-connected-indicator"]').exists()).toBe(false);
-	});
-
-	it('shows the connected activity indicator only for an active channel', () => {
-		const wrapper = mountItem(true, true);
-
-		expect(wrapper.text()).toContain('agents.channels.modal.connected');
-		expect(wrapper.find('[data-testid="agent-channel-connected-indicator"]').exists()).toBe(true);
-	});
-
-	it('offers setup for a channel that has not been configured', () => {
-		const wrapper = mountItem(false, false);
-
-		expect(wrapper.text()).toContain('generic.connect');
-		expect(wrapper.find('[data-testid="channel-actions"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain(label);
+		expect(wrapper.find('[data-testid="agent-channel-connected-indicator"]').exists()).toBe(
+			connected,
+		);
 	});
 });

@@ -27,35 +27,21 @@ describe('useAgentIntegrationStatus', () => {
 		clearAgentIntegrationStatusCache(projectId, agentId);
 	});
 
-	it('tracks persisted integrations as configured without treating them as connected', async () => {
+	it.each([
+		{ serverStatus: 'configured' as const, connected: false },
+		{ serverStatus: 'connected' as const, connected: true },
+	])('tracks a $serverStatus integration', async ({ serverStatus, connected }) => {
 		apiMocks.getIntegrationStatus.mockResolvedValue({
-			status: 'configured',
-			integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
-		});
-		const status = useAgentIntegrationStatus(projectId, agentId);
-
-		await status.fetchStatus(['slack', 'linear']);
-
-		expect(status.statuses.value).toMatchObject({
-			slack: 'configured',
-			linear: 'disconnected',
-		});
-		expect(status.isConfigured('slack')).toBe(true);
-		expect(status.isConnected('slack')).toBe(false);
-	});
-
-	it('tracks integrations on a published agent as both configured and connected', async () => {
-		apiMocks.getIntegrationStatus.mockResolvedValue({
-			status: 'connected',
+			status: serverStatus,
 			integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
 		});
 		const status = useAgentIntegrationStatus(projectId, agentId);
 
 		await status.fetchStatus(['slack']);
 
-		expect(status.statuses.value.slack).toBe('connected');
+		expect(status.statuses.value.slack).toBe(serverStatus);
 		expect(status.isConfigured('slack')).toBe(true);
-		expect(status.isConnected('slack')).toBe(true);
+		expect(status.isConnected('slack')).toBe(connected);
 	});
 
 	it('uses the configuration response status after saving an integration', async () => {

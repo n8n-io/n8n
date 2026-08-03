@@ -184,6 +184,7 @@ describe('finish_setup tool', () => {
 		});
 		const input = {
 			credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }],
+			channels: [{ integrationType: 'slack' }],
 		};
 
 		const credentialsPayload = (await tool.handler!(input, makeCtx() as never)) as Record<
@@ -191,13 +192,23 @@ describe('finish_setup tool', () => {
 			unknown
 		>;
 
-		const result = await tool.handler!(
+		const channelPayload = (await tool.handler!(
 			input,
 			makeCtx({ resumeData: { skipped: true }, suspendPayload: credentialsPayload }) as never,
+		)) as Record<string, unknown>;
+		expect(channelPayload).toMatchObject({
+			message: 'Set up the slack channel',
+			finishSetupChain: { collected: { credentials: { airtableApi: 'skipped' } } },
+		});
+
+		const result = await tool.handler!(
+			input,
+			makeCtx({ resumeData: { approved: false }, suspendPayload: channelPayload }) as never,
 		);
 		expect(result).toEqual({
 			completed: true,
 			credentials: { airtableApi: 'skipped' },
+			channels: { slack: 'skipped' },
 		});
 		expect(BASE_DEPS.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
 			credential_type: 'airtableApi',
@@ -241,14 +252,18 @@ describe('finish_setup tool', () => {
 				{ id: 'model', question: 'Which model?', type: 'single' as const, options: ['gpt'] },
 			],
 			credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }],
-			channels: [{ integrationType: 'slack' }, { integrationType: 'telegram' }],
+			channels: [
+				{ integrationType: 'slack' },
+				{ integrationType: 'telegram' },
+				{ integrationType: 'linear' },
+			],
 		};
 
 		const questionsPayload = (await tool.handler!(input, makeCtx() as never)) as Record<
 			string,
 			unknown
 		>;
-		expect(questionsPayload.message).toBe('Finish setup (1/4)');
+		expect(questionsPayload.message).toBe('Finish setup (1/5)');
 
 		const credentialsPayload = (await tool.handler!(
 			input,
@@ -257,7 +272,7 @@ describe('finish_setup tool', () => {
 				suspendPayload: questionsPayload,
 			}) as never,
 		)) as Record<string, unknown>;
-		expect(credentialsPayload.message).toBe('Finish setup (2/4)');
+		expect(credentialsPayload.message).toBe('Finish setup (2/5)');
 
 		const slackPayload = (await tool.handler!(
 			input,
@@ -281,15 +296,29 @@ describe('finish_setup tool', () => {
 			trigger_type: 'slack',
 		});
 
-		const result = await tool.handler!(
+		const linearPayload = (await tool.handler!(
 			input,
 			makeCtx({ resumeData: { approved: true }, suspendPayload: telegramPayload }) as never,
+		)) as Record<string, unknown>;
+		expect(linearPayload).toMatchObject({
+			message: 'Set up the linear channel',
+			channelConfig: { integrationType: 'linear', agentId: 'agent-1' },
+		});
+		const legacyPayload = linearPayload as {
+			finishSetupChain: { collected: { channels: Record<string, string> } };
+		};
+		legacyPayload.finishSetupChain.collected.channels.telegram = 'connected';
+		expect((tool.suspendSchema as z.ZodTypeAny).safeParse(legacyPayload).success).toBe(true);
+
+		const result = await tool.handler!(
+			input,
+			makeCtx({ resumeData: { approved: true }, suspendPayload: legacyPayload }) as never,
 		);
 		expect(result).toEqual({
 			completed: true,
 			answers: [{ questionId: 'model', selectedOptions: ['gpt'] }],
 			credentials: { airtableApi: { id: 'new-cred', name: 'new-cred' } },
-			channels: { slack: 'skipped', telegram: 'configured' },
+			channels: { slack: 'skipped', telegram: 'configured', linear: 'configured' },
 		});
 		expect(BASE_DEPS.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
 			trigger_type: 'telegram',
@@ -307,106 +336,5 @@ describe('finish_setup tool', () => {
 			tool.handler!({ channels: [{ integrationType: 'discord' }] }, ctx as never),
 		).rejects.toThrow('Unsupported chat channel "discord"');
 		expect(ctx.suspend).not.toHaveBeenCalled();
-	});
-
-	it('continues to the channel phase when the credential phase is skipped', async () => {
-		const tool = buildFinishSetupTool({
-			...BASE_DEPS,
-			credentialProvider: makeProvider([]),
-		});
-		const input = {
-			credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }],
-			channels: [{ integrationType: 'slack' }],
-		};
-
-		const credentialsPayload = (await tool.handler!(input, makeCtx() as never)) as Record<
-			string,
-			unknown
-		>;
-
-		const channelCtx = makeCtx({
-			resumeData: { skipped: true },
-			suspendPayload: credentialsPayload,
-		});
-		const channelPayload = (await tool.handler!(input, channelCtx as never)) as Record<
-			string,
-			unknown
-		>;
-
-		expect(channelCtx.suspend).toHaveBeenCalledTimes(1);
-		expect(channelPayload).toMatchObject({
-			message: 'Set up the slack channel',
-			channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
-			finishSetupChain: {
-				currentPhase: { kind: 'channel', integrationType: 'slack' },
-				collected: { credentials: { airtableApi: 'skipped' } },
-			},
-		});
-	});
-
-	it('normalizes a legacy channel outcome before resuspending and completing', async () => {
-		const tool = buildFinishSetupTool({
-			...BASE_DEPS,
-			credentialProvider: makeProvider([]),
-		});
-		const suspendSchema = tool.suspendSchema as z.ZodTypeAny;
-		const input = {
-			channels: [
-				{ integrationType: 'slack' },
-				{ integrationType: 'telegram' },
-				{ integrationType: 'linear' },
-			],
-		};
-		const legacyTelegramPayload = {
-			requestId: 'legacy-request',
-			message: 'Set up the telegram channel',
-			severity: 'info' as const,
-			channelConfig: { integrationType: 'telegram', agentId: 'agent-1' },
-			projectId: 'project-1',
-			finishSetupChain: {
-				currentPhase: { kind: 'channel' as const, integrationType: 'telegram' },
-				remainingPhases: [{ kind: 'channel' as const, integrationType: 'linear' }],
-				collected: { channels: { slack: 'connected' } },
-				totalPhases: 3,
-			},
-		};
-
-		expect(suspendSchema.safeParse(legacyTelegramPayload).success).toBe(true);
-
-		const linearPayload = (await tool.handler!(
-			input,
-			makeCtx({
-				resumeData: { approved: true },
-				suspendPayload: legacyTelegramPayload,
-			}) as never,
-		)) as Record<string, unknown>;
-
-		expect(linearPayload).toMatchObject({
-			channelConfig: { integrationType: 'linear', agentId: 'agent-1' },
-			finishSetupChain: {
-				currentPhase: { kind: 'channel', integrationType: 'linear' },
-				collected: {
-					channels: { slack: 'configured', telegram: 'configured' },
-				},
-			},
-		});
-		expect(suspendSchema.safeParse(linearPayload).success).toBe(true);
-
-		const result = await tool.handler!(
-			input,
-			makeCtx({
-				resumeData: { approved: true },
-				suspendPayload: linearPayload,
-			}) as never,
-		);
-
-		expect(result).toEqual({
-			completed: true,
-			channels: {
-				slack: 'configured',
-				telegram: 'configured',
-				linear: 'configured',
-			},
-		});
 	});
 });

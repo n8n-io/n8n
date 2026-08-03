@@ -349,8 +349,9 @@ through \`$json\`; use \`$fromAI\` for those fields instead.
 
 ## Verify
 
-- Configured chat integrations were set up through \`configure_channel\`, not
-  \`ask_credential\` or a manual config write.
+- Configured chat integrations were set up through \`configure_channel\` or the
+  initial-build \`finish_setup\` channel card, not \`ask_credential\` or a manual
+  config write.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise resolve the
   callable capability through \`resolve_integration\` and use MCP, node, or
   workflow tools.

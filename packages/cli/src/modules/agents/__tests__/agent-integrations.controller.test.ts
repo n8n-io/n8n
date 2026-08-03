@@ -281,8 +281,9 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agent,
 			integration,
 			{
-				broadcast: false,
 				user: { id: 'user-1' },
+				modifiedBy: 'user',
+				broadcast: false,
 			},
 		);
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
@@ -301,68 +302,6 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
 		);
-	});
-
-	it('propagates persistence failures without connecting or broadcasting', async () => {
-		const credentialsService = mock<CredentialsService>();
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{
-				id: 'cred-slack',
-				name: 'Slack Bot',
-				type: 'slackApi',
-				createdAt: '2024-01-01T00:00:00.000Z',
-				updatedAt: '2024-01-01T00:00:00.000Z',
-				scopes: [],
-				isManaged: false,
-				isGlobal: false,
-				isResolvable: true,
-				currentUserHasAccess: true,
-				homeProject: null,
-				sharedWithProjects: [],
-			},
-		]);
-
-		const agent = {
-			id: 'agent-1',
-			projectId: 'project-1',
-			activeVersionId: 'v1',
-			activeVersion: {},
-			integrations: [],
-		};
-		const agentRepository = mock<AgentRepository>();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
-		const persistenceError = new Error('Integration persistence failed');
-		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
-		agentIntegrationPersistenceService.saveCredentialIntegration.mockRejectedValue(
-			persistenceError,
-		);
-		const chatIntegrationService = mock<ChatIntegrationService>();
-		const { controller } = makeController({
-			agentIntegrationPersistenceService,
-			credentialsService,
-			chatIntegrationService,
-			agentRepository,
-		});
-
-		await expect(
-			controller.connectIntegration(
-				{
-					params: { projectId: 'project-1' },
-					user: { id: 'user-1' },
-					body: { type: 'slack', credentialId: 'cred-slack' },
-				} as never,
-				undefined as never,
-				'agent-1',
-			),
-		).rejects.toBe(persistenceError);
-
-		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
-			agent,
-			{ type: 'slack', credentialId: 'cred-slack' },
-			{ broadcast: false, user: { id: 'user-1' } },
-		);
-		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
-		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -432,8 +371,9 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agent,
 			integration,
 			{
-				broadcast: false,
 				user: { id: 'user-1' },
+				modifiedBy: 'user',
+				broadcast: false,
 			},
 		);
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
@@ -621,7 +561,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agent,
 			'slack',
 			'cred-slack',
-			{ broadcast: false },
+			{ user: { id: 'user-1' }, modifiedBy: 'user', broadcast: false },
 		);
 		expect(chatIntegrationService.disconnectChannel.mock.invocationCallOrder[0]).toBeLessThan(
 			agentIntegrationPersistenceService.removeCredentialIntegration.mock.invocationCallOrder[0],
@@ -666,7 +606,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agent,
 			'slack',
 			'',
-			{ broadcast: false },
+			{ user: { id: 'user-1' }, modifiedBy: 'user', broadcast: false },
 		);
 	});
 

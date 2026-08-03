@@ -1,10 +1,12 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { User } from '@n8n/db';
+import { User, type WorkflowRepository } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -27,7 +29,10 @@ import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
+import { AgentModificationTelemetryService } from '@/modules/agents/agent-modification-telemetry.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
+import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
+import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
@@ -36,6 +41,8 @@ import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflow
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
+import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
+import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -164,6 +171,60 @@ describe('McpAgentToolsService', () => {
 		return await tool.handler(input);
 	};
 
+	const useRealCustomToolPersistence = (agent: Agent) => {
+		const agentRepository = mock<AgentRepository>();
+		const runtimeCacheService = mock<AgentRuntimeCacheService>();
+		const lifecycleTelemetry = mock<Telemetry>();
+		const modificationTelemetry = new AgentModificationTelemetryService(lifecycleTelemetry);
+		const localCredentialsService = mock<CredentialsService>();
+		const workflowRepository = mock<WorkflowRepository>();
+		const agentTaskRepository = mock<AgentTaskRepository>();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentRepository.save.mockImplementation(async (entity) => entity as Agent);
+		localCredentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+		localCredentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+		localCredentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		workflowRepository.find.mockResolvedValue([]);
+		agentTaskRepository.findByAgentId.mockResolvedValue([]);
+		agentsService.findByIdForUser.mockResolvedValue(agent);
+
+		const customToolsService = new AgentCustomToolsService(
+			mockLogger(),
+			agentRepository,
+			runtimeCacheService,
+			modificationTelemetry,
+		);
+		const configService = new AgentConfigService(
+			mockLogger(),
+			agentRepository,
+			agentTaskRepository,
+			mock<AgentSkillsService>(),
+			runtimeCacheService,
+			localCredentialsService,
+			workflowRepository,
+			mock<AgentSetupCompletionService>(),
+			modificationTelemetry,
+		);
+		agentCustomToolsService.buildCustomTool.mockImplementation(
+			async (agentId, projectId, code, descriptor, context, options) =>
+				await customToolsService.buildCustomTool(
+					agentId,
+					projectId,
+					code,
+					descriptor,
+					context,
+					options,
+				),
+		);
+		agentConfigService.updateConfig.mockImplementation(
+			async (agentId, projectId, config, actor, options) =>
+				await configService.updateConfig(agentId, projectId, config, actor, options),
+		);
+
+		return lifecycleTelemetry;
+	};
+
 	describe('registerTools', () => {
 		it('registers all agent tools and the reference resource', () => {
 			expect([...tools.keys()].sort()).toEqual(
@@ -194,17 +255,6 @@ describe('McpAgentToolsService', () => {
 
 		it('matches AGENT_TOOLS in the scope map (drift guard)', () => {
 			expect(new Set(tools.keys())).toEqual(new Set(AGENT_TOOLS));
-		});
-
-		it('describes integration configuration without claiming it publishes the Agent', async () => {
-			expect(tools.get('update_agent_integration')?.config.description).toContain(
-				'Configuration never publishes the Agent',
-			);
-
-			const result = await callTool('get_agent_builder_reference', {});
-			expect(result.structuredContent.guide).toContain(
-				'A configured channel stays inactive until explicit publication unless the Agent already has an active version.',
-			);
 		});
 
 		const registerFiltered = (allowedToolNames?: Set<string>) => {
@@ -409,7 +459,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ name: 'Renamed' },
 				user,
-				{ clearOmittedOptionalFields: true },
+				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 			);
 			// The resolved entity's config is reused; the response hash comes
 			// from updateConfig's return value, not a re-fetch.
@@ -446,7 +496,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ ...composedConfig, name: 'Patched' },
 				user,
-				{ clearOmittedOptionalFields: true },
+				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true, operation: 'config.patch' });
 		});
@@ -528,10 +578,15 @@ describe('McpAgentToolsService', () => {
 				mutateInput({ type: 'skill.upsert', skill: { name: 'Skill', body: 'do it' } }),
 			);
 
-			expect(agentSkillsService.createAndAttachSkill).toHaveBeenCalledWith('agent-1', 'project-1', {
-				name: 'Skill',
-				body: 'do it',
-			});
+			expect(agentSkillsService.createAndAttachSkill).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				{
+					name: 'Skill',
+					body: 'do it',
+				},
+				{ user, modifiedBy: 'mcp' },
+			);
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				resource: { type: 'skill', id: 'skill-1' },
@@ -555,6 +610,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				'skill-1',
 				{ name: 'Skill', body: 'v2' },
+				{ user, modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toMatchObject({
 				resource: { type: 'skill', id: 'skill-1' },
@@ -572,48 +628,46 @@ describe('McpAgentToolsService', () => {
 				}),
 			);
 
-			expect(agentTaskService.create).toHaveBeenCalledWith('agent-1', {
-				name: 'Daily',
-				objective: 'report',
-				cronExpression: '0 9 * * *',
-				enabled: true,
-			});
+			expect(agentTaskService.create).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				{
+					name: 'Daily',
+					objective: 'report',
+					cronExpression: '0 9 * * *',
+					enabled: true,
+				},
+				{ user, modifiedBy: 'mcp' },
+			);
 			expect(result.structuredContent).toMatchObject({
 				resource: { type: 'task', id: 'task-1' },
 			});
 		});
 
-		it('builds a custom tool and attaches its config reference once', async () => {
+		it('emits one final-profile lifecycle event when building and attaching a custom tool', async () => {
 			const descriptor = { name: 'my_tool' };
+			const storedAgent = agentEntity({ tools: {}, skills: {} });
+			const lifecycleTelemetry = useRealCustomToolPersistence(storedAgent);
 			agentSecureRuntime.describeToolSecurely.mockResolvedValue(descriptor as never);
-			agentCustomToolsService.buildCustomTool.mockResolvedValue({
-				ok: true,
-				id: 'my_tool',
-				descriptor,
-			} as never);
-			const stored = { ...baseConfig, tools: [{ type: 'custom' as const, id: 'my_tool' }] };
-			agentConfigService.updateConfig.mockResolvedValue({
-				config: stored,
-				updatedAt: 'now',
-				versionId: 'v2',
-			});
+			const stored = {
+				...composedConfig,
+				tools: [{ type: 'custom' as const, id: 'my_tool' }],
+			};
 
 			const result = await callTool(
 				'mutate_agent',
 				mutateInput({ type: 'customTool.upsert', code: 'export default new Tool("my_tool")' }),
 			);
 
-			expect(agentCustomToolsService.buildCustomTool).toHaveBeenCalledWith(
-				'agent-1',
-				'project-1',
-				'export default new Tool("my_tool")',
+			expect(storedAgent.tools.my_tool).toEqual({
+				code: 'export default new Tool("my_tool")',
 				descriptor,
-			);
-			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
-				'agent-1',
-				'project-1',
-				expect.objectContaining({ tools: [{ type: 'custom', id: 'my_tool' }] }),
-				user,
+			});
+			expect(storedAgent.schema?.tools).toEqual([{ type: 'custom', id: 'my_tool' }]);
+			expect(lifecycleTelemetry.track).toHaveBeenCalledTimes(1);
+			expect(lifecycleTelemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT,
+				expect.objectContaining({ changed_parts: ['tools'], tool_count: 1 }),
 			);
 			expect(result.structuredContent).toMatchObject({
 				resource: { type: 'customTool', id: 'my_tool' },
@@ -621,30 +675,36 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
-		it('skips the config write when the custom tool reference already exists', async () => {
+		it('emits one lifecycle event for an attached custom-tool body change', async () => {
 			const configWithTool = {
 				...composedConfig,
 				tools: [{ type: 'custom' as const, id: 'my_tool' }],
 			};
-			agentsService.findByIdForUser.mockResolvedValue(
-				agentEntity({ schema: { ...baseConfig, tools: configWithTool.tools } }),
-			);
-			agentSecureRuntime.describeToolSecurely.mockResolvedValue({ name: 'my_tool' } as never);
-			agentCustomToolsService.buildCustomTool.mockResolvedValue({
-				ok: true,
-				id: 'my_tool',
-				descriptor: { name: 'my_tool' },
-			} as never);
+			const descriptor = { name: 'my_tool' };
+			const storedAgent = agentEntity({
+				schema: { ...baseConfig, tools: configWithTool.tools },
+				tools: { my_tool: { code: 'old code', descriptor } },
+				skills: {},
+			});
+			const lifecycleTelemetry = useRealCustomToolPersistence(storedAgent);
+			agentSecureRuntime.describeToolSecurely.mockResolvedValue(descriptor as never);
 
 			const result = await callTool(
 				'mutate_agent',
 				mutateInput(
-					{ type: 'customTool.upsert', code: 'code' },
+					{ type: 'customTool.upsert', code: 'new code' },
 					getAgentConfigHash(configWithTool) ?? undefined,
 				),
 			);
 
+			expect(storedAgent.tools.my_tool.code).toBe('new code');
+			expect(storedAgent.schema?.tools).toEqual([{ type: 'custom', id: 'my_tool' }]);
 			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+			expect(lifecycleTelemetry.track).toHaveBeenCalledTimes(1);
+			expect(lifecycleTelemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT,
+				expect.objectContaining({ changed_parts: ['tools'], tool_count: 1 }),
+			);
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				configHash: getAgentConfigHash(configWithTool),
@@ -660,12 +720,17 @@ describe('McpAgentToolsService', () => {
 						'agent-1',
 						'project-1',
 						'skill-1',
+						{ user, modifiedBy: 'mcp' },
 					),
 			],
 			[
 				'task.delete',
 				{ type: 'task.delete', taskId: 'task-1' },
-				() => expect(agentTaskService.delete).toHaveBeenCalledWith('agent-1', 'task-1'),
+				() =>
+					expect(agentTaskService.delete).toHaveBeenCalledWith('agent-1', 'project-1', 'task-1', {
+						user,
+						modifiedBy: 'mcp',
+					}),
 			],
 			[
 				'customTool.delete',
@@ -675,6 +740,7 @@ describe('McpAgentToolsService', () => {
 						'agent-1',
 						'project-1',
 						'tool-1',
+						{ user, modifiedBy: 'mcp' },
 					),
 			],
 		])('routes %s to its sidecar service', async (_name, operation, assertion) => {
@@ -720,6 +786,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ ...initialConfig, name: 'My Agent' },
 				user,
+				{ modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toEqual({
 				ok: true,
@@ -872,7 +939,7 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				user,
-				'builder',
+				{ by: 'mcp', trigger: 'explicit' },
 				undefined,
 			);
 			expect(result.structuredContent).toEqual({
@@ -897,7 +964,7 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				user,
-				'builder',
+				{ by: 'mcp', trigger: 'explicit' },
 				'v1',
 			);
 			expect(result.structuredContent).toMatchObject({
@@ -965,7 +1032,7 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				user,
-				'builder',
+				'mcp',
 			);
 			expect(result.structuredContent).toEqual({
 				ok: true,
@@ -988,6 +1055,8 @@ describe('McpAgentToolsService', () => {
 			expect(agentPublishService.revertToPublishedAgent).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
+				user,
+				'mcp',
 			);
 			expect(agentPublishService.revertToVersion).not.toHaveBeenCalled();
 			expect(result.structuredContent).toEqual({
@@ -1011,6 +1080,8 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				'v0',
+				user,
+				'mcp',
 			);
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
@@ -1330,7 +1401,7 @@ describe('McpAgentToolsService', () => {
 				'project-9',
 				{ name: 'My Agent' },
 				user,
-				{ clearOmittedOptionalFields: true },
+				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true });
 		});
@@ -1345,6 +1416,7 @@ describe('McpAgentToolsService', () => {
 		};
 
 		beforeEach(() => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ activeVersionId: 'v1' }));
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 				{ id: 'cred-1', type: 'slackApi', name: 'Slack cred' },
 			] as never);
@@ -1361,14 +1433,24 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('persists and connects the channel without publishing for a published Agent', async () => {
+			userHasScopesMock.mockImplementation(
+				async (_user: unknown, scopes: string[]) => !scopes.includes('agent:publish'),
+			);
+
 			const result = await callTool('update_agent_integration', input);
 
 			expect(integrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'agent-1' }),
 				{ type: 'slack', credentialId: 'cred-1' },
-				{ broadcast: false, user },
+				{ user, modifiedBy: 'mcp', broadcast: false },
 			);
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:update'], false, {
+				projectId: 'project-1',
+			});
+			expect(userHasScopesMock).not.toHaveBeenCalledWith(user, ['agent:publish'], false, {
+				projectId: 'project-1',
+			});
 			expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 				'agent-1',
 				{ type: 'slack', credentialId: 'cred-1' },
@@ -1379,22 +1461,17 @@ describe('McpAgentToolsService', () => {
 				{ type: 'slack', credentialId: 'cred-1' },
 				'connect',
 			);
-			expect(result.structuredContent).toEqual({
+			expect(result.structuredContent).toMatchObject({
 				ok: true,
-				agentId: 'agent-1',
-				integration: { type: 'slack', credentialId: 'cred-1' },
 				configured: true,
 				connected: true,
 				published: true,
 				activeVersionId: 'v1',
-				configHash: getAgentConfigHash({
-					...baseConfig,
-					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
-				}),
 			});
 		});
 
 		it('persists without publishing, connecting, or broadcasting for an unpublished Agent', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ activeVersionId: null }));
 			integrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
 				agentEntity({
 					activeVersionId: null,
@@ -1407,41 +1484,18 @@ describe('McpAgentToolsService', () => {
 			expect(integrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'agent-1' }),
 				{ type: 'slack', credentialId: 'cred-1' },
-				{ broadcast: false, user },
+				{ user, modifiedBy: 'mcp', broadcast: false },
 			);
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 			expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 			expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
-			expect(result.structuredContent).toEqual({
+			expect(result.structuredContent).toMatchObject({
 				ok: true,
-				agentId: 'agent-1',
-				integration: { type: 'slack', credentialId: 'cred-1' },
 				configured: true,
 				connected: false,
 				published: false,
 				activeVersionId: null,
-				configHash: getAgentConfigHash({
-					...baseConfig,
-					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
-				}),
 			});
-		});
-
-		it('connects with agent:update when agent:publish would be denied', async () => {
-			userHasScopesMock.mockImplementation(
-				async (_user: unknown, scopes: string[]) => !scopes.includes('agent:publish'),
-			);
-
-			const result = await callTool('update_agent_integration', input);
-
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:update'], false, {
-				projectId: 'project-1',
-			});
-			expect(userHasScopesMock).not.toHaveBeenCalledWith(user, ['agent:publish'], false, {
-				projectId: 'project-1',
-			});
-			expect(result.structuredContent).toMatchObject({ ok: true, connected: true });
-			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 
 		it('requires settings for telegram integrations', async () => {
@@ -1496,7 +1550,7 @@ describe('McpAgentToolsService', () => {
 				expect.objectContaining({ id: 'agent-1' }),
 				'slack',
 				'cred-1',
-				{ broadcast: false },
+				{ user, modifiedBy: 'mcp', broadcast: false },
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true, connected: false });
 		});

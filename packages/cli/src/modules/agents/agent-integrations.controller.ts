@@ -74,7 +74,7 @@ export class AgentIntegrationsController {
 		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
 			agent,
 			integration,
-			{ broadcast: false, user: req.user },
+			{ user: req.user, modifiedBy: 'user', broadcast: false },
 		);
 		if (savedAgent.activeVersionId === null) return { status: 'configured' };
 
@@ -185,7 +185,7 @@ export class AgentIntegrationsController {
 			agent,
 			type,
 			credentialId,
-			{ broadcast: false },
+			{ user: req.user, modifiedBy: 'user', broadcast: false },
 		);
 
 		return { status: 'disconnected' };

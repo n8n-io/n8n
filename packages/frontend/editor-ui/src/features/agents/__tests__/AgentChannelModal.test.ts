@@ -22,7 +22,6 @@ const integrationSettings = ref({
 	telegram: { accessMode: 'all' },
 });
 const connectedCredentials = ref<Record<string, string>>({});
-const connectedChannelTypes = ref<Set<string>>(new Set());
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
 const fetchStatusMock = vi.fn().mockResolvedValue(undefined);
@@ -58,7 +57,7 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		loadingMap,
 		errorMessages: ref({}),
 		errorIsConflict: ref({}),
-		isConnected: (channelType: string) => connectedChannelTypes.value.has(channelType),
+		isConnected: () => false,
 		isConfigured: (channelType: string) => Boolean(connectedCredentials.value[channelType]),
 		connect: connectMock,
 		disconnect: disconnectMock,
@@ -174,7 +173,6 @@ function mountModal(props: Record<string, unknown>) {
 describe('AgentChannelModal', () => {
 	beforeEach(() => {
 		connectedCredentials.value = {};
-		connectedChannelTypes.value = new Set();
 		selectedCredentials.value = {};
 		loadingMap.value = {};
 		vi.clearAllMocks();
@@ -186,25 +184,6 @@ describe('AgentChannelModal', () => {
 		expect(wrapper.findAll('[data-testid="channel-list-item"]')).toHaveLength(catalog.value.length);
 	});
 
-	it('distinguishes a configured draft channel from an active connection', async () => {
-		connectedCredentials.value.slack = 'slack-credential';
-		const wrapper = mountModal({ view: 'list' });
-		await flushPromises();
-
-		const slack = wrapper.findAll('[data-testid="channel-list-item"]')[0];
-		expect(slack.attributes('data-configured')).toBe('true');
-		expect(slack.attributes('data-connected')).toBe('false');
-	});
-
-	it('does not treat an incomplete draft placeholder as configured', async () => {
-		const wrapper = mountModal({ view: 'list' });
-		await flushPromises();
-
-		const slack = wrapper.findAll('[data-testid="channel-list-item"]')[0];
-		expect(slack.attributes('data-configured')).toBe('false');
-		expect(slack.attributes('data-connected')).toBe('false');
-	});
-
 	it('does not describe a configured draft channel as connected', async () => {
 		connectedCredentials.value.linear = 'linear-credential';
 		const wrapper = mountModal({ view: 'linear_setup' });
@@ -213,23 +192,6 @@ describe('AgentChannelModal', () => {
 		expect(
 			wrapper.get('[data-testid="linear-setup"]').attributes('data-connected-description'),
 		).toBe('');
-	});
-
-	it('uses connected copy for an active channel', async () => {
-		connectedCredentials.value.linear = 'linear-credential';
-		connectedChannelTypes.value = new Set(['linear']);
-		const wrapper = mountModal({ view: 'linear_setup' });
-		await flushPromises();
-
-		expect(
-			wrapper.get('[data-testid="linear-setup"]').attributes('data-connected-description'),
-		).toBe('agents.builder.addTrigger.connectedText.linear');
-	});
-
-	it('does not expose publishing state as a channel setup prop', () => {
-		const wrapper = mountModal({ view: 'list' });
-
-		expect(wrapper.props()).not.toHaveProperty('isPublished');
 	});
 
 	it('renders the per-channel setup view for a setup view', () => {

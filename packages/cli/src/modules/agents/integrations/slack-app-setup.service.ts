@@ -258,7 +258,11 @@ export class SlackAppSetupService {
 		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
 			agent,
 			integration,
-			{ broadcast: false, user },
+			{
+				user,
+				modifiedBy: 'user',
+				broadcast: false,
+			},
 		);
 		if (savedAgent.activeVersionId === null) return;
 

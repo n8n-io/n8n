@@ -13,6 +13,7 @@ import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -29,6 +30,7 @@ import {
 	type AgentSummaryFilters,
 } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
+import { isUnconfiguredAgent } from './utils/agent-capabilities';
 import { EventService } from '@/events/event.service';
 
 @Service()
@@ -50,13 +52,26 @@ export class AgentsService {
 	/**
 	 * `id` lets the caller mint the agent id before deciding to persist it, so a
 	 * surface can reference the agent (an artifact tab, a thread binding) while
-	 * it is still unsaved. Both the REST and the builder path may then race to
-	 * create the same id; the loser adopts the winner's row rather than failing.
+	 * it is still unsaved. The builder path may race the REST create on the same
+	 * id; with `adoptUnconfiguredOnCollision` the loser adopts a same-project
+	 * still-unconfigured row. REST stays strict (flag defaults false).
+	 *
+	 * Emits no telemetry: a row on its own is not a created agent, so the
+	 * creation events fire from the first configuring write instead (see
+	 * `AgentModificationTelemetryService`).
 	 */
 	async create(
 		projectId: string,
 		name: string,
-		{ availableInMCP = false, id }: { availableInMCP?: boolean; id?: string } = {},
+		{
+			availableInMCP = false,
+			id,
+			adoptUnconfiguredOnCollision = false,
+		}: {
+			availableInMCP?: boolean;
+			id?: string;
+			adoptUnconfiguredOnCollision?: boolean;
+		} = {},
 	): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
@@ -87,10 +102,13 @@ export class AgentsService {
 			saved = await this.agentRepository.save(agent);
 		} catch (error) {
 			if (!id || !isUniqueConstraintError(error)) throw error;
-			// Only adopt the existing row when it is the agent this caller asked
-			// for. An id taken in another project is a genuine collision.
+			// Never disclose whether the id exists in another project.
+			const conflict = new ConflictError('An agent with this id already exists');
+			if (!adoptUnconfiguredOnCollision) throw conflict;
 			const existing = await this.agentRepository.findByIdAndProjectId(id, projectId);
-			if (!existing) throw error;
+			if (!existing || !isUnconfiguredAgent(existing.schema, existing.integrations ?? [])) {
+				throw conflict;
+			}
 			this.logger.debug('Adopted concurrently created SDK agent', { agentId: id, projectId });
 			return existing;
 		}

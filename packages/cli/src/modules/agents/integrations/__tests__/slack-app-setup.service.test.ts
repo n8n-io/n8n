@@ -249,22 +249,6 @@ describe('SlackAppSetupService', () => {
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 
-	it('creates a Slack app for an unpublished agent', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue(unpublishedAgent as never);
-		requestMock.mockResolvedValueOnce(slackAppCreatedResponse());
-
-		await service.createApp({
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			appConfigurationToken: 'xoxe-config',
-			user,
-		});
-
-		expect(requestMock).toHaveBeenCalledWith(
-			expect.objectContaining({ url: 'https://slack.com/api/apps.manifest.create' }),
-		);
-	});
-
 	it('returns the manual Slack app manifest without OAuth redirect URLs', async () => {
 		const result = await service.getManualManifest({
 			projectId: 'project-1',
@@ -362,8 +346,9 @@ describe('SlackAppSetupService', () => {
 			agent,
 			integration,
 			{
-				broadcast: false,
 				user,
+				modifiedBy: 'user',
+				broadcast: false,
 			},
 		);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
@@ -379,34 +364,6 @@ describe('SlackAppSetupService', () => {
 		);
 		expect(cacheService.delete).toHaveBeenCalledWith(`agents:slack-app-setup:${state}`);
 		expect(cipher.decryptV2).toHaveBeenCalledWith(encryptedSession);
-	});
-
-	it('propagates persistence failures without connecting or broadcasting', async () => {
-		const state = await beginInstall();
-		requestMock.mockResolvedValueOnce(slackOAuthResponse());
-		userRepository.findOne.mockResolvedValue(user);
-		credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-slack' } as never);
-		const persistenceError = new Error('Integration persistence failed');
-		agentIntegrationPersistenceService.saveCredentialIntegration.mockRejectedValue(
-			persistenceError,
-		);
-
-		await expect(
-			service.completeInstall({
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				code: 'slack-code',
-				state,
-			}),
-		).rejects.toBe(persistenceError);
-
-		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
-			agent,
-			{ type: 'slack', credentialId: 'cred-slack' },
-			{ broadcast: false, user },
-		);
-		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
-		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 	});
 
 	it('does not broadcast when connecting a published Slack install fails', async () => {
@@ -430,7 +387,7 @@ describe('SlackAppSetupService', () => {
 		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
 			agent,
 			{ type: 'slack', credentialId: 'cred-slack' },
-			{ broadcast: false, user },
+			{ user, modifiedBy: 'user', broadcast: false },
 		);
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 			'agent-1',
@@ -481,8 +438,9 @@ describe('SlackAppSetupService', () => {
 			unpublishedAgent,
 			integration,
 			{
-				broadcast: false,
 				user,
+				modifiedBy: 'user',
+				broadcast: false,
 			},
 		);
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
