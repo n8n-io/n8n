@@ -197,6 +197,29 @@ describe('components.N8nSegmentControl', () => {
 				expect(value).toBe('three');
 			});
 		});
+
+		it('keeps the uncontrolled selection when options are reordered', async () => {
+			const { getByRole, rerender } = render(SegmentControl, {
+				props: {
+					defaultValue: 'two',
+					options,
+				},
+			});
+
+			expect(getByRole('radio', { name: 'Two' })).toBeChecked();
+
+			await rerender({
+				defaultValue: 'two',
+				options: [
+					{ label: 'Two', value: 'two' },
+					{ label: 'One', value: 'one' },
+					{ label: 'Three', value: 'three' },
+				],
+			});
+
+			expect(getByRole('radio', { name: 'Two' })).toBeChecked();
+			expect(getByRole('radio', { name: 'One' })).not.toBeChecked();
+		});
 	});
 
 	describe('disabled', () => {

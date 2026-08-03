@@ -45,25 +45,18 @@ function optionKey(value: SegmentValue): string {
 	return `${typeof value}:${String(value)}`;
 }
 
-function findOptionIndex(value: SegmentValue | undefined): number {
-	if (value === undefined || !props.options) {
-		return -1;
+function toRadioValue(value: SegmentValue | undefined): string | undefined {
+	if (value === undefined || !props.options?.some((option) => option.value === value)) {
+		return undefined;
 	}
-	return props.options.findIndex((option) => option.value === value);
+	return optionKey(value);
 }
 
-function toRadioValue(index: number): string | undefined {
-	return index >= 0 ? String(index) : undefined;
-}
-
-function parseRadioIndex(raw: AcceptableValue): number | undefined {
-	if (typeof raw === 'number' && Number.isInteger(raw)) {
-		return raw;
+function findOptionByRadioValue(raw: AcceptableValue): SegmentOption<SegmentValue> | undefined {
+	if (typeof raw !== 'string') {
+		return undefined;
 	}
-	if (typeof raw === 'string' && /^\d+$/.test(raw)) {
-		return Number(raw);
-	}
-	return undefined;
+	return props.options?.find((option) => optionKey(option.value) === raw);
 }
 
 function onKeyDownCapture(event: KeyboardEvent) {
@@ -110,12 +103,7 @@ function onItemClickCapture(event: MouseEvent) {
 }
 
 function onUpdate(raw: AcceptableValue) {
-	const index = parseRadioIndex(raw);
-	if (index === undefined) {
-		return;
-	}
-
-	const option = props.options?.[index];
+	const option = findOptionByRadioValue(raw);
 	if (!option || props.disabled || option.disabled) {
 		return;
 	}
@@ -138,8 +126,8 @@ function onUpdate(raw: AcceptableValue) {
 	>
 		<RadioGroupRoot
 			v-bind="{ ...rootProps, ...rootAttrs }"
-			:model-value="toRadioValue(findOptionIndex(modelValue))"
-			:default-value="toRadioValue(findOptionIndex(defaultValue))"
+			:model-value="toRadioValue(modelValue)"
+			:default-value="toRadioValue(defaultValue)"
 			:disabled="disabled"
 			orientation="horizontal"
 			:class="$style.group"
@@ -150,10 +138,10 @@ function onUpdate(raw: AcceptableValue) {
 			@click.capture="onItemClickCapture"
 		>
 			<SegmentControlItem
-				v-for="(option, index) in options"
+				v-for="option in options"
 				:key="optionKey(option.value)"
 				:label="option.label"
-				:value="String(index)"
+				:value="optionKey(option.value)"
 				:data-test-id="`radio-button-${option.value}`"
 				:disabled="disabled || option.disabled"
 				:square="squareButtons"
