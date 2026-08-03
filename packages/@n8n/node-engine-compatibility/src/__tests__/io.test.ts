@@ -41,8 +41,21 @@ describe('fromStepInputs', () => {
 });
 
 describe('toStepOutputs', () => {
+	// v1 stops a branch that produced no items, and the engine reads null as
+	// "not taken", so the collapse is what carries that behaviour across
+	it('collapses an empty slot to null', () => {
+		expect(toStepOutputs([[{ json: { a: 1 } }], []])).toEqual([[{ json: { a: 1 } }], null]);
+	});
+
+	it('collapses a slot the node left unfilled', () => {
+		const sparse: INodeExecutionData[][] = [];
+		sparse[1] = [{ json: { b: 2 } }];
+		expect(toStepOutputs(sparse)).toEqual([null, [{ json: { b: 2 } }]]);
+	});
+
 	it('survives a JSON round-trip', () => {
-		const outputs: INodeExecutionData[][] = [[{ json: { x: 1 } }], []];
+		// both slots filled: an empty one would collapse to null, which is covered above
+		const outputs: INodeExecutionData[][] = [[{ json: { x: 1 } }], [{ json: { y: 2 } }]];
 		const payload = toStepOutputs(outputs);
 		expect(payload).toEqual(outputs);
 

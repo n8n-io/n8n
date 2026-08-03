@@ -1,5 +1,5 @@
 import type { JsonValue } from '../common';
-import type { StepSlots, StepStatus } from './execution.types';
+import type { SettledStepStatus, StepSlots, StepStatus } from './execution.types';
 
 /** A new step to persist. `id` and timestamps are assigned by the store. */
 export interface NewStepRecord {
@@ -33,6 +33,18 @@ export interface StepRecord {
 	outputs: StepSlots | null;
 	/** The error that failed the step; `null` unless it failed. */
 	error: StepError | null;
+}
+
+/**
+ * A settled step, as read for planning decisions: whether a successor's
+ * predecessors have all settled, and which edges leaving them carry data.
+ * `filledOutputSlots` lists the output slots holding data — empty unless the
+ * step completed — so planning never loads the outputs themselves.
+ */
+export interface SettledStep {
+	nodeId: string;
+	status: SettledStepStatus;
+	filledOutputSlots: number[];
 }
 
 /** Thrown by `loadStep` when no step exists for the given id. */
@@ -85,8 +97,8 @@ export interface StepStore {
 	 * node id. A node whose step is absent or hasn't completed maps to `null`.
 	 *
 	 * This is for gathering a step's inputs, so it deliberately can't answer
-	 * "have all predecessors completed?" — the two are indistinguishable from a
-	 * `null` here. Use `loadCompletedNodeIds` for that.
+	 * "have all predecessors settled?" — the two are indistinguishable from a
+	 * `null` here. Use `loadSettledSteps` for that.
 	 */
 	loadStepOutputs(
 		executionId: string,
@@ -94,11 +106,11 @@ export interface StepStore {
 	): Promise<Record<string, StepSlots | null>>;
 
 	/**
-	 * Which of `nodeIds` have a completed step in the execution. Returns the
-	 * subset rather than a yes/no so one query can answer readiness for several
-	 * candidate steps at once.
+	 * Which of `nodeIds` have settled in the execution, and which output slots
+	 * each filled. Returns the subset rather than a yes/no so one query can
+	 * answer readiness and edge liveness for several candidate steps at once.
 	 */
-	loadCompletedNodeIds(executionId: string, nodeIds: string[]): Promise<Set<string>>;
+	loadSettledSteps(executionId: string, nodeIds: string[]): Promise<SettledStep[]>;
 
 	/** Whether the execution has any step still `queued` or `running`. */
 	hasActiveSteps(executionId: string): Promise<boolean>;

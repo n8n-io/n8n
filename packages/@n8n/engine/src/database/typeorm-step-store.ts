@@ -6,6 +6,7 @@ import type { StepSlots, StepStatus } from '../execution/execution.types';
 import {
 	StepNotFoundError,
 	type NewStepRecord,
+	type SettledStep,
 	type StepError,
 	type StepRecord,
 	type StepStore,
@@ -93,15 +94,27 @@ export class TypeOrmStepStore implements StepStore {
 		return outputsByNodeId;
 	}
 
-	async loadCompletedNodeIds(executionId: string, nodeIds: string[]): Promise<Set<string>> {
-		if (nodeIds.length === 0) return new Set();
+	async loadSettledSteps(executionId: string, nodeIds: string[]): Promise<SettledStep[]> {
+		if (nodeIds.length === 0) return [];
 
-		const rows = await this.repo.find({
-			where: { executionId, nodeId: In(nodeIds), status: 'completed' },
-			select: ['nodeId'],
-		});
-
-		return new Set(rows.map((row) => row.nodeId));
+		// The filled slots are projected out of the jsonb in SQL — a slot is filled
+		// when its element is not json null — so payloads never leave the database.
+		return await this.repo
+			.createQueryBuilder('step')
+			.select('step.node_id', 'nodeId')
+			.addSelect('step.status', 'status')
+			.addSelect(
+				`COALESCE(
+					(SELECT array_agg((slot.ord - 1)::int ORDER BY slot.ord)
+						FROM jsonb_array_elements(step.outputs) WITH ORDINALITY AS slot(value, ord)
+						WHERE slot.value <> 'null'::jsonb),
+					'{}')`,
+				'filledOutputSlots',
+			)
+			.where('step.execution_id = :executionId', { executionId })
+			.andWhere('step.node_id IN (:...nodeIds)', { nodeIds })
+			.andWhere('step.status NOT IN (:...active)', { active: ['queued', 'running'] })
+			.getRawMany<SettledStep>();
 	}
 
 	async hasActiveSteps(executionId: string): Promise<boolean> {

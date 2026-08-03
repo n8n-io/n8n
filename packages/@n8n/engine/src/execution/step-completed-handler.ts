@@ -1,24 +1,24 @@
-import { getPredecessorNodeIds, getSuccessorNodeIds } from '../graph';
 import type { StepCompletedEvent, StepMessage, WorkQueue } from '../queue';
-import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import type { ExecutionStore } from './execution-store';
 import { finishExecutionIfDone } from './finish-execution';
+import { StepPlanner } from './step-planner';
 import type { StepStore } from './step-store';
 
 /**
- * Handles the `step:completed` orchestration event: plans the successors of the
- * finished step and publishes `step:ready` for each, or records the execution's
- * outcome when there is nothing left to run.
- *
- * A successor is planned once, when every predecessor has completed — never
- * planned early and held back at run time — so a step row exists only for work
- * whose inputs are all available.
+ * Handles the `step:completed` orchestration event: settles what the outcome
+ * decides downstream — successors run or skip, per the planner — or records
+ * the execution's outcome when there is nothing left to run.
  */
 export class StepCompletedHandler {
+	private readonly planner: StepPlanner;
+
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
-		private readonly stepQueue: WorkQueue<StepMessage>,
-	) {}
+		stepQueue: WorkQueue<StepMessage>,
+	) {
+		this.planner = new StepPlanner(stepStore, stepQueue);
+	}
 
 	async handle(event: StepCompletedEvent): Promise<void> {
 		const [step, execution] = await Promise.all([
@@ -26,64 +26,14 @@ export class StepCompletedHandler {
 			this.executionStore.loadExecution(event.executionId),
 		]);
 
-		// A step that didn't complete ends its branch: no successor of it can have
-		// all of its inputs.
-		const planned =
-			step.status === 'completed' ? await this.planSuccessors(execution, step.nodeId) : 0;
+		// A failed step settles its successors too: every edge out of it is dead,
+		// so downstream nodes are recorded skipped rather than left dangling.
+		const planned = await this.planner.settleSuccessors(execution, step.nodeId);
 
 		// A planned step always runs eventually, so it will report its own completion
 		// and the execution gets tested for completion then.
 		if (planned > 0) return;
 
 		await finishExecutionIfDone(this.executionStore, this.stepStore, execution.id);
-	}
-
-	/** Plans the ready successors of `nodeId`, returning how many were queued. */
-	private async planSuccessors(execution: ExecutionRecord, nodeId: string): Promise<number> {
-		const readyNodeIds = await this.readySuccessorNodeIds(execution, nodeId);
-		if (readyNodeIds.length === 0) return 0;
-
-		// Planned together so a fan-out is one round trip, and published only after
-		// the rows exist, so a consumer can always load the step. A step another
-		// planner got to first isn't returned, so it isn't announced twice either.
-		const created = await this.stepStore.createSteps(
-			readyNodeIds.map((readyNodeId) => ({
-				executionId: execution.id,
-				nodeId: readyNodeId,
-				status: 'queued' as const,
-			})),
-		);
-
-		for (const { id: stepId } of created) {
-			await this.stepQueue.publish({
-				type: 'step:ready',
-				executionId: execution.id,
-				stepId,
-			});
-		}
-
-		return created.length;
-	}
-
-	/** Successors of `nodeId` whose every predecessor has completed. */
-	private async readySuccessorNodeIds(
-		execution: ExecutionRecord,
-		nodeId: string,
-	): Promise<string[]> {
-		const successors = getSuccessorNodeIds(execution.graph, nodeId).map((id) => ({
-			id,
-			predecessorIds: getPredecessorNodeIds(execution.graph, id),
-		}));
-
-		// One query covering every predecessor in play; readiness is then set
-		// membership, so a fan-out costs a single round trip.
-		const completed = await this.stepStore.loadCompletedNodeIds(
-			execution.id,
-			successors.flatMap(({ predecessorIds }) => predecessorIds),
-		);
-
-		return successors
-			.filter(({ predecessorIds }) => predecessorIds.every((id) => completed.has(id)))
-			.map(({ id }) => id);
 	}
 }

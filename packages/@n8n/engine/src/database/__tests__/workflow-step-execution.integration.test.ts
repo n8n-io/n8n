@@ -227,21 +227,42 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 	});
 
-	it('TypeOrmStepStore.loadCompletedNodeIds returns only the completed ones', async () => {
+	it('TypeOrmStepStore.loadSettledSteps returns settled steps with their filled output slots', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id: aId } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
-		// completed having produced nothing: still completed, which is the case a
-		// readiness question must get right
-		await store.completeStep(aId, []);
-		await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
-		const { id: cId } = await createStep(store, { executionId, nodeId: 'c', status: 'running' });
-		await store.failStep(cId, { name: 'Error', message: 'node blew up' });
+		// a Switch-like outcome: slots 0 and 2 filled, slot 1 not taken
+		await store.completeStep(aId, [[{ json: { from: 'a' } }], null, [{ json: { alt: true } }]]);
+		const { id: bId } = await createStep(store, { executionId, nodeId: 'b', status: 'running' });
+		await store.failStep(bId, { name: 'Error', message: 'node blew up' });
+		await createStep(store, { executionId, nodeId: 'c', status: 'skipped' });
+		await createStep(store, { executionId, nodeId: 'd', status: 'queued' });
 
-		const completed = await store.loadCompletedNodeIds(executionId, ['a', 'b', 'c', 'd']);
+		const settled = await store.loadSettledSteps(executionId, ['a', 'b', 'c', 'd', 'e']);
 
-		// b queued, c failed, d has no row at all
-		expect(completed).toEqual(new Set(['a']));
+		// d is queued and e has no row — both read as "not yet", so they're absent
+		expect(settled.sort((x, y) => x.nodeId.localeCompare(y.nodeId))).toEqual([
+			{ nodeId: 'a', status: 'completed', filledOutputSlots: [0, 2] },
+			{ nodeId: 'b', status: 'failed', filledOutputSlots: [] },
+			{ nodeId: 'c', status: 'skipped', filledOutputSlots: [] },
+		]);
+	});
+
+	it('TypeOrmStepStore.loadSettledSteps reads a completed step with no filled slots as settled', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
+		// completed having produced nothing: settled, with every edge out of it dead
+		await store.completeStep(id, []);
+
+		const settled = await store.loadSettledSteps(executionId, ['a']);
+
+		expect(settled).toEqual([{ nodeId: 'a', status: 'completed', filledOutputSlots: [] }]);
+	});
+
+	it('TypeOrmStepStore.loadSettledSteps is a no-op for an empty node list', async () => {
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		expect(await store.loadSettledSteps('00000000-0000-7000-8000-000000000000', [])).toEqual([]);
 	});
 
 	it('rejects an invalid status (check constraint)', async () => {

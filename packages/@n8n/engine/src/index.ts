@@ -52,6 +52,8 @@ export type {
 	ExecutionStore,
 	NewExecutionRecord,
 	NewStepRecord,
+	SettledStep,
+	SettledStepStatus,
 	StepError,
 	StepRecord,
 	StepSlots,
