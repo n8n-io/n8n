@@ -63,10 +63,13 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 		} = response.body;
 
 		expect(issuer).toMatch(/^https?:\/\//);
-		expect(authorization_endpoint).toBe(`${issuer}/mcp-oauth/authorize`);
-		expect(token_endpoint).toBe(`${issuer}/mcp-oauth/token`);
-		expect(registration_endpoint).toBe(`${issuer}/mcp-oauth/register`);
-		expect(revocation_endpoint).toBe(`${issuer}/mcp-oauth/revoke`);
+		// `issuer` is the canonical RFC 9207 form (trailing slash for an origin-only
+		// base URL); the endpoints are built from the bare base URL, so trim it.
+		const origin = issuer.replace(/\/$/, '');
+		expect(authorization_endpoint).toBe(`${origin}/mcp-oauth/authorize`);
+		expect(token_endpoint).toBe(`${origin}/mcp-oauth/token`);
+		expect(registration_endpoint).toBe(`${origin}/mcp-oauth/register`);
+		expect(revocation_endpoint).toBe(`${origin}/mcp-oauth/revoke`);
 	});
 
 	test('should include all required OAuth 2.1 fields', async () => {
@@ -461,7 +464,7 @@ describe('GET /mcp-oauth/authorize', () => {
 		expect(redirectUrl.origin + redirectUrl.pathname).toBe('https://example.com/callback');
 		expect(redirectUrl.searchParams.get('error')).toBe('invalid_request');
 		expect(redirectUrl.searchParams.get('iss')).toBe(
-			Container.get(UrlService).getInstanceBaseUrl(),
+			new URL(Container.get(UrlService).getInstanceBaseUrl()).href,
 		);
 	});
 });
@@ -672,7 +675,7 @@ describe('Full authorization-code flow (PKCE)', () => {
 		expect(code).toBeTruthy();
 		expect(redirectUrl.searchParams.get('state')).toBe('flow-state');
 		expect(redirectUrl.searchParams.get('iss')).toBe(
-			Container.get(UrlService).getInstanceBaseUrl(),
+			new URL(Container.get(UrlService).getInstanceBaseUrl()).href,
 		);
 
 		// 4. Token exchange

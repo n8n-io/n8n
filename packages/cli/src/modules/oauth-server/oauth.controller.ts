@@ -1,7 +1,9 @@
-import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
-import { clientRegistrationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/register.js';
-import { revocationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/revoke.js';
-import { tokenHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/token.js';
+import {
+	authorizationHandler,
+	clientRegistrationHandler,
+	revocationHandler,
+	tokenHandler,
+} from '@modelcontextprotocol/server-legacy/auth';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -57,32 +59,22 @@ const oauthClientLimitGuard: RequestHandler = async (_req, res, next) => {
 	next();
 };
 
-/**
- * The SDK's authorization handler redirects request-validation errors (e.g.
- * missing `code_challenge`) back to the client without the RFC 9207 `iss`
- * parameter, while our metadata advertises
- * `authorization_response_iss_parameter_supported`. Wrap `res.location`
- * (which `res.redirect` sets its target through) so every absolute-URL
- * redirect from the authorize route carries `iss` matching the advertised
- * issuer. Internal relative redirects (consent screen) pass through
- * untouched. Remove once `@modelcontextprotocol/sdk` ships
- * `authorizationHandler({ issuerUrl })` (on upstream main, unreleased as of
- * 1.29.0) and the catalog version is bumped past it.
- */
-const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
-	const originalLocation = res.location.bind(res);
-	res.location = (url: string) =>
-		originalLocation(OAuthHelpers.setIssuerParam(url, urlService.getInstanceBaseUrl()));
-	next();
-};
-
 // Built once and mounted under both the legacy `/mcp-oauth/*` paths (existing
 // DCR clients hold them in their stored discovery metadata) and the neutral
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
 const registerRouter = clientRegistrationHandler({
 	clientsStore: oauthServerService.clientsStore,
 }) as Router;
-const authorizeRouter = authorizationHandler({ provider: oauthServerService }) as Router;
+// `issuerUrl` makes the handler stamp the RFC 9207 `iss` parameter onto every
+// redirect it drives back to the client's validated `redirect_uri` — including
+// its own request-validation error redirects (e.g. missing `code_challenge`),
+// which is what our metadata's `authorization_response_iss_parameter_supported`
+// promises. Success redirects run through the consent flow, which sets `iss`
+// itself.
+const authorizeRouter = authorizationHandler({
+	provider: oauthServerService,
+	issuerUrl: new URL(urlService.getInstanceBaseUrl()),
+}) as Router;
 const tokenRouter = tokenHandler({ provider: oauthServerService }) as Router;
 const revokeRouter = revocationHandler({ provider: oauthServerService }) as Router;
 
@@ -101,7 +93,6 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
-		middlewares: [rfc9207IssuerParam],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitAuthorize,
 			5 * Time.minutes.toMilliseconds,
@@ -182,7 +173,9 @@ export class OAuthController {
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const allScopes = this.resourceRegistry.getAllScopes();
 		const metadata: Record<string, unknown> = {
-			issuer: baseUrl,
+			// Canonical `href` form so it matches the RFC 9207 `iss` the authorize
+			// handler stamps onto redirects (see OAuthHelpers.canonicalIssuer).
+			issuer: OAuthHelpers.canonicalIssuer(baseUrl),
 			authorization_endpoint: `${baseUrl}/mcp-oauth/authorize`,
 			token_endpoint: `${baseUrl}/mcp-oauth/token`,
 			registration_endpoint: `${baseUrl}/mcp-oauth/register`,
@@ -294,7 +287,9 @@ export class OAuthController {
 		const metadata: Record<string, unknown> = {
 			resource: resource.getResourceUrl(),
 			bearer_methods_supported: ['header'],
-			authorization_servers: [baseUrl],
+			// Canonical issuer form so it matches the `issuer` in the
+			// authorization-server metadata a client cross-checks it against.
+			authorization_servers: [OAuthHelpers.canonicalIssuer(baseUrl)],
 		};
 
 		if (resource.scopes.length > 0) {

@@ -160,7 +160,9 @@ export class OAuthConsentService {
 			throw new UserError('Invalid or expired session');
 		}
 
-		const issuer = this.urlService.getInstanceBaseUrl();
+		// Same canonical `href` form the authorize handler and metadata use, so
+		// the RFC 9207 `iss` on the consent redirect matches the advertised issuer.
+		const issuer = OAuthHelpers.canonicalIssuer(this.urlService.getInstanceBaseUrl());
 
 		if (!approved) {
 			const redirectUrl = OAuthHelpers.buildErrorRedirectUrl(

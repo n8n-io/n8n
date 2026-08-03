@@ -58,6 +58,7 @@ catalog:
   '@modelcontextprotocol/node': 2.0.0
   '@modelcontextprotocol/sdk': 1.26.0
   '@modelcontextprotocol/server': 2.0.0
+  '@modelcontextprotocol/server-legacy': 2.0.0
   '@mozilla/readability': ^0.6.0
   '@n8n_io/ai-assistant-sdk': 1.25.0
   '@openrouter/ai-sdk-provider': ^3.0.0

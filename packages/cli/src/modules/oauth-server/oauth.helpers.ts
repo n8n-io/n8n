@@ -3,6 +3,20 @@
  */
 export class OAuthHelpers {
 	/**
+	 * Canonical RFC 8414/9207 issuer identifier for a given instance base URL.
+	 *
+	 * The `server-legacy/auth` authorize handler derives the RFC 9207 `iss`
+	 * parameter from `issuerUrl.href`, so an origin-only base URL comes back with
+	 * a trailing slash (`https://host` → `https://host/`). RFC 9207 requires the
+	 * `iss` on every authorization response to be byte-identical to the `issuer`
+	 * advertised in metadata, so the metadata document and the consent redirects
+	 * must use this same `href` normalization rather than the bare base URL.
+	 */
+	static canonicalIssuer(baseUrl: string): string {
+		return new URL(baseUrl).href;
+	}
+
+	/**
 	 * Build success redirect URL with authorization code
 	 * Used when user approves consent
 	 *
@@ -44,21 +58,6 @@ export class OAuthHelpers {
 		if (state) {
 			targetUrl.searchParams.set('state', state);
 		}
-		targetUrl.searchParams.set('iss', issuer);
-		return targetUrl.toString();
-	}
-
-	/**
-	 * Set the RFC 9207 `iss` parameter on an absolute redirect URL, replacing
-	 * any pre-existing value (e.g. one baked into the client's registered
-	 * redirect URI) so the response always asserts this server's identity.
-	 * Relative URLs (internal redirects, e.g. to the consent screen) are
-	 * returned unchanged.
-	 */
-	static setIssuerParam(url: string, issuer: string): string {
-		if (!URL.canParse(url)) return url;
-
-		const targetUrl = new URL(url);
 		targetUrl.searchParams.set('iss', issuer);
 		return targetUrl.toString();
 	}

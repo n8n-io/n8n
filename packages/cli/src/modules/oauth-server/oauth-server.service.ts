@@ -1,18 +1,15 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
-import {
-	InvalidGrantError,
-	InvalidTargetError,
-} from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type {
-	AuthorizationParams,
-	OAuthServerProvider,
-} from '@modelcontextprotocol/sdk/server/auth/provider.js';
-import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
-import type {
+	AuthInfo,
 	OAuthClientInformationFull,
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
-} from '@modelcontextprotocol/sdk/shared/auth.js';
+} from '@modelcontextprotocol/server';
+import { InvalidGrantError, InvalidTargetError } from '@modelcontextprotocol/server-legacy/auth';
+import type {
+	AuthorizationParams,
+	OAuthRegisteredClientsStore,
+	OAuthServerProvider,
+} from '@modelcontextprotocol/server-legacy/auth';
 import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-types';
 import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';

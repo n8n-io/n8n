@@ -288,7 +288,7 @@ describe('POST /rest/consent/approve', () => {
 		expect(redirectUrl.searchParams.get('code')?.length).toBeGreaterThan(32);
 		expect(redirectUrl.searchParams.get('state')).toBe('test-state');
 		expect(redirectUrl.searchParams.get('iss')).toBe(
-			Container.get(UrlService).getInstanceBaseUrl(),
+			new URL(Container.get(UrlService).getInstanceBaseUrl()).href,
 		);
 	});
 
@@ -310,7 +310,7 @@ describe('POST /rest/consent/approve', () => {
 		expect(redirectUrl.searchParams.get('error_description')).toBeTruthy();
 		expect(redirectUrl.searchParams.get('state')).toBe('test-state');
 		expect(redirectUrl.searchParams.get('iss')).toBe(
-			Container.get(UrlService).getInstanceBaseUrl(),
+			new URL(Container.get(UrlService).getInstanceBaseUrl()).href,
 		);
 	});
 

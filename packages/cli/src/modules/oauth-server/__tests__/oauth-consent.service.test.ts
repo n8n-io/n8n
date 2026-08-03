@@ -345,7 +345,7 @@ describe('OAuthConsentService', () => {
 				'error_description=User+denied+the+authorization+request',
 			);
 			expect(result.redirectUrl).toContain('state=state-xyz');
-			expect(new URL(result.redirectUrl).searchParams.get('iss')).toBe(issuer);
+			expect(new URL(result.redirectUrl).searchParams.get('iss')).toBe(new URL(issuer).href);
 			expect(logger.info).toHaveBeenCalledWith('Consent denied', {
 				clientId: 'client-123',
 				userId: 'user-123',
@@ -379,7 +379,7 @@ describe('OAuthConsentService', () => {
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).toContain('state=state-xyz');
-			expect(new URL(result.redirectUrl).searchParams.get('iss')).toBe(issuer);
+			expect(new URL(result.redirectUrl).searchParams.get('iss')).toBe(new URL(issuer).href);
 			expect(userConsentRepository.upsert).toHaveBeenCalledWith(
 				{
 					userId: 'user-123',
