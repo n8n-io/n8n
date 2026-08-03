@@ -256,6 +256,7 @@ function handleConfirm() {
 			name: wc.getName(),
 			description: wc.getDescription(),
 			allOutputs: wc.getAllOutputs(),
+			workflow: wc.getWorkflow(),
 		});
 		toolData.onConfirm(withApprovalRequirement(updatedRef));
 		closeDialog();
@@ -338,6 +339,7 @@ function handleNodeUpdate(node: INode) {
 							v-if="workflowInitialRef"
 							ref="workflowContentRef"
 							:initial-ref="workflowInitialRef"
+							:project-id="data.projectId"
 							:show-approval-setting="showApprovalSetting"
 							:approval-required="approvalRequired"
 							@update:valid="handleValidUpdate"

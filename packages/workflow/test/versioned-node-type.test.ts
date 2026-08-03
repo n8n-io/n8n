@@ -36,8 +36,9 @@ describe('VersionedNodeType', () => {
 			expect(error.nodeType).toBe('n8n-nodes-base.example');
 			expect(error.version).toBe(4.4);
 			expect(error.availableVersions).toEqual([1, 2]);
+			expect(error.latestVersion).toBe(2);
 			expect(error.message).toBe(
-				'Node type "n8n-nodes-base.example" is not available in version 4.4. Available versions: 1, 2',
+				'Node type "n8n-nodes-base.example" is not available in version 4.4. Available versions: 1, 2. Use the latest version 2.',
 			);
 		});
 	});

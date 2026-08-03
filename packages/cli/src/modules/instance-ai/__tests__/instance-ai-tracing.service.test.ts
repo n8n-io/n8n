@@ -10,6 +10,7 @@ const submitLangsmithUserFeedback = vi.fn();
 
 vi.mock('@n8n/instance-ai', () => ({
 	continueInstanceAiTraceContext: (...args: unknown[]) => continueInstanceAiTraceContext(...args),
+	orchestratorAgentId: (runId: string) => `orchestrator:${runId}`,
 	releaseTraceClient: (...args: unknown[]) => releaseTraceClient(...args),
 	submitLangsmithUserFeedback: (...args: unknown[]) => submitLangsmithUserFeedback(...args),
 }));
@@ -110,6 +111,42 @@ describe('InstanceAiTracingService', () => {
 
 			expect(service.getMessageGroupId('run-1')).toBe('group-1');
 			expect(service.getMessageGroupId('run-unknown')).toBeUndefined();
+		});
+	});
+
+	describe('resume trace registration', () => {
+		it('keeps a resume trace detached until the checkpoint claim succeeds', async () => {
+			const { service, runState } = createService();
+			const baseTracing = makeTraceContext({
+				rootRun: { id: 'root-base', traceId: 'trace-base' },
+			});
+			const resumeTracing = makeTraceContext({
+				rootRun: { id: 'root-resume', traceId: 'trace-resume' },
+			});
+			continueInstanceAiTraceContext.mockResolvedValue(resumeTracing);
+			vi.spyOn(service, 'configureTraceReplayMode').mockResolvedValue();
+
+			const result = await service.createOrchestratorResumeTraceContext({
+				baseTracing,
+				threadId: 'thread-a',
+				messageId: 'message-1',
+				messageGroupId: 'group-1',
+				runId: 'run-1',
+				userId: 'user-1',
+				input: { approved: true },
+				resumeReason: 'approval',
+				register: false,
+			});
+
+			expect(result).toBe(resumeTracing);
+			expect(service.getTraceContext('run-1')).toBeUndefined();
+			expect(runState.attachTracing).not.toHaveBeenCalled();
+
+			service.registerTraceContext('run-1', 'thread-a', resumeTracing, 'group-1');
+
+			expect(service.getTraceContext('run-1')).toBe(resumeTracing);
+			expect(service.getMessageGroupId('run-1')).toBe('group-1');
+			expect(runState.attachTracing).toHaveBeenCalledWith('thread-a', resumeTracing);
 		});
 	});
 

@@ -312,7 +312,7 @@ describe('NodeTypes', () => {
 				"Cannot read properties of undefined (reading 'execute')",
 			);
 			expect(error.message).toBe(
-				'Node type "n8n-nodes-base.realVersioned" is not available in version 4.4. Available versions: 1, 2',
+				'Node type "n8n-nodes-base.realVersioned" is not available in version 4.4. Available versions: 1, 2. Use the latest version 2.',
 			);
 			expect(error.availableVersions).toEqual([1, 2]);
 		});

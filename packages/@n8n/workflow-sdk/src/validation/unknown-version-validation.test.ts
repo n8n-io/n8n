@@ -40,6 +40,7 @@ describe('unknown node version validation', () => {
 		expect(versionWarning).toBeDefined();
 		expect(versionWarning?.message).toContain('is not available in version 4.4');
 		expect(versionWarning?.message).toContain('Available versions: 1, 2, 3, 4');
+		expect(versionWarning?.message).toContain('Use the latest version 4.');
 		expect(versionWarning?.violationLevel).toBe('major');
 	});
 

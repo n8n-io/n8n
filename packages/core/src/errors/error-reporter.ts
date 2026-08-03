@@ -130,7 +130,11 @@ export class ErrorReporter {
 			const { executionId } = options ?? {};
 			const context = executionId ? ` (execution ${executionId})` : '';
 
+			// Prevent infinite loops in cyclic cause chains.
+			const seen = new Set<Error>();
+
 			do {
+				seen.add(e);
 				let stack = '';
 				let meta = undefined;
 				if (e instanceof ApplicationError || e instanceof BaseError) {
@@ -147,7 +151,7 @@ export class ErrorReporter {
 					this.logger.error(msg, meta);
 				}
 				e = e.cause as Error;
-			} while (e);
+			} while (e && !seen.has(e));
 		}
 	}
 

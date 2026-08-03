@@ -12,12 +12,18 @@ export class NodeVersionNotFoundError extends UserError {
 
 	readonly availableVersions: number[];
 
+	/** Highest available version, or `undefined` when none are registered. */
+	readonly latestVersion?: number;
+
 	constructor(nodeType: string, version: number, availableVersions: number[]) {
+		const latestVersion = availableVersions.length ? Math.max(...availableVersions) : undefined;
 		super(
-			`Node type "${nodeType}" is not available in version ${version}. Available versions: ${availableVersions.join(', ')}`,
+			`Node type "${nodeType}" is not available in version ${version}. Available versions: ${availableVersions.join(', ')}` +
+				(latestVersion !== undefined ? `. Use the latest version ${latestVersion}.` : ''),
 		);
 		this.nodeType = nodeType;
 		this.version = version;
 		this.availableVersions = availableVersions;
+		this.latestVersion = latestVersion;
 	}
 }

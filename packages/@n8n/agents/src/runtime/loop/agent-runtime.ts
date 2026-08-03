@@ -5,6 +5,7 @@ import type { z } from 'zod';
 
 import { incrementMessageCount, incrementTokenCountFromUsage } from './execution-counter';
 import { GenerateSink } from './generate-sink';
+import { hydrateFileParts } from './hydrate-file-parts';
 import type { RunOutputSink, RunServices } from './run-output-sink';
 import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
 import {
@@ -18,6 +19,7 @@ import { StreamSink } from './stream-sink';
 import { isCancellation } from '../../sdk/cancellation';
 import { computeCost, getModelCost, type ModelCost } from '../../sdk/catalog';
 import type {
+	BuiltFileStore,
 	BuiltMemory,
 	BuiltProviderTool,
 	BuiltTelemetry,
@@ -45,6 +47,7 @@ import type {
 	ModelConfig,
 	PersistedExecutionOptions,
 	PromptCachingConfig,
+	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
@@ -62,7 +65,7 @@ import {
 } from '../model/prompt-cache';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
-import { generateRunId, RunStateManager } from '../state/run-state';
+import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
 import { startStreamSession } from '../streaming/stream-session';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
@@ -91,6 +94,8 @@ export interface AgentRuntimeConfig {
 	};
 	providerTools?: BuiltProviderTool[];
 	memory?: BuiltMemory;
+	/** Host store resolving file-reference content parts to bytes before LLM calls. */
+	fileStore?: BuiltFileStore;
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 	episodicMemory?: EpisodicMemoryConfig;
@@ -327,27 +332,34 @@ export class AgentRuntime {
 	async resume(
 		method: 'generate',
 		data: unknown,
-		options: { runId: string; toolCallId: string } & ExecutionOptions,
+		options: ResumeOptions & ExecutionOptions,
 	): Promise<GenerateResult>;
 	async resume(
 		method: 'stream',
 		data: unknown,
-		options: { runId: string; toolCallId: string } & ExecutionOptions,
+		options: ResumeOptions & ExecutionOptions,
 	): Promise<StreamResult>;
 	async resume(
 		method: 'generate' | 'stream',
 		data: unknown,
-		options: { runId: string; toolCallId: string } & ExecutionOptions,
+		options: ResumeOptions & ExecutionOptions,
 	): Promise<GenerateResult | StreamResult> {
 		this.runId = options.runId;
 		const state = await this.runState.resume(this.runId);
-		if (!state) throw new Error(`No suspended run found for runId: ${this.runId}`);
+		if (!state) {
+			throw new StaleResumeError(`No suspended run found for runId: ${this.runId}`);
+		}
 
 		const toolCall = state.pendingToolCalls[options.toolCallId];
-		if (!toolCall) throw new Error(`No tool call found for toolCallId: ${options.toolCallId}`);
+		if (!toolCall) {
+			throw new StaleResumeError(`No tool call found for toolCallId: ${options.toolCallId}`);
+		}
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
+		await hydrateFileParts(list.messages(), this.config.fileStore, {
+			threadId: state.persistence?.threadId,
+		});
 
 		const toolForValidation = this.context
 			.getCurrentTools(state.persistence)
@@ -367,7 +379,12 @@ export class AgentRuntime {
 
 		try {
 			// Merge persisted execution options with fresh caller options
-			const { runId: _rid, toolCallId: _tcid, ...callerExecOptions } = options;
+			const {
+				runId: _rid,
+				toolCallId: _tcid,
+				onResumeClaimed: _onResumeClaimed,
+				...callerExecOptions
+			} = options;
 			const persisted = state.executionOptions ?? {};
 			const persistedMaxIterations = persisted.maxIterations;
 			const callerMaxIterations = callerExecOptions.maxIterations;
@@ -398,6 +415,12 @@ export class AgentRuntime {
 				...mergedExecOptions,
 			};
 
+			const claimed = await this.runState.claimResume(this.runId, state);
+			if (!claimed) {
+				throw new StaleResumeError(`Run ${this.runId} is not suspended. Cannot resume.`);
+			}
+			await options.onResumeClaimed?.();
+
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
 			const activeAbortScope = abortScope;
 
@@ -410,11 +433,6 @@ export class AgentRuntime {
 			await this.ensureModelCost();
 
 			await this.memory.setListObservationLogMemory(list, state.persistence);
-
-			const claimed = await this.runState.claimResume(this.runId, state);
-			if (!claimed) {
-				throw new Error(`Run ${this.runId} is not suspended. Cannot resume.`);
-			}
 
 			if (method === 'generate') {
 				const sink = new GenerateSink(this.createRunServices());
@@ -453,6 +471,8 @@ export class AgentRuntime {
 		} catch (error) {
 			const isAbort = abortScope?.isAborted ?? false;
 			abortScope?.dispose();
+			if (error instanceof StaleResumeError) throw error;
+
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
@@ -502,6 +522,9 @@ export class AgentRuntime {
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
+		await hydrateFileParts(list.messages(), this.config.fileStore, {
+			threadId: state.persistence?.threadId,
+		});
 
 		let abortScope: AgentAbortScope | undefined;
 		try {
@@ -579,6 +602,11 @@ export class AgentRuntime {
 		// Best-effort: persistInputMessages swallows failures — the end-of-turn save
 		// is authoritative for completed turns, so this must not abort the turn.
 		await this.memory.persistInputMessages(list, options);
+
+		// Hydrate after the eager persist so stored input stays reference-only.
+		await hydrateFileParts(list.messages(), this.config.fileStore, {
+			threadId: options?.persistence?.threadId,
+		});
 
 		return list;
 	}

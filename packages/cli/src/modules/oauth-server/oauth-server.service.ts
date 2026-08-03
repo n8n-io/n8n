@@ -504,7 +504,19 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new InvalidResourceIndicatorError(resource, knownResources);
 		}
 
-		return normalizedResource;
+		// Keep the caller's spelling when it exactly names one of the resource's own
+		// URLs — the MCP server publishes several, and a client reaching it through the
+		// instance hostname must get the audience it asked for.
+		//
+		// Otherwise return the canonical URL. Lookup deliberately tolerates equivalent
+		// spellings (a webhook's `?method=` query survives percent-encoding), and
+		// echoing one of those back would mint an `aud` that the resource gate — which
+		// compares against `getAudiences()` — can never match, leaving the client
+		// holding a token that silently 401s forever.
+		const declaredUrls = match.getResourceUrls?.() ?? [match.getResourceUrl()];
+		const isDeclared = declaredUrls.some((url) => url.replace(/\/$/, '') === normalizedResource);
+
+		return isDeclared ? normalizedResource : match.getResourceUrl();
 	}
 
 	async revokeToken(

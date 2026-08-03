@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import TrialBanner from './TrialBanner.vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { vi } from 'vitest';
 
 vi.mock('@n8n/stores/useRootStore', () => ({

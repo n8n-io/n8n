@@ -14,6 +14,7 @@ describe('SlackIntegration', () => {
 			'send_dm',
 			'send_channel_message',
 			'add_reaction',
+			'do_not_respond',
 		]);
 	});
 
@@ -54,6 +55,80 @@ describe('SlackIntegration', () => {
 		expect(context.forceBuffered).toBe(true);
 		expect(context.statusHandle).toBeUndefined();
 		expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+	});
+
+	describe('getReplyExpectation', () => {
+		const platformAgentContext = { agentUserId: 'U_BOT' };
+
+		const slackMessage = (raw: Record<string, unknown>, text = 'hello') => ({ text, raw }) as never;
+
+		it('requires a reply for new mentions and DM starts', () => {
+			expect(
+				integration.getReplyExpectation({
+					message: slackMessage({ channel: 'C123' }),
+					isNewMention: true,
+					platformAgentContext,
+				}),
+			).toBe('required');
+		});
+
+		it('requires a reply for follow-up messages in a DM', () => {
+			expect(
+				integration.getReplyExpectation({
+					message: slackMessage({ channel: 'D123', channel_type: 'im' }),
+					isNewMention: false,
+					platformAgentContext,
+				}),
+			).toBe('required');
+
+			expect(
+				integration.getReplyExpectation({
+					message: slackMessage({ channel: 'D123' }),
+					isNewMention: false,
+					platformAgentContext,
+				}),
+			).toBe('required');
+		});
+
+		it('does not infer a mention from raw message text', () => {
+			expect(
+				integration.getReplyExpectation({
+					message: slackMessage({ channel: 'C123', text: '<@U_BOT> what do you think?' }),
+					isNewMention: false,
+					platformAgentContext,
+				}),
+			).toBe('optional');
+		});
+
+		it('requires a reply when the adapter flags the message as a mention, even without a bot user ID', () => {
+			expect(
+				integration.getReplyExpectation({
+					message: { text: 'hello', isMention: true, raw: { channel: 'C123' } } as never,
+					isNewMention: false,
+					platformAgentContext: {},
+				}),
+			).toBe('required');
+		});
+
+		it('makes the reply optional for unaddressed follow-ups in subscribed channels', () => {
+			expect(
+				integration.getReplyExpectation({
+					message: slackMessage({ channel: 'C123', channel_type: 'channel' }),
+					isNewMention: false,
+					platformAgentContext,
+				}),
+			).toBe('optional');
+		});
+
+		it('requires a reply when the raw payload is unavailable', () => {
+			expect(
+				integration.getReplyExpectation({
+					message: slackMessage(undefined as never),
+					isNewMention: false,
+					platformAgentContext,
+				}),
+			).toBe('required');
+		});
 	});
 
 	describe('handleUnauthenticatedWebhook', () => {
