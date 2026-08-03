@@ -382,8 +382,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
+			const isOwnInFlightWorkflow =
+				targetWorkflowId !== undefined &&
+				(context.aiCreatedWorkflowIds?.has(targetWorkflowId) ?? false);
+
 			if (
 				targetWorkflowId &&
+				!isOwnInFlightWorkflow &&
 				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
