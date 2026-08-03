@@ -263,6 +263,22 @@ export class AgentEvalRunnerService {
 				await this.resultRepository.markAsCancelled(resultRow.id);
 			};
 
+			// An empty input can't produce an execution, so its verdict is recorded
+			// without taking a queue slot. Self-contained like `runCase`: one unusable
+			// case must not fail the run just because recording it failed.
+			const markEmptyInput = async (resultRow: AgentEvalResult) => {
+				try {
+					await this.resultRepository.markAsError(resultRow.id, 'empty_input', {
+						message: 'Case has no value in the mapped input column.',
+					});
+				} catch (error) {
+					this.logger.error(
+						`[AgentEvalRunner] Could not record empty input for case ${resultRow.id}`,
+						{ error: error instanceof Error ? error.message : String(error) },
+					);
+				}
+			};
+
 			const deadline = this.startRunDeadline(abort);
 
 			// The stop reads/writes around `runCase` sit outside its safety net, so
@@ -278,22 +294,9 @@ export class AgentEvalRunnerService {
 								return;
 							}
 
-							// An empty input can't produce an execution, so record the verdict
-							// here rather than letting the case hold a queue slot to reach it.
-							// Checked after the stop above, so a cancel still outranks it.
+							// Screened before the slot, after the stop: a cancel still outranks it.
 							if (resolvedCase.input.trim().length === 0) {
-								// Self-contained like `runCase`: one unusable case must not fail
-								// the whole run just because recording its verdict failed.
-								try {
-									await this.resultRepository.markAsError(resultRow.id, 'empty_input', {
-										message: 'Case has no value in the mapped input column.',
-									});
-								} catch (error) {
-									this.logger.error(
-										`[AgentEvalRunner] Could not record empty input for case ${resultRow.id}`,
-										{ error: error instanceof Error ? error.message : String(error) },
-									);
-								}
+								await markEmptyInput(resultRow);
 								return;
 							}
 

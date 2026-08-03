@@ -43,11 +43,8 @@ export class AgentEvalRatingRepository extends Repository<AgentEvalRating> {
 	 * Postgres-only and `MAX(createdAt)` returns both rows on a millisecond tie.
 	 *
 	 * The trailing `rating.id` tiebreak buys reproducibility, not recency: ids are
-	 * random nanoids, so on a same-millisecond tie the winner is arbitrary — but
-	 * without a final tiebreak it is also unstable, and two calls could disagree on
-	 * which rating is "latest". Resolving which one genuinely came last would need a
-	 * monotonic column, so a migration — only worth it if same-millisecond
-	 * double-submits prove real.
+	 * random nanoids, so on a same-millisecond tie the winner is arbitrary but at
+	 * least stable across calls. Picking the later one needs a monotonic column.
 	 */
 	async findLatestByRunId(runId: string): Promise<AgentEvalRating[]> {
 		// Ids only — whole rows would load every superseded `correction` just to drop it.
