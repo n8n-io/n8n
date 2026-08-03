@@ -316,6 +316,200 @@ function buildWorkflowUpdateEntity({
 	return workflowUpdateData;
 }
 
+/**
+ * Builds the telemetry payload. The caller keeps the returned object and mutates
+ * `.results` on it later — from the success path, from the catch, and from
+ * `buildInvalidAiToolSourceErrorResponse`, which tracks by reference — so it must
+ * stay a plain mutable object held outside the handler's `try`.
+ *
+ * Reads the raw `operations`, not the parsed ones: the payload is built before
+ * parsing so a parse failure is still reported.
+ */
+function buildUpdateTelemetryPayload({
+	userId,
+	workflowId,
+	operations,
+	sanitizedSkillsUsed,
+	versionName,
+	versionDescription,
+}: {
+	userId: string;
+	workflowId: string;
+	operations: OperationInput[];
+	sanitizedSkillsUsed: string[] | undefined;
+	versionName?: string;
+	versionDescription?: string;
+}): UserCalledMCPToolEventPayload {
+	return {
+		user_id: userId,
+		tool_name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
+		parameters: {
+			workflowId,
+			// Spread, not `skillsUsed: sanitizedSkillsUsed` — the key must be absent
+			// when unset, not present-but-undefined.
+			...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
+			opCount: operations.length,
+			opTypes: operations.map((op) => op.type),
+			hasVersionName: !!versionName,
+			hasVersionDescription: !!versionDescription,
+		},
+	};
+}
+
+/**
+ * Auto-assigns credentials to the nodes this batch added.
+ *
+ * `autoPopulateNodeCredentials` mutates the node objects in place, and that is how
+ * the assigned credentials reach the saved entity — so the nodes passed in must be
+ * the very same references held by `workflowUpdateData.nodes`. Copying them makes
+ * auto-assignment silently never persist while still reporting assignments.
+ */
+async function autoAssignCredentialsForAddedNodes({
+	workflowUpdateData,
+	addedNodeNames,
+	user,
+	nodeTypes,
+	credentialsService,
+	projectId,
+	aiGatewayService,
+}: {
+	workflowUpdateData: WorkflowEntity;
+	addedNodeNames: string[];
+	user: User;
+	nodeTypes: NodeTypes;
+	credentialsService: CredentialsService;
+	projectId: string;
+	aiGatewayService: AiGatewayService;
+}): Promise<{
+	assignments: CredentialAssignment[];
+	skippedHttpNodes: string[];
+	outcomes: SlotOutcome[];
+}> {
+	if (addedNodeNames.length === 0) {
+		return { assignments: [], skippedHttpNodes: [], outcomes: [] };
+	}
+
+	const addedNodeSet = new Set(addedNodeNames);
+	const addedNodes = workflowUpdateData.nodes.filter((n) => addedNodeSet.has(n.name));
+
+	const autoAssign = await autoPopulateNodeCredentials(
+		{ ...workflowUpdateData, nodes: addedNodes },
+		user,
+		nodeTypes,
+		credentialsService,
+		projectId,
+		aiGatewayService,
+	);
+
+	return {
+		assignments: autoAssign.assignments,
+		skippedHttpNodes: autoAssign.skippedHttpNodes,
+		outcomes: autoAssign.outcomes,
+	};
+}
+
+/**
+ * Validates the resulting workflow and marks the warnings that were already
+ * there before this update.
+ *
+ * Validation covers the whole workflow, so warnings on nodes this batch never
+ * touched (e.g. discriminators the editor strips when they equal node defaults)
+ * would otherwise read as caused by these operations. Diffing against the
+ * pre-update state lets the agent self-correct only what its edit broke.
+ * `getWarningKey` matches by location, not message, so reworded messages still
+ * match; a renamed node intentionally misses — the rename touched it, so its
+ * warnings count as new.
+ *
+ * Note the deliberate asymmetry: only the pre-update pass is wrapped in a
+ * try/catch. A pre-update state too broken to validate (which this batch may be
+ * fixing) must not fail the update, while a failure validating the *result* has
+ * to surface to the caller.
+ */
+async function collectValidationWarnings({
+	nodeTypes,
+	updated,
+	existing,
+}: {
+	nodeTypes: NodeTypes;
+	updated: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>;
+	existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>;
+}): Promise<Array<ValidationWarning & { preExisting?: boolean }>> {
+	const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
+	const validator = new ParseValidateHandler({
+		generatePinData: false,
+		nodeTypesProvider: nodeTypes,
+	});
+	const postUpdateWarnings = validator.validateJSON({
+		name: updated.name,
+		nodes: updated.nodes,
+		connections: updated.connections,
+	} as unknown as WorkflowJSON);
+
+	if (postUpdateWarnings.length === 0) {
+		return postUpdateWarnings;
+	}
+
+	let preUpdateWarnings: ValidationWarning[] = [];
+
+	try {
+		preUpdateWarnings = validator.validateJSON({
+			name: existing.name,
+			nodes: existing.nodes,
+			connections: existing.connections,
+		} as unknown as WorkflowJSON);
+	} catch {}
+
+	const preUpdateKeys = new Set(preUpdateWarnings.map(getWarningKey));
+
+	return postUpdateWarnings.map((warning) =>
+		preUpdateKeys.has(getWarningKey(warning))
+			? { ...warning, message: `[pre-existing] ${warning.message}`, preExisting: true }
+			: warning,
+	);
+}
+
+/**
+ * Resolves tag names to ids, creating missing tags when the user may.
+ *
+ * Returns `undefined` when the batch had no tag operation, which the caller turns
+ * into an omitted `tagIds` key meaning "leave the workflow's tags alone". It must
+ * never return `[]` for that case: an empty array is a valid instruction to clear
+ * every tag on the workflow.
+ */
+async function resolveTagIds({
+	tagNames,
+	user,
+	tagService,
+}: {
+	tagNames: string[] | undefined;
+	user: User;
+	tagService: TagService;
+}): Promise<string[] | undefined> {
+	if (tagNames === undefined) {
+		return undefined;
+	}
+
+	const uniqueTagNames = dedupeNamesPreservingCase(tagNames);
+
+	if (hasGlobalScope(user, 'tag:create')) {
+		const resolvedTags = await tagService.findOrCreateByNames(uniqueTagNames);
+
+		return resolvedTags.map((t) => t.id);
+	}
+
+	const resolvedTags = await tagService.getByNames(uniqueTagNames);
+	const resolvedNames = new Set(resolvedTags.map((t) => t.name));
+	const missing = uniqueTagNames.filter((name) => !resolvedNames.has(name));
+
+	if (missing.length > 0) {
+		throw new Error(
+			`Cannot apply the following tags because they don't exist and your account does not have permission to create them: ${missing.join(', ')}`,
+		);
+	}
+
+	return resolvedTags.map((t) => t.id);
+}
+
 /** Builds the tool's success payload. `structuredContent` reuses this object. */
 function buildUpdateOutput({
 	updatedWorkflow,
@@ -421,19 +615,15 @@ export const createUpdateWorkflowTool = (
 		versionName?: string;
 		versionDescription?: string;
 	}) => {
-		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
-		const telemetryPayload: UserCalledMCPToolEventPayload = {
-			user_id: user.id,
-			tool_name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
-			parameters: {
-				workflowId,
-				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
-				opCount: operations.length,
-				opTypes: operations.map((op) => op.type),
-				hasVersionName: !!versionName,
-				hasVersionDescription: !!versionDescription,
-			},
-		};
+		// Held outside the `try` so the catch below can report on it.
+		const telemetryPayload = buildUpdateTelemetryPayload({
+			userId: user.id,
+			workflowId,
+			operations,
+			sanitizedSkillsUsed: sanitizeSkillsUsed(skillsUsed),
+			versionName,
+			versionDescription,
+		});
 
 		try {
 			const strictOperations = parseStrictOperations(operations);
@@ -549,97 +739,28 @@ export const createUpdateWorkflowTool = (
 
 			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
 
-			let credentialAssignments: Array<{
-				nodeName: string;
-				credentialName: string;
-				credentialType: string;
-				source?: 'user' | 'aiGateway';
-			}> = [];
-			let skippedHttpNodes: string[] = [];
-			let autoAssignOutcomes: SlotOutcome[] = [];
-
-			if (result.addedNodeNames.length > 0) {
-				const addedNodeSet = new Set(result.addedNodeNames);
-				const addedNodes = workflowUpdateData.nodes.filter((n) => addedNodeSet.has(n.name));
-
-				const autoAssign = await autoPopulateNodeCredentials(
-					{ ...workflowUpdateData, nodes: addedNodes },
-					user,
-					nodeTypes,
-					credentialsService,
-					workflowProjectId,
-					aiGatewayService,
-				);
-				credentialAssignments = autoAssign.assignments;
-				skippedHttpNodes = autoAssign.skippedHttpNodes;
-				autoAssignOutcomes = autoAssign.outcomes;
-			}
-
-			const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
-			const validator = new ParseValidateHandler({
-				generatePinData: false,
-				nodeTypesProvider: nodeTypes,
+			const {
+				assignments: credentialAssignments,
+				skippedHttpNodes,
+				outcomes: autoAssignOutcomes,
+			} = await autoAssignCredentialsForAddedNodes({
+				workflowUpdateData,
+				addedNodeNames: result.addedNodeNames,
+				user,
+				nodeTypes,
+				credentialsService,
+				projectId: workflowProjectId,
+				aiGatewayService,
 			});
-			const postUpdateWarnings = validator.validateJSON({
-				name: workflowUpdateData.name,
-				nodes: workflowUpdateData.nodes,
-				connections: workflowUpdateData.connections,
-			} as unknown as WorkflowJSON);
 
-			// Validation covers the whole resulting workflow, so warnings on nodes
-			// this batch never touched (e.g. discriminators the editor strips when
-			// they equal node defaults) would otherwise read as caused by these
-			// operations. Diff against the pre-update state and annotate the
-			// carried-over ones so the agent only self-corrects what its edit broke.
-			// getWarningKey matches by location, not message, so reworded messages
-			// still match; a renamed node intentionally misses — the rename touched
-			// it, so its warnings count as new.
-			let validationWarnings: Array<ValidationWarning & { preExisting?: boolean }> =
-				postUpdateWarnings;
+			// After auto-assign, so the nodes being validated carry their credentials.
+			const validationWarnings = await collectValidationWarnings({
+				nodeTypes,
+				updated: workflowUpdateData,
+				existing: existingWorkflow,
+			});
 
-			if (postUpdateWarnings.length > 0) {
-				// A pre-update state broken enough to not even validate (which this
-				// batch may be fixing) must not fail the update — skip the annotation.
-				let preUpdateWarnings: ValidationWarning[] = [];
-
-				try {
-					preUpdateWarnings = validator.validateJSON({
-						name: existingWorkflow.name,
-						nodes: existingWorkflow.nodes,
-						connections: existingWorkflow.connections,
-					} as unknown as WorkflowJSON);
-				} catch {}
-
-				const preUpdateKeys = new Set(preUpdateWarnings.map(getWarningKey));
-
-				validationWarnings = postUpdateWarnings.map((warning) =>
-					preUpdateKeys.has(getWarningKey(warning))
-						? { ...warning, message: `[pre-existing] ${warning.message}`, preExisting: true }
-						: warning,
-				);
-			}
-
-			let tagIds: string[] | undefined;
-
-			if (result.tagNames !== undefined) {
-				const uniqueTagNames = dedupeNamesPreservingCase(result.tagNames);
-
-				if (hasGlobalScope(user, 'tag:create')) {
-					const resolvedTags = await tagService.findOrCreateByNames(uniqueTagNames);
-					tagIds = resolvedTags.map((t) => t.id);
-				} else {
-					const resolvedTags = await tagService.getByNames(uniqueTagNames);
-					const resolvedNames = new Set(resolvedTags.map((t) => t.name));
-					const missing = uniqueTagNames.filter((name) => !resolvedNames.has(name));
-
-					if (missing.length > 0) {
-						throw new Error(
-							`Cannot apply the following tags because they don't exist and your account does not have permission to create them: ${missing.join(', ')}`,
-						);
-					}
-					tagIds = resolvedTags.map((t) => t.id);
-				}
-			}
+			const tagIds = await resolveTagIds({ tagNames: result.tagNames, user, tagService });
 
 			// Fallback is diff-based; it only ends up persisted when the update
 			// actually produces a new history version (node/connection/group changes).
@@ -683,6 +804,7 @@ export const createUpdateWorkflowTool = (
 					nodeCount: updatedWorkflow.nodes.length,
 				},
 			};
+
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			const output = buildUpdateOutput({
