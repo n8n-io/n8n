@@ -703,6 +703,7 @@ describe('McpAgentToolsService', () => {
 			});
 			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'My Agent', {
 				availableInMCP: true,
+				user,
 			});
 			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
 				'agent-1',
