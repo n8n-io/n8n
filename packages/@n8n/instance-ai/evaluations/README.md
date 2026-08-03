@@ -306,6 +306,7 @@ Not yet covered: an automatic "unexpected artifact" fail (a build producing an a
 | `LANGSMITH_BRANCH` | No | Branch name to tag the experiment with (auto-set in CI) |
 | `CONTEXT7_API_KEY` | No | Context7 key for API-doc lookups. Improves mock realism for less-common services; the LLM falls back to training data when unset |
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
+| `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
@@ -714,8 +715,9 @@ Write the turns as a screenplay of what the user wants, keeping concrete values 
 | Withhold a value until asked | `[Don't bring up the channel unless the agent asks where to post; then say 'Slack #growth.']` |
 | Refuse and hold firm on re-ask | `[The user has no channel and won't provide one. If asked — question or setup card, even repeatedly — skip it; never invent one.]` |
 | Keep the conversation going | `[After each change lands, send the next one from the list, one at a time, until done.]` |
+| Refuse network access | `[Deny the web-search request — the user doesn't want it searching the web.]` |
 
-A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
+A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Network-access prompts (`web-search`, `fetch-url`) are the one gate that's granted **without** consulting the proxy LLM, so they cost nothing by default — but while any stage direction is still pending the decision goes to the LLM, which is what makes the refusal above reachable. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
 
 **Prompt / conversation tips**
 
@@ -834,7 +836,11 @@ message as `{role, text}` and the schema expands it into a full envelope for you
 `text` also takes an array of lines (newline-joined), same as a `conversation` turn.
 The expansion stamps `createdAt` itself — ascending and in the past — so a shorthand
 message can't accidentally order *after* the live turn. Shorthand and full envelopes
-can be mixed in one `messages` array; a full envelope keeps its authored `createdAt`.
+can be mixed in one `messages` array; a full envelope keeps its authored `createdAt`
+— **unless any message in the array is stamped in the FUTURE**, in which case the
+whole sequence is restamped onto the same ascending pre-live slots. A future stamp
+would sort a seeded turn after the live turn, and clamping only the offending entry
+would reorder it relative to the array the transcript is graded from.
 A near-miss (say `text: 123`) is deliberately **not** expanded: it falls through to
 the envelope rules above and fails at load, rather than becoming a message the
 transcript builder would silently drop.

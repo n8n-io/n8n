@@ -143,6 +143,107 @@ describe('EvalTestCaseSchema', () => {
 		).toThrow(/mode/);
 	});
 
+	// A future stamp would sort the seeded turn after the live turn, so the agent
+	// sees its own history out of order and the judge grades a transcript that
+	// never happened.
+	it('pulls a future envelope createdAt back before the live turn', () => {
+		const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: {
+				mode: 'inline',
+				messages: [
+					{
+						id: 'm1',
+						type: 'llm',
+						role: 'user',
+						createdAt: future,
+						content: [{ type: 'text', text: 'build it' }],
+					},
+				],
+			},
+		});
+		const seed = inlineSeedOf(parsed);
+		expect(Date.parse(String(seed.messages[0].createdAt))).toBeLessThan(Date.now());
+	});
+
+	// A per-message clamp is not enough: with [future A, past B] only A moves, so
+	// the DB orders B then A while `transcriptPrefixFromSeed` still grades array
+	// order (A then B). The sequence has to stay coherent as a whole.
+	it('restamps the whole sequence in array order when any timestamp is future', () => {
+		const msg = (id: string, createdAt: string) => ({
+			id,
+			type: 'llm',
+			role: 'user' as const,
+			createdAt,
+			content: [{ type: 'text', text: id }],
+		});
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: {
+				mode: 'inline',
+				messages: [
+					msg('a', new Date(Date.now() + 60 * 60 * 1000).toISOString()),
+					msg('b', '2026-06-29T09:00:00.000Z'),
+				],
+			},
+		});
+
+		const at = inlineSeedOf(parsed).messages.map((m) => Date.parse(String(m.createdAt)));
+		// Ascending in ARRAY order, and entirely before the live turn.
+		expect(at[0]).toBeLessThan(at[1]);
+		expect(at[1]).toBeLessThan(Date.now());
+	});
+
+	it('leaves an authored past createdAt exactly as written', () => {
+		const authored = '2026-06-29T09:00:00.000Z';
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: {
+				mode: 'inline',
+				messages: [
+					{
+						id: 'm1',
+						type: 'llm',
+						role: 'user',
+						createdAt: authored,
+						content: [{ type: 'text', text: 'build it' }],
+					},
+				],
+			},
+		});
+		expect(inlineSeedOf(parsed).messages[0].createdAt).toBe(authored);
+	});
+
+	// Both arms are strict, so a seed mixing them fails instead of having the
+	// wrong-arm field stripped — which would run the case unseeded and grade it
+	// as a build from scratch.
+	it('rejects a replay seed carrying inline fields', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'replay',
+					threadId: 'thread-1',
+					messages: [{ role: 'user', text: 'build it' }],
+				},
+			}),
+		).toThrow(/messages/);
+	});
+
+	it('rejects an inline seed carrying replay fields', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					threadId: 'thread-1',
+				},
+			}),
+		).toThrow(/threadId/);
+	});
+
 	it('expands a {role, text} shorthand message into a full envelope', () => {
 		const parsed = EvalTestCaseSchema.parse({
 			...validFixture(),
@@ -215,7 +316,7 @@ describe('EvalTestCaseSchema', () => {
 	it('rejects a near-miss shorthand rather than expanding it into a droppable message', () => {
 		// `text: 123` is not shorthand, so it falls through to the envelope schema —
 		// which fails loudly. Expanding it would produce a text block the transcript
-		// builder silently skips — the exact failure envelope validation prevents.
+		// builder silently skips (the failure TRUST-357 exists to prevent).
 		expect(() =>
 			EvalTestCaseSchema.parse({
 				...validFixture(),

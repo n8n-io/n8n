@@ -112,7 +112,12 @@ flag wins — use it.
   getAuthToken`.
 - `ANTHROPIC_API_KEY` — the non-proxy orchestrator reads this (not just
   `N8N_AI_ANTHROPIC_KEY`); the eval helper (mock-gen / verify / judge) reads
-  either.
+  either. **You usually don't need a separate key: `.env.eval` already carries
+  `N8N_AI_ANTHROPIC_KEY`** — mirror it rather than hunting for another one
+  (`ANTHROPIC_API_KEY="$(grep '^N8N_AI_ANTHROPIC_KEY=' .env.eval | cut -d= -f2-)"`,
+  or just export it inside the `dotenvx` child). Check the file before concluding
+  a key is missing — and grep its names with `^[A-Za-z0-9_]+=`, since a
+  `^[A-Z_]*=` pattern silently drops every `N8N_*` var (the digit).
 - `E2E_TESTS=true` — exposes `POST /rest/e2e/reset` so you can seed a known owner.
 
 **Seed an owner** (a fresh instance has none → login 401s). Full payload shape in
@@ -130,11 +135,22 @@ it): a running instance holds both its main port *and* the task-broker port
 second instance its own everything:
 
 ```bash
+# .env.eval alone is enough — it carries N8N_AI_*, the sandbox/Daytona keys and
+# N8N_AI_ANTHROPIC_KEY. Skip .env.local: its staging base-url / port-5678
+# defaults fight the settings below.
 N8N_PORT=5680 N8N_RUNNERS_BROKER_PORT=5681 N8N_USER_FOLDER=/tmp/n8n-eval-run \
-E2E_TESTS=true N8N_AI_ASSISTANT_BASE_URL= ANTHROPIC_API_KEY=… \
-  npx dotenvx run -f .env.local -f .env.eval -- pnpm start
+E2E_TESTS=true N8N_AI_ASSISTANT_BASE_URL= \
+  npx dotenvx run -f .env.eval -- \
+  sh -c 'ANTHROPIC_API_KEY="$N8N_AI_ANTHROPIC_KEY" exec pnpm start'
 # then seed the owner (above), and run the eval with: --base-url http://localhost:5680
 ```
+
+**Don't reach for `DB_SQLITE_POOL_SIZE=0`** if you find it in an older note. It
+can't disable pooling: the schema is `.int().gte(1)`, so `0` is rejected and
+`@Env` warns (`Invalid value for DB_SQLITE_POOL_SIZE … Falling back to default
+value.`) and keeps the default of 3. There is no non-pooled path to select
+anyway — `getSqliteConnectionOptions()` always returns `type: 'sqlite-pooled'`.
+`POST /rest/e2e/reset` seeds the owner fine under the pooled driver.
 
 `pnpm start` (built dist) is enough — no need for `pnpm dev:ai`. Case JSON is read
 from source at run time, so new/edited cases need no rebuild.

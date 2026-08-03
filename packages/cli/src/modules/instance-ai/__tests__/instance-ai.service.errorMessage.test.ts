@@ -15,6 +15,13 @@ describe('getUserFacingErrorMessage', () => {
 		expect(message).toContain('try again');
 	});
 
+	it('maps a stale resume race to a clear already-handled message', () => {
+		const error = Object.assign(new Error('Run run_1 is not suspended. Cannot resume.'), {
+			name: 'StaleResumeError',
+		});
+		expect(getUserFacingErrorMessage(error)).toContain('already handled');
+	});
+
 	it('falls back to a generic retryable message for unknown errors', () => {
 		expect(getUserFacingErrorMessage(new Error('kaboom'))).toBe(
 			'Something went wrong before I could finish that response. Please try again.',

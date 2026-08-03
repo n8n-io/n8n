@@ -18,6 +18,7 @@
  * raw dispatcher). See CAT-3377 for the consolidation this completes.
  */
 import { createHttpsProxyAgent, resolveProxyUrl } from '@n8n/backend-network/proxy'; // `@n8n/backend-network/proxy` is a DI-free subpath: it pulls in only the proxy-agent libs
+import type { AgentOptions } from 'node:https';
 import type { LookupFunction } from 'node:net';
 /* eslint-disable n8n-local-rules/no-uncentralized-http -- langchain consumers pin undici v6, incompatible with backend-network's v7 dispatchers; see block comment below */
 import { Agent, ProxyAgent } from 'undici';
@@ -124,14 +125,15 @@ export async function proxyFetch(
  * AWS SDK v3 requires Node.js http.Agent/https.Agent instances (not undici ProxyAgent).
  *
  * @param targetUrl - The target URL to check proxy configuration for
+ * @param agentOptions - Optional agent options (e.g. TCP keepalive settings) applied to the proxy agent
  * @returns An https.Agent proxy instance or undefined if no proxy is configured
  */
-export function getNodeProxyAgent(targetUrl?: string) {
+export function getNodeProxyAgent(targetUrl?: string, agentOptions?: AgentOptions) {
 	const proxyUrl = resolveProxyUrl(targetUrl, PROXY_FALLBACK_TARGET);
 
 	if (!proxyUrl) {
 		return undefined;
 	}
 
-	return createHttpsProxyAgent(targetUrl ?? PROXY_FALLBACK_TARGET, proxyUrl);
+	return createHttpsProxyAgent(targetUrl ?? PROXY_FALLBACK_TARGET, proxyUrl, agentOptions);
 }

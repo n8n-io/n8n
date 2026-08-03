@@ -60,6 +60,13 @@ vi.mock('../../../instanceAiMcp.store', () => ({
 	useInstanceAiMcpStore: () => mcpStoreMock,
 }));
 
+vi.mock('../../../composables/useMcpServerConnect', () => ({
+	useMcpServerConnect: () => ({
+		connectServer: vi.fn().mockResolvedValue(null),
+		connectWithCredential: vi.fn().mockResolvedValue(null),
+	}),
+}));
+
 vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => ({
 		settings: { mcpAccessEnabled: true },
@@ -111,7 +118,7 @@ vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),

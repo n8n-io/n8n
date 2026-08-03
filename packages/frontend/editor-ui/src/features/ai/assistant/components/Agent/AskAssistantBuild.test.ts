@@ -159,7 +159,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import type { INodeUi } from '@/Interface';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';

@@ -37,6 +37,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 import { Expression } from 'n8n-workflow';
 import type {
@@ -1332,6 +1333,89 @@ function createNodeAdapterForTests(
 	return createNodeAdapterServiceForTests(nodes, { nodeCatalogService }).nodeService;
 }
 
+// ---------------------------------------------------------------------------
+// Web-search provider selection
+// ---------------------------------------------------------------------------
+
+import { braveSearch, searxngSearch } from '@n8n/ai-utilities';
+
+describe('web-search provider selection', () => {
+	type SearchFn = (query: string, options?: Record<string, unknown>) => Promise<unknown>;
+	type ProxyConfig = { apiUrl: string; getAuthHeaders: () => Promise<Record<string, string>> };
+
+	/** `buildSearchMethod` is private, but the precedence it encodes is exactly what
+	 *  the `INSTANCE_AI_BRAVE_SEARCH_API_KEY` wiring relies on — assert it directly. */
+	function buildSearch(args: {
+		apiKey?: string;
+		searxngUrl?: string;
+		proxyConfig?: ProxyConfig;
+	}): SearchFn | undefined {
+		const { service } = createNodeAdapterServiceForTests([]);
+		const cache = { get: vi.fn().mockReturnValue(undefined), set: vi.fn() };
+		const withPrivate = service as unknown as {
+			buildSearchMethod: (
+				apiKey: string,
+				searxngUrl: string,
+				cache: unknown,
+				proxyConfig?: ProxyConfig,
+				userId?: string,
+			) => SearchFn | undefined;
+		};
+		return withPrivate.buildSearchMethod.call(
+			service,
+			args.apiKey ?? '',
+			args.searxngUrl ?? '',
+			cache,
+			args.proxyConfig,
+			'user-1',
+		);
+	}
+
+	beforeEach(() => {
+		vi.mocked(braveSearch).mockReset().mockResolvedValue({ query: 'q', results: [] });
+		vi.mocked(searxngSearch).mockReset().mockResolvedValue({ query: 'q', results: [] });
+	});
+
+	it('has no search method when neither a Brave key nor a SearXNG URL is set', () => {
+		// The adapter then serves `{ query, results: [] }`, which the agent cannot
+		// distinguish from "nothing found" — hence the key in the eval lanes.
+		expect(buildSearch({})).toBeUndefined();
+	});
+
+	it('searches Brave with the configured key', async () => {
+		await buildSearch({ apiKey: 'BSA-key' })!('quakes', { maxResults: 3 });
+
+		expect(braveSearch).toHaveBeenCalledWith(
+			'BSA-key',
+			'quakes',
+			expect.objectContaining({ maxResults: 3 }),
+		);
+		expect(searxngSearch).not.toHaveBeenCalled();
+	});
+
+	it('routes through the AI-service proxy in preference to a configured key', async () => {
+		const proxyConfig: ProxyConfig = {
+			apiUrl: 'https://proxy.example.com/brave-search',
+			getAuthHeaders: async () => ({}),
+		};
+
+		await buildSearch({ apiKey: 'BSA-key', proxyConfig })!('quakes');
+
+		expect(braveSearch).toHaveBeenCalledWith(
+			'',
+			'quakes',
+			expect.objectContaining({ proxyConfig }),
+		);
+	});
+
+	it('falls back to SearXNG when only a URL is set', async () => {
+		await buildSearch({ searxngUrl: 'http://searxng:8080' })!('quakes');
+
+		expect(searxngSearch).toHaveBeenCalledWith('http://searxng:8080', 'quakes', expect.anything());
+		expect(braveSearch).not.toHaveBeenCalled();
+	});
+});
+
 describe('createNodeAdapter', () => {
 	it('preserves credential displayOptions in getDescription()', async () => {
 		const adapter = createNodeAdapterForTests([
@@ -2240,6 +2324,57 @@ describe('createWorkflowAdapter', () => {
 		expect(mockWorkflowService.update).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ pinData: {} }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('defaults executionOrder to v1 when the SDK workflow declares no settings', async () => {
+		// Regression: the SDK omits the settings argument when empty, so AI-authored
+		// workflows persisted with `{}` and ran on legacy v0.
+		const { adapter, mockWorkflowRepository, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+		);
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('keeps an explicit executionOrder from the SDK workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON({
+			...minimalWorkflowJSON,
+			settings: { executionOrder: 'v0' },
+		} as unknown as WorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v0' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('does not inject executionOrder on update, leaving the stored value to the merge', async () => {
+		// update merges over stored settings, so forcing v1 here would upgrade a
+		// workflow the user deliberately kept on v0.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: {} }),
 			expect.anything(),
 			expect.anything(),
 		);
@@ -3281,6 +3416,59 @@ describe('createExecutionAdapter run()', () => {
 		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
 	});
 
+	it('opts a verification run out of the error workflow, on the main process and on a worker', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			settings: { errorWorkflow: 'error-wf-1' },
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+		});
+
+		await adapter.run('wf-1', undefined, { isVerificationRun: true });
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		// A trigger-mode run is a production execution as far as the lifecycle
+		// hooks are concerned, so the opt-out is what keeps a failed build attempt
+		// from paging the user's error workflow.
+		expect(runData.executionMode).toBe('trigger');
+		expect(runData.suppressErrorWorkflow).toBe(true);
+		// Queue mode rebuilds the run from persisted execution data.
+		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBe(true);
+	});
+
+	it('leaves the error workflow enabled for a run the user asked for', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			settings: { errorWorkflow: 'error-wf-1' },
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+		});
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.suppressErrorWorkflow).toBeUndefined();
+		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBeUndefined();
+		// The user's setting is never stripped from the run itself.
+		expect(runData.workflowData.settings?.errorWorkflow).toBe('error-wf-1');
+	});
+
 	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
 		const original = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
@@ -3769,7 +3957,7 @@ describe('createContext — builder delegate telemetry', () => {
 		const created = await context.builderDelegate?.createAgent('New agent');
 
 		expect(created).toEqual({ agentId: 'agent-9', projectId: 'proj-1' });
-		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder created agent', {
+		expect(mockTelemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
 			thread_id: 'thread-1',
 			agent_id: 'agent-9',
 			project_id: 'proj-1',
@@ -3787,7 +3975,7 @@ describe('createContext — builder delegate telemetry', () => {
 		await context.builderDelegate?.createAgent('New agent');
 
 		expect(mockTelemetry.track).not.toHaveBeenCalledWith(
-			'Builder created agent',
+			TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT,
 			expect.anything(),
 		);
 	});

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
 	ConversationSeedSchema,
 	SeedMessageSchema,
+	clampFutureSeedTimestamps,
 	expandSeedMessageShorthand,
 } from './conversation-seed';
 import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
@@ -19,7 +20,15 @@ export const DEFAULT_DATASETS = ['full'];
  *  (e.g. the mcp-manifest builder) normalize identically. */
 export const conversationTurnTextSchema = z
 	.union([z.string(), z.array(z.string())])
-	.transform((t) => (Array.isArray(t) ? t.join('\n') : t));
+	.transform((t) => (Array.isArray(t) ? t.join('\n') : t))
+	// An unclosed `[` fails silently and expensively: the proxy stops seeing a
+	// stage direction, so it sends the text as dialogue and the case grades a
+	// conversation it was never meant to have. Easy to do in the array form,
+	// where the closing bracket lands on a different line from the opening one.
+	.refine((t) => !t.includes('[') || t.includes(']'), {
+		message:
+			'unbalanced stage direction — text opens `[` but never closes it, so the proxy would send it as dialogue instead of treating it as a direction',
+	});
 
 export const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
@@ -42,9 +51,11 @@ const ExecutionScenarioSchema = z.object({
 
 /** Prior messages for an inline seed. Accepts a full envelope or the `{role, text}`
  *  shorthand, expanded BEFORE validation so the envelope rules apply to the
- *  expansion and error paths stay per-message (`seed.messages.2.createdAt`). */
+ *  expansion and error paths stay per-message (`seed.messages.2.createdAt`).
+ *  Future `createdAt` values are pulled back after expansion, so seeded history
+ *  can never sort after the live turn. */
 const inlineSeedMessagesSchema = z.preprocess(
-	(raw) => (Array.isArray(raw) ? expandSeedMessageShorthand(raw) : raw),
+	(raw) => (Array.isArray(raw) ? clampFutureSeedTimestamps(expandSeedMessageShorthand(raw)) : raw),
 	z.array(SeedMessageSchema).min(1),
 );
 
@@ -53,10 +64,16 @@ const inlineSeedMessagesSchema = z.preprocess(
  * exclusive by construction instead of by a refine, and `mode` carries a real
  * either/or: is the seed in the case, or fetched at run time?
  *
- * The literals match lang-tracer's `metadata.seed` verbatim; diverging rebuilds
- * the old→new translation layer this union exists to delete.
+ * The literals match lang-tracer's `metadata.seed` verbatim (TRUST-358);
+ * diverging rebuilds the old→new translation layer this union exists to delete.
  * `replay` names an action next to `inline`'s location — an asymmetry we take
  * knowingly, because renaming it would break an LT HTTP body contract.
+ *
+ * Both arms are `.strict()`, matching the case schema: exclusivity has to fail
+ * loudly, not by stripping. `{ mode: replay, threadId, messages }` would
+ * otherwise parse as a valid replay seed with `messages` silently dropped —
+ * the case runs unseeded and grades as if it were a build from scratch, which
+ * is the misgrading the one-slot union exists to prevent.
  */
 export const CaseSeedSchema = z.discriminatedUnion('mode', [
 	/** Prior messages plus the workflows/tables they reference, carried in the case
@@ -66,24 +83,26 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 	ConversationSeedSchema.extend({
 		mode: z.literal('inline'),
 		messages: inlineSeedMessagesSchema,
-	}),
+	}).strict(),
 	/** Reproduce a real conversation from its LangSmith trace at run time (seed =
 	 *  before the live turn, live = that turn). Commits only the thread id;
 	 *  workspace auto-discovered. Supplies the live turn itself, so `conversation`
 	 *  is optional and continues after it. Transient (~14d trace retention). */
-	z.object({
-		mode: z.literal('replay'),
-		threadId: z.string().min(1),
-		project: z.string().min(1).optional(),
-		/** LangSmith host the source trace lives on (dual-tenant reads during the
-		 *  US→EU migration). Omit ⇒ the eval's home (EU) tenant, so existing cases
-		 *  are unchanged. A US-sourced case carries the US host; the harness maps
-		 *  host→key via env (LANGSMITH_API_KEY_US). */
-		endpoint: z.string().url().optional(),
-		/** Pin which user turn is sent live (its LangSmith run id); everything before
-		 *  it is seeded. Omit ⇒ the thread's last user turn (default). */
-		liveTurnRunId: z.string().min(1).optional(),
-	}),
+	z
+		.object({
+			mode: z.literal('replay'),
+			threadId: z.string().min(1),
+			project: z.string().min(1).optional(),
+			/** LangSmith host the source trace lives on (dual-tenant reads during the
+			 *  US→EU migration). Omit ⇒ the eval's home (EU) tenant, so existing cases
+			 *  are unchanged. A US-sourced case carries the US host; the harness maps
+			 *  host→key via env (LANGSMITH_API_KEY_US). */
+			endpoint: z.string().url().optional(),
+			/** Pin which user turn is sent live (its LangSmith run id); everything before
+			 *  it is seeded. Omit ⇒ the thread's last user turn (default). */
+			liveTurnRunId: z.string().min(1).optional(),
+		})
+		.strict(),
 ]);
 
 export type CaseSeed = z.infer<typeof CaseSeedSchema>;

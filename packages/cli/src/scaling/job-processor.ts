@@ -15,7 +15,6 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
-	IExecuteResponsePromiseData,
 	IExecutionContext,
 	INodeExecutionData,
 	IRun,
@@ -26,7 +25,6 @@ import type {
 	GenericValue,
 } from 'n8n-workflow';
 import {
-	BINARY_ENCODING,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -59,6 +57,7 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+import { WebhookResponseRelay } from './webhook-response-relay';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -77,6 +76,7 @@ export class JobProcessor {
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly eventService: EventService,
+		private readonly webhookResponseRelay: WebhookResponseRelay,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -185,6 +185,7 @@ export class JobProcessor {
 				pushRef,
 				userId: execution.data.manualData?.userId,
 				source: execution.data.manualData?.source,
+				suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
 			},
 			executionId,
 		);
@@ -197,15 +198,27 @@ export class JobProcessor {
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
+			// An MCP Service call takes its result from the execution's stored data, so a
+			// response relayed to main has no reader. Relaying one would also reach main
+			// mid-execution, resolving the call on data the run has not finished writing.
+			if (job.data.isMcpExecution && job.data.mcpSessionId && job.data.mcpType !== 'trigger') {
+				return;
+			}
+
+			const relayed = await this.webhookResponseRelay.prepare(response, {
+				workflowId: job.data.workflowId,
+				executionId,
+			});
+
 			// Check if this is an MCP execution - broadcast response to all mains
 			if (job.data.isMcpExecution && job.data.mcpSessionId) {
 				const msg: McpResponseMessage = {
 					kind: 'mcp-response',
 					executionId,
-					mcpType: job.data.mcpType ?? 'service',
+					mcpType: 'trigger',
 					sessionId: job.data.mcpSessionId,
 					messageId: job.data.mcpMessageId ?? '',
-					response,
+					response: relayed,
 					workerId: this.instanceSettings.hostId,
 				};
 
@@ -217,7 +230,7 @@ export class JobProcessor {
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,
-				response: this.encodeWebhookResponse(response),
+				response: relayed,
 				workerId: this.instanceSettings.hostId,
 			};
 
@@ -375,8 +388,12 @@ export class JobProcessor {
 							execution.data?.executionData?.runtimeData,
 						),
 				);
+
+				// A tool result is not a response, so it has no offload path: this limit
+				// is all that keeps it from travelling through the queue unbounded.
+				this.webhookResponseRelay.assertFitsInline(toolResult);
 			} catch (error) {
-				this.logger.error('Tool node execution failed for MCP Trigger', {
+				this.logger.error('Tool call failed for MCP Trigger', {
 					executionId,
 					toolName,
 					sourceNodeName,
@@ -490,18 +507,6 @@ export class JobProcessor {
 
 	getRunningJobsSummary(): RunningJobSummary[] {
 		return Object.values(this.runningJobs).map(({ run, ...summary }) => summary);
-	}
-
-	private encodeWebhookResponse(
-		response: IExecuteResponsePromiseData,
-	): IExecuteResponsePromiseData {
-		if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
-			response.body = {
-				'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
-			};
-		}
-
-		return response;
 	}
 
 	/**

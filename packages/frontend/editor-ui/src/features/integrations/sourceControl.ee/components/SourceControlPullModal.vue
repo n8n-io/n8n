@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useLoadingService } from '@/app/composables/useLoadingService';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,

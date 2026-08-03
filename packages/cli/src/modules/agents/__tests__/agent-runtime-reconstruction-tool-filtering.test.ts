@@ -22,6 +22,7 @@ import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { Agent } from '../entities/agent.entity';
@@ -138,6 +139,7 @@ function makeService(overrides: {
 		mock<SsrfProtectionService>(),
 		credentialsFinderService,
 		workflowFinderService,
+		mock<AgentChatAttachmentService>(),
 	);
 
 	return { service, credentialsFinderService, workflowFinderService, workflowRepository };
@@ -166,7 +168,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider);
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
 
 		expect(userHasScopes).not.toHaveBeenCalled();
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
@@ -180,7 +182,13 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
 		expect(userHasScopes).toHaveBeenCalledWith(testUser, ['workflow:execute'], false, {
 			projectId,
@@ -196,7 +204,13 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, nodeToolWithoutCredential]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 			'cred-1',
@@ -216,7 +230,13 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([workflowTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', testUser, [
 			'workflow:execute',
@@ -244,7 +264,13 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
@@ -286,6 +312,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			toolCodeByName: {},
 			skills: {},
 			runtimeProfile: 'sub-agent',
+			runType: 'test',
 			user: testUser,
 		});
 
@@ -308,6 +335,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			toolCodeByName: {},
 			skills: {},
 			runtimeProfile: 'sub-agent',
+			runType: 'production',
 		});
 
 		expect(userHasScopes).not.toHaveBeenCalled();

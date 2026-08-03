@@ -7,6 +7,7 @@ import {
 	buildIntegrationConnectionId,
 	type IntegrationMessageContext,
 	type IntegrationMessageSubject,
+	type ReplyExpectation,
 } from './integration-tools';
 
 interface UpdateLatestMessageContextOptions {
@@ -14,6 +15,7 @@ interface UpdateLatestMessageContextOptions {
 	interactingUserId?: string;
 	agentUserId?: string;
 	subject?: IntegrationMessageSubject;
+	replyExpectation?: ReplyExpectation;
 }
 
 export class AgentChatMessageContextBridge {
@@ -48,6 +50,7 @@ export class AgentChatMessageContextBridge {
 			...(agentUserId ? { agentUserId } : {}),
 			...(options.subject ? { subject: options.subject } : {}),
 			...(!options.subject && previousContext?.subject ? { subject: previousContext.subject } : {}),
+			...(options.replyExpectation ? { replyExpectation: options.replyExpectation } : {}),
 			updatedAt: new Date().toISOString(),
 		};
 
