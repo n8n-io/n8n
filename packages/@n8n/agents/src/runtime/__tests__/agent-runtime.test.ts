@@ -16,6 +16,7 @@ import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentEventBus } from '../state/event-bus';
+import { StaleResumeError } from '../state/run-state';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY,
@@ -1534,9 +1535,10 @@ describe('AgentRuntime.resume() — graceful error contract', () => {
 			{ approved: true },
 			{ runId: 'nonexistent-run-id', toolCallId: 'tc-1' },
 		);
-		await expect(streamPromise).rejects.toThrow(
-			'No suspended run found for runId: nonexistent-run-id',
-		);
+		await expect(streamPromise).rejects.toMatchObject({
+			name: 'StaleResumeError',
+			message: 'No suspended run found for runId: nonexistent-run-id',
+		});
 	});
 });
 
@@ -4607,6 +4609,7 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 	it('claims the checkpoint after resume validation passes', async () => {
 		const checkpointStore = makeClaimingCheckpointStore();
 		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+		const onResumeClaimed = vi.fn();
 
 		generateText.mockResolvedValueOnce(
 			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
@@ -4615,7 +4618,11 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 		const { runId, toolCallId } = first.pendingSuspend![0];
 
 		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
-		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+		const resumed = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId, toolCallId, onResumeClaimed },
+		);
 
 		expect(resumed.finishReason).toBe('stop');
 		expect(checkpointStore.claimForResume).toHaveBeenCalledTimes(1);
@@ -4623,6 +4630,60 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 			runId,
 			expect.objectContaining({ status: 'suspended' }),
 		);
+		expect(onResumeClaimed).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not emit a runtime error when another resume wins the checkpoint claim', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const eventBus = new AgentEventBus();
+		const onResumeClaimed = vi.fn();
+		const errorEvents: AgentEventData[] = [];
+		eventBus.on(AgentEvent.Error, (event) => errorEvents.push(event));
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [makeApprovalTool()],
+			checkpointStorage: checkpointStore,
+			eventBus,
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		checkpointStore.claimForResume.mockResolvedValueOnce(false);
+
+		await expect(
+			runtime.resume('stream', { approved: true }, { runId, toolCallId, onResumeClaimed }),
+		).rejects.toBeInstanceOf(StaleResumeError);
+		expect(errorEvents).toEqual([]);
+		expect(streamText).not.toHaveBeenCalled();
+		expect(onResumeClaimed).not.toHaveBeenCalled();
+	});
+
+	it('does not invoke the claim hook when checkpoint claiming fails', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+		const onResumeClaimed = vi.fn();
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		checkpointStore.claimForResume.mockRejectedValueOnce(new Error('checkpoint unavailable'));
+
+		const resumed = await runtime.resume(
+			'stream',
+			{ approved: true },
+			{ runId, toolCallId, onResumeClaimed },
+		);
+		await collectChunks(resumed.stream);
+
+		expect(onResumeClaimed).not.toHaveBeenCalled();
+		expect(streamText).not.toHaveBeenCalled();
 	});
 
 	it('does not claim the checkpoint when the resume payload is invalid', async () => {

@@ -278,4 +278,8 @@ export class WorkflowExpression {
 	async releaseIsolate(): Promise<void> {
 		await this.expression.releaseIsolate();
 	}
+
+	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		return await this.expression.withIsolate(fn);
+	}
 }
