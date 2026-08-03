@@ -6,6 +6,7 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
 			({
+				'agentSessions.detail.backToSessions': 'Back to sessions',
 				'agents.builder.memory.episodicMemory.label': 'Episodic Memory',
 				'agents.builder.memory.episodicMemory.changeCredential': 'Change credential',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
@@ -22,7 +23,11 @@ vi.mock('vue-router', async (importOriginal) => {
 
 vi.mock('@n8n/design-system', () => ({
 	N8nEmptyState: { template: '<div />', props: ['icon', 'description'] },
-	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
+	N8nButton: {
+		name: 'N8nButton',
+		template: '<button v-bind="$attrs">{{ label }}<slot /><slot name="icon" /></button>',
+		props: ['label', 'icon', 'variant'],
+	},
 	N8nCard: {
 		name: 'N8nCard',
 		template: '<div v-bind="$attrs"><slot /></div>',
@@ -114,10 +119,19 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 	},
 }));
 
+vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
+	default: {
+		name: 'AgentSessionTimelinePanel',
+		template: '<div data-testid="agent-session-timeline-panel" />',
+		props: ['projectId', 'agentId', 'threadId'],
+	},
+}));
+
 vi.mock('../views/AgentSessionsListView.vue', () => ({
 	default: {
 		name: 'AgentSessionsListView',
-		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab'],
+		props: ['embedded', 'projectId', 'agentId', 'navigationMode', 'manageStoreLifecycle'],
+		emits: ['open-conversation', 'view-trace'],
 		template: '<div />',
 	},
 }));
@@ -133,6 +147,8 @@ async function mountColumn(
 			value: 'agent' | 'knowledge' | 'sessions' | 'settings';
 		}>;
 		knowledgeBaseEnabled: boolean;
+		artifactMode: boolean;
+		sessionDetailId: string;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -164,6 +180,8 @@ async function mountColumn(
 			connectedTriggers: [],
 			canEditAgent: true,
 			executionsDescription: '',
+			artifactMode: overrides.artifactMode,
+			sessionDetailId: overrides.sessionDetailId,
 		},
 		global: {
 			plugins: [createTestingPinia({ createSpy: vi.fn })],
@@ -256,6 +274,62 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
 
 		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props('embedded')).toBe(true);
+	});
+
+	it.each([false, true])(
+		'uses owner-controlled intent navigation for embedded sessions when artifactMode is %s',
+		async (artifactMode) => {
+			const wrapper = await mountColumn({ activeMainTab: 'sessions', artifactMode });
+
+			expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props()).toMatchObject({
+				navigationMode: 'intent',
+				manageStoreLifecycle: false,
+			});
+		},
+	);
+
+	it('forwards conversation and trace intents from the Sessions list', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
+		const sessionsList = wrapper.findComponent({ name: 'AgentSessionsListView' });
+
+		sessionsList.vm.$emit('open-conversation', 'thread-1');
+		sessionsList.vm.$emit('view-trace', 'thread-2');
+
+		expect(wrapper.emitted('open-session')).toEqual([['thread-1']]);
+		expect(wrapper.emitted('view-session-trace')).toEqual([['thread-2']]);
+	});
+
+	it('renders controlled session detail under the Sessions tab and emits its back intent', async () => {
+		const wrapper = await mountColumn({
+			activeMainTab: 'sessions',
+			sessionDetailId: 'thread-1',
+		});
+
+		expect(wrapper.find('[data-testid="agent-builder-identity-header"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-header-tabs"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).exists()).toBe(false);
+
+		const timeline = wrapper.findComponent({ name: 'AgentSessionTimelinePanel' });
+		expect(timeline.props()).toMatchObject({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+		});
+
+		const back = wrapper.getComponent({ name: 'N8nButton' });
+		expect(back.props()).toMatchObject({
+			icon: 'arrow-left',
+			label: 'Back to sessions',
+			variant: 'ghost',
+		});
+		expect(back.attributes('data-test-id')).toBe('agent-session-detail-back');
+		expect(
+			back.element.compareDocumentPosition(timeline.element) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+
+		await back.trigger('click');
+
+		expect(wrapper.emitted('close-session-trace')).toEqual([[]]);
 	});
 
 	it('renders the knowledge files panel only on the Knowledge tab', async () => {

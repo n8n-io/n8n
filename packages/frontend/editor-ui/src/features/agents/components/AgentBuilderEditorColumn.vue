@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nCard, N8nTabs } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
@@ -14,6 +14,7 @@ import type {
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
+import AgentSessionTimelinePanel from './AgentSessionTimelinePanel.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentChannelsSection from './AgentChannelsSection.vue';
@@ -45,6 +46,7 @@ const props = defineProps<{
 	executionsDescription: string;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	sessionDetailId?: string;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	configValidationIssues?: AgentConfigValidationIssue[];
@@ -77,6 +79,9 @@ const emit = defineEmits<{
 	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
 	'agent-changed': [];
+	'open-session': [threadId: string];
+	'view-session-trace': [threadId: string];
+	'close-session-trace': [];
 }>();
 
 const i18n = useI18n();
@@ -199,12 +204,30 @@ const i18n = useI18n();
 					v-else-if="activeMainTab === 'sessions'"
 					data-testid="agent-sessions-tab-content"
 				>
+					<template v-if="sessionDetailId">
+						<N8nButton
+							icon="arrow-left"
+							variant="ghost"
+							:label="i18n.baseText('agentSessions.detail.backToSessions')"
+							data-test-id="agent-session-detail-back"
+							@click="emit('close-session-trace')"
+						/>
+						<AgentSessionTimelinePanel
+							:project-id="projectId"
+							:agent-id="agentId"
+							:thread-id="sessionDetailId"
+						/>
+					</template>
 					<AgentSessionsListView
+						v-else
 						:embedded="true"
 						:project-id="projectId"
 						:agent-id="agentId"
-						:open-session-in-new-tab="artifactMode"
+						navigation-mode="intent"
+						:manage-store-lifecycle="false"
 						data-testid="agent-executions-panel"
+						@open-conversation="emit('open-session', $event)"
+						@view-trace="emit('view-session-trace', $event)"
 					/>
 				</AgentBuilderTabPanel>
 

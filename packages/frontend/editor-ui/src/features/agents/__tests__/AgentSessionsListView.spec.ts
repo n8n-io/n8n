@@ -1,11 +1,21 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 
 // Hoisted mock state so vi.mock factories (which run before any imports)
 // can reference these without hitting a temporal-dead-zone error.
-const { routerPush, routerResolve, storeState } = vi.hoisted(() => ({
+const {
+	routerPush,
+	routerResolve,
+	storeState,
+	fetchThreads,
+	startAutoRefresh,
+	stopAutoRefresh,
+	refreshThreads,
+	loadMore,
+	deleteThread,
+} = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	routerResolve: vi.fn((target: { href?: string }) => ({ href: target?.href ?? '/resolved' })),
 	storeState: {
@@ -13,9 +23,17 @@ const { routerPush, routerResolve, storeState } = vi.hoisted(() => ({
 		loading: false,
 		nextCursor: null as string | null,
 	},
+	fetchThreads: vi.fn(),
+	startAutoRefresh: vi.fn(),
+	stopAutoRefresh: vi.fn(),
+	refreshThreads: vi.fn(),
+	loadMore: vi.fn(),
+	deleteThread: vi.fn(),
 }));
 
 let windowOpenSpy: ReturnType<typeof vi.spyOn>;
+let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>;
+let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -61,12 +79,12 @@ vi.mock('../agentSessions.store', () => ({
 		get nextCursor() {
 			return storeState.nextCursor;
 		},
-		fetchThreads: vi.fn(),
-		startAutoRefresh: vi.fn(),
-		stopAutoRefresh: vi.fn(),
-		refreshThreads: vi.fn(),
-		loadMore: vi.fn(),
-		deleteThread: vi.fn(),
+		fetchThreads,
+		startAutoRefresh,
+		stopAutoRefresh,
+		refreshThreads,
+		loadMore,
+		deleteThread,
 	}),
 }));
 
@@ -132,11 +150,13 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 
 async function mountView({
 	threads = [makeThread()],
-	openSessionInNewTab = false,
+	navigationMode = 'route',
+	manageStoreLifecycle = true,
 	embedded = true,
 }: {
 	threads?: AgentExecutionThread[];
-	openSessionInNewTab?: boolean;
+	navigationMode?: 'route' | 'new-tab' | 'intent';
+	manageStoreLifecycle?: boolean;
 	embedded?: boolean;
 } = {}) {
 	storeState.threads = threads;
@@ -148,7 +168,8 @@ async function mountView({
 			embedded,
 			projectId: 'project-1',
 			agentId: 'agent-1',
-			openSessionInNewTab,
+			navigationMode,
+			manageStoreLifecycle,
 		},
 		global: { plugins: [createTestingPinia({ createSpy: vi.fn })] },
 	});
@@ -159,11 +180,15 @@ describe('AgentSessionsListView', () => {
 		routerPush.mockClear();
 		routerResolve.mockClear();
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+		documentAddEventListenerSpy = vi.spyOn(document, 'addEventListener');
+		documentRemoveEventListenerSpy = vi.spyOn(document, 'removeEventListener');
 		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
 		windowOpenSpy.mockRestore();
+		documentAddEventListenerSpy.mockRestore();
+		documentRemoveEventListenerSpy.mockRestore();
 	});
 
 	it('opens the conversation (preview chat) when a session row is clicked', async () => {
@@ -202,8 +227,8 @@ describe('AgentSessionsListView', () => {
 		);
 	});
 
-	it('opens the conversation in a new tab when openSessionInNewTab is set', async () => {
-		const wrapper = await mountView({ openSessionInNewTab: true });
+	it('opens the conversation in a new tab in new-tab navigation mode', async () => {
+		const wrapper = await mountView({ navigationMode: 'new-tab' });
 
 		await wrapper.find('[data-test-id="agent-session-list-item"]').trigger('click');
 
@@ -212,14 +237,56 @@ describe('AgentSessionsListView', () => {
 		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
 	});
 
-	it('opens the trace in a new tab when openSessionInNewTab is set', async () => {
-		const wrapper = await mountView({ openSessionInNewTab: true });
+	it('opens the trace in a new tab in new-tab navigation mode', async () => {
+		const wrapper = await mountView({ navigationMode: 'new-tab' });
 
 		await wrapper.find('[data-test-id="agent-session-view-trace"]').trigger('click');
 
 		expect(routerPush).not.toHaveBeenCalled();
 		expect(routerResolve).toHaveBeenCalledTimes(1);
 		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('emits an open-conversation intent without navigating when a row is clicked', async () => {
+		const wrapper = await mountView({ navigationMode: 'intent', manageStoreLifecycle: false });
+
+		await wrapper.get('[data-test-id="agent-session-list-item"]').trigger('click');
+
+		expect(wrapper.emitted('open-conversation')).toEqual([['thread-1']]);
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerResolve).not.toHaveBeenCalled();
+		expect(windowOpenSpy).not.toHaveBeenCalled();
+	});
+
+	it('emits a view-trace intent without navigating when the trace action is clicked', async () => {
+		const wrapper = await mountView({ navigationMode: 'intent', manageStoreLifecycle: false });
+
+		await wrapper.get('[data-test-id="agent-session-view-trace"]').trigger('click');
+
+		expect(wrapper.emitted('view-trace')).toEqual([['thread-1']]);
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerResolve).not.toHaveBeenCalled();
+		expect(windowOpenSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not manage the session store lifecycle when ownership is disabled', async () => {
+		const wrapper = await mountView({ manageStoreLifecycle: false });
+		await flushPromises();
+
+		expect(fetchThreads).not.toHaveBeenCalled();
+		expect(startAutoRefresh).not.toHaveBeenCalled();
+		expect(documentAddEventListenerSpy).not.toHaveBeenCalledWith(
+			'visibilitychange',
+			expect.any(Function),
+		);
+
+		wrapper.unmount();
+
+		expect(stopAutoRefresh).not.toHaveBeenCalled();
+		expect(documentRemoveEventListenerSpy).not.toHaveBeenCalledWith(
+			'visibilitychange',
+			expect.any(Function),
+		);
 	});
 
 	it('renders the trace button with the view-trace aria label', async () => {

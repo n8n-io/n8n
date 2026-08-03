@@ -27,15 +27,29 @@ import {
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
+type SessionNavigationMode = 'route' | 'new-tab' | 'intent';
+
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
 		projectId?: string;
 		agentId?: string;
-		openSessionInNewTab?: boolean;
+		navigationMode?: SessionNavigationMode;
+		manageStoreLifecycle?: boolean;
 	}>(),
-	{ embedded: false, projectId: undefined, agentId: undefined, openSessionInNewTab: false },
+	{
+		embedded: false,
+		projectId: undefined,
+		agentId: undefined,
+		navigationMode: 'route',
+		manageStoreLifecycle: true,
+	},
 );
+
+const emit = defineEmits<{
+	'open-conversation': [threadId: string];
+	'view-trace': [threadId: string];
+}>();
 
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
@@ -59,6 +73,8 @@ function onVisibilityChange() {
 }
 
 onMounted(async () => {
+	if (!props.manageStoreLifecycle) return;
+
 	if (projectId.value && agentId.value) {
 		try {
 			await sessionsStore.fetchThreads(projectId.value, agentId.value);
@@ -71,6 +87,8 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+	if (!props.manageStoreLifecycle) return;
+
 	document.removeEventListener('visibilitychange', onVisibilityChange);
 	sessionsStore.stopAutoRefresh();
 });
@@ -144,6 +162,11 @@ function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<stri
 }
 
 function openConversation(threadId: string) {
+	if (props.navigationMode === 'intent') {
+		emit('open-conversation', threadId);
+		return;
+	}
+
 	const target = {
 		name: AGENT_PREVIEW_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
@@ -152,7 +175,7 @@ function openConversation(threadId: string) {
 			section: EXECUTIONS_SECTION_KEY,
 		},
 	};
-	if (props.openSessionInNewTab) {
+	if (props.navigationMode === 'new-tab') {
 		window.open(router.resolve(target).href, '_blank');
 		return;
 	}
@@ -160,11 +183,16 @@ function openConversation(threadId: string) {
 }
 
 function onViewTrace(threadId: string) {
+	if (props.navigationMode === 'intent') {
+		emit('view-trace', threadId);
+		return;
+	}
+
 	const target = {
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value, threadId },
 	};
-	if (props.openSessionInNewTab) {
+	if (props.navigationMode === 'new-tab') {
 		window.open(router.resolve(target).href, '_blank');
 		return;
 	}
