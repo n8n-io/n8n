@@ -83,20 +83,8 @@ export class VariableExporter {
 		const requirements: PackageVariableRequirement[] = [];
 
 		for (const { name, usedByWorkflows, variables } of resolvedNames) {
-			let aggregateValue: string | undefined;
-			let everyWorkflowResolvedToSameValue = true;
-
 			for (const variable of variables) {
-				if (!isBundleableVariable(variable)) {
-					everyWorkflowResolvedToSameValue = false;
-					continue;
-				}
-
-				if (aggregateValue === undefined) {
-					aggregateValue = variable.value;
-				} else if (aggregateValue !== variable.value) {
-					everyWorkflowResolvedToSameValue = false;
-				}
+				if (!isBundleableVariable(variable)) continue;
 
 				if (bundledVariableIds.has(variable.id)) continue;
 				bundledVariableIds.add(variable.id);
@@ -115,15 +103,7 @@ export class VariableExporter {
 				entries.push({ id: variable.id, name: variable.key, target });
 			}
 
-			requirements.push({
-				name,
-				...(request.includeVariableValues &&
-				everyWorkflowResolvedToSameValue &&
-				aggregateValue !== undefined
-					? { value: aggregateValue }
-					: {}),
-				usedByWorkflows,
-			});
+			requirements.push({ name, usedByWorkflows });
 		}
 
 		return { entries, requirements };

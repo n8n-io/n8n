@@ -606,7 +606,7 @@ describe('project shell import', () => {
 			opts: {
 				catalog?: Array<{ id: string; name: string; target: string }>;
 				variables?: PackageVariableEntry[];
-				requirements?: Array<{ name: string; value?: string; usedByWorkflows: string[] }>;
+				requirements?: Array<{ name: string; usedByWorkflows: string[] }>;
 			} = {},
 		) =>
 			await buildEntityPackageBuffer({

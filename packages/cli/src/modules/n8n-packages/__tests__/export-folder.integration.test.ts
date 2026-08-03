@@ -512,9 +512,7 @@ describe('folder package export — with contained workflows', () => {
 		]);
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [
-				{ name: 'API_URL', value: 'https://api.example.com', usedByWorkflows: [workflow.id] },
-			],
+			variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
 		});
 		expect(
 			entries.find((e) => e.name === `${manifest.variables![0].target}/variable.json`),

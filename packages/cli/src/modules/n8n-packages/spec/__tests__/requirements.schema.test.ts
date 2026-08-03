@@ -69,12 +69,6 @@ describe('packageRequirementsSchema', () => {
 		);
 	});
 
-	it('rejects an overlong variable value', () => {
-		const requirements = { variables: [{ ...variable('API_URL'), value: 'a'.repeat(1001) }] };
-
-		expect(() => packageRequirementsSchema.parse(requirements)).toThrow(/value cannot be longer/);
-	});
-
 	it('rejects a non-finite node type version', () => {
 		const requirements = { nodeTypes: [nodeType('n8n-nodes-base.set', Infinity)] };
 
