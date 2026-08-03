@@ -382,8 +382,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
+			const isOwnInFlightWorkflow =
+				targetWorkflowId !== undefined &&
+				(context.aiCreatedWorkflowIds?.has(targetWorkflowId) ?? false);
+
 			if (
 				targetWorkflowId &&
+				!isOwnInFlightWorkflow &&
 				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
@@ -448,7 +453,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 					return await ctx.suspend({
 						requestId: nanoid(),
-						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
+						message: `${workflowName} (ID: ${targetWorkflowId})`,
 						severity: 'warning',
 					});
 				}
