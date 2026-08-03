@@ -62,10 +62,9 @@ parse_args() {
 		case "$1" in
 			--version)
 				if [ $# -gt 1 ] && [ "${2#-}" = "$2" ]; then
-					case "$2" in
-					[0-9]*.[0-9]*) REQUESTED_VERSION="$2" ;;
-					*) fail "invalid --version '$2' — expected a release version like 2.32.0" ;;
-					esac
+					valid_n8n_version "$2" ||
+						fail "invalid --version '$2' — expected a release version like 2.32.0"
+					REQUESTED_VERSION="$2"
 					shift
 				else
 					say "get-n8n.sh v${SCRIPT_VERSION} (installs the latest stable n8n, currently $(resolve_n8n_version))"
@@ -146,6 +145,15 @@ gen_secret() {
 	fi
 }
 
+# Exactly three dot-separated numeric components (e.g. 2.32.0).
+valid_n8n_version() {
+	case "$1" in
+	*[!0-9.]* | *.*.*.* | .* | *. | *..*) return 1 ;;
+	[0-9]*.[0-9]*.[0-9]*) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
 # Latest stable n8n version from GitHub releases; FALLBACK_N8N_VERSION covers
 # offline/API failures. Installs stay pinned in .env — never a floating tag,
 # which would silently upgrade (and run DB migrations) on any container recreate.
@@ -160,10 +168,11 @@ resolve_n8n_version() {
 	else
 		v=""
 	fi
-	case "$v" in
-	[0-9]*.[0-9]*) printf '%s\n' "$v" ;;
-	*) printf '%s\n' "$FALLBACK_N8N_VERSION" ;;
-	esac
+	if valid_n8n_version "$v"; then
+		printf '%s\n' "$v"
+	else
+		printf '%s\n' "$FALLBACK_N8N_VERSION"
+	fi
 }
 
 write_env() {

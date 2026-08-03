@@ -109,6 +109,8 @@ check_not "--upgrade without install fails" env N8N_DIR="$WORK/missing" sh "$SCR
 
 # malformed --version must fail before writing anything
 check_not "rejects malformed --version" env N8N_DIR="$WORK/badver" sh "$SCRIPT" --version banana --no-start
+check_not "rejects trailing-garbage --version" env N8N_DIR="$WORK/badver" sh "$SCRIPT" --version 2.3.4x --no-start
+check_not "rejects two-component --version" env N8N_DIR="$WORK/badver" sh "$SCRIPT" --version 2.32 --no-start
 check "malformed --version writes nothing" test ! -e "$WORK/badver"
 
 # --upgrade --no-start bumps the pin but must not touch containers
