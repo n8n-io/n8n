@@ -1,9 +1,9 @@
 import { hasInjectionContext, inject } from 'vue';
 
-import { getRegisteredTelemetry, TelemetryKey, type Telemetry } from './telemetryRegistry';
+import { getRegisteredTelemetry, TelemetryKey, type Telemetry } from './registries/telemetry';
 
 // The telemetry *contract* and the *registration* surface deliberately live in
-// `./telemetryRegistry`: this module is `vi.mock`ed in ~100 test files, and a
+// `./registries/telemetry`: this module is `vi.mock`ed in ~100 test files, and a
 // mock factory replaces the whole module. While `setTelemetry` lived here, any
 // partial factory (the common `{ useTelemetry: () => ... }` shape) also starved
 // the telemetry plugin's own bootstrap import of it. Separate modules make that
@@ -12,7 +12,7 @@ export type {
 	Telemetry,
 	TelemetryIdentifyOptions,
 	TelemetryNodeParameterChange,
-} from './telemetryRegistry';
+} from './registries/telemetry';
 
 /**
  * Null-object telemetry used when no instance has been registered (e.g. in

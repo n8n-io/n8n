@@ -1,5 +1,5 @@
 import { telemetry, TelemetryPlugin } from '@/app/plugins/telemetry';
-import { getRegisteredTelemetry, TelemetryKey } from '@n8n/composables/telemetryRegistry';
+import { getRegisteredTelemetry, TelemetryKey } from '@n8n/composables/registries/telemetry';
 import { createApp, inject } from 'vue';
 
 // The partial factory shape used by ~100 editor-ui test files: it returns

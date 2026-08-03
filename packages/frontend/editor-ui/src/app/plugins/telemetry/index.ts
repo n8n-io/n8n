@@ -13,14 +13,14 @@ import {
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
 } from '@/app/constants';
-// `telemetryRegistry`, not `useTelemetry`: the latter is mocked in ~100 test
+// `registries/telemetry`, not `useTelemetry`: the latter is mocked in ~100 test
 // files, and a partial mock factory there would starve this module's imports.
 import {
 	setTelemetry,
 	TelemetryKey,
 	type Telemetry,
 	type TelemetryIdentifyOptions,
-} from '@n8n/composables/telemetryRegistry';
+} from '@n8n/composables/registries/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -32,7 +32,7 @@ const POSTHOG_BLACKLISTED_EVENT_NAMES = new Set(
 
 // `Telemetry` is the shared contract; consumers annotate with it. The concrete
 // implementation below is registered as the app's instance at bootstrap.
-export type { Telemetry, TelemetryIdentifyOptions } from '@n8n/composables/telemetryRegistry';
+export type { Telemetry, TelemetryIdentifyOptions } from '@n8n/composables/registries/telemetry';
 
 export class TelemetryService implements Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
