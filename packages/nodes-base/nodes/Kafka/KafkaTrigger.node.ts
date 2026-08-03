@@ -450,6 +450,8 @@ export class KafkaTrigger implements INodeType {
 					}: EachBatchPayload) => {
 						// A batch after close means a consumer survived teardown: crash it
 						// non-retriably. Below this guard, never throw in the callback.
+						// UnexpectedError is reported to Sentry, so tripping this backstop
+						// is visible. Use OperationalError instead if that is too noisy.
 						if (closeSignal.aborted) {
 							throw Object.assign(
 								new UnexpectedError('Kafka trigger consumer received messages after close'),
