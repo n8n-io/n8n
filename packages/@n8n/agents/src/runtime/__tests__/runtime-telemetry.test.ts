@@ -547,7 +547,7 @@ describe('withMemorySpan()', () => {
 				'query_memory',
 				'my-agent',
 				disabled,
-				{},
+				() => ({}),
 				async () =>
 					await Promise.resolve({
 						result: 'ok',
@@ -561,7 +561,7 @@ describe('withMemorySpan()', () => {
 				'query_memory',
 				'my-agent',
 				noTracer,
-				{},
+				() => ({}),
 				async () =>
 					await Promise.resolve({
 						result: 'ok',
@@ -574,13 +574,35 @@ describe('withMemorySpan()', () => {
 				'query_memory',
 				'my-agent',
 				undefined,
-				{},
+				() => ({}),
 				async () =>
 					await Promise.resolve({
 						result: 'ok',
 					}),
 			),
 		).resolves.toBe('ok');
+	});
+
+	it('never calls buildInitialAttributes when telemetry is disabled, undefined, or the tracer is not active-span-capable', async () => {
+		// Regression guard: callers build these attributes from
+		// inferMemoryStoreAttributes(memory), which calls memory.describe() — a
+		// method some BuiltMemory implementations don't implement. If this thunk
+		// were called eagerly regardless of telemetry state, any such backend
+		// would break even with telemetry fully disabled.
+		const buildInitialAttributes = vi.fn(() => ({ owners: ['resource-1'] }));
+		const fn = async () => await Promise.resolve({ result: 'ok' });
+
+		await withMemorySpan('query_memory', 'my-agent', undefined, buildInitialAttributes, fn);
+		await withMemorySpan(
+			'query_memory',
+			'my-agent',
+			builtTelemetry({ enabled: false, tracer: fakeTracer(fakeSpan()) }),
+			buildInitialAttributes,
+			fn,
+		);
+		await withMemorySpan('query_memory', 'my-agent', builtTelemetry(), buildInitialAttributes, fn);
+
+		expect(buildInitialAttributes).not.toHaveBeenCalled();
 	});
 
 	it('opens a span named query_memory with gen_ai.memory.* attributes from initialAttributes', async () => {
@@ -592,12 +614,12 @@ describe('withMemorySpan()', () => {
 			'query_memory',
 			'my-agent',
 			telemetry,
-			{
+			() => ({
 				types: ['session'],
 				owners: ['resource-1'],
 				storeTypes: ['in_memory'],
 				storeNames: ['memory'],
-			},
+			}),
 			async () => await Promise.resolve({ result: { entries: 3 } }),
 		);
 
@@ -626,7 +648,7 @@ describe('withMemorySpan()', () => {
 			'save_memory',
 			'my-agent',
 			telemetry,
-			{ owners: ['resource-1'] },
+			() => ({ owners: ['resource-1'] }),
 			async () =>
 				await Promise.resolve({
 					result: undefined,
@@ -653,7 +675,7 @@ describe('withMemorySpan()', () => {
 			'query_memory',
 			'my-agent',
 			telemetry,
-			{},
+			() => ({}),
 			async () =>
 				await Promise.resolve({
 					result: 'ok',
@@ -670,9 +692,15 @@ describe('withMemorySpan()', () => {
 		const error = new Error('memory boom');
 
 		await expect(
-			withMemorySpan('query_memory', 'my-agent', telemetry, {}, () => {
-				throw error;
-			}),
+			withMemorySpan(
+				'query_memory',
+				'my-agent',
+				telemetry,
+				() => ({}),
+				() => {
+					throw error;
+				},
+			),
 		).rejects.toThrow('memory boom');
 
 		expect(span.recordException).toHaveBeenCalledWith(error);

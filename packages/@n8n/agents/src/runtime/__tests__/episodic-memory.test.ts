@@ -240,6 +240,28 @@ describe('createRecallMemoryTool', () => {
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 	});
 
+	it('does not call describe() on the memory backend when ctx.parentTelemetry is absent', async () => {
+		// Regression guard: a third-party BuiltMemory implementation is not
+		// required to implement describe() (it's only otherwise used for schema
+		// persistence) — memory access must stay telemetry-free by default.
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		const memory = new InMemoryMemory();
+		const describeSpy = vi.spyOn(memory, 'describe').mockImplementation(() => {
+			throw new Error('Method not implemented.');
+		});
+		const tool = createRecallMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+		});
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		await expect(tool.handler({ query: 'what did we decide?' }, {})).resolves.toEqual({
+			entries: [],
+		});
+		expect(describeSpy).not.toHaveBeenCalled();
+	});
+
 	it('opens a query_memory span with resolved entry ids when ctx.parentTelemetry is provided', async () => {
 		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
 		const memory = new InMemoryMemory();
@@ -434,6 +456,45 @@ describe('runEpisodicMemoryIndexer', () => {
 				threadId: 'thread-1',
 			}),
 		).resolves.toEqual({ status: 'skipped', reason: 'no-observations' });
+	});
+
+	it('does not call describe() on the memory backend when telemetry is undefined', async () => {
+		// Regression guard: a third-party BuiltMemory implementation is not
+		// required to implement describe() (it's only otherwise used for schema
+		// persistence) — memory access must stay telemetry-free by default.
+		const memory = new InMemoryMemory();
+		const describeSpy = vi.spyOn(memory, 'describe').mockImplementation(() => {
+			throw new Error('Method not implemented.');
+		});
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User switched memory store to Postgres.',
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User switched memory store to Postgres.',
+						sources: [
+							{ observationId: observation.id, evidence: 'User switched memory store to Postgres' },
+						],
+					},
+				],
+			});
+
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 1, observationsIndexed: 1 });
+		expect(describeSpy).not.toHaveBeenCalled();
 	});
 
 	it('does not persist secret values in entry content or evidence', async () => {

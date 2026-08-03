@@ -186,4 +186,23 @@ describe('MemoryOrchestrator.loadHistoryMessages telemetry', () => {
 
 		expect(loaded.map((m) => m.id)).toEqual(['m1']);
 	});
+
+	it('does not call describe() on the memory backend when telemetry is undefined', async () => {
+		// Regression guard: a third-party BuiltMemory implementation is not
+		// required to implement describe() (it's only otherwise used for schema
+		// persistence) — memory access must stay telemetry-free by default.
+		const store = new InMemoryMemory();
+		await seedThread(store, [message('m1', 'first', new Date(2026, 4, 12, 14, 30))]);
+		const describeSpy = vi.spyOn(store, 'describe').mockImplementation(() => {
+			throw new Error('Method not implemented.');
+		});
+
+		const loaded = await buildOrchestrator(store).loadHistoryMessages({
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+		});
+
+		expect(loaded.map((m) => m.id)).toEqual(['m1']);
+		expect(describeSpy).not.toHaveBeenCalled();
+	});
 });

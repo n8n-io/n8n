@@ -206,12 +206,18 @@ function buildMemorySpanAttributes(
  * those get merged onto the span via `setAttributes`. Because callers pass the
  * same `telemetry.tracer` already active for the enclosing root/tool span, the
  * new span nests under it automatically.
+ *
+ * `buildInitialAttributes` is a thunk, not a plain object: callers build it
+ * from `inferMemoryStoreAttributes(memory)`, which calls `memory.describe()` —
+ * a method third-party `BuiltMemory` implementations may not implement (it's
+ * only otherwise used for schema persistence). Deferring it until telemetry
+ * is confirmed active keeps memory access telemetry-free by default.
  */
 export async function withMemorySpan<T>(
 	kind: 'query_memory' | 'save_memory',
 	agentName: string,
 	telemetry: BuiltTelemetry | undefined,
-	initialAttributes: MemorySpanAttributes,
+	buildInitialAttributes: () => MemorySpanAttributes,
 	fn: () => Promise<{ result: T; attributes?: MemorySpanAttributes }>,
 ): Promise<T> {
 	if (!telemetry?.enabled || !isActiveSpanTracer(telemetry.tracer)) {
@@ -220,7 +226,7 @@ export async function withMemorySpan<T>(
 
 	return await telemetry.tracer.startActiveSpan(
 		kind,
-		{ attributes: buildMemorySpanAttributes(kind, agentName, initialAttributes) },
+		{ attributes: buildMemorySpanAttributes(kind, agentName, buildInitialAttributes()) },
 		async (span) => {
 			try {
 				const { result, attributes } = await fn();

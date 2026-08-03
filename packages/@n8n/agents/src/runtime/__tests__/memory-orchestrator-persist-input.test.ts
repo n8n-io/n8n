@@ -133,6 +133,26 @@ describe('MemoryOrchestrator.persistInputMessages', () => {
 		expect(errors).toHaveLength(1);
 		expect(errors[0]).toMatchObject({ type: AgentEvent.Error, source: 'input-persistence' });
 	});
+
+	it('does not call describe() on the memory backend when telemetry is undefined', async () => {
+		// Regression guard: a third-party BuiltMemory implementation is not
+		// required to implement describe() (it's only otherwise used for schema
+		// persistence) — memory access must stay telemetry-free by default.
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		const describeSpy = vi.spyOn(store, 'describe').mockImplementation(() => {
+			throw new Error('Method not implemented.');
+		});
+
+		const list = new AgentMessageList();
+		list.addInput([userMsg('the user prompt')]);
+
+		await buildOrchestrator(store).persistInputMessages(list, PERSIST);
+
+		const persisted = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
+		expect(textsOf(persisted)).toEqual(['the user prompt']);
+		expect(describeSpy).not.toHaveBeenCalled();
+	});
 });
 
 describe('MemoryOrchestrator.persistTurnDelta', () => {

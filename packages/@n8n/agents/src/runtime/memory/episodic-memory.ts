@@ -159,11 +159,11 @@ export async function runEpisodicMemoryIndexer(
 			'save_memory',
 			opts.agentName ?? 'agent',
 			opts.telemetry,
-			{
+			() => ({
 				types: ['agent'],
 				owners: [opts.scope.resourceId],
 				...inferMemoryStoreAttributes(opts.memory),
-			},
+			}),
 			async () => {
 				const { embedMany } = await import('ai');
 				const { embeddings, usage } = await embedMany({
@@ -225,11 +225,11 @@ export function createRecallMemoryTool(opts: {
 				'query_memory',
 				opts.agentName ?? 'agent',
 				ctx.parentTelemetry,
-				{
+				() => ({
 					types: ['agent'],
 					owners: [opts.scope.resourceId],
 					...inferMemoryStoreAttributes(opts.memory),
-				},
+				}),
 				async () => {
 					const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {
 						topK: normalized.topK,

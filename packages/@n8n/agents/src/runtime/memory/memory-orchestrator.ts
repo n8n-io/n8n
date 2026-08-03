@@ -91,7 +91,7 @@ export class MemoryOrchestrator {
 			'query_memory',
 			this.config.name,
 			telemetry,
-			{ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) },
+			() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
 			async () => {
 				if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
 					const cursor = await memory.getCursor(threadId);
@@ -170,7 +170,7 @@ export class MemoryOrchestrator {
 			'save_memory',
 			this.config.name,
 			telemetry,
-			{ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) },
+			() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
 			async () => {
 				await saveMessagesToThread(memory, threadId, resourceId, messages);
 				return {
