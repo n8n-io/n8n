@@ -1,0 +1,31 @@
+---
+description: Conventions for changes under packages/nodes-base
+globs: packages/nodes-base/**
+alwaysApply: false
+---
+
+# nodes-base conventions
+
+Apply when editing `packages/nodes-base`.
+
+## Node shape
+
+- Follow the structure of the nearest maintained node version. Do not introduce a new node architecture when an existing local pattern applies.
+- Prefer existing helpers in the node folder (`GenericFunctions`, etc.) over duplicating request/error logic.
+- Keep parameter `displayName` / `description` clear; use `displayOptions` for conditional fields.
+
+## Errors and parsing
+
+- Prefer `NodeOperationError` / `NodeApiError` for user-facing failures — not bare `throw new Error(...)`.
+- Prefer `jsonParse` (or project helpers) over raw `JSON.parse(` when policy lists that as preferred.
+- Do not introduce `@ts-ignore` or `@ts-expect-error` to silence type issues in contribution fixes.
+
+## Safety
+
+- Never use untrusted `getNodeParameter` values as computed object keys in assignments; use safe helpers from `n8n-workflow` when grouping by user input.
+- Do not change credentials files or auth flows unless the ticket area explicitly includes them and policy allows it.
+
+## Scope
+
+- Touch only files needed for the ticket acceptance criteria.
+- Leave unrelated nodes, credentials, and package wiring alone.

@@ -1,0 +1,25 @@
+id: N8N-DEMO-19
+simulation: true
+status: approved
+owner_approval:
+  required: false
+type: bug
+area: packages/nodes-base/nodes/Set
+
+allowed_read_paths:
+  - CONTRIBUTING.md
+  - packages/nodes-base/nodes/Set/**
+  - packages/nodes-base/test/**
+  - packages/workflow/src/Interfaces.ts
+  - contrib-runway/policies/n8n.yaml
+
+allowed_write_paths:
+  - packages/nodes-base/nodes/Set/**
+  - contrib-runway/evidence/N8N-DEMO-19.md
+
+problem: Invalid JSON in Set (raw mode) produces a confusing or incomplete error.
+desired_outcome: Show a clear NodeOperationError that identifies the problematic input.
+acceptance_criteria:
+  - Valid Set behavior remains unchanged
+  - Invalid JSON produces a helpful error
+  - The error identifies the problematic input

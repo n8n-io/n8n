@@ -1,0 +1,29 @@
+# n8n policies
+allowed_change:
+  requires_approval: true
+  maximum_scope: 1000
+
+restricted_areas:
+  - packages/core
+  - credentials
+  - HTTP Request
+  - Code
+  - Webhook
+  - Form Trigger
+  - Schedule
+
+bug_fix_requirements:
+  - linked_or_approved_issue
+  - regression_test
+  - valid_behavior_test
+  - manual_test_instructions
+
+forbidden_code_patterns:
+  - "@ts-ignore"
+  - "@ts-expect-error"
+  - "throw new Error("
+  - "JSON.parse("
+
+preferred_patterns:
+  generic_error: NodeOperationError
+  json_parsing: jsonParse

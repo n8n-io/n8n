@@ -1,0 +1,11 @@
+id: N8N-DEMO-18
+simulation: true
+status: approved
+type: bug
+area: packages/core/src/execution-engine
+problem: Execution engine mishandles cancellation mid-run.
+desired_outcome: Cancellation stops cleanly without leaving orphaned tasks.
+acceptance_criteria:
+  - Mid-run cancel stops remaining nodes
+  - No orphaned task runners remain
+  - Existing successful runs are unchanged

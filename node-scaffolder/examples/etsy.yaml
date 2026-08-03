@@ -1,0 +1,20 @@
+name: etsy
+displayName: Etsy
+description: Interact with the Etsy REST API
+baseUrl: https://openapi.etsy.com/v3
+auth: apiKey
+simulation: true
+resources:
+  - name: Listing
+    value: listing
+    operations:
+      - name: Get Many
+        value: getAll
+        method: GET
+        path: /application/listings/active
+        description: Get many active listings
+      - name: Get
+        value: get
+        method: GET
+        path: =/application/listings/{{$parameter["listingId"]}}
+        description: Get a listing by ID

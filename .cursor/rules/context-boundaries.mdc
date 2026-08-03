@@ -1,0 +1,32 @@
+---
+description: Use when working from a Contribution Runway ticket to determine permitted read and write paths
+alwaysApply: false
+---
+
+# Context boundaries
+
+When working a contribution-runway ticket, Treat `allowed_read_paths` as the context boundary and
+`allowed_write_paths` as the edit boundary.
+
+Do not infer that permission to read a file grants permission to modify it.
+
+## Restricted areas
+
+The following remain blocked even when named as the ticket `area`:
+
+- `packages/core/**`
+- `packages/nodes-base/credentials/**`
+- Identity and access-management code
+- Team-owned high-impact nodes listed in policy
+
+Proceed only when the deterministic checker confirms a separate owner approval
+record containing an approver and approval reference.
+
+The ticket must not authorize its own exception.
+
+## Rules of engagement
+
+- Do not open or modify files outside the allowed context to "make the fix easier."
+- Do not broaden a bug fix into a cross-cutting refactor.
+- If the needed fix clearly lives outside the allowed directory, stop and report that the ticket area/policy must change — do not expand scope yourself.
+- Keep `maximum_scope` from policy in mind; prefer a small, focused change.

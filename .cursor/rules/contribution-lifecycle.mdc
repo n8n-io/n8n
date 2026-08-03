@@ -1,0 +1,34 @@
+---
+description: Contribution lifecycle — ticket approval, planning, and READY/BLOCKED gates before code changes
+alwaysApply: true
+---
+
+# Contribution lifecycle
+
+Before editing application code for a contribution-runway ticket:
+
+1. Read the ticket YAML under `contrib-runway/examples/` (or the ticket path given by the user).
+2. Read `contrib-runway/policies/n8n.yaml`.
+3. Run the deterministic gate: `pnpm --dir contrib-runway check -- <ticket.yaml>`
+4. Proceed only when the command exits successfully and returns `READY`.
+5. If the command cannot run, report `CHECK_NOT_RUN` and stop before editing
+   application code. Do not manually infer a READY result.
+
+## READY means
+
+- Ticket `status` is `approved` when `allowed_change.requires_approval` is true.
+- Ticket `area` is not in `restricted_areas`.
+- Context for code changes is limited to the ticket `area` directory.
+
+## BLOCKED means
+
+- Do not implement the fix.
+- Report the block reasons (missing approval and/or restricted area).
+- Do not expand scope into other packages to "work around" the gate.
+
+## After READY
+
+1. Implement only within the allowed context directory.
+2. Satisfy `bug_fix_requirements` for `type: bug` tickets.
+3. Place verification notes or artifacts under `contrib-runway/evidence/` when asked.
+4. Prefer patterns from `preferred_patterns` in the policy file; avoid `forbidden_code_patterns`.

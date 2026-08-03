@@ -1,0 +1,39 @@
+---
+description: Testing requirements for Contribution Runway tickets and n8n node changes
+globs:
+  - "contrib-runway/examples/**/*.yaml"
+  - "packages/nodes-base/**/*.test.ts"
+  - "packages/nodes-base/**/test/**"
+alwaysApply: false
+---
+
+# Testing requirements
+
+For contribution tickets with `type: bug`, satisfy every item in `bug_fix_requirements` from `contrib-runway/policies/n8n.yaml`.
+A requirement may be waived only when the policy allows waivers and the ticket
+contains:
+
+- The specific waived requirement
+- A written justification
+- An approving owner
+- An approval reference
+
+Simulation tickets do not automatically waive testing requirements.
+
+Typical requirements:
+
+- `linked_or_approved_issue` — ticket references an approved/linked issue (simulation tickets count when `simulation: true` and status is approved).
+- `regression_test` — add or extend an automated test that fails on the old behavior and passes on the fix.
+- `valid_behavior_test` — keep or add coverage that valid inputs still behave correctly.
+- `manual_test_instructions` — document short manual steps under `contrib-runway/evidence/` or in the PR description when asked.
+
+## Where to put tests
+
+- Prefer colocated tests next to the changed node/module (Vitest in this repo).
+- Run the smallest relevant test command from the repository root, for example: `pnpm --filter n8n-nodes-base test -- nodes/DateTime/test/node/DateTime.test.ts`
+- Also run the package's typecheck and lint commands before claiming review readiness.
+- Mock external I/O; do not hit real network services.
+
+## Do not claim READY evidence without tests
+
+If the policy requires a regression test, a code-only change without a test is incomplete — even when `check.ts` returned READY for approval/area.

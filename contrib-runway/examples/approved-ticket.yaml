@@ -1,0 +1,25 @@
+id: N8N-DEMO-17
+simulation: true
+status: approved
+owner_approval:
+  required: false
+type: bug
+area: packages/nodes-base/nodes/DateTime
+
+allowed_read_paths:
+  - CONTRIBUTING.md
+  - packages/nodes-base/nodes/DateTime/**
+  - packages/nodes-base/test/**
+  - packages/workflow/src/Interfaces.ts
+  - contrib-runway/policies/n8n.yaml
+
+allowed_write_paths:
+  - packages/nodes-base/nodes/DateTime/**
+  - contrib-runway/evidence/N8N-DEMO-17.md
+
+problem: Invalid timezone input produces a confusing technical error.
+desired_outcome: Show a clear and actionable n8n error.
+acceptance_criteria:
+  - Valid timezone behavior remains unchanged
+  - Invalid timezone produces a helpful error
+  - The error identifies the problematic input
