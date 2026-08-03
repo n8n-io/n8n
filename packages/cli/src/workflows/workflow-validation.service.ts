@@ -230,6 +230,53 @@ export class WorkflowValidationService {
 	}
 
 	/**
+	 * Rejects trigger nodes whose ids do not uniquely identify them.
+	 *
+	 * Publication records one `workflow_publication_trigger_status` row per
+	 * enabled trigger node, keyed by the composite primary key
+	 * `(workflowId, nodeId)`. A shared or absent id therefore collapses two
+	 * triggers onto one key: the diff in `computeTriggerDiff` loses one of them,
+	 * and the row insert fails on the constraint. Catching it here turns a
+	 * constraint violation raised mid-publication into a message naming the
+	 * offending nodes.
+	 *
+	 * An absent id is the same defect as a shared one — `undefined` is just an id
+	 * that every id-less node has in common — so both are reported together.
+	 */
+	validateTriggerNodeIds(triggerNodes: INode[]): WorkflowValidationResult {
+		const violations: string[] = [];
+		const namesById = new Map<string, string[]>();
+
+		for (const node of triggerNodes) {
+			if (!node.id) {
+				violations.push(`trigger "${node.name}" has no node ID`);
+				continue;
+			}
+
+			const names = namesById.get(node.id);
+			if (names) {
+				names.push(node.name);
+			} else {
+				namesById.set(node.id, [node.name]);
+			}
+		}
+
+		for (const [nodeId, names] of namesById) {
+			if (names.length < 2) continue;
+
+			const nameList = names.map((name) => `"${name}"`).join(', ');
+			violations.push(`triggers ${nameList} share the node ID "${nodeId}"`);
+		}
+
+		if (violations.length === 0) return { isValid: true };
+
+		return {
+			isValid: false,
+			error: `Cannot publish workflow: ${violations.join('; ')}. Remove and re-add the affected nodes to give them new IDs.`,
+		};
+	}
+
+	/**
 	 * Returns the credential types that are actively in use on a node — the
 	 * subset of `node.credentials` keys we should validate against.
 	 *
