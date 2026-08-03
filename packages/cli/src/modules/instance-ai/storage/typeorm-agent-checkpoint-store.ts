@@ -53,6 +53,10 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		return checkpoint.state;
 	}
 
+	async claimForResume(key: string, state: SerializableAgentState): Promise<boolean> {
+		return await this.checkpointRepo.claimSuspendedForResume(key, state);
+	}
+
 	async delete(key: string): Promise<void> {
 		// Soft-delete: keep the row as a tombstone (mirrors the first-class
 		// agents' N8NCheckpointStorage) so a stale resume gets a clear

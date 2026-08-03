@@ -1,8 +1,8 @@
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
@@ -23,9 +23,9 @@ import type {
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
+import { isFormOAuth2Enabled, isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { isFormOAuth2Enabled } from '@/modules/oauth-server/protected-resource-resolvers/utils';
 import type { NodeTypes } from '@/node-types';
 
 export interface WorkflowValidationResult {
@@ -356,19 +356,38 @@ export class WorkflowValidationService {
 		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
 
 		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
-			// System resolver: every trigger must establish the n8n user identity. The form is
-			// only listed while the instance has form-trigger OAuth2 enabled — without it a form
-			// establishes no identity, so listing it would advertise a fix that doesn't work.
+			// System resolver: every trigger must establish the n8n user identity. Form and
+			// webhook are only listed while their respective OAuth2 flags are enabled —
+			// without them neither establishes an identity, so listing them would advertise
+			// a fix that doesn't work.
 			if (allTriggersProvideN8nIdentity) return undefined;
 
-			const formOAuth2Enabled = isFormOAuth2Enabled();
-			const n8nUserAuthTriggers = formOAuth2Enabled ? 'form or webhook' : 'webhook';
-			return `end-user credentials (${credNames}) are only supported with manual, chat, MCP, sub-workflow, and ${n8nUserAuthTriggers} triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.`;
+			const triggersList = this.getN8nUserAuthTriggersList();
+			return `end-user credentials (${credNames}) are only supported with ${triggersList}. To use another trigger, switch the credential to Fixed.`;
 		}
 
 		// Custom resolver: every trigger must provide an external identity.
 		if (allTriggersProvideExternalIdentity) return undefined;
 		return `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
+	}
+
+	/**
+	 * Describes which triggers the system resolver currently accepts, for the
+	 * publish-error copy. Manual, chat, MCP, and sub-workflow triggers always
+	 * qualify; form and webhook only join the list while their respective OAuth2
+	 * flags are enabled, mirroring `classifyTriggerIdentities`.
+	 */
+	private getN8nUserAuthTriggersList(): string {
+		const n8nUserAuthTriggers = [
+			isFormOAuth2Enabled() && 'form',
+			isWebhookOAuth2Enabled() && 'webhook',
+		]
+			.filter((trigger): trigger is string => Boolean(trigger))
+			.join(' or ');
+
+		return n8nUserAuthTriggers
+			? `manual, chat, MCP, sub-workflow, and ${n8nUserAuthTriggers} triggers with n8n user authentication`
+			: 'manual, chat, MCP, and sub-workflow triggers';
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
@@ -411,6 +430,7 @@ export class WorkflowValidationService {
 		let allTriggersProvideN8nIdentity = true;
 		let hasTrigger = false;
 		const formOAuth2Enabled = isFormOAuth2Enabled();
+		const webhookOAuth2Enabled = isWebhookOAuth2Enabled();
 
 		for (const node of nodes) {
 			if (node.disabled) continue;
@@ -426,7 +446,7 @@ export class WorkflowValidationService {
 			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
 				node.type,
 				node.parameters,
-				{ isFormOAuth2Enabled: formOAuth2Enabled },
+				{ isFormOAuth2Enabled: formOAuth2Enabled, isWebhookOAuth2Enabled: webhookOAuth2Enabled },
 			);
 			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
 			allTriggersProvideN8nIdentity &&= providesN8nIdentity;

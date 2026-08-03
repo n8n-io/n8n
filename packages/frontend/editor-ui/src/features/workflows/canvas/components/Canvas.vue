@@ -15,7 +15,7 @@ import {
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';

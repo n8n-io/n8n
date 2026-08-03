@@ -304,6 +304,8 @@ export interface StreamResult {
 export interface ResumeOptions {
 	runId: string;
 	toolCallId: string;
+	/** @internal Host lifecycle hook invoked after the checkpoint claim succeeds. */
+	onResumeClaimed?: () => void | Promise<void>;
 }
 
 export interface BuiltAgent {

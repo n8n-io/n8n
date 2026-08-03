@@ -440,6 +440,7 @@ describe('Execution Lifecycle Hooks', () => {
 					workflow,
 					'manual',
 					workflowHookContext,
+					undefined,
 				]);
 			});
 		});
@@ -871,6 +872,7 @@ describe('Execution Lifecycle Hooks', () => {
 					workflow,
 					'manual',
 					workflowHookContext,
+					undefined,
 				]);
 			});
 
@@ -1290,6 +1292,7 @@ describe('Execution Lifecycle Hooks', () => {
 					workflow,
 					'manual',
 					workflowHookContext,
+					undefined,
 				]);
 			});
 		});

@@ -1,10 +1,12 @@
 import type {
 	CreateWorkflowReviewRequestDto,
 	DecideWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestResponse,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewApprovedPublicationState,
+	WorkflowReviewAutoPublishOutcome,
 	WorkflowReviewEligibleReviewer,
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestForWorkflow,
@@ -27,6 +29,7 @@ import {
 	type WorkflowReviewRequestForWorkflowRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -36,6 +39,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { WorkflowReviewDecisionEligibilityService } from './workflow-review-decision-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
@@ -65,6 +69,7 @@ export class WorkflowReviewRequestService {
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
+		private readonly workflowService: WorkflowService,
 	) {}
 
 	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
@@ -455,14 +460,15 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
-	 * Decide an open review request: approve (terminal, closes the request) or
-	 * request changes (the request stays open awaiting a new version).
+	 * Decide an open review request: approve (terminal, closes the request and
+	 * auto-publishes the pinned version) or request changes (the request stays
+	 * open awaiting a new version).
 	 */
 	async decide(
 		user: User,
 		workflowReviewRequestId: string,
 		dto: DecideWorkflowReviewRequestDto,
-	): Promise<WorkflowReviewRequestSummary> {
+	): Promise<DecideWorkflowReviewRequestResponse> {
 		await this.featureGate.assertAvailable();
 
 		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
@@ -554,7 +560,55 @@ export class WorkflowReviewRequestService {
 
 		this.broadcastReviewStateChanged(workflowRow.workflowId);
 
-		return this.toSummary(saved, pinnedVersionId);
+		const summary = this.toSummary(saved, pinnedVersionId);
+
+		if (dto.decision !== 'approved') {
+			return summary;
+		}
+
+		return {
+			...summary,
+			autoPublish: await this.publishApprovedVersion(user, workflowRow.workflowId, pinnedVersionId),
+		};
+	}
+
+	private async publishApprovedVersion(
+		user: User,
+		workflowId: string,
+		pinnedVersionId: string | null,
+	): Promise<WorkflowReviewAutoPublishOutcome> {
+		if (pinnedVersionId === null) {
+			// Nothing was published and nothing was deactivated, so this stays a
+			// warning — unlike a failed activation below. (LIGO-879)
+			this.logger.warn('Cannot publish approved review: the pinned version was pruned', {
+				workflowId,
+			});
+			return { status: 'failed', message: 'The reviewed workflow version no longer exists' };
+		}
+
+		try {
+			await this.workflowService.activateWorkflow(user, workflowId, {
+				versionId: pinnedVersionId,
+				source: 'review-approval',
+			});
+		} catch (error) {
+			this.logger.error('Failed to publish workflow after review approval', {
+				workflowId,
+				pinnedVersionId,
+				error,
+			});
+			return { status: 'failed', message: ensureError(error).message };
+		}
+
+		// Same broadcast the manual activate endpoint sends, so open editor
+		// sessions pick up the newly published version.
+		this.collaborationService
+			.broadcastWorkflowUpdate(workflowId, user.id)
+			.catch((error) =>
+				this.logger.warn('Failed to broadcast workflow update', { workflowId, error }),
+			);
+
+		return { status: 'published' };
 	}
 
 	/**
