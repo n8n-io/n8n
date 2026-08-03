@@ -1,0 +1,20 @@
+packages/nodes-base/credentials/test/MicrosoftEntraServicePrincipalApi.credentials.test.ts
+  s_ae89f1ca573d52::t_81f94955f9865d 268
+  s_ae89f1ca573d52::t_b4f14ac37faec6 286-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a4e928beaf8176566f2eb4858ac1d1a85ea1a270",
+  "prompts": {},
+  "sessions": {
+    "s_ae89f1ca573d52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d28797bd-ebf0-480f-8b59-ec7a8fdd4f22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

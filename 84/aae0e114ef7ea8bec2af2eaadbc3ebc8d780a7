@@ -1,0 +1,19 @@
+packages/cli/test/integration/scheduling/durable-scheduler-effect-boundary.test.ts
+  s_4ee530e0a1dff5::t_9997121d62d994 321-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "84aae0e114ef7ea8bec2af2eaadbc3ebc8d780a7",
+  "prompts": {},
+  "sessions": {
+    "s_4ee530e0a1dff5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f28b5cb-2006-4bb1-8bdd-f25bc20db78d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

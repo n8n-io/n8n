@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channel/get.operation.ts
+  s_9e3fb7eb7b1034::t_2f8af5505c28cb 22-31,33-34
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_9e3fb7eb7b1034::t_ae1a94599b7a2a 209-224
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channel/deleteChannel.operation.ts
+  s_9e3fb7eb7b1034::t_48240f3034813e 22-31,33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "19291569d8f0730c6074f55c18479669567da05d",
+  "prompts": {},
+  "sessions": {
+    "s_9e3fb7eb7b1034": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba225abc-2d80-4c6a-af99-cceaa9f6df99",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

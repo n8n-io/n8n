@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.vue
+  s_e8596a764fed53::t_38329c8fc71352 219
+  s_e8596a764fed53::t_1bd1aadf46eca3 251
+  s_e8596a764fed53::t_ce9555832d9522 110-115
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.test.ts
+  s_e8596a764fed53::t_419bc6a1874356 230-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "082eb6ffbed0d834e52b443cc5e32d5d93370280",
+  "prompts": {},
+  "sessions": {
+    "s_e8596a764fed53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "579e3553-9680-4b38-8d21-5fff0a053271",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

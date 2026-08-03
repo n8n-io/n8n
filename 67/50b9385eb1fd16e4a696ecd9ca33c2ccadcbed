@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.eval-config.test.ts
+  s_09a5e5f505f496::t_fef03e01e67c43 32,59,80,115,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6750b9385eb1fd16e4a696ecd9ca33c2ccadcbed",
+  "prompts": {},
+  "sessions": {
+    "s_09a5e5f505f496": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e84f2b02-e2a2-457e-b181-159419e9f0ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

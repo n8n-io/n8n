@@ -1,0 +1,23 @@
+packages/cli/src/credentials-overwrites.ts
+  63b946f1705ed1da 216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "8ccf1498ad0b5b002edb4e7d2185018d94f5d3e2",
+  "prompts": {
+    "63b946f1705ed1da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "960a9a3f-fb1c-459a-b0e3-3632bbd11561",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 228,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

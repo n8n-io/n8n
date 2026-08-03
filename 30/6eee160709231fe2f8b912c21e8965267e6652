@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_9872dedf089f20::t_b3d93c8d7d28e6 3044-3052,3055-3061
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9872dedf089f20::t_2e196324e984e3 2361-2362
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_9872dedf089f20::t_d0a2b3bbc53421 6067-6131
+  s_9872dedf089f20::t_2050ec9cbe9e1e 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "306eee160709231fe2f8b912c21e8965267e6652",
+  "prompts": {},
+  "sessions": {
+    "s_9872dedf089f20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9551b066-918f-4340-b1b7-e1a10affc5d3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

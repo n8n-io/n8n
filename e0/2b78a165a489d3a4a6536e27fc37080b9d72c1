@@ -1,0 +1,36 @@
+packages/cli/src/node-types.ts
+  s_0237a66f4d3f8f::t_e46b27dc3e37b6 86-87,90,95,97-100
+  s_0237a66f4d3f8f::t_92ee5cbecc2211 230
+  s_0237a66f4d3f8f::t_d7b204f5d34827 147-185
+  s_0237a66f4d3f8f::t_44aa7936725cf1 1,4,7,19-35
+  s_0237a66f4d3f8f::t_3ebb929e80a7fd 111,122
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/missing-node-type-mode.test.ts
+  s_0237a66f4d3f8f::t_247a1fb6d7df05 1-111
+packages/cli/src/__tests__/node-types.test.ts
+  s_0237a66f4d3f8f::t_1e9903026b7407 285-327
+  s_0237a66f4d3f8f::t_77dd3acc85d662 1,15,18
+  s_0237a66f4d3f8f::t_5cbef42e019a2f 107-119
+  s_0237a66f4d3f8f::t_1ec100ec0569ac 180
+packages/cli/src/modules/n8n-packages/entities/workflow/missing-node-type-mode.ts
+  s_0237a66f4d3f8f::t_acc6a9a0948ddf 1-81
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_0237a66f4d3f8f::t_f9d8abfdd1f07c 47-53
+  s_0237a66f4d3f8f::t_813b8eb43e7940 250-257
+  s_0237a66f4d3f8f::t_e7a6a2a65448ed 92-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e02b78a165a489d3a4a6536e27fc37080b9d72c1",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

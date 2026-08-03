@@ -1,0 +1,20 @@
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_39789cea64f1a3::t_13a6953f3eac81 117-120,127-133
+  s_39789cea64f1a3::t_c9722ecd04653f 8-11,14-15,17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8adb45a0e7814f9122b241b41c5db3f7b8cda316",
+  "prompts": {},
+  "sessions": {
+    "s_39789cea64f1a3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7d10d8cb-178d-4639-b7b2-906772e28e35",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

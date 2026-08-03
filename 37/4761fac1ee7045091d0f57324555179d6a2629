@@ -1,0 +1,25 @@
+packages/cli/src/controllers/posthog.controller.ts
+  s_5d406704ab5b79::t_b771a8c5b68d56 8,38-44,46-53,69
+  s_5d406704ab5b79::t_c5c789be48455b 9-15,18-37,45
+  s_5d406704ab5b79::t_fc8a859462f0da 16-17
+packages/cli/src/controllers/__tests__/posthog.controller.test.ts
+  s_5d406704ab5b79::t_a49efd05c84f95 1-3,5,20,28-31,34-36,39-41,43-45,47-49,51-54,57-58
+  s_5d406704ab5b79::t_b44b0a0ad1588b 4,6-19,32,38
+  s_5d406704ab5b79::t_42ea882c19d3b1 21-27,33,37,42,46,50,55-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "374761fac1ee7045091d0f57324555179d6a2629",
+  "prompts": {},
+  "sessions": {
+    "s_5d406704ab5b79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e58e4213-75a4-4584-952f-1fc4195b1624",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

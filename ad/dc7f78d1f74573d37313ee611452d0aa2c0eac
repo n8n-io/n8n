@@ -1,0 +1,78 @@
+packages/@n8n/config/test/config.test.ts
+  s_2a235a6e9347be::t_a5a72df6865f24 233
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_2a235a6e9347be::t_63359b1e913ea6 109,113,123,127,136-185
+packages/cli/src/commands/start.ts
+  s_2a235a6e9347be::t_924973caf0fe6e 422-424,445
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_2a235a6e9347be::t_ce374d2cfb6ef8 433-495
+packages/@n8n/config/src/configs/workflows.config.ts
+  s_bf9b19be58ca5d::t_bab1a7192cf295 61-65
+packages/@n8n/db/src/entities/index.ts
+  s_bf9b19be58ca5d::t_791700ce49f6b7 60,125
+packages/@n8n/db/src/entities/workflow-publication-trigger-status.ts
+  s_bf9b19be58ca5d::t_761f6ed2b517e5 9-17,39-41
+packages/@n8n/db/src/repositories/workflow-publication-trigger-status.repository.ts
+  s_bf9b19be58ca5d::t_2fbcbfb612daa7 5-8,14,18-23,50-81
+packages/cli/src/events/maps/workflow-publication-metrics.event-map.ts
+  s_bf9b19be58ca5d::t_ea0c33cfa92241 53-59
+packages/cli/src/metrics/prometheus/__tests__/workflow-publication-metrics.service.test.ts
+  s_bf9b19be58ca5d::t_a77e0b7f3f54c8 108,120,181-191
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_bf9b19be58ca5d::t_c956a071a362b2 59,193-216
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_bf9b19be58ca5d::t_e8f31edebbedd7 71-72,83,90,172-179,190,197,214-228,247,254,261
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_bf9b19be58ca5d::t_c8e32079a66555 115-118,221-223,237-262,271-272,300-302,325-327,349-351,375-376,393-395,437-439,499-506,530-537,561-567,595-608,628-635,652-654
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_bf9b19be58ca5d::t_ebc8c7dad679e9 1-191
+packages/cli/src/workflows/publication/publication-result.ts
+  s_bf9b19be58ca5d::t_f7c18c3da0e589 12-13,19,27
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_bf9b19be58ca5d::t_ddb34c201357a1 158
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_bf9b19be58ca5d::t_671247e85d8e0e 9,103,137,156,168,217,219,239,244-247,254,257
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_bf9b19be58ca5d::t_9f05f8a4614d90 1-175
+packages/cli/src/workflows/triggers/__tests__/trigger-test-utils.ts
+  s_bf9b19be58ca5d::t_f3ae5a9795be80 49-62
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_bf9b19be58ca5d::t_8d847a88e3b0ca 146-168
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_bf9b19be58ca5d::t_3fe9d1232044ef 5,112-140
+packages/cli/test/integration/workflow-publication-trigger-status.repository.test.ts
+  s_bf9b19be58ca5d::t_9901abc8785ff3 37-39,48-61,66-72,81-87,97-110,123-129,183-309
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_bf9b19be58ca5d::t_676e14a3d86421 1-148
+packages/cli/test/integration/workflows/workflows.controller.publication-status.test.ts
+  s_bf9b19be58ca5d::t_ae544ad5333d02 62,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "addc7f78d1f74573d37313ee611452d0aa2c0eac",
+  "prompts": {},
+  "humans": {
+    "h_0d09e42b2cccb8": {
+      "author": "kgrhartlage <kai.grosse.hartlage@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_bf9b19be58ca5d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "s_bf9b19be58ca5d",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

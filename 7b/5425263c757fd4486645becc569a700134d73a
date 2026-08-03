@@ -1,0 +1,14 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/static-sub-workflow-id.ts
+  h_9b272a633435fb 4,6-7,12-14,19-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b5425263c757fd4486645becc569a700134d73a",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

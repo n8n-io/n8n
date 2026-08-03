@@ -1,0 +1,76 @@
+packages/@n8n/local-gateway/package.json
+  s_4aa50c08d4840d::t_4f98f68da7a8b2 30
+packages/@n8n/local-gateway/src/renderer/services/thread-client.test.ts
+  s_4aa50c08d4840d::t_24b09844791068 5,7-13,16-17,23-142
+  s_4aa50c08d4840d::t_839adbc5969e3a 1-4,6,14-15,18-22
+packages/@n8n/local-gateway/src/main/thread-service.ts
+  s_4aa50c08d4840d::t_715536ce2759a5 29-31
+  s_4aa50c08d4840d::t_ec614cce27e8e1 1-28,32-183
+packages/@n8n/local-gateway/src/shared/types.ts
+  s_4aa50c08d4840d::t_500b114c0cac7d 45-46
+  s_4aa50c08d4840d::t_517f3b796f7146 34-35
+  s_4aa50c08d4840d::t_84b9f10ffa1ef4 101-116
+pnpm-lock.yaml
+  s_4aa50c08d4840d::t_715536ce2759a5 2121-2123
+packages/@n8n/local-gateway/src/main/index.ts
+  s_4aa50c08d4840d::t_cbba375bff5262 119-121
+  s_4aa50c08d4840d::t_48e2000a5f4bcf 8-13
+  s_4aa50c08d4840d::t_c70c43d95ce7a7 59-66
+  s_4aa50c08d4840d::t_6b6829197e8c8b 107
+  s_4aa50c08d4840d::t_e2ec7e8dd3bf2d 18
+packages/@n8n/local-gateway/src/renderer/components/AppHeader.vue
+  s_4aa50c08d4840d::t_85b61e724c05b5 91,95,99
+  s_4aa50c08d4840d::t_4213dd7ca95338 81-84
+  s_4aa50c08d4840d::t_f96434c9860a95 37
+packages/@n8n/local-gateway/src/main/instance-api.ts
+  s_4aa50c08d4840d::t_73771f26d10773 5
+  s_4aa50c08d4840d::t_ab71df2b1b346e 142-149
+packages/@n8n/local-gateway/src/main/ipc-handlers.ts
+  s_4aa50c08d4840d::t_93017461128428 8,15,26,37
+  s_4aa50c08d4840d::t_e3582863a8be9c 149-170
+packages/@n8n/local-gateway/src/main/ipc-handlers.test.ts
+  s_4aa50c08d4840d::t_3019e39f984139 49,70-74
+  s_4aa50c08d4840d::t_6ae439578911d5 263-294
+packages/@n8n/local-gateway/src/main/test-fixtures.ts
+  s_4aa50c08d4840d::t_a9bcf04034b1d4 1-2
+  s_4aa50c08d4840d::t_473a0b2f3830bc 19
+  s_4aa50c08d4840d::t_8b454711e5f290 3-8,12-18,20-21
+  s_4aa50c08d4840d::t_715536ce2759a5 9-11
+packages/@n8n/local-gateway/src/main/instance-api.test.ts
+  s_4aa50c08d4840d::t_110284cd375bbc 8
+packages/@n8n/local-gateway/src/main/preload.ts
+  s_4aa50c08d4840d::t_bcb141bb63b810 79-105
+  s_4aa50c08d4840d::t_e2dda83e1ff927 11-12
+packages/@n8n/local-gateway/src/renderer/services/thread-client.ts
+  s_4aa50c08d4840d::t_6db172f8ad2a2a 1-79
+packages/@n8n/local-gateway/src/main/thread-service.test.ts
+  s_4aa50c08d4840d::t_715536ce2759a5 19-21,159,267-269
+  s_4aa50c08d4840d::t_c6f030cfdd7da7 1-10,12-18,22-31,33-158,160-266,270-283
+  s_4aa50c08d4840d::t_3d47fd11bcaba9 32
+  s_4aa50c08d4840d::t_e84172c5fdf13b 11
+packages/@n8n/local-gateway/src/main/main-window.ts
+  s_4aa50c08d4840d::t_32d044ce24ec6c 13-14,18
+  s_4aa50c08d4840d::t_16173072c0ee61 7-12,15-17,19-20
+  s_4aa50c08d4840d::t_d6a4ddd874dde9 79,81-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "2bee648dc9edbc7df8de35c18976eac9f4fe2c20",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4aa50c08d4840d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca3ec3e5-c3e7-4e8a-bc04-705d68d7b331",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

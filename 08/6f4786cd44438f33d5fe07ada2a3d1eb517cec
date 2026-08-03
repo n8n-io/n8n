@@ -1,0 +1,25 @@
+package.json
+  s_f0c4a529fe8ba9::t_f085f49602c3eb 42
+.claude/plugins/n8n/README.md
+  s_f0c4a529fe8ba9::t_c10c1f96da7fb8 46-47
+.agents/skills/create-skill/SKILL.md
+  s_f0c4a529fe8ba9::t_a401f4323f320b 25
+.agents/skills/AGENTS.md
+  s_f0c4a529fe8ba9::t_b8964ea0e2c9e5 37-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "086f4786cd44438f33d5fe07ada2a3d1eb517cec",
+  "prompts": {},
+  "sessions": {
+    "s_f0c4a529fe8ba9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "312e64de-5dd8-4b50-8492-85ca9ac80b69",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

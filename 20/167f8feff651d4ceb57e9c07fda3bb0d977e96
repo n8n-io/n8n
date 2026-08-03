@@ -1,0 +1,22 @@
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_2f4169d66c1827::t_8873bdc992ad5c 785-787
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_2f4169d66c1827::t_4a37c2431f031b 559
+  s_2f4169d66c1827::t_c3891fbe2bd956 1156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "20167f8feff651d4ceb57e9c07fda3bb0d977e96",
+  "prompts": {},
+  "sessions": {
+    "s_2f4169d66c1827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b4eb8f0-e632-454c-b878-59fb88b7f734",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

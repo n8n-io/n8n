@@ -1,0 +1,28 @@
+packages/testing/playwright/services/mcp-oauth-api-helper.ts
+  s_d080cd0071e0f4::t_fd040a56f59a0c 7-16
+  s_d080cd0071e0f4::t_cad1285be7871c 128
+  s_d080cd0071e0f4::t_7030186d1fd228 77-81,86,88
+  s_d080cd0071e0f4::t_30b6a4ce125b5a 165,167,185
+  s_d080cd0071e0f4::t_d9b67741a75007 103,114
+  s_d080cd0071e0f4::t_a043bcf8fef75e 196-201,214,216
+  s_d080cd0071e0f4::t_c6f3487eff12b2 232,237,239-247,254
+  s_d080cd0071e0f4::t_f84dd062b7fe36 273
+packages/testing/playwright/tests/e2e/mcp/mcp-oauth.spec.ts
+  s_d080cd0071e0f4::t_65dfa3768ac125 340-384
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "78c5a78b2060cf31cee5638dbdfc77e29f389671",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

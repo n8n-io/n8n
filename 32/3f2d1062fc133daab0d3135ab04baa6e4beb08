@@ -1,0 +1,19 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4e3d3e4345da23::t_444a2aa210e732 2729-2730
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "323f2d1062fc133daab0d3135ab04baa6e4beb08",
+  "prompts": {},
+  "sessions": {
+    "s_4e3d3e4345da23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97a09d56-678f-4b6b-9440-b4810e176788",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

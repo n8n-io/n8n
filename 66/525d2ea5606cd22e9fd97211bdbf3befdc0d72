@@ -1,0 +1,95 @@
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_4229decbffea06::t_9d40532d4aaf7b 47,53
+  s_4229decbffea06::t_48c8246d9dde26 348
+  s_4229decbffea06::t_b8212808398a1a 1227-1228,1230,1236-1239
+  s_4229decbffea06::t_4a1e1249929ca3 1432-1436,1457-1459
+  ai_agent 89-93,1071-1073,1166-1168
+  s_4229decbffea06::t_1903b9e5156cb6 752
+  s_4229decbffea06::t_2cd0d0a790715f 1367,1387,1398-1400
+  s_4229decbffea06::t_055ee7606a25b3 1479-1480,1482-1483,1485
+  s_4229decbffea06::t_1f2b4b8c68d292 603-604,607-608
+  s_4229decbffea06::t_ee876b47781102 551-552,554
+  s_4229decbffea06::t_f71adbef415e2f 66,74-80,82-88,94-105
+  s_5f8041bd512d7e::t_da5290c36f7e52 3
+  s_4229decbffea06::t_409e076748f0ba 467
+  s_4229decbffea06::t_0f4ee6efa56529 723
+  s_4229decbffea06::t_6f97dd456e5604 489
+  s_4229decbffea06::t_38efa2cdef7699 454-455,457-458
+  s_4229decbffea06::t_fc0ef24fb6746b 782
+  s_4229decbffea06::t_1afe33241a6d17 648,658-659
+  s_4229decbffea06::t_5668405b85b319 4-8,25
+  s_4229decbffea06::t_38a88ff60f0dcb 635-636,641
+  s_4229decbffea06::t_9060fe56579121 919-920
+  s_4229decbffea06::t_1d242eec80b2da 1040-1042,1048,1063-1065
+  s_4229decbffea06::t_b0051d137868df 1105,1111,1113
+  s_4229decbffea06::t_95d41eb9e62329 1137-1142
+  s_4229decbffea06::t_bbd3284f27e2c4 1153-1157,1159,1162-1165,1169-1170,1172-1217
+  s_4229decbffea06::t_3d191fd8d3e985 688
+  s_4229decbffea06::t_1fb59cc4c22cce 1242-1248,1251,1253-1258,1261,1263,1265
+  s_4229decbffea06::t_64d6b62189036a 1359-1360,1363
+packages/cli/src/modules/mcp/mcp.constants.ts
+  s_4229decbffea06::t_7a46e6578529e2 29
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_4229decbffea06::t_fa790e9412fe53 81-100
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_4229decbffea06::t_223e1259befaa3 243-246,256
+  s_4229decbffea06::t_eb00a81888e03d 78
+packages/cli/src/modules/agents/agents.service.ts
+  s_4229decbffea06::t_43b49612f01952 166-168,170-173,175-176,178
+  s_4229decbffea06::t_14c9704bef071b 9,11
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_4229decbffea06::t_137cd38d395aa4 904
+  s_4229decbffea06::t_6127a9a50f319a 1106
+  s_4229decbffea06::t_6accae245075d5 133
+  s_4229decbffea06::t_1738f9ca0fd98a 938
+  s_4229decbffea06::t_4126f850ccb1f0 242,257
+  s_4229decbffea06::t_63b6e497bcf25a 726-729,739,745-748
+  s_4229decbffea06::t_cd5138e55d59a2 1119
+  s_4229decbffea06::t_94396ad99a9175 530-536
+  s_4229decbffea06::t_aee3819ea5d28a 1032
+  s_4229decbffea06::t_1b1b1023a15c06 391-396
+  s_4229decbffea06::t_afcf9f63d8ca9d 317,319-321
+  s_4229decbffea06::t_c91a400b54b725 352,354
+  s_4229decbffea06::t_45304b61a827fa 37
+  s_4229decbffea06::t_844d35874f4272 409-418
+  s_4229decbffea06::t_123a6e1514fe1d 781
+  s_4229decbffea06::t_364de6b467bc0c 952
+  s_4229decbffea06::t_d6d28d67fc2377 1083-1085,1090
+  s_4229decbffea06::t_66c1e4405007fb 69-71
+  s_4229decbffea06::t_9ca7c82e5b43df 118
+  s_4229decbffea06::t_50ebff48905272 1058,1067
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_4229decbffea06::t_5a241c9b423a99 337-356
+  s_4229decbffea06::t_bb20aaa305260c 102-107,114
+  s_4229decbffea06::t_3acd673920736c 204,206-207
+  s_4229decbffea06::t_6dde87950d4afb 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66525d2ea5606cd22e9fd97211bdbf3befdc0d72",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4229decbffea06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf382921-2c69-4a54-920e-3f1a709d96ed",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    },
+    "s_5f8041bd512d7e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f608f-faad-73c2-9dd7-a5ec03a8855e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}

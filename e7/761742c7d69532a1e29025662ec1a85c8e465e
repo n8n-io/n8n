@@ -1,0 +1,30 @@
+packages/cli/src/modules/provisioning.ee/__tests__/provisioning.service.ee.test.ts
+  s_d2176d33b46066::t_ec8647c20884d4 1121-1139,1142,1151,1156-1157,1162-1163,1168-1169,1176,1181-1182,1187-1188
+  s_d2176d33b46066::t_cdcd8063c91abc 1059-1101,1107-1117
+  s_d2176d33b46066::t_019e0933b322a0 917-918
+  s_d2176d33b46066::t_26d23be22cc8c0 1118-1120,1140-1141,1143-1150,1152-1155,1158-1161,1164-1167,1170-1175,1177-1180,1183-1186,1189-1192
+  s_d2176d33b46066::t_29d00e819be9bc 1102-1106
+  s_d2176d33b46066::t_a2ed75bc202e1e 1193-1195
+packages/cli/src/modules/provisioning.ee/provisioning.service.ee.ts
+  s_d2176d33b46066::t_17d71e073d0180 662-667,677-680,683-692,701
+  s_d2176d33b46066::t_69c90593b32131 496-503,505,509-514
+  s_d2176d33b46066::t_e38781210f65c5 440-447
+  s_d2176d33b46066::t_393960d044048b 449,451-452,457,459
+  s_d2176d33b46066::t_aac406d9c2b2d0 504,508
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "e7761742c7d69532a1e29025662ec1a85c8e465e",
+  "prompts": {},
+  "sessions": {
+    "s_d2176d33b46066": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c3929aa-e141-4d14-a56a-9cf227daca62",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

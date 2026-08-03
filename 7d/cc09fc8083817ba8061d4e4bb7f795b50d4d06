@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Facebook/FacebookGraphApi.node.ts
+  2159d8323e44ebb9 373,379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "7dcc09fc8083817ba8061d4e4bb7f795b50d4d06",
+  "prompts": {
+    "2159d8323e44ebb9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98bd179d-9093-403d-8fbf-4f802e2fd2e8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 16,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}

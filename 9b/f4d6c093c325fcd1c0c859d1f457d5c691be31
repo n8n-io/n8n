@@ -1,0 +1,18 @@
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsViewV2.vue
+  h_7555c3ee6524cf 78
+packages/@n8n/api-types/src/agents/types.ts
+  h_7555c3ee6524cf 190
+packages/frontend/editor-ui/src/features/agents/composables/useMessageAgentSessionLink.ts
+  h_7555c3ee6524cf 11,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9bf4d6c093c325fcd1c0c859d1f457d5c691be31",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

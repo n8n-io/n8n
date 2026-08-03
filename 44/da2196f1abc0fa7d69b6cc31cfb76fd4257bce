@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/resolvers/ResolversView.vue
+  s_651e76205d2456::t_d21cc551464b5d 128
+  s_651e76205d2456::t_4492cd8b9940d7 18
+  s_651e76205d2456::t_e591c02d5fb377 99
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_651e76205d2456::t_da39bc717da3e2 12
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_651e76205d2456::t_b2bbd8a7282a23 21
+  s_651e76205d2456::t_d35f3ec4b0fe52 468-470
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialTypeSelector.vue
+  s_651e76205d2456::t_a21d90f988e38f 3-4
+  s_651e76205d2456::t_79e4c3706f078f 37-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "44da2196f1abc0fa7d69b6cc31cfb76fd4257bce",
+  "prompts": {},
+  "sessions": {
+    "s_651e76205d2456": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ad6da7d-38af-43ed-92a1-a150e7f475b2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

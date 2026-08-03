@@ -1,0 +1,89 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseResultCard.test.ts
+  s_c46f71b1296adf::t_f06a9858d73439 95-116
+packages/frontend/editor-ui/src/features/setupPanel/components/FocusSidebarTabs.test.ts
+  s_c46f71b1296adf::t_a2c6043265c365 99,107-109,112,114,117-118,120
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/EvaluationsWizardSidepanel.vue
+  s_c46f71b1296adf::t_b57d31617b4d16 18
+  s_c46f71b1296adf::t_247d9c2112b9bc 279
+  s_c46f71b1296adf::t_acd96374b2b6df 295-299
+  s_c46f71b1296adf::t_584dab1a39b370 36
+  s_c46f71b1296adf::t_b6479f2f3e97d3 57
+  s_c46f71b1296adf::t_d7866e0ff7539c 181
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useTestCasePersistence.test.ts
+  s_c46f71b1296adf::t_58eea36322c6a4 681-719
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useEvaluationPersistenceHelpers.ts
+  s_c46f71b1296adf::t_0e630a0cf91bfb 1-306
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseList.vue
+  s_c46f71b1296adf::t_edb5d37177ad4a 10
+  s_c46f71b1296adf::t_612bf553f0b5f1 19,27
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardPersistence.ts
+  s_c46f71b1296adf::t_38670a196922cb 103
+  s_c46f71b1296adf::t_e192f0da0f7575 18,26-31
+  s_c46f71b1296adf::t_98495429175e3f 42-43
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/ExecutionRow.vue
+  s_c46f71b1296adf::t_b39482a5531c27 13
+  s_c46f71b1296adf::t_052feb179dc5e8 41
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCreateCaseFromExecution.ts
+  s_c46f71b1296adf::t_6c706e5c95799a 7
+  s_c46f71b1296adf::t_1705122efcfc3b 22
+  s_c46f71b1296adf::t_6fcef8cdb83833 32
+  s_c46f71b1296adf::t_23902535106ef8 79
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardHydration.ts
+  s_c46f71b1296adf::t_cf49d4925960b6 40-43,45,48-51,53-57,71-76,80,95
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/wizardSidepanel.store.ts
+  s_c46f71b1296adf::t_6c8746861b81d7 91-94
+  s_c46f71b1296adf::t_f9d5096838ea9a 321
+  s_c46f71b1296adf::t_2ae8df803f11b4 90
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseResultCard.vue
+  s_c46f71b1296adf::t_a1ef8f9cfd9943 146
+  s_c46f71b1296adf::t_4986ee7dfeceb0 79
+  s_c46f71b1296adf::t_88603cd10626c7 18
+  s_c46f71b1296adf::t_eb69b2a2a9da1c 122-127,129-131
+  ai_agent 132-137
+  s_c46f71b1296adf::t_fef8708ef3dd00 152
+  s_c46f71b1296adf::t_a1581c351b1d41 13,15-17,19
+packages/frontend/editor-ui/src/features/setupPanel/components/FocusSidebarTabs.vue
+  s_c46f71b1296adf::t_6a05cddd8d394a 51
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.test.ts
+  s_c46f71b1296adf::t_9c36777bd168c6 110-111
+  s_c46f71b1296adf::t_77859c96e8a9fb 138-158
+  s_c46f71b1296adf::t_c851e0cf5e9172 68-69,75-76
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardHydration.test.ts
+  s_c46f71b1296adf::t_f228b9f450f1b0 26
+  s_c46f71b1296adf::t_72aa78e936e45e 11
+  s_c46f71b1296adf::t_efb858ca8d7105 113
+  s_c46f71b1296adf::t_54495c5fac6173 162-179
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useTestCasePersistence.ts
+  s_c46f71b1296adf::t_57591b7f0d7c38 211-218,220-222,224-228
+  s_c46f71b1296adf::t_77f44203fb77f0 19-20,29-34
+  s_c46f71b1296adf::t_7ea79f7c55c4fa 53-55
+  s_c46f71b1296adf::t_3601fd14bb6812 49-50
+  s_c46f71b1296adf::t_b3499063eaa1f3 112
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useUserExecutions.ts
+  s_c46f71b1296adf::t_3b2c04148477d3 1-44
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestsPanel.vue
+  s_c46f71b1296adf::t_3f42a665042c35 123
+  s_c46f71b1296adf::t_4057403987c2e3 33
+  s_c46f71b1296adf::t_bfdb6eaf344fbe 22
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_c46f71b1296adf::t_efef3344e80b7b 359-376
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.vue
+  s_c46f71b1296adf::t_74f40f3dbb991a 116,120-132
+  s_c46f71b1296adf::t_698aafcaa83a16 245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "41af8f5b39249d6afceb0d885f69be39e8f3279c",
+  "prompts": {},
+  "sessions": {
+    "s_c46f71b1296adf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93ce490b-f2a8-430e-acee-587c52f383a1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

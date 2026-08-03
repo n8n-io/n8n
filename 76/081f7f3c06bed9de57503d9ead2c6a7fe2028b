@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_e914f9d650f740::t_0d6d49c398de29 13-14,23-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "76081f7f3c06bed9de57503d9ead2c6a7fe2028b",
+  "prompts": {},
+  "sessions": {
+    "s_e914f9d650f740": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba45f304-95eb-425b-a3af-c542d2a8a14b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

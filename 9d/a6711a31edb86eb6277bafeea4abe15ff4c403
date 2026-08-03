@@ -1,0 +1,55 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_4e3d3e4345da23::t_49c77c741cc94b 90-95
+packages/@n8n/permissions/src/scope-information.ts
+  s_4e3d3e4345da23::t_f21eafd1002519 102,104
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_4e3d3e4345da23::t_558c82ea8b0d4a 73,107-108,571
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4e3d3e4345da23::t_b8633a95c3f328 2729-2730
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.test.ts
+  s_4e3d3e4345da23::t_16931e75297126 134-169
+packages/cli/src/credentials/credentials.service.ee.ts
+  s_4e3d3e4345da23::t_25e2b0439556f4 217
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_4e3d3e4345da23::t_3ee89e6da33637 1310-1314
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_4e3d3e4345da23::t_4fc6d12f8b3366 411,436-453
+  s_4e3d3e4345da23::t_38e54d63ee293c 454-456
+  s_4e3d3e4345da23::t_f9ad3eca815e02 457-463
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_4e3d3e4345da23::t_2a73ed4471bae1 1440
+  s_4e3d3e4345da23::t_c59f0e870e239b 1470
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_4e3d3e4345da23::t_35908d6116dd34 164-167,171
+  s_4e3d3e4345da23::t_521b371cfd2fda 226-235
+  s_4e3d3e4345da23::t_9f2586b42ead65 3
+packages/cli/src/credentials/credentials.service.ts
+  s_4e3d3e4345da23::t_22ce46f7591b16 1454-1459,1461,1467,1476
+  s_4e3d3e4345da23::t_2ff00f091d63e0 936-941
+packages/cli/src/credentials/credentials.controller.ts
+  s_4e3d3e4345da23::t_886ef67355357a 238,241
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_4e3d3e4345da23::t_6fe210709490d4 949-970
+packages/cli/test/integration/credentials/credentials.resolvable.api.test.ts
+  s_4e3d3e4345da23::t_debb00175a0e50 612,623-629
+  s_4e3d3e4345da23::t_ddcde2216aef60 704-720
+  s_4e3d3e4345da23::t_5e52897efb3f83 630-636
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_4e3d3e4345da23::t_da80e9892d6743 252-254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "9da6711a31edb86eb6277bafeea4abe15ff4c403",
+  "prompts": {},
+  "sessions": {
+    "s_4e3d3e4345da23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97a09d56-678f-4b6b-9440-b4810e176788",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

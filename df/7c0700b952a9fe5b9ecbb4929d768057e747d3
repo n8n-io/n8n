@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/roles/components/RoleHoverPopover.vue
+  s_daaf7502b5ecf5::t_8a2954d87a173f 161-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "df7c0700b952a9fe5b9ecbb4929d768057e747d3",
+  "prompts": {},
+  "sessions": {
+    "s_daaf7502b5ecf5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3c428ae8-f59a-432d-a662-e695b5873551",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

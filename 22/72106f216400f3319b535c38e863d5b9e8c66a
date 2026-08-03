@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/index.ts
+  s_9e3fb7eb7b1034::t_406ec320b2e537 9,11,15-33,39-43,52-73,76-128,141,162-168,177-205
+  s_9e3fb7eb7b1034::t_2f654f77131777 74-75
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_9e3fb7eb7b1034::t_1f59125c2d4ed3 6-13
+  s_9e3fb7eb7b1034::t_e9ee327f5f55a9 522,534,542-553,559
+  s_9e3fb7eb7b1034::t_b6f7281ccc8ba9 298-434
+  s_9e3fb7eb7b1034::t_0f3ef1e5317757 651-702
+  s_9e3fb7eb7b1034::t_c89391325b06c7 577
+  s_9e3fb7eb7b1034::t_b1d59d52becb87 14-21,27,32,34
+  s_9e3fb7eb7b1034::t_4c2717918d297c 249-250,263,273
+  s_9e3fb7eb7b1034::t_91a0c3f6062e52 455-521,523-533,535-541,554-558,560-576,578-591,597,602,604,618,631-650,709,714,716,728,738
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_9e3fb7eb7b1034::t_f8b5b386d248f7 11-17,23-36
+  s_9e3fb7eb7b1034::t_afdc02521d7a0b 297-301
+  s_9e3fb7eb7b1034::t_f6a5cb313f9a7b 101-105
+  s_9e3fb7eb7b1034::t_9ba1994d4519cc 233
+  s_9e3fb7eb7b1034::t_5dd9e2b7df16c8 155-159
+  s_9e3fb7eb7b1034::t_0413d43e112430 267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "2272106f216400f3319b535c38e863d5b9e8c66a",
+  "prompts": {},
+  "sessions": {
+    "s_9e3fb7eb7b1034": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba225abc-2d80-4c6a-af99-cceaa9f6df99",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

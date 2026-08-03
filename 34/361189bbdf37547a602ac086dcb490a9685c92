@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/workflowActivated.test.ts
+  s_6d3b3aa431f817::t_401bd71305356d 122-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "34361189bbdf37547a602ac086dcb490a9685c92",
+  "prompts": {},
+  "sessions": {
+    "s_6d3b3aa431f817": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4315bf44-d3e2-41af-beab-6568cb6ca6fb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

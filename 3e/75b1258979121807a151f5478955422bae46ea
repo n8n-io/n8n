@@ -1,0 +1,38 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_59b6b037df63e7::t_6fcd40a1990a4d 468
+  s_59b6b037df63e7::t_1449d9acb1dfbe 814
+  s_59b6b037df63e7::t_f65e2abf0b45fc 391
+  s_59b6b037df63e7::t_74fb34bf894418 434
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_59b6b037df63e7::t_6f541699ec5d69 546,548
+  s_59b6b037df63e7::t_6022dc67af1227 48
+packages/@n8n/instance-ai/src/tools/agent-builder/configure-channel.tool.ts
+  s_59b6b037df63e7::t_77660633a45ec5 7
+  s_59b6b037df63e7::t_521cc13010b83f 70-71
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_59b6b037df63e7::t_8a02f383255dc5 278
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_59b6b037df63e7::t_7a3fb3ca557a6a 166
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationKinds.ts
+  s_59b6b037df63e7::t_04edefdb811fdd 9,12-14,22
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/configure-channel.tool.test.ts
+  s_59b6b037df63e7::t_58893581cf966f 26
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_59b6b037df63e7::t_27037294c95d1c 394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3e75b1258979121807a151f5478955422bae46ea",
+  "prompts": {},
+  "sessions": {
+    "s_59b6b037df63e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c4162b94-0dd7-4031-8faa-741c07b82e5c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_b2770a9c4c7dcd::t_64174b0f68870c 261,317-321,425,440,467-469,527,551-553
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b2770a9c4c7dcd::t_e7d7c604ffd67d 1258-1260,1262
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_b2770a9c4c7dcd::t_acd4b49dd5a897 59,178-188,512-518,539-545
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_b2770a9c4c7dcd::t_8ef551828db05a 79-80,247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "b5ec1892cb5c1906231adaaa18007aadf042bc76",
+  "prompts": {},
+  "sessions": {
+    "s_b2770a9c4c7dcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ee5c2-4c3c-7be2-a064-09d90bbc7259",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

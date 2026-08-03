@@ -1,0 +1,62 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_70fb4223a7d1db::t_e3295be8961957 350-363
+  s_70fb4223a7d1db::t_141ad8d583c1d7 11
+packages/frontend/editor-ui/src/features/agents/composables/useModelCatalog.ts
+  s_70fb4223a7d1db::t_293754327f5174 4-8,25-31
+  s_70fb4223a7d1db::t_da4e46f16a4181 98-127,134-150,153
+  s_80d185abd37303::t_070d0aba7ac4bc 3,32
+packages/cli/src/modules/agents/__tests__/agents-catalog.controller.test.ts
+  s_70fb4223a7d1db::t_e9a4103046b9a0 49
+  s_70fb4223a7d1db::t_10d146eb82618e 65-70
+  s_70fb4223a7d1db::t_8493c317cdcee9 1-2,4-9,23,29-48,50-64,71-72
+  s_70fb4223a7d1db::t_09d0dfb0bab33f 3
+  s_80d185abd37303::t_d25beb800182f0 73
+packages/frontend/editor-ui/src/features/agents/__tests__/useModelCatalog.test.ts
+  s_70fb4223a7d1db::t_492d93ff9fad74 6,17
+  s_70fb4223a7d1db::t_132b1d24d43a42 41-44,49-51
+  s_70fb4223a7d1db::t_fd304e295a8d46 103-193
+packages/cli/src/modules/agents/builder/interactive/llm-provider-defaults.ts
+  s_70fb4223a7d1db::t_198c0320d25f8f 100-129
+  s_70fb4223a7d1db::t_b32b42e2507cfb 70-89
+packages/@n8n/api-types/src/agents/dto.ts
+  s_70fb4223a7d1db::t_c77e171adcc225 57-60
+packages/cli/src/modules/agents/agents-catalog.controller.ts
+  s_70fb4223a7d1db::t_39deeb087beb3f 9
+  s_70fb4223a7d1db::t_ff01d643ca0f5c 35
+  s_70fb4223a7d1db::t_9a86a9e1a00314 1-8,11,14,21,31-34,36-46
+  s_70fb4223a7d1db::t_d0c9020672e5b9 10
+  s_70fb4223a7d1db::t_dcbd7c4de0c52b 47-48
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_70fb4223a7d1db::t_e2ac64eab586c0 24-46
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_70fb4223a7d1db::t_738e39b2b5d877 1-116
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_70fb4223a7d1db::t_6aa2a65f94ed0f 152,154-157,159,164,168-172
+  s_70fb4223a7d1db::t_ae4bcc92c2c0c9 60-63
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_70fb4223a7d1db::t_ceba0412f698fa 1-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d7d6d21dd9f42199b06cfc1dc0a3cfa8b27319fb",
+  "prompts": {},
+  "sessions": {
+    "s_70fb4223a7d1db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf21fcf-13a0-4245-8181-bb4439b4ca9f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_80d185abd37303": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2231-958a-77f0-881a-1fca61d763de",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

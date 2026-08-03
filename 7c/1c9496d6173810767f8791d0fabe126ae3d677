@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/trigger/MicrosoftOutlookTrigger.transport.test.ts
+  s_e7b82576de0350::t_db00f891c2d9f7 86-106
+packages/nodes-base/nodes/Microsoft/Outlook/v2/helpers/utils.ts
+  s_e7b82576de0350::t_686575bcdc9503 10-34
+  s_e7b82576de0350::t_e1aba4ba0d1757 346-349,352
+packages/nodes-base/nodes/Microsoft/Outlook/v2/descriptions/mailbox.description.ts
+  s_e7b82576de0350::t_ca7917d209529e 20
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/utils/utils.test.ts
+  s_e7b82576de0350::t_ff163c05ef9d0a 319-321,324-325
+  s_e7b82576de0350::t_04ed1b97a43960 277-289
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_e7b82576de0350::t_bd76b4cab9caf4 298-323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "7c1c9496d6173810767f8791d0fabe126ae3d677",
+  "prompts": {},
+  "sessions": {
+    "s_e7b82576de0350": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8559a775-ab76-4c98-9eef-2dc047602094",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

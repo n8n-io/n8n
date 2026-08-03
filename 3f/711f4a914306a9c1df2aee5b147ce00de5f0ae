@@ -1,0 +1,71 @@
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 1-256
+packages/nodes-base/test/nodes/TriggerHelpers.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 7,21,31-41,85,92-95,98-99,113-122,131,193-198,201-202,215-224
+packages/cli/src/modules/agents/integrations/agent-chat-suspension-cards.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 1-121
+packages/cli/src/modules/agents/integrations/agent-chat-message-context.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 1-136
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 1-186
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 38-39,715,784,789-795,798,803,810-816,819,824,832-838,844
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 39
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/scheduling-helper-functions.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 1,26-29,36,44,46
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 4,12,18-21,25-28,30,121-122,130-134,228-247
+packages/nodes-base/nodes/Schedule/test/ScheduleTrigger.node.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 35-36,42,44-46,49
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 14,143,286-330,470-497,541,578-581,583-588,819,826-832,856-859
+packages/cli/src/modules/agents/__tests__/agent-telemetry.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 63-64
+packages/cli/src/modules/agents/integrations/platforms/slack-bridge-behavior.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 1-292
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_81ace5d2364452::t_0d909aa5e9e517 172-175,179
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 10,34-39,46-50,64,237-243,268,289-290,305,309,312-318,320,323-324,333-337,343,361,404,413,423,437
+packages/@n8n/config/src/configs/agents.config.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 11,20,22,24-28,44
+packages/cli/src/modules/agents/__tests__/agent-json-config.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 1
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 161,210,280,291,312,345,373,399,459,477
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 5,26-27,102-108,113-120,123-124,139,160,192-195,259,296,355,370-376,389,399,413-435,465,515,520,572-578,586-590,607-610,628,655,669,681,693,708,727-728,755,778
+packages/cli/src/modules/agents/__tests__/agents-tools.service.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 13,30,32,114,175
+packages/cli/src/modules/agents/agents-tools.service.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 14,106,109-110,183
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 3,8-12,14-17,23,71-76,85,88-93,97-129,205,258,261-263,265,268,287-289,296-311,329-330,389,394
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 334-336
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 2,24-56
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 2-3,39-66,228-251
+packages/core/src/execution-engine/node-execution-context/utils/scheduling-helper-functions.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 6-7,24-33
+packages/cli/src/modules/agents/integrations/platforms/slack-integration.ts
+  s_81ace5d2364452::t_0d909aa5e9e517 7-10,15,23-28,92-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f711f4a914306a9c1df2aee5b147ce00de5f0ae",
+  "prompts": {},
+  "sessions": {
+    "s_81ace5d2364452": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef613-fd83-76a3-a799-9a5f479f0b9d",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

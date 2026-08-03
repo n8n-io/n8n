@@ -1,0 +1,32 @@
+packages/cli/test/integration/execution-redaction.test.ts
+  s_f01edc540546e1::t_6399545656e0ae 660,673
+  s_f01edc540546e1::t_63918fe8253bbb 795
+  s_f01edc540546e1::t_fb54583a3bcb00 349-350
+  s_f01edc540546e1::t_64432dc04f3d3c 338-348,351-354
+  s_f01edc540546e1::t_90ce8618c16a3f 612,625
+  s_f01edc540546e1::t_750050991c64e8 872,875
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_f01edc540546e1::t_813fbead5f588f 3751-3777
+  s_f01edc540546e1::t_656d90726fd7e8 2353,2355-2356
+  s_f01edc540546e1::t_84c9cf9b6d38d9 2415,2417-2418
+  s_f01edc540546e1::t_885dcf3404499d 1226,1228-1229
+  s_f01edc540546e1::t_40496e609d7046 1169,1171-1172
+packages/@n8n/permissions/src/roles/scopes/workflow-sharing-scopes.ee.ts
+  s_f01edc540546e1::t_46e2d5837d0361 15-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "35325b37776ea764eefe5c51fad1fc5772fa2b36",
+  "prompts": {},
+  "sessions": {
+    "s_f01edc540546e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34a4ecb8-915a-4934-b9f0-ada12f567490",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

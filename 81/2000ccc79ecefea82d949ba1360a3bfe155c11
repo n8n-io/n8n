@@ -1,0 +1,16 @@
+single-instance-promotion-prototype/implementation-phase/PROMPT_NODE_CREDENTIALS_VUE_ENVIRONMENT_SELECT.md
+  h_c63dce324dfc7b 1-9
+single-instance-promotion-prototype/implementation-phase/PLAN_NODE_CREDENTIALS_VUE_ENVIRONMENT_SELECT.md
+  h_c63dce324dfc7b 1-257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "812000ccc79ecefea82d949ba1360a3bfe155c11",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

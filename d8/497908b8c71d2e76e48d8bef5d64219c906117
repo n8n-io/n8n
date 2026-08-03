@@ -1,0 +1,21 @@
+packages/cli/src/public-api/index.ts
+  s_886db5e723e12b::t_6a3a3d262aae7c 80-84,86,89-92
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_886db5e723e12b::t_6a3a3d262aae7c 1,113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8497908b8c71d2e76e48d8bef5d64219c906117",
+  "prompts": {},
+  "sessions": {
+    "s_886db5e723e12b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb120-9c1c-7101-aa10-f70647294c65",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

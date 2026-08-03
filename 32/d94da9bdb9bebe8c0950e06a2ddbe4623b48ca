@@ -1,0 +1,28 @@
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_7d48ada9cf20b6::t_4ea1a1f0c02d39 14
+  ai_agent 71-74
+  s_7d48ada9cf20b6::t_fb2746b2cbc271 75-84,90
+  s_7d48ada9cf20b6::t_f15c942544d7d1 223-225,227
+  h_0ff5b37e8b04b1 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "32d94da9bdb9bebe8c0950e06a2ddbe4623b48ca",
+  "prompts": {},
+  "humans": {
+    "h_0ff5b37e8b04b1": {
+      "author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7d48ada9cf20b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d125bd-0770-4362-a74d-8364298b52a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

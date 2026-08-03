@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_365b472d5d8c59::t_0267c25ab0200b 437-441
+  s_365b472d5d8c59::t_e49643d3c7d1a8 155-170
+  s_365b472d5d8c59::t_a0fc77cbfc3773 24,28-38
+  s_365b472d5d8c59::t_a4afb6b0da48d2 14
+  s_365b472d5d8c59::t_a1266b0f4f37a1 78
+  s_365b472d5d8c59::t_b90e67a073c0d0 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a71ebec185688f96fefa6446850fa0d4f2ec44dd",
+  "prompts": {},
+  "sessions": {
+    "s_365b472d5d8c59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb19c6f7-a030-4ca5-b2ee-0cd60963272c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/src/services/__tests__/protected-resource.registry.test.ts
+  s_d080cd0071e0f4::t_8853efd17249d6 1-115
+packages/cli/src/workflows/workflow-history/workflow-history.service.ts
+  s_d080cd0071e0f4::t_48f93bf797c0a2 15-16
+  s_d080cd0071e0f4::t_37e8428d5aefcd 267-273
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_d080cd0071e0f4::t_f2830cde9f2e9d 18-27,41,43
+  s_d080cd0071e0f4::t_249293dae71b36 30,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "f7abd1e9e7ceae555442bfa14ef8ca342fb97e77",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

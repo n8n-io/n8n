@@ -1,0 +1,15 @@
+packages/cli/test/integration/task-runners/task-broker-server.test.ts
+  h_8fb27e0cdf6d1e 53-57,60-61
+  ai_agent 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c1d35a448a64048e2f9ea1c4f83a29c76e794fd",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_22a80fe2452f63::t_ebdc9b2e430d42 46-67
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_22a80fe2452f63::t_b8e2c1fe6b7aaa 19-23,28-31,36-37,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "68f78f88b43eff1169fc18fed7cf4712c7fd52ba",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_22a80fe2452f63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79671750-1f7e-4915-8c6e-da075fdef4b5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

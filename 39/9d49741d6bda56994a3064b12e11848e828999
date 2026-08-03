@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.vue
+  s_3a36de5a05244c::t_4783a71318502a 239,322,329,331,334,336,340-342
+  s_3a36de5a05244c::t_7d413a4ac56710 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "399d49741d6bda56994a3064b12e11848e828999",
+  "prompts": {},
+  "sessions": {
+    "s_3a36de5a05244c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0ae55a7-9837-4657-a1d0-2ffda526096c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

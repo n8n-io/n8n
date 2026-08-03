@@ -1,0 +1,25 @@
+packages/testing/playwright/tests/e2e/nodes/kafka-nodes.spec.ts
+  s_ad834ee1492715::t_e71bb2c3901bb2 242-366
+  s_ad834ee1492715::t_cfce710636e9c4 7-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "c0d94f00c9ec2598756b894c5bc845b807fc7f8d",
+  "prompts": {},
+  "humans": {
+    "h_63d8ce7f01339b": {
+      "author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ad834ee1492715": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1bbd2b7-ee51-46b9-83e1-cf71d607a8dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

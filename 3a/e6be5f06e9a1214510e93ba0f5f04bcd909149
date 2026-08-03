@@ -1,0 +1,21 @@
+.claude/plugins/n8n/commands/changes-review.md
+  s_d1de77b7288458::t_5052810f142e16 1-48
+.claude/plugins/n8n/commands/plan-review.md
+  s_d1de77b7288458::t_ddeb434bc8a692 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "3ae6be5f06e9a1214510e93ba0f5f04bcd909149",
+  "prompts": {},
+  "sessions": {
+    "s_d1de77b7288458": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9925897c-5b49-4cc7-ac39-22fb669dbac3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

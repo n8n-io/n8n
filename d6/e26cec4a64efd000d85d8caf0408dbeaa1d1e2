@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseRunResult.vue
+  s_3a7ac9263997db::t_d6532b904dffc2 43-45,47
+  s_3a7ac9263997db::t_28fda162964e5d 193,195
+  s_3a7ac9263997db::t_9da81650aa460a 2,6-11,13-14,16-18,20-22,24-42,46,48,51-63,65-66,69-99,102-132,135-189,194,196-202,204-213,215,217,219-226,228-260,262-264,266-268,274,276,280-285,288,291,294-297,300-306,309-311,314-316,319,324-326,329,331-333
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.test.ts
+  s_3a7ac9263997db::t_c5070f1b7e0fac 87,89,91
+  s_3a7ac9263997db::t_b75b51b5823536 90
+  s_3a7ac9263997db::t_fb66b350b48766 180,186,189
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.vue
+  s_3a7ac9263997db::t_c90563463988bb 281-289,293-309,312-315,317-378,381,383-384,386-387,389,394-395
+  s_3a7ac9263997db::t_14a191b0789e80 197-204,210-211
+  s_3a7ac9263997db::t_041bd79f060bc8 272-280
+  s_3a7ac9263997db::t_f56f360055c12f 385
+  s_3a7ac9263997db::t_6ed8429557a75a 454
+  s_3a7ac9263997db::t_34107433da66f7 390-393
+  s_3a7ac9263997db::t_39af668cbc0ed5 205
+  s_3a7ac9263997db::t_7eac420cd34815 29
+  s_3a7ac9263997db::t_d77932b16e4c61 451-453,455-458
+  s_3a7ac9263997db::t_ba5d355ae11b68 9
+  s_3a7ac9263997db::t_43f0dda9cf12c6 212-215
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseResultCard.vue
+  s_3a7ac9263997db::t_3b8cca00eebae9 2-3,7,81-82
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3a7ac9263997db::t_5815e395ed811b 5978-5979
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d6e26cec4a64efd000d85d8caf0408dbeaa1d1e2",
+  "prompts": {},
+  "sessions": {
+    "s_3a7ac9263997db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d07e89da-f145-46b7-afeb-052230f4ee69",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

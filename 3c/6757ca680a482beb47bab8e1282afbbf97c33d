@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.ts
+  s_b0dff49d146f43::t_6d5e3e0cb3943a 111-114
+  s_b0dff49d146f43::t_5471d2968541b6 10
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/listSearch.ts
+  s_b0dff49d146f43::t_3656a49eabc588 94-99
+  s_b0dff49d146f43::t_b38d5d939563e6 9
+  s_b0dff49d146f43::t_ef94368cb405ae 1-8,10-93
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/utils.test.ts
+  s_b0dff49d146f43::t_3144172f6522ec 122-142
+  s_b0dff49d146f43::t_350fdff005f01d 236-296,308,310,323-324,334,349,356,382-383,385-386
+  s_b0dff49d146f43::t_12397c0a330acd 297-307,309,311-322,325-333,335-348,350-355,357-380
+  s_b0dff49d146f43::t_d846f159294385 1-2,7
+  s_b0dff49d146f43::t_41e06b4a6b9dd3 381,384
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/index.ts
+  s_b0dff49d146f43::t_983570d51c8aa1 1-6
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/methods/listSearch.test.ts
+  s_b0dff49d146f43::t_d833fc6f15db36 1-9,11-133,135-237
+  s_b0dff49d146f43::t_d9c825b1182df2 10
+  s_b0dff49d146f43::t_047b5841fca935 238-240
+  s_b0dff49d146f43::t_b0be357ba243ba 134
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/descriptions/common.descriptions.ts
+  s_b0dff49d146f43::t_0e08dbf0251e39 41,44-45,47-70,84,87-90,92-99
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/utils.ts
+  s_b0dff49d146f43::t_fa9555181d97a8 2,4,11-12
+  s_b0dff49d146f43::t_8bd9a6fc7517d3 13
+  s_b0dff49d146f43::t_d7464689d83ad7 90,102-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3c6757ca680a482beb47bab8e1282afbbf97c33d",
+  "prompts": {},
+  "sessions": {
+    "s_b0dff49d146f43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28763c9d-81fb-4290-8c04-449238bcc961",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

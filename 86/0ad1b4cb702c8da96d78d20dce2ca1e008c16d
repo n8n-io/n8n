@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_b2770a9c4c7dcd::t_7067095092de7e 933,954
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_b2770a9c4c7dcd::t_7067095092de7e 480
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiPromptSuggestions.telemetry.test.ts
+  s_b2770a9c4c7dcd::t_7067095092de7e 66,77
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/spec/instance-ai-personalized-prompt-suggestions.md
+  s_b2770a9c4c7dcd::t_7067095092de7e 22
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_b2770a9c4c7dcd::t_7067095092de7e 118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "860ad1b4cb702c8da96d78d20dce2ca1e008c16d",
+  "prompts": {},
+  "sessions": {
+    "s_b2770a9c4c7dcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ee5c2-4c3c-7be2-a064-09d90bbc7259",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

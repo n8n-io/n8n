@@ -1,0 +1,24 @@
+packages/@n8n/decorators/src/controller/api-key-scope.ts
+  s_ffb7dd4d4bc241::t_d1a1e1d77af3f1 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7ea4745e15cc53ea9e1b7af7067a68e63d16fcbd",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ffb7dd4d4bc241": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f4938bcb-e16b-47a0-8c74-c70eb77a07a9",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

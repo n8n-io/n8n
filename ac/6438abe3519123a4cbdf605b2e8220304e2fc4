@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_6ad15a8fbb8560::t_49a738f2416c97 43-48,50-58,61-70,72-82
+  s_6ad15a8fbb8560::t_3ab9982cc2c2f6 49,59-60,71
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6ad15a8fbb8560::t_a54b7b190369f7 2423
+  s_6ad15a8fbb8560::t_1d1da75955f14e 2425
+  s_6ad15a8fbb8560::t_283bcc08da28ff 2437
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.service.test.ts
+  s_6ad15a8fbb8560::t_a0446d8842aadc 21
+  s_6ad15a8fbb8560::t_1f7df0db3c5d35 135,140-215
+  s_6ad15a8fbb8560::t_7fa63677b8f48f 73,81
+  s_6ad15a8fbb8560::t_f46752118c27f7 35-37,45
+  s_6ad15a8fbb8560::t_5b8795fcc9f84c 11-14
+packages/cli/src/modules/oauth-server/oauth-consent.controller.ts
+  h_435b1d7d3e52c0 31-36,41
+packages/frontend/@n8n/rest-api-client/src/api/consent.ts
+  h_435b1d7d3e52c0 7
+packages/cli/src/modules/oauth-server/oauth-consent.service.ts
+  h_435b1d7d3e52c0 10,12-14,28,35,47-63,65
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_6ad15a8fbb8560::t_b0c76984cc6f98 87-94,102-109,116
+  s_6ad15a8fbb8560::t_5c4f7338662abb 24-29
+  s_6ad15a8fbb8560::t_66aa360621cb46 140,143
+  h_435b1d7d3e52c0 22
+packages/frontend/editor-ui/src/app/stores/consent.store.ts
+  h_435b1d7d3e52c0 8,14,27-29,56
+  s_6ad15a8fbb8560::t_bb9b17112a3682 21
+  s_6ad15a8fbb8560::t_a08aa02bb4ee15 66
+  s_6ad15a8fbb8560::t_843181076dcccf 6
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_6ad15a8fbb8560::t_0ba4ef020a7aa2 67-138
+  s_6ad15a8fbb8560::t_c51afa8625a052 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "ac6438abe3519123a4cbdf605b2e8220304e2fc4",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6ad15a8fbb8560": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea855d4f-22f9-4145-be88-a18609582190",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

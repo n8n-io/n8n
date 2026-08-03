@@ -1,0 +1,19 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/http-request-validator.test.ts
+  s_82fffa91a2d3b2::t_eb2156069165f4 342,354,369,385
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "a2b552fa8043a40951a36842442a943c518c4d37",
+  "prompts": {},
+  "sessions": {
+    "s_82fffa91a2d3b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd43477c-5962-4e4a-ac8e-9e62265c581f",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

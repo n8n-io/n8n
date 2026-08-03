@@ -1,0 +1,25 @@
+packages/frontend/@n8n/composables/src/useToast.test.ts
+  s_e74d274ac16379::t_edda940eaba16a 5,9
+  s_e74d274ac16379::t_66986cd4ba4c36 368,374,380-384
+packages/frontend/@n8n/composables/src/useToast.ts
+  s_e74d274ac16379::t_1af332fbf8d67a 10
+  s_e74d274ac16379::t_a452ebea45a931 70-71
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_e74d274ac16379::t_e8085be79192a0 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3a7eb85a4688d8345b69d94e61970225ae45783f",
+  "prompts": {},
+  "sessions": {
+    "s_e74d274ac16379": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4db9e29e-4ad4-4c4d-91ef-5133e5ef8103",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

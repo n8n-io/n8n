@@ -1,0 +1,48 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.perItem.test.ts
+  s_622e6646e7b730::t_d81666235276a3 12
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/draft/create.test.ts
+  s_622e6646e7b730::t_65d2750cbcdbe4 250-252,270
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/messageAttachment/add.test.ts
+  s_622e6646e7b730::t_03d27d43dde53e 139-141,155
+packages/nodes-base/nodes/Microsoft/test/GenericFunctions.test.ts
+  s_622e6646e7b730::t_46871adeb3a875 166-172
+  s_622e6646e7b730::t_25c1dbce0417de 3-7
+  s_622e6646e7b730::t_746b79c10d8288 173-174
+packages/nodes-base/nodes/Microsoft/ToDo/test/GenericFunctions.test.ts
+  s_622e6646e7b730::t_0149565446325f 471-487
+  s_622e6646e7b730::t_189590b22050f0 11,16
+  s_622e6646e7b730::t_e0c5a59844ac08 419,422-440
+  s_622e6646e7b730::t_c203adc95edf07 488-490
+  s_081c424a382743::t_62f0cca18259e6 491-496
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItem.test.ts
+  s_622e6646e7b730::t_6ca17a1867a165 6-8
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_622e6646e7b730::t_aed5a03cf3c14c 2
+  s_622e6646e7b730::t_0bfe7e4075142a 467-495
+  s_622e6646e7b730::t_362fc3a844a5c5 386-387,389
+  s_622e6646e7b730::t_a5ed289b37ab43 496-497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9fe09d977ce04143244b13e653895e2382214689",
+  "prompts": {},
+  "sessions": {
+    "s_081c424a382743": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8c8d8cdd5901939d",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

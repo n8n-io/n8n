@@ -1,0 +1,20 @@
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/dynamic-credentials.controller.test.ts
+  s_dc50b872f0e093::t_80170d5fe9371f 245-256
+  s_dc50b872f0e093::t_373f3df0ff9e90 204-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0aecbc38178c16b5ca335951f8c2150354fa2b1d",
+  "prompts": {},
+  "sessions": {
+    "s_dc50b872f0e093": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96054988-a1bb-43e7-90c8-d8ada7fc9bcd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

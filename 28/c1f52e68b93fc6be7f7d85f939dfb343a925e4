@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/test/MicrosoftOneDriveTrigger.node.test.ts
+  s_e914f9d650f740::t_b21f89e5dc798e 2,8,10-17,32,37
+  s_e914f9d650f740::t_17eaf07eedd8fa 20
+  s_e914f9d650f740::t_81889c0b0a00f5 5
+  s_e914f9d650f740::t_100f83a1bb56e0 1
+  s_e914f9d650f740::t_a279725c703b2a 45,57,65,73
+  s_e914f9d650f740::t_cb374010c5baed 36
+  s_e914f9d650f740::t_2929252f91483c 3,6-7,18-19,22-31,33-35,38-44,46-52,54-56,58-64,66-72,74-79
+  s_e914f9d650f740::t_e2ec9a1ffb9e28 9
+  s_e914f9d650f740::t_e3402e37723c6d 53
+  s_e914f9d650f740::t_38012844a98654 4
+  s_e914f9d650f740::t_f4dc874995067d 21
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_e914f9d650f740::t_b77da9d73187b7 354-373
+  s_e914f9d650f740::t_d6368e47e584dd 258-271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "28c1f52e68b93fc6be7f7d85f939dfb343a925e4",
+  "prompts": {},
+  "sessions": {
+    "s_e914f9d650f740": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba45f304-95eb-425b-a3af-c542d2a8a14b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/tools/__tests__/agent-data-utils.test.ts
+  ai_agent 41-44
+  s_bb17b049fc2e2d::t_68c96d6ee9bdf5 1-40,45-64
+packages/cli/src/modules/agents/tools/__tests__/workflow-context-tool.test.ts
+  ai_agent 199-204
+  s_bb17b049fc2e2d::t_8606c452b6aa7a 191-198,205-213
+  s_bb17b049fc2e2d::t_cc2013c602a4ed 46,48-49
+packages/cli/src/modules/agents/tools/workflow-context-tool.ts
+  s_bb17b049fc2e2d::t_5a2bb52d7ae7bc 6,9,11-12,29-31,34,47-50,54-57,61,65-67,90-99,102,109
+packages/cli/src/modules/agents/tools/agent-data-utils.ts
+  s_bb17b049fc2e2d::t_817acaa3dc3470 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3979ecc3752837acccdb9eeb83afac1b5a3c25ad",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

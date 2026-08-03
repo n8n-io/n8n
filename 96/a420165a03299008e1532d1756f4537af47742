@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/BackToWorkflowBanner.test.ts
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 1-20
+packages/frontend/editor-ui/src/features/agents/views/AgentView.vue
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 4-8,12-24,29-47,52
+packages/frontend/editor-ui/src/features/agents/agentReturnContext.store.ts
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 1-28
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  ai_agent 24-35,56-61,87-96,143,218-221,238-249,251,261,279-283,285-351,358-361,366,370
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 1508
+packages/frontend/editor-ui/src/features/agents/composables/useAgentNavigation.ts
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 1-44
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 794
+packages/frontend/editor-ui/src/features/agents/__tests__/agentReturnContext.store.test.ts
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 1-22
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentNavigation.test.ts
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 1-66
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentView.test.ts
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 1-92
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 3-7,125-137,158
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 5424,6601
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  ai_agent 11,14-15,18-24,36-63,111-113,117-119,213-222,234,240-264,266-270,272-278,280-342
+packages/frontend/editor-ui/src/features/agents/components/BackToWorkflowBanner.vue
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 1-45
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.test.ts
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 6,8,13,255-279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "96a420165a03299008e1532d1756f4537af47742",
+  "prompts": {},
+  "sessions": {
+    "s_bb07027ddb0032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ac5de5a-9d81-4e7b-9015-b5d135e16aa4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/cli/src/modules/instance-ai/instance-ai-terminal-outcome.service.ts
+  s_b6de24964aadb7::t_dc8258f320b018 22-25
+  s_b6de24964aadb7::t_15382406ac4d35 302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b9bcfbaad33dd9252510a3e894d91942af1d7047",
+  "prompts": {},
+  "sessions": {
+    "s_b6de24964aadb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e4ecadf-7d72-46d5-aba2-aa2fe99592de",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

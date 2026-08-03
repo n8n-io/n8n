@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/repositories/instance-ai-checkpoint.repository.ts
+  s_2e049f96149808::t_2e4afa9465950e 15-19
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_2e049f96149808::t_5449a1b09a8c19 189,191-195
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_2e049f96149808::t_c173786afca238 218-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "18fb653d22488d983d3e1b2b8d5cca952f8694ae",
+  "prompts": {},
+  "sessions": {
+    "s_2e049f96149808": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e56d8974-d525-45a0-96bd-34a22f48a9e3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

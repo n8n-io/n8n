@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.vue
+  s_eb9295e8672673::t_8ba19520ccae79 21
+  s_eb9295e8672673::t_a21d9240a50c1a 352,361
+  s_eb9295e8672673::t_77a69651dbdea4 46-56,58-60
+  s_eb9295e8672673::t_d19887f3673bbc 384,398-399,403
+  s_eb9295e8672673::t_eea6044f019538 107
+  s_eb9295e8672673::t_0c9897efcf9958 199-200,202-204,208,215-216,228,230-232,234,238-241,243-248,250,254-255,258-260
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_eb9295e8672673::t_bda7a2ba928978 533-535,549,551,562-563,573-595,598,629-631,659,661-663
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "ea9af8d8bf24310d9c32c4fa36c04799a7ba7619",
+  "prompts": {},
+  "sessions": {
+    "s_eb9295e8672673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5a13f8c-0337-46bf-976e-7e6f21af25ec",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

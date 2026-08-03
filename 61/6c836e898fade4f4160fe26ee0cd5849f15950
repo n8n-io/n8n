@@ -1,0 +1,71 @@
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.test.ts
+  s_794a1be4bba94d::t_626bf0cf58d581 79
+  s_794a1be4bba94d::t_47b93d69deddda 80
+  s_794a1be4bba94d::t_4d8e3b4ec4e180 1-10,12-50,52-61,64-78,81-88
+  s_794a1be4bba94d::t_8847143c4b7aad 11
+  s_794a1be4bba94d::t_3fe6ac8df64897 51,62-63
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.ts
+  s_794a1be4bba94d::t_20dec1178d3960 212
+  s_794a1be4bba94d::t_8bb334753bfeca 286
+  s_794a1be4bba94d::t_12ddd6bba68955 32-34
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_794a1be4bba94d::t_ec9fbaf4ddaeb2 753-756
+  s_794a1be4bba94d::t_d6ef18a5054096 151-160
+  s_794a1be4bba94d::t_18f1ebb95bd4af 741-752
+  s_794a1be4bba94d::t_f794ac6dd46d31 722
+  s_794a1be4bba94d::t_5b1a67bac8028c 673-675
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeChoicePrompt.vue
+  s_794a1be4bba94d::t_d6a6a83625b7ac 134,143
+packages/frontend/editor-ui/src/features/workflows/readyToRun/composables/useEmptyStateDetection.ts
+  s_794a1be4bba94d::t_c9d4322f2fa3ef 22-33
+  s_794a1be4bba94d::t_bf5e1141a78f3b 77
+  s_794a1be4bba94d::t_e658357dcf179f 1
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeChoicePrompt.test.ts
+  s_794a1be4bba94d::t_09326ecde49b1a 75-81,83-84
+  s_794a1be4bba94d::t_cd478060cf417c 82
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.test.ts
+  s_794a1be4bba94d::t_eff4f9b8ba10df 113-135
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_794a1be4bba94d::t_56b73b5b17b125 609
+  s_794a1be4bba94d::t_4c0c95adc36eea 624
+  s_794a1be4bba94d::t_d2614e7d07311c 166-178
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.vue
+  s_794a1be4bba94d::t_ac431b669380ae 123,126
+  s_794a1be4bba94d::t_03a1a58facc547 17,20,22-23,26
+  s_794a1be4bba94d::t_bc6c9ea99c81af 21
+  s_794a1be4bba94d::t_6d838f9a213ee9 50-51,53,57
+  s_794a1be4bba94d::t_dc7f7f2835372b 124-125,144
+  s_794a1be4bba94d::t_7bdc23c01391d4 19
+  s_794a1be4bba94d::t_672f64b833f9b6 38,48-49,52,54-56,58-66
+  s_794a1be4bba94d::t_f7d1c7d1302062 16
+  s_794a1be4bba94d::t_7dc014d9724f4b 127-130,142
+  s_794a1be4bba94d::t_5954a7227cbc77 131-141
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_794a1be4bba94d::t_0754b4fd0f1325 181,187-188
+  s_794a1be4bba94d::t_d3c59bea83c124 184-186
+  s_794a1be4bba94d::t_388092f4a5039e 796-798
+  s_794a1be4bba94d::t_04c106e8bbddf1 11
+  s_794a1be4bba94d::t_6b2195ea22442a 2549-2557
+  s_794a1be4bba94d::t_087cc9d090e929 2174-2177
+  s_794a1be4bba94d::t_de7654760c9601 812-814
+  s_794a1be4bba94d::t_35a63eaf58608e 54
+  s_794a1be4bba94d::t_8603b7eb4fc7c6 799
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLoadingState.vue
+  s_794a1be4bba94d::t_f9cfbd571f8b5b 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "616c836e898fade4f4160fe26ee0cd5849f15950",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

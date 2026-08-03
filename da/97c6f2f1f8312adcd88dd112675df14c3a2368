@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue
+  s_03493995b85f3a::t_8345d3d907e7a6 494
+packages/frontend/@n8n/design-system/src/components/N8nRadioGroup/RadioGroup.vue
+  s_03493995b85f3a::t_0b1c9b47a24930 168-170
+  s_03493995b85f3a::t_c09060f6b6b5b8 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "da97c6f2f1f8312adcd88dd112675df14c3a2368",
+  "prompts": {},
+  "sessions": {
+    "s_03493995b85f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f59ef906-85f1-48b6-bc09-9185151a943a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

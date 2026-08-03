@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/GenericFunctions.ts
+  s_622e6646e7b730::t_2d455eb152f094 2-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3e79f1a05ba7bba31c488f626f37b69d010f27ec",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

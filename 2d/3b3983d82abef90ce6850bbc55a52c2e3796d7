@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/openapi-gen/data-tables.path.ts
+  s_d8ed300529e078::t_dd6c499fe90f6d 53-56
+  s_d8ed300529e078::t_85e8ba36bede79 27-30
+.github/workflows/util-sync-api-docs.yml
+  s_d8ed300529e078::t_c43e555c69b81c 39,42-47
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generated-spec-drift.test.ts
+  s_d8ed300529e078::t_77ee819b55f690 1-22
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_d8ed300529e078::t_b513f5f358c284 87-105,119-120
+  s_d8ed300529e078::t_dc4a23f00a5d91 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2d3b3983d82abef90ce6850bbc55a52c2e3796d7",
+  "prompts": {},
+  "sessions": {
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

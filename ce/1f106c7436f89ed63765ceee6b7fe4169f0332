@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_c10e563f7c2f73::t_c12adc69a21de0 739-761
+packages/nodes-base/nodes/Microsoft/OneDrive/test/MicrosoftOneDriveTrigger.transport.test.ts
+  s_c10e563f7c2f73::t_87b24d91af69ea 16-17
+  s_c10e563f7c2f73::t_bc300ff02e58d7 1,3-15,18-25,28-72
+  s_c10e563f7c2f73::t_af07a23a0a93ce 2
+  s_c10e563f7c2f73::t_d2c229223bf645 26-27
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_c10e563f7c2f73::t_2b61ab312ed0fd 141-142
+  s_c10e563f7c2f73::t_b7bf4551035068 218,228-230,259-264
+  s_c10e563f7c2f73::t_7e60bff9452955 183-185
+  s_c10e563f7c2f73::t_209c197e1a5602 79-84,89-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "ce1f106c7436f89ed63765ceee6b7fe4169f0332",
+  "prompts": {},
+  "sessions": {
+    "s_c10e563f7c2f73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db403f6c-3898-4d9e-af22-6e4e17cbd6c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

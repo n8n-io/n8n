@@ -1,0 +1,55 @@
+packages/cli/src/workflows/triggers/trigger-activation-retry.ts
+  ai_agent 34-37
+  s_f62ce817f68981::t_294be57857d354 1-33,38-41
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_f62ce817f68981::t_46da80e0dbda43 287-288,290
+  s_f62ce817f68981::t_398e2298b24a01 22
+  s_f62ce817f68981::t_78a3a03aec8792 402-403,405
+  s_f62ce817f68981::t_f99d02d8417d4c 399-401,404
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_f62ce817f68981::t_2cb075be272119 170
+  s_f62ce817f68981::t_db2b18aa3ccd88 290-291,340,346-352,371-372,375-385,398
+  s_f62ce817f68981::t_5a5f18d80e2577 341-345,353-370,373-374
+  s_f62ce817f68981::t_b6a5873da5d45f 487-488,491,502-506,523-524,527-528
+  s_f62ce817f68981::t_907b09c53899d7 22-28,36-39
+packages/cli/src/workflows/triggers/__tests__/webhook-trigger-registrar.test.ts
+  s_f62ce817f68981::t_847fdd373bc3c1 239-266,268-300
+  s_f62ce817f68981::t_5547f2185528f0 39,63,108,154,200
+  ai_agent 267
+  s_f62ce817f68981::t_cff98db90ef033 2,16-25
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_f62ce817f68981::t_7ed849e946c4d9 18
+  s_f62ce817f68981::t_7f8e169e6ab6fb 2
+  s_f62ce817f68981::t_cfb305439e239b 53,58-68
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_f62ce817f68981::t_1edde2fa36ebf4 17
+  s_f62ce817f68981::t_0e099068e80c75 14
+  s_f62ce817f68981::t_0c5151a633a4f2 121-126,131-137,145-157
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_f62ce817f68981::t_155c15f32a77a9 319,340-370
+packages/cli/src/workflows/triggers/__tests__/trigger-activation-retry.test.ts
+  s_f62ce817f68981::t_184d4b14c5375b 1-59
+packages/@n8n/config/src/configs/workflows.config.ts
+  s_f62ce817f68981::t_31e6dbfcb3b1b5 35-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9ceae8c1300fb70684fbb0733ce47cb3b7e2bac3",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_f62ce817f68981": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5375f81a-00e9-4f44-a66b-9260f3748ec7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

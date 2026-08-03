@@ -1,0 +1,35 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_a102a38e2cb50b::t_3b0fb8d9c13a96 6-8,14
+  s_a102a38e2cb50b::t_436dfb4de52561 563-581,591
+  s_a102a38e2cb50b::t_0b7183b6f360a6 582-590
+packages/cli/src/modules/data-table/data-table.service.ts
+  s_a102a38e2cb50b::t_d5fc3fbdaa019a 691-694
+packages/cli/src/modules/data-table/data-table-proxy.service.ts
+  s_a102a38e2cb50b::t_62790b4f425714 35
+  s_a102a38e2cb50b::t_07bb55fe92b548 25
+  s_a102a38e2cb50b::t_a8538e875023d4 102-119
+packages/cli/src/modules/data-table/__tests__/data-table-proxy.service.integration.test.ts
+  s_a102a38e2cb50b::t_63065528483eae 320,323-326
+  s_a102a38e2cb50b::t_87f06edeeb089a 299-319,321-322,328-347
+  s_a102a38e2cb50b::t_753f4eba4f32d2 348-356
+  s_a102a38e2cb50b::t_ed4de1f83a3eaf 24
+  s_a102a38e2cb50b::t_d8c85b2eaedad7 14,25
+  s_a102a38e2cb50b::t_badfce0c4fb750 3,5
+  s_a102a38e2cb50b::t_24b09221903654 287-298,357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "34aa2fc7a744c948164864df528305a0502aa561",
+  "prompts": {},
+  "sessions": {
+    "s_a102a38e2cb50b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "269b8625-4fcc-4f15-b3cb-bec0ec30039a",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

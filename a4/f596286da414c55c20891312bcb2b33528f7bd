@@ -1,0 +1,22 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_992f408b182e30::t_ed84b95d4232ee 22
+  ai_agent 23-25
+packages/@n8n/instance-ai/src/workspace/__tests__/lazy-runtime-workspace.test.ts
+  s_992f408b182e30::t_d0bbe9d90bbb9a 183-184,193-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a4f596286da414c55c20891312bcb2b33528f7bd",
+  "prompts": {},
+  "sessions": {
+    "s_992f408b182e30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c629714-9cb2-4bc1-bc69-9a12458bfbaf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_2c934bfa4cc412::t_8294099a86d565 4538-4610
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "21acc5b0c2349823211233991506606d289abdef",
+  "prompts": {},
+  "sessions": {
+    "s_2c934bfa4cc412": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c85912c8-4bfb-4bd8-a984-5d8ec721fabc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

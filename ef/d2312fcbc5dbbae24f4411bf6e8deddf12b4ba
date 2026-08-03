@@ -1,0 +1,59 @@
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_34c314ff93faba::t_f28c679af47466 243-254,429-440
+packages/cli/src/modules/sso-saml/saml.controller.ee.ts
+  s_34c314ff93faba::t_5d8789f52e3068 142,144-147,152
+packages/cli/src/modules/sso-oidc/__tests__/oidc-test-result.test.ts
+  s_34c314ff93faba::t_33e131eae9ce77 6-8,10,16-18,26-27
+  s_34c314ff93faba::t_a17afe1fa53765 25,28
+  s_34c314ff93faba::t_4c5c6b002d211e 1-5,9,11-15,19-24,29-40
+packages/cli/templates/saml-connection-test-failed.handlebars
+  s_34c314ff93faba::t_43fb86368b0171 5,8,11-13,31-35,37-38
+  s_34c314ff93faba::t_9b4238a1caee52 14,36
+packages/cli/src/modules/provisioning.ee/__tests__/role-resolver.service.ee.test.ts
+  s_34c314ff93faba::t_b3e1e248092652 212-235
+packages/cli/src/modules/provisioning.ee/__tests__/provisioning.service.ee.test.ts
+  s_34c314ff93faba::t_2cb506544dc45d 1001,1009
+  s_34c314ff93faba::t_2434fadd6477c4 986-1000,1002-1008,1010-1015
+packages/cli/templates/saml-connection-test-success.handlebars
+  s_34c314ff93faba::t_cee6f58acd9399 14,33
+  s_34c314ff93faba::t_293d703286be71 5,8,11-13,29-32,34-35
+packages/cli/src/modules/provisioning.ee/role-resolver.service.ee.ts
+  s_34c314ff93faba::t_2c72e05879fb98 110
+  s_34c314ff93faba::t_c62aeac519557b 123-127,133-139,142
+  s_34c314ff93faba::t_ebfb2d43d0ce8b 77
+packages/cli/src/modules/provisioning.ee/provisioning.service.ee.ts
+  s_34c314ff93faba::t_cb4ada9d48a154 640-648
+packages/cli/src/modules/sso-oidc/views/oidc-test-result.ts
+  s_34c314ff93faba::t_0d9e47a19ce55c 2,5,8-13,25-28,30-32,34,60-62,65
+  s_34c314ff93faba::t_7a5123b2073d4b 24,29,63-64
+packages/cli/src/modules/sso-saml/__tests__/saml.controller.ee.test.ts
+  s_34c314ff93faba::t_c81527eae66c3d 253,294
+  s_34c314ff93faba::t_d8b90fe3811fdb 146,154-157
+  s_34c314ff93faba::t_1dc9b8ffbd9d92 170
+  s_34c314ff93faba::t_fd14be2edf7152 82,88-91,104,110-114
+  s_34c314ff93faba::t_eeefa08d723dc6 312,370
+  s_34c314ff93faba::t_bc2ba113c659a7 54-60
+  s_34c314ff93faba::t_1c05d643c18a70 275
+packages/cli/src/modules/sso-saml/__tests__/saml.service.ee.test.ts
+  s_34c314ff93faba::t_8899309c92240d 491,545
+  s_34c314ff93faba::t_8eedfff1400d7b 516
+  s_34c314ff93faba::t_9602e17a682b39 462,574
+packages/cli/src/modules/sso-saml/saml.service.ee.ts
+  s_34c314ff93faba::t_0abdfa1d372319 365,396,407,419,429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "efd2312fcbc5dbbae24f4411bf6e8deddf12b4ba",
+  "prompts": {},
+  "sessions": {
+    "s_34c314ff93faba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f868e7ed-8d11-4896-868e-2d9e87078ecf",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

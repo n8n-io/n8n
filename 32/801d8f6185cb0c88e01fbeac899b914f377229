@@ -1,0 +1,14 @@
+packages/@n8n/nodes-langchain/nodes/tools/ToolSerpApi/ToolSerpApi.node.ts
+  h_330405ffe93e01 30,62-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "32801d8f6185cb0c88e01fbeac899b914f377229",
+  "prompts": {},
+  "humans": {
+    "h_330405ffe93e01": {
+      "author": "Jonathan Bennetts"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/core/src/utils/hitl-callback-reference.ts
+  s_60ce6e746ce9d3::t_62ca91fffe5765 22-23,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "40851d4d2318b073a13d64799ae73d7ef5dc2cdf",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

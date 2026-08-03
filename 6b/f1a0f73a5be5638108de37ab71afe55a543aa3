@@ -1,0 +1,62 @@
+packages/cli/src/workflows/trigger-diff.ts
+  h_8fb27e0cdf6d1e 11-12,27-28,33,36,39-40
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  h_8fb27e0cdf6d1e 186-190,193-195,199,202
+packages/cli/src/active-workflow-manager.ts
+  s_f21827d9d83ef7::t_d6e64593465f44 946-949
+  s_f21827d9d83ef7::t_9aeb3acab7f3a6 896
+  h_8fb27e0cdf6d1e 898,924,961,963,981
+  s_f21827d9d83ef7::t_f8f6c82b63c755 959,966,982,984
+packages/cli/src/workflows/__tests__/workflow-publication-outbox-consumer.test.ts
+  ai_agent 251-255,265-269,294-303,344-348
+  s_f21827d9d83ef7::t_17e5b08b9820be 110-112
+  s_f21827d9d83ef7::t_5857a6c1d91a31 308,312-314
+  s_f21827d9d83ef7::t_e7d21272a77346 335-338
+  s_f21827d9d83ef7::t_decd4d5f3e3682 208,218,223
+packages/cli/src/workflows/__tests__/trigger-diff.test.ts
+  s_f21827d9d83ef7::t_08c22e89861a02 6
+  s_f815aa696ef0ce::t_26d937bc1bd2f3 23,29,35,44,53
+  h_8fb27e0cdf6d1e 68-69
+  s_f21827d9d83ef7::t_95cebcc2168e3b 19,27,33,39-40,49-50,57-61
+  s_f815aa696ef0ce::t_31af9ecc2ba721 73
+packages/cli/src/workflows/workflow-publication-outbox-consumer.ts
+  h_8fb27e0cdf6d1e 135,141,151,162,177,180-183,209-210,212-214,219,243-249
+  s_f21827d9d83ef7::t_e1c34b2b341080 178
+  s_f21827d9d83ef7::t_ba1542ed2fae1f 208,211
+  s_f21827d9d83ef7::t_6e55e871143e53 4
+  ai_agent 168-171,203-207,251-260
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_f21827d9d83ef7::t_be8721401e17d5 95,100
+  s_f21827d9d83ef7::t_06fbbabbe7f41f 139
+packages/workflow/src/workflow-diff.ts
+  h_8fb27e0cdf6d1e 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6bf1a0f73a5be5638108de37ab71afe55a543aa3",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_f21827d9d83ef7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "416f8313-bc6e-445e-8858-308237770b18",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_f815aa696ef0ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06a56dd3-570d-4e99-a877-004c8fe0b10a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

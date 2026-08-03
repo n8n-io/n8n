@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/constants.ts
+  s_9afe0d6d8e9afc::t_3c3bc170ad3795 27-31
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/errorHandler.test.ts
+  s_9afe0d6d8e9afc::t_642d85165ce0b5 60-62,65-74,99-101
+  s_9afe0d6d8e9afc::t_025fc83b4cd35d 75-98
+  s_9afe0d6d8e9afc::t_1351c8a1374f3c 102
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/errorHandler.ts
+  s_9afe0d6d8e9afc::t_5c10715a559f31 4
+  s_9afe0d6d8e9afc::t_fe17f2c81efff0 81-82,84-89
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/converters.test.ts
+  s_9afe0d6d8e9afc::t_59ea7cfefe7091 69-81
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/converters.ts
+  s_9afe0d6d8e9afc::t_1f95acf2c29119 33-38,40-42
+  s_9afe0d6d8e9afc::t_8c639a19edb22f 11-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "64a8285f1e2dc75dff10edc4d711c9d61456cdb8",
+  "prompts": {},
+  "sessions": {
+    "s_9afe0d6d8e9afc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae33d808-62f8-42b2-a194-4fa3c2cd5e31",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

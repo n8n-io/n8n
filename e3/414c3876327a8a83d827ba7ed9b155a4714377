@@ -1,0 +1,73 @@
+packages/frontend/@n8n/stores/src/users.store.ts
+  s_65ef45bd984286::t_d517efb7aa3e26 77,85,87-101,143,154,196,209,218,232,236,241,255,264,268,272,288,301,305,317,321,325,329,335,346,357,361,365,370,387,398,407,411,415,420,429,433,437,441,448,456,461,465,470,482,498,562
+  s_65ef45bd984286::t_62887bf1be80ae 76,142,153,160,165,208,215,223,228-231,246,261,285,300,316,340,356,379,406,428,447,455,480,497
+  s_65ef45bd984286::t_39eec488a93e9e 377
+  s_65ef45bd984286::t_e4c1b25616e7be 12,16-23,25-47
+  s_65ef45bd984286::t_bf149ecbf2f701 13-14,24
+  s_65ef45bd984286::t_c398c515991402 400
+  s_65ef45bd984286::t_85bf41606171d0 527-528
+  s_65ef45bd984286::t_9e926c3abc0082 166
+  s_65ef45bd984286::t_d255de4ec7d422 389
+  s_65ef45bd984286::t_b3e562591bf37d 185
+  s_65ef45bd984286::t_fd6a48431c4d47 150
+  s_65ef45bd984286::t_aa1f452625920c 422-424
+  s_aaf42ddb69d513::t_a05a83cbf486f2 1-11,15,48-75,78-84,86,102-141,144-149,151-152,155-159,161-164,167-184,186-195,197-207,210-214,216-217,219-222,224-227,233-235,237-240,242-245,247-254,256-260,262-263,265-267,269-271,273-284,286-287,289-299,302-304,306-315,318-320,322-324,326-328,330-334,336-339,341-345,347-355,358-360,362-364,366-369,371-376,378,380-386,388,390-397,399,401-405,408-410,412-414,416-419,421,425-427,430-432,434-436,438-440,442-446,449-454,457-460,462-464,466-469,471-479,481,483-496,499-526,529-561,563
+packages/frontend/editor-ui/src/app/init.ts
+  s_65ef45bd984286::t_e58ab835ba18d8 27
+  s_65ef45bd984286::t_83c24b493d248a 137-141
+packages/frontend/editor-ui/src/features/settings/users/users.types.ts
+  s_65ef45bd984286::t_0d51d3b0ff307f 9-11
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_65ef45bd984286::t_674a21df314637 38-39
+packages/frontend/@n8n/stores/package.json
+  s_65ef45bd984286::t_cd9c0d3d570416 40
+packages/frontend/@n8n/stores/src/onboarding.api.ts
+  s_65ef45bd984286::t_bf149ecbf2f701 1-12,16-20,22
+  s_65ef45bd984286::t_92503e35151c8b 13-15,21
+packages/frontend/@n8n/stores/src/invitation.api.test.ts
+  s_65ef45bd984286::t_d94b31bb72bba3 3-4
+  s_65ef45bd984286::t_ce0dad07b062c8 27
+packages/frontend/editor-ui/src/Interface.ts
+  s_65ef45bd984286::t_4aec5b860252dd 656-658
+packages/frontend/@n8n/stores/src/users.store.test.ts
+  s_65ef45bd984286::t_59d75205f7daa3 2-6
+  s_65ef45bd984286::t_1dfc24952818b9 230-238,244-262
+  s_65ef45bd984286::t_a03de19b990f29 47,51,60,62-63,65-66,70,92-93,97,99-103,110,114-115,119,121-125,128,135,138,140-144,151,159-160,164,180,183,207-208,218,221-225,227-228,242,263-264,268,283,286,307-373
+  s_65ef45bd984286::t_f6c7866fa61827 240-241
+  s_65ef45bd984286::t_35374724891bba 8-23
+  s_65ef45bd984286::t_e2af52a31fa105 30
+  s_65ef45bd984286::t_a7ad9f7ff5f066 189-190,292-293
+  s_65ef45bd984286::t_b0ec1abca76269 7
+packages/frontend/editor-ui/src/features/settings/users/users.store.ts
+  s_65ef45bd984286::t_d2647e535e819c 1-7
+packages/frontend/@n8n/stores/src/modalOpeners.ts
+  s_65ef45bd984286::t_34aa97a71830a8 1-13
+packages/frontend/@n8n/stores/src/invitation.api.ts
+  s_65ef45bd984286::t_4b0422d671686e 1-28,31,44
+pnpm-lock.yaml
+  s_65ef45bd984286::t_625bada05e6109 5497-5499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e3414c3876327a8a83d827ba7ed9b155a4714377",
+  "prompts": {},
+  "sessions": {
+    "s_65ef45bd984286": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6bf14eab-a3f1-4625-a3fc-3465f0697e9a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_aaf42ddb69d513": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "709a40f0-87fc-408a-b28c-1ed774e81537",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

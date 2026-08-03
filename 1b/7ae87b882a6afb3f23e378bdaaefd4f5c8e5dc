@@ -1,0 +1,19 @@
+packages/core/src/execution-engine/node-execution-context/__tests__/node-execution-context.test.ts
+  s_53cef6894d9656::t_3602677d0c20e5 314-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1b7ae87b882a6afb3f23e378bdaaefd4f5c8e5dc",
+  "prompts": {},
+  "sessions": {
+    "s_53cef6894d9656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80988671-9019-4d49-ace5-76c9b66cd316",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

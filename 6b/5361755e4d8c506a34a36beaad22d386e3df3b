@@ -1,0 +1,24 @@
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_d20909b0237a08::t_bb0eaa5b4f4509 17-23,34-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b5361755e4d8c506a34a36beaad22d386e3df3b",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_d20909b0237a08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ce15469-7e3b-47c9-81ba-0d5287f2fa22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

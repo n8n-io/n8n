@@ -1,0 +1,21 @@
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_6e5a9c966ec0d7::t_40207368133ff2 1383
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_6e5a9c966ec0d7::t_4edb1b2e03787e 759-760
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "044ab5a1a1251b1724d3ed1df87b7c16e977e2fe",
+  "prompts": {},
+  "sessions": {
+    "s_6e5a9c966ec0d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bab59a47-a313-416d-8979-dcca48e92b30",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/nodes-base/package.json
+  0dbc5488d9c8b591 957
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "ed56c148b469d55f310e5c0e591e58a633abf938",
+  "prompts": {
+    "0dbc5488d9c8b591": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d50b2a4c-08d0-4630-9de1-82014067eb84",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

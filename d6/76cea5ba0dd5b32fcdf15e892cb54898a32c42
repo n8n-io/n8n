@@ -1,0 +1,43 @@
+packages/cli/src/controllers/project-environment.controller.ts
+  s_6d2bd66a680362::t_8d3c95047f57b7 52-58
+packages/frontend/@n8n/rest-api-client/src/api/projectEnvironments.ts
+  s_6d2bd66a680362::t_8f3f3197ab1c55 60-66
+packages/cli/src/services/project-environment.service.ts
+  s_6d2bd66a680362::t_2677afd6b90269 13,20
+  s_6d2bd66a680362::t_182eedb56801ee 35
+  s_6d2bd66a680362::t_21ce014a167047 124-171
+packages/frontend/editor-ui/src/features/environments/environments.store.ts
+  s_6d2bd66a680362::t_7868c70792fbf6 57-61
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_c63dce324dfc7b 5136
+  s_6d2bd66a680362::t_ffd0fe74180aa7 5134-5135,5137-5139
+packages/frontend/editor-ui/src/features/environments/components/EnvironmentList.vue
+  s_6d2bd66a680362::t_88dfe87d18873c 164-165,167,174
+  s_6d2bd66a680362::t_78d0fb2df164b0 104-105,111-120,125-135,137-145
+  s_6d2bd66a680362::t_389a5e035e443e 106
+  s_6d2bd66a680362::t_f8e710d5b925e2 3
+  s_6d2bd66a680362::t_6b3c5edb4ef2a0 2,7-10,14-15,21,27-30,36-52,59,87-90,101-103,107,109-110,121-124,146-163,169-170
+  s_6d2bd66a680362::t_132bb91ea63051 108
+  s_6d2bd66a680362::t_c9bad46eebf34b 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "d676cea5ba0dd5b32fcdf15e892cb54898a32c42",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6d2bd66a680362": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "126cf4c6-781b-42d1-b052-da5d8eb44cd3",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

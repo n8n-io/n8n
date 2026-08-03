@@ -1,0 +1,131 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_7d48ada9cf20b6::t_75bc401e9d144b 1043-1045,1052-1054
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_7d48ada9cf20b6::t_e51b21e3761a01 75-77,98-100
+  s_7d48ada9cf20b6::t_a3e0a9fdb7ea92 125-127
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_7d48ada9cf20b6::t_9c8952aeda3e88 11-15
+  s_7d48ada9cf20b6::t_46eda664431abf 41
+  s_7d48ada9cf20b6::t_a296d791429b27 61,68
+  s_7d48ada9cf20b6::t_c75f0936824077 78,88,102-103
+  s_7d48ada9cf20b6::t_31ac9b0d044b44 133,148-149
+  s_7d48ada9cf20b6::t_77823a2191e05d 50
+  s_7d48ada9cf20b6::t_e7069f63808f78 124
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_7d48ada9cf20b6::t_4ea1a1f0c02d39 14
+  ai_agent 71-74,83
+  s_7d48ada9cf20b6::t_fb2746b2cbc271 75-82,84-85,91
+  s_7d48ada9cf20b6::t_ac70d53ae72186 175,176-180
+  s_7d48ada9cf20b6::t_f15c942544d7d1 240-242,244
+  h_0ff5b37e8b04b1 31
+  s_7d48ada9cf20b6::t_dfd94bf8063fb1 95-102
+  s_7d48ada9cf20b6::t_884915b611736c 132,134
+  s_7d48ada9cf20b6::t_523de159c159a1 150-152
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_7d48ada9cf20b6::t_1f7a140c2d5803 1-8,10,14-18,24-25,27-41,44-49,51-55,57-64,66-68,70-77,82,88,92-95,97-148,150-153,155,204-207,202
+  s_321997152caa68::t_0670eb598c7de9 78,154,156,80,149,157-160,163-166,169,171,178-192,194-196,198-201,203
+  s_321997152caa68::t_1ba69cda2e2004 9
+  s_321997152caa68::t_c477ba4375c34e 11,13
+  s_321997152caa68::t_df553278c12de7 42-43
+  s_321997152caa68::t_cf730bad7e0183 65
+  s_321997152caa68::t_9dc88e0c0997a3 79,84
+  s_321997152caa68::t_0d3e6db51ad06c 81,83,86,89-90
+  s_321997152caa68::t_d8ad8c8b401aac 85
+  s_321997152caa68::t_9d1c40d589b90b 161-162
+  s_321997152caa68::t_f922be72781474 167,172,175-177
+  h_0ff5b37e8b04b1 168,193,197
+  ai_agent 12,19-23,87,170,173-174
+  s_7d48ada9cf20b6::t_391e297b20149c 50,56
+  s_7d48ada9cf20b6::t_8e9527b8e1f9cb 69
+  s_7d48ada9cf20b6::t_99df5fadcf41bf 91,96
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_7d48ada9cf20b6::t_00ca9197d93a29 1,15
+  s_7d48ada9cf20b6::t_e1823715206302 2-3,5-7,10-12,14,16-35,38-41,43-66,68-129,131-159,201-220,226-302,327-370,409-526,528-598,629-652,743,306-308,310-311,313-314,317,319-320,377-379,381,383,385-386,389-393,395-398,400,404,165,170-172,174-175,182,198,200
+  s_7d48ada9cf20b6::t_cdd62b5e9fea8a 36-37,42
+  s_7d48ada9cf20b6::t_76c7074afc29d2 221-225
+  ai_agent 303-304,371,732-734,67,305,309,321,376,380,382,394,399,401-402,173
+  s_7d48ada9cf20b6::t_45b2a3eb4bad01 527
+  s_4f484cebd2507c::t_02d7edb0735d21 599,601,603-606,616-618,620,624,626
+  s_f38eb6a6383110::t_0fb86745863c42 653-657,658-731,735-742,312,315-316,318,322-326,384,387-388,403,405-408,167-168,176,180,600,608-612,614-615,619,621-623,625,627-628,184,188
+  s_f38eb6a6383110::t_521a8fa487a480 4
+  s_f38eb6a6383110::t_f90b9973c53e5c 13
+  s_f38eb6a6383110::t_c752118a7fdb3c 130
+  s_7d48ada9cf20b6::t_daa67f0230e4eb 161-164,166,169,177-179
+  s_4f484cebd2507c::t_a708c69fe9768f 602,607,613
+  s_7d48ada9cf20b6::t_ecb873a5bd7beb 8-9
+  s_7d48ada9cf20b6::t_a23622e13fede4 181,183,185-187,189-197,199
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_7d48ada9cf20b6::t_9292a2c36b44a8 2235-2237,2257-2261,2274-2276,2283-2285
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_7d48ada9cf20b6::t_4935370d0d5776 3
+  s_7d48ada9cf20b6::t_d6a45952d5facc 46,56-67
+  ai_agent 68,70-75,93-94,134
+  s_7d48ada9cf20b6::t_1f7813a0bdf13d 88-92
+  s_7d48ada9cf20b6::t_6c46f0dc184a52 113-114
+  s_7d48ada9cf20b6::t_852e936685937e 131-133,135-136,69,95
+  s_7d48ada9cf20b6::t_e0a5d8e8cd0761 172-175,176-180
+  s_7d48ada9cf20b6::t_f8115b5facda74 237-238
+  s_7d48ada9cf20b6::t_b74e60ba3dd7bb 150-152
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_7d48ada9cf20b6::t_ed91568a7e32e5 40-41
+  s_7d48ada9cf20b6::t_e7d33155db896d 69-70,83-84,97-98
+  s_7d48ada9cf20b6::t_e08968474899d3 1274,1196-1200,1275-1279,1323-1327,1373-1377
+  ai_agent 42,71,85,99
+  s_7d48ada9cf20b6::t_2c4e263cdf6331 1180-1182
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_7d48ada9cf20b6::t_22717b5327cd6f 6-8,13-38,41-43,63-68,70-75,61-62
+  s_321997152caa68::t_63a7404131653a 44-47,52-60
+  ai_agent 1-5,39-40,48-51,69
+  s_7d48ada9cf20b6::t_66805b5f327465 76-77
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_7d48ada9cf20b6::t_c3fff1e047a0bf 1-43,45-49,51-59,61-90,92-113,115,117-123
+  s_7d48ada9cf20b6::t_25771913a5006f 50
+  s_7d48ada9cf20b6::t_703d62a8cd36e4 114,116
+  ai_agent 44
+  s_7d48ada9cf20b6::t_4ace07d2ba5872 60,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e1374c9e6183faeeb94e57254c2979fce5d2f042",
+  "prompts": {},
+  "humans": {
+    "h_0ff5b37e8b04b1": {
+      "author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_321997152caa68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5146bb18-ca65-47aa-a153-2d4903e46a5c",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_4f484cebd2507c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ce06b02-5fda-45ed-a633-e5af29754e23",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_7d48ada9cf20b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d125bd-0770-4362-a74d-8364298b52a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_f38eb6a6383110": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6210298e-5c34-4114-aa5a-a990cfea49fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

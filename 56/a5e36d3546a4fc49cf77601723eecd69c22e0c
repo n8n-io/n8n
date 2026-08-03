@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/__tests__/run-debug-gating.test.ts
+  s_992f408b182e30::t_9be1c7a06637c1 63-67
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_992f408b182e30::t_92d476a2c974d0 846-851
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "56a5e36d3546a4fc49cf77601723eecd69c22e0c",
+  "prompts": {},
+  "sessions": {
+    "s_992f408b182e30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c629714-9cb2-4bc1-bc69-9a12458bfbaf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

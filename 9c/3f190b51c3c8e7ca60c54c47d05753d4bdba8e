@@ -1,0 +1,69 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/GroupedMetricChart.vue
+  s_f2915c51dc39ca::t_a3760077f9559f 2,5-6,26,28-33
+  s_f2915c51dc39ca::t_ac82f6f7c6a82f 60,66,68-70,72,75-80,84,88
+  s_f2915c51dc39ca::t_d0a5d2a31df71b 107
+  s_f2915c51dc39ca::t_ecb9b2a2d0d439 117-118,120-122
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_f2915c51dc39ca::t_e249a7c6571cb7 83-91
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/VersionAvatar.vue
+  s_f2915c51dc39ca::t_8dcfd47214ee58 4-5
+  s_f2915c51dc39ca::t_d86bfe66b37e9e 32
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.vue
+  s_f2915c51dc39ca::t_5b8ad5ca28bbc7 120,123,126
+  s_f2915c51dc39ca::t_f6c4368fd6788f 66-70,72-74
+  s_f2915c51dc39ca::t_1ab580c736779d 11
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/SetupCollectionWizard.vue
+  s_f2915c51dc39ca::t_2734ced9c63cc2 2-11
+  s_f2915c51dc39ca::t_9148d4cf8f42bb 54-61
+  s_f2915c51dc39ca::t_974b711852ccb8 329
+  s_f2915c51dc39ca::t_778f82b4c78301 135
+  s_f2915c51dc39ca::t_2841119e17a7f2 474,477-478
+  s_f2915c51dc39ca::t_d29cd708c7be9e 22
+  s_f2915c51dc39ca::t_ebc013d51999ac 321,325-328,330-339,343-358
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/DatasetPicker.vue
+  s_f2915c51dc39ca::t_485956cd106440 10
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvaluationsListSwitcher.vue
+  s_f2915c51dc39ca::t_54e0d7cc534d45 13-14
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.store.ts
+  s_f2915c51dc39ca::t_1addfc5d336d78 41-42,45-55
+  s_f2915c51dc39ca::t_353cd7874ff520 20-24
+  s_f2915c51dc39ca::t_aafb3406318109 273-278,280,287-290,305-312,321-322,331-334
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/UngroupedRunRow.vue
+  s_f2915c51dc39ca::t_7c3fea5dd25e98 7
+  s_f2915c51dc39ca::t_828b31785fdc2f 19
+  s_f2915c51dc39ca::t_704a8f1a7f7848 41,45
+  s_f2915c51dc39ca::t_4b38c5c150c4cf 3
+  s_f2915c51dc39ca::t_dcd89da7d88cef 54
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/versionRowKey.ts
+  s_f2915c51dc39ca::t_dbe463bcec21e0 1-10
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f2915c51dc39ca::t_3e0b0386807ca3 5630-5634
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/VersionsTable.vue
+  s_f2915c51dc39ca::t_9a397e3534beb2 10
+  s_f2915c51dc39ca::t_e98a1b82908587 42,54,57
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/versionPalette.ts
+  s_f2915c51dc39ca::t_5bd060ab4b21cc 1-16
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.store.test.ts
+  s_f2915c51dc39ca::t_4a91669d46c677 313-340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9c3f190b51c3c8e7ca60c54c47d05753d4bdba8e",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f2915c51dc39ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd01e2e1-3aa7-490e-83f2-bbd9b41bcfc4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

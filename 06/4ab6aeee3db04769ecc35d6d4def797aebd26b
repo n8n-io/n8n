@@ -1,0 +1,22 @@
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_7de79c9ae1cf25::t_c47e325ccfdd0d 1199,2378
+  s_7de79c9ae1cf25::t_44c7fc719f0561 238
+  s_7de79c9ae1cf25::t_f2b297e1f3dd40 3609,3617
+  s_7de79c9ae1cf25::t_9eeb2d60957dcd 1144,2318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "064ab6aeee3db04769ecc35d6d4def797aebd26b",
+  "prompts": {},
+  "sessions": {
+    "s_7de79c9ae1cf25": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62247729-87d4-4ea1-8747-bdf47bb33b32",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

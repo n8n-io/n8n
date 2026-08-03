@@ -1,0 +1,26 @@
+packages/cli/src/distributed-scheduler/distributed-scheduler.service.ts
+  s_5b0f3d5f2911b6::t_a2db7441352e75 5-6
+packages/cli/src/distributed-scheduler/distributed-schedule-trigger.service.ts
+  s_5b0f3d5f2911b6::t_9a3f3fa5b90fb9 10
+  s_5b0f3d5f2911b6::t_a2db7441352e75 9
+packages/cli/src/distributed-scheduler/distributed-schedule-executor.service.ts
+  s_5b0f3d5f2911b6::t_a2db7441352e75 8
+packages/testing/playwright/tests/infrastructure/benchmarks/schedule-trigger/postgres-multi-main.spec.ts
+  s_5b0f3d5f2911b6::t_b018a85e04a315 9-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a944d571845839ac05a6f0d19b6de83b18f65198",
+  "prompts": {},
+  "sessions": {
+    "s_5b0f3d5f2911b6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed1d8-5500-74b0-97ff-c1b3dfb259c4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

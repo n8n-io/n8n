@@ -1,0 +1,14 @@
+packages/@n8n/scheduler/package.json
+  h_32d8cd6a0d6aad 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0afdae082c45feb89d4b1e690df6b4b84f0f7a0",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

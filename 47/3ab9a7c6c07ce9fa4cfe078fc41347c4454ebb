@@ -1,0 +1,53 @@
+packages/cli/src/workflows/triggers/__tests__/non-webhook-trigger-registrar.test.ts
+  s_cebe0f5823d4d7::t_ead7912198228c 7,12,25,54,59
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_cebe0f5823d4d7::t_01a84bd5e7d09f 1-9,12,14-34,36-53,55-79,83-99,101-112,114-121,123-135,139-149,151-159,165-166
+  s_cebe0f5823d4d7::t_7b61ff8afc5d7c 11,13
+  s_cebe0f5823d4d7::t_ead7912198228c 10,35,54,80-82,100,113,122,136-138,150,160-164
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_667b5ce1fedc78::t_2a41d2a6844022 35
+  s_667b5ce1fedc78::t_5180bb39aaa357 61
+  s_667b5ce1fedc78::t_7256262186fc93 194
+  s_667b5ce1fedc78::t_5675e5b7007924 332-333,345-356,359,361,363,367,369,371-372,376
+  s_667b5ce1fedc78::t_06129a475d805a 575
+  s_667b5ce1fedc78::t_1632acdbd28790 787
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_cebe0f5823d4d7::t_5434ca108b464d 1-10,12-19,23-33,35-83,85-86,89,91-93,95-101,103-143,148,150-219
+  s_cebe0f5823d4d7::t_957bb987213e0f 84,87-88,90
+  s_cebe0f5823d4d7::t_9bd498dd31805e 102
+  s_cebe0f5823d4d7::t_9febc260a9c857 20-22
+  ai_agent 144-147
+  s_cebe0f5823d4d7::t_ead7912198228c 11,34,94,149
+packages/cli/src/active-workflow-manager.ts
+  s_667b5ce1fedc78::t_0185555fc7fe47 53
+  s_667b5ce1fedc78::t_aeb0c2adb06835 84
+  s_cebe0f5823d4d7::t_6b5e70b9ceacbd 216
+  s_667b5ce1fedc78::t_209ecda80b6aad 232-238
+  ai_agent 544-545
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_cebe0f5823d4d7::t_ead7912198228c 19,31,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "473ab9a7c6c07ce9fa4cfe078fc41347c4454ebb",
+  "prompts": {},
+  "sessions": {
+    "s_667b5ce1fedc78": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cfde787b-c41b-4adb-af4f-3bbff63a3f6c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_cebe0f5823d4d7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb7f9-01df-7a20-aa2d-c142caed6ce2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

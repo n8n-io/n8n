@@ -1,0 +1,28 @@
+packages/testing/playwright/services/public-api-helper.ts
+  s_b09f3ef6baa5fb::t_ef8f7790fb0c09 31-32
+  s_b09f3ef6baa5fb::t_607140bc8fb4aa 2
+  s_b09f3ef6baa5fb::t_493612c2afb918 84-103
+packages/testing/playwright/services/workflow-api-helper.ts
+  s_b09f3ef6baa5fb::t_360e1b870c8483 363-367,377-390
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts
+  s_b09f3ef6baa5fb::t_6f827f9eb331bd 78-88
+  s_b09f3ef6baa5fb::t_0498b8d28e9d3a 2,9
+  s_b09f3ef6baa5fb::t_3b7f97ac0c1537 355-377
+  s_b09f3ef6baa5fb::t_da0ea79e16530c 150-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "854ea708ac0c4d31e69feed43d2973437b41e4bb",
+  "prompts": {},
+  "sessions": {
+    "s_b09f3ef6baa5fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba0083eb-8035-467a-9a61-0a88eaa011b9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

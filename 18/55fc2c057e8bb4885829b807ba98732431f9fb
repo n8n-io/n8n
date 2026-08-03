@@ -1,0 +1,54 @@
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/agent-target-binding.test.ts
+  s_5ecca14e2e268b::t_bd25ba46b11c00 111
+  s_5ecca14e2e268b::t_632dcbb05e9d16 108-110
+  s_5ecca14e2e268b::t_d51fee869b81cd 112-114
+  s_5ecca14e2e268b::t_316d2262834eb1 6,93-107,115
+packages/@n8n/instance-ai/src/tools/agent-builder/creation-tools.ts
+  s_5ecca14e2e268b::t_c233e2b1d75284 213-218,238
+  s_5ecca14e2e268b::t_1ae6f7ba7ab0b5 210-212
+  s_5ecca14e2e268b::t_66871d2c74b26e 3-4,31-41,202-209
+packages/@n8n/instance-ai/docs/tools.md
+  s_5ecca14e2e268b::t_aad63e4d75cc5d 717
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_5ecca14e2e268b::t_04ba32c7219a62 25
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/build-agent.tool.test.ts
+  s_5ecca14e2e268b::t_f294a6ed1f0bd6 30,182-186,189
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/config-tools.test.ts
+  s_5ecca14e2e268b::t_adeb0fc4553235 28
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/create-agent.tool.test.ts
+  s_5ecca14e2e268b::t_597f0f2bae4369 19
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/resolve-llm.tool.test.ts
+  s_5ecca14e2e268b::t_66385f25cb7048 18
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/router.test.ts
+  s_5ecca14e2e268b::t_b6a898ad60aeef 18,85-97
+packages/@n8n/instance-ai/src/tools/agent-builder/build-agent.tool.ts
+  s_5ecca14e2e268b::t_96589a7f58146d 41
+packages/@n8n/instance-ai/src/tools/agent-builder/config-tools.ts
+  s_5ecca14e2e268b::t_af913cf5a7b801 58,69,84-85,93,97,107,125,132,179
+packages/@n8n/instance-ai/src/tools/agent-builder/router.ts
+  s_5ecca14e2e268b::t_ace87df83d9a7e 24,52,105
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_5ecca14e2e268b::t_bf8a15cf26b758 58
+packages/@n8n/instance-ai/src/types.ts
+  s_5ecca14e2e268b::t_ff34a09afa55ef 895-901
+packages/cli/src/modules/agents/instance-ai-agent-builder.adapter.ts
+  s_5ecca14e2e268b::t_6875911e5760b7 196-202
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_5ecca14e2e268b::t_d626ea4b6473b5 985-1007
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1855fc2c057e8bb4885829b807ba98732431f9fb",
+  "prompts": {},
+  "sessions": {
+    "s_5ecca14e2e268b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a80ae449-fd22-47de-a619-c190bc62440c",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

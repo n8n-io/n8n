@@ -1,0 +1,3201 @@
+packages/@n8n/typeorm/test/functional/repository/find-options/repository-find-options.ts
+  ai_agent 1-318
+packages/@n8n/typeorm/test/functional/metadata-builder/column-metadata/entity/Subcounters.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/src/query-builder/relation-count/RelationCountAttribute.ts
+  ai_agent 1-116
+packages/@n8n/typeorm/test/github-issues/401/entity/Group.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/4185/subscriber/SimpleAfterLoadSubscriber.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/56/entity/AccessToken.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/functional/query-builder/soft-delete/entity/UserWithoutDeleteDate.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/query-runner/drop-primary-key.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/github-issues/5119/entity/v2/Post.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/embedded/entity/Counters.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/github-issues/9948/entity/Post.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/other-issues/entity-change-in-subscribers/entity/Post.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/src/error/InvariantViolatedError.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/src/schema-builder/view/View.ts
+  ai_agent 1-115
+packages/@n8n/typeorm/test/functional/embedded/outer-primary-column/entity/Counters.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/lazy-relations-loading-via-base-entitiy-finders/index.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/test/github-issues/8408/delete-orphans.ts
+  ai_agent 1-87
+packages/@n8n/typeorm/test/github-issues/9323/entity/Activity.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/relations/eager-relations/basic-eager-relations/entity/Category.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/1355/entity/Category.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/7650/issue-7650.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/other-issues/update-relational-column-on-relation-change/entity/Category.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/9241/issue-9241.ts
+  ai_agent 1-54
+packages/@n8n/typeorm/src/error/UsingJoinColumnIsNotAllowedError.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/4701/migration/1567759789051-ExampleMigration.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/10496/entity/Base.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/src/error/CustomRepositoryDoesNotHaveEntityError.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/query-builder/insert/entity/Counters.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/metadata/EmbeddedMetadata.ts
+  ai_agent 1-336
+packages/@n8n/typeorm/test/functional/repository/find-options-relations/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/driver/Query.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/query-runner/drop-foreign-key.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/no-type-column/entity/PostItNote.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/5704/entity/Post.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/6284/issue-6284.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/github-issues/1532/entity/User.ts
+  ai_agent 1-36
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/named-tables/entity/Category.ts
+  ai_agent 1-59
+packages/@n8n/typeorm/test/github-issues/5691/enity/Root.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/test/github-issues/9176/entity/Post.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/7558/entity/NumberEntry.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/src/repository/TreeRepository.ts
+  ai_agent 1-332
+packages/@n8n/typeorm/test/other-issues/entity-change-in-listeners/entity-change-in-listeners.ts
+  ai_agent 1-55
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  ai_agent 105
+packages/@n8n/typeorm/src/entity-schema/EntitySchemaExclusionOptions.ts
+  ai_agent 1-11
+packages/@n8n/backend-test-utils/package.json
+  ai_agent 31
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-one/embedded-with-multiple-pk/entity/Subcounters.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/src/driver/DriverUtils.ts
+  ai_agent 1-257
+packages/@n8n/typeorm/test/github-issues/6948/issue-6948.ts
+  ai_agent 1-36
+packages/@n8n/typeorm/test/functional/relations/eager-relations/basic-eager-relations/entity/Profile.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/named-tables/entity/Post.ts
+  ai_agent 1-80
+packages/@n8n/typeorm/test/github-issues/8627/entity/long-name.entity.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/functional/query-runner/entity/Teacher.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/1748/entity/Post.ts
+  ai_agent 1-43
+packages/@n8n/typeorm/test/github-issues/3350/issue-3350.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/many-to-many/entity/Accountant.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/1369/issue-1369.ts
+  ai_agent 1-51
+packages/@n8n/typeorm/test/github-issues/2703/entity/Dummy.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/repository/find-options-locking/entity/PostWithoutVersionAndUpdateDate.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/basic-functionality/entity/Employee.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case5/entity/User.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/4190/entity/Photo.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/47/issue-47.ts
+  ai_agent 1-83
+packages/@n8n/typeorm/test/github-issues/5684/entity/Company.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/basic-functionality/entity/Post.ts
+  ai_agent 1-35
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/embedded-with-multiple-pk/entity/Category.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/named-tables-and-columns/entity/Category.ts
+  ai_agent 1-61
+packages/@n8n/typeorm/test/github-issues/2201/issue-2201.ts
+  ai_agent 1-69
+packages/@n8n/typeorm/test/functional/embedded/multiple-primary-columns/multiple-primary-columns.ts
+  ai_agent 1-110
+packages/@n8n/typeorm/test/github-issues/2201/entity/ver2/record.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/sample/sample2-one-to-one/entity/PostInformation.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/778/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/9977/entity/Post.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/functional/entity-schema/custom-constraint-names/foreign-key/entity/Breed.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/174/issue-174.ts
+  ai_agent 1-67
+packages/@n8n/typeorm/test/benchmark/bulk-save-case1/bulk-save-case1.ts
+  ai_agent 1-84
+packages/@n8n/typeorm/test/functional/relations/custom-referenced-column-name/entity/Post.ts
+  ai_agent 1-69
+packages/@n8n/typeorm/test/functional/repository/find-options-locking/entity/Category.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/github-issues/4958/entity/first.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/.gitignore
+  ai_agent 1-20
+packages/@n8n/typeorm/src/persistence/Subject.ts
+  ai_agent 1-315
+packages/@n8n/typeorm/src/error/InsertValuesMissingError.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/5174/entity/User.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/620/entity/Dog.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/src/metadata-args/JoinTableMetadataArgs.ts
+  ai_agent 1-51
+packages/@n8n/typeorm/src/decorator/listeners/AfterSoftRemove.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/src/metadata-args/MetadataArgsStorage.ts
+  ai_agent 1-337
+packages/@n8n/typeorm/src/metadata/EntityMetadata.ts
+  ai_agent 1-1038
+packages/@n8n/typeorm/test/functional/repository/basic-methods/schema/user.json
+  ai_agent 1-21
+packages/@n8n/typeorm/test/functional/query-builder/insert/entity/Photo.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/5132/issue-5132.ts
+  ai_agent 1-44
+packages/@n8n/typeorm/test/github-issues/5898/entity/Photo.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/512/issue-512.ts
+  ai_agent 1-35
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/embedded/entity/Category.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case2/entity/Counters.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/src/error/ConnectionNotFoundError.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/10494/schema/index.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/test/functional/schema-builder/entity/PostVersion.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/2067/issue-2067.ts
+  ai_agent 1-41
+packages/@n8n/typeorm/test/github-issues/4630/issue-4630.ts
+  ai_agent 1-43
+packages/@n8n/typeorm/test/github-issues/2809/issue-2809.ts
+  ai_agent 1-48
+packages/@n8n/typeorm/src/subscriber/event/RemoveEvent.ts
+  ai_agent 1-47
+packages/@n8n/typeorm/test/github-issues/1703/entity/OrganizationEntity.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/3363/issue-3363.ts
+  ai_agent 1-106
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/many-to-many/entity/Teacher.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/repository/decrement/entity/UserWithEmbededEntity.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/src/decorator/relations/OneToMany.ts
+  ai_agent 1-43
+packages/@n8n/typeorm/test/github-issues/720/entity/Participant.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/transaction/single-query-runner/repository/PostRepository.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/1576/entity/Category.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/1997/issue-1997.ts
+  ai_agent 1-326
+packages/@n8n/typeorm/test/github-issues/2251/entity/Foo.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/find-options/array-contained-by-operator/entity/Post.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/functional/query-builder/select/entity/Post.ts
+  ai_agent 1-49
+packages/@n8n/typeorm/test/github-issues/2376/entity/User.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/src/metadata-args/RelationMetadataArgs.ts
+  ai_agent 1-68
+packages/@n8n/typeorm/test/functional/repository/basic-methods/repository-basic-methods.ts
+  ai_agent 1-922
+packages/@n8n/typeorm/test/functional/repository/decrement/repository-decrement.ts
+  ai_agent 1-246
+packages/@n8n/typeorm/test/github-issues/190/issue-190.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/github-issues/3302/issue-3302.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/test/github-issues/8644/issue-8644.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/src/decorator/Exclusion.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/github-issues/8796/issue-8796.ts
+  ai_agent 1-57
+packages/@n8n/typeorm/test/functional/persistence/multi-primary-key-on-both-sides/entity/Post.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/3111/issue-3111.ts
+  ai_agent 1-48
+packages/@n8n/typeorm/test/github-issues/2965/index.ts
+  ai_agent 1-60
+packages/@n8n/typeorm/test/github-issues/720/issue-720.ts
+  ai_agent 1-122
+packages/@n8n/typeorm/test/github-issues/8430/entity/Post.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/8459/entity/Post.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/9715/migration/1674040078325-init.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/9977/entity/Author.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/6990/issue-6990.ts
+  ai_agent 1-44
+packages/@n8n/typeorm/test/functional/embedded/multiple-primary-columns/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/8522/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/863/issue-863.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/test/github-issues/3534/entity/Foo.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/720/entity/Locale.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/9948/subscriber/PostSubscriber.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/src/metadata/RelationIdMetadata.ts
+  ai_agent 1-112
+packages/@n8n/typeorm/test/github-issues/1680/issue-1680.ts
+  ai_agent 1-75
+packages/@n8n/typeorm/test/github-issues/4096/issue-4096.ts
+  ai_agent 1-58
+packages/@n8n/typeorm/test/functional/query-builder/parameters/query-builder-parameters.ts
+  ai_agent 1-68
+packages/@n8n/typeorm/test/functional/table-inheritance/extending/extending-inheritance.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/src/driver/types/UpsertType.ts
+  ai_agent 1
+packages/@n8n/typeorm/test/functional/columns/value-transformer/entity/PhoneBook.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/github-issues/1576/entity/Post.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/src/decorator/options/ColumnWithWidthOptions.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/embedded-with-multiple-pk/entity/Counters.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/131/entity/Employee.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/8076/issue-8076.ts
+  ai_agent 1-347
+packages/@n8n/typeorm/test/benchmark/multiple-joins-querybuilder/entity/Three.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/github-issues/3694/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/database-option-inherited/entity/Person.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/github-issues/163/entity/Game.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/functional/query-builder/composite-primary/entity/Bar.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/other-issues/sqlite-bulk-save/sqlite-bulk-save.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/functional/query-runner/view/PostMaterializedView.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/uuid/postgres/uuid-ossp.ts
+  ai_agent 1-126
+packages/@n8n/typeorm/test/github-issues/6815/issue-6815.ts
+  ai_agent 1-69
+packages/@n8n/typeorm/src/schema-builder/util/TableUtils.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/functional/entity-metadata-validator/initialized-relations/validator-intialized-relations.ts
+  ai_agent 1-96
+packages/@n8n/typeorm/test/github-issues/2298/issue-2298.ts
+  ai_agent 1-107
+packages/@n8n/typeorm/test/functional/repository/soft-delete/global-condition-non-deleted/entity/CategoryWithRelation.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/6115/entity/v1/MetricEntity.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/src/driver/sqlite-pooled/SqliteWriteConnection.ts
+  ai_agent 1-190
+packages/@n8n/typeorm/test/functional/connection-manager/connection-manager.ts
+  ai_agent 1-130
+packages/@n8n/typeorm/test/github-issues/7974/issue-7974.ts
+  ai_agent 1-137
+packages/@n8n/typeorm/test/github-issues/2313/issue-2313.ts
+  ai_agent 1-68
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case4/entity/User.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/query-builder/relational/with-many/entity/Image.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/database-schema/simple-enums-array/enums-array.ts
+  ai_agent 1-79
+packages/@n8n/typeorm/test/github-issues/7882/issue-7882.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/functional/query-runner/create-table.ts
+  ai_agent 1-344
+packages/@n8n/typeorm/test/github-issues/3120/entity/Person.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/src/entity-schema/EntitySchemaEmbeddedColumnOptions.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/src/driver/sqlite-pooled/SqlitePooledTypes.ts
+  ai_agent 1-53
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-many-to-one/entity/Post.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/src/driver/types/ReplicationMode.ts
+  ai_agent 1
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case1/entity/User.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/entity-schema/EntitySchemaRelationOptions.ts
+  ai_agent 1-114
+packages/@n8n/typeorm/src/error/UsingJoinTableOnlyOnOneSideAllowedError.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/database-schema/column-types/sqlite/entity/PostWithoutTypes.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/functional/multi-database/multi-database-basic-functionality/multi-database-basic-functionality.ts
+  ai_agent 1-171
+packages/@n8n/typeorm/test/functional/query-builder/entity-updation/entity-updation.ts
+  ai_agent 1-138
+packages/@n8n/typeorm/test/functional/connection/modules/question/schema/question-category.json
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/7079/entities.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/github-issues/8408/entity/Post.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/src/error/UpdateValuesMissingError.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/src/schema-builder/options/TableIndexOptions.ts
+  ai_agent 1-61
+packages/@n8n/typeorm/test/functional/repository/find-options-locking/entity/PostWithUpdateDate.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/47/entity/Post.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/9381/issue-9381.ts
+  ai_agent 1-119
+packages/@n8n/typeorm/test/github-issues/9965/subscriber/BorrrowedSubscriber.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/persistence/entity-updation/entity/PostComplex.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/src/subscriber/event/TransactionCommitEvent.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/src/decorator/options/VirtualColumnOptions.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/test/functional/relations/relation-with-primary-key/entity/Category.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/341/entity/Post.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/6265/entity/Role.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/basic-functionality/entity/Image.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/720/entity/Translation.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/basic-functionality/entity/Tag.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/multiple-pk/entity/Category.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/functional/connection/subscriber/SecondConnectionSubscriber.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/query-runner/create-primary-key.ts
+  ai_agent 1-89
+packages/@n8n/typeorm/src/find-options/operator/MoreThan.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/src/query-builder/transformer/PlainObjectToNewEntityTransformer.ts
+  ai_agent 1-125
+packages/@n8n/typeorm/test/functional/relations/eager-relations/lazy-nested-eager-relations/entity/Editor.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/151/entity/PostMetadata.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case5/entity/User.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/query-builder/relation-count/relation-count-many-to-many/entity/Post.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/github-issues/1200/issue-1200.ts
+  ai_agent 1-109
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/embedded-with-multiple-pk/entity/Subcounters.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/repository/soft-delete/global-condition-non-deleted/entity/PostWithRelation.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/github-issues/1042/entity/Information.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/2201/entity/ver1/user.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/src/find-options/FindOneOptions.ts
+  ai_agent 1-106
+packages/@n8n/typeorm/test/github-issues/499/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/9977/entity/Photo.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/9988/entity/product.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/other-issues/take-multiple-pk/entity/User.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/5898/entity/Album.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/3142/issue-3142.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/github-issues/8890/issue-8890.ts
+  ai_agent 1-229
+packages/@n8n/typeorm/test/github-issues/493/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/migration/Migration.ts
+  ai_agent 1-54
+packages/@n8n/typeorm/test/functional/repository/find-options/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/schema-builder/change-unique-constraint.ts
+  ai_agent 1-103
+packages/@n8n/typeorm/test/github-issues/9176/migration/1656939646470-AddAuthorIdColumn.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/github-issues/3443/issue-3443.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/functional/embedded/prefix/embedded-prefix.ts
+  ai_agent 1-50
+packages/@n8n/typeorm/test/github-issues/7041/entity/User.ts
+  ai_agent 1-35
+packages/@n8n/typeorm/test/github-issues/7087/migration/0000000000001-CreateUsers.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/7155/entity/RemainingTreeEntities.ts
+  ai_agent 1-95
+packages/@n8n/typeorm/test/github-issues/8522/issue-8522.ts
+  ai_agent 1-103
+packages/@n8n/typeorm/test/github-issues/7541/issue-7541.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/embedded-with-multiple-pk/entity/Category.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/src/metadata-args/EmbeddedMetadataArgs.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/71/issue-71.ts
+  ai_agent 1-59
+packages/@n8n/typeorm/test/functional/query-builder/select/entity/Tag.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/7521/entity/Post.ts
+  ai_agent 1-52
+packages/@n8n/typeorm/test/other-issues/ekifox-increment-issue/entity/User.ts
+  ai_agent 1-237
+packages/@n8n/typeorm/test/github-issues/7558/entity/Person.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/other-issues/inheritance-duplicate-columns/inheritance-duplicate-columns.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/github-issues/703/entity/Category.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/one-to-many-casecade-save/one-to-many-cascade-save.ts
+  ai_agent 1-48
+packages/@n8n/typeorm/test/github-issues/9323/entity/Company.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/5478/issue-5478.ts
+  ai_agent 1-51
+packages/@n8n/typeorm/test/github-issues/9318/issue-9318.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/github-issues/9829/issue-9829.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/github-issues/10494/entity/B.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/src/schema-builder/table/TableUnique.ts
+  ai_agent 1-69
+packages/@n8n/typeorm/test/functional/metadata-builder/column-metadata/entity/Counters.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/functional/cache/provider/MockQueryResultCache.ts
+  ai_agent 1-246
+packages/@n8n/typeorm/test/github-issues/7586/entity/Test.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/src/decorator/listeners/BeforeSoftRemove.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/src/util/OrmUtils.ts
+  ai_agent 1-458
+packages/@n8n/typeorm/test/github-issues/1720/entity/Category.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/7109/issue-7109.ts
+  ai_agent 1-72
+packages/@n8n/typeorm/test/functional/columns/no-select/columns-no-select.ts
+  ai_agent 1-90
+packages/@n8n/typeorm/test/functional/columns/value-transformer/entity/User.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/functional/persistence/persistence-order/entity/Details.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/github-issues/4156/entity/Author.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-other-cases/multiple-primary-keys-other-cases.ts
+  ai_agent 1-128
+packages/@n8n/typeorm/test/github-issues/7415/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/9690/entity/Foo.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/query-builder/locking/entity/PostWithVersion.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/815/entity/Post.ts
+  ai_agent 1-36
+packages/@n8n/typeorm/test/functional/entity-listeners/entity/Post.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/9833/entity/B.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/query-builder/soft-delete/entity/Counters.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/1476/issue-1476.ts
+  ai_agent 1-72
+packages/@n8n/typeorm/src/subscriber/event/SoftRemoveEvent.ts
+  ai_agent 1-6
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-one/embedded-with-multiple-pk/entity/Counters.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/github-issues/8076/entity/Site.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/functional/repository/set-add-remove-relations/entity/Category.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/functional/entity-metadata-validator/basic/entity/Post.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/functional/repository/decrement/entity/PostBigInt.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/9176/migration/1657067039716-CreateCheckConstraintToUser.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/basic-functionality/entity/Category.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/9684/entity/Foo.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/entity-schema/embedded/plain-object/entity/User.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/functional/query-builder/soft-delete/global-condition-non-deleted/entity/PostWithRelation.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-one/multiple-pk/multiple-pk.ts
+  ai_agent 1-455
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/embedded/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/no-type-column/entity/Employee.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/many-to-many/entity/Employee.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/query-builder/locking/entity/PostWithoutVersionAndUpdateDate.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/1369/entity/ConcreteEntity.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case3/entity/User.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/10494/schema/Base.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/151/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/6399/issue-6399.ts
+  ai_agent 1-55
+packages/@n8n/typeorm/test/github-issues/8393/issue-8393.ts
+  ai_agent 1-54
+packages/@n8n/typeorm/test/functional/columns/update-insert/entity/Post.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/github-issues/8627/entity/other-long-name.entity.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/sample/sample4-many-to-many/entity/PostMetadata.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case1/embedded-many-to-one-case1.ts
+  ai_agent 1-385
+packages/@n8n/typeorm/test/functional/transaction/transaction-with-load-many/transaction-load-many.ts
+  ai_agent 1-43
+packages/@n8n/typeorm/test/github-issues/7146/entity/Category.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/functional/spatial/postgres/entity/Post.ts
+  ai_agent 1-41
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case3/entity/Counters.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/211/issue-211.ts
+  ai_agent 1-49
+packages/@n8n/typeorm/test/functional/query-runner/create-and-drop-database.ts
+  ai_agent 1-155
+packages/@n8n/typeorm/src/entity-schema/EntitySchemaEmbeddedError.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/relations/eager-relations/lazy-nested-eager-relations/entity/Category.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/src/query-builder/RelationLoader.ts
+  ai_agent 1-354
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  ai_agent 336
+packages/@n8n/typeorm/test/github-issues/3120/entity/ActionLog.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/functional/find-options/basic-usage/find-options-where.ts
+  ai_agent 1-693
+packages/@n8n/typeorm/test/github-issues/174/entity/Contact.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/embedded/outer-primary-column/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/src/decorator/tree/TreeChildren.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/src/query-builder/result/UpdateResult.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/functional/persistence/orphanage/disable/entity/Setting.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/github-issues/58/issue-58.ts
+  ai_agent 1-89
+packages/@n8n/typeorm/test/github-issues/2588/issue-2588.ts
+  ai_agent 1-66
+packages/@n8n/typeorm/test/github-issues/7974/entity/Category.ts
+  ai_agent 1-36
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-one/multiple-pk/entity/Category.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/functional/errors/prototype-tree/errors-prototype-tree.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/view-entity/general/entity/Photo.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/2965/entity/person.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/query-builder/relational/with-many/query-builder-relational-add-remove-many-to-many.ts
+  ai_agent 1-443
+packages/@n8n/typeorm/test/github-issues/3350/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/3847/naming/NamingStrategyUnderTest.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/7276/entity/TestMssql.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/basic-lazy-relation/schema/profile.json
+  ai_agent 1-26
+packages/@n8n/typeorm/src/driver/sqlite/SqliteConnectionOptions.ts
+  ai_agent 1-41
+packages/@n8n/typeorm/test/github-issues/8627/issue-8627.ts
+  ai_agent 1-36
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-chat-basics.spec.ts
+  ai_agent 46
+packages/@n8n/typeorm/test/functional/entity-schema/exclusions/entity/Meeting.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/query-runner/entity/Post.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/basic-functionality/entity/Image.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/named-tables/named-tables-lazy-relations.ts
+  ai_agent 1-332
+packages/@n8n/typeorm/test/functional/repository/increment/entity/UserWithEmbededEntity.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/src/find-options/operator/In.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-one-to-one/multiple-primary-keys-one-to-one.ts
+  ai_agent 1-707
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/one-to-many/entity/Faculty.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/1259/entity/Post.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/1926/entity/Role.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case1/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/no-type-column/entity/Person.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/one-to-many/one-to-many.ts
+  ai_agent 1-181
+packages/@n8n/typeorm/test/github-issues/1147/issue-1147.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/src/query-builder/Brackets.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/src/metadata-builder/EntityMetadataValidator.ts
+  ai_agent 1-288
+packages/@n8n/typeorm/src/index.ts
+  ai_agent 1-182
+packages/@n8n/typeorm/test/github-issues/6471/issue-6471.ts
+  ai_agent 1-54
+packages/@n8n/typeorm/test/github-issues/3105/entity/Child.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/github-issues/4185/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/9176/migration/1657067039714-CreateUniqueConstraintToUser.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/163/issue-163.ts
+  ai_agent 1-97
+packages/@n8n/typeorm/test/github-issues/6115/issue-6115.ts
+  ai_agent 1-93
+packages/@n8n/typeorm/test/functional/tree-tables/materialized-path/materialized-path.ts
+  ai_agent 1-697
+packages/@n8n/typeorm/test/github-issues/2499/issue-2499.ts
+  ai_agent 1-44
+packages/@n8n/typeorm/test/github-issues/7479/issue-7479.ts
+  ai_agent 1-36
+packages/@n8n/typeorm/test/github-issues/7401/issue-7401.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/8076/entity/Category.ts
+  ai_agent 1-43
+packages/@n8n/typeorm/test/github-issues/9230/issue-9230.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/234/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/basic-lazy-relation/schema/user.json
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/9965/issue-9965.ts
+  ai_agent 1-62
+packages/@n8n/typeorm/test/github-issues/1926/entity/EventRole.ts
+  ai_agent 1-36
+packages/@n8n/typeorm/src/logger/AdvancedConsoleLogger.ts
+  ai_agent 1-60
+packages/@n8n/typeorm/test/github-issues/6950/issue-6950.ts
+  ai_agent 1-77
+packages/@n8n/typeorm/test/github-issues/71/entity/Kollektion.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/8556/issue-8556.ts
+  ai_agent 1-73
+packages/@n8n/typeorm/test/other-issues/redundant-cascade-schema-queries-many-to-many-relation/entity/UserEntity.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/401/entity/Player.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/src/driver/sqlite/SqliteQueryRunner.ts
+  ai_agent 1-153
+packages/@n8n/typeorm/test/functional/database-schema/custom-constraint-names/foreign-key/entity/Breed.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/7614/entity/Test.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/github-issues/10249/entity/example.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/entity-schema/custom-constraint-names/index/entity/Post.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/functional/indices/embeddeds-index-test/entity/Customer.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/repository/find-options-relations/entity/Photo.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/functional/entity-schema/basic/model/Category.ts
+  ai_agent 1-4
+packages/@n8n/typeorm/test/functional/entity-schema/indices/basic/indices-basic.ts
+  ai_agent 1-91
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-many-to-many/multiple-primary-keys-many-to-many.ts
+  ai_agent 1-816
+packages/@n8n/typeorm/test/github-issues/234/entity/Post.ts
+  ai_agent 1-36
+packages/@n8n/typeorm/test/github-issues/463/issue-463.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/benchmark/bulk-sql-build/entity/Post.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/src/query-builder/QueryBuilderCte.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/8936/issue-8936.ts
+  ai_agent 1-51
+packages/@n8n/typeorm/test/github-issues/10496/entity/index.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/src/query-builder/SelectQueryBuilder.ts
+  ai_agent 1-3770
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case1/entity/Counters.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/query-builder/relation-count/relation-count-many-to-many/entity/Category.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/functional/entity-schema/target/entity/PostEntity.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/5898/entity/User.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/6471/entity/SomeEntity.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/github-issues/3997/entity/Photo.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/7586/issue-7586.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/functional/repository/soft-delete/global-condition-non-deleted/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/10431/entity/Category.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/6399/entity/Comment.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/entity-schema/custom-constraint-names/foreign-key/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/query-builder/join/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/594/entity/Post.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/uuid/postgres/entity/Question.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/basic-functionality/entity/Post.ts
+  ai_agent 1-22
+packages/testing/playwright/utils/benchmark/instance-ai-driver.ts
+  ai_agent 101,107,288
+packages/@n8n/typeorm/test/github-issues/2298/entity/TicketProduct.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/src/driver/sqlite-pooled/SqliteReadWriteDriver.ts
+  ai_agent 1-221
+packages/@n8n/typeorm/src/error/ConnectionIsNotSetError.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/persistence/bulk-insert-remove-optimization/entity/Post.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/1720/issue-1720.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/test/github-issues/6833/entity/test.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/persistence/insert/update-relation-columns-after-insertion/update-relation-columns-after-insertion.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/github-issues/8556/entity/category.entity.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/4701/migration/1567759832591-ExampleMigrationTwo.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/2147/issue-2147.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/src/entity-manager/EntityManagerFactory.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/src/schema-builder/SchemaBuilder.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/src/find-options/operator/JsonContains.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/entity-schema/custom-constraint-names/foreign-key/entity/Animal.ts
+  ai_agent 1-49
+packages/@n8n/typeorm/test/github-issues/1780/issue-1780.ts
+  ai_agent 1-125
+packages/@n8n/typeorm/test/github-issues/2693/migration/0000000000001-CreateUuidExtension.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/other-issues/auto-increment-id-as-string/entity/User.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/benchmark/multiple-joins-querybuilder/entity/Five.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/src/util/DirectoryExportedClassesLoader.ts
+  ai_agent 1-52
+packages/@n8n/typeorm/test/functional/transaction/nested-transaction/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/778/issue-778.ts
+  ai_agent 1-50
+packages/@n8n/typeorm/src/error/DatabaseConnectionLeaseAlreadyReleasedError.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/deferrable/entity/Company.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/5691/enity/Shared.ts
+  ai_agent 1-66
+packages/@n8n/typeorm/src/subscriber/event/QueryEvent.ts
+  ai_agent 1-59
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case3/embedded-many-to-one-case3.ts
+  ai_agent 1-385
+packages/@n8n/typeorm/src/logger/DebugLogger.ts
+  ai_agent 1-86
+packages/@n8n/typeorm/test/github-issues/587/entity/Tag.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/114/issue-114.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/query-builder/select/entity/HeroImage.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/database-schema/custom-constraint-names/primary-key/entity/User.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/8346/issue-8346.ts
+  ai_agent 1-57
+packages/@n8n/typeorm/test/github-issues/1200/entity/Group.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/1788/entity/Provider.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/integration/sample4-many-to-many.ts
+  ai_agent 1-540
+.code-health-baseline.json
+  s_17f95be7845aae::t_c8d0ee65d55684 4
+packages/@n8n/typeorm/test/functional/query-builder/soft-delete/global-condition-non-deleted/query-builder-global-condition-non-deleted.ts
+  ai_agent 1-97
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/one-to-many/entity/Student.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/1898/entity/Post.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-other-cases/entity/Event.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/2065/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/entity-schema/basic/entity/PostEntity.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/view-entity/view-dependencies/entity/ViewA.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/src/decorator/tree/Tree.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/columns/embedded-columns/entity/SimpleCounters.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/src/migration/MigrationInterface.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/src/subscriber/event/TransactionRollbackEvent.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/database-schema/column-length/sqlite/entity/Post.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/src/decorator/options/SpatialColumnOptions.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/persistence/persistence-order/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/1369/entity/AbstractEntity.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/github-issues/5119/entity/v1/Post.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/8443/materialized-path/entity/Category.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/database-schema/column-collation/postgres/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/embedded/entity/Subcounters.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/3246/entity/OrderCustomer.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case3/entity/User.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/6636/entity/Test.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/src/driver/sqlite/SqliteDriver.ts
+  ai_agent 1-215
+packages/@n8n/typeorm/src/subscriber/BroadcasterResult.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/query-runner/entity/Faculty.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/2298/entity/Product.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/src/util/escapeRegExp.ts
+  ai_agent 1-4
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/multiple-pk/entity/Category.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/functional/relations/eager-relations/lazy-nested-eager-relations/entity/Post.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/sample/sample2-one-to-one/entity/PostMetadata.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-many-to-many/entity/Post.ts
+  ai_agent 1-76
+packages/@n8n/typeorm/test/github-issues/2758/entity/Party.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/2871/entity/Bar.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/10563/issue-10563.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/github-issues/4277/issue-4277.ts
+  ai_agent 1-140
+packages/@n8n/typeorm/test/other-issues/table-name-relation/entity/Category.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/1118/issue-1118.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/functional/database-schema/column-types/postgres-enum/entity/Post.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/src/persistence/subject-builder/ManyToManySubjectBuilder.ts
+  ai_agent 1-249
+packages/@n8n/typeorm/test/functional/query-builder/relational/with-one/query-builder-relational-set-one-to-one-inverse.ts
+  ai_agent 1-373
+packages/@n8n/typeorm/src/migration/MigrationExecutor.ts
+  ai_agent 1-624
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-many-to-many/entity/Tag.ts
+  ai_agent 1-91
+packages/@n8n/typeorm/test/github-issues/1883/issue-1883.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/repository/soft-delete/global-condition-non-deleted/repository-global-condition-non-deleted.ts
+  ai_agent 1-95
+packages/@n8n/typeorm/test/functional/persistence/many-to-many/entity/User.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/1780/entity/User.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/5762/issue-5762.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/src/decorator/options/PrimaryGeneratedColumnNumericOptions.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case5/embedded-many-to-one-case5.ts
+  ai_agent 1-406
+packages/@n8n/typeorm/test/github-issues/176/issue-176.ts
+  ai_agent 1-57
+packages/@n8n/typeorm/test/github-issues/1825/entity/thing.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/1545/entity/DataModel.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/github-issues/2499/entity/Foo.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/github-issues/3120/entity/ActionDetails.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/numeric-types/entity/Person.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/repository/increment/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/5407/issue-5407.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/github-issues/2103/entity/Complex.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/6195/migrations/MigrationToFakeRun.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/6580/issue-6580.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/7586/entity/ViewB.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/3991/entity/postgres/Post.ts
+  ai_agent 1-154
+packages/@n8n/typeorm/test/github-issues/8444/entity/StrictlyInitializedEntity.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/query-builder/subquery/query-builder-subquery.ts
+  ai_agent 1-453
+packages/@n8n/typeorm/test/github-issues/7541/entity/Test.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/src/find-options/FindOptionsSelect.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/github-issues/1261/issue-1261.ts
+  ai_agent 1-35
+packages/@n8n/typeorm/test/functional/relations/eager-relations/circular-eager-relations/circular-eager-relations.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/sample/sample2-one-to-one/entity/PostAuthor.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/persistence/entity-updation/entity/PostSpecialColumns.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/connection/modules/question/subscriber/TestQuestionSubscriber.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/decorators/relation-id/relation-id-one-to-one/entity/Category.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case1/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/persistence/orphanage/delete/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/database-option-inherited/database-option-inherited.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/1308/entity/Author.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/github-issues/1465/issue-1465.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/github-issues/1551/entity/Chat.ts
+  ai_agent 1-121
+packages/@n8n/typeorm/src/query-builder/SelectQueryBuilderOption.ts
+  ai_agent 1
+packages/@n8n/typeorm/src/decorator/options/RelationOptions.ts
+  ai_agent 1-74
+packages/@n8n/typeorm/test/github-issues/3246/entity/Broker.ts
+  ai_agent 1-35
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/embedded-with-multiple-pk/entity/User.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/embedded/entity/Subcounters.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/660/issue-660.ts
+  ai_agent 1-162
+packages/@n8n/typeorm/test/github-issues/736/issue-736.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/github-issues/762/entity/FooChildMetadata.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/embedded-with-multiple-pk/entity/User.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/functional/persistence/cascades/cascades-example1/entity/Profile.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/basic-functionality/entity/Person.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/3387/issue-3387.ts
+  ai_agent 1-59
+packages/@n8n/typeorm/test/functional/entity-schema/custom-constraint-names/foreign-key/entity/Name.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/1825/issue-1825.ts
+  ai_agent 1-43
+packages/@n8n/typeorm/test/github-issues/423/entity/Group.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/7586/entity/ViewC.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/other-issues/entity-change-in-listeners/entity/Post.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/persistence/one-to-many/persistence-one-to-many.ts
+  ai_agent 1-224
+packages/@n8n/typeorm/test/github-issues/5919/issue-6399.ts
+  ai_agent 1-99
+packages/@n8n/typeorm/test/functional/persistence/null-and-default-behaviour/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/other-issues/escaping-function-parameter/escaping-function-parameter.ts
+  ai_agent 1-82
+packages/@n8n/typeorm/test/github-issues/2632/entity/Post.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case5/entity/Counters.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/functional/decorators/embedded/query-builder-embedded.ts
+  ai_agent 1-137
+packages/@n8n/typeorm/src/subscriber/Broadcaster.ts
+  ai_agent 1-818
+packages/@n8n/typeorm/test/functional/persistence/multi-primary-key/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/388/issue-388.ts
+  ai_agent 1-47
+packages/@n8n/typeorm/test/github-issues/4452/entity/User.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/sqlite/write-connection.ts
+  ai_agent 1-64
+packages/@n8n/typeorm/test/github-issues/6416/entity/PostAttachment.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/test/functional/embedded/embedded-one-to-one/entity/Subcounters.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case2/embedded-many-to-many-case2.ts
+  ai_agent 1-433
+packages/@n8n/typeorm/test/other-issues/nested-child-entities/entity/TournamentGraph.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/src/error/FindRelationsNotFoundError.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/error/MustBeEntityError.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/1055/issue-1055.ts
+  ai_agent 1-95
+packages/@n8n/typeorm/test/github-issues/3349/issue-3349.ts
+  ai_agent 1-62
+packages/@n8n/typeorm/test/github-issues/9405/entity/Log.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/functional/view-entity/sqlite/entity/Post.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/view-entity/general/view-entity-general.ts
+  ai_agent 1-134
+packages/@n8n/typeorm/test/github-issues/175/entity/Post.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/src/persistence/SubjectDatabaseEntityLoader.ts
+  ai_agent 1-170
+packages/@n8n/typeorm/test/github-issues/1355/entity/Breed.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/src/find-options/JoinOptions.ts
+  ai_agent 1-72
+packages/@n8n/typeorm/test/functional/view-entity/postgres/entity/Post.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/other-issues/get-id-for-composite-primary-key/entity/Post.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/2131/entity/Post.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/view-entity/general/entity/PhotoAlbum.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/basic-functionality/entity/Image.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/720/entity/Message.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/github-issues/10494/issues-10494.ts
+  ai_agent 1-61
+packages/@n8n/typeorm/test/functional/database-schema/column-length/postgres/entity/Post.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/github-issues/2927/issue-2927.ts
+  ai_agent 1-101
+packages/@n8n/typeorm/test/github-issues/1680/entity/User.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/300/entity/Race.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/database-schema/indices/indices-create-modify.ts
+  ai_agent 1-91
+packages/@n8n/typeorm/test/github-issues/7308/issue-7308.ts
+  ai_agent 1-49
+packages/@n8n/typeorm/test/functional/view-entity/sqlite/view-entity-sqlite.ts
+  ai_agent 1-68
+packages/@n8n/typeorm/test/functional/query-builder/relational/with-one/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/8443/materialized-path/materialized-path.ts
+  ai_agent 1-668
+packages/@n8n/typeorm/src/find-options/operator/LessThan.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/src/decorator/options/ColumnWithLengthOptions.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/migrations/generate-command/entity/category.entity.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-one/embedded-with-multiple-pk/entity/Category.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/src/driver/types/MappedColumnTypes.ts
+  ai_agent 1-138
+packages/@n8n/typeorm/test/functional/repository/clear/repository-clear.ts
+  ai_agent 1-70
+packages/@n8n/typeorm/test/github-issues/10249/issue-10249.ts
+  ai_agent 1-64
+packages/@n8n/typeorm/test/github-issues/3158/issue-3158.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/github-issues/10494/schema/C.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/4106/entity/GenderEnum.ts
+  ai_agent 1-4
+packages/@n8n/typeorm/src/find-options/operator/ArrayContains.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/4753/entity/User.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/5734/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/query-builder/RelationQueryBuilder.ts
+  ai_agent 1-197
+packages/@n8n/typeorm/test/github-issues/996/entity/Post.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/161/issue-161.ts
+  ai_agent 1-132
+packages/@n8n/typeorm/test/github-issues/151/entity/Post.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/src/error/SubjectWithoutIdentifierError.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/1720/entity/Post.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/repository/basic-methods/model/User.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/test/functional/transaction/transaction-with-load-many/entity/Post.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/1754/entity/tipo-cliente.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/persistence/entity-updation/entity/PostDefaultValues.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/functional/query-builder/delete/query-builder-delete.ts
+  ai_agent 1-156
+packages/@n8n/typeorm/src/find-options/FindOperatorType.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/cube/postgres/entity/Post.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/10040/issue-10040.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/github-issues/184/entity/Student.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/src/error/PessimisticLockTransactionRequiredError.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/1898/issue-1898.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/github-issues/345/entity/Category.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/columns/value-transformer/entity/Post.ts
+  ai_agent 1-68
+packages/@n8n/typeorm/test/github-issues/3949/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/4753/issue-4753.ts
+  ai_agent 1-6
+packages/@n8n/typeorm/src/driver/postgres/PostgresQueryRunner.ts
+  ai_agent 1-3914
+packages/@n8n/typeorm/src/platform/PlatformTools.ts
+  ai_agent 1-110
+packages/@n8n/typeorm/test/functional/cache/entity/User.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/functional/database-schema/generated-columns/postgres/entity/Post.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/functional/query-builder/enabling-transaction/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/10043/migration/1699343893360-create-table.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/10209/issue-10209.ts
+  ai_agent 1-87
+packages/@n8n/typeorm/test/github-issues/10431/entity/index.ts
+  ai_agent 1-2
+packages/@n8n/typeorm/test/github-issues/2904/issue-2904.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/other-issues/table-name-relation/entity/Photo.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/1703/entity/UserEntity.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/other-issues/join-empty-relations/entity/Author.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/996/issue-996.ts
+  ai_agent 1-59
+packages/@n8n/typeorm/test/github-issues/9829/entity/ExampleEntity.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/5691/issue-5691.ts
+  ai_agent 1-125
+packages/@n8n/typeorm/test/github-issues/7041/entity/Organization.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/other-issues/preventing-injection/preventing-injection.ts
+  ai_agent 1-133
+packages/@n8n/typeorm/tsconfig.build.json
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/database-schema/column-types/postgres-enum/postgres-enum.ts
+  ai_agent 1-410
+packages/@n8n/typeorm/src/error/TypeORMError.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/70/entity/Post.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/3120/entity/Address.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/github-issues/4190/entity/Profile.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/src/query-builder/InsertQueryBuilder.ts
+  ai_agent 1-739
+packages/@n8n/typeorm/test/functional/query-runner/drop-check-constraint.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/github-issues/3534/entity/RegExpStringTransformer.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/persistence/cascades/cascades-example2/entity/User.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/deferrable/entity/User.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/7155/issue-7155.ts
+  ai_agent 1-2154
+packages/@n8n/typeorm/test/functional/find-options/basic-usage/find-options-select.ts
+  ai_agent 1-158
+packages/@n8n/typeorm/test/github-issues/3737/issue-3737.ts
+  ai_agent 1-36
+packages/@n8n/typeorm/test/github-issues/2286/entity/Example.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/6327/entity/Post.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/src/common/ObjectType.ts
+  ai_agent 1-4
+packages/@n8n/typeorm/test/github-issues/6399/entity/Post.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/functional/cascades/cascade-insert-from-both-sides/entity/Post.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/schema-builder/change-column.ts
+  ai_agent 1-345
+packages/@n8n/typeorm/test/functional/persistence/entity-updation/persistence-entity-updation.ts
+  ai_agent 1-113
+packages/@n8n/typeorm/test/functional/persistence/one-to-one/persistence-one-to-one.ts
+  ai_agent 1-87
+packages/@n8n/typeorm/test/functional/repository/basic-methods/model/Question.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/test/functional/schema-builder/change-exclusion-constraint.ts
+  ai_agent 1-81
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/embedded-with-multiple-pk/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/3302/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/7065/entity/index.ts
+  ai_agent 1-4
+packages/@n8n/typeorm/test/functional/persistence/null-and-default-behaviour/null-and-default-behaviour.ts
+  ai_agent 1-125
+packages/@n8n/typeorm/test/functional/query-builder/relational/with-many/query-builder-relational-add-remove-one-to-many.ts
+  ai_agent 1-426
+packages/@n8n/typeorm/test/github-issues/3363/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/decorator/options/ViewColumnOptions.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/3120/entity/Company.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/metadata-args/EntityListenerMetadataArgs.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/8398/entity/Post.ts
+  ai_agent 1-90
+packages/@n8n/typeorm/test/github-issues/9176/entity/Author.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/database-schema/sequences/entity/Person.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/src/common/EntityTarget.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/entity-metadata/entity/Subcounters.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/database-schema/custom-constraint-names/foreign-key/entity/Category.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/2128/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/1754/entity/cliente.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/schema-builder/entity/Faculty.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/7065/entity/Contact.ts
+  ai_agent 1-14
+packages/testing/playwright/helpers/NavigationHelper.ts
+  ai_agent 234,237
+packages/@n8n/typeorm/src/repository/UpsertOptions.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/2364/entity/dummy2.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/3112/issue-3112.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/github-issues/7523/issue-7523.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/github-issues/3256/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/182/issue-182.ts
+  ai_agent 1-88
+packages/@n8n/typeorm/test/github-issues/3112/entity/User.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/1282/entity/Animal.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/other-issues/column-getters/column-getters.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/functional/persistence/persistence-order/entity/Photo.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/github-issues/2693/issue-2693.ts
+  ai_agent 1-47
+packages/@n8n/typeorm/test/functional/relations/eager-relations/lazy-nested-eager-relations/entity/User.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/basic-functionality/basic-functionality.ts
+  ai_agent 1-377
+packages/@n8n/typeorm/test/functional/persistence/many-to-many/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/1476/entity/Item.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/3685/issue-3685.ts
+  ai_agent 1-80
+packages/@n8n/typeorm/test/github-issues/7867/entity/Example.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/src/error/NestedSetMultipleRootError.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/one-to-many-casecade-save/entity/Faculty.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/github-issues/2809/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/2287/entity/Post.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/github-issues/2984/entity/issue/note.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/github-issues/6977/entity/User.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/query-builder/exists/entity/Test.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-one-to-many/entity/User.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/columns/readonly/columns-readonly.ts
+  ai_agent 1-49
+packages/@n8n/typeorm/test/github-issues/8892/entity/country.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/src/error/UsingJoinTableIsNotAllowedError.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/src/find-options/FindManyOptions.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/benchmark/bulk-sql-build/bulk-sql-build.ts
+  ai_agent 1-44
+packages/@n8n/typeorm/test/functional/entity-schema/custom-constraint-names/primary-key/primary-key.ts
+  ai_agent 1-130
+packages/@n8n/typeorm/test/github-issues/1909/issue-1909.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/github-issues/204/entity/RecordData.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/columns/value-transformer/entity/View.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/src/query-builder/relation-id/RelationIdAttribute.ts
+  ai_agent 1-131
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-many-to-one/entity/Category.ts
+  ai_agent 1-49
+packages/@n8n/typeorm/test/github-issues/521/issue-521.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/github-issues/4410/issue-4410.ts
+  ai_agent 1-98
+packages/@n8n/typeorm/test/github-issues/6265/issue-6265.ts
+  ai_agent 1-94
+packages/@n8n/typeorm/test/github-issues/9241/entity/Photo.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/219/issue-219.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/src/schema-builder/util/ViewUtils.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/github-issues/1355/entity/Animal.ts
+  ai_agent 1-43
+packages/@n8n/typeorm/test/github-issues/9965/entity/User.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/indices/basic-unique-index-test/entity/Customer.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/9063/entity/Post.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/9015/issue-9015.ts
+  ai_agent 1-63
+packages/@n8n/typeorm/test/github-issues/1397/issue-1397.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/functional/entity-schema/target/model/Post.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/src/error/index.ts
+  ai_agent 1-62
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/embedded/entity/Category.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/src/connection/ConnectionManager.ts
+  ai_agent 1-66
+packages/@n8n/typeorm/test/github-issues/9341/entity/TestEntity.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/other-issues/composite-keys/entity/Group.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/3349/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/entity-metadata-validator/initialized-relations/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-one/multiple-pk/entity/Post.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/github-issues/2800/entity/Plane.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/src/driver/sqlite-pooled/SqlitePooledConnectionOptions.ts
+  ai_agent 1-57
+packages/@n8n/typeorm/test/functional/persistence/cascades/cascades-example1/entity/Photo.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case5/entity/Subcounters.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/src/query-builder/NotBrackets.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/persistence/basic-functionality/entity/Post.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/815/issue-815.ts
+  ai_agent 1-253
+packages/@n8n/typeorm/src/decorator/entity/Entity.ts
+  ai_agent 1-44
+packages/@n8n/typeorm/src/error/CannotGetEntityManagerNotConnectedError.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/transaction/database-specific-isolation/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/view-entity/general/entity/Album.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/813/entity/Category.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/9833/entity/Base.ts
+  ai_agent 1-6
+packages/@n8n/typeorm/test/github-issues/433/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/src/query-builder/relation-count/RelationCountMetadataToAttributeTransformer.ts
+  ai_agent 1-63
+packages/@n8n/typeorm/test/github-issues/184/entity/Homesitter.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/query-builder/locking/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/863/entities/detail.ts
+  ai_agent 1-36
+packages/@n8n/typeorm/test/github-issues/966/issue-966.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/test/github-issues/8890/issue-8890-utils.ts
+  ai_agent 1-95
+packages/@n8n/typeorm/test/functional/embedded/optional-embedded-listeners/entity/PostInformation.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/other-issues/redundant-cascade-schema-queries-many-to-many-relation/redundant-cascade-schema-queries-many-to-many-relation.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/functional/cascades/cascade-insert-from-both-sides/entity/PostDetails.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/2253/entity/User.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/234/issue-234.ts
+  ai_agent 1-166
+packages/@n8n/typeorm/test/github-issues/3113/entities/User.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/3946/issue-3946.ts
+  ai_agent 1-528
+packages/@n8n/typeorm/test/functional/query-builder/select/query-builder-select.ts
+  ai_agent 1-576
+packages/@n8n/typeorm/test/github-issues/10054/entity/Person.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/src/error/CannotCreateEntityIdMapError.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/query-builder/relation-count/relation-count-one-to-many/load-relation-count-and-map-one-to-many.ts
+  ai_agent 1-192
+packages/@n8n/typeorm/test/functional/persistence/persistence-options/transaction/persistence-options-transaction.ts
+  ai_agent 1-80
+packages/@n8n/typeorm/test/functional/persistence/custom-column-names/entity/Post.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/functional/persistence/cascades/cascades-example1/cascades-example1.ts
+  ai_agent 1-63
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/multiple-pk/entity/Image.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/migrations/generate-command/entity/index.ts
+  ai_agent 1-3
+packages/@n8n/typeorm/src/entity-schema/EntitySchemaIndexOptions.ts
+  ai_agent 1-60
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/basic-lazy-relation/entity/Category.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/functional/persistence/basic-functionality/persistence-basic-functionality.ts
+  ai_agent 1-140
+packages/@n8n/typeorm/test/github-issues/2984/issue-2984.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/3991/entity/sqlite/Post.ts
+  ai_agent 1-58
+packages/@n8n/typeorm/test/github-issues/587/issue-587.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/embedded/entity/Subcounters.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/uuid/postgres/pgcrypto.ts
+  ai_agent 1-132
+packages/@n8n/typeorm/test/functional/embedded/multiple-primary-columns-with-nested-embed/entity/Subcounters.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/repository/set-add-remove-relations/repository-set-add-remove-relations.ts
+  ai_agent 1-359
+packages/@n8n/typeorm/test/github-issues/1099/entity/Category.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/repository/soft-delete/global-condition-non-deleted/repository-global-condition-non-deleted-with-eager-relation.ts
+  ai_agent 1-96
+packages/@n8n/typeorm/test/functional/query-runner/create-index.ts
+  ai_agent 1-84
+packages/@n8n/typeorm/test/github-issues/58/entity/Post.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/error/ColumnTypeUndefinedError.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/778/entity/Question.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case5/embedded-many-to-many-case5.ts
+  ai_agent 1-446
+packages/@n8n/typeorm/test/other-issues/escaping-function-parameter/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/other-issues/table-name-relation/entity/User.ts
+  ai_agent 1-26
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  ai_agent 148
+packages/@n8n/typeorm/src/subscriber/event/RecoverEvent.ts
+  ai_agent 1-6
+packages/@n8n/typeorm/test/github-issues/807/issue-807.ts
+  ai_agent 1-43
+packages/@n8n/typeorm/test/github-issues/8408/entity/Category.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/src/metadata-builder/MetadataUtils.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/src/util/TreeRepositoryUtils.ts
+  ai_agent 1-92
+packages/@n8n/typeorm/src/decorator/listeners/BeforeRemove.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/163/entity/Platform.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/connection/entity/v2/Guest.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/persistence/many-to-one-uni-directional/persistence-many-to-one-uni-directional.ts
+  ai_agent 1-326
+packages/@n8n/typeorm/test/github-issues/306/entity/Duration.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/query-builder/QueryPartialEntity.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/functional/connection/entity/View.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/sample/sample3-many-to-one/entity/Post.ts
+  ai_agent 1-72
+packages/@n8n/typeorm/src/cache/DbQueryResultCache.ts
+  ai_agent 1-270
+packages/@n8n/typeorm/src/metadata-builder/RelationJoinColumnBuilder.ts
+  ai_agent 1-209
+packages/@n8n/typeorm/src/query-builder/ReturningResultsEntityUpdator.ts
+  ai_agent 1-216
+packages/@n8n/typeorm/src/util/RandomGenerator.ts
+  ai_agent 1-146
+packages/@n8n/typeorm/test/functional/embedded/embedded-with-special-columns/embedded-with-special-columns.ts
+  ai_agent 1-95
+packages/@n8n/typeorm/test/functional/tree-tables/closure-table/entity/Category.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/connection/connection.ts
+  ai_agent 1-418
+packages/@n8n/typeorm/test/functional/embedded/embedded-one-to-one/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/1758/entity/Post.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/2871/documentEnum.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/9673/entity/Rule.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/src/metadata/types/PropertyTypeInFunction.ts
+  ai_agent 1-4
+packages/@n8n/typeorm/test/github-issues/80/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/database-schema/column-types/postgres/entity/PostWithoutTypes.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/persistence/orphanage/delete/delete-orphans.ts
+  ai_agent 1-83
+packages/@n8n/typeorm/test/github-issues/6815/entity/ParentEntity.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/src/error/EntityNotFoundError.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/github-issues/8018/entity/Child.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/query-builder/composite-primary/entity/Foo.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/src/query-builder/InsertOrUpdateOptions.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/decorators/relation-count/relation-count-many-to-many/entity/Post.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/functional/query-builder/relational/with-one/query-builder-relational-set-one-to-one.ts
+  ai_agent 1-373
+packages/@n8n/typeorm/test/github-issues/1883/enum/FruitEnum.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/embedded/entity/Counters.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/github-issues/513/issue-513.ts
+  ai_agent 1-110
+packages/@n8n/typeorm/test/github-issues/9176/migration/1657067039715-CreateCheckedUserTable.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/test/functional/transaction/single-query-runner/entity/Post.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/entity-metadata/entity-metadata-property-map.ts
+  ai_agent 1-66
+packages/@n8n/typeorm/test/functional/database-schema/column-types/sqlite/column-types-sqlite.ts
+  ai_agent 1-180
+packages/@n8n/typeorm/test/functional/persistence/one-to-many/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/1099/issue-1099.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/test/functional/query-builder/relation-count/relation-count-many-to-many/entity/Image.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/1623/issue-1623.ts
+  ai_agent 1-50
+packages/@n8n/typeorm/test/github-issues/2287/issue-2287.ts
+  ai_agent 1-54
+packages/@n8n/typeorm/test/github-issues/3422/entity/User.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/4277/entity/User.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/7110/entity/foo.entity.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/functional/query-runner/rename-column.ts
+  ai_agent 1-193
+packages/@n8n/typeorm/test/github-issues/7558/entity/OperatorTreeEntry.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/807/entity/Tournament.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/9015/entity/Post.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/7558/entity/NnaryOperator.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/persistence/persistence-options/listeners/persistence-options-listeners.ts
+  ai_agent 1-100
+packages/@n8n/typeorm/src/error/DriverPackageNotInstalledError.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/10569/ussue-10569.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/github-issues/4947/issue-4947.ts
+  ai_agent 1-55
+packages/@n8n/typeorm/test/github-issues/3847/issue-3847.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/functional/persistence/insert/update-relation-columns-after-insertion/entity/Post.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/schema-builder/table/TableColumn.ts
+  ai_agent 1-228
+packages/@n8n/typeorm/src/query-builder/relation-id/RelationIdLoader.ts
+  ai_agent 1-336
+packages/@n8n/typeorm/test/functional/query-builder/delete/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/1416/entity/PhotoMetadata.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/other-issues/transformed-json-column-update-compute/transformed-json-column-update-compute.ts
+  ai_agent 1-69
+packages/@n8n/typeorm/src/entity-schema/EntitySchemaCheckOptions.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/repository/increment/entity/PostBigInt.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/transaction/transaction-with-load-many/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/2984/entity/wiki/ownernote.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/github-issues/587/entity/Post.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/github-issues/7662/memory-logger.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/7217/entity/UserEntity.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/1118/entity/Post.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/basic-functionality/entity/Student.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/src/decorator/relations/JoinTable.ts
+  ai_agent 1-48
+packages/@n8n/typeorm/test/github-issues/863/entities/master.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/functional/database-schema/column-collation/postgres/column-collation-postgres.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/functional/json/jsonb-defaults/entity/Post.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/functional/indices/conditional-index/entity/Post.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/197/issue-197.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/github-issues/2733/entity/PostgresDummy.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/10322/migration/1530542855524-FailMigration.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/10496/entity/B.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/3857/entity/Women.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/functional/database-schema/indices/entity/Person.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/2557/entity/dummy.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/src/common/MixedList.ts
+  ai_agent 1-6
+packages/@n8n/typeorm/test/github-issues/2965/entity/note.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/query-builder/subquery/entity/Post.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/752/entity/Product.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/8273/entity/User.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/src/decorator/options/ColumnOptions.ts
+  ai_agent 1-190
+packages/@n8n/typeorm/test/github-issues/9033/entity/Animal.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/7002/entity/Foo.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/test/github-issues/8450/entity/UserEntity.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/connection/modules/video/schema/video-category.json
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/6947/entity/Category.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/embedded/embedded.ts
+  ai_agent 1-135
+packages/@n8n/typeorm/test/functional/connection/subscriber/FirstConnectionSubscriber.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/src/persistence/tree/NestedSetSubjectExecutor.ts
+  ai_agent 1-333
+packages/@n8n/typeorm/test/functional/query-builder/locking/entity/Category.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/github-issues/6327/subscriber/PostSubscriber.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/uuid/sqlite/uuid-sqlite.ts
+  ai_agent 1-82
+packages/@n8n/typeorm/src/metadata-args/JoinColumnMetadataArgs.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/948/entity/User.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/repository/basic-methods/entity/RelationAsPrimaryKey.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/view-entity/view-dependencies/entity/Test.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/functional/query-runner/create-exclusion-constraint.ts
+  ai_agent 1-76
+packages/@n8n/typeorm/test/functional/embedded/prefix/entity/Counters.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/benchmark/multiple-joins-querybuilder/entity/Two.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/github-issues/7558/entity/Animal.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/github-issues/341/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/persistence/tree/ClosureSubjectExecutor.ts
+  ai_agent 1-299
+packages/@n8n/typeorm/test/functional/query-builder/composite-primary/composite-primary.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/test/functional/query-builder/distinct-on/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/query-builder/isolated-where/entity/User.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/src/error/DataTypeNotSupportedError.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/query-builder/update/query-builder-update.ts
+  ai_agent 1-287
+packages/@n8n/typeorm/test/functional/schema-builder/update-primary-keys.ts
+  ai_agent 1-57
+packages/@n8n/typeorm/test/github-issues/7203/issue-7203.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/functional/decorators/relation-id/relation-id-many-to-one/relation-id-decorator-many-to-one.ts
+  ai_agent 1-85
+packages/@n8n/typeorm/test/github-issues/71/entity/Artikel.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/929/issue-929.ts
+  ai_agent 1-59
+packages/@n8n/typeorm/src/error/TransactionCommitFailedError.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/functional/columns/embedded-columns/entity/Counters.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/schema-builder/create-table.ts
+  ai_agent 1-56
+packages/@n8n/typeorm/src/decorator/listeners/AfterUpdate.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/src/repository/FindTreesOptions.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/src/error/MissingJoinColumnError.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/repository/SaveOptions.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/multiple-pk/entity/Post.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/named-columns/entity/Post.ts
+  ai_agent 1-81
+packages/@n8n/typeorm/test/github-issues/1282/entity/Category.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/1416/entity/Photo.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/test/github-issues/2871/issue-2871.ts
+  ai_agent 1-75
+packages/@n8n/typeorm/test/core/xfail/xfail.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/3416/entity/User.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/metadata-builder/column-metadata/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/4570/issue-4570.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/functional/find-options/basic-usage/entity/Counters.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/github-issues/463/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/metadata/UniqueMetadata.ts
+  ai_agent 1-164
+packages/@n8n/typeorm/test/github-issues/1416/entity/Author.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/non-virtual-discriminator-column/entity/Employee.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/5132/entity/foo.entity.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/752/issue-752.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/github-issues/1532/issue-1532.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/functional/cube/postgres/cube-postgres.ts
+  ai_agent 1-170
+packages/@n8n/typeorm/test/github-issues/8430/issue-8430.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/test/functional/query-builder/relational/with-one/entity/Post.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/src/decorator/options/ColumnNumericOptions.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/github-issues/8444/issue-8444.ts
+  ai_agent 1-49
+packages/@n8n/typeorm/test/github-issues/9176/issue-9176.ts
+  ai_agent 1-101
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/embedded-with-multiple-pk/entity/Subcounters.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/10494/entity/Base.ts
+  ai_agent 1-6
+packages/@n8n/typeorm/test/github-issues/948/issue-948.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/functional/query-builder/not/entity/User.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/594/issue-594.ts
+  ai_agent 1-41
+packages/@n8n/typeorm/test/functional/query-builder/delete/entity/Counters.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/relations/eager-relations/basic-eager-relations/basic-eager-relations.ts
+  ai_agent 1-147
+packages/@n8n/typeorm/test/github-issues/10494/entity/A.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/8076/entity/Member.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/9379/entity/SuperLongTableNameIsRelatedToOriginal.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/other-issues/take-multiple-pk/take-multiple-pk.ts
+  ai_agent 1-88
+packages/@n8n/typeorm/test/github-issues/7106/entity/ShortTableName.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/functional/query-runner/add-column.ts
+  ai_agent 1-115
+packages/@n8n/typeorm/src/util/VersionUtils.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/database-schema/generated-columns/sqlite/generated-columns-sqlite.ts
+  ai_agent 1-228
+packages/@n8n/typeorm/test/functional/repository/find-options-locking/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/database-schema/custom-constraint-names/primary-key/entity/Post.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/479/entity/Car.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/subscriber/EntitySubscriberInterface.ts
+  ai_agent 1-121
+packages/@n8n/typeorm/test/functional/migrations/show-command/migration/1530542855524-ExampleMigration.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/persistence/custom-column-name-pk/custom-column-name-pk.ts
+  ai_agent 1-63
+packages/@n8n/typeorm/test/functional/database-schema/column-length/postgres/column-length-postgres.ts
+  ai_agent 1-57
+packages/@n8n/typeorm/test/functional/tree-tables/closure-table/closure-table.ts
+  ai_agent 1-695
+packages/@n8n/typeorm/test/github-issues/1055/entity/Child.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/5704/subscriber/CategorySubscriber.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/7415/issue-7415.ts
+  ai_agent 1-86
+packages/@n8n/typeorm/test/functional/embedded/multiple-primary-columns-with-nested-embed/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/8398/subscriber/PostSubscriber.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/test/functional/repository/find-options-locking/entity/PostWithVersionAndUpdatedDate.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/relations/custom-referenced-column-name/entity/Tag.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/9033/entity/Cat.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/persistence/many-to-many/entity/Post.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/src/driver/postgres/PostgresDriver.ts
+  ai_agent 1-1478
+packages/@n8n/typeorm/test/functional/transaction/return-data-from-transaction/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/9272/entity/User.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/functional/embedded/embedded-listeners/entity/PostInformation.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/entity-schema/checks/entity/Person2.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/github-issues/1089/issue-1089.ts
+  ai_agent 1-55
+packages/@n8n/typeorm/test/github-issues/7651/entity/order.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/driver/convert-to-entity/convert-to-entity.ts
+  ai_agent 1-71
+packages/@n8n/typeorm/test/functional/relations/relation-mapped-to-different-name-column/relation-mapped-to-different-name-column.ts
+  ai_agent 1-59
+packages/@n8n/typeorm/test/github-issues/3142/entity/Person.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/one-to-many/entity/Department.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/5520/entity/TestChild.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/named-columns/named-columns-lazy-relations.ts
+  ai_agent 1-328
+packages/@n8n/typeorm/src/error/QueryRunnerAlreadyReleasedError.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/database-schema/simple-enums/entity/SimpleEnumEntity.ts
+  ai_agent 1-85
+packages/@n8n/typeorm/test/functional/base-entity/base-entity.test.ts
+  ai_agent 1-65
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-other-cases/entity/User.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/entity-schema/embedded/plain-object/entity/Name.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/src/find-options/FindOptionsRelations.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/src/schema-builder/table/Table.ts
+  ai_agent 1-370
+packages/@n8n/typeorm/src/driver/types/CteCapabilities.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/3302/subscriber/PostSubscriber.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/src/repository/RemoveOptions.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/4842/issue-4842.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/functional/relations/custom-referenced-column-name/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/deferrable/deferrable-unique.ts
+  ai_agent 1-110
+packages/@n8n/typeorm/test/github-issues/620/entity/Cat.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/8485/entity/User.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/functional/driver/abstract-sqlite/abstract-sqlite-escape-query-parameters.ts
+  ai_agent 1-71
+packages/@n8n/typeorm/test/github-issues/161/entity/Request.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/functional/repository/find-options-locking/entity/PostWithVersion.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/4410/entity/Username.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/1042/issue-1042.ts
+  ai_agent 1-182
+packages/@n8n/typeorm/src/decorator/listeners/AfterLoad.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/query-builder/update/entity/Counters.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/driver/sqlite-abstract/AbstractSqliteDriver.ts
+  ai_agent 1-851
+packages/@n8n/typeorm/src/util/DepGraph.ts
+  ai_agent 1-233
+packages/@n8n/typeorm/test/functional/query-builder/insert/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/2376/issue-2376.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/github-issues/9833/schema/Base.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/functional/ormconfigs/all/ormconfig.xml
+  ai_agent 1-9
+packages/@n8n/typeorm/src/metadata-args/TransactionRepositoryMetadataArgs.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/persistence/cascades/cascades-example1/entity/User.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/persistence/many-to-one-uni-directional/entity/Post.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/persistence/persistence-options/transaction/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/10626/issue-10626.ts
+  ai_agent 1-57
+packages/@n8n/typeorm/test/functional/schema-builder/entity/Category.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/1123/entity/Post.ts
+  ai_agent 1-35
+packages/@n8n/typeorm/test/github-issues/1200/entity/Post.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/131/entity/Student.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/3828/entity/Entity.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/9323/entity/Employee.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/other-issues/take-multiple-pk/entity/Role.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/6633/entity/Test.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/uuid/postgres/entity/Post.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/704/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/7882/entity/Example.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/1788/entity/Personalization.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/functional/repository/find-methods/model/User.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/test/github-issues/9944/entity/B.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/other-issues/join-empty-relations/join-empty-relations.ts
+  ai_agent 1-72
+packages/@n8n/typeorm/test/functional/view-entity/general/entity/PhotoAlbumCategory.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/github-issues/1014/entity/TestEntity.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/entity-schema/custom-constraint-names/primary-key/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/find-options/operator/IsNull.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/multi-schema-and-database/custom-junction-schema/entity/Category.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/10431/issue-10431.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/github-issues/7041/issue-7041.ts
+  ai_agent 1-59
+packages/@n8n/typeorm/test/functional/query-runner/create-check-constraint.ts
+  ai_agent 1-92
+packages/@n8n/typeorm/test/github-issues/1504/entity/TestEntity1.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/838/entity/Flight.ts
+  ai_agent 1-17
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/module.descriptor.test.ts
+  ai_agent 1-62
+packages/@n8n/typeorm/src/decorator/options/ColumnHstoreOptions.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/connection/modules/blog/subscriber/TestBlogSubscriber.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/src/entity-schema/EntitySchemaTransformer.ts
+  ai_agent 1-334
+packages/@n8n/typeorm/test/github-issues/3946/entity/Category.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/test/other-issues/transformed-json-column-update-compute/entity/jsonb-entity.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/persistence/custom-column-names/persistence-custom-column-names.ts
+  ai_agent 1-294
+packages/@n8n/typeorm/src/query-builder/relation-count/RelationCountLoader.ts
+  ai_agent 1-162
+packages/@n8n/typeorm/src/decorator/Generated.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/decorators/relation-count/relation-count-many-to-many/entity/Category.ts
+  ai_agent 1-59
+packages/@n8n/typeorm/test/functional/persistence/one-to-one/entity/AccessToken.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/schema-builder/table/TableCheck.ts
+  ai_agent 1-67
+packages/@n8n/typeorm/test/github-issues/10496/entity/A.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/2216/entity/Foo.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/decorator/relations/ManyToMany.ts
+  ai_agent 1-73
+packages/@n8n/typeorm/src/decorator/columns/ViewColumn.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/src/schema-builder/RdbmsSchemaBuilder.ts
+  ai_agent 1-1175
+packages/@n8n/typeorm/src/schema-builder/options/TableExclusionOptions.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/src/metadata-args/InheritanceMetadataArgs.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/src/decorator/tree/TreeParent.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/functional/multi-schema-and-database/multi-schema-and-database-basic-functionality/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/10043/entity/Foo.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case1/entity/Subcounters.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/215/entity/Author.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/database-schema/column-length/sqlite/column-length-sqlite..ts
+  ai_agent 1-65
+packages/@n8n/typeorm/test/core/column-kinds/version-column/entity/Post.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/embedded-with-multiple-pk/embedded-with-multiple-pk.ts
+  ai_agent 1-160
+packages/@n8n/typeorm/src/metadata/RelationCountMetadata.ts
+  ai_agent 1-87
+packages/@n8n/typeorm/test/functional/query-runner/drop-table.ts
+  ai_agent 1-78
+packages/@n8n/typeorm/test/github-issues/1034/issue-1034.ts
+  ai_agent 1-49
+packages/@n8n/typeorm/sample/sample3-many-to-one/entity/PostInformation.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/1972/issue-1972.ts
+  ai_agent 1-78
+packages/@n8n/typeorm/test/github-issues/341/issue-341.ts
+  ai_agent 1-44
+packages/@n8n/typeorm/test/github-issues/7041/entity/Admin.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/github-issues/2286/issue-2286.ts
+  ai_agent 1-102
+packages/@n8n/typeorm/test/functional/find-options/opaque-types-over-primitives/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/219/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/813/entity/Post.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/functional/entity-schema/exclusions/exclusions-basic.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/github-issues/3246/repository/BrokerRepository.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/3949/issue-3949.ts
+  ai_agent 1-48
+packages/@n8n/typeorm/test/github-issues/3536/entity/Roles.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/7651/entity/order-test.entity.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/9770/entity/Bar.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/8346/entity/Customer.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/174/entity/Organisation.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/persistence/custom-column-name-pk/entity/Post.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/1034/entity/User.ts
+  ai_agent 1-54
+packages/@n8n/typeorm/src/query-builder/RelationUpdater.ts
+  ai_agent 1-146
+packages/@n8n/typeorm/test/github-issues/182/model/PostStatus.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/test/github-issues/9944/entity/A.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/persistence/partial-persist/partial-persist.ts
+  ai_agent 1-168
+packages/@n8n/typeorm/test/github-issues/2313/entity/Post.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/utils/test-utils.ts
+  ai_agent 1-477
+packages/@n8n/typeorm/test/functional/database-schema/column-types/sqlite/enum/FruitEnum.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/src/common/PickKeysByType.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/2103/entity/Simple.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/8723/entity/Photo.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/1751/issue-1751.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/package.json
+  ai_agent 1-155
+packages/@n8n/typeorm/src/query-builder/WhereClause.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/sample/sample3-many-to-one/entity/PostDetails.ts
+  ai_agent 1-35
+packages/@n8n/typeorm/src/error/OptimisticLockCanNotBeUsedError.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/src/persistence/SubjectChangeMap.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/github-issues/8026/entity/ScheduledSailing.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/query-builder/locking/entity/Tag.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/other-issues/auto-increment-id-as-string/entity/Role.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/github-issues/56/issue-56.ts
+  ai_agent 1-53
+packages/@n8n/typeorm/test/functional/find-options/basic-usage/find-options-relations.ts
+  ai_agent 1-548
+packages/@n8n/typeorm/test/functional/connection/naming-strategy/FirstCustomNamingStrategy.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/schema-builder/entity/Teacher.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/migrations/generate-command/entity/tag.entity.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/decorator/entity/TableInheritance.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/src/metadata/IndexMetadata.ts
+  ai_agent 1-243
+packages/@n8n/typeorm/test/github-issues/9988/issue-9988.ts
+  ai_agent 1-94
+packages/@n8n/typeorm/test/functional/decorators/relation-count/relation-count-one-to-many/entity/Image.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/persistence/multi-primary-key-on-both-sides/multi-primary-key.ts
+  ai_agent 1-68
+packages/@n8n/typeorm/test/functional/repository/basic-methods/entity/EmbeddedUQEntity.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/2201/entity/ver2/context.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/benchmark/bulk-save-case2/entity/Document.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/functional/query-builder/relational/with-many/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/2871/enumTools.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/3158/entity/Session.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/github-issues/4701/issue-4701.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case3/entity/Counters.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/github-issues/2733/issue-2733.ts
+  ai_agent 1-49
+packages/@n8n/typeorm/test/github-issues/9381/entity/JsonExampleEntity.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/src/subscriber/event/UpdateEvent.ts
+  ai_agent 1-54
+packages/@n8n/typeorm/src/decorator/columns/VirtualColumn.ts
+  ai_agent 1-66
+packages/@n8n/typeorm/test/functional/entity-metadata-validator/initialized-relations/entity/Post.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/basic-lazy-relation/basic-lazy-relations.ts
+  ai_agent 1-421
+packages/@n8n/typeorm/test/github-issues/836/issue-836.ts
+  ai_agent 1-68
+packages/@n8n/typeorm/test/github-issues/945/issue-945.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/github-issues/134/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/1465/entity/Token.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/620/issue-620.ts
+  ai_agent 1-43
+packages/@n8n/typeorm/test/github-issues/9673/issue-9673.ts
+  ai_agent 1-60
+packages/@n8n/typeorm/sample/sample3-many-to-one/entity/PostMetadata.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/other-issues/auto-increment-id-as-string/auto-increment-id-as-string.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/test/github-issues/57/issue-57.ts
+  ai_agent 1-78
+packages/@n8n/typeorm/src/error/QueryFailedError.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/github-issues/2286/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/3857/entity/Person.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/relations/custom-referenced-column-name/custom-referenced-column-name.ts
+  ai_agent 1-517
+packages/@n8n/typeorm/test/functional/find-options/basic-usage/entity/Author.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/connection-options-reader/configs/test-path-config-async.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/src/error/MissingPrimaryColumnError.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/github-issues/6265/entity/User.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/945/entity/TestEntity.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/src/naming-strategy/DefaultNamingStrategy.ts
+  ai_agent 1-172
+packages/@n8n/typeorm/src/util/ObjectUtils.ts
+  ai_agent 1-73
+packages/@n8n/typeorm/test/github-issues/1397/entity/Post.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/src/naming-strategy/NamingStrategyInterface.ts
+  ai_agent 1-149
+packages/@n8n/typeorm/test/github-issues/8459/entity/PostCategory.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/github-issues/234/entity/Tag.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/363/entity/Car.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/10209/entity/asset.ts
+  ai_agent 1-44
+packages/@n8n/typeorm/test/github-issues/8747/entity/Record.ts
+  ai_agent 1-19
+packages/testing/playwright/tests/infrastructure/benchmarks-local/instance-ai/cancel-abort.spec.ts
+  ai_agent 39,43,45
+packages/@n8n/typeorm/src/metadata/ColumnMetadata.ts
+  ai_agent 1-891
+packages/@n8n/typeorm/src/logger/FileLogger.ts
+  ai_agent 1-102
+packages/@n8n/typeorm/test/functional/entity-schema/embedded/class-instance/entity/Name.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/repository/basic-methods/entity/TwoUniqueColumns.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/7106/issue-7106.ts
+  ai_agent 1-52
+packages/@n8n/typeorm/src/decorator/tree/TreeLevelColumn.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/1545/entity/ValidationModel.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/basic-functionality/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/connection/replication.ts
+  ai_agent 1-219
+packages/@n8n/typeorm/test/functional/query-builder/join/entity/Category.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/github-issues/3587/issue-3587.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/functional/persistence/entity-updation/entity/PostUuid.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/metadata/types/EventListenerTypes.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/src/query-builder/relation-id/RelationIdLoadResult.ts
+  ai_agent 1-6
+packages/@n8n/typeorm/test/functional/connection/entity/v1/Comment.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/functional/query-runner/create-view.ts
+  ai_agent 1-69
+packages/@n8n/typeorm/test/functional/repository/find-options-operators/entity/PersonAR.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/4106/issue-4106.ts
+  ai_agent 1-134
+packages/@n8n/typeorm/src/common/RelationType.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/functional/find-options/basic-usage/entity/Tag.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/query-builder/locking/entity/PostWithUpdateDate.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/transaction/return-data-from-transaction/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/query-runner/entity/Photo.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/1551/issue-1551.ts
+  ai_agent 1-281
+packages/@n8n/typeorm/test/functional/connection/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/2200/entity/Contact.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/2927/entity/Post.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/no-type-column/entity/Author.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/src/decorator/options/PrimaryGeneratedColumnUUIDOptions.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/src/decorator/options/ViewEntityOptions.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/src/logger/SimpleConsoleLogger.ts
+  ai_agent 1-57
+packages/@n8n/typeorm/test/functional/embedded/basic-functionality/entity/Counters.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/2588/entity/PostReview.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/8522/entity/InternalUser.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/src/metadata-args/EntitySubscriberMetadataArgs.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/1308/entity/Post.ts
+  ai_agent 1-35
+packages/@n8n/typeorm/test/github-issues/1055/entity/Parent.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/4842/entity/Post.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-other-cases/entity/Person.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/388/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/src/find-options/operator/Between.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/basic-functionality/basic-functionality.ts
+  ai_agent 1-419
+packages/@n8n/typeorm/test/functional/find-options/array-contains-operator/entity/Post.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/src/repository/BaseEntity.ts
+  ai_agent 1-571
+packages/@n8n/typeorm/test/functional/repository/basic-methods/model-schema/UserSchema.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/functional/entity-schema/embedded/basic/entity/Name.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/cache/entity/Address.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/schema-builder/add-column.ts
+  ai_agent 1-82
+packages/@n8n/typeorm/test/benchmark/multiple-joins-querybuilder/multiple-joins-querybuilder.ts
+  ai_agent 1-54
+packages/@n8n/typeorm/test/functional/persistence/bulk-insert-remove-optimization/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/entity-schema/EntitySchemaUniqueOptions.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/10494/entity/C.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case1/entity/Subcounters.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/1504/entity/TestEntity3.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/github-issues/1703/entity/UserToOrganizationEntity.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/functional/query-builder/update/entity/Photo.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/query-builder/brackets/entity/User.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/2147/entity/User.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/github-issues/2259/issue-2259.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/github-issues/3246/repository/OrderRepository.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/src/error/DriverOptionNotSetError.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/src/query-builder/QueryBuilder.ts
+  ai_agent 1-1457
+packages/@n8n/typeorm/test/functional/database-schema/simple-enums/enums.ts
+  ai_agent 1-76
+packages/@n8n/typeorm/test/github-issues/8398/issue-8398.ts
+  ai_agent 1-58
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/multiple-pk/entity/Image.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/182/entity/Post.ts
+  ai_agent 1-16
+packages/testing/playwright/tests/infrastructure/benchmarks-local/instance-ai/sse-reconnection.spec.ts
+  ai_agent 42
+packages/@n8n/typeorm/test/functional/query-builder/isolated-where/query-builder-isolated-where.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/test/github-issues/3496/issue-3496.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case2/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/10567/issue-10567.ts
+  ai_agent 1-41
+packages/@n8n/typeorm/test/functional/query-builder/parameters/entity/Example.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/10496/entity/C.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/1261/entity/Foo.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/src/query-runner/QueryResult.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/functional/multi-database/multi-database-basic-functionality/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/3395/entity/Post.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/error/CannotReflectMethodParameterTypeError.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/embedded-with-multiple-pk/embedded-with-multiple-pk.ts
+  ai_agent 1-194
+packages/@n8n/typeorm/test/github-issues/8522/entity/ClientRole.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/embedded/entity/User.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/find-options/empty-properties/find-options-empty-properties.ts
+  ai_agent 1-91
+packages/@n8n/typeorm/test/github-issues/9977/issue-9977.ts
+  ai_agent 1-138
+packages/@n8n/typeorm/src/decorator/relations/ManyToOne.ts
+  ai_agent 1-73
+packages/@n8n/typeorm/src/schema-builder/options/TableColumnOptions.ts
+  ai_agent 1-153
+packages/@n8n/typeorm/src/error/DriverAlreadyReleasedError.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/3151/issue-3151.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/src/container.ts
+  ai_agent 1-83
+packages/@n8n/typeorm/src/error/PersistedEntityNotFoundError.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/211/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/basic-functionality/basic-functionality.ts
+  ai_agent 1-254
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/named-tables-and-columns/entity/Post.ts
+  ai_agent 1-86
+packages/@n8n/typeorm/test/functional/query-builder/comment/entity/Test.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/functional/repository/basic-methods/entity/ExternalIdPrimaryKeyEntity.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/github-issues/70/entity/Category.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/7283/issue-7283.ts
+  ai_agent 1-41
+packages/@n8n/typeorm/test/github-issues/5004/entity/Foo.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/8158/entity/User.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case1/entity/User.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/cache/QueryResultCache.ts
+  ai_agent 1-54
+packages/@n8n/typeorm/src/find-options/FindOptionsWhere.ts
+  ai_agent 1-48
+packages/@n8n/typeorm/test/github-issues/1282/issue-1282.ts
+  ai_agent 1-51
+packages/@n8n/typeorm/test/functional/entity-schema/embedded/basic/embedded-basic.ts
+  ai_agent 1-68
+packages/@n8n/typeorm/test/functional/repository/find-options-locking/find-options-locking.ts
+  ai_agent 1-547
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/one-to-many-casecade-save/entity/Researcher.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/9176/migration/1656939116999-CreateAuthorTable.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/test/functional/find-options/array-contained-by-operator/array-contained-by-operator.test.ts
+  ai_agent 1-161
+packages/@n8n/typeorm/test/github-issues/9770/migration/1675779246631-amendFoo.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/9895/issue-9895.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/github-issues/7558/entity/Cat.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-many/embedded-with-multiple-pk/entity/Category.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/benchmark/bulk-sql-build/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/401/issue-401.ts
+  ai_agent 1-53
+packages/@n8n/typeorm/src/metadata/types/TreeTypes.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/src/schema-builder/options/TableUniqueOptions.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/github-issues/10054/issue-10054.ts
+  ai_agent 1-61
+packages/@n8n/typeorm/src/metadata/types/DeferrableType.ts
+  ai_agent 1-4
+packages/@n8n/typeorm/test/github-issues/4190/entity/User.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/github-issues/6950/entity/post_with_null_2.entity.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/src/metadata/CheckMetadata.ts
+  ai_agent 1-71
+packages/@n8n/typeorm/test/functional/entity-model/entity-model.ts
+  ai_agent 1-163
+packages/@n8n/typeorm/test/functional/database-schema/column-types/sqlite/entity/Post.ts
+  ai_agent 1-131
+packages/@n8n/typeorm/test/functional/repository/basic-methods/entity/Blog.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/4958/issue-4958.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/embedded-with-multiple-pk/entity/Subcounters.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/repository/find-methods/entity/Post.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/1733/issue-1733.ts
+  ai_agent 1-51
+packages/@n8n/typeorm/test/github-issues/9341/issue-9341.ts
+  ai_agent 1-53
+packages/@n8n/typeorm/test/github-issues/3105/entity/Parent.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/src/error/CannotConnectAlreadyConnectedError.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/9833/schema/A.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/relations/relation-with-primary-key/relation-with-primary-key.ts
+  ai_agent 1-81
+packages/@n8n/typeorm/src/error/MissingJoinTableError.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/query-builder/result/DeleteResult.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/core/column-kinds/update-date-column/entity/Post.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/persistence/many-to-one-bi-directional/entity/Post.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/persistence/multi-primary-key-on-both-sides/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/query-builder/locking/entity/Image.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/src/find-options/operator/Any.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case1/embedded-many-to-many-case1.ts
+  ai_agent 1-433
+packages/@n8n/typeorm/test/functional/decorators/relation-id/relation-id-many-to-many/relation-id-decorator-many-to-many.ts
+  ai_agent 1-468
+packages/@n8n/typeorm/test/github-issues/1569/entity/Item.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/184/issue-184.ts
+  ai_agent 1-58
+packages/@n8n/typeorm/test/functional/util/ImportUtils.ts
+  ai_agent 1-152
+packages/@n8n/typeorm/test/functional/persistence/entity-updation/entity/PostMultiplePrimaryKeys.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/3151/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/decorator/options/ColumnEnumOptions.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/columns/embedded-columns/entity/Post.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/8681/issue-8681.ts
+  ai_agent 1-70
+packages/@n8n/typeorm/test/github-issues/1200/entity/User.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/other-issues/composite-keys/composite-keys.ts
+  ai_agent 1-97
+packages/@n8n/typeorm/test/github-issues/2199/entity/Bar.ts
+  ai_agent 1-11
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.vue
+  ai_agent 56-63,181,204
+packages/@n8n/typeorm/test/github-issues/1245/entity/Post.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/base-entity/entity/User.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case5/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/entity-schema/custom-constraint-names/primary-key/entity/Post.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/entity-subscriber/query-data/subscribers/MockSubscriber.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/query-builder/relation-count/relation-count-many-to-many/load-relation-count-and-map-many-to-many.ts
+  ai_agent 1-480
+packages/@n8n/typeorm/test/github-issues/1972/entity/TournamentParticipant.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/one-to-many-casecade-save/entity/Staff.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/github-issues/2331/issue-2331.ts
+  ai_agent 1-59
+packages/@n8n/typeorm/test/functional/persistence/persistence-order/persistence-order.ts
+  ai_agent 1-91
+packages/@n8n/typeorm/test/github-issues/815/entity/Category.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/src/driver/SqlInMemory.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/6958/issue-6958.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case3/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/4190/entity/Question.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/3047/issue-3047.ts
+  ai_agent 1-73
+packages/@n8n/typeorm/test/github-issues/363/issue-363.ts
+  ai_agent 1-81
+packages/@n8n/typeorm/test/github-issues/9241/entity/Employee.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/9833/schema/B.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/src/connection/Connection.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/src/query-builder/transformer/DocumentToEntityTransformer.ts
+  ai_agent 1-216
+packages/@n8n/typeorm/test/functional/multi-database/multi-database-basic-functionality/entity/Answer.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/core/column-kinds/create-date-column/create-date-column.ts
+  ai_agent 1-121
+packages/@n8n/typeorm/test/functional/sqlite/entity/Category.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/493/issue-493.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/test/github-issues/996/entity/Category.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/7521/issue-7521.ts
+  ai_agent 1-67
+packages/@n8n/typeorm/test/functional/cascades/cascade-insert-from-both-sides/cascade-insert-from-both-sides.ts
+  ai_agent 1-56
+packages/@n8n/typeorm/src/decorator/options/ColumnCommonOptions.ts
+  ai_agent 1-68
+packages/@n8n/typeorm/src/entity-schema/EntitySchemaOptions.ts
+  ai_agent 1-128
+packages/@n8n/typeorm/src/persistence/subject-builder/OneToManySubjectBuilder.ts
+  ai_agent 1-201
+packages/@n8n/typeorm/test/github-issues/197/entity/person.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/unit/orm-utils.ts
+  ai_agent 1-67
+packages/@n8n/typeorm/test/functional/persistence/many-to-many/persistence-many-to-many.ts
+  ai_agent 1-329
+packages/@n8n/typeorm/test/functional/deferrable/entity/Office.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/3142/entity/Contact.ts
+  ai_agent 1-6
+packages/@n8n/typeorm/test/github-issues/363/entity/Fruit.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/integration/sample3-many-to-one.ts
+  ai_agent 1-581
+packages/@n8n/typeorm/test/github-issues/7030/entity/Post.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/database-schema/custom-constraint-names/index/entity/Post.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/sample/sample4-many-to-many/entity/PostAuthor.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/1569/issue-1569.ts
+  ai_agent 1-46
+packages/@n8n/typeorm/src/decorator/relations/OneToOne.ts
+  ai_agent 1-70
+packages/@n8n/typeorm/test/github-issues/5898/issue-5898.ts
+  ai_agent 1-214
+packages/@n8n/typeorm/test/github-issues/7647/issue-7647.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/test/github-issues/8690/entity/entities.ts
+  ai_agent 1-52
+packages/@n8n/typeorm/test/github-issues/5174/entity/Role.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/schema-builder/drop-column.ts
+  ai_agent 1-56
+packages/@n8n/typeorm/test/functional/find-options/empty-properties/entity/Post.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/github-issues/4701/migration/1571426391120-ExampleMigrationThree.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/src/decorator/options/PrimaryGeneratedColumnIdentityOptions.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/test/functional/tree-tables/materialized-path/entity/Product.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/query-runner/create-foreign-key.ts
+  ai_agent 1-97
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/numeric-types/entity/Student.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/1308/issue-1308.ts
+  ai_agent 1-55
+packages/@n8n/typeorm/test/github-issues/3857/entity/Men.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/github-issues/5691/enity/Child2.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/functional/multi-schema-and-database/custom-junction-schema/entity/Post.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/test/functional/query-builder/soft-delete/global-condition-non-deleted/entity/CategoryWithRelation.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/7662/issue-7662.ts
+  ai_agent 1-102
+packages/@n8n/typeorm/test/functional/columns/update-insert/columns-update-insert.ts
+  ai_agent 1-61
+packages/@n8n/typeorm/src/error/MissingDriverError.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/query-builder/relational/with-many/entity/Post.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/10569/contract/create-user-contract.ts
+  ai_agent 1-3
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-one/multiple-pk/entity/Image.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/10494/schema/A.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/decorators/relation-count/relation-count-many-to-many/entity/Image.ts
+  ai_agent 1-27
+packages/@n8n/typeorm/test/github-issues/1259/issue-1259.ts
+  ai_agent 1-93
+packages/@n8n/typeorm/test/github-issues/2200/issue-2200.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/github-issues/2875/issue-2875.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/github-issues/1623/entity/User.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/decorators/relation-id/relation-id-one-to-many/entity/Category.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/test/functional/columns/readonly/entity/Post.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/query-builder/cte/materialized-cte.ts
+  ai_agent 1-130
+packages/@n8n/typeorm/test/github-issues/1369/subscriber/AbstractEntitySubscriber.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/query-runner/drop-unique-constraint.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/src/metadata-args/CheckMetadataArgs.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/functional/multi-schema-and-database/multi-schema-and-database-basic-functionality/entity/Question.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/151/issue-151.ts
+  ai_agent 1-58
+packages/@n8n/typeorm/test/functional/multi-schema-and-database/multi-schema-and-database-basic-functionality/entity/Answer.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/8796/entity/User.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/9241/entity/User.ts
+  ai_agent 1-28
+packages/@n8n/typeorm/test/functional/sqlite/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/query-builder/relation-count/relation-count-one-to-many/entity/Image.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/basic-functionality/entity/Accountant.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/3443/entity/category.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/108/entity/Project.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/1123/issue-1123.ts
+  ai_agent 1-71
+packages/@n8n/typeorm/test/github-issues/5004/issue-5004.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/other-issues/get-id-for-composite-primary-key/get-id-for-composite-primary-key.ts
+  ai_agent 1-47
+packages/@n8n/typeorm/src/decorator/listeners/BeforeInsert.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/find-options/basic-usage/entity/Post.ts
+  ai_agent 1-44
+packages/@n8n/typeorm/test/other-issues/update-relational-column-on-relation-change/update-relational-column-on-relation-change.ts
+  ai_agent 1-55
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/many-to-one/embedded-with-multiple-pk/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/9977/entity/Counters.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/src/find-options/operator/Or.ts
+  ai_agent 1-5
+packages/@n8n/typeorm/test/github-issues/6580/entity/Comment.ts
+  ai_agent 1-4
+packages/@n8n/typeorm/src/find-options/OrderByCondition.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/functional/query-builder/exists/query-builder-exists.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/src/decorator/columns/VersionColumn.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/github-issues/10043/issue-10043.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/src/metadata-args/GeneratedMetadataArgs.ts
+  ai_agent 1-19
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case5/entity/Counters.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/3395/issue-3395.ts
+  ai_agent 1-33
+packages/@n8n/typeorm/test/github-issues/9673/entity/Node.ts
+  ai_agent 1-48
+packages/@n8n/typeorm/test/github-issues/7065/entity/Phone.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/other-issues/inheritance-duplicate-columns/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/other-issues/table-name-relation/entity/Question.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/tsconfig.json
+  ai_agent 1-29
+packages/@n8n/typeorm/src/subscriber/event/InsertEvent.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/functional/entity-schema/uniques/uniques-basic.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/functional/persistence/partial-persist/entity/Category.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/src/decorator/listeners/AfterRecover.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/src/error/TransactionNotStartedError.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/metadata-args/TableMetadataArgs.ts
+  ai_agent 1-78
+packages/testing/playwright/pages/InstanceAiPage.ts
+  ai_agent 27,45
+packages/@n8n/typeorm/test/github-issues/10322/issue-10322.ts
+  ai_agent 1-51
+packages/@n8n/typeorm/src/find-options/EqualOperator.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/database-schema/custom-constraint-names/unique/unique.ts
+  ai_agent 1-94
+packages/@n8n/typeorm/test/functional/relations/multiple-primary-keys/multiple-primary-keys-one-to-one/entity/Category.ts
+  ai_agent 1-62
+packages/@n8n/typeorm/test/functional/view-entity/general/entity/PostCategory.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/github-issues/6948/entity/Category.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/github-issues/8892/entity/city.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/functional/persistence/remove-topological-order/remove-topolotical-order.ts
+  ai_agent 1-49
+packages/@n8n/typeorm/test/github-issues/7867/issue-7867.ts
+  ai_agent 1-51
+packages/@n8n/typeorm/test/functional/table-inheritance/extending/entity/Unit.ts
+  ai_agent 1-6
+packages/@n8n/typeorm/test/functional/view-entity/postgres/view-entity-postgres.ts
+  ai_agent 1-97
+packages/@n8n/typeorm/src/query-builder/transformer/RawSqlResultsToEntityTransformer.ts
+  ai_agent 1-519
+packages/@n8n/typeorm/src/driver/types/ColumnTypes.ts
+  ai_agent 1-181
+packages/@n8n/typeorm/test/functional/multi-schema-and-database/multi-schema-and-database-basic-functionality/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/embedded/embedded-one-to-one/embedded-one-to-one.ts
+  ai_agent 1-346
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-one/embedded/entity/User.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/query-builder/UpdateQueryBuilder.ts
+  ai_agent 1-587
+packages/@n8n/typeorm/test/functional/transaction/database-specific-isolation/full-isolation-support.ts
+  ai_agent 1-179
+packages/@n8n/typeorm/test/github-issues/1259/entity/Category.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/github-issues/2703/memory-logger.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/2800/entity/Car.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/sample/sample4-many-to-many/entity/Post.ts
+  ai_agent 1-81
+packages/@n8n/typeorm/test/github-issues/2364/issue-2364.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/src/driver/DriverFactory.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/persistence/bulk-insert-remove-optimization/bulk-insert-remove-optimization.ts
+  ai_agent 1-53
+packages/@n8n/typeorm/test/functional/repository/soft-delete/repository-soft-remove.ts
+  ai_agent 1-115
+packages/@n8n/typeorm/test/github-issues/1504/issue-1504.ts
+  ai_agent 1-39
+packages/@n8n/typeorm/test/github-issues/9379/entity/SuperLongTableName.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/decorators/relation-count/relation-count-many-to-many/relation-count-decorator-many-to-many.ts
+  ai_agent 1-477
+packages/@n8n/typeorm/test/github-issues/2758/issue-2758.ts
+  ai_agent 1-80
+packages/@n8n/typeorm/test/github-issues/1981/entity/Product.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/8221/issue-8221.ts
+  ai_agent 1-74
+packages/@n8n/typeorm/test/github-issues/1504/entity/TestEntity4.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/query-builder/distinct-on/query-builder-distinct-on.ts
+  ai_agent 1-155
+packages/@n8n/typeorm/test/functional/connection/entity/Category.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/test/functional/connection/modules/video/entity/Video.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/query-builder/soft-delete/entity/User.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/6636/issue-6636.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/sample/sample2-one-to-one/entity/PostImage.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/sample/sample2-one-to-one/entity/PostDetails.ts
+  ai_agent 1-26
+packages/@n8n/typeorm/src/error/LimitOnUpdateNotSupportedError.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/functional/find-options/array-contains-operator/array-contains-operator.test.ts
+  ai_agent 1-137
+packages/@n8n/typeorm/test/github-issues/3256/subscriber/PostSubscriber.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/entity-schema/custom-constraint-names/foreign-key/foreign-key.ts
+  ai_agent 1-183
+packages/@n8n/typeorm/test/github-issues/3685/entity/user.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/src/metadata/types/OnUpdateType.ts
+  ai_agent 1-4
+packages/@n8n/typeorm/src/error/CircularRelationsError.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/database-schema/enums-array/enums-array.ts
+  ai_agent 1-79
+packages/@n8n/typeorm/test/functional/indices/basic-unique-index-test/basic-unique-index-test.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/functional/query-builder/relational/with-many/query-builder-relational-add-remove-many-to-many-inverse.ts
+  ai_agent 1-443
+packages/@n8n/typeorm/test/functional/relations/eager-relations/basic-eager-relations/entity/Editor.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/functional/sqlite/write-connection-timeout.ts
+  ai_agent 1-87
+packages/@n8n/typeorm/test/functional/table-inheritance/extending/entity/Post.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/functional/relations/lazy-relations/lazy-relations-loading-via-base-entitiy-finders/entity/Post.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/repository/basic-methods/entity/Post.ts
+  ai_agent 1-45
+packages/@n8n/typeorm/test/github-issues/1282/naming/NamingStrategyUnderTest.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/1465/entity/AccountActivationToken.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/github-issues/4958/entity/second.ts
+  ai_agent 1-11
+packages/@n8n/typeorm/test/github-issues/57/entity/AccessToken.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/8527/entity/TestEntity.ts
+  ai_agent 1-12
+packages/cli/package.json
+  ai_agent 161
+packages/@n8n/typeorm/test/github-issues/4980/issue-4980.ts
+  ai_agent 1-75
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-many-case2/entity/User.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/query-runner/change-column.ts
+  ai_agent 1-201
+packages/@n8n/typeorm/test/functional/multi-schema-and-database/multi-schema-and-database-basic-functionality/entity/Category.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/no-type-column/entity/Note.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/2800/entity/Vehicle.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/src/metadata-args/RelationIdMetadataArgs.ts
+  ai_agent 1-31
+packages/@n8n/typeorm/test/github-issues/423/issue-423.ts
+  ai_agent 1-34
+packages/@n8n/typeorm/test/github-issues/7266/entities/Foo.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/9266/migrations/init.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/test/github-issues/5684/issue-5684.ts
+  ai_agent 1-119
+packages/@n8n/typeorm/test/github-issues/10191/entity/Example.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/functional/find-options/basic-usage/entity/Photo.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/src/error/MissingDeleteDateColumnError.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/src/find-options/operator/Raw.ts
+  ai_agent 1-35
+packages/@n8n/typeorm/src/query-builder/QueryExpressionMap.ts
+  ai_agent 1-537
+packages/@n8n/typeorm/test/functional/entity-metadata/entity/TestCreate.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/src/find-options/operator/Equal.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/functional/entity-metadata/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/github-issues/2632/issue-2632.ts
+  ai_agent 1-83
+packages/@n8n/typeorm/test/github-issues/2733/entity/MSSQLDummy.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/uuid/sqlite/entity/Question.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/github-issues/7068/issue-7068.ts
+  ai_agent 1-222
+packages/@n8n/typeorm/test/other-issues/entity-change-in-subscribers/entity/PostCategory.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/query-runner/drop-column.ts
+  ai_agent 1-277
+packages/@n8n/typeorm/test/functional/tree-tables/nested-set/entity/Category.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/1314/entity/Record.ts
+  ai_agent 1-18
+pnpm-lock.yaml
+  ai_agent 101,1044,1465-1466,1861-1862,2533,2664,2821,2914,3022,3343-3472,3696-3697,3928,4316-4317,4448,4997,5755,5758,8078-8081,8086-8089,8227-8231,8236-8239,8259-8260,10948-10959,11781-11783,11826-11828,11874-11879,12098-12103,12134-12136,12206-12208,12215-12223,12410-12412,13130-13132,13601-13609,13665-13667,14420-14423,14637-14640,15136-15139,15152-15157,15183-15186,15461-15464,15522-15525,15712-15714,16416-16419,16975-16977,17142-17144,17405-17407,18220-18221,18280-18282,18945-18947,18987-18991,19000-19002,19015-19019,19278-19282,19887-19891,20359-20368,20899-20901,21239-21242,25342-25346,25376-25389,25404-25405,25570-25577,25580-25581,25601,26091,26144,26156,26198,26874,26892-26894,28321-28331,29405-29406,29443-29444,29504-29509,29754-29759,29801-29806,29888-29891,29899-29908,30033-30049,30067-30078,30123-30133,30163-30173,30205-30206,30702-30705,31080-31081,31674-31688,31747-31750,32155,32522-32525,32777-32780,33468-33472,33482-33524,33591-33596,33965-33968,34044-34049,34259-34260,35103-35104,35845-35846,36037-36041,36259-36262,37459,37502-37509,38236-38237,38275-38278,38283-38288,38290,38292,38294,38296,38299,38307-38311,38320,38323,38329,38331,38334,38340,38568-38569,39348-39351,39953-39966,39979,40136,40144,40717-40718,41039
+packages/@n8n/typeorm/src/decorator/entity/ChildEntity.ts
+  ai_agent 1-24
+packages/@n8n/db/package.json
+  ai_agent 41
+packages/@n8n/typeorm/test/github-issues/1493/issue-1493.ts
+  ai_agent 1-50
+packages/@n8n/typeorm/src/query-builder/transformer/PlainObjectToDatabaseEntityTransformer.ts
+  ai_agent 1-151
+packages/@n8n/typeorm/test/github-issues/2364/entity/dummy.ts
+  ai_agent 1-15
+packages/@n8n/typeorm/src/cache/QueryResultCacheFactory.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/src/decorator/options/IndexOptions.ts
+  ai_agent 1-66
+packages/@n8n/typeorm/test/functional/entity-schema/basic/model/Post.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/github-issues/3422/issue-3422.ts
+  ai_agent 1-40
+packages/@n8n/typeorm/src/metadata-builder/JunctionEntityMetadataBuilder.ts
+  ai_agent 1-296
+packages/@n8n/typeorm/src/repository/AbstractRepository.ts
+  ai_agent 1-119
+packages/@n8n/typeorm/test/functional/persistence/cascades/cascades-example2/entity/Question.ts
+  ai_agent 1-23
+packages/@n8n/typeorm/test/github-issues/2518/issue-2518.ts
+  ai_agent 1-67
+packages/@n8n/typeorm/test/github-issues/7558/entity/Photo.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/github-issues/6699/issue-6699.ts
+  ai_agent 1-36
+packages/@n8n/typeorm/test/github-issues/762/issue-762.ts
+  ai_agent 1-135
+packages/@n8n/typeorm/test/functional/relations/eager-relations/lazy-nested-eager-relations/entity/Profile.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/entity-metadata-validator/basic/entity-metadata-validator.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/query-runner/entity/Book.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/repository/find-options-locking/entity/Tag.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/1245/issue-1245.ts
+  ai_agent 1-70
+packages/@n8n/typeorm/test/functional/view-entity/view-dependencies/entity/ViewC.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/README.md
+  ai_agent 1-1252
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-many/embedded-with-multiple-pk/entity/Post.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/other-issues/composite-keys/entity/Policy.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/src/find-options/operator/ILike.ts
+  ai_agent 1-9
+packages/@n8n/typeorm/test/github-issues/2005/issue-2005.ts
+  ai_agent 1-30
+packages/@n8n/typeorm/test/github-issues/9910/entity/User.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/9988/entity/category.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-one/embedded/entity/Subcounters.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/multi-schema-and-database/multi-schema-and-database-basic-functionality/multi-schema-and-database-basic-functionality.ts
+  ai_agent 1-200
+packages/@n8n/typeorm/test/functional/connection-options-reader/configs/test-path-config.ts
+  ai_agent 1-7
+packages/@n8n/typeorm/test/functional/query-runner/create-unique-constraint.ts
+  ai_agent 1-106
+packages/@n8n/typeorm/test/github-issues/2464/entity/Bar.ts
+  ai_agent 1-17
+packages/@n8n/typeorm/test/github-issues/7087/migration/0000000000003-CreateIndex.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/functional/query-builder/relation-id/one-to-one/embedded/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/7146/issue-7146.ts
+  ai_agent 1-139
+packages/@n8n/typeorm/test/github-issues/4156/issue-4156.ts
+  ai_agent 1-87
+packages/@n8n/typeorm/test/github-issues/762/entity/Foo.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/other-issues/limit-with-order-by/entity/Post.ts
+  ai_agent 1-21
+packages/@n8n/typeorm/src/entity-schema/EntitySchema.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/functional/embedded/embedded-many-to-one-case3/entity/Subcounters.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/test/github-issues/8443/closure-table/entity/Category.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/functional/query-builder/count/query-builder-count.ts
+  ai_agent 1-119
+packages/@n8n/typeorm/test/functional/table-inheritance/single-table/relations/one-to-many/entity/Teacher.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/database-schema/column-collation/sqlite/column-collation-sqlite.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/functional/persistence/entity-updation/entity/PostEmbedded.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/functional/relations/eager-relations/basic-eager-relations/entity/Post.ts
+  ai_agent 1-42
+packages/@n8n/typeorm/test/github-issues/184/entity/Person.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/github-issues/3246/issue-3246.ts
+  ai_agent 1-53
+packages/@n8n/typeorm/test/github-issues/3997/issue-3997.ts
+  ai_agent 1-38
+packages/@n8n/typeorm/test/github-issues/7614/issue-7614.ts
+  ai_agent 1-37
+packages/@n8n/typeorm/src/connection/ConnectionOptions.ts
+  ai_agent 1-10
+packages/@n8n/typeorm/src/error/EntityMetadataNotFoundError.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/src/metadata-args/TreeMetadataArgs.ts
+  ai_agent 1-22
+packages/@n8n/typeorm/test/functional/find-options/array-overlap/array-overlap-operator.test.ts
+  ai_agent 1-137
+packages/@n8n/typeorm/test/functional/persistence/cascades/cascades-example2/entity/Photo.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/github-issues/1716/entity/pgEntity.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/src/error/LockAcquireTimeoutError.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/src/metadata-args/ColumnMetadataArgs.ts
+  ai_agent 1-29
+packages/@n8n/typeorm/test/github-issues/2200/entity/Booking.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/7087/migration/0000000000002-InsertUser.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/test/functional/uuid/postgres/entity/Record.ts
+  ai_agent 1-8
+packages/@n8n/typeorm/test/github-issues/7586/entity/ViewA.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/github-issues/8018/entity/Grandchild.ts
+  ai_agent 1-14
+packages/@n8n/typeorm/test/functional/view-entity/general/entity/Post.ts
+  ai_agent 1-18
+packages/@n8n/typeorm/test/github-issues/8522/entity/Role.ts
+  ai_agent 1-13
+packages/@n8n/typeorm/test/functional/connection/entity/v1/Guest.ts
+  ai_agent 1-20
+packages/@n8n/typeorm/test/github-issues/1504/entity/TestEntity2.ts
+  ai_agent 1-25
+packages/@n8n/typeorm/test/functional/transaction/database-specific-isolation/entity/Post.ts
+  ai_agent 1-12
+packages/@n8n/typeorm/test/functional/persistence/partial-persist/entity/Post.ts
+  ai_agent 1-32
+packages/@n8n/typeorm/test/github-issues/215/issue-215.ts
+  ai_agent 1-51
+packages/@n8n/typeorm/test/github-issues/9381/entity/ExampleEntity.ts
+  ai_agent 1-16
+packages/@n8n/typeorm/src/decorator/relations/RelationCount.ts
+  ai_agent 1-24
+packages/@n8n/typeorm/test/functional/transaction/transaction-in-entity-manager/entity/Post.ts
+  ai_agent 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5618fabe7eb92e2df60c1b72ba3c7deca58c05b1",
+  "prompts": {},
+  "sessions": {
+    "s_17f95be7845aae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be842455-fb42-4a82-b874-9558a3113383",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

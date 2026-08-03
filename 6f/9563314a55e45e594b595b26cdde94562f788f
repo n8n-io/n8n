@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.test.ts
+  s_93bfa2eb2d7de3::t_2d7077789b7b15 87-103,119,129,294-313
+  s_93bfa2eb2d7de3::t_e59789131762e0 314-317
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.ts
+  s_93bfa2eb2d7de3::t_2d7077789b7b15 6,14-18,27,67-74,98
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_93bfa2eb2d7de3::t_2d7077789b7b15 51,98,741
+  s_93bfa2eb2d7de3::t_a412af9f8713ae 742
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_93bfa2eb2d7de3::t_f05594c28cef97 479-480
+  s_93bfa2eb2d7de3::t_2d7077789b7b15 25,470-478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f9563314a55e45e594b595b26cdde94562f788f",
+  "prompts": {},
+  "sessions": {
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

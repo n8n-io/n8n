@@ -1,0 +1,50 @@
+packages/@n8n/config/src/configs/nodes.config.ts
+  s_d4d3175b2de0d6::t_dcc69c2633f19b 45-48
+packages/nodes-base/package.json
+  s_d4d3175b2de0d6::t_36b5e10666f05c 642
+  s_d4d3175b2de0d6::t_504b99a0a98ceb 933
+CHANGELOG.md
+  s_d4d3175b2de0d6::t_fa773d202c3a61 4-8
+packages/nodes-base/nodes/Kafka/confluent/test/configConverter.test.ts
+  s_d4d3175b2de0d6::t_7921d96bbe0079 1-137
+packages/nodes-base/nodes/Kafka/confluent/KafkaConfluentTrigger.node.ts
+  s_d4d3175b2de0d6::t_75b83ea2d4b207 1-441
+  s_d4d3175b2de0d6::t_a135f2e4d20cf8 442
+package.json
+  s_d4d3175b2de0d6::t_fecaf454084c74 97
+packages/@n8n/config/test/config.test.ts
+  s_d4d3175b2de0d6::t_eacc024d5b67fb 191
+packages/nodes-base/nodes/Kafka/confluent/configConverter.ts
+  s_d4d3175b2de0d6::t_f6e3812a03d8b0 1-143
+packages/cli/src/load-nodes-and-credentials.ts
+  s_d4d3175b2de0d6::t_8506c1043004b9 98-102
+packages/nodes-base/nodes/Kafka/confluent/utils.ts
+  s_d4d3175b2de0d6::t_ff40487b26358d 161-162,164-166
+  s_d4d3175b2de0d6::t_fca71a88197502 1-160,163,167-285
+packages/nodes-base/nodes/Kafka/confluent/test/KafkaConfluentTrigger.node.test.ts
+  s_d4d3175b2de0d6::t_74a42c7c5620f2 2-3,8-21,37-39,41-46,58-61,63-74,76-80,82,84,90-97,101-106,108,111-133,137-144,146-152,158-160,163-176,178,181,186-199,201,204-207,209-211,213-226,228,231,233-234,242-254,256,260,262-263,267,269-283,286-291,297-301,303-304,308-322,324-326,329-330,337-340,342,344-345,347,353-354,356-372,375,377,381-398,400,402,404,406-408
+  s_d4d3175b2de0d6::t_c2196f5c831097 307,327-328,336,341,343,346,348-352
+  s_d4d3175b2de0d6::t_7ab24f818b6c72 4-7,47-53,57,83,88-89,98-100,107,109-110,134-136,153-154,156-157,161-162,177,179-180,182-185,200,202-203,208,212,227,229-230,232,235-237,255,258-259,261,264-266,268,284-285,305-306,323,355,373-374,376,378-380,399,401,403,405,409-411
+  s_d4d3175b2de0d6::t_5bcc3cd8956e9f 1,22-36,40,54-56,62,75,81,85-87,145,155,238-241,257,292-296,302,331-335
+  s_d4d3175b2de0d6::t_10d0e734d74f77 412-446
+docker/images/n8n/Dockerfile
+  s_d4d3175b2de0d6::t_fb3ed79d1f5a95 13-21
+pnpm-lock.yaml
+  s_d4d3175b2de0d6::t_d310b5faffa2e7 5634-5636,7746-7749,9179-9183,12685-12688,13858-13861,18093-18097,24430-24438,25854-25866,29923-29924,31253-31254,36447-36450
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7d7e8b6db9c9cb0c53b0c291f39205863e3992ad",
+  "prompts": {},
+  "sessions": {
+    "s_d4d3175b2de0d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c80b8a6c-e008-47b9-8718-338c7e9aaab8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

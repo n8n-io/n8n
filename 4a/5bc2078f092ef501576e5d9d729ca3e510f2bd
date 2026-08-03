@@ -1,0 +1,55 @@
+packages/cli/src/controllers/oauth/__tests__/oauth1-credential.controller.test.ts
+  s_a7d94f515d4576::t_3728b67adde435 9,18
+  s_a7d94f515d4576::t_f228b502effb79 173-176,181-222
+packages/cli/src/controllers/oauth/oauth1-credential.controller.ts
+  s_a7d94f515d4576::t_b792ca37d0008e 94-102
+  s_a7d94f515d4576::t_f01d4b6cd3b70a 7,17
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_7557b37fb265fc::t_5b54a6caea251d 178-216
+  s_7557b37fb265fc::t_7af740fa844450 617-740
+packages/cli/src/credentials/credentials.controller.ts
+  s_7557b37fb265fc::t_c656227ce5797c 335-341
+  s_7557b37fb265fc::t_55b3ee4a74a9f0 284-285
+  s_7557b37fb265fc::t_9ade99f3dfdeed 183-191
+  s_7557b37fb265fc::t_e98c21168745c4 182
+  s_7557b37fb265fc::t_2a2c93fb10a9c4 334
+  s_7557b37fb265fc::t_f33751a2c75c1e 286-299
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_7557b37fb265fc::t_12aeff8ba7d700 996-1108
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_7557b37fb265fc::t_60359f95018527 632-700
+  s_7557b37fb265fc::t_a21191dd2948bb 116-122
+packages/cli/src/controllers/oauth/oauth2-credential.controller.ts
+  s_a7d94f515d4576::t_d237ba0cc6a830 138-146
+  s_a7d94f515d4576::t_983bdee78fc030 12,25
+packages/cli/src/controllers/oauth/__tests__/oauth2-credential.controller.test.ts
+  s_a7d94f515d4576::t_d722090d8613b9 9,23
+  s_a7d94f515d4576::t_a69120347a1ea1 840,882-886
+  s_a7d94f515d4576::t_4cefde3c43b854 163,214-218
+packages/cli/src/events/maps/relay.event-map.ts
+  s_7557b37fb265fc::t_80f8fa994c534e 434-465
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4a5bc2078f092ef501576e5d9d729ca3e510f2bd",
+  "prompts": {},
+  "sessions": {
+    "s_7557b37fb265fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62688e7a-d509-4a74-bd9a-69b3e8fdf8f7",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_a7d94f515d4576": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a34c5c4-d51d-4c29-9b12-d49ba574ed53",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

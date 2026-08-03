@@ -1,0 +1,9 @@
+packages/@n8n/agents/src/utils/json-schema.ts
+  ai_agent 5,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "83be7ad243d0503766779363fa42afb7b3a92cb2",
+  "prompts": {}
+}

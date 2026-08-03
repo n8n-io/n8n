@@ -1,0 +1,53 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.vue
+  s_3366bcfee02760::t_72c241d3a1d5bd 514,525,528,723
+packages/@n8n/api-types/src/dto/credential-resolver/list-credential-resolvers-query.dto.ts
+  s_3366bcfee02760::t_f04f4913fbc946 1-6
+packages/frontend/@n8n/rest-api-client/src/api/credentialResolvers.ts
+  s_3366bcfee02760::t_46f999ed645bfe 12,14-15
+packages/cli/test/integration/dynamic-credentials.ee/credential-resolvers.api.test.ts
+  s_ecbdb89f5b1cea::t_51f201afbee099 45,57-66
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/n8n-resolver-seeder.service.test.ts
+  s_3366bcfee02760::t_78d556ed49d33f 32,43-48,51-52,57-58,61-62,67-68,73-74,80,86,90
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers.controller.ts
+  s_3366bcfee02760::t_478a83af26bafc 7,22
+  s_3366bcfee02760::t_9477d1b4ae41dc 43-47,49-52
+packages/cli/src/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service.ts
+  s_3366bcfee02760::t_fd122818de926a 37,51
+  h_89e664b3be09ae 6,28,50
+packages/@n8n/api-types/src/dto/index.ts
+  s_3366bcfee02760::t_65344f59497f5f 47
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/credential-resolvers.controller.test.ts
+  s_3366bcfee02760::t_6cad5bfd60bb9b 27-65
+packages/frontend/editor-ui/src/features/resolvers/composables/useCredentialResolvers.ts
+  s_3366bcfee02760::t_e7610e4cfb919c 41
+  s_3366bcfee02760::t_c367444e60fcf7 109-110,115,125-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "ca1dc21c4f304734fd183799f8fd056005189537",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3366bcfee02760": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "969f6a0c-1fa9-40fa-92a6-99b9550d1f35",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_ecbdb89f5b1cea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "413f1a87-83ce-4b9c-83c7-6a4b81d14844",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/attachable-workflows.service.ts
+  s_eb4be0f4d8aeec::t_73793adcb834bb 23
+packages/@n8n/instance-ai/src/tools/agent-builder/creation-tools.ts
+  s_eb4be0f4d8aeec::t_73793adcb834bb 195,202
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_eb4be0f4d8aeec::t_73793adcb834bb 696,703
+packages/cli/src/modules/agents/__tests__/attachable-workflows.service.test.ts
+  s_eb4be0f4d8aeec::t_94481753b137cf 83,98,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "afede3307eed5f6c0bff66695abc97f8d34ed66a",
+  "prompts": {},
+  "sessions": {
+    "s_eb4be0f4d8aeec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3bd5-0754-7771-92c3-142e309e5436",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

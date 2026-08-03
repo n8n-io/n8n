@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_c4e44203b0e34d::t_22947ba9d76bc9 169
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_c4e44203b0e34d::t_ad12fc6497ba97 176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "9df0839dfc662de792cc07ecf94e49e9ff58e8a5",
+  "prompts": {},
+  "sessions": {
+    "s_c4e44203b0e34d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d5a43186-0bbe-4d10-b75b-1e9ea2bc6aa1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

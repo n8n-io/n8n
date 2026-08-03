@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_3cf72d411caad0::t_8d4faef08f29aa 26,443-449
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_3cf72d411caad0::t_5c637286e3f367 35-39,57-79,276-344
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_3cf72d411caad0::t_8c04cdd85e1a98 7-11,217-226
+  s_3cf72d411caad0::t_558e2d462b4317 211
+packages/cli/src/modules/agents/integrations/component-mapper.ts
+  s_3cf72d411caad0::t_a495a7ebbdb4ef 61-65,100
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_3cf72d411caad0::t_347f63f4308301 12,268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "ad94e58b49577117310d403d632f6e5f7716c1a9",
+  "prompts": {},
+  "sessions": {
+    "s_3cf72d411caad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9749-aea2-7951-bfc8-5671d8e5b8e3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

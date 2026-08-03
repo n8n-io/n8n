@@ -1,0 +1,100 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/toolDisplayName.test.ts
+  s_dd8f226d4368c9::t_1cb09282fcb355 12
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_dd8f226d4368c9::t_bd78d656842893 218-233,235,237-251,253
+  s_dd8f226d4368c9::t_b6602e50b2ecf5 216
+  s_dd8f226d4368c9::t_7a2bf5cf5b9ac9 254
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_dd8f226d4368c9::t_bb2600f062ad35 387
+  s_dd8f226d4368c9::t_3069987b369939 124-139,141
+packages/cli/src/modules/agents/builder/agents-builder-model-recommendations.ts
+  s_dd8f226d4368c9::t_0ef31a1a2df357 85-86,89
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_dd8f226d4368c9::t_e6fc88d727e9dc 81
+  s_dd8f226d4368c9::t_ab61006eb156c0 89,163,171,363,378
+  s_dd8f226d4368c9::t_1140d15ec89e3c 88,106,162,170,358,362,369,377
+packages/@n8n/instance-ai/docs/tools.md
+  s_dd8f226d4368c9::t_28e1f9b36044a3 701-707,710-711
+packages/cli/src/modules/agents/builder/interactive/llm-provider-defaults.ts
+  s_dd8f226d4368c9::t_28f12881905caa 3-4
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_dd8f226d4368c9::t_358fded3b4e2c8 20-24,30
+  s_dd8f226d4368c9::t_f0fe3954fb74db 83-84
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_dd8f226d4368c9::t_670eacdb337db2 100-101
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  s_dd8f226d4368c9::t_3605d071155003 5
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_dd8f226d4368c9::t_2e2dda23c66115 78-79
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_dd8f226d4368c9::t_f25d5f28679b52 263-264
+  s_dd8f226d4368c9::t_c0285d97bcffd0 104-110,117-124
+  s_dd8f226d4368c9::t_806621b696c23f 249-250
+  s_dd8f226d4368c9::t_1bfe8b16709f04 178-181,185-189
+  s_dd8f226d4368c9::t_656a2dbf8fb2aa 230-231
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_dd8f226d4368c9::t_6642ebe565616a 33
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_dd8f226d4368c9::t_b1275b6e64c275 519
+  s_dd8f226d4368c9::t_a01edd9a85f01f 446,448,450
+  s_dd8f226d4368c9::t_6121113e8799aa 30-37
+  s_dd8f226d4368c9::t_ecc42fc9fb4474 472,477,479,481,484-485
+  s_dd8f226d4368c9::t_195f3103ce2048 639,641,643,646-647
+  s_dd8f226d4368c9::t_e2b2ebc8b800ea 668,670,686,688
+  s_dd8f226d4368c9::t_728ba288c92880 123-127,139
+  s_dd8f226d4368c9::t_a68547526a7169 38-39
+  s_05df97eb9cece8::t_38dda35455749f 41
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_dd8f226d4368c9::t_9933e97b002059 261,263,270
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_dd8f226d4368c9::t_82dc9a8c2070df 42-43
+  s_dd8f226d4368c9::t_178401ad9f623d 59
+  s_dd8f226d4368c9::t_4ae5791ca12d48 15,17-19,25
+  s_dd8f226d4368c9::t_dc32d38626d042 50
+  s_dd8f226d4368c9::t_130e6250157736 4
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_dd8f226d4368c9::t_2f91fabd78c52f 675,678-682,688-689,697,703-706,708-709
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_dd8f226d4368c9::t_6cf48344560b1f 155
+  s_dd8f226d4368c9::t_b9e522ad16adfc 299-300
+packages/frontend/editor-ui/src/features/agents/utils/model-string.ts
+  s_dd8f226d4368c9::t_faa5b90cccf78a 3-4
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.test.ts
+  s_dd8f226d4368c9::t_7353e3d30c65e4 19,21,31
+  s_dd8f226d4368c9::t_ecffd52e97ec31 2
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_dd8f226d4368c9::t_b98bbf60b19c21 114,121
+  s_dd8f226d4368c9::t_94bb7d0b929dc0 35
+  s_dd8f226d4368c9::t_08ede312761d86 177,188
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_dd8f226d4368c9::t_ae545051b322e1 53
+  s_dd8f226d4368c9::t_92fc070fe27778 61
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_dd8f226d4368c9::t_78c27ed413be39 21-22
+packages/cli/src/modules/agents/builder/prompts/memory.prompt.ts
+  s_dd8f226d4368c9::t_4c62dc64a6c296 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "fe2d54786074532d5a50df5683122a63cb21134c",
+  "prompts": {},
+  "sessions": {
+    "s_05df97eb9cece8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8e97b553018cf16a",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

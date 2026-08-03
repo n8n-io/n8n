@@ -1,0 +1,20 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.test.ts
+  s_0ea06607e37c93::t_acb2a94a62d94c 3-4
+  s_0ea06607e37c93::t_55e5051ef44612 115-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "175a45c8ccd440e3fd5c46cd5851fce24dac885b",
+  "prompts": {},
+  "sessions": {
+    "s_0ea06607e37c93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d19578d-6e39-4af6-860b-134625fd9a81",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

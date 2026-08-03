@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_0c4e99db58812a::t_4ab8adcf8cd1a0 899-910
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_0c4e99db58812a::t_7f63ecbb86c4c7 941-977
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1004e674761f2e8311a4571cf45f8f07004e26f3",
+  "prompts": {},
+  "sessions": {
+    "s_0c4e99db58812a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eef4ed6e-1ca8-47fc-a15a-e4aceffe381f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

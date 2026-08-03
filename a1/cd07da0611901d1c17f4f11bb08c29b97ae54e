@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.test.ts
+  s_fd88e3166bde43::t_13b13c1f9f42a8 185,189-193
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_fd88e3166bde43::t_b310e7753dc385 152-160
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_fd88e3166bde43::t_f92010f0849f8c 6
+  s_fd88e3166bde43::t_ae42cdab9dfa78 110-125
+  s_fd88e3166bde43::t_26e5461d650378 285
+  s_fd88e3166bde43::t_d7f57b16d15c22 24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a1cd07da0611901d1c17f4f11bb08c29b97ae54e",
+  "prompts": {},
+  "sessions": {
+    "s_fd88e3166bde43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f2ad785-b48e-41b7-99c4-c11bb72bed21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
+  s_e092d464fb1063::t_e8189917024af2 131-135
+  s_e092d464fb1063::t_faa39d3a323ef8 7,12-16
+  s_e092d464fb1063::t_11254e1e39f120 149,152-153,155-158,160-161,174,176,183,189,191
+  s_e092d464fb1063::t_7c2fea9fbe6b6d 103,105-122,136-145
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/update.test.ts
+  s_e092d464fb1063::t_de1e07ea432dfa 99-102
+  s_e092d464fb1063::t_c75117cc3ff8ac 335-361
+  s_e092d464fb1063::t_781cde9135aeed 380-382,399-402,407-409,428-430
+  s_e092d464fb1063::t_cac918562b93c8 141
+  s_e092d464fb1063::t_1abc384d932751 185
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/create.operation.ts
+  s_e092d464fb1063::t_4885d464c7fd2e 9-14
+  s_e092d464fb1063::t_7deef76aaf1532 60-61,71,74
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/update.operation.ts
+  s_e092d464fb1063::t_762c243b3d28b7 5,10-14
+  s_e092d464fb1063::t_9c41d5bae62bc9 59-61,81-98
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/helpers/utils.ts
+  s_e092d464fb1063::t_b97347f58b4868 62-64
+  s_e092d464fb1063::t_2b562a41339cc5 2
+  s_e092d464fb1063::t_4504739142af7a 53-61,65-92
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/getAll.operation.ts
+  s_e092d464fb1063::t_38cd92c387eed7 9-10
+  s_e092d464fb1063::t_42fb135cf18177 141,144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c8c465eefb99907b97c843eac566b8f1a45f6f59",
+  "prompts": {},
+  "sessions": {
+    "s_e092d464fb1063": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e30f81d5-6647-4439-9665-cf0323dec065",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

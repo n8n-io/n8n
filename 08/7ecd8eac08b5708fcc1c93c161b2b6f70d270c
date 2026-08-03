@@ -1,0 +1,49 @@
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_d3f6ecf4ef182f::t_c6bdecaa76807e 83-84
+  s_d3f6ecf4ef182f::t_66c7db5c66188c 7-19,26-29,58,85,91-93
+  s_d3f6ecf4ef182f::t_f06eb715a74185 94-95
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_d3f6ecf4ef182f::t_1e2ae9e5f8cab4 396-411,417,421-437,441-445,459-477,485-490,496-498,500,503,505
+  s_de807c7b884146::t_4d979d5aed93bd 478-484,494-495
+  s_d3f6ecf4ef182f::t_bf896125291a51 438-440
+  s_d3f6ecf4ef182f::t_98d3157c6dadfd 446-448,452
+  s_de807c7b884146::t_2e551d5509c450 418-420
+  s_d3f6ecf4ef182f::t_2b34de54b9b805 506,508,512
+  s_de807c7b884146::t_7773acb85ae7d7 1,4-5,7-8
+  s_d3f6ecf4ef182f::t_5c7dd19fa5258f 449-451,453-458,491-493
+packages/nodes-base/credentials/test/Aws.signing.test.ts
+  s_de807c7b884146::t_7031fc2c9e9970 41,56
+  s_de807c7b884146::t_19af50f472fe11 1-40,42-55,57-61
+packages/nodes-base/credentials/Aws.credentials.ts
+  s_d3f6ecf4ef182f::t_fc2eea215c0920 99
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_d3f6ecf4ef182f::t_831745b60f8492 160
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  s_d3f6ecf4ef182f::t_9104a414e71005 75-85,99-101,103,115-119,133-135,137,174,177,179-181,202-204,206,229-233,245-246,258,260,263-265,280,282,284-286
+  s_d3f6ecf4ef182f::t_844aa7f0581432 6-16,26
+  s_d3f6ecf4ef182f::t_bf11626046d3ef 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "087ecd8eac08b5708fcc1c93c161b2b6f70d270c",
+  "prompts": {},
+  "sessions": {
+    "s_d3f6ecf4ef182f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce569422-462a-4802-bdc8-32dd5735c34f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_de807c7b884146": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "289bcd83-7b99-424b-939a-8908368bbadf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
