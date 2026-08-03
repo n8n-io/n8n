@@ -786,6 +786,7 @@ export class AgentsBuilderToolsService {
 						projectId,
 						code,
 						descriptor,
+						{ user, modifiedBy: 'builder' },
 					);
 					return { ok: true, id: built.id, name: descriptor.name };
 				} catch (e) {
@@ -840,7 +841,10 @@ export class AgentsBuilderToolsService {
 				// Each skill is already validated against `.input()` (agentSkillSchema
 				// shapes) by the tool runtime before the handler runs.
 				try {
-					const created = await this.agentSkillsService.createSkills(agentId, projectId, skills);
+					const created = await this.agentSkillsService.createSkills(agentId, projectId, skills, {
+						user,
+						modifiedBy: 'builder',
+					});
 					return {
 						ok: true,
 						skills: created.map(({ id, skill }) => ({ id, name: skill.name })),
@@ -922,6 +926,7 @@ export class AgentsBuilderToolsService {
 							agentId,
 							projectId,
 							tasks.map((task) => ({ ...task, enabled: true })),
+							{ user, modifiedBy: 'builder' },
 						);
 					} catch (e) {
 						return {

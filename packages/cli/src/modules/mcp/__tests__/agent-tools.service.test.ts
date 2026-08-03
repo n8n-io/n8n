@@ -517,10 +517,15 @@ describe('McpAgentToolsService', () => {
 				mutateInput({ type: 'skill.upsert', skill: { name: 'Skill', body: 'do it' } }),
 			);
 
-			expect(agentSkillsService.createAndAttachSkill).toHaveBeenCalledWith('agent-1', 'project-1', {
-				name: 'Skill',
-				body: 'do it',
-			});
+			expect(agentSkillsService.createAndAttachSkill).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				{
+					name: 'Skill',
+					body: 'do it',
+				},
+				{ user, modifiedBy: 'mcp' },
+			);
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				resource: { type: 'skill', id: 'skill-1' },
@@ -544,6 +549,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				'skill-1',
 				{ name: 'Skill', body: 'v2' },
+				{ user, modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toMatchObject({
 				resource: { type: 'skill', id: 'skill-1' },
@@ -561,12 +567,17 @@ describe('McpAgentToolsService', () => {
 				}),
 			);
 
-			expect(agentTaskService.create).toHaveBeenCalledWith('agent-1', {
-				name: 'Daily',
-				objective: 'report',
-				cronExpression: '0 9 * * *',
-				enabled: true,
-			});
+			expect(agentTaskService.create).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				{
+					name: 'Daily',
+					objective: 'report',
+					cronExpression: '0 9 * * *',
+					enabled: true,
+				},
+				{ user, modifiedBy: 'mcp' },
+			);
 			expect(result.structuredContent).toMatchObject({
 				resource: { type: 'task', id: 'task-1' },
 			});
@@ -597,6 +608,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				'export default new Tool("my_tool")',
 				descriptor,
+				{ user, modifiedBy: 'mcp' },
 			);
 			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
 				'agent-1',
@@ -650,12 +662,17 @@ describe('McpAgentToolsService', () => {
 						'agent-1',
 						'project-1',
 						'skill-1',
+						{ user, modifiedBy: 'mcp' },
 					),
 			],
 			[
 				'task.delete',
 				{ type: 'task.delete', taskId: 'task-1' },
-				() => expect(agentTaskService.delete).toHaveBeenCalledWith('agent-1', 'task-1'),
+				() =>
+					expect(agentTaskService.delete).toHaveBeenCalledWith('agent-1', 'project-1', 'task-1', {
+						user,
+						modifiedBy: 'mcp',
+					}),
 			],
 			[
 				'customTool.delete',
@@ -665,6 +682,7 @@ describe('McpAgentToolsService', () => {
 						'agent-1',
 						'project-1',
 						'tool-1',
+						{ user, modifiedBy: 'mcp' },
 					),
 			],
 		])('routes %s to its sidecar service', async (_name, operation, assertion) => {
@@ -1361,7 +1379,7 @@ describe('McpAgentToolsService', () => {
 			expect(integrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'agent-1' }),
 				{ type: 'slack', credentialId: 'cred-1' },
-				{ broadcast: false },
+				{ user, modifiedBy: 'mcp', broadcast: false },
 			);
 			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
 				'agent-1',
@@ -1456,7 +1474,7 @@ describe('McpAgentToolsService', () => {
 				expect.objectContaining({ id: 'agent-1' }),
 				'slack',
 				'cred-1',
-				{ broadcast: false },
+				{ user, modifiedBy: 'mcp', broadcast: false },
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true, connected: false });
 		});

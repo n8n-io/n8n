@@ -84,6 +84,7 @@ const agentConfigPart = z.enum([
 	'name',
 	'config',
 	'tools',
+	'providerTools',
 	'skills',
 	'tasks',
 	'triggers',
@@ -130,7 +131,7 @@ const agentWrite = {
 	changed_parts: z
 		.array(agentConfigPart)
 		.describe(
-			'Config parts this save actually changed. "credential" is the model credential, which the retired "User edited agent config" reported as part "model". "config" is the feature block: web search and prompt caching.',
+			'Config parts this save actually changed. "credential" is the model credential, which the retired "User edited agent config" reported as part "model". "config" is the feature block: web search and prompt caching. "providerTools" is the provider-native tools map, including web-search tool settings reconciled from config.webSearch.',
 		),
 	has_published_version: z
 		.boolean()

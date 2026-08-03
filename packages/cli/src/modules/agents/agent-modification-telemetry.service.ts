@@ -11,11 +11,20 @@ import type { Agent } from './entities/agent.entity';
 import {
 	configuredCapabilityKinds,
 	countAgentCapabilities,
+	isUnconfiguredAgent,
 	totalAgentCapabilities,
 } from './utils/agent-capabilities';
 
+export { isUnconfiguredAgent };
+
 /** Which surface acted: selects the per-surface event on every agent lifecycle emit. */
 export type AgentActor = 'user' | 'builder' | 'mcp';
+
+/** Context passed to canonical mutating sidecar services. */
+export type AgentMutationTelemetryContext = {
+	user: User;
+	modifiedBy: AgentActor;
+};
 
 export type AgentConfigPart =
 	| 'instructions'
@@ -25,6 +34,7 @@ export type AgentConfigPart =
 	| 'name'
 	| 'config'
 	| 'tools'
+	| 'providerTools'
 	| 'skills'
 	| 'tasks'
 	| 'triggers'
@@ -41,6 +51,7 @@ const CONFIG_PARTS = [
 	'name',
 	'config',
 	'tools',
+	'providerTools',
 	'skills',
 	'tasks',
 	'triggers',
@@ -52,39 +63,24 @@ const CONFIG_PARTS = [
 /**
  * Which parts a config write actually changed. `triggers` is derived from the
  * integrations instead of the schema because `decomposeJsonConfig` splits
- * integrations out of the schema before it is persisted. `personalisation` and
- * `providerTools` are deliberately absent: the first is cosmetic, and the
- * second is reconciled from `config.webSearch` rather than set directly.
+ * integrations out of the schema before it is persisted. `personalisation` is
+ * deliberately absent: it is cosmetic. Sidecar body flags cover tool/skill/task
+ * bodies that live outside the schema refs.
  */
 export function diffAgentConfigParts(
 	previousSchema: AgentJsonConfig | null,
 	nextSchema: AgentJsonConfig | null,
 	previousIntegrations: AgentIntegrationConfig[],
 	nextIntegrations: AgentIntegrationConfig[],
+	sidecarChanges: Partial<Record<'tools' | 'skills' | 'tasks', boolean>> = {},
 ): AgentConfigPart[] {
-	return CONFIG_PARTS.filter((part) =>
-		part === 'triggers'
-			? !isEqual(previousIntegrations, nextIntegrations)
-			: !isEqual(previousSchema?.[part], nextSchema?.[part]),
-	);
-}
-
-/**
- * Whether the agent had nothing behind it yet — the state a freshly created row
- * is in. A write leaving this state is the agent's creation, so it reports a
- * creation event rather than a modification.
- *
- * `name` and `personalisation` are deliberately not consulted: an agent that
- * has only been renamed or recoloured has not been configured, matching
- * `CONFIG_PARTS`, which omits `personalisation` as cosmetic.
- */
-export function isUnconfiguredAgent(
-	schema: AgentJsonConfig | null,
-	integrations: AgentIntegrationConfig[],
-): boolean {
-	if (!schema) return true;
-	if (schema.model?.trim() || schema.instructions?.trim()) return false;
-	return totalAgentCapabilities(countAgentCapabilities(schema, integrations)) === 0;
+	return CONFIG_PARTS.filter((part) => {
+		if (part === 'triggers') return !isEqual(previousIntegrations, nextIntegrations);
+		if ((part === 'tools' || part === 'skills' || part === 'tasks') && sidecarChanges[part]) {
+			return true;
+		}
+		return !isEqual(previousSchema?.[part], nextSchema?.[part]);
+	});
 }
 
 /**
@@ -122,10 +118,11 @@ export class AgentModificationTelemetryService {
 		if (changedParts.length === 0) return;
 
 		try {
-			// Still nothing behind the agent: a rename or recolour of a blank
-			// agent is neither its creation nor a modification of it. Staying
-			// silent keeps a creation the first event any agent reports.
-			if (isUnconfiguredAgent(agent.schema, agent.integrations)) return;
+			const stillUnconfigured = isUnconfiguredAgent(agent.schema, agent.integrations);
+			// Blank-to-blank (rename/recolour of an unconfigured agent) stays silent
+			// so a creation remains the first event any agent reports. Configured →
+			// unconfigured (final capability removal) still reports modification.
+			if (wasUnconfigured && stillUnconfigured) return;
 
 			const counts = countAgentCapabilities(agent.schema, agent.integrations);
 			// Only model and tool_types: this helper's own tool_count folds in MCP

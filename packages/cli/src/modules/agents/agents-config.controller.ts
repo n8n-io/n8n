@@ -81,7 +81,10 @@ export class AgentsConfigController {
 		@Param('toolId') toolId: string,
 	) {
 		const { projectId } = req.params;
-		await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, toolId);
+		await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, toolId, {
+			user: req.user,
+			modifiedBy: 'user',
+		});
 		return { ok: true };
 	}
 }

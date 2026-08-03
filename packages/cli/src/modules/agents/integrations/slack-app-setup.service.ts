@@ -258,6 +258,8 @@ export class SlackAppSetupService {
 		} satisfies AgentIntegrationConfig;
 
 		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
+			user,
+			modifiedBy: 'user',
 			broadcast: false,
 		});
 		await this.agentPublishService.publishAgent(

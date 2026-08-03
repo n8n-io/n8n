@@ -642,7 +642,8 @@ interface McpAvailabilitySnapshot {
  *
  * The agent is created under the already-minted `agentId`, so an agent-building
  * chat request on the same thread converges on this agent rather than a second
- * one (the backend adopts the existing row on an id collision).
+ * one (the builder path adopts a same-project still-unconfigured row on an id
+ * collision; REST create stays strict).
  */
 let persistPromise: Promise<void> | null = null;
 async function ensureAgentPersisted(): Promise<void> {

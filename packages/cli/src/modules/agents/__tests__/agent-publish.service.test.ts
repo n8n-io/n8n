@@ -629,6 +629,64 @@ describe('AgentPublishService', () => {
 		);
 	});
 
+	it('reports sidecar body-only reverts when schema references are unchanged', async () => {
+		const { service, agentRepository, taskSnapshotRepository, taskRepo, telemetry } = makeService();
+		const schemaWithRefs: AgentJsonConfig = {
+			...schema,
+			tools: [{ type: 'custom', id: 'tool-1' }],
+			skills: [{ type: 'skill', id: 'skill-1' }],
+			tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+		};
+		const publishedTools = {
+			'tool-1': { code: 'published', descriptor: { name: 'tool-1' } },
+		} as unknown as AgentHistory['tools'];
+		const publishedSkills = {
+			'skill-1': { name: 'Skill', description: 'published', instructions: 'Use published' },
+		};
+		const activeVersion = makeHistory({
+			versionId: 'published-v1',
+			schema: schemaWithRefs,
+			tools: publishedTools,
+			skills: publishedSkills,
+		});
+		const agent = makeAgent({
+			activeVersionId: 'published-v1',
+			activeVersion,
+			schema: schemaWithRefs,
+			tools: { 'tool-1': { code: 'draft', descriptor: { name: 'tool-1' } } } as never,
+			skills: {
+				'skill-1': { name: 'Skill', description: 'draft', instructions: 'Use draft' },
+			},
+		});
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		taskSnapshotRepository.findByVersionId.mockResolvedValue([
+			makeTaskSnapshot({
+				objective: 'Published objective',
+			}),
+		]);
+		taskRepo.findBy.mockResolvedValue([
+			{
+				id: 'task-1',
+				name: 'Daily summary',
+				objective: 'Draft objective',
+				cronExpression: '0 9 * * *',
+			},
+		]);
+
+		await service.revertToPublishedAgent(agentId, projectId, user, 'user');
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+			expect.objectContaining({
+				agent_id: agentId,
+				changed_parts: ['tools', 'skills', 'tasks'],
+				has_published_version: true,
+			}),
+		);
+		expect(telemetry.track).toHaveBeenCalledTimes(1);
+	});
+
 	it('returns a version snapshot with its task snapshots', async () => {
 		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository } =
 			makeService();

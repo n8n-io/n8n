@@ -9,10 +9,11 @@ describe('instanceAiCreateAgentRoute', () => {
 		});
 	});
 
-	it('carries the id minted at the click so the view adopts it', () => {
+	it('carries the id minted at the click in history state so the view adopts it', () => {
 		expect(instanceAiCreateAgentRoute('project-1', 'aBcDeFgHiJkLmNoP')).toEqual({
 			name: 'NewAgentView',
-			query: { projectId: 'project-1', agentId: 'aBcDeFgHiJkLmNoP' },
+			query: { projectId: 'project-1' },
+			state: { instanceAiPendingAgentId: 'aBcDeFgHiJkLmNoP' },
 		});
 	});
 });

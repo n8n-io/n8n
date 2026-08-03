@@ -360,6 +360,8 @@ describe('SlackAppSetupService', () => {
 			agent,
 			integration,
 			{
+				user,
+				modifiedBy: 'user',
 				broadcast: false,
 			},
 		);
@@ -422,6 +424,8 @@ describe('SlackAppSetupService', () => {
 			unpublishedAgent,
 			integration,
 			{
+				user,
+				modifiedBy: 'user',
 				broadcast: false,
 			},
 		);

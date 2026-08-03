@@ -820,6 +820,26 @@ describe('AgentConfigService', () => {
 			);
 		});
 
+		it('reports clearing the last model and instructions as a modification with zero capability counts', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(agentId, projectId, { ...blankConfig }, user, byUser);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toEqual(
+				expect.objectContaining({
+					agent_id: agentId,
+					capability_count: 0,
+					capability_kinds: [],
+					has_published_version: false,
+				}),
+			);
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				expect.anything(),
+			);
+		});
+
 		it('reports only the parts the save actually changed', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
@@ -970,7 +990,7 @@ describe('AgentConfigService', () => {
 			});
 		});
 
-		it('reports a web-search toggle as a config part', async () => {
+		it('reports a web-search toggle as config and providerTools parts', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 
@@ -983,7 +1003,36 @@ describe('AgentConfigService', () => {
 			);
 
 			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
-				changed_parts: ['config'],
+				changed_parts: ['config', 'providerTools'],
+			});
+		});
+
+		it('reports a providerTools-only change', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: {
+						...baseConfig,
+						config: { webSearch: { enabled: true } },
+						providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+					},
+				}),
+			);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					config: { webSearch: { enabled: true } },
+					providerTools: { 'anthropic.web_search': { maxUses: 10 } },
+				} as unknown as AgentJsonConfig,
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_parts: ['providerTools'],
 			});
 		});
 

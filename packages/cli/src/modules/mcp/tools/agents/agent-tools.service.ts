@@ -1067,6 +1067,7 @@ export class McpAgentToolsService {
 		projectId: string,
 	): Promise<{ resource?: MutationResource; config?: AgentJsonConfig }> {
 		const { agentId, operation } = input;
+		const telemetryContext = { user, modifiedBy: 'mcp' as const };
 		switch (operation.type) {
 			case 'config.replace': {
 				if (operation.config.integrations !== undefined) {
@@ -1117,6 +1118,7 @@ export class McpAgentToolsService {
 						projectId,
 						operation.skillId,
 						operation.skill,
+						telemetryContext,
 					);
 					return { resource: { type: 'skill', id: result.id } };
 				} else {
@@ -1124,18 +1126,26 @@ export class McpAgentToolsService {
 						agentId,
 						projectId,
 						operation.skill,
+						telemetryContext,
 					);
 					return { resource: { type: 'skill', id: result.id } };
 				}
 			case 'skill.delete':
-				await this.agentSkillsService.deleteSkill(agentId, projectId, operation.skillId);
+				await this.agentSkillsService.deleteSkill(
+					agentId,
+					projectId,
+					operation.skillId,
+					telemetryContext,
+				);
 				return { resource: { type: 'skill', id: operation.skillId } };
 			case 'task.upsert':
 				if (operation.taskId) {
 					const result = await this.agentTaskService.update(
 						agentId,
+						projectId,
 						operation.taskId,
 						operation.task,
+						telemetryContext,
 					);
 					if (operation.enabled !== undefined) {
 						const updated = await this.setTaskEnabled(
@@ -1150,14 +1160,19 @@ export class McpAgentToolsService {
 					}
 					return { resource: { type: 'task', id: result.id } };
 				} else {
-					const result = await this.agentTaskService.create(agentId, {
-						...operation.task,
-						enabled: operation.enabled ?? true,
-					});
+					const result = await this.agentTaskService.create(
+						agentId,
+						projectId,
+						{
+							...operation.task,
+							enabled: operation.enabled ?? true,
+						},
+						telemetryContext,
+					);
 					return { resource: { type: 'task', id: result.id } };
 				}
 			case 'task.delete':
-				await this.agentTaskService.delete(agentId, operation.taskId);
+				await this.agentTaskService.delete(agentId, projectId, operation.taskId, telemetryContext);
 				return { resource: { type: 'task', id: operation.taskId } };
 			case 'customTool.upsert': {
 				const descriptor = await this.agentSecureRuntime.describeToolSecurely(operation.code);
@@ -1166,6 +1181,7 @@ export class McpAgentToolsService {
 					projectId,
 					operation.code,
 					descriptor,
+					telemetryContext,
 				);
 				if ((config.tools ?? []).some((tool) => tool.type === 'custom' && tool.id === built.id)) {
 					return { resource: { type: 'customTool', id: built.id }, config };
@@ -1181,7 +1197,12 @@ export class McpAgentToolsService {
 				return { resource: { type: 'customTool', id: built.id }, config: result.config };
 			}
 			case 'customTool.delete':
-				await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, operation.toolId);
+				await this.agentCustomToolsService.deleteCustomTool(
+					agentId,
+					projectId,
+					operation.toolId,
+					telemetryContext,
+				);
 				return { resource: { type: 'customTool', id: operation.toolId } };
 		}
 	}
@@ -1405,11 +1426,11 @@ export class McpAgentToolsService {
 			await this.assertScope(user, projectId, 'agent:publish');
 		}
 		return input.action === 'disconnect'
-			? await this.disconnectIntegration(input, agent)
+			? await this.disconnectIntegration(user, input, agent)
 			: await this.connectIntegration(user, input, agent, projectId);
 	}
 
-	private async disconnectIntegration(input: UpdateIntegrationInput, agent: Agent) {
+	private async disconnectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
 		const persisted = (agent.integrations ?? []).find(
 			(item) => item.type === input.type && item.credentialId === input.credentialId,
 		);
@@ -1433,7 +1454,7 @@ export class McpAgentToolsService {
 			agent,
 			input.type,
 			input.credentialId,
-			{ broadcast: false },
+			{ user, modifiedBy: 'mcp', broadcast: false },
 		);
 		return {
 			ok: true,
@@ -1477,7 +1498,7 @@ export class McpAgentToolsService {
 		const saved = await this.integrationPersistenceService.saveCredentialIntegration(
 			agent,
 			parsed.data,
-			{ broadcast: false },
+			{ user, modifiedBy: 'mcp', broadcast: false },
 		);
 		const { agent: publishedAgent } = await this.agentPublishService.publishAgent(
 			input.agentId,

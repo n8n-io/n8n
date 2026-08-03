@@ -54,3 +54,19 @@ export function configuredCapabilityKinds(
 		.filter((kind) => counts[kind] > 0)
 		.sort();
 }
+
+/**
+ * Whether the agent had nothing behind it yet — the state a freshly created row
+ * is in. A write leaving this state is the agent's creation for telemetry.
+ *
+ * `name` and `personalisation` are deliberately not consulted: an agent that
+ * has only been renamed or recoloured has not been configured.
+ */
+export function isUnconfiguredAgent(
+	schema: AgentJsonConfig | null,
+	integrations: AgentIntegrationConfig[],
+): boolean {
+	if (!schema) return true;
+	if (schema.model?.trim() || schema.instructions?.trim()) return false;
+	return totalAgentCapabilities(countAgentCapabilities(schema, integrations)) === 0;
+}

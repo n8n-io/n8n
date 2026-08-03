@@ -7,7 +7,7 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { useToast } from '@n8n/composables/useToast';
 import {
-	INSTANCE_AI_AGENT_ID_QUERY,
+	INSTANCE_AI_PENDING_AGENT_ID_STATE,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 } from '@/features/ai/instanceAi/constants';
@@ -40,10 +40,11 @@ onMounted(async () => {
 	}
 
 	// The entry point mints the id when it reports the click, so the "clicked"
-	// and "created" events share a join key. Entry points that don't report a
-	// click send none, and a hand-edited one is ignored rather than carried into
-	// a create the backend would reject.
-	const clickedAgentId = route.query[INSTANCE_AI_AGENT_ID_QUERY];
+	// and "created" events share a join key. It travels in history state rather
+	// than the URL; a hand-authored query is ignored rather than carried into a
+	// create the backend would reject.
+	const historyState = history.state as Record<string, unknown>;
+	const clickedAgentId = historyState[INSTANCE_AI_PENDING_AGENT_ID_STATE];
 	const agentId =
 		typeof clickedAgentId === 'string' && MINTED_AGENT_ID.test(clickedAgentId)
 			? clickedAgentId

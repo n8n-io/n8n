@@ -265,7 +265,6 @@ export class AgentConfigService {
 
 		const saved = await this.agentRepository.save(entity);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
-		await emitSetupCompleted?.();
 
 		this.modificationTelemetry.record({
 			agent: saved,
@@ -275,6 +274,7 @@ export class AgentConfigService {
 			changedParts,
 			wasUnconfigured: isUnconfiguredAgent(previousSchema, previousIntegrations),
 		});
+		await emitSetupCompleted?.();
 
 		if (tasksProvided) {
 			const referencedTaskIds = new Set((validatedConfig.tasks ?? []).map((ref) => ref.id));

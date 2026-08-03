@@ -245,7 +245,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
-		agentSkillsService = new AgentSkillsService(logger, agentRepository);
+		const modificationTelemetry = mock<AgentModificationTelemetryService>();
+		agentSkillsService = new AgentSkillsService(logger, agentRepository, modificationTelemetry);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
@@ -255,12 +256,13 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<WorkflowRepository>(),
 			mock<AgentSetupCompletionService>(),
-			mock<AgentModificationTelemetryService>(),
+			modificationTelemetry,
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
 			agentRepository,
 			runtimeCacheService,
+			modificationTelemetry,
 		);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
@@ -277,6 +279,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			chatIntegrationService,
 			runtimeCacheService,
 			chatIntegrationRegistry,
+			mock<AgentModificationTelemetryService>(),
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,

@@ -5,11 +5,12 @@ export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 /**
- * The agent id minted at the click, carried to the new-agent view so the
- * "clicked" and "created" events share a join key even though no agent exists
- * yet. Absent for entry points that don't report the click.
+ * History-state key for the agent id minted at the click. Carried to the
+ * new-agent view so the "clicked" and "created" events share a join key even
+ * though no agent exists yet. Kept out of the URL so a hand-authored query
+ * cannot force the view to adopt an arbitrary id.
  */
-export const INSTANCE_AI_AGENT_ID_QUERY = 'agentId';
+export const INSTANCE_AI_PENDING_AGENT_ID_STATE = 'instanceAiPendingAgentId';
 /** Entry-point source carried into the empty view when a hand-off can't create a thread yet. */
 export const INSTANCE_AI_SOURCE_QUERY = 'source';
 

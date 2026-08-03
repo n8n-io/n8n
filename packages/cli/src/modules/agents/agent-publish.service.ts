@@ -10,6 +10,7 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { EntityManager } from '@n8n/typeorm';
+import isEqual from 'lodash/isEqual';
 import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -432,7 +433,10 @@ export class AgentPublishService {
 		}
 
 		const previousSchema = agent.schema;
+		const previousTools = agent.tools ?? {};
+		const previousSkills = agent.skills ?? {};
 
+		let tasksChanged = false;
 		await this.agentRepository.manager.transaction(async (trx) => {
 			agent.schema = activeVersion.schema ? deepCopy(activeVersion.schema) : null;
 			agent.tools = deepCopy(activeVersion.tools ?? {});
@@ -444,11 +448,15 @@ export class AgentPublishService {
 			}
 
 			await trx.save(agent);
-			await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
+			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
-		this.recordRevert(agent, projectId, user, modifiedBy, previousSchema);
+		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
+			tools: !isEqual(previousTools, agent.tools ?? {}),
+			skills: !isEqual(previousSkills, agent.skills ?? {}),
+			tasks: tasksChanged,
+		});
 
 		this.logger.debug('Reverted SDK agent to published version', { agentId, projectId });
 		return agent;
@@ -467,7 +475,10 @@ export class AgentPublishService {
 		}
 
 		const previousSchema = agent.schema;
+		const previousTools = agent.tools ?? {};
+		const previousSkills = agent.skills ?? {};
 
+		let tasksChanged = false;
 		await this.agentRepository.manager.transaction(async (trx) => {
 			const target = await this.agentHistoryRepository.findByVersionAndAgentId(
 				versionId,
@@ -488,11 +499,15 @@ export class AgentPublishService {
 			}
 
 			await trx.save(agent);
-			await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
+			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
-		this.recordRevert(agent, projectId, user, modifiedBy, previousSchema);
+		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
+			tools: !isEqual(previousTools, agent.tools ?? {}),
+			skills: !isEqual(previousSkills, agent.skills ?? {}),
+			tasks: tasksChanged,
+		});
 
 		this.logger.debug('Reverted SDK agent to a specific version', {
 			agentId,
@@ -506,21 +521,29 @@ export class AgentPublishService {
 	 * A revert restores a stored schema wholesale, so it is a modification like
 	 * any other config write. Integrations live outside the schema and survive
 	 * the revert untouched, hence the same list on both sides of the diff.
+	 * Sidecar body flags cover tool/skill/task bodies restored outside the schema.
 	 */
-	private recordRevert(
+	private async recordRevert(
 		agent: Agent,
 		projectId: string,
 		user: User,
 		modifiedBy: AgentActor,
 		previousSchema: AgentJsonConfig | null,
-	): void {
+		sidecarChanges: Partial<Record<'tools' | 'skills' | 'tasks', boolean>>,
+	): Promise<void> {
 		const integrations = agent.integrations ?? [];
 		this.modificationTelemetry.record({
 			agent,
 			projectId,
 			user,
 			by: modifiedBy,
-			changedParts: diffAgentConfigParts(previousSchema, agent.schema, integrations, integrations),
+			changedParts: diffAgentConfigParts(
+				previousSchema,
+				agent.schema,
+				integrations,
+				integrations,
+				sidecarChanges,
+			),
 			// A revert needs a published version to revert to, so the agent was
 			// configured long before this.
 			wasUnconfigured: false,
@@ -644,16 +667,35 @@ export class AgentPublishService {
 
 	/**
 	 * Bring the draft task definition rows back in line with a published snapshot
-	 * on revert.
+	 * on revert. Returns whether task bodies changed (name/objective/cron only).
 	 */
 	private async restoreTasksFromSnapshot(
 		trx: EntityManager,
 		agentId: string,
 		versionId: string,
-	): Promise<void> {
+	): Promise<boolean> {
 		const repo = trx.getRepository(AgentTask);
 		const existing = await repo.findBy({ agentId });
 		const snapshots = await this.agentTaskSnapshotRepository.findByVersionId(versionId, trx);
+
+		const existingBodies = Object.fromEntries(
+			existing.map((row) => [
+				row.id,
+				{ name: row.name, objective: row.objective, cronExpression: row.cronExpression },
+			]),
+		);
+		const snapshotBodies = Object.fromEntries(
+			snapshots.map((snapshot) => [
+				snapshot.taskId,
+				{
+					name: snapshot.name,
+					objective: snapshot.objective,
+					cronExpression: snapshot.cronExpression,
+				},
+			]),
+		);
+		const tasksChanged = !isEqual(existingBodies, snapshotBodies);
+
 		const snapshotIds = new Set(snapshots.map((snapshot) => snapshot.taskId));
 
 		const orphanIds = existing.filter((row) => !snapshotIds.has(row.id)).map((row) => row.id);
@@ -677,5 +719,7 @@ export class AgentPublishService {
 				});
 			}
 		}
+
+		return tasksChanged;
 	}
 }

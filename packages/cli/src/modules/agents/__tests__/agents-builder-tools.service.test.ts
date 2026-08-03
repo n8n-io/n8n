@@ -1390,6 +1390,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				'export default new Tool("seo_analyzer")',
 				descriptor,
+				{ user, modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -1519,10 +1520,12 @@ describe('AgentsBuilderToolsService', () => {
 				ctx,
 			);
 
-			expect(agentsService.createSkills).toHaveBeenCalledWith(agentId, projectId, [
-				skillOne,
-				skillTwo,
-			]);
+			expect(agentsService.createSkills).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				[skillOne, skillTwo],
+				{ user, modifiedBy: 'builder' },
+			);
 			expect(result).toEqual({
 				ok: true,
 				skills: [
@@ -1675,10 +1678,15 @@ describe('AgentsBuilderToolsService', () => {
 				ctx,
 			);
 
-			expect(agentTaskService.createTasks).toHaveBeenCalledWith(agentId, projectId, [
-				{ ...taskOneInput, enabled: true },
-				{ ...taskTwoInput, enabled: true },
-			]);
+			expect(agentTaskService.createTasks).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				[
+					{ ...taskOneInput, enabled: true },
+					{ ...taskTwoInput, enabled: true },
+				],
+				{ user, modifiedBy: 'builder' },
+			);
 			expect(result).toEqual({
 				ok: true,
 				configMutated: true,
@@ -1743,9 +1751,12 @@ describe('AgentsBuilderToolsService', () => {
 
 			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
 
-			expect(agentTaskService.createTasks).toHaveBeenCalledWith(agentId, projectId, [
-				{ ...taskOneInput, enabled: true },
-			]);
+			expect(agentTaskService.createTasks).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				[{ ...taskOneInput, enabled: true }],
+				{ user, modifiedBy: 'builder' },
+			);
 			expect(result).toEqual({
 				ok: true,
 				configMutated: true,
