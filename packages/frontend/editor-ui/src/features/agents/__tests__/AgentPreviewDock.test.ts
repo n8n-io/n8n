@@ -55,6 +55,7 @@ const AgentPreviewChatPageStub = {
 		'effectiveSessionId',
 		'initialPrompt',
 		'canSendToAssistant',
+		'beforeSend',
 		'layout',
 	],
 	emits: ['continue-loaded', 'open-build', 'send-to-assistant'],
@@ -62,7 +63,11 @@ const AgentPreviewChatPageStub = {
 };
 
 function mountDock(
-	overrides: Partial<{ hasSession: boolean; closeShortcutDisabled: boolean }> = {},
+	overrides: Partial<{
+		hasSession: boolean;
+		closeShortcutDisabled: boolean;
+		beforeSend: () => Promise<void> | void;
+	}> = {},
 ) {
 	return mount(AgentPreviewDock, {
 		props: {
@@ -144,10 +149,12 @@ describe('AgentPreviewDock', () => {
 	});
 
 	it('forwards chat events and opts the chat page into dock layout', () => {
-		const wrapper = mountDock();
+		const beforeSend = vi.fn();
+		const wrapper = mountDock({ beforeSend });
 		const chatPage = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
 
 		expect(chatPage.props('layout')).toBe('dock');
+		expect(chatPage.props('beforeSend')).toBe(beforeSend);
 		chatPage.vm.$emit('continue-loaded', 3);
 		chatPage.vm.$emit('open-build');
 		chatPage.vm.$emit('send-to-assistant', 'execution-1');
@@ -198,7 +205,7 @@ describe('AgentPreviewDock', () => {
 });
 
 describe('AgentPreviewChatPage', () => {
-	function mountChatPage(layout?: 'page' | 'dock') {
+	function mountChatPage(layout?: 'page' | 'dock', beforeSend?: () => Promise<void> | void) {
 		return shallowMount(AgentPreviewChatPage, {
 			props: {
 				initialized: true,
@@ -209,6 +216,7 @@ describe('AgentPreviewChatPage', () => {
 				connectedTriggers: [],
 				effectiveSessionId: 'thread-1',
 				layout,
+				beforeSend,
 			},
 		});
 	}
@@ -219,5 +227,12 @@ describe('AgentPreviewChatPage', () => {
 
 	it('uses a neutral root inside the complementary dock landmark', () => {
 		expect(mountChatPage('dock').element.tagName).toBe('DIV');
+	});
+
+	it('forwards the pre-send guard to the chat panel', () => {
+		const beforeSend = vi.fn();
+		const wrapper = mountChatPage('dock', beforeSend);
+
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('beforeSend')).toBe(beforeSend);
 	});
 });

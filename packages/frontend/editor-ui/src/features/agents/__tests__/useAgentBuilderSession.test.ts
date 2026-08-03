@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ref } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 
@@ -111,6 +111,43 @@ describe('useAgentBuilderSession', () => {
 				continueSessionId: session.activeChatSessionId.value,
 			},
 		});
+	});
+
+	it('uses an explicit route-backed selection before the route query catches up', () => {
+		route.query = { continueSessionId: 'old-session' };
+		const session = useAgentBuilderSession({ routeBacked: ref(true) });
+
+		expect(session.effectiveSessionId.value).toBe('old-session');
+
+		session.onSessionPick('picked-session');
+		expect(session.effectiveSessionId.value).toBe('picked-session');
+
+		session.onNewChat();
+		expect(session.effectiveSessionId.value).toBe(session.activeChatSessionId.value);
+		expect(session.effectiveSessionId.value).not.toBe('old-session');
+	});
+
+	it('uses a directly assigned route-backed session before navigation catches up', async () => {
+		route.query = { continueSessionId: 'old-session' };
+		const session = useAgentBuilderSession({ routeBacked: ref(true) });
+
+		session.activeChatSessionId.value = 'direct-session';
+		await nextTick();
+
+		expect(session.effectiveSessionId.value).toBe('direct-session');
+	});
+
+	it('lets a later route change replace a pending local selection', async () => {
+		route.query = reactive({ continueSessionId: 'old-session' });
+		const session = useAgentBuilderSession({ routeBacked: ref(true) });
+		session.onSessionPick('pending-session');
+		expect(session.effectiveSessionId.value).toBe('pending-session');
+
+		route.query.continueSessionId = 'history-session';
+		await nextTick();
+
+		expect(session.effectiveSessionId.value).toBe('history-session');
+		expect(session.activeChatSessionId.value).toBe('history-session');
 	});
 
 	it('only clears the route session when route backing is enabled', () => {

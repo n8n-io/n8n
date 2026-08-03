@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
 import { useRoute, useRouter } from 'vue-router';
@@ -54,6 +54,7 @@ export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptio
 	const relativeTimeOf = useRelativeTimestamp();
 
 	const activeChatSessionId = ref<string | null>(null);
+	const pendingRouteSessionId = ref<string | null>(null);
 	const continueSessionId = computed(() => {
 		// Vue Router types this as `LocationQuery[key]: string | string[] | null`.
 		// Picking the first string defends against duplicate query params
@@ -64,10 +65,36 @@ export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptio
 	});
 	const effectiveSessionId = computed<string | undefined>(
 		() =>
-			(routeBacked.value ? continueSessionId.value : undefined) ??
+			(routeBacked.value ? (pendingRouteSessionId.value ?? continueSessionId.value) : undefined) ??
 			activeChatSessionId.value ??
 			undefined,
 	);
+
+	watch(
+		[routeBacked, continueSessionId],
+		([isRouteBacked, routeSessionId]) => {
+			if (!isRouteBacked) {
+				pendingRouteSessionId.value = null;
+				return;
+			}
+			if (pendingRouteSessionId.value !== null) {
+				// Setting the pending id does not trigger this watcher. Any later
+				// route change is authoritative, whether it confirms the replace or
+				// comes from back/forward navigation.
+				pendingRouteSessionId.value = null;
+			}
+			if (routeSessionId) activeChatSessionId.value = routeSessionId;
+		},
+		{ immediate: true },
+	);
+
+	watch(activeChatSessionId, (sessionId) => {
+		if (sessionId === null) {
+			pendingRouteSessionId.value = null;
+		} else if (routeBacked.value && sessionId !== continueSessionId.value) {
+			pendingRouteSessionId.value = sessionId;
+		}
+	});
 
 	/**
 	 * The current session is "empty" until it's been persisted as a thread —
@@ -110,6 +137,7 @@ export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptio
 	function selectSession(id: string) {
 		activeChatSessionId.value = id;
 		if (!routeBacked.value) return;
+		pendingRouteSessionId.value = id;
 		void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
 	}
 

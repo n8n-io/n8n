@@ -21,6 +21,7 @@ const props = withDefaults(
 		effectiveSessionId?: string;
 		initialPrompt?: string;
 		canSendToAssistant?: boolean;
+		beforeSend?: () => Promise<void> | void;
 		closeShortcutDisabled?: boolean;
 	}>(),
 	{ closeShortcutDisabled: false },
@@ -127,6 +128,7 @@ useKeybindings({
 			:effective-session-id="props.effectiveSessionId"
 			:initial-prompt="props.initialPrompt"
 			:can-send-to-assistant="props.canSendToAssistant"
+			:before-send="props.beforeSend"
 			layout="dock"
 			@continue-loaded="emit('continue-loaded', $event)"
 			@open-build="emit('open-build')"

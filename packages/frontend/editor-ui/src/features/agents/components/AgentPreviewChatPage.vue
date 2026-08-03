@@ -16,6 +16,7 @@ withDefaults(
 		effectiveSessionId?: string;
 		initialPrompt?: string;
 		canSendToAssistant?: boolean;
+		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 	}>(),
 	{ layout: 'page' },
@@ -49,6 +50,7 @@ const inputDraft = ref('');
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
 				:can-send-to-assistant="canSendToAssistant"
+				:before-send="beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
