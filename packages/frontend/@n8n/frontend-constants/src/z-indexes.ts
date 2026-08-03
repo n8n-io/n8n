@@ -14,6 +14,7 @@ export const APP_Z_INDEXES = {
 	APP_SIDEBAR: 999,
 	CANVAS_SELECT_BOX: 100,
 	TOP_BANNERS: 999,
+	INSTANCE_AI_NUDGE: 1650, // above canvas UI, below node creator / NDV / modals
 	NODE_CREATOR: 1700,
 	ASK_ASSISTANT_CHAT: 1750,
 	NDV: 1800,

@@ -20,6 +20,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useInstanceAiNudgeStore } from '@/features/ai/instanceAi/nudge/instanceAiNudge.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -56,6 +57,7 @@ export function useWorkflowInitialization() {
 	const projectsStore = useProjectsStore();
 	const historyStore = useHistoryStore();
 	const builderStore = useBuilderStore();
+	const instanceAiNudgeStore = useInstanceAiNudgeStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 	const telemetry = useTelemetry();
@@ -445,6 +447,7 @@ export function useWorkflowInitialization() {
 				const exists = await workflowsListStore.checkWorkflowExists(workflowId.value);
 				if (!exists && route.meta?.nodeView === true) {
 					await initializeWorkspaceForNewWorkflow();
+					instanceAiNudgeStore.showNudge('workflow_created');
 					return;
 				} else {
 					await router.replace({

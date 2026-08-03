@@ -25,8 +25,15 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useInstanceAiNudgeStore } from '@/features/ai/instanceAi/nudge/instanceAiNudge.store';
 
-import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nAssistantIcon,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
@@ -58,6 +65,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
+const instanceAiNudgeStore = useInstanceAiNudgeStore();
 const workflowId = useWorkflowId();
 
 const { getAddedNodesAndConnections } = useActions();
@@ -222,24 +230,37 @@ function openCommandBar(event: MouseEvent) {
 		<!-- Instance AI hand-off (mimics the assistant button) — shown when the
 		Instance AI feature is on and the host provides the workflow action.
 		Clicking hands the current workflow off to a new Instance AI thread. -->
-		<N8nButton
+		<div
 			v-if="
 				chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
 			"
-			variant="subtle"
-			icon-only
-			size="large"
-			:aria-label="i18n.baseText('aiAssistant.tooltip')"
-			:class="{ [$style.icon]: true }"
-			data-test-id="instance-ai-canvas-action-button"
-			@click="onInstanceAiCanvasActionClick"
+			:class="$style.instanceAiButtonContainer"
 		>
-			<template #default>
-				<div>
-					<N8nAssistantIcon size="large" />
-				</div>
-			</template>
-		</N8nButton>
+			<!-- While the Instance AI nudge is showing, point at the button. -->
+			<span
+				v-if="instanceAiNudgeStore.activeTrigger"
+				:class="$style.nudgeArrow"
+				aria-hidden="true"
+				data-test-id="instance-ai-nudge-arrow"
+			>
+				<N8nIcon icon="arrow-right" size="xlarge" />
+			</span>
+			<N8nButton
+				variant="subtle"
+				icon-only
+				size="large"
+				:aria-label="i18n.baseText('aiAssistant.tooltip')"
+				:class="{ [$style.icon]: true }"
+				data-test-id="instance-ai-canvas-action-button"
+				@click="onInstanceAiCanvasActionClick"
+			>
+				<template #default>
+					<div>
+						<N8nAssistantIcon size="large" />
+					</div>
+				</template>
+			</N8nButton>
+		</div>
 		<!-- Legacy assistant/builder button — only while Instance AI is off. -->
 		<N8nTooltip
 			v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder) && !instanceAi"
@@ -291,6 +312,41 @@ function openCommandBar(event: MouseEvent) {
 
 	svg {
 		display: block;
+	}
+}
+
+.instanceAiButtonContainer {
+	position: relative;
+	display: inline-flex;
+}
+
+.nudgeArrow {
+	position: absolute;
+	right: calc(100% + var(--spacing--xs));
+	top: 0;
+	bottom: 0;
+	display: flex;
+	align-items: center;
+	color: var(--color--neutral-white, #fff);
+	pointer-events: none;
+
+	svg {
+		animation: nudge-arrow-bob 1.1s ease-in-out infinite;
+
+		@media (prefers-reduced-motion: reduce) {
+			animation: none;
+		}
+	}
+}
+
+@keyframes nudge-arrow-bob {
+	0%,
+	100% {
+		transform: translateX(-4px);
+	}
+
+	50% {
+		transform: translateX(8px);
 	}
 }
 </style>

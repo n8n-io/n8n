@@ -970,6 +970,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `assistant_page` — first message typed on the Instance AI empty/home page
+ * - `nudge` — "Try AI Assistant" nudge card shown after platform interactions
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
  */
@@ -984,6 +985,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_builder_page',
 	'agent_preview',
 	'assistant_page',
+	'nudge',
 	'evals',
 	'playwright',
 ] as const;

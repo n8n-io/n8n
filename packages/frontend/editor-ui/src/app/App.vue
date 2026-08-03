@@ -5,6 +5,7 @@ import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
 import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
+import InstanceAiNudge from '@/features/ai/instanceAi/nudge/InstanceAiNudge.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useBackendStatus } from '@/app/composables/useBackendStatus';
@@ -130,6 +131,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		</AppLayout>
 		<AppModals />
 		<AppCommandBar />
+		<InstanceAiNudge />
 		<template #overlays>
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 		</template>
