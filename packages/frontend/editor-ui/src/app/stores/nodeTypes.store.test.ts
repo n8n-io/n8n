@@ -194,8 +194,8 @@ describe('useNodeTypesStore', () => {
 	describe('AI Agent node name with the inline agents flag', () => {
 		const agentNodeType = makeNodeType({
 			name: 'n8n-nodes-base.messageAnAgent',
-			displayName: 'AI Agent V2',
-			defaults: { name: 'AI Agent V2' },
+			displayName: 'Message an Agent',
+			defaults: { name: 'Message an Agent' },
 			outputs: [NodeConnectionTypes.Main],
 		});
 
@@ -203,16 +203,7 @@ describe('useNodeTypesStore', () => {
 			setActivePinia(createTestingPinia({ stubActions: false }));
 		});
 
-		it('keeps the shipped name when the flag is on', () => {
-			const store = useNodeTypesStore();
-			store.setNodeTypes([agentNodeType]);
-
-			const nodeType = store.getNodeType(agentNodeType.name);
-			expect(nodeType?.displayName).toBe('AI Agent V2');
-			expect(nodeType?.defaults.name).toBe('AI Agent V2');
-		});
-
-		it('renames the node to Message an Agent when the flag is off', () => {
+		it('keeps the shipped Message an Agent name when the flag is off', () => {
 			inlineAgentsEnabled.value = false;
 			const store = useNodeTypesStore();
 			store.setNodeTypes([agentNodeType]);
@@ -222,16 +213,24 @@ describe('useNodeTypesStore', () => {
 			expect(nodeType?.defaults.name).toBe('Message an Agent');
 		});
 
-		it('does not bake the flag-off rename into the catalog', () => {
-			inlineAgentsEnabled.value = false;
+		it('renames the node to AI Agent V2 when the flag is on', () => {
 			const store = useNodeTypesStore();
 			store.setNodeTypes([agentNodeType]);
-			expect(store.getNodeType(agentNodeType.name)?.displayName).toBe('Message an Agent');
 
-			inlineAgentsEnabled.value = true;
+			const nodeType = store.getNodeType(agentNodeType.name);
+			expect(nodeType?.displayName).toBe('AI Agent V2');
+			expect(nodeType?.defaults.name).toBe('AI Agent V2');
+		});
+
+		it('does not bake the flag-on rename into the catalog', () => {
+			const store = useNodeTypesStore();
+			store.setNodeTypes([agentNodeType]);
+			expect(store.getNodeType(agentNodeType.name)?.displayName).toBe('AI Agent V2');
+
+			inlineAgentsEnabled.value = false;
 			// Adding any node re-derives the catalog; the shipped name must survive
 			store.setNodeTypes([makeNodeType({ name: 'n8n-nodes-base.other', outputs: [] })]);
-			expect(store.getNodeType(agentNodeType.name)?.displayName).toBe('AI Agent V2');
+			expect(store.getNodeType(agentNodeType.name)?.displayName).toBe('Message an Agent');
 		});
 	});
 

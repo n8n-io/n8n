@@ -49,21 +49,22 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const { isFeatureEnabled: isInlineAgentsEnabled } = useInlineAgentsExperiment();
 
-	// Without inline agent creation the node only messages existing agents, so
-	// it keeps its pre-inline name on every surface (creator, canvas, NDV).
+	// With inline agent creation the node is a full agent rather than a way to
+	// message an existing one, so it takes the AI Agent name on every surface
+	// (creator, canvas, NDV). The shipped name stays the fail-safe default.
 	const nodeTypes = computed<NodeTypesByTypeNameAndVersion>({
 		get: () => {
 			const agentVersions = rawNodeTypes.value[MESSAGE_AN_AGENT_NODE_TYPE];
-			if (isInlineAgentsEnabled.value || !agentVersions) return rawNodeTypes.value;
+			if (!isInlineAgentsEnabled.value || !agentVersions) return rawNodeTypes.value;
 
-			const legacyName = 'Message an Agent';
+			const inlineName = 'AI Agent V2';
 			const renamedVersions = Object.fromEntries(
 				Object.entries(agentVersions).map(([version, description]) => [
 					version,
 					{
 						...description,
-						displayName: legacyName,
-						defaults: { ...description.defaults, name: legacyName },
+						displayName: inlineName,
+						defaults: { ...description.defaults, name: inlineName },
 					},
 				]),
 			);
