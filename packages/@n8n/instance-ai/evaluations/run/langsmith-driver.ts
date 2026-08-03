@@ -184,6 +184,11 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 		if (output.buildTurns !== undefined) {
 			feedback.push({ key: 'build_turns', score: output.buildTurns });
 		}
+		// Errored tool calls during the build — the wasted-turns signal (full
+		// per-tool detail lives in eval-results.json buildToolErrorsPerRun).
+		if (output.buildToolErrors !== undefined) {
+			feedback.push({ key: 'build_tool_errors', score: output.buildToolErrors.length });
+		}
 		// Deterministic conversation counter (per evals rubric) — a navigation/feature
 		// signal for the HOW judges, not a gating check.
 		if (output.planRejections !== undefined) {
@@ -384,7 +389,16 @@ async function updateExperimentAggregates(config: {
 		unique_builds: uniqueBuilds,
 		pass_rate_per_iter: computePassRatePerIter(evaluation),
 		...(config.buildModel ? { build_model: config.buildModel } : {}),
-		...(spend ? { total_build_cost_usd: spend.totalCostUsd, avg_build_turns: spend.avgTurns } : {}),
+		...(spend
+			? {
+					total_build_cost_usd: spend.totalCostUsd,
+					avg_build_turns: spend.avgTurns,
+					// Per-tool call/error totals across all builds — what the turns were
+					// spent on, and which tools kept failing.
+					build_tool_calls: spend.toolCalls,
+					build_tool_errors: spend.toolErrors,
+				}
+			: {}),
 	};
 
 	try {

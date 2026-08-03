@@ -14,7 +14,12 @@ import type { LaneAllocator } from './lane-allocator';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
-import { buildWorkflowViaMcp, type McpBuildSettings } from '../cli/mcp-builder';
+import {
+	buildWorkflowViaMcp,
+	type McpBuildSettings,
+	type ToolCallCounts,
+	type ToolCallError,
+} from '../cli/mcp-builder';
 import type { N8nClient } from '../clients/n8n-client';
 import {
 	fetchAgentScenarioContext,
@@ -68,6 +73,12 @@ export interface Lane {
 export interface McpBuildSpend {
 	costUsd: number;
 	turns: number;
+	/** `tool_use` calls per tool name across the build's attempts — attributes
+	 *  `turns` to the specific MCP tools they were spent on. */
+	toolCalls: ToolCallCounts;
+	/** Failed tool calls (tool name + truncated error text), in stream order —
+	 *  the failure subset of `toolCalls`. */
+	toolErrors: ToolCallError[];
 }
 
 export type BuildArgs = Pick<
@@ -160,7 +171,12 @@ async function buildWorkflowViaMcpOnLane(config: {
 
 	// Record spend whether or not the build produced a workflow — failed builds
 	// cost money too, and this is the run's spend record.
-	buildSpend.push({ costUsd: result.cost, turns: result.turns });
+	buildSpend.push({
+		costUsd: result.cost,
+		turns: result.turns,
+		toolCalls: result.toolCalls,
+		toolErrors: result.toolErrors,
+	});
 
 	// Register for cleanup the moment the id exists. If the fetch-back below
 	// fails, the failure BuildResult carries no workflowId, so success-guarded

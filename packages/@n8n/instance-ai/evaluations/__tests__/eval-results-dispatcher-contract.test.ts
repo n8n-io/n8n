@@ -121,6 +121,8 @@ interface DispatcherView {
 		}> | null>;
 		buildCostUsdPerRun?: Array<number | null>;
 		buildTurnsPerRun?: Array<number | null>;
+		buildToolCallsPerRun?: Array<Record<string, number> | null>;
+		buildToolErrorsPerRun?: Array<Array<{ tool: string; message: string }> | null>;
 		transcriptPerRun: Array<TranscriptTurn[] | null>;
 		buildErrorPerRun: Array<string | null>;
 		scenarios: Array<{
@@ -187,6 +189,8 @@ describe('eval-results.json — dispatcher contract', () => {
 		// recorded `claude` spend, so non-MCP dispatcher output is unchanged.
 		expect(tc).not.toHaveProperty('buildCostUsdPerRun');
 		expect(tc).not.toHaveProperty('buildTurnsPerRun');
+		expect(tc).not.toHaveProperty('buildToolCallsPerRun');
+		expect(tc).not.toHaveProperty('buildToolErrorsPerRun');
 
 		// Per-iteration conversation transcript — one entry per run, null when
 		// the iteration captured none. A present transcript keeps the full
@@ -227,7 +231,18 @@ describe('eval-results.json — dispatcher contract', () => {
 
 	it('serializes per-iteration `claude` build spend when a run recorded it', () => {
 		const evaluation = aggregateResults(
-			[[{ ...iteration1(), buildCostUsd: 0.31, buildTurns: 5 }], [iteration2()]],
+			[
+				[
+					{
+						...iteration1(),
+						buildCostUsd: 0.31,
+						buildTurns: 5,
+						buildToolCalls: { 'mcp__n8n-local__search_nodes': 3 },
+						buildToolErrors: [{ tool: 'mcp__n8n-local__search_nodes', message: 'timed out' }],
+					},
+				],
+				[iteration2()],
+			],
 			2,
 		);
 		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
@@ -247,5 +262,10 @@ describe('eval-results.json — dispatcher contract', () => {
 		const tc = report.testCases[0];
 		expect(tc.buildCostUsdPerRun).toEqual([0.31, null]);
 		expect(tc.buildTurnsPerRun).toEqual([5, null]);
+		expect(tc.buildToolCallsPerRun).toEqual([{ 'mcp__n8n-local__search_nodes': 3 }, null]);
+		expect(tc.buildToolErrorsPerRun).toEqual([
+			[{ tool: 'mcp__n8n-local__search_nodes', message: 'timed out' }],
+			null,
+		]);
 	});
 });

@@ -9,9 +9,12 @@ import {
 	buildPromptFromConversation,
 	buildWorkflowViaMcp,
 	MCP_BUILD_KEY_SUPPORT,
+	mergeToolCalls,
+	parseClaudeStream,
 	sanitizeServerName,
 	stageLaneMcpConfig,
 	tailWorkflowId,
+	TOOL_ERROR_MESSAGE_CAP,
 	uniqueProjectScopes,
 	unsupportedMcpBuildSetupFields,
 } from '../cli/mcp-builder';
@@ -174,6 +177,170 @@ describe('unsupportedMcpBuildSetupFields', () => {
 	});
 });
 
+// --- stream-json fixtures: one NDJSON line per emitted `claude` event ---
+
+/** The stream's trailing `result` event (session totals + final text). */
+const resultLine = (session: Record<string, unknown>): string =>
+	JSON.stringify({ type: 'result', ...session });
+
+/** An assistant turn spending itself on `tool_use` calls to the named tools. */
+const assistantLine = (...toolNames: string[]): string =>
+	JSON.stringify({
+		type: 'assistant',
+		message: {
+			content: toolNames.map((name, i) => ({
+				type: 'tool_use',
+				id: `toolu_${String(i)}`,
+				name,
+				input: {},
+			})),
+		},
+	});
+
+/** A single-call assistant turn with an explicit `tool_use` id, for pairing
+ *  with toolResultLine in error-correlation fixtures. */
+const toolUseLine = (id: string, name: string): string =>
+	JSON.stringify({
+		type: 'assistant',
+		message: { content: [{ type: 'tool_use', id, name, input: {} }] },
+	});
+
+/** The `user` event closing a `tool_use` call, optionally as an error. */
+const toolResultLine = (toolUseId: string, content: unknown, isError = false): string =>
+	JSON.stringify({
+		type: 'user',
+		message: {
+			content: [{ type: 'tool_result', tool_use_id: toolUseId, is_error: isError, content }],
+		},
+	});
+
+const stream = (...lines: string[]): string => lines.join('\n') + '\n';
+
+describe('parseClaudeStream', () => {
+	it('extracts the session from the trailing result event', () => {
+		const { session } = parseClaudeStream(
+			stream(
+				assistantLine('mcp__n8n-local__search_nodes'),
+				resultLine({ result: 'done\nWORKFLOW_ID=wf1', num_turns: 3, subtype: 'success' }),
+			),
+		);
+		expect(session?.result).toBe('done\nWORKFLOW_ID=wf1');
+		expect(session?.num_turns).toBe(3);
+		expect(session?.subtype).toBe('success');
+	});
+
+	it('counts tool_use blocks per tool across assistant turns', () => {
+		const { toolCalls } = parseClaudeStream(
+			stream(
+				assistantLine('mcp__n8n-local__search_nodes'),
+				assistantLine('mcp__n8n-local__search_nodes', 'mcp__n8n-local__get_node_details'),
+				assistantLine('mcp__n8n-local__create_workflow_from_code'),
+				resultLine({ result: 'done' }),
+			),
+		);
+		expect(toolCalls).toEqual({
+			'mcp__n8n-local__search_nodes': 2,
+			'mcp__n8n-local__get_node_details': 1,
+			'mcp__n8n-local__create_workflow_from_code': 1,
+		});
+	});
+
+	it('ignores text-only assistant turns and non-assistant events', () => {
+		const textTurn = JSON.stringify({
+			type: 'assistant',
+			message: { content: [{ type: 'text', text: 'thinking about it' }] },
+		});
+		const userEvent = JSON.stringify({
+			type: 'user',
+			message: { content: [{ type: 'tool_result', tool_use_id: 'toolu_0', content: 'ok' }] },
+		});
+		const initEvent = JSON.stringify({ type: 'system', subtype: 'init' });
+		const { session, toolCalls } = parseClaudeStream(
+			stream(initEvent, textTurn, userEvent, resultLine({ result: 'done' })),
+		);
+		expect(toolCalls).toEqual({});
+		expect(session?.result).toBe('done');
+	});
+
+	it('yields partial attribution from a truncated stream (no result event)', () => {
+		const truncated =
+			stream(assistantLine('mcp__n8n-local__create_workflow_from_code')) +
+			'{"type":"assistant","message":{"conte'; // cut mid-write by a kill
+		const { session, toolCalls } = parseClaudeStream(truncated);
+		expect(session).toBeUndefined();
+		expect(toolCalls).toEqual({ 'mcp__n8n-local__create_workflow_from_code': 1 });
+	});
+
+	it('returns no session for empty or non-JSON output', () => {
+		expect(parseClaudeStream('').session).toBeUndefined();
+		expect(parseClaudeStream('claude: command failed\n').session).toBeUndefined();
+	});
+
+	it('records errored tool calls with the error message, matched by tool_use_id', () => {
+		const { toolCalls, toolErrors } = parseClaudeStream(
+			stream(
+				toolUseLine('toolu_a', 'mcp__n8n-local__create_workflow_from_code'),
+				toolResultLine('toolu_a', 'Invalid workflow: node "Slack" is missing credentials', true),
+				toolUseLine('toolu_b', 'mcp__n8n-local__create_workflow_from_code'),
+				toolResultLine('toolu_b', 'Created workflow wf1'),
+				resultLine({ result: 'done\nWORKFLOW_ID=wf1' }),
+			),
+		);
+		// Errored calls still count as calls — errors are the failure subset.
+		expect(toolCalls).toEqual({ 'mcp__n8n-local__create_workflow_from_code': 2 });
+		expect(toolErrors).toEqual([
+			{
+				tool: 'mcp__n8n-local__create_workflow_from_code',
+				message: 'Invalid workflow: node "Slack" is missing credentials',
+			},
+		]);
+	});
+
+	it('flattens array-form tool_result content into the error message', () => {
+		const { toolErrors } = parseClaudeStream(
+			stream(
+				toolUseLine('toolu_a', 'mcp__n8n-local__search_nodes'),
+				toolResultLine(
+					'toolu_a',
+					[
+						{ type: 'text', text: 'MCP error -32603:' },
+						{ type: 'text', text: 'request timed out' },
+					],
+					true,
+				),
+			),
+		);
+		expect(toolErrors).toEqual([
+			{ tool: 'mcp__n8n-local__search_nodes', message: 'MCP error -32603:\nrequest timed out' },
+		]);
+	});
+
+	it('caps recorded error messages at TOOL_ERROR_MESSAGE_CAP', () => {
+		const { toolErrors } = parseClaudeStream(
+			stream(
+				toolUseLine('toolu_a', 'mcp__n8n-local__create_workflow_from_code'),
+				toolResultLine('toolu_a', 'x'.repeat(TOOL_ERROR_MESSAGE_CAP + 100), true),
+			),
+		);
+		expect(toolErrors[0].message).toHaveLength(TOOL_ERROR_MESSAGE_CAP + 1); // cap + ellipsis
+		expect(toolErrors[0].message.endsWith('…')).toBe(true);
+	});
+
+	it('attributes an error whose tool_use_id was never seen to "(unknown)"', () => {
+		const { toolErrors } = parseClaudeStream(stream(toolResultLine('toolu_orphan', 'boom', true)));
+		expect(toolErrors).toEqual([{ tool: '(unknown)', message: 'boom' }]);
+	});
+});
+
+describe('mergeToolCalls', () => {
+	it('accumulates counts across records', () => {
+		const into = { a: 1 };
+		mergeToolCalls(into, { a: 2, b: 1 });
+		mergeToolCalls(into, { b: 1 });
+		expect(into).toEqual({ a: 3, b: 2 });
+	});
+});
+
 /** Minimal stand-in for the `claude` child process: event surface only.
  *  `pid === undefined` mirrors Node's contract for a process that failed
  *  to spawn (the 'error' → 'close' sequence still fires). */
@@ -246,7 +413,10 @@ describe('buildWorkflowViaMcp', () => {
 		spawnReturning(() => {
 			const child = new FakeChild(1234);
 			setImmediate(() => {
-				child.stdout.emit('data', Buffer.from('{"result":"built something, forgot the id"}'));
+				child.stdout.emit(
+					'data',
+					Buffer.from(stream(resultLine({ result: 'built something, forgot the id' }))),
+				);
 				child.emit('close', 0, null);
 			});
 			return child;
@@ -259,14 +429,16 @@ describe('buildWorkflowViaMcp', () => {
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(3);
 	});
 
-	it('returns the workflow id from a successful first attempt', async () => {
+	it('returns the workflow id and per-tool attribution from a successful first attempt', async () => {
+		const events = stream(
+			assistantLine('mcp__n8n-local__search_nodes'),
+			assistantLine('mcp__n8n-local__create_workflow_from_code'),
+			resultLine({ result: 'done\nWORKFLOW_ID=wf123' }),
+		);
 		spawnReturning(() => {
 			const child = new FakeChild(1234);
 			setImmediate(() => {
-				child.stdout.emit(
-					'data',
-					Buffer.from(JSON.stringify({ result: 'done\nWORKFLOW_ID=wf123' })),
-				);
+				child.stdout.emit('data', Buffer.from(events));
 				child.emit('close', 0, null);
 			});
 			return child;
@@ -276,30 +448,49 @@ describe('buildWorkflowViaMcp', () => {
 
 		expect(result.workflowId).toBe('wf123');
 		expect(result.failureReason).toBeUndefined();
+		expect(result.toolCalls).toEqual({
+			'mcp__n8n-local__search_nodes': 1,
+			'mcp__n8n-local__create_workflow_from_code': 1,
+		});
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
+		// The stream flag pair is what makes the persisted log per-event.
+		const claudeArgs = vi.mocked(spawn).mock.calls[0][1] as string[];
+		expect(claudeArgs).toContain('stream-json');
+		expect(claudeArgs).toContain('--verbose');
+		// The event stream is persisted verbatim, as NDJSON.
+		expect(result.logFile).toMatch(/\.jsonl$/);
+		expect(readFileSync(String(result.logFile), 'utf-8')).toBe(events);
 	});
 
-	it('sums cost, turns and duration across attempts — failed attempts cost money too', async () => {
+	it('sums cost, turns, duration and tool calls across attempts — failed attempts cost money too', async () => {
 		let call = 0;
 		spawnReturning(() => {
 			const child = new FakeChild(1234);
 			call++;
-			const session =
+			const events =
 				call === 1
-					? {
-							result: 'built something, forgot the id',
-							total_cost_usd: 0.1,
-							num_turns: 2,
-							duration_ms: 1000,
-						}
-					: {
-							result: 'done\nWORKFLOW_ID=wf42',
-							total_cost_usd: 0.25,
-							num_turns: 5,
-							duration_ms: 3000,
-						};
+					? stream(
+							toolUseLine('toolu_a', 'mcp__n8n-local__create_workflow_from_code'),
+							toolResultLine('toolu_a', 'validation failed: unknown node type', true),
+							resultLine({
+								result: 'built something, forgot the id',
+								total_cost_usd: 0.1,
+								num_turns: 2,
+								duration_ms: 1000,
+							}),
+						)
+					: stream(
+							assistantLine('mcp__n8n-local__search_nodes'),
+							assistantLine('mcp__n8n-local__create_workflow_from_code'),
+							resultLine({
+								result: 'done\nWORKFLOW_ID=wf42',
+								total_cost_usd: 0.25,
+								num_turns: 5,
+								duration_ms: 3000,
+							}),
+						);
 			setImmediate(() => {
-				child.stdout.emit('data', Buffer.from(JSON.stringify(session)));
+				child.stdout.emit('data', Buffer.from(events));
 				child.emit('close', 0, null);
 			});
 			return child;
@@ -311,6 +502,17 @@ describe('buildWorkflowViaMcp', () => {
 		expect(result.cost).toBeCloseTo(0.35);
 		expect(result.turns).toBe(7);
 		expect(result.durationMs).toBe(4000);
+		expect(result.toolCalls).toEqual({
+			'mcp__n8n-local__create_workflow_from_code': 2,
+			'mcp__n8n-local__search_nodes': 1,
+		});
+		// The failed attempt's errored call is part of the build's record too.
+		expect(result.toolErrors).toEqual([
+			{
+				tool: 'mcp__n8n-local__create_workflow_from_code',
+				message: 'validation failed: unknown node type',
+			},
+		]);
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(2);
 	});
 });
