@@ -11,6 +11,7 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentPublishService } from '../agent-publish.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentValidationService } from '../agent-validation.service';
@@ -149,6 +150,7 @@ function makeService() {
 		credentialsService,
 		telemetry,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
+		new AgentModificationTelemetryService(telemetry),
 	);
 
 	return {
@@ -504,7 +506,9 @@ describe('AgentPublishService', () => {
 		taskSnapshotRepository.findByVersionId.mockResolvedValue([makeTaskSnapshot()]);
 		taskRepo.findBy.mockResolvedValue([{ id: 'task-1' }, { id: 'draft-only' }]);
 
-		await expect(service.revertToPublishedAgent(agentId, projectId)).resolves.toBe(agent);
+		await expect(service.revertToPublishedAgent(agentId, projectId, user, 'user')).resolves.toBe(
+			agent,
+		);
 
 		expect(agent.schema).toEqual(schema);
 		expect(agent.name).toBe(schema.name);
@@ -542,7 +546,7 @@ describe('AgentPublishService', () => {
 		]);
 		taskRepo.findBy.mockResolvedValue([{ id: 'task-1' }, { id: 'draft-only' }]);
 
-		await service.revertToVersion(agentId, projectId, 'older-version');
+		await service.revertToVersion(agentId, projectId, 'older-version', user, 'user');
 
 		expect(agent.schema).toEqual(target.schema);
 		expect(agent.name).toBe('Older Agent');
@@ -552,6 +556,33 @@ describe('AgentPublishService', () => {
 		expect(taskRepo.update).toHaveBeenCalledWith(
 			'task-1',
 			expect.objectContaining({ objective: 'Use the older task objective' }),
+		);
+	});
+
+	it('reports a revert as a modification of the parts the restored schema changed', async () => {
+		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository, telemetry } =
+			makeService();
+		const agent = makeAgent({
+			activeVersionId: 'current-active',
+			activeVersion: makeHistory({ versionId: 'current-active' }),
+			schema: { ...schema, instructions: 'Draft instructions' },
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
+			makeHistory({ versionId: 'older-version', schema: { ...schema, name: 'Older Agent' } }),
+		);
+		taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
+
+		await service.revertToVersion(agentId, projectId, 'older-version', user, 'user');
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+			expect.objectContaining({
+				agent_id: agentId,
+				user_id: user.id,
+				changed_parts: ['instructions', 'name'],
+				has_published_version: true,
+			}),
 		);
 	});
 

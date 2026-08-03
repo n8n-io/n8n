@@ -19,8 +19,10 @@ export type AgentModifiedBy = 'user' | 'builder' | 'mcp';
 export type AgentConfigPart =
 	| 'instructions'
 	| 'model'
+	| 'credential'
 	| 'memory'
 	| 'name'
+	| 'config'
 	| 'tools'
 	| 'skills'
 	| 'tasks'
@@ -33,8 +35,10 @@ export type AgentConfigPart =
 const CONFIG_PARTS = [
 	'instructions',
 	'model',
+	'credential',
 	'memory',
 	'name',
+	'config',
 	'tools',
 	'skills',
 	'tasks',
@@ -47,18 +51,20 @@ const CONFIG_PARTS = [
 /**
  * Which parts a config write actually changed. `triggers` is derived from the
  * integrations instead of the schema because `decomposeJsonConfig` splits
- * integrations out of the schema before it is persisted.
+ * integrations out of the schema before it is persisted. `personalisation` and
+ * `providerTools` are deliberately absent: the first is cosmetic, and the
+ * second is reconciled from `config.webSearch` rather than set directly.
  */
 export function diffAgentConfigParts(
 	previousSchema: AgentJsonConfig | null,
-	nextSchema: AgentJsonConfig,
+	nextSchema: AgentJsonConfig | null,
 	previousIntegrations: AgentIntegrationConfig[],
 	nextIntegrations: AgentIntegrationConfig[],
 ): AgentConfigPart[] {
 	return CONFIG_PARTS.filter((part) =>
 		part === 'triggers'
 			? !isEqual(previousIntegrations, nextIntegrations)
-			: !isEqual(previousSchema?.[part], nextSchema[part]),
+			: !isEqual(previousSchema?.[part], nextSchema?.[part]),
 	);
 }
 

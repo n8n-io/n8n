@@ -300,6 +300,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			telemetry,
 			mock<AgentSetupCompletionService>(),
+			mock<AgentModificationTelemetryService>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(

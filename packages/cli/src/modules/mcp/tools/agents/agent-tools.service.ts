@@ -726,8 +726,19 @@ export class McpAgentToolsService {
 						const { projectId } = await this.resolveAgent(user, agentId);
 						await this.assertScope(user, projectId, 'agent:update');
 						const agent = versionId
-							? await this.agentPublishService.revertToVersion(agentId, projectId, versionId)
-							: await this.agentPublishService.revertToPublishedAgent(agentId, projectId);
+							? await this.agentPublishService.revertToVersion(
+									agentId,
+									projectId,
+									versionId,
+									user,
+									'mcp',
+								)
+							: await this.agentPublishService.revertToPublishedAgent(
+									agentId,
+									projectId,
+									user,
+									'mcp',
+								);
 						return {
 							ok: true,
 							agentId,

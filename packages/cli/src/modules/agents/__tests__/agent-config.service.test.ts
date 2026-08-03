@@ -885,6 +885,41 @@ describe('AgentConfigService', () => {
 			});
 		});
 
+		it('reports a model credential switch, which no longer rides along on the model part', async () => {
+			const { service, agentRepository, credentialsService, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			mockAccessibleCredentials(credentialsService, ['own-key']);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, credential: 'own-key' },
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_parts: ['credential'],
+			});
+		});
+
+		it('reports a web-search toggle as a config part', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, config: { webSearch: { enabled: true } } } as unknown as AgentJsonConfig,
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_parts: ['config'],
+			});
+		});
+
 		it('reports a channel change as a trigger part', async () => {
 			const { service, agentRepository, credentialsService, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());

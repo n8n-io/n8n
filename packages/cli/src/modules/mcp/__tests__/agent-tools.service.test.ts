@@ -981,6 +981,8 @@ describe('McpAgentToolsService', () => {
 			expect(agentPublishService.revertToPublishedAgent).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
+				user,
+				'mcp',
 			);
 			expect(agentPublishService.revertToVersion).not.toHaveBeenCalled();
 			expect(result.structuredContent).toEqual({
@@ -1004,6 +1006,8 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				'v0',
+				user,
+				'mcp',
 			);
 			expect(result.structuredContent).toMatchObject({
 				ok: true,

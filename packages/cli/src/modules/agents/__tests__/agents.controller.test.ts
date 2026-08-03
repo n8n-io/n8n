@@ -100,6 +100,8 @@ describe('AgentsController create', () => {
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
 			id: 'aBcDeFgHiJkLmNoP',
+			createdBy: 'user',
+			user: { id: 'user-1' },
 		});
 	});
 
@@ -110,6 +112,8 @@ describe('AgentsController create', () => {
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
 			id: undefined,
+			createdBy: 'user',
+			user: { id: 'user-1' },
 		});
 	});
 });

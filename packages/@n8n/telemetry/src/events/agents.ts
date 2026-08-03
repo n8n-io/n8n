@@ -94,8 +94,10 @@ const agentCapabilityKind = z.enum([
 const agentConfigPart = z.enum([
 	'instructions',
 	'model',
+	'credential',
 	'memory',
 	'name',
+	'config',
 	'tools',
 	'skills',
 	'tasks',
@@ -116,7 +118,11 @@ const agentModification = {
 	project_id: z.string(),
 	user_id: z.string(),
 	event_version: z.literal('1'),
-	changed_parts: z.array(agentConfigPart).describe('Config parts this save actually changed'),
+	changed_parts: z
+		.array(agentConfigPart)
+		.describe(
+			'Config parts this save actually changed. "credential" is the model credential, which the retired "User edited agent config" reported as part "model". "config" is the feature block: web search and prompt caching.',
+		),
 	capability_kinds: z.array(agentCapabilityKind),
 	capability_count: z.number(),
 	tool_count: z.number(),

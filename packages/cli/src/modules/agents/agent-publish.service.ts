@@ -21,6 +21,11 @@ import { Telemetry } from '@/telemetry';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
+import {
+	AgentModificationTelemetryService,
+	diffAgentConfigParts,
+	type AgentModifiedBy,
+} from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentValidationService } from './agent-validation.service';
@@ -89,6 +94,7 @@ export class AgentPublishService {
 		private readonly credentialsService: CredentialsService,
 		private readonly telemetry: Telemetry,
 		private readonly setupCompletionService: AgentSetupCompletionService,
+		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
 
 	async publishAgent(
@@ -312,7 +318,12 @@ export class AgentPublishService {
 		return agent;
 	}
 
-	async revertToPublishedAgent(agentId: string, projectId: string): Promise<Agent> {
+	async revertToPublishedAgent(
+		agentId: string,
+		projectId: string,
+		user: User,
+		modifiedBy: AgentModifiedBy,
+	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -322,6 +333,8 @@ export class AgentPublishService {
 		if (!activeVersion) {
 			throw new ConflictError(`Agent "${agentId}" is not published`);
 		}
+
+		const previousSchema = agent.schema;
 
 		await this.agentRepository.manager.transaction(async (trx) => {
 			agent.schema = activeVersion.schema ? deepCopy(activeVersion.schema) : null;
@@ -338,16 +351,25 @@ export class AgentPublishService {
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+		this.recordRevert(agent, projectId, user, modifiedBy, previousSchema);
 
 		this.logger.debug('Reverted SDK agent to published version', { agentId, projectId });
 		return agent;
 	}
 
-	async revertToVersion(agentId: string, projectId: string, versionId: string): Promise<Agent> {
+	async revertToVersion(
+		agentId: string,
+		projectId: string,
+		versionId: string,
+		user: User,
+		modifiedBy: AgentModifiedBy,
+	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
+
+		const previousSchema = agent.schema;
 
 		await this.agentRepository.manager.transaction(async (trx) => {
 			const target = await this.agentHistoryRepository.findByVersionAndAgentId(
@@ -373,6 +395,7 @@ export class AgentPublishService {
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+		this.recordRevert(agent, projectId, user, modifiedBy, previousSchema);
 
 		this.logger.debug('Reverted SDK agent to a specific version', {
 			agentId,
@@ -380,6 +403,28 @@ export class AgentPublishService {
 			versionId,
 		});
 		return agent;
+	}
+
+	/**
+	 * A revert restores a stored schema wholesale, so it is a modification like
+	 * any other config write. Integrations live outside the schema and survive
+	 * the revert untouched, hence the same list on both sides of the diff.
+	 */
+	private recordRevert(
+		agent: Agent,
+		projectId: string,
+		user: User,
+		modifiedBy: AgentModifiedBy,
+		previousSchema: AgentJsonConfig | null,
+	): void {
+		const integrations = agent.integrations ?? [];
+		this.modificationTelemetry.record({
+			agent,
+			projectId,
+			user,
+			by: modifiedBy,
+			changedParts: diffAgentConfigParts(previousSchema, agent.schema, integrations, integrations),
+		});
 	}
 
 	/**
