@@ -171,14 +171,13 @@ export class VariableImporter {
 		const updated: string[] = [];
 		for (const overwrite of plan.overwrites) {
 			// Several scopes can agree on one row, and the first write already settled it. Re-checking
-			// the fresh cache keeps that to a single write, so re-import stays a no-op rather than
-			// replaying the same value once per scope.
+			// the fresh cache keeps that to a single write, and one reported row.
 			if (!(await this.variableHoldsValue(overwrite))) {
 				await this.variablesService.update(context.user, overwrite.variableId, {
 					value: overwrite.value,
 				});
+				updated.push(overwrite.name);
 			}
-			updated.push(overwrite.name);
 		}
 
 		return {

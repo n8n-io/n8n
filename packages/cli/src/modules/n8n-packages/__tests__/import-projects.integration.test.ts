@@ -1506,6 +1506,7 @@ describe('project shell import', () => {
 					'https://agreed.example.com',
 				);
 				const updateSpy = vi.spyOn(Container.get(VariablesService), 'update');
+				const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 				try {
 					const result = await importProjects(owner, packageBuffer, undefined, {
@@ -1521,8 +1522,15 @@ describe('project shell import', () => {
 					expect(rows.map(({ key, value, project }) => ({ key, value, project }))).toEqual([
 						{ key: 'API_URL', value: 'https://agreed.example.com', project: null },
 					]);
+					// Telemetry counts rows, so the row both projects asked for counts once, not twice.
+					const importedEvents = emitSpy.mock.calls.filter(
+						([name]) => name === 'n8n-package-imported',
+					);
+					const payload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
+					expect(payload.counts.variables).toMatchObject({ updated: 1 });
 				} finally {
 					updateSpy.mockRestore();
+					emitSpy.mockRestore();
 				}
 			});
 
