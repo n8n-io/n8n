@@ -9,6 +9,7 @@ import {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
+import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
@@ -44,7 +45,17 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
+
+import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
+
+// Keep the real mcpAppToolMeta and constants; only the preview-app
+// registration is spied on so its wiring options can be asserted.
+vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/mcp-apps/server')>()),
+	registerWorkflowPreviewApp: vi.fn(),
+}));
 
 const mockAiGatewayService = () =>
 	mockInstance(AiGatewayService, {
@@ -61,6 +72,7 @@ describe('McpService', () => {
 	let mcpService: McpService;
 	let activeExecutions: ActiveExecutions;
 	let executionsConfig: ExecutionsConfig;
+	let instanceSettings: InstanceSettings;
 	let logger: Logger;
 	let eventService: EventService;
 
@@ -70,11 +82,16 @@ describe('McpService', () => {
 		executionsConfig = mockInstance(ExecutionsConfig, {
 			mode: 'regular',
 		});
+		instanceSettings = mockInstance(InstanceSettings, {
+			hostId: 'test-host-id',
+			instanceId: 'test-instance-id',
+		});
 		logger = mockLogger();
 
 		mcpService = new McpService(
 			logger,
 			executionsConfig,
+			instanceSettings,
 			mockInstance(WorkflowFinderService),
 			mockInstance(WorkflowService),
 			mockInstance(UrlService),
@@ -125,6 +142,7 @@ describe('McpService', () => {
 			const queueMcpService = new McpService(
 				mockLogger(),
 				queueExecutionsConfig,
+				instanceSettings,
 				mockInstance(WorkflowFinderService),
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
@@ -325,6 +343,7 @@ describe('McpService', () => {
 			new McpService(
 				mockLogger(),
 				executionsConfig,
+				instanceSettings,
 				mockInstance(WorkflowFinderService),
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
@@ -814,6 +833,7 @@ describe('McpService', () => {
 			const service = new McpService(
 				mockLogger(),
 				executionsConfig,
+				instanceSettings,
 				mockInstance(WorkflowFinderService),
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
@@ -866,6 +886,7 @@ describe('McpService', () => {
 			const service = new McpService(
 				mockLogger(),
 				executionsConfig,
+				instanceSettings,
 				mockInstance(WorkflowFinderService),
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
@@ -938,6 +959,7 @@ describe('McpService', () => {
 				return new McpService(
 					mockLogger(),
 					executionsConfig,
+					instanceSettings,
 					mockInstance(WorkflowFinderService),
 					mockInstance(WorkflowService),
 					urlService,
@@ -983,28 +1005,129 @@ describe('McpService', () => {
 				);
 			};
 
-			// The workflow-preview MCP App does not register on this server while
-			// @n8n/mcp-apps stays typed against SDK 1.x (pinned by its ext-apps
-			// peer range). The create tool must still register as a plain tool
-			// even when the caller resolved the MCP Apps flag as enabled.
-			it('registers the create tool as a plain tool when MCP Apps is enabled', async () => {
+			const registeredCreateTool = (server: unknown) =>
+				(
+					server as {
+						_registeredTools: Record<string, { _meta?: Record<string, unknown> } | undefined>;
+					}
+				)._registeredTools.create_workflow_from_code;
+
+			beforeEach(() => {
+				(registerWorkflowPreviewApp as Mock).mockClear();
+			});
+
+			it('registers the preview app and marks the create tool with the app resource when MCP Apps is enabled', async () => {
 				const user = Object.assign(new User(), { id: 'user-1' });
 				const postHogClient = mockInstance(PostHogClient);
 
 				const service = buildService({ postHogClient });
 				const server = await service.getServer(user, appsEnabled);
 
-				const registeredTools = (
-					server as unknown as { _registeredTools: Map<string, unknown> | Record<string, unknown> }
-				)._registeredTools;
-				const hasCreateTool =
-					registeredTools instanceof Map
-						? registeredTools.has('create_workflow_from_code')
-						: 'create_workflow_from_code' in registeredTools;
-				expect(hasCreateTool).toBe(true);
+				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
+				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
+					unknown,
+					{
+						instanceOrigin: string;
+						telemetry: Record<string, unknown>;
+					},
+				];
+				expect(appOptions.instanceOrigin).toBe('https://n8n.test');
+				expect(appOptions.telemetry).toEqual(
+					expect.objectContaining({
+						enabled: true,
+						writeKey: 'test-key',
+						dataPlaneUrl: 'https://n8n.test/rest/telemetry/proxy',
+						configUrl: 'https://n8n.test/rest/telemetry/rudderstack',
+						instanceId: 'test-instance-id',
+						versionCli: expect.any(String),
+					}),
+				);
+
+				expect(registeredCreateTool(server)?._meta).toMatchObject({
+					ui: { resourceUri: WORKFLOW_PREVIEW_APP_URI },
+				});
 
 				// The service trusts the caller's resolution and never falls back to PostHog.
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
+
+			it('does not inject write key or telemetry URLs when diagnostics are disabled', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const service = buildService({ diagnosticsEnabled: false });
+
+				await service.getServer(user, appsEnabled);
+
+				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
+					unknown,
+					{ instanceOrigin?: string; telemetry: Record<string, unknown> },
+				];
+				expect(appOptions.instanceOrigin).toBeUndefined();
+				expect(appOptions.telemetry).toEqual(
+					expect.objectContaining({
+						enabled: false,
+						writeKey: '',
+						dataPlaneUrl: '',
+						configUrl: '',
+					}),
+				);
+			});
+
+			it('disables app telemetry when the telemetry proxy URL is invalid', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const service = buildService({ instanceBaseUrl: 'not-a-url' });
+
+				await expect(service.getServer(user, appsEnabled)).resolves.toBeDefined();
+
+				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
+					unknown,
+					{ instanceOrigin?: string; telemetry: Record<string, unknown> },
+				];
+				expect(appOptions.instanceOrigin).toBeUndefined();
+				expect(appOptions.telemetry).toEqual(
+					expect.objectContaining({
+						enabled: false,
+						writeKey: '',
+						dataPlaneUrl: '',
+						configUrl: '',
+					}),
+				);
+			});
+
+			it('tracks render requested when the preview resource is read', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const telemetry = mockInstance(Telemetry);
+
+				const service = buildService({ telemetry });
+				await service.getServer(user, appsEnabled, { name: 'Claude Desktop', version: '1.2.3' });
+
+				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
+					unknown,
+					{ onResourceRead: () => void },
+				];
+				appOptions.onResourceRead();
+
+				expect(telemetry.track).toHaveBeenCalledWith(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
+					user_id: 'user-1',
+					client_name: 'Claude Desktop',
+					client_version: '1.2.3',
+				});
+			});
+
+			it('does not register the preview app when MCP Apps is disabled', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+
+				const server = await buildService().getServer(user, mcpFeatureFlags());
+
+				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
+				expect(registeredCreateTool(server)?._meta).toBeUndefined();
+			});
+
+			it('does not register the preview app when builder is disabled, even if MCP Apps is enabled', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+
+				await buildService({ builderEnabled: false }).getServer(user, appsEnabled);
+
+				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
 			});
 		});
 	});

@@ -32,6 +32,8 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 			idempotentHint?: boolean;
 			openWorldHint?: boolean;
 		};
+		/** Arbitrary tool metadata, e.g. the MCP App resource marker. */
+		_meta?: Record<string, unknown>;
 	};
 	handler: ToolHandler<InputArgs>;
 };

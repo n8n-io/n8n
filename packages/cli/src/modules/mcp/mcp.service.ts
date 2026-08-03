@@ -15,12 +15,20 @@ import {
 	User,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import {
+	mcpAppToolMeta,
+	registerWorkflowPreviewApp,
+	WORKFLOW_PREVIEW_APP_URI,
+	type McpAppTelemetryConfig,
+} from '@n8n/mcp-apps/server';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { InstanceSettings } from 'n8n-core';
 import { ManualExecutionCancelledError, type FeatureFlags, type IRun } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
@@ -43,7 +51,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_CREATE_AGENT_TOOL_NAME } from './mcp.constants';
+import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
 import type {
@@ -114,6 +122,11 @@ export type McpFeatureFlags = {
 	canvasGroupsEnabled: boolean;
 };
 
+type McpAppTelemetryResolution = {
+	telemetry: McpAppTelemetryConfig;
+	instanceOrigin?: string;
+};
+
 /**
  * There is no standard failure contract across MCP tools: most set MCP's
  * `isError` flag, but several catch their own errors and return a normal
@@ -173,6 +186,7 @@ export class McpService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowService: WorkflowService,
 		private readonly urlService: UrlService,
@@ -235,6 +249,50 @@ export class McpService {
 		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
 		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
 		return { enabled: false, variant: 'unassigned' };
+	}
+
+	/**
+	 * Builds the instance-level telemetry config injected into MCP app UIs.
+	 * Mirrors the front-end telemetry settings: RudderStack data plane and source
+	 * config requests go through the instance telemetry proxy.
+	 */
+	private buildMcpAppTelemetryConfig(): McpAppTelemetryResolution {
+		const { enabled, frontendConfig } = this.globalConfig.diagnostics;
+		const disabledTelemetry: McpAppTelemetryConfig = {
+			enabled: false,
+			writeKey: '',
+			dataPlaneUrl: '',
+			configUrl: '',
+			instanceId: this.instanceSettings.instanceId,
+			versionCli: N8N_VERSION,
+		};
+
+		if (!enabled) return { telemetry: disabledTelemetry };
+
+		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
+		const restEndpoint = this.globalConfig.endpoints.rest;
+		const [writeKey] = frontendConfig.split(';');
+
+		const telemetry: McpAppTelemetryConfig = {
+			enabled,
+			writeKey: writeKey ?? '',
+			dataPlaneUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`,
+			configUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`,
+			instanceId: this.instanceSettings.instanceId,
+			versionCli: N8N_VERSION,
+		};
+
+		try {
+			return { telemetry, instanceOrigin: new URL(telemetry.dataPlaneUrl).origin };
+		} catch {
+			this.logger.warn('Disabling MCP app telemetry because telemetry proxy URL is invalid', {
+				dataPlaneUrl: telemetry.dataPlaneUrl,
+			});
+
+			return {
+				telemetry: disabledTelemetry,
+			};
+		}
 	}
 
 	/**
@@ -512,7 +570,15 @@ export class McpService {
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
-			await this.registerBuilderTools(server, user, dataTableOps, featureFlags, registerIfAllowed);
+			await this.registerBuilderTools(
+				server,
+				user,
+				dataTableOps,
+				featureFlags,
+				registerIfAllowed,
+				allowedToolNames,
+				clientInfo,
+			);
 		}
 
 		if (agentsEnabled) {
@@ -534,6 +600,8 @@ export class McpService {
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
 		featureFlags: McpFeatureFlags,
 		registerIfAllowed: RegisterToolFn,
+		allowedToolNames: Set<string> | undefined,
+		clientInfo?: McpClientInfo,
 	) {
 		await this.nodeCatalogService.initialize();
 
@@ -587,12 +655,34 @@ export class McpService {
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 		);
 
-		// The workflow-preview MCP App is not registered on this server:
-		// @n8n/mcp-apps is typed against SDK 1.x (held there by its ext-apps peer
-		// dependency), and its helpers cannot register on the v2 server. The
-		// create tool works without the preview UI. Restore the app registration
-		// once @n8n/mcp-apps supports the v2 server.
-		registerIfAllowed(createTool);
+		// The preview app only accompanies the create tool, so both are gated
+		// together by the granted scopes. The app tool goes through the same
+		// registrar as every other tool (schema bridging + instrumentation);
+		// only its _meta marks it as backed by the preview app resource.
+		const createToolAllowed = !allowedToolNames || allowedToolNames.has(createTool.name);
+		if (featureFlags.mcpApps.enabled && createToolAllowed) {
+			const appTelemetry = this.buildMcpAppTelemetryConfig();
+			registerWorkflowPreviewApp(server, {
+				instanceOrigin: appTelemetry.instanceOrigin,
+				telemetry: appTelemetry.telemetry,
+				onResourceRead: () => {
+					this.telemetry.track(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
+						user_id: user.id,
+						client_name: clientInfo?.name,
+						client_version: clientInfo?.version,
+					});
+				},
+			});
+			registerIfAllowed({
+				...createTool,
+				config: {
+					...createTool.config,
+					_meta: mcpAppToolMeta(WORKFLOW_PREVIEW_APP_URI),
+				},
+			});
+		} else {
+			registerIfAllowed(createTool);
+		}
 
 		const searchProjectsTool = createSearchProjectsTool(
 			user,

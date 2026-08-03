@@ -57,7 +57,7 @@ describe('registerWorkflowPreviewApp', () => {
 		onResourceRead = vi.fn();
 		registerWorkflowPreviewApp(
 			{
-				resource: (
+				registerResource: (
 					name: string,
 					uri: string,
 					metadata: Record<string, unknown>,
@@ -121,7 +121,7 @@ describe('registerWorkflowPreviewApp', () => {
 	it('omits telemetry CSP domains when no instance origin is provided', async () => {
 		registerWorkflowPreviewApp(
 			{
-				resource: (
+				registerResource: (
 					name: string,
 					uri: string,
 					metadata: Record<string, unknown>,
