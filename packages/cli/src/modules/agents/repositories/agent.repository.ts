@@ -1,6 +1,6 @@
 import type { ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -205,6 +205,20 @@ export class AgentRepository extends Repository<Agent> {
 	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
 		if (agentIds.length === 0) return;
 		await this.update({ id: In(agentIds) }, { availableInMCP });
+	}
+
+	/**
+	 * Claims the once-per-agent setup-completion marker. Returns true only for
+	 * the caller that actually set it, so concurrent writers that all saw the
+	 * marker unset cannot each report the milestone.
+	 */
+	async claimSetupCompleted(id: string, completedAt: Date): Promise<boolean> {
+		const result = await this.update(
+			{ id, setupCompletedAt: IsNull() },
+			{ setupCompletedAt: completedAt },
+		);
+
+		return (result.affected ?? 0) > 0;
 	}
 
 	async findPublished(): Promise<Agent[]> {
