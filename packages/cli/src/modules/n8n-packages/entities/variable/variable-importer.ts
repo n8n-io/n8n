@@ -76,17 +76,15 @@ export class VariableImporter {
 				}
 
 				const scope = picked.project ? { projectId: picked.project.id } : {};
-				conflicts.push({
-					name: requirement.name,
-					...scope,
-					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
-				});
+				const usedByWorkflows = [...new Set(requirement.usedByWorkflows)].sort();
+				conflicts.push({ name: requirement.name, ...scope, usedByWorkflows });
 				if (overwritesConflicts) {
 					overwrites.push({
 						variableId: picked.id,
 						name: requirement.name,
 						...scope,
 						value: packageValue,
+						usedByWorkflows,
 					});
 				}
 				continue;
@@ -172,9 +170,14 @@ export class VariableImporter {
 
 		const updated: string[] = [];
 		for (const overwrite of plan.overwrites) {
-			await this.variablesService.update(context.user, overwrite.variableId, {
-				value: overwrite.value,
-			});
+			// Several scopes can agree on one row, and the first write already settled it. Re-checking
+			// the fresh cache keeps that to a single write, so re-import stays a no-op rather than
+			// replaying the same value once per scope.
+			if (!(await this.variableHoldsValue(overwrite))) {
+				await this.variablesService.update(context.user, overwrite.variableId, {
+					value: overwrite.value,
+				});
+			}
 			updated.push(overwrite.name);
 		}
 
@@ -193,6 +196,10 @@ export class VariableImporter {
 			(variable) =>
 				destinationKey({ name: variable.key, projectId: variable.project?.id }) === destination,
 		);
+	}
+
+	private async variableHoldsValue({ variableId, value }: VariableOverwrite): Promise<boolean> {
+		return (await this.variablesService.getCached(variableId))?.value === value;
 	}
 
 	private targetScopes(targets: Array<{ projectId?: string }>, skipProjectId?: string) {

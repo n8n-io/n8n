@@ -248,7 +248,12 @@ post:
                 with no value to write bundles nothing to compare, so every
                 policy leaves resolved variables alone: values excluded at
                 export, an exported value that was itself empty, or one
-                identical to the target's.
+                identical to the target's. Under `overwrite`, a project package
+                whose projects hold *different* values for a name they all
+                resolve to one row — a global none of them shadows, typically —
+                is rejected with a 409: one row cannot carry both values, and
+                the import will not pick for you. Give the projects their own
+                variables in the target, or import them separately.
             variableParentPolicy:
               type: string
               enum:
@@ -636,9 +641,10 @@ post:
         Import blocked by at least one conflict among the issues — a workflow
         source-id conflict, a folder conflict (id under a different parent, id
         owned by another project, or a `fail`-policy match), a tag conflict
-        (rename drift or name collision), or a variable whose bundled value
+        (rename drift or name collision), a variable whose bundled value
         differs from the resolved target's under
-        `variableConflictPolicy=fail`.
+        `variableConflictPolicy=fail`, or one row two projects of a package
+        would overwrite with different values.
       content:
         application/json:
           schema:

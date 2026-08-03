@@ -58,6 +58,7 @@ export interface VariableOverwrite {
 	name: string;
 	projectId?: string;
 	value: string;
+	usedByWorkflows: string[];
 }
 
 export interface VariableLimitFailure {
@@ -96,6 +97,24 @@ export function dedupeCreationsByDestination(creations: VariableCreation[]): Var
 		].sort();
 	}
 	return [...byDestination.values()];
+}
+
+/**
+ * Reports rows two scopes would overwrite with different values. Scopes resolve independently, so
+ * both can land on one row — a global neither shadows — where the last write would silently win.
+ */
+export function divergentOverwrites(overwrites: VariableOverwrite[]): VariableConflict[] {
+	const firstValueByRow = new Map<string, string>();
+	const divergent = new Set<string>();
+	for (const { variableId, value } of overwrites) {
+		const seen = firstValueByRow.get(variableId);
+		if (seen === undefined) firstValueByRow.set(variableId, value);
+		else if (seen !== value) divergent.add(variableId);
+	}
+
+	return overwrites
+		.filter(({ variableId }) => divergent.has(variableId))
+		.map(({ variableId, value, ...conflict }) => conflict);
 }
 
 /** Reports the planned creations that do not fit the remaining quota. `quota` of `null` means unlimited. */
