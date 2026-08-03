@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
+	DbConnection,
 	In,
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
@@ -10,6 +11,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type {
@@ -95,6 +97,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly dbConnection: DbConnection,
 	) {
 		super(eventService);
 	}
@@ -1457,10 +1460,12 @@ export class TelemetryEventRelay extends EventRelay {
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
+		const dbVersion = await this.dbConnection.getDbVersion();
 
 		const info = {
 			version_cli: N8N_VERSION,
 			db_type: this.globalConfig.database.type,
+			db_version: dbVersion,
 			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
 			n8n_disable_production_main_process:
 				this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess,
@@ -1542,6 +1547,7 @@ export class TelemetryEventRelay extends EventRelay {
 			executions_mode: this.globalConfig.executions.mode,
 			n8n_deployment_type: this.globalConfig.deployment.type,
 			db_type: this.globalConfig.database.type,
+			db_version: dbVersion,
 
 			// Location settings
 			timezone: this.globalConfig.generic.timezone,
@@ -1585,7 +1591,7 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 
 		this.telemetry.identify(info);
-		this.telemetry.track('Instance started', {
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.STARTED, {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
 			otel,

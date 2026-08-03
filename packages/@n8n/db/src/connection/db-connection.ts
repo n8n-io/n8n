@@ -59,6 +59,24 @@ export class DbConnection {
 		return readPoolStats(this.dataSource);
 	}
 
+	async getDbVersion(): Promise<string | null> {
+		if (!this.dataSource.isInitialized) return null;
+
+		try {
+			if (this.options.type === 'postgres') return this.dataSource.driver.version ?? null;
+
+			const rows = await this.dataSource.query<Array<{ version: string }>>(
+				'SELECT sqlite_version() AS version',
+			);
+
+			return rows[0]?.version ?? null;
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.warn(`Could not determine database version: ${error.message}`);
+			return null;
+		}
+	}
+
 	async init(): Promise<void> {
 		const { connectionState } = this;
 		if (connectionState.connected) return;
