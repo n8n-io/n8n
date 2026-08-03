@@ -188,7 +188,7 @@ server-side filter. The two that matter for CI:
   capability diversity.
 
 Other values group cases logically (e.g. `behaviour` for conversation-behaviour
-cases, `seeded` for transient `seedThread` cases kept out of CI). For a new
+cases, `seeded` for transient `replay` cases kept out of CI). For a new
 local case, put the value in its `datasets` array before pushing; for a case
 already in LangTracer, edit `datasets` there — `eval:langtracer-push`
 deliberately does not re-sync tier-only edits to an existing case. **Only

@@ -57,8 +57,8 @@ function flattenRunsForReport(evaluation: MultiRunEvaluation): WorkflowTestCaseR
 	}
 	return evaluation.testCases.flatMap((tc) =>
 		tc.runs.map((run, iter) => {
-			// seedThread cases carry no authored conversation (the live turn comes
-			// from the trace) — nothing to relabel.
+			// A `replay`-seeded case carries no authored conversation (the live turn
+			// comes from the trace) — nothing to relabel.
 			if (!run.testCase.conversation?.length) return run;
 			const [opening, ...rest] = run.testCase.conversation;
 			return {
