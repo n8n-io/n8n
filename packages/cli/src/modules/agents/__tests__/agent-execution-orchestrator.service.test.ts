@@ -1,4 +1,9 @@
-import type { Agent as RuntimeAgent, SerializableAgentState, StreamChunk } from '@n8n/agents';
+import type {
+	Agent as RuntimeAgent,
+	JSONValue,
+	SerializableAgentState,
+	StreamChunk,
+} from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
@@ -129,6 +134,37 @@ async function collect(generator: AsyncGenerator<StreamChunk>) {
 	const chunks: StreamChunk[] = [];
 	for await (const chunk of generator) chunks.push(chunk);
 	return chunks;
+}
+
+function makeCheckpoint(
+	pendingToolCalls: SerializableAgentState['pendingToolCalls'] = {},
+	persistence: SerializableAgentState['persistence'] = {
+		threadId: 'thread-1',
+		resourceId: 'draft-chat:user-1',
+	},
+): SerializableAgentState {
+	return {
+		status: 'suspended',
+		persistence,
+		messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+		pendingToolCalls,
+	};
+}
+
+function delegatedPending(
+	toolCallId: string,
+	continuation: JSONValue,
+): SerializableAgentState['pendingToolCalls'][string] {
+	return {
+		toolCallId,
+		toolName: 'delegate_subagent',
+		input: {},
+		suspended: true,
+		runId: 'run-1',
+		resumeSchema: { type: 'object' },
+		suspendPayload: { type: 'approval' },
+		continuation,
+	};
 }
 
 describe('AgentExecutionOrchestratorService', () => {
@@ -585,6 +621,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			),
 		).rejects.toThrow(UserError);
+		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('expired-run', agentId);
 
 		checkpointStorage.getStatus.mockResolvedValueOnce({
 			status: 'active',
@@ -604,6 +641,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				abortSignal: abortController.signal,
 			}),
 		);
+		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('run-1', agentId);
 
 		expect(runtime.agent.resume).toHaveBeenCalledWith(
 			'stream',
@@ -674,12 +712,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('atomically cancels only suspended checkpoints owned by the preview user', async () => {
 		const { service, checkpointStorage } = makeService();
-		const checkpoint: SerializableAgentState = {
-			status: 'suspended',
-			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-			pendingToolCalls: {},
-		};
+		const checkpoint = makeCheckpoint();
 		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
 		checkpointStorage.cancelSuspended.mockResolvedValue(true);
 
@@ -690,6 +723,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				resourceId: 'draft-chat:user-1',
 			}),
 		).resolves.toBe(true);
+		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('run-1', agentId);
 		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledWith('run-1', checkpoint, agentId);
 
 		checkpointStorage.cancelSuspended.mockClear();
@@ -701,6 +735,118 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		).resolves.toBe(false);
 		expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
+	});
+
+	it('does not directly cancel or resume a delegated child checkpoint', async () => {
+		const { service, checkpointStorage, runtimeCacheService } = makeService();
+		const checkpoint = makeCheckpoint(
+			{},
+			{
+				threadId: 'child-thread-1',
+				resourceId: 'draft-chat:user-1',
+				delegated: true,
+			},
+		);
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
+
+		await expect(
+			service.cancelChatRun({
+				agentId,
+				runId: 'child-run-1',
+				resourceId: 'draft-chat:user-1',
+			}),
+		).resolves.toBe(false);
+		expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
+		expect(checkpointStorage.delete).not.toHaveBeenCalled();
+
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'child-run-1',
+					toolCallId: 'child-tool-call-1',
+					resumeData: { approved: true },
+				}),
+			),
+		).rejects.toThrow('Delegated actions must be resumed through their parent agent');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it('expires configured and inline child checkpoints when cancelling a suspended parent', async () => {
+		const { service, checkpointStorage } = makeService();
+		const checkpoint = makeCheckpoint({
+			configured: delegatedPending('configured', {
+				runId: 'configured-child-run',
+				toolCallId: 'configured-child-call',
+				taskPath: '/root/configured_0',
+				subAgentId: 'configured-agent',
+				childCount: 0,
+				threadId: 'configured-child-thread',
+				resumeContext: {
+					agentId: 'configured-agent',
+					versionId: 'configured-version',
+				},
+			}),
+			inline: delegatedPending('inline', {
+				runId: 'inline-child-run',
+				toolCallId: 'inline-child-call',
+				taskPath: '/root/inline_1',
+				subAgentId: 'inline',
+				childCount: 1,
+			}),
+		});
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
+		checkpointStorage.cancelSuspended.mockResolvedValue(true);
+
+		await expect(
+			service.cancelChatRun({
+				agentId,
+				runId: 'run-1',
+				resourceId: 'draft-chat:user-1',
+			}),
+		).resolves.toBe(true);
+
+		expect(checkpointStorage.delete).toHaveBeenCalledTimes(3);
+		expect(checkpointStorage.delete).toHaveBeenCalledWith(
+			'configured-child-run',
+			'configured-agent',
+		);
+		expect(checkpointStorage.delete).toHaveBeenCalledWith('inline-child-run', agentId);
+		expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', agentId);
+	});
+
+	it('retries child cleanup from retained parent checkpoint references', async () => {
+		const { service, checkpointStorage } = makeService();
+		const checkpoint = makeCheckpoint({
+			delegated: delegatedPending('delegated', {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				taskPath: '/root/inline_0',
+				subAgentId: 'inline',
+				childCount: 0,
+			}),
+		});
+		checkpointStorage.getStatus
+			.mockResolvedValueOnce({ status: 'active', checkpoint })
+			.mockResolvedValueOnce({ status: 'expired', checkpoint });
+		checkpointStorage.cancelSuspended.mockResolvedValue(true);
+		checkpointStorage.delete
+			.mockRejectedValueOnce(new Error('child checkpoint unavailable'))
+			.mockResolvedValue(undefined);
+
+		const request = {
+			agentId,
+			runId: 'run-1',
+			resourceId: 'draft-chat:user-1',
+		};
+		await expect(service.cancelChatRun(request)).rejects.toThrow('child checkpoint unavailable');
+		await expect(service.cancelChatRun(request)).resolves.toBe(true);
+
+		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledOnce();
+		expect(checkpointStorage.delete).toHaveBeenNthCalledWith(1, 'child-run-1', agentId);
+		expect(checkpointStorage.delete).toHaveBeenNthCalledWith(2, 'child-run-1', agentId);
+		expect(checkpointStorage.delete).toHaveBeenNthCalledWith(3, 'run-1', agentId);
 	});
 
 	it('passes tracing telemetry returned by AgentRunTracingService into stream() and resume()', async () => {

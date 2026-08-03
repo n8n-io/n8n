@@ -116,6 +116,11 @@ export class RunStateManager {
 			console.error(`[RunStateManager] Failed to delete checkpoint ${runId}:`, deleteError);
 		}
 	}
+
+	/** Delete a cancelled run and surface failures so its parent can remain retryable. */
+	async cancel(runId: string): Promise<void> {
+		await this.store.delete(runId);
+	}
 }
 
 /** Generate a unique run ID. */

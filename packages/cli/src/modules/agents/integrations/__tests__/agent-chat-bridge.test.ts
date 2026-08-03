@@ -400,6 +400,12 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+			const resumeSchema = {
+				type: 'object' as const,
+				properties: { approved: { type: 'boolean' as const } },
+				required: ['approved'],
+				additionalProperties: false,
+			};
 
 			const agentExecutor = makeAgentExecutor([
 				{
@@ -407,6 +413,7 @@ describe('AgentChatBridge — consumeStream', () => {
 					runId: 'run-1',
 					toolCallId: 'tool-1',
 					toolName: 'approval',
+					resumeSchema,
 					suspendPayload: {
 						type: 'approval',
 						toolName: 'giphy-gif-search',
@@ -453,7 +460,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				},
 				'run-1',
 				'tool-1',
-				undefined,
+				resumeSchema,
 				undefined,
 				'test-buffered',
 			);

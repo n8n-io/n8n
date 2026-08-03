@@ -15,7 +15,6 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
-import { IsNull } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -37,10 +36,6 @@ import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { streamAgentChunks } from '../utils/agent-stream';
-
-interface FindSuspendedCheckpointOptions {
-	includeUnscoped?: boolean;
-}
 
 /**
  * Builder session options for the agent-builder sub-agent. `AgentsBuilderService`
@@ -144,7 +139,7 @@ export class AgentsBuilderService {
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
-		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
 		if (checkpointStatus.status === 'expired') {
 			this.logger.debug('Builder checkpoint unavailable', {
 				runId,
@@ -317,55 +312,34 @@ export class AgentsBuilderService {
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * Return the parsed state of the most recent non-expired suspended
-	 * checkpoint for this agent, or `null` if there isn't one. Each pending
-	 * tool call inside the state already carries its own `runId`, so callers
-	 * don't need a separate runId from this helper.
-	 */
-	async findOpenCheckpoint(agentId: string): Promise<SerializableAgentState | null> {
-		return await this.findSuspendedCheckpoint(agentId);
-	}
-
-	/**
-	 * Like {@link findOpenCheckpoint}, but scoped to one chat thread. Used by
-	 * the chat history endpoints to rebuild open interactive cards (with
-	 * runIds) after a page refresh.
+	 * Find the latest open checkpoint for a chat thread so its interactive
+	 * cards can be rebuilt after a page refresh.
 	 */
 	async findOpenCheckpointForThread(
 		agentId: string,
 		threadId: string,
-		options: FindSuspendedCheckpointOptions = {},
 	): Promise<SerializableAgentState | null> {
-		return await this.findSuspendedCheckpoint(agentId, threadId, options);
-	}
-
-	private async findSuspendedCheckpoint(
-		agentId: string,
-		threadId?: string,
-		options: FindSuspendedCheckpointOptions = {},
-	): Promise<SerializableAgentState | null> {
-		const rows = await this.agentCheckpointRepository.find({
-			where: options.includeUnscoped
-				? [
-						{ agentId, expired: false },
-						{ agentId: IsNull(), expired: false },
-					]
-				: { agentId, expired: false },
-			order: { updatedAt: 'DESC' },
-			...(threadId === undefined && { take: 5 }),
-		});
+		const rows = await this.agentCheckpointRepository.findActiveForAgent(agentId);
 		for (const row of rows) {
-			if (!row.state) continue;
-			let parsed: SerializableAgentState;
-			try {
-				parsed = jsonParse<SerializableAgentState>(row.state);
-			} catch {
-				continue;
-			}
-			if (parsed.status !== 'suspended') continue;
-			if (threadId !== undefined && parsed.persistence?.threadId !== threadId) continue;
-			return parsed;
+			const checkpoint = this.parseSuspendedCheckpoint(row.state, threadId);
+			if (checkpoint) return checkpoint;
 		}
 		return null;
+	}
+
+	private parseSuspendedCheckpoint(
+		state: string | null,
+		threadId: string,
+	): SerializableAgentState | null {
+		if (!state) return null;
+		let parsed: SerializableAgentState;
+		try {
+			parsed = jsonParse<SerializableAgentState>(state);
+		} catch {
+			return null;
+		}
+		if (parsed.status !== 'suspended' || parsed.persistence?.delegated === true) return null;
+		if (parsed.persistence?.threadId !== threadId) return null;
+		return parsed;
 	}
 }
