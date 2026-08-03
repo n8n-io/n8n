@@ -205,6 +205,11 @@ export class EphemeralNodeExecutor {
 		const verified: Record<string, INodeCredentialsDetails> = {};
 
 		for (const [credType, d] of Object.entries(details)) {
+			if (d.__aiGatewayManaged) {
+				verified[credType] = { id: null, name: d.name, __aiGatewayManaged: true };
+				continue;
+			}
+
 			if (!d.id) {
 				throw new UserError(
 					`Credential reference for "${credType}" is missing an id (required for execution).`,

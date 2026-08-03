@@ -23,6 +23,7 @@ import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
+import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
@@ -621,6 +622,16 @@ export class AgentValidationService {
 
 			const path = `tools.${index}.node.credentials.${slot.credentialType}`;
 			const credentialRef = tool.node.credentials?.[slot.credentialType];
+
+			if (credentialRef && '__aiGatewayManaged' in credentialRef) {
+				if (
+					!(await this.gatewayCoversNodeToolSlot(tool.node, slot.credentialType, nodeParameters))
+				) {
+					issues.push(issue('invalid_credential', path, capabilityBase));
+				}
+				continue;
+			}
+
 			const credentialId = credentialRef?.id?.trim();
 
 			if (!credentialId) {
@@ -633,6 +644,25 @@ export class AgentValidationService {
 				issues.push(issue('invalid_credential', path, capabilityBase));
 			}
 		}
+	}
+
+	private async gatewayCoversNodeToolSlot(
+		node: AgentJsonNodeToolConfig['node'],
+		credentialType: string,
+		resolvedParameters: INodeParameters,
+	): Promise<boolean> {
+		const availability = await this.aiGatewayService.isAvailable();
+		if (!availability.available) return false;
+		return checkAiGatewayEligibility(
+			{
+				type: node.nodeType,
+				typeVersion: node.nodeTypeVersion,
+				parameters: (node.nodeParameters ?? {}) as INodeParameters,
+			},
+			credentialType,
+			availability.config,
+			resolvedParameters,
+		).eligible;
 	}
 
 	private async collectMcpServerIssues(

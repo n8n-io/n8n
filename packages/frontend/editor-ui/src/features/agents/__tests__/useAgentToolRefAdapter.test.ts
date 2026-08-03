@@ -96,6 +96,22 @@ describe('useAgentToolRefAdapter', () => {
 				slackApi: { id: 'cred-1', name: 'Prod Slack' },
 			});
 		});
+
+		it('forwards the n8n Connect managed flag to INodeCredentials', () => {
+			const ref: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: {
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					credentials: { slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true } },
+				},
+			};
+			expect(toolRefToNode(ref)?.credentials).toEqual({
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+		});
 	});
 
 	describe('nodeTypeToNewToolRef()', () => {
@@ -256,6 +272,33 @@ describe('useAgentToolRefAdapter', () => {
 			>;
 			expect(updated.node?.credentials).toEqual({
 				slackApi: { id: 'cred-1', name: 'Prod' },
+			});
+		});
+
+		it('keeps an n8n Connect managed credential (null id + flag)', () => {
+			const original: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
+			};
+			const node: INode = {
+				id: 'n-1',
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+				credentials: {
+					slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				},
+			};
+
+			const updated = updateToolRefFromNode(original, node) as Extract<
+				AgentJsonToolRef,
+				{ type: 'node' }
+			>;
+			expect(updated.node?.credentials).toEqual({
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
 			});
 		});
 

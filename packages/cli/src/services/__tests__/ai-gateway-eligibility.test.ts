@@ -1,7 +1,7 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 
-import { checkAiGatewayEligibility } from '../tools/workflow-builder/ai-gateway-eligibility';
+import { checkAiGatewayEligibility } from '../ai-gateway-eligibility';
 
 function makeNode(overrides: Partial<INode> = {}): INode {
 	return {

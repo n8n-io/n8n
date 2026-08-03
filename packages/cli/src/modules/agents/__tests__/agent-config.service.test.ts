@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { AgentConfigService } from '../agent-config.service';
+import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { Agent } from '../entities/agent.entity';
@@ -45,6 +46,7 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
@@ -66,6 +68,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
+		nodeToolAiGatewayService,
 	);
 
 	return {
@@ -76,6 +79,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
+		nodeToolAiGatewayService,
 	};
 }
 
@@ -213,6 +217,20 @@ describe('AgentConfigService', () => {
 			// layer's freshness hash actually changes.
 			expect(result.config?.config?.webSearch).toEqual({ enabled: false });
 			expect(result.config?.providerTools).toEqual({});
+		});
+
+		it('runs node-tool gateway credential assignment on every write with tools', async () => {
+			const { service, agentRepository, nodeToolAiGatewayService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				tools: [{ type: 'custom', id: 'tool_1' }],
+			} as unknown as AgentJsonConfig);
+
+			expect(nodeToolAiGatewayService.assignManagedCredentials).toHaveBeenCalledWith([
+				{ type: 'custom', id: 'tool_1' },
+			]);
 		});
 
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {

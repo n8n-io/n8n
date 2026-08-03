@@ -9,13 +9,13 @@ import {
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
-
 import {
 	checkAiGatewayEligibility,
 	type AiGatewayEligibilityReason,
-} from './ai-gateway-eligibility';
+} from '@/services/ai-gateway-eligibility';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { Telemetry } from '@/telemetry';
+
 import { MCP_CREDENTIALS_AUTOASSIGN_EVENT } from '../../mcp.constants';
 
 /** Display name written into AI Gateway-managed credential sentinels. User-facing brand. */

@@ -314,6 +314,89 @@ describe('AgentValidationService — structured issues', () => {
 		expect(result).toEqual({ status: 'valid', issues: [] });
 	});
 
+	it('treats an n8n Connect managed node-tool credential as satisfied when the gateway covers it', async () => {
+		const { service, agentRepository, nodeTypes, aiGatewayService } = makeService();
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { credentials: [{ name: 'slackApi', required: true }], properties: [] },
+		} as never);
+		aiGatewayService.isAvailable.mockResolvedValue({
+			available: true,
+			config: {
+				nodes: ['n8n-nodes-base.slack'],
+				credentialTypes: ['slackApi'],
+				providerConfig: {},
+			},
+		} as never);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [
+					{
+						type: 'node',
+						name: 'send_message',
+						node: {
+							nodeType: 'n8n-nodes-base.slackTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+							credentials: {
+								slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							},
+						},
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result).toEqual({ status: 'valid', issues: [] });
+	});
+
+	it('flags an n8n Connect managed node-tool credential when the gateway no longer covers it', async () => {
+		const { service, agentRepository, nodeTypes, aiGatewayService } = makeService();
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { credentials: [{ name: 'slackApi', required: true }], properties: [] },
+		} as never);
+		aiGatewayService.isAvailable.mockResolvedValue({ available: false } as never);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [
+					{
+						type: 'node',
+						name: 'send_message',
+						node: {
+							nodeType: 'n8n-nodes-base.slackTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+							credentials: {
+								slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							},
+						},
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'invalid_credential',
+				path: 'tools.0.node.credentials.slackApi',
+			}),
+		);
+	});
+
 	it("applies the node's default authentication when the selector is absent", async () => {
 		const { service, agentRepository, nodeTypes } = makeService();
 		nodeTypes.getByNameAndVersion.mockReturnValue({
