@@ -143,6 +143,9 @@ describe('buildWorkflow with an inline seed', () => {
 		await buildWorkflow({
 			client: makeClient(restoreThread, { listWorkflows, deleteWorkflow }),
 			...baseConfig,
+			// Both were on the instance before this lane started — that is what makes
+			// them leftovers rather than another live build's artifact.
+			preRunWorkflowIds: new Set(['leftover-1', 'leftover-2']),
 			seed: { mode: 'inline' as const, ...inlineSeed() },
 		});
 
@@ -154,6 +157,33 @@ describe('buildWorkflow with an inline seed', () => {
 		expect(deleteWorkflow.mock.invocationCallOrder[0]).toBeLessThan(
 			restoreThread.mock.invocationCallOrder[0],
 		);
+	});
+
+	// A lane admits several case slugs at once, and it is released before scenario
+	// execution finishes — so a sibling case sharing this seed's base name is live,
+	// not stale. Hard-deleting its workflow mid-run is worse than the collision.
+	it('never evicts a workflow created during the run — a sibling build is live', async () => {
+		const deleteWorkflow = vi.fn().mockResolvedValue(undefined);
+		const listWorkflows = vi.fn().mockResolvedValue([
+			{ id: 'stale-from-a-previous-run', name: 'Batch loop [seed aaaaaaaa]' },
+			// Same base name, same suffix shape — but created after the lane snapshot,
+			// so it belongs to a build that is still using it.
+			{ id: 'sibling-live-restore', name: 'Batch loop [seed cccccccc]' },
+		]);
+
+		await buildWorkflow({
+			client: makeClient(
+				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [] }),
+				{ listWorkflows, deleteWorkflow },
+			),
+			...baseConfig,
+			preRunWorkflowIds: new Set(['stale-from-a-previous-run']),
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		expect(deleteWorkflow.mock.calls.map((call) => String(call[0]))).toEqual([
+			'stale-from-a-previous-run',
+		]);
 	});
 
 	it('never touches a workflow without the seed suffix', async () => {
@@ -216,6 +246,7 @@ describe('buildWorkflow with an inline seed', () => {
 		const build = await buildWorkflow({
 			client: makeClient(restoreThread, { listWorkflows, deleteWorkflow }),
 			...baseConfig,
+			preRunWorkflowIds: new Set(['leftover-1', 'leftover-2', 'leftover-3']),
 			seed: { mode: 'inline' as const, ...inlineSeed() },
 		});
 

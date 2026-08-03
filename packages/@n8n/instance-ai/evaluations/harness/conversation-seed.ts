@@ -244,13 +244,41 @@ const MAX_WORKFLOW_NAME = 128;
 const escapeForRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Rewrite every string inside a parsed value, leaving structure untouched. */
-function mapStrings(value: unknown, fn: (s: string) => string): unknown {
-	if (typeof value === 'string') return fn(value);
-	if (Array.isArray(value)) return value.map((v) => mapStrings(v, fn));
-	if (isRecord(value)) {
-		return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, mapStrings(v, fn)]));
-	}
-	return value;
+/** Rewrite values under a key literally named `workflowName` — a field that by
+ *  definition holds one, wherever it sits. */
+function renameWorkflowNameFields(value: unknown, fn: (s: string) => string): unknown {
+	if (Array.isArray(value)) return value.map((v) => renameWorkflowNameFields(v, fn));
+	if (!isRecord(value)) return value;
+	return Object.fromEntries(
+		Object.entries(value).map(([key, v]) => [
+			key,
+			key === 'workflowName' && typeof v === 'string' ? fn(v) : renameWorkflowNameFields(v, fn),
+		]),
+	);
+}
+
+/**
+ * Rewrite workflow-name mentions in one seeded message: human prose (`text`
+ * blocks) and fields that explicitly hold a workflow name. Nothing else.
+ *
+ * Deliberately NOT every string. A message's tool-call blocks carry opaque
+ * payloads — recorded SDK source, expressions, arbitrary results — and a short
+ * workflow name like `Order` would also rewrite a NODE called `Order` inside
+ * recorded source. That is the same integrity break the `workflows[].nodes`
+ * exclusion exists to prevent, one level in: the agent would read prior context
+ * describing an artifact that never existed.
+ */
+function renameMentions(message: SeedMessage, fn: (s: string) => string): SeedMessage {
+	const named = renameWorkflowNameFields(message, fn) as SeedMessage;
+	if (!Array.isArray(named.content)) return named;
+	return {
+		...named,
+		content: named.content.map((block) =>
+			isRecord(block) && block.type === 'text' && typeof block.text === 'string'
+				? { ...block, text: fn(block.text) }
+				: block,
+		),
+	} as SeedMessage;
 }
 
 /**
@@ -328,9 +356,8 @@ export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 			.join('|'),
 		'g',
 	);
-	const messages = mapStrings(remapped.messages, (s) =>
-		s.replace(mentionRe, (match) => renames.get(match) ?? match),
-	) as SeedMessage[];
+	const rewrite = (s: string) => s.replace(mentionRe, (match) => renames.get(match) ?? match);
+	const messages = remapped.messages.map((message) => renameMentions(message, rewrite));
 
 	// Data table ids are remapped server-side on restore (id is generated, not
 	// pinnable), so carry them through untouched here.

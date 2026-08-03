@@ -253,6 +253,50 @@ describe('remapSeedWorkflowIds', () => {
 		expect(JSON.stringify(mention)).toContain(`workflow ${newName} failed`);
 	});
 
+	it('does NOT rewrite opaque tool payloads — only prose and workflowName fields', () => {
+		// A message's tool blocks carry recorded SDK source, expressions and arbitrary
+		// results. A short workflow name like `Order` would otherwise rewrite a NODE
+		// called `Order` inside that source, handing the agent prior context that
+		// describes an artifact which never existed — the same integrity break the
+		// `workflows[].nodes` exclusion prevents, one level in.
+		const seed = makeSeed();
+		seed.workflows[0].name = 'Order';
+		seed.messages.push({
+			id: 'm-tool',
+			type: 'llm',
+			role: 'assistant',
+			createdAt: '2026-06-29T09:00:03.000Z',
+			content: [
+				{ type: 'text', text: 'Rebuilt Order for you' },
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-src',
+					toolName: 'workspace_write',
+					state: 'resolved',
+					input: { path: 'wf.ts', source: "const n = wf.node('Order'); // Order stays" },
+					output: { workflowName: 'Order', note: 'wrote Order to disk' },
+				},
+			],
+		});
+
+		const remapped = remapSeedWorkflowIds(seed);
+		const newName = remapped.workflows[0].name;
+		const block = (remapped.messages.find((m) => m.id === 'm-tool')?.content ?? []) as Array<
+			Record<string, unknown>
+		>;
+
+		// Prose follows the rename...
+		expect(block[0].text).toBe(`Rebuilt ${newName} for you`);
+		// ...a field that explicitly holds a workflow name follows it...
+		expect((block[1].output as Record<string, unknown>).workflowName).toBe(newName);
+		// ...and the recorded source is untouched, node reference and all.
+		expect((block[1].input as Record<string, unknown>).source).toBe(
+			"const n = wf.node('Order'); // Order stays",
+		);
+		// A free-text payload field is not a workflow-name field either.
+		expect((block[1].output as Record<string, unknown>).note).toBe('wrote Order to disk');
+	});
+
 	it('does NOT rename a node that happens to share the workflow name', () => {
 		// A blanket replace would rewrite the node too, silently altering the restored
 		// graph — the "structural skeleton unchanged" guard a seeded case relies on.

@@ -387,7 +387,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		if (seed) {
 			try {
 				const remapped = remapSeedWorkflowIds(seed);
-				await evictLeftoverSeedWorkflows(client, remapped, logger, config.laneTag);
+				await evictLeftoverSeedWorkflows(
+					client,
+					remapped,
+					config.preRunWorkflowIds,
+					logger,
+					config.laneTag,
+				);
 				const restoreResult = await client.restoreThread(
 					threadId,
 					remapped.messages,
@@ -669,6 +675,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 async function evictLeftoverSeedWorkflows(
 	client: N8nClient,
 	seed: ConversationSeed,
+	preRunWorkflowIds: Set<string>,
 	logger: EvalLogger,
 	laneTag?: string,
 ): Promise<void> {
@@ -681,6 +688,19 @@ async function evictLeftoverSeedWorkflows(
 	try {
 		const existing = await client.listWorkflows();
 		const stale = existing.filter((workflow) => {
+			// A matching suffix alone does NOT prove a leftover. A lane admits several
+			// different case slugs at once, and it is released as soon as `buildWorkflow`
+			// returns even though that build's restored workflow stays live for scenario
+			// execution and judging. So a sibling case sharing this seed's base name
+			// would be selectable here — and hard-deleting its artifact mid-run is worse
+			// than the collision this exists to prevent.
+			//
+			// The pre-run snapshot settles it: taken once per lane before any build, so
+			// anything created DURING the run (a sibling's fresh restore, or the
+			// workflow the agent is building) is absent by construction. What remains is
+			// what was already lying there — a previous run's `--keep-workflows`
+			// leftover, or a crashed run that skipped its own cleanup.
+			if (!preRunWorkflowIds.has(workflow.id)) return false;
 			const base = SEED_WORKFLOW_NAME_RE.exec(workflow.name)?.[1];
 			return base !== undefined && baseNames.has(base);
 		});
