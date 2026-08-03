@@ -4782,6 +4782,38 @@ describe('useCanvasOperations', () => {
 			);
 			expect(node).toBeDefined();
 		});
+
+		it('should name a new Message an Agent node AI Agent V2 when inline agents are enabled', () => {
+			const nodeTypeDescription = {
+				...mockNodeTypeDescription({ name: 'n8n-nodes-base.messageAnAgent' }),
+				defaults: { name: 'Message an Agent' },
+			};
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{ type: 'n8n-nodes-base.messageAnAgent', typeVersion: 2, position: [100, 100] },
+				nodeTypeDescription,
+			);
+
+			expect(node.name).toBe('AI Agent V2');
+		});
+
+		it('should keep the shipped Message an Agent name when inline agents are disabled', () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(null);
+			const nodeTypeDescription = {
+				...mockNodeTypeDescription({ name: 'n8n-nodes-base.messageAnAgent' }),
+				defaults: { name: 'Message an Agent' },
+			};
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{ type: 'n8n-nodes-base.messageAnAgent', typeVersion: 2, position: [100, 100] },
+				nodeTypeDescription,
+			);
+
+			expect(node.name).toBe('Message an Agent');
+		});
 	});
 
 	describe('resetWorkspace', () => {

@@ -78,6 +78,13 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
+const inlineAgentsFlag = { enabled: false };
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: vi.fn(() => ({
+		isFeatureEnabled: vi.fn(() => inlineAgentsFlag.enabled),
+	})),
+}));
+
 describe('NodeCreator - utils', () => {
 	describe('groupItemsInSections', () => {
 		it('should handle multiple sections (with "other" section)', () => {
@@ -931,6 +938,37 @@ describe('NodeCreator - utils', () => {
 				makeAgentNode(AGENT_NODE_TYPE, presetTag),
 			]) as NodeCreateElement[];
 			expect(result.properties.tag).toEqual(presetTag);
+		});
+	});
+
+	describe('finalizeItems - inline agents node name', () => {
+		const makeMessageAnAgentNode = () =>
+			mockNodeCreateElement(undefined, {
+				name: MESSAGE_AN_AGENT_NODE_TYPE,
+				displayName: 'Message an Agent',
+			});
+
+		beforeEach(() => {
+			inlineAgentsFlag.enabled = false;
+		});
+
+		it('keeps the shipped Message an Agent name when the flag is off', () => {
+			const [result] = finalizeItems([makeMessageAnAgentNode()]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('Message an Agent');
+		});
+
+		it('renames the item to AI Agent V2 when the flag is on', () => {
+			inlineAgentsFlag.enabled = true;
+			const [result] = finalizeItems([makeMessageAnAgentNode()]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('AI Agent V2');
+		});
+
+		it('does not rename other nodes when the flag is on', () => {
+			inlineAgentsFlag.enabled = true;
+			const [result] = finalizeItems([
+				mockNodeCreateElement(undefined, { name: AGENT_NODE_TYPE, displayName: 'AI Agent' }),
+			]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('AI Agent');
 		});
 	});
 
