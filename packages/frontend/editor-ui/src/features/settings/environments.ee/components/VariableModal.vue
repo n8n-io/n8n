@@ -4,7 +4,7 @@ import { VARIABLE_MODAL_KEY } from '../environments.constants';
 import { computed, reactive, ref, onMounted, nextTick } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nFormInput,
 	N8nInputLabel,

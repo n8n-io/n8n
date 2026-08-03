@@ -32,7 +32,7 @@ vi.mock('../../composables/useCredentialOAuth', () => ({
 const { mockToastShowError } = vi.hoisted(() => ({
 	mockToastShowError: vi.fn(),
 }));
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockToastShowError,
 	}),

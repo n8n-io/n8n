@@ -87,7 +87,7 @@ import type {
 	INodeParameters,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { historyBus } from '@/app/models/history';

@@ -82,7 +82,7 @@ import {
 	REPORTED_SOURCE_LLM,
 } from '../users.constants';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import Modal from '@/app/components/Modal.vue';
 import type { IFormInputs } from '@/Interface';
 import type { IPersonalizationLatestVersion } from '@n8n/rest-api-client/api/users';

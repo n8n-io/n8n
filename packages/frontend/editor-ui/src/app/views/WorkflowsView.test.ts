@@ -53,7 +53,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 }));
 
 const mockShowError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError }),
 }));
 

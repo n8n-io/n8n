@@ -17,7 +17,7 @@ import {
 } from '@n8n/design-system';
 import { MCP_SCOPE_GROUPS } from '@/features/ai/mcpAccess/mcp.constants';
 import { getClientBrand } from '@/features/ai/mcpAccess/clients.utils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
 

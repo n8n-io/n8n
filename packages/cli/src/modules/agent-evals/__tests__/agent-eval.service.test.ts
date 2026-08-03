@@ -1,3 +1,4 @@
+import type { ModuleRegistry } from '@n8n/backend-common';
 import type {
 	AgentEvalDataset,
 	AgentEvalDatasetRepository,
@@ -36,6 +37,7 @@ const PROJECT_ID = 'proj-1';
 describe('AgentEvalService', () => {
 	const user = mock<User>({ id: 'user-1' });
 
+	let moduleRegistry: MockProxy<ModuleRegistry>;
 	let agentRepository: MockProxy<AgentRepository>;
 	let datasetRepository: MockProxy<AgentEvalDatasetRepository>;
 	let runRepository: MockProxy<AgentEvalRunRepository>;
@@ -79,6 +81,8 @@ describe('AgentEvalService', () => {
 		});
 
 	beforeEach(() => {
+		moduleRegistry = mock<ModuleRegistry>();
+		moduleRegistry.isActive.mockReturnValue(true);
 		agentRepository = mock<AgentRepository>();
 		datasetRepository = mock<AgentEvalDatasetRepository>();
 		runRepository = mock<AgentEvalRunRepository>();
@@ -91,6 +95,7 @@ describe('AgentEvalService', () => {
 		runRepository.findByIdAndAgentId.mockResolvedValue(makeRun());
 
 		service = new AgentEvalService(
+			moduleRegistry,
 			agentRepository,
 			datasetRepository,
 			runRepository,
@@ -147,6 +152,18 @@ describe('AgentEvalService', () => {
 
 			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID);
 		});
+
+		// The agent lookup below reads a module entity, so the dependency check has
+		// to land before it — otherwise TypeORM raises missing metadata first.
+		it.each(callsRequiringAnAgent)(
+			'%s reports the inactive module instead of querying the agent',
+			async (_, call) => {
+				moduleRegistry.isActive.mockImplementation((name) => name !== 'agents');
+
+				await expect(call()).rejects.toThrow('Agent evals require these modules to be active');
+				expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	// A dataset/run id from another agent must not resolve just because the caller

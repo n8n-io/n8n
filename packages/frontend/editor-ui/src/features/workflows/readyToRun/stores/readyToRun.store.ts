@@ -10,7 +10,7 @@ import { useRouter, type RouteLocationNormalized } from 'vue-router';
 import { READY_TO_RUN_AI_WORKFLOW } from '../workflows/aiWorkflow';
 import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';

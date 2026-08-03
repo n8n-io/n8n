@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 

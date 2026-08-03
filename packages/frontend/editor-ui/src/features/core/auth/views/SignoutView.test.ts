@@ -22,7 +22,7 @@ vi.mock('vue-router', () => {
 
 const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError }),
 }));
 

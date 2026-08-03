@@ -8,7 +8,7 @@ import { useAgentModelCredentials } from '../../composables/useAgentModelCredent
 import { useAgentProjectId } from '../../composables/useAgentProjectId';
 import AgentModelSelector from '../AgentModelSelector.vue';
 import { computed, watch } from 'vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useAgentBuilderSettingsStore } from '../../agentBuilderSettings.store';
 import { sanitizeModelId } from '../../utils/model-string';
 import { useModelCatalog } from '../../composables/useModelCatalog';

@@ -19,7 +19,7 @@ import {
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 } from '@/app/utils/nodeTypesUtils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import {
 	useInstanceAiEditorCapability,

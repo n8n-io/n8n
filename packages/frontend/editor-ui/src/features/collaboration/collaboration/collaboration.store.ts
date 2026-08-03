@@ -9,7 +9,7 @@ import { TIME } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { STORES } from '@n8n/stores';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';

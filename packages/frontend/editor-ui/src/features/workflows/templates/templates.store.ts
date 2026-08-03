@@ -1,6 +1,6 @@
 import { TEMPLATES_URLS } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { getTemplatePathByRole } from '@/experiments/utils';
 import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
 import type {

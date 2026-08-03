@@ -6,7 +6,7 @@ import { useUsageStore } from '../usage.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { i18n as locale } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';

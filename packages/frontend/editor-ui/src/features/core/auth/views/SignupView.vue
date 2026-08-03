@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import AuthView from './AuthView.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import { computed, onMounted, ref } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';

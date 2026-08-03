@@ -18,7 +18,7 @@ vi.mock('./useProjectAgentsList', () => ({ upsertProjectAgentsListCache }));
 vi.mock('./useAgentNavigation', () => ({
 	useAgentNavigation: () => ({ openBuilder }),
 }));
-vi.mock('@/app/composables/useToast', () => ({ useToast: () => ({ showError }) }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
 vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({ saveCurrentWorkflow }),

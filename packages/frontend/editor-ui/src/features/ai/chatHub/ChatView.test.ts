@@ -195,7 +195,7 @@ describe('ChatView', () => {
 		// The error-toast test below asserts on rendered toast content, which needs
 		// the notifier the app registers at bootstrap. Explicit here because it no
 		// longer arrives as a side effect of importing
-		// `@/app/composables/useToast` (N8N-104).
+		// `@n8n/composables/useToast` (N8N-104).
 		registerToastNotifier();
 
 		pinia = createPinia();

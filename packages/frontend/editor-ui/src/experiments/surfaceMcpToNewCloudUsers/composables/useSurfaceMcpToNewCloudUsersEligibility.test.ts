@@ -12,7 +12,7 @@ vi.mock('@/app/stores/settings.store', () => ({
 	}),
 }));
 
-vi.mock('@/app/stores/cloudPlan.store', () => ({
+vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: () => ({
 		get userIsTrialing() {
 			return mockUserIsTrialing;

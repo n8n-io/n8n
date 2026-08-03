@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
