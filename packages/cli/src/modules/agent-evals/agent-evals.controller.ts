@@ -43,8 +43,9 @@ type RunParam = AgentParam & { runId: string };
  * cancellation, which acts on a run someone else started.
  * Ratings ship with the service that persists them.
  *
- * The list reads take a `take`/`skip` window and answer with a `{ count, data }`
- * page; the count is the unpaginated total so a client can size its pager.
+ * The paged reads — the run list, and a run's cases within its detail — take a
+ * `take`/`skip` window and answer with a `{ count, data }` page, where the count
+ * is the unpaginated total so a client can size its pager.
  */
 @RestController('/projects/:projectId/agents/v2')
 export class AgentEvalsController {
