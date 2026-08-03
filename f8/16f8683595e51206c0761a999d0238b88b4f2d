@@ -1,0 +1,22 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_faa6d2a756ce5f::t_b468216e455d8b 1426-1431,1433-1478
+  ai_agent 1432
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_faa6d2a756ce5f::t_57fb2204cfc430 251-254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f816f8683595e51206c0761a999d0238b88b4f2d",
+  "prompts": {},
+  "sessions": {
+    "s_faa6d2a756ce5f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "49fc79e1-478c-4dfb-b50b-9931f6a3683f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}
