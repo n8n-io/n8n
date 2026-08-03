@@ -76,7 +76,7 @@ function makeTool(handler: ReturnType<typeof vi.fn>): BuiltTool {
 		name: 'extend_trial',
 		description: 'Extend a trial',
 		inputSchema,
-		handler,
+		handler: handler as unknown as BuiltTool['handler'],
 	};
 }
 

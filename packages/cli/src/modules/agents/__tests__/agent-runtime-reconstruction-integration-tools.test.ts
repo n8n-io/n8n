@@ -34,6 +34,7 @@ import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { GoalGraphStateService } from '../goal-graph';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -137,6 +138,7 @@ function makeRuntimeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<GoalGraphStateService>(),
 	);
 }
 
@@ -257,6 +259,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
+			mock<AgentsConfig>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,

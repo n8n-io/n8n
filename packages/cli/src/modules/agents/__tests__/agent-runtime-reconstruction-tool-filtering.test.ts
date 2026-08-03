@@ -23,6 +23,7 @@ import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { GoalGraphStateService } from '../goal-graph';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { Agent } from '../entities/agent.entity';
@@ -140,6 +141,7 @@ function makeService(overrides: {
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
+		mock<GoalGraphStateService>(),
 	);
 
 	return { service, credentialsFinderService, workflowFinderService, workflowRepository };
