@@ -227,7 +227,8 @@ export class McpController {
 		// The handler builds a fresh server per request (complete isolation, no
 		// request-ID collisions across concurrent clients) and serves both the
 		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
-		// clients on this same endpoint.
+		// clients on this same endpoint. Cache hints for the list results live on
+		// the server itself (see mcp.service.ts getServer).
 		const handler = createMcpHandler(
 			async () =>
 				await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), grantedScopes),

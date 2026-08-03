@@ -67,6 +67,19 @@ export const isRateLimitedWriteTool = (mcpName: string | undefined): boolean =>
 	mcpName !== undefined && RATE_LIMITED_WRITE_TOOLS.has(mcpName);
 
 /**
+ * Cache lifetimes (ms) for cacheable MCP results (2026-07-28, SEP-2549). Every
+ * cacheable result stays `cacheScope: 'private'` — the tool list and resources
+ * are filtered per OAuth grant and per feature flag, so a shared cache must
+ * never serve one client's view to another.
+ */
+// Tool/resource lists and server/discover: change only when flags, settings, or
+// the grant change, so a few minutes of client-side caching is safe.
+export const MCP_LIST_CACHE_TTL_MS = 5 * 60 * 1000;
+// The workflow SDK reference is static for a given release (the server restarts
+// on deploy), so it can be cached for much longer.
+export const MCP_SDK_REFERENCE_CACHE_TTL_MS = 60 * 60 * 1000;
+
+/**
  * Triggers supported in production mode for MCP execution
  */
 export const SUPPORTED_PRODUCTION_MCP_TRIGGERS = {
