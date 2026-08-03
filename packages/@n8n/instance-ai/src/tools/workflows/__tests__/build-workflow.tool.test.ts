@@ -487,6 +487,89 @@ describe('createBuildWorkflowTool', () => {
 		);
 	});
 
+	it('updates a workflow created earlier in the run without requesting approval', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+		const tool = createBuildWorkflowTool(context);
+		const suspend = vi.fn();
+
+		const created = await executeTool<BuildToolOutput>(tool, { filePath });
+		// INS-1044: follow-up builds reuse the workflow created by the first build.
+		const updated = await executeTool<BuildToolOutput>(tool, { filePath }, { suspend });
+
+		expect(created).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(updated).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(context.aiCreatedWorkflowIds).toEqual(new Set(['wf-1']));
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('requests approval before updating a pre-existing workflow', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+		const suspend = vi.fn();
+
+		await executeTool(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-existing' },
+			{ suspend },
+		);
+
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Edit Target workflow (ID: wf-existing)?',
+				severity: 'warning',
+			}),
+		);
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('blocks updates to workflows created earlier in the run when admin policy denies them', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				aiCreatedWorkflowIds: new Set(['wf-created']),
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'blocked',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-created',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			workflowId: 'wf-created',
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'permission_blocked',
+			},
+			errors: ['Action blocked by admin'],
+		});
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
 	it('returns conflict remediation when the workflow changed outside the conversation', async () => {
 		const { context, filePath, trackTelemetry } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
