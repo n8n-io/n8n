@@ -13,6 +13,7 @@ describe('OAuthServerConfig', () => {
 		delete process.env.N8N_OAUTH_SERVER_TOKEN_RATE_LIMIT;
 		delete process.env.N8N_OAUTH_SERVER_REVOKE_RATE_LIMIT;
 		delete process.env.N8N_OAUTH_SERVER_WELL_KNOWN_RATE_LIMIT;
+		delete process.env.N8N_OAUTH_SERVER_CIMD_ENABLED;
 	});
 
 	it('applies the documented default limits', () => {
@@ -59,4 +60,14 @@ describe('OAuthServerConfig', () => {
 			expect(config.rateLimitToken).toBe(20);
 		},
 	);
+
+	it('enables CIMD by default', () => {
+		expect(Container.get(OAuthServerConfig).cimdEnabled).toBe(true);
+	});
+
+	it('reads cimdEnabled from N8N_OAUTH_SERVER_CIMD_ENABLED', () => {
+		process.env.N8N_OAUTH_SERVER_CIMD_ENABLED = 'false';
+
+		expect(Container.get(OAuthServerConfig).cimdEnabled).toBe(false);
+	});
 });

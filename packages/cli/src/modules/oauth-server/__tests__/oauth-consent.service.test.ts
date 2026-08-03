@@ -79,6 +79,7 @@ describe('OAuthConsentService', () => {
 			const client = mock<OAuthClient>({
 				id: 'client-123',
 				name: 'Test Client',
+				isCimd: false,
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
@@ -90,6 +91,7 @@ describe('OAuthConsentService', () => {
 				ok: true,
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				isCimd: false,
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
 				previousScopes: undefined,
@@ -144,6 +146,7 @@ describe('OAuthConsentService', () => {
 			const client = mock<OAuthClient>({
 				id: 'client-123',
 				name: 'Test Client',
+				isCimd: false,
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
@@ -155,6 +158,7 @@ describe('OAuthConsentService', () => {
 				ok: true,
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				isCimd: false,
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
 				previousScopes: undefined,
@@ -169,7 +173,7 @@ describe('OAuthConsentService', () => {
 				codeChallenge: 'challenge',
 				state: null,
 			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client', isCimd: false });
 			const scopeTools = { 'workflow:read': ['search_workflows', 'get_workflow_details'] };
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
@@ -193,7 +197,7 @@ describe('OAuthConsentService', () => {
 				state: null,
 				requestedScopes: ['workflow:read', 'execution:read'],
 			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client', isCimd: false });
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
@@ -214,7 +218,7 @@ describe('OAuthConsentService', () => {
 				codeChallenge: 'challenge',
 				state: null,
 			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client', isCimd: false });
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
@@ -241,7 +245,7 @@ describe('OAuthConsentService', () => {
 				state: null,
 				resource: 'https://n8n.example.com/mcp/wf-123',
 			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client', isCimd: false });
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
@@ -257,6 +261,7 @@ describe('OAuthConsentService', () => {
 				ok: true,
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				isCimd: false,
 				resourceName: 'My Workflow',
 				redirectUri: 'https://example.com/callback',
 				scopes: [],
@@ -276,7 +281,7 @@ describe('OAuthConsentService', () => {
 				state: null,
 				resource: 'https://n8n.example.com/mcp-server/http',
 			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client', isCimd: false });
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
@@ -293,6 +298,7 @@ describe('OAuthConsentService', () => {
 				ok: true,
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				isCimd: false,
 				resourceName: undefined,
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
@@ -309,7 +315,7 @@ describe('OAuthConsentService', () => {
 				state: null,
 				resource: 'https://n8n.example.com/mcp/gone',
 			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client', isCimd: false });
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);

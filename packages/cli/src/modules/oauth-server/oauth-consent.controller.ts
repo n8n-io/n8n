@@ -48,6 +48,7 @@ export class OAuthConsentController {
 				data: {
 					clientName: consentDetails.clientName,
 					clientId: consentDetails.clientId,
+					isCimd: consentDetails.isCimd,
 					redirectUri: consentDetails.redirectUri,
 					resourceName: consentDetails.resourceName,
 					scopes: consentDetails.scopes,

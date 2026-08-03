@@ -17,6 +17,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getClientBrand, scopeLabel } from '../clients.utils';
+import McpVerifiedBadge from './McpVerifiedBadge.vue';
 
 const props = defineProps<{
 	client: OAuthClientResponseDto | null;
@@ -70,6 +71,11 @@ function onRevoke() {
 							<N8nIcon v-else icon="mcp" :class="$style.icon" />
 						</span>
 						{{ client.name }}
+						<McpVerifiedBadge
+							v-if="client.isCimd"
+							:label="i18n.baseText('settings.mcp.oAuthClients.verified.badge')"
+							:tooltip="i18n.baseText('settings.mcp.oAuthClients.verified.tooltip')"
+						/>
 					</span>
 				</N8nDialogTitle>
 				<N8nDialogDescription>{{ subtitle }}</N8nDialogDescription>
@@ -82,6 +88,20 @@ function onRevoke() {
 					</N8nText>
 					<N8nText color="text-dark" size="small" data-test-id="mcp-client-details-connected-by">
 						{{ ownerLabel }}
+					</N8nText>
+				</template>
+
+				<template v-if="client.isCimd">
+					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('settings.mcp.oAuthClients.details.clientUrl') }}
+					</N8nText>
+					<N8nText
+						color="text-dark"
+						size="small"
+						:class="$style['client-url']"
+						data-test-id="mcp-client-details-client-url"
+					>
+						{{ client.id }}
 					</N8nText>
 				</template>
 
@@ -172,5 +192,9 @@ function onRevoke() {
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	min-width: 0;
+}
+
+.client-url {
+	word-break: break-all;
 }
 </style>

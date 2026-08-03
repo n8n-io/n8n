@@ -31,4 +31,16 @@ export class OAuthServerConfig {
 	 */
 	@Env('N8N_OAUTH_SERVER_WELL_KNOWN_RATE_LIMIT', rateLimitSchema)
 	rateLimitWellKnown: number = 100;
+
+	/**
+	 * Support Client ID Metadata Documents (CIMD): recognize an HTTPS-URL
+	 * `client_id`, fetch the client's metadata document from that URL, and use
+	 * that verifiable identity instead of requiring Dynamic Client Registration.
+	 * On by default because clients such as Claude already present URL
+	 * `client_id`s. The fetch is always SSRF-guarded regardless of
+	 * `N8N_SSRF_PROTECTION_ENABLED`, since the URL is client-controlled and
+	 * fetched before authentication.
+	 */
+	@Env('N8N_OAUTH_SERVER_CIMD_ENABLED')
+	cimdEnabled: boolean = true;
 }

@@ -21,6 +21,7 @@ describe('OAuthConsentView', () => {
 		const details = {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
+			isCimd: false,
 			redirectUri: 'https://legitimate-client.com/callback',
 			scopes: [],
 		};
@@ -51,6 +52,7 @@ describe('OAuthConsentView', () => {
 		consentStore.consentDetails = {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
+			isCimd: false,
 			resourceName: 'My Workflow',
 			scopes: [],
 		};
@@ -71,6 +73,47 @@ describe('OAuthConsentView', () => {
 
 		expect(getByText('Test MCP Client wants access to your n8n instance')).toBeVisible();
 		expect(getByText('Get a list of your workflows')).toBeVisible();
+	});
+
+	it('hides the verified-identity block for a non-CIMD client', async () => {
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails!);
+
+		const { queryByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(queryByTestId('consent-verified-identity')).toBeNull();
+	});
+
+	it('shows the CIMD trust card with verified signals and no trust checkbox', async () => {
+		consentStore.consentDetails = {
+			clientName: 'Test MCP Client',
+			clientId: 'https://client.example.com/metadata.json',
+			isCimd: true,
+			redirectUri: 'http://localhost/callback',
+			scopes: [],
+		};
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails);
+
+		const { getByTestId, queryByTestId } = renderComponent();
+		await waitAllPromises();
+
+		const card = getByTestId('consent-verified-identity');
+		expect(card).toBeVisible();
+		// Origin is the trust anchor; full document URL is the tooltip + raw-metadata link.
+		expect(getByTestId('consent-verified-url')).toHaveTextContent('client.example.com');
+		// Verifiable signals: domain + where the auth code is sent.
+		expect(card).toHaveTextContent('metadata is served from client.example.com');
+		expect(card).toHaveTextContent('Sends the authorization code to http://localhost/callback');
+		// Honest caveat: name/icon are self-asserted and unreviewed.
+		expect(card).toHaveTextContent("n8n hasn't reviewed this app");
+		// Raw metadata links to the document itself.
+		expect(getByTestId('consent-raw-metadata-link')).toHaveAttribute(
+			'href',
+			'https://client.example.com/metadata.json',
+		);
+		// Verified clients skip the DCR trust warning/checkbox.
+		expect(queryByTestId('consent-redirect-warning')).toBeNull();
+		expect(queryByTestId('consent-redirect-confirm')).toBeNull();
 	});
 
 	it('should show the dedicated error and a Close action when the resource is unavailable', async () => {
@@ -181,6 +224,7 @@ describe('OAuthConsentView', () => {
 		const scopedDetails = {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
+			isCimd: false,
 			redirectUri: 'https://legitimate-client.com/callback',
 			scopes: ['workflow:read', 'workflow:write', 'execution:read'],
 		};

@@ -26,6 +26,15 @@ export class OAuthClient extends WithTimestamps {
 	@Column({ type: Boolean, default: false })
 	isFirstParty: boolean;
 
+	/**
+	 * True for clients resolved from a Client ID Metadata Document (the
+	 * `client_id` is an HTTPS URL). The row is persisted only to satisfy the
+	 * consent/token foreign keys and is excluded from the registered-client cap,
+	 * which exists to bound anonymous DCR registrations.
+	 */
+	@Column({ type: Boolean, default: false })
+	isCimd: boolean;
+
 	@OneToMany('AuthorizationCode', 'client')
 	authorizationCodes: AuthorizationCode[];
 
