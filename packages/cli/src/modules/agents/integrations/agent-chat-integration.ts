@@ -18,6 +18,7 @@ import type {
 	IntegrationContextQueryDefinition,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
+	ReplyExpectation,
 } from './integration-tools';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
@@ -100,6 +101,12 @@ export interface BridgeMessageContextParams {
 	 * thread context that the agent has never seen.
 	 */
 	isNewMention: boolean;
+	/**
+	 * The turn's reply policy ('required' when the platform has none).
+	 * Platforms use 'optional' to skip reply-signalling side effects
+	 * like the thinking status and give the agent a `do_not_respond` action.
+	 */
+	replyExpectation: ReplyExpectation;
 }
 
 export interface ApprovalDecisionMessageParams {
@@ -302,6 +309,16 @@ export abstract class AgentChatIntegration {
 
 	/** Optional text normalization before the message is handed to the agent. */
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
+
+	/**
+	 * Optional per-message reply policy (see `ReplyExpectation`).
+	 * Default (no implementation): 'required'.
+	 */
+	getReplyExpectation?(params: {
+		message: Message<unknown>;
+		isNewMention: boolean;
+		platformAgentContext: PlatformAgentContext;
+	}): ReplyExpectation;
 
 	/** Replacement text for approval cards preserved after a user responds. */
 	formatApprovalDecisionMessage?(params: ApprovalDecisionMessageParams): string | undefined;

@@ -5,7 +5,10 @@
  * WorkflowBuilder with custom validators, composite handlers, and serializers.
  */
 
-import type { GraphNode, NodeInstance, IDataObject } from '../../types/base';
+import type { AuthoredNodeGroup, GraphNode, NodeInstance, IDataObject } from '../../types/base';
+
+/** An authored group with its members resolved to the node IDs the serializer emits. */
+export type ResolvedNodeGroup = Omit<AuthoredNodeGroup, 'members'> & { memberIds: string[] };
 
 // =============================================================================
 // Utility Functions for Validators
@@ -362,7 +365,7 @@ export interface SerializerContext extends PluginContext {
 	 * nodes carry. `id`, when present, is the source group ID (from fromJSON); the serializer
 	 * reuses it, otherwise assigns one.
 	 */
-	readonly nodeGroups?: ReadonlyArray<{ id?: string; name: string; memberIds: string[] }>;
+	readonly nodeGroups?: readonly ResolvedNodeGroup[];
 
 	/**
 	 * Existing group IDs keyed by group name. When a group name matches, the serializer

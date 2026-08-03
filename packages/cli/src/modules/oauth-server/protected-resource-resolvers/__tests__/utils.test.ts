@@ -1,4 +1,10 @@
-import { resourceUrlToWebhookPath, trimSlashes, trimTrailingSlash } from '../utils';
+import {
+	methodQueryString,
+	parseMethodParam,
+	resourceUrlToWebhookPath,
+	trimSlashes,
+	trimTrailingSlash,
+} from '../utils';
 
 describe('resourceUrlToWebhookPath', () => {
 	test('should return the path for a URL under a root-mounted base URL', () => {
@@ -37,6 +43,44 @@ describe('resourceUrlToWebhookPath', () => {
 
 	test('should return undefined for a malformed resource URL', () => {
 		expect(resourceUrlToWebhookPath('not-a-url', 'https://host.example/')).toBeUndefined();
+	});
+
+	test('should drop the query string by default', () => {
+		// only the webhook resolver reads a query; the others match exact paths, so a
+		// stray parameter must not turn into a lookup miss
+		expect(
+			resourceUrlToWebhookPath('https://host.example/mcp/abc?foo=bar', 'https://host.example/'),
+		).toBe('/mcp/abc');
+	});
+
+	test('should preserve the query string when asked (carries the method selector)', () => {
+		expect(
+			resourceUrlToWebhookPath(
+				'https://host.example/webhook/abc?method=GET',
+				'https://host.example/',
+				{ preserveQuery: true },
+			),
+		).toBe('/webhook/abc?method=GET');
+	});
+});
+
+describe('method selector helpers', () => {
+	test('methodQueryString upper-cases the method', () => {
+		expect(methodQueryString('GET')).toBe('?method=GET');
+		expect(methodQueryString('post')).toBe('?method=POST');
+	});
+
+	test('parseMethodParam canonicalises and returns undefined when absent', () => {
+		expect(parseMethodParam('post')).toBe('POST');
+		expect(parseMethodParam(' get ')).toBe('GET');
+		expect(parseMethodParam(null)).toBeUndefined();
+		expect(parseMethodParam(undefined)).toBeUndefined();
+		expect(parseMethodParam('')).toBeUndefined();
+		expect(parseMethodParam('  ')).toBeUndefined();
+	});
+
+	test('methodQueryString and parseMethodParam round-trip', () => {
+		expect(parseMethodParam(methodQueryString('post').replace('?method=', ''))).toBe('POST');
 	});
 });
 

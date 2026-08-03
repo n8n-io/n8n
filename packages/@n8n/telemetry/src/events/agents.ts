@@ -220,6 +220,12 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			]),
 			config_version: z.string(),
 			status: agentStatus,
+			credential_kind: z
+				.enum(['n8n_credits', 'own'])
+				.optional()
+				.describe(
+					'Which kind of model credential the agent now uses. Only set when part is "model".',
+				),
 			session_id: sessionId,
 		}),
 	},

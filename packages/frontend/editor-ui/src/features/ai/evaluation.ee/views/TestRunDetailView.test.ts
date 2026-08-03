@@ -11,7 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { computed } from 'vue';
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 	}),

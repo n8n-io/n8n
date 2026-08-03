@@ -1,7 +1,7 @@
 /**
  * Vocabulary for the upgrade/redirect CTAs driven by `useBasePageRedirectionHelper`.
  * Relocated here from editor-ui's `@/Interface` so the composable carries its own
- * parameter types; `@/Interface` re-exports both for existing importers.
+ * parameter types. The composable is their only consumer.
  */
 
 /** Which surface the user clicked an upgrade CTA from. Reported to telemetry and as the `source` query param. */

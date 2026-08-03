@@ -10,7 +10,7 @@ import {
 	N8nSwitch,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { AI_GATEWAY_MANAGED_TAG, MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
@@ -94,10 +94,6 @@ const configuredMemoryCredential = computed(() => {
 		null
 	);
 });
-
-const isManagedMemoryCredential = computed(
-	() => configuredMemoryCredential.value === AI_GATEWAY_MANAGED_TAG,
-);
 
 watch(
 	projectId,
@@ -292,7 +288,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 							:project-id="projectId"
 							:warn-missing-credentials="true"
 							:bound-credential-id="configuredMemoryCredential"
-							:is-managed-credential="isManagedMemoryCredential"
 							credential-modal-append-to-body
 							data-testid="agent-memory-recall-model-selector"
 							@change="onMemoryRecallModelChange"

@@ -2,14 +2,14 @@ import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import { useReviewInboxStore } from '../reviewInbox.store';
 import WorkflowReviewRequestsView from './WorkflowReviewRequestsView.vue';
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(),
 }));
 

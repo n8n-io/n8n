@@ -37,24 +37,35 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		});
 	});
 
-	it('clears the n8n Connect tag on out-of-scope credential paths (memory worker models)', () => {
-		const result = sanitizeUnknownAgentCredentials(
-			{
-				memory: {
-					observationalMemory: {
-						observerModel: { model: 'openai/gpt-4o-mini', credential: AI_GATEWAY_MANAGED_TAG },
-					},
+	it('preserves the n8n Connect tag on memory worker model credentials', () => {
+		// Memory workers are ordinary chat models, so the gateway can serve them.
+		// Stripping the tag here left the model with an unresolvable empty credential.
+		const workerModel = { model: 'openai/gpt-4o-mini', credential: AI_GATEWAY_MANAGED_TAG };
+		const config = {
+			memory: {
+				observationalMemory: { observerModel: workerModel, reflectorModel: workerModel },
+				episodicMemory: {
+					enabled: true,
+					credential: 'known-cred',
+					extractorModel: workerModel,
+					reflectorModel: workerModel,
 				},
 			},
+		};
+
+		expect(sanitizeUnknownAgentCredentials(config, accessibleCredentialIds)).toEqual(config);
+	});
+
+	it('clears the n8n Connect tag on the episodic memory embedding credential', () => {
+		// That path is served by the AI assistant proxy and only accepts
+		// MANAGED_CREDENTIAL_TOKEN; the gateway tag is not a valid value there.
+		const result = sanitizeUnknownAgentCredentials(
+			{ memory: { episodicMemory: { enabled: true, credential: AI_GATEWAY_MANAGED_TAG } } },
 			accessibleCredentialIds,
 		);
 
 		expect(result).toEqual({
-			memory: {
-				observationalMemory: {
-					observerModel: { model: 'openai/gpt-4o-mini', credential: '' },
-				},
-			},
+			memory: { episodicMemory: { enabled: true, credential: '' } },
 		});
 	});
 
