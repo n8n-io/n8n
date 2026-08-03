@@ -40,6 +40,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 		planRequestsByThread: Map<string, number>;
 		telemetry: { track: Mock };
 		trackConfirmationRequest: (
+			userId: string,
 			threadId: string,
 			confirmationEvent: { payload: Record<string, unknown> },
 		) => void;
@@ -62,23 +63,28 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 	it('marks the first plan review in a thread as first_plan and counts plan items', () => {
 		const service = makeService();
 
-		service.trackConfirmationRequest('thread-a', {
+		service.trackConfirmationRequest('user-1', 'thread-a', {
 			payload: { inputType: 'plan-review', planItems: [{}, {}, {}] },
 		});
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
 			'Builder asked for input',
-			expect.objectContaining({ thread_id: 'thread-a', type: 'first_plan', num_steps: 3 }),
+			expect.objectContaining({
+				user_id: 'user-1',
+				thread_id: 'thread-a',
+				type: 'first_plan',
+				num_steps: 3,
+			}),
 		);
 	});
 
 	it('marks later plan reviews in the same thread as revised_plan', () => {
 		const service = makeService();
 
-		service.trackConfirmationRequest('thread-a', {
+		service.trackConfirmationRequest('user-1', 'thread-a', {
 			payload: { inputType: 'plan-review', planItems: [{}] },
 		});
-		service.trackConfirmationRequest('thread-a', {
+		service.trackConfirmationRequest('user-1', 'thread-a', {
 			payload: { inputType: 'plan-review', planItems: [{}, {}] },
 		});
 
@@ -91,10 +97,10 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 	it('counts plans per thread independently', () => {
 		const service = makeService();
 
-		service.trackConfirmationRequest('thread-a', {
+		service.trackConfirmationRequest('user-1', 'thread-a', {
 			payload: { inputType: 'plan-review', planItems: [{}] },
 		});
-		service.trackConfirmationRequest('thread-b', {
+		service.trackConfirmationRequest('user-1', 'thread-b', {
 			payload: { inputType: 'plan-review', planItems: [{}] },
 		});
 
@@ -106,7 +112,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 	it('passes non-plan input types through unchanged and counts their steps', () => {
 		const service = makeService();
 
-		service.trackConfirmationRequest('thread-a', {
+		service.trackConfirmationRequest('user-1', 'thread-a', {
 			payload: { inputType: 'questions', questions: [{}, {}] },
 		});
 
@@ -120,7 +126,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 	it('derives setup type from setupRequests when no inputType is present', () => {
 		const service = makeService();
 
-		service.trackConfirmationRequest('thread-a', {
+		service.trackConfirmationRequest('user-1', 'thread-a', {
 			payload: { setupRequests: [{}, {}, {}] },
 		});
 
