@@ -23,7 +23,6 @@ withDefaults(defineProps<SegmentControlItemProps>(), {
 			'n8n-segment-control-item': true,
 			[$style.item]: true,
 			[$style.square]: square,
-			[$style.hoverable]: !disabled,
 		}"
 	>
 		<slot>
@@ -86,9 +85,16 @@ withDefaults(defineProps<SegmentControlItemProps>(), {
 }
 
 @media (hover: hover) {
-	.hoverable:hover:not([data-state='checked']):not([data-disabled]) {
+	.item:hover:not([data-state='checked']):not([data-disabled]) {
 		color: var(--text-color);
 		background-color: var(--color--foreground--tint-1);
+	}
+
+	// Progressive enhancement: clear sticky hover while keyboard-navigating.
+	// [role='radiogroup'] is an attribute selector, so CSS modules leave it unhashed.
+	[role='radiogroup']:has(:focus-visible) .item:hover:not([data-state='checked']) {
+		color: var(--text-color--subtle);
+		background-color: transparent;
 	}
 }
 
