@@ -1,9 +1,9 @@
 import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
 import type { ExternalDependencies, IStepExecutor } from '../dependencies';
-import { getPredecessorNodeIds, type GraphNode, type WorkflowGraph } from '../graph';
+import type { GraphNode, WorkflowGraph } from '../graph';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import type { StepError, StepStore } from './step-store';
+import type { StepError, StepRecord, StepStore } from './step-store';
 
 /**
  * Handles the `step:ready` step event: claims the step (`queued → running`),
@@ -27,13 +27,28 @@ export class StepReadyHandler {
 		const claimed = await this.stepStore.claimStep(event.stepId);
 		if (!claimed) return;
 
-		let recorded: boolean;
-		try {
-			const outputs = await this.runStep(event);
-			recorded = await this.stepStore.completeStep(event.stepId, outputs);
-		} catch (error) {
-			recorded = await this.stepStore.failStep(event.stepId, toStepError(error));
+		const [step, execution] = await Promise.all([
+			this.stepStore.loadStep(event.stepId),
+			this.executionStore.loadExecution(event.executionId),
+		]);
+		if (step.executionId !== event.executionId) {
+			throw new UnexpectedError(
+				`step ${step.id} belongs to execution ${step.executionId}, but the event claims ${event.executionId}`,
+			);
 		}
+
+		// Only a failure to run the step fails it. A store error propagates instead —
+		// recording `failed` on a step whose side effects happened would be a lie.
+		let run: { ok: true; outputs: JsonValue } | { ok: false; error: unknown };
+		try {
+			run = { ok: true, outputs: await this.runStep(step, execution) };
+		} catch (error) {
+			run = { ok: false, error };
+		}
+
+		const recorded = run.ok
+			? await this.stepStore.completeStep(event.stepId, run.outputs)
+			: await this.stepStore.failStep(event.stepId, toStepError(run.error));
 
 		// Recording is a CAS on `running`, so losing it means something else took the
 		// step over while we ran — announce only outcomes we actually wrote, and let
@@ -48,12 +63,7 @@ export class StepReadyHandler {
 		});
 	}
 
-	private async runStep(event: StepReadyEvent): Promise<JsonValue> {
-		const [step, execution] = await Promise.all([
-			this.stepStore.loadStep(event.stepId),
-			this.executionStore.loadExecution(event.executionId),
-		]);
-
+	private async runStep(step: StepRecord, execution: ExecutionRecord): Promise<JsonValue> {
 		const node = execution.graph.nodes.find((candidate) => candidate.id === step.nodeId);
 		if (!node) {
 			throw new UnexpectedError(
@@ -86,28 +96,32 @@ export class StepReadyHandler {
 		node: GraphNode,
 		stepId: string,
 	): Promise<JsonValue> {
-		const predecessorIds = getPredecessorNodeIds(execution.graph, node.id);
-		if (predecessorIds.length === 0) {
+		const incoming = execution.graph.edges.filter((edge) => edge.to === node.id);
+		if (incoming.length === 0) {
 			// Steps are planned only for a completed step's successors, so a step
 			// without a predecessor means the graph and the step rows disagree.
 			throw new UnexpectedError(
 				`step ${stepId} runs node ${node.id}, which has no predecessor in the execution graph`,
 			);
 		}
-		if (predecessorIds.length > 1) {
+		// The pass-through below hands over the whole output, so anything but a
+		// single first-output-to-first-input edge would misroute data.
+		// TODO(CAT-2874): route inputs by connection slot.
+		const [edge] = incoming;
+		if (incoming.length > 1 || edge.outputIndex !== 0 || edge.inputIndex !== 0) {
 			throw new UnimplementedError(
-				`step ${stepId} runs node ${node.id}, which has more than one predecessor; combining inputs from several steps is not supported yet`,
+				`step ${stepId} runs node ${node.id}, whose inputs use connection slots; routing by slot is not supported yet`,
 			);
 		}
 
-		const [predecessorId] = predecessorIds;
+		const predecessorId = edge.from;
 		// The trigger's step row is recorded already-completed and carries no
 		// outputs, so its payload comes off the execution instead.
 		// NOTE: proper trigger handling has not been built yet. We'll clean this up
 		// when we get there.
 		if (isTrigger(execution.graph, predecessorId)) return execution.triggerPayload;
 
-		const outputsByNodeId = await this.stepStore.loadStepOutputs(execution.id, predecessorIds);
+		const outputsByNodeId = await this.stepStore.loadStepOutputs(execution.id, [predecessorId]);
 		return outputsByNodeId[predecessorId] ?? null;
 	}
 

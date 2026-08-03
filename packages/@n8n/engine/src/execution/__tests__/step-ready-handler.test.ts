@@ -150,6 +150,41 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
+	it('throws, recording nothing, when the event names an execution the step is not part of', async () => {
+		const stepStore = makeStepStore({ executionId: 'exec-other' });
+		const queue = makeQueue();
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: executor,
+		});
+
+		await expect(handler.handle(event)).rejects.toThrow(
+			'step step-a belongs to execution exec-other, but the event claims exec-1',
+		);
+
+		expect(executor.execute).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
+	it('propagates a failure to record a completed step rather than failing the step', async () => {
+		// the step ran; a write blip must not record it as if the node failed
+		const stepStore = makeStepStore(
+			{},
+			{ completeStep: vi.fn().mockRejectedValue(new Error('connection reset')) },
+		);
+		const queue = makeQueue();
+		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: makeExecutor(),
+		});
+
+		await expect(handler.handle(event)).rejects.toThrow('connection reset');
+
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
 	it('records the error and reports completion when the executor throws', async () => {
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
@@ -216,7 +251,7 @@ describe('StepReadyHandler', () => {
 			expected: { name: 'UnimplementedError', message: 'v1-node' },
 		},
 		{
-			reason: 'it has more than one predecessor',
+			reason: 'more than one edge feeds it (fan-in)',
 			stepId: 'step-b',
 			steps: () => makeStepStore({ id: 'step-b', nodeId: 'b' }),
 			execution: () =>
@@ -228,7 +263,40 @@ describe('StepReadyHandler', () => {
 					},
 				}),
 			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnimplementedError', message: 'more than one' },
+			expected: { name: 'UnimplementedError', message: 'connection slots' },
+		},
+		{
+			reason: 'one node feeds it through two edges',
+			stepId: 'step-b',
+			steps: () => makeStepStore({ id: 'step-b', nodeId: 'b' }),
+			execution: () =>
+				makeExecutionStore({
+					graph: {
+						nodes: graph.nodes,
+						// 'a' connected to b twice still counts per edge, not per node
+						edges: [...graph.edges, { from: 'a', to: 'b', outputIndex: 1, inputIndex: 1 }],
+					},
+				}),
+			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
+			expected: { name: 'UnimplementedError', message: 'connection slots' },
+		},
+		{
+			reason: "its edge leaves the predecessor's second output",
+			stepId: 'step-b',
+			steps: () => makeStepStore({ id: 'step-b', nodeId: 'b' }),
+			execution: () =>
+				makeExecutionStore({
+					graph: {
+						nodes: graph.nodes,
+						edges: [
+							graph.edges[0],
+							// the pass-through would hand b all of a's outputs, not slot 1
+							{ from: 'a', to: 'b', outputIndex: 1, inputIndex: 0 },
+						],
+					},
+				}),
+			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
+			expected: { name: 'UnimplementedError', message: 'connection slots' },
 		},
 		{
 			reason: 'its node has no predecessor in the graph',

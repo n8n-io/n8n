@@ -18,10 +18,14 @@ export class StepWorker {
 				case 'step:ready':
 					await this.readyHandler.handle(message);
 					break;
-				default:
+				default: {
+					// Exhaustive today; the throw guards an off-contract message at runtime.
+					// `message.type`, not `message`: a non-union doesn't narrow to `never`.
+					const unhandled: never = message.type;
 					throw new UnimplementedError(
-						`step worker received an unimplemented message type: ${String(message.type)}`,
+						`step worker received an unimplemented message type: ${String(unhandled)}`,
 					);
+				}
 			}
 		});
 	}
