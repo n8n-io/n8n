@@ -190,6 +190,11 @@ function setDefField(name: string, patch: Partial<TemplatedAuthPlaceholderDef>) 
 	emitSetupUpdate('placeholderDefs', JSON.stringify(defs, null, 2));
 }
 
+// Deliberately does NOT rebuild placeholderDefs: this fires per keystroke on
+// raw JSON, so the template is transiently invalid/half-typed and a rebuild
+// would persist the loss of def metadata (titles, hints, optional flags).
+// Stale defs are inert (only current markers are ever looked up) and defs
+// reconcile to the markers on the next def-card edit (setDefField).
 function onTemplateInput(value: string) {
 	emitSetupUpdate('template', value);
 }
