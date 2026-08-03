@@ -64,7 +64,7 @@ export class RunDataPanel {
 	}
 
 	getActiveDisplayMode() {
-		return this.root.locator('[class*="active"]');
+		return this.root.getByTestId('ndv-run-data-display-mode').getByRole('radio', { checked: true });
 	}
 
 	getPinDataButton() {
