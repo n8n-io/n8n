@@ -2201,6 +2201,7 @@ describe('createWorkflowAdapter', () => {
 		await adapter.publish('wf-new');
 
 		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder published workflow', {
+			user_id: 'user-1',
 			thread_id: 'thread-1',
 			workflow_id: 'wf-new',
 			executed_by: 'ai',
@@ -3259,6 +3260,7 @@ describe('createExecutionAdapter run()', () => {
 		await adapter.run('wf-1');
 
 		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder executed workflow', {
+			user_id: 'user-1',
 			thread_id: 'thread-1',
 			workflow_id: 'wf-1',
 			executed_by: 'ai',

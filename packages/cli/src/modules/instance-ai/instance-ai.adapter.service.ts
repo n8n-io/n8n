@@ -668,6 +668,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 						executed_by: 'ai',
@@ -847,6 +848,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: updated.id,
 					});
@@ -928,6 +930,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 					});
@@ -1258,6 +1261,7 @@ export class InstanceAiAdapterService {
 					if (!threadId) return;
 
 					telemetry.track('Builder executed workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 						executed_by: 'ai',
