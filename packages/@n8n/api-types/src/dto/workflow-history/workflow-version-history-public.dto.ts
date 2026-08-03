@@ -9,8 +9,8 @@ import { Z } from '../../zod-class';
 export const workflowVersionListItemPublicSchema = workflowHistoryListItemSchema
 	.omit({ autosaved: true })
 	.extend({
-		createdAt: z.string().datetime().describe('When this version was created'),
-		updatedAt: z.string().datetime().describe('When this version was last updated'),
+		createdAt: z.string().datetime(),
+		updatedAt: z.string().datetime(),
 	});
 
 export class WorkflowVersionHistoryListPublicDto extends Z.class({
