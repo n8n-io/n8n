@@ -697,10 +697,6 @@ export type TargetNodeParameterContext = {
 	parameterPath: string;
 };
 
-// Relocated to `@n8n/stores/notifications.store` alongside the notifications
-// store; re-exported here for existing importers.
-export type { NotificationOptions } from '@n8n/stores/notifications.store';
-
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
 	| typeof TRIGGER_NODE_CREATOR_VIEW
