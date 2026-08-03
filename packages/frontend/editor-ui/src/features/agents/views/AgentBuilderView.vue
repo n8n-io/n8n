@@ -193,6 +193,8 @@ async function onSendPreviewToAssistant(executionId?: string) {
  *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
+let disposed = false;
+let latestSessionsFetchRequestId = 0;
 /**
  * No agent row exists behind `agentId` yet. The id was minted by whoever opened
  * this artifact, so the config edits below can create the agent under it at the
@@ -501,10 +503,7 @@ function sessionIdForPreview(): string | undefined {
 	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id;
 }
 
-async function openPreview(preferredSessionId?: string) {
-	const sessionId = preferredSessionId ?? sessionIdForPreview();
-	activeChatSessionId.value = sessionId ?? null;
-
+function previewRoute(sessionId?: string): RouteLocationRaw {
 	const {
 		[CONTINUE_SESSION_ID_PARAM]: _dropped,
 		prompt: _prompt,
@@ -515,15 +514,39 @@ async function openPreview(preferredSessionId?: string) {
 		query[CONTINUE_SESSION_ID_PARAM] = sessionId;
 	}
 
-	await router.push({
+	return {
 		name: AGENT_PREVIEW_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
 		query,
-	});
+	};
+}
+
+async function openPreview(preferredSessionId?: string) {
+	const sessionId = preferredSessionId ?? sessionIdForPreview();
+	activeChatSessionId.value = sessionId ?? null;
+	await router.push(previewRoute(sessionId));
+}
+
+function openSessionTarget(target: RouteLocationRaw) {
+	if (isArtifactMode.value) {
+		window.open(router.resolve(target).href, '_blank');
+		return;
+	}
+
+	void router.push(target);
+}
+
+function openSession(threadId: string) {
+	if (!isArtifactMode.value) {
+		void openPreview(threadId);
+		return;
+	}
+
+	openSessionTarget(previewRoute(threadId));
 }
 
 function openSessionTrace(target: { agentId: string; threadId: string }) {
-	void router.push({
+	openSessionTarget({
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: {
 			projectId: projectId.value,
@@ -1259,6 +1282,7 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 }
 
 async function initialize() {
+	const sessionsFetchRequestId = ++latestSessionsFetchRequestId;
 	clearTimeout(externalRefreshTimer);
 	// A refresh queued for the previous agent must not fire against this one.
 	initialized.value = false;
@@ -1337,6 +1361,7 @@ async function initialize() {
 		sessionsStore.stopAutoRefresh();
 		if (!isUnsaved.value) {
 			void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
+				if (disposed || sessionsFetchRequestId !== latestSessionsFetchRequestId) return;
 				sessionsStore.startAutoRefresh();
 			});
 		}
@@ -1372,6 +1397,8 @@ async function initialize() {
 watch([agentId, () => props.artifactAgentPending], initialize, { immediate: true });
 
 onBeforeUnmount(() => {
+	disposed = true;
+	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
 	clearTimeout(externalRefreshTimer);
 	sessionsStore.stopAutoRefresh();
@@ -1652,7 +1679,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
-					@open-session="openPreview"
+					@open-session="openSession"
 					@view-session-trace="onViewSessionTrace"
 					@view-parent-trace="openSessionTrace"
 				/>

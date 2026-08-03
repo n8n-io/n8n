@@ -350,7 +350,7 @@ describe('AgentSessionsListView', () => {
 		expect(fetchThreads).toHaveBeenCalledExactlyOnceWith('project-1', 'agent-1');
 		expect(startAutoRefresh).toHaveBeenCalledTimes(1);
 		const visibilityListenerCall = documentAddEventListenerSpy.mock.calls.find(
-			([eventName]) => eventName === 'visibilitychange',
+			(call: unknown[]) => call[0] === 'visibilitychange',
 		);
 		expect(visibilityListenerCall).toBeDefined();
 

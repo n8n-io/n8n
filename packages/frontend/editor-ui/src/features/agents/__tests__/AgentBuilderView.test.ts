@@ -15,6 +15,9 @@ import { agentsEventBus } from '../agents.eventBus';
 
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
+const routerResolve = vi.fn((to: { name?: string; params?: Record<string, string> }) => ({
+	href: `/${to.name ?? ''}/${Object.values(to.params ?? {}).join('/')}`,
+}));
 const routeQuery: Record<string, string | undefined> = {};
 let routeName = 'AgentBuilderView';
 const openModalWithDataMock = vi.fn();
@@ -48,9 +51,7 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		push: routerPush,
 		replace: routerReplace,
-		resolve: (to: { name?: string; params?: Record<string, string> }) => ({
-			href: `/${to.name ?? ''}/${Object.values(to.params ?? {}).join('/')}`,
-		}),
+		resolve: routerResolve,
 	}),
 	useRoute: () => ({
 		name: routeName,
@@ -126,6 +127,9 @@ const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
 const getAgentConfigValidationMock = vi.fn().mockResolvedValue({ status: 'valid', issues: [] });
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
+const fetchSessionThreadsMock = vi.fn().mockResolvedValue(undefined);
+const startSessionAutoRefreshMock = vi.fn();
+const stopSessionAutoRefreshMock = vi.fn();
 
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
@@ -260,9 +264,9 @@ vi.mock('../agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({
 		threads: sessionThreads,
 		loading: false,
-		fetchThreads: vi.fn().mockResolvedValue(undefined),
-		startAutoRefresh: vi.fn(),
-		stopAutoRefresh: vi.fn(),
+		fetchThreads: fetchSessionThreadsMock,
+		startAutoRefresh: startSessionAutoRefreshMock,
+		stopAutoRefresh: stopSessionAutoRefreshMock,
 		reset: vi.fn(),
 	}),
 }));
@@ -514,6 +518,11 @@ function resetViewMocks() {
 	vi.clearAllMocks();
 	routerPush.mockReset();
 	routerReplace.mockReset();
+	routerResolve.mockClear();
+	fetchSessionThreadsMock.mockReset();
+	fetchSessionThreadsMock.mockResolvedValue(undefined);
+	startSessionAutoRefreshMock.mockReset();
+	stopSessionAutoRefreshMock.mockReset();
 	openModalWithDataMock.mockReset();
 	closeModalMock.mockReset();
 	routeName = 'AgentBuilderView';
@@ -868,6 +877,24 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(warmAgentKnowledgeSandboxMock).not.toHaveBeenCalled();
 	});
 
+	it('does not restart session polling when its fetch resolves after unmount', async () => {
+		const deferredFetch = Promise.withResolvers<undefined>();
+		fetchSessionThreadsMock.mockReturnValueOnce(deferredFetch.promise);
+		const wrapper = await renderView();
+
+		expect(fetchSessionThreadsMock).toHaveBeenCalledExactlyOnceWith('p1', 'a1');
+		startSessionAutoRefreshMock.mockClear();
+		stopSessionAutoRefreshMock.mockClear();
+
+		wrapper.unmount();
+		expect(stopSessionAutoRefreshMock).toHaveBeenCalledTimes(1);
+
+		deferredFetch.resolve(undefined);
+		await flushPromises();
+
+		expect(startSessionAutoRefreshMock).not.toHaveBeenCalled();
+	});
+
 	it('shows the manual editor for unbuilt agents', async () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
@@ -915,8 +942,10 @@ describe('AgentBuilderView — preview routing', () => {
 	});
 
 	it('opens the selected session from the editor intent in preview', async () => {
+		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const wrapper = await renderView();
 		routerPush.mockClear();
+		routerResolve.mockClear();
 
 		wrapper
 			.findComponent({ name: 'AgentBuilderEditorColumn' })
@@ -928,11 +957,15 @@ describe('AgentBuilderView — preview routing', () => {
 			params: { projectId: 'p1', agentId: 'a1' },
 			query: { continueSessionId: 'thread-1' },
 		});
+		expect(routerResolve).not.toHaveBeenCalled();
+		expect(windowOpen).not.toHaveBeenCalled();
 	});
 
 	it('opens the selected session trace route from the editor intent', async () => {
+		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const wrapper = await renderView();
 		routerPush.mockClear();
+		routerResolve.mockClear();
 
 		wrapper
 			.findComponent({ name: 'AgentBuilderEditorColumn' })
@@ -943,11 +976,15 @@ describe('AgentBuilderView — preview routing', () => {
 			name: 'AgentSessionDetailView',
 			params: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1' },
 		});
+		expect(routerResolve).not.toHaveBeenCalled();
+		expect(windowOpen).not.toHaveBeenCalled();
 	});
 
 	it('opens the parent session trace route from the editor intent', async () => {
+		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const wrapper = await renderView();
 		routerPush.mockClear();
+		routerResolve.mockClear();
 
 		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('view-parent-trace', {
 			agentId: 'parent-agent-1',
@@ -963,9 +1000,12 @@ describe('AgentBuilderView — preview routing', () => {
 				threadId: 'parent-thread-1',
 			},
 		});
+		expect(routerResolve).not.toHaveBeenCalled();
+		expect(windowOpen).not.toHaveBeenCalled();
 	});
 
-	it('routes session intents with artifact project and agent ids', async () => {
+	it('opens artifact session intents in new tabs with artifact project and agent ids', async () => {
+		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -976,36 +1016,56 @@ describe('AgentBuilderView — preview routing', () => {
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
 		routerPush.mockClear();
+		routerResolve.mockClear();
 		editor.vm.$emit('open-session', 'thread-1');
 		await flushPromises();
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+		const previewTarget = {
 			name: 'AgentPreviewView',
 			params: { projectId: 'p2', agentId: 'a2' },
 			query: { continueSessionId: 'thread-1' },
-		});
+		};
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(previewTarget);
+		expect(windowOpen).toHaveBeenCalledExactlyOnceWith('/AgentPreviewView/p2/a2', '_blank');
 
 		routerPush.mockClear();
+		routerResolve.mockClear();
+		windowOpen.mockClear();
 		editor.vm.$emit('view-session-trace', 'thread-2');
 		await nextTick();
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+		const traceTarget = {
 			name: 'AgentSessionDetailView',
 			params: { projectId: 'p2', agentId: 'a2', threadId: 'thread-2' },
-		});
+		};
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(traceTarget);
+		expect(windowOpen).toHaveBeenCalledExactlyOnceWith(
+			'/AgentSessionDetailView/p2/a2/thread-2',
+			'_blank',
+		);
 
 		routerPush.mockClear();
+		routerResolve.mockClear();
+		windowOpen.mockClear();
 		editor.vm.$emit('view-parent-trace', {
 			agentId: 'parent-agent-1',
 			threadId: 'parent-thread-1',
 		});
 		await nextTick();
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+		const parentTraceTarget = {
 			name: 'AgentSessionDetailView',
 			params: {
 				projectId: 'p2',
 				agentId: 'parent-agent-1',
 				threadId: 'parent-thread-1',
 			},
-		});
+		};
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(parentTraceTarget);
+		expect(windowOpen).toHaveBeenCalledExactlyOnceWith(
+			'/AgentSessionDetailView/p2/parent-agent-1/parent-thread-1',
+			'_blank',
+		);
 	});
 
 	it('opens the preview route in the same tab from artifact mode', async () => {
