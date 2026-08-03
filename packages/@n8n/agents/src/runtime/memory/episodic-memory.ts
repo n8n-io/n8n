@@ -13,6 +13,7 @@ import { Tool } from '../../sdk/tool';
 import type {
 	BuiltEpisodicMemoryStore,
 	BuiltMemory,
+	BuiltTelemetry,
 	EpisodicMemoryConfig,
 	EpisodicMemoryEntry,
 	EpisodicMemoryExtractionCandidate,
@@ -71,6 +72,8 @@ export interface RunEpisodicMemoryIndexerOpts {
 	threadId: string;
 	now?: Date;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
+	agentName?: string;
 }
 
 export type RunEpisodicMemoryIndexerResult =
@@ -152,16 +155,35 @@ export async function runEpisodicMemoryIndexer(
 
 	const savedEntries: EpisodicMemoryEntry[] = [];
 	if (candidates.length > 0) {
-		const { embedMany } = await import('ai');
-		const { embeddings, usage } = await embedMany({
-			model: normalized.embedder,
-			values: candidates.map((entry) => entry.content),
-		});
-		incrementTokenCountFromUsage(opts.executionCounter, usage);
-		for (const [index, candidate] of candidates.entries()) {
-			const saved = await saveCandidate(opts, normalized, candidate, embeddings[index]);
-			if (saved) savedEntries.push(saved);
-		}
+		await withMemorySpan(
+			'save_memory',
+			opts.agentName ?? 'agent',
+			opts.telemetry,
+			{
+				types: ['agent'],
+				owners: [opts.scope.resourceId],
+				...inferMemoryStoreAttributes(opts.memory),
+			},
+			async () => {
+				const { embedMany } = await import('ai');
+				const { embeddings, usage } = await embedMany({
+					model: normalized.embedder,
+					values: candidates.map((entry) => entry.content),
+				});
+				incrementTokenCountFromUsage(opts.executionCounter, usage);
+				for (const [index, candidate] of candidates.entries()) {
+					const saved = await saveCandidate(opts, normalized, candidate, embeddings[index]);
+					if (saved) savedEntries.push(saved);
+				}
+				return {
+					result: undefined,
+					attributes: {
+						ids: savedEntries.map((entry) => entry.id),
+						operations: savedEntries.map(() => 'created' as const),
+					},
+				};
+			},
+		);
 	}
 
 	if (savedEntries.length > 0 && normalized.reflect) {

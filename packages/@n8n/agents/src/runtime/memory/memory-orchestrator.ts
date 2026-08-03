@@ -391,7 +391,7 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions,
 		observationTasks: Array<Promise<unknown>>,
 		executionCounter?: AgentExecutionCounter,
-		_telemetry?: BuiltTelemetry,
+		telemetry?: BuiltTelemetry,
 	): void {
 		const { memory, episodicMemory } = this.config;
 		if (
@@ -417,6 +417,8 @@ export class MemoryOrchestrator {
 				observationScope,
 				threadId: persistence.threadId,
 				executionCounter,
+				telemetry,
+				agentName: this.config.name,
 			});
 		});
 	}

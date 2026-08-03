@@ -1,7 +1,7 @@
 import { embed, embedMany } from 'ai';
 
-import type { BuiltTelemetry } from '../../types';
 import type {
+	BuiltTelemetry,
 	EpisodicMemoryEntry,
 	EpisodicMemoryExtractFn,
 	EpisodicMemoryReflectFn,
@@ -1156,5 +1156,115 @@ describe('runEpisodicMemoryIndexer', () => {
 				observationScopeId: 'thread-1',
 			}),
 		).resolves.toMatchObject({ lastIndexedObservationId: observation.id });
+	});
+
+	it('opens a save_memory span with created operations for the saved entry ids', async () => {
+		const memory = new InMemoryMemory();
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User switched memory store to Postgres.',
+				createdAt: new Date('2026-05-12T10:00:00.000Z'),
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User switched memory store to Postgres.',
+						sources: [
+							{ observationId: observation.id, evidence: 'User switched memory store to Postgres' },
+						],
+					},
+				],
+			});
+		const span = {
+			end: vi.fn(),
+			recordException: vi.fn(),
+			setStatus: vi.fn(),
+			setAttributes: vi.fn(),
+		};
+		const tracer = {
+			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
+				const spanFn = fn as (spanValue: typeof span) => Promise<unknown>;
+				return await spanFn(span);
+			}),
+		};
+		const telemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+			tracer,
+		} as never;
+
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+			now: new Date('2026-05-12T10:01:00.000Z'),
+			telemetry,
+			agentName: 'my-agent',
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 1, observationsIndexed: 1 });
+		expect(tracer.startActiveSpan).toHaveBeenCalledTimes(1);
+		const [name, options] = tracer.startActiveSpan.mock.calls[0];
+		expect(name).toBe('save_memory');
+		expect((options as { attributes: Record<string, unknown> }).attributes).toMatchObject({
+			'gen_ai.operation.name': 'save_memory',
+			'gen_ai.agent.name': 'my-agent',
+			'gen_ai.memory.types': ['agent'],
+			'gen_ai.memory.owners': ['user-1'],
+			'gen_ai.memory.store.types': ['in_memory'],
+		});
+		expect(span.setAttributes).toHaveBeenCalledWith(
+			expect.objectContaining({ 'gen_ai.memory.operations': ['created'] }),
+		);
+	});
+
+	it('does not open a span when there are no candidates to save', async () => {
+		const memory = new InMemoryMemory();
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User investigated webhook retries.',
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'Webhook retries were caused by a bad API key.',
+						sources: [{ observationId: observation.id, evidence: 'bad API key' }],
+					},
+				],
+			});
+		const tracer = { startActiveSpan: vi.fn() };
+		const telemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+			tracer,
+		} as never;
+
+		// This extraction is rejected by validateCandidates (evidence text isn't
+		// found verbatim in the source observation), so candidates.length === 0.
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+			telemetry,
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 0, observationsIndexed: 1 });
+		expect(tracer.startActiveSpan).not.toHaveBeenCalled();
 	});
 });
