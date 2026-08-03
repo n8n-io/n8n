@@ -164,4 +164,60 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 			expect.objectContaining({ type: 'credential-setup', contains_templated_cred: false }),
 		);
 	});
+
+	it("emits 'Builder specced templated cred' with the recipe fields, once per recipe", () => {
+		const service = makeService();
+		const setupHint = {
+			template: { headers: { Authorization: 'Key {{api_key}}' } },
+			placeholders: [{ name: 'api_key', title: 'fal.ai API key', type: 'password' }],
+			testUrl: 'https://api.fal.ai/v1/models/usage',
+			docsUrl: 'https://fal.ai/dashboard/keys',
+			serviceHost: 'fal.run',
+		};
+
+		service.trackConfirmationRequest('thread-a', {
+			payload: {
+				credentialRequests: [
+					{ credentialType: 'httpHeaderAuth' },
+					{ credentialType: 'httpTemplatedCustomAuth', setupHint },
+				],
+			},
+		});
+
+		expect(service.telemetry.track).toHaveBeenCalledWith('Builder specced templated cred', {
+			thread_id: 'thread-a',
+			// a fresh nanoid, shared with the paired 'Builder asked for input' event
+			input_thread_id: expect.any(String),
+			template: setupHint.template,
+			placeholders: setupHint.placeholders,
+			test_url: setupHint.testUrl,
+			docs_url: setupHint.docsUrl,
+			service_host: setupHint.serviceHost,
+			accepted_status_codes: undefined,
+		});
+		expect(
+			service.telemetry.track.mock.calls.filter(
+				([event]) => event === 'Builder specced templated cred',
+			),
+		).toHaveLength(1);
+	});
+
+	it('does not emit the specced event for requests without a parseable recipe', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest('thread-a', {
+			payload: {
+				credentialRequests: [
+					{ credentialType: 'httpHeaderAuth' },
+					// malformed: placeholders must have at least one entry
+					{ credentialType: 'httpTemplatedCustomAuth', setupHint: { template: {} } },
+				],
+			},
+		});
+
+		expect(service.telemetry.track).not.toHaveBeenCalledWith(
+			'Builder specced templated cred',
+			expect.anything(),
+		);
+	});
 });

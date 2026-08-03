@@ -9,6 +9,7 @@ import type {
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
+	credentialSetupHintSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
@@ -5613,6 +5614,27 @@ export class InstanceAiService {
 			num_steps: numSteps,
 			contains_templated_cred: containsTemplatedCred,
 		});
+
+		// Recipe content at spec time — production visibility into template and
+		// link quality (the offline eval suite grades the same fields). One event
+		// per recipe; secret-free by construction: recipes are agent-authored
+		// before any user input.
+		for (const request of credentialRequests) {
+			if (typeof request !== 'object' || request === null || !('setupHint' in request)) continue;
+			const parsedHint = credentialSetupHintSchema.safeParse(request.setupHint);
+			if (!parsedHint.success) continue;
+			const hint = parsedHint.data;
+			this.telemetry.track('Builder specced templated cred', {
+				thread_id: threadId,
+				input_thread_id: inputThreadId,
+				template: hint.template,
+				placeholders: hint.placeholders,
+				test_url: hint.testUrl,
+				docs_url: hint.docsUrl,
+				service_host: hint.serviceHost,
+				accepted_status_codes: hint.acceptedStatusCodes,
+			});
+		}
 	}
 
 	private async finalizeCancelledSuspendedRun(
