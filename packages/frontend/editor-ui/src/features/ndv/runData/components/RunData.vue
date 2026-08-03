@@ -2267,24 +2267,27 @@ defineExpose({ enterEditMode });
 	border-top: 0;
 	border-left: 0;
 	border-right: 0;
-	height: 40px;
+	height: var(--ndv--header-height);
 }
 
 .header {
 	display: flex;
 	align-items: center;
+	height: var(--ndv--header-height);
 	margin-bottom: var(--ndv--spacing);
 	/* Bottom padding keeps SegmentControl focus rings (outline-offset) inside the
 	   overflow-y: hidden clip; top/sides match the previous spacing. */
-	padding: var(--ndv--spacing) var(--spacing--3xs) var(--spacing--4xs) var(--ndv--spacing);
+	padding: 0 var(--spacing--4xs) 0 var(--spacing--sm);
 	position: relative;
 	/* Scroll overflowing header controls within the header itself, so they stay
 	   reachable on narrow panels without dragging the whole panel's background along */
+	border-bottom: var(--border);
 	overflow-x: auto;
 	overflow-y: hidden;
 	min-height: calc(30px + var(--ndv--spacing));
 	scrollbar-width: thin;
 	container-type: inline-size;
+	flex-shrink: 0;
 
 	.compact & {
 		height: var(--logs-panel--header-height);

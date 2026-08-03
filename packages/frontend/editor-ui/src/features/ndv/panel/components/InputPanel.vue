@@ -440,7 +440,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		@collapsing-table-column-changed="handleChangeCollapsingColumn"
 	>
 		<template #header>
-			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
+			<div :class="[$style.titleSection]">
 				<N8nText
 					:bold="true"
 					color="text-light"
@@ -722,9 +722,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	}
 }
 
-.titleSectionV2 {
-	padding-left: var(--spacing--4xs);
-}
 .inputModeTab {
 	margin-left: auto;
 }

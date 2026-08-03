@@ -345,7 +345,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		@collapsing-table-column-changed="handleChangeCollapsingColumn"
 	>
 		<template #header>
-			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
+			<div :class="[$style.titleSection]">
 				<template v-if="hasAiMetadata">
 					<N8nSegmentControl
 						v-model="outputMode"
@@ -561,10 +561,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	> * {
 		margin-right: var(--spacing--2xs);
 	}
-}
-
-.titleSectionV2 {
-	padding-left: var(--spacing--4xs);
 }
 
 .title {
