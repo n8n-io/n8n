@@ -387,6 +387,19 @@ export interface InstanceAiExecutionService {
 			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
+			/**
+			 * Marks the run as a build verification rather than a run the user asked
+			 * for. Verification uses a production execution mode so triggers behave
+			 * realistically, which would otherwise make a failed attempt dispatch the
+			 * workflow's error workflow as if production had broken.
+			 */
+			isVerificationRun?: boolean;
+			/**
+			 * Connections removed from this run's ephemeral workflow copy (the saved
+			 * workflow is untouched). Used to sever a loop edge so scripted wait-gate
+			 * verification passes are acyclic.
+			 */
+			omitConnections?: Array<{ source: string; target: string }>;
 			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;
@@ -893,6 +906,8 @@ export interface BuilderDelegateSession {
 	 * can outlive the parent trace's root finalization.
 	 */
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
+	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
+	abortSignal: AbortSignal;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
@@ -963,6 +978,13 @@ export interface InstanceAiContext {
 	 */
 	tracing?: InstanceAiTraceContext;
 	projectId?: string;
+	/**
+	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
+	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
+	 * destructiveness classification), which otherwise resolve an eval model
+	 * from environment API keys that proxy-managed deployments don't have.
+	 */
+	modelId?: ModelConfig;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -971,7 +993,7 @@ export interface InstanceAiContext {
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
-	agentBuilderTarget?: { agentId: string; projectId: string };
+	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**

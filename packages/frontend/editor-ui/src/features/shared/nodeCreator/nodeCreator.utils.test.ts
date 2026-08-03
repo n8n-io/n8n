@@ -916,12 +916,16 @@ describe('NodeCreator - utils', () => {
 			},
 		);
 
+<<<<<<< HEAD
 		it('should show Early preview badge on the AI Agent V1 node', () => {
+=======
+		it('should show Preview badge on the AI Agent V2 node', () => {
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			mockSettingsStore(true);
 			const [result] = finalizeItems([
 				makeAgentNode(MESSAGE_AN_AGENT_NODE_TYPE),
 			]) as NodeCreateElement[];
-			expect(result.properties.tag).toEqual({ preview: true, text: 'Early preview' });
+			expect(result.properties.tag).toEqual({ preview: true, text: 'Preview' });
 		});
 
 		it('should keep a pre-set tag', () => {
@@ -1214,9 +1218,15 @@ describe('NodeCreator - utils', () => {
 		});
 
 		// The legacy node is an exact "AI Agent" match and carries the popularity factor,
+<<<<<<< HEAD
 		// so the AI Agent V1 successor ranking first proves the boost outweighs both.
 		const legacyAgent = makeNode(AGENT_NODE_TYPE, 'AI Agent', ['agent']);
 		const messageAnAgent = makeNode(MESSAGE_AN_AGENT_NODE_TYPE, 'AI Agent V1', [
+=======
+		// so the AI Agent V2 successor ranking first proves the boost outweighs both.
+		const legacyAgent = makeNode(AGENT_NODE_TYPE, 'AI Agent', ['agent']);
+		const messageAnAgent = makeNode(MESSAGE_AN_AGENT_NODE_TYPE, 'AI Agent V2', [
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			'agent',
 			'ai',
 			'sdk',
@@ -1224,7 +1234,11 @@ describe('NodeCreator - utils', () => {
 		]);
 		const popularity = { [AGENT_NODE_TYPE]: 98.2 };
 
+<<<<<<< HEAD
 		it('should rank the AI Agent V1 node above the legacy agent despite its popularity', () => {
+=======
+		it('should rank the AI Agent V2 node above the legacy agent despite its popularity', () => {
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			const result = searchNodes('AI Agent', [legacyAgent, messageAnAgent], { popularity });
 			expect(result.map((item) => item.key)).toEqual([MESSAGE_AN_AGENT_NODE_TYPE, AGENT_NODE_TYPE]);
 		});

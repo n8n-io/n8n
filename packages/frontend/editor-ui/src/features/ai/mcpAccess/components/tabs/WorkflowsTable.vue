@@ -14,10 +14,10 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
+import router from '@/app/router';
 import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
-import router from '@/app/router';
 import { getResourcePermissions } from '@n8n/permissions';
 
 type Props = {

@@ -14,6 +14,8 @@ import type { WorkflowDataTableRequirement } from '../data-table/data-table.type
 import type { WorkflowNodeTypeSource } from './node-type-usage';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import type { WorkflowExportRequirements } from '../requirements.types';
+import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
+import type { WorkflowTagUsage } from '../tag/tag.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
@@ -21,6 +23,7 @@ export interface WorkflowExportRequest {
 	user: User;
 	workflowIds: string[];
 	writer: PackageWriter;
+	includeTags: boolean;
 
 	// Directory the workflow is written under. e.g. folders/{folderId}/
 	basePrefix?: string;
@@ -39,6 +42,7 @@ export class WorkflowExporter {
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
+		private readonly tagRequirementsExtractor: TagRequirementsExtractor,
 	) {}
 
 	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
@@ -46,7 +50,7 @@ export class WorkflowExporter {
 			request.workflowIds,
 			request.user,
 			['workflow:export'],
-			{ includeParentFolder: true },
+			{ includeParentFolder: true, includeTags: request.includeTags },
 		);
 
 		await assertEveryRequestedEntityAccessible(
@@ -61,6 +65,10 @@ export class WorkflowExporter {
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
+<<<<<<< HEAD
+=======
+		const tags: WorkflowTagUsage[] = [];
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		const nodeTypes: WorkflowNodeTypeSource[] = [];
 		const fileNames = new UniqueFilenameAllocator(
 			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
@@ -69,7 +77,9 @@ export class WorkflowExporter {
 
 		for (const workflow of workflowsForExport) {
 			const target = fileNames.allocate(workflow.name);
-			const serialized = this.workflowSerializer.serialize(workflow);
+			const serialized = this.workflowSerializer.serialize(workflow, {
+				includeTags: request.includeTags,
+			});
 
 			request.writer.writeDirectory(target);
 			request.writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
@@ -83,10 +93,18 @@ export class WorkflowExporter {
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(workflow));
+<<<<<<< HEAD
 			nodeTypes.push({ workflowId: workflow.id, nodes: workflow.nodes ?? [] });
 		}
 
 		return { entries, requirements: { credentials, dataTables, variables, nodeTypes } };
+=======
+			tags.push(...this.tagRequirementsExtractor.extract(workflow));
+			nodeTypes.push({ workflowId: workflow.id, nodes: workflow.nodes ?? [] });
+		}
+
+		return { entries, requirements: { credentials, dataTables, variables, tags, nodeTypes } };
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	}
 
 	private orderWorkflowsByRequest(

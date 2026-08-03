@@ -1,7 +1,7 @@
-import type { TelemetrySettings } from 'ai';
+import type { TelemetryOptions } from 'ai';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { buildExperimentalTelemetry } from './telemetry-options';
+import { buildAiSdkTelemetry } from './telemetry-options';
 import { Telemetry } from '../../sdk/telemetry';
 import type { AttributeValue, BuiltProviderTool, BuiltTelemetry, BuiltTool } from '../../types';
 import type { ExecutionOptions } from '../../types/sdk/agent';
@@ -126,7 +126,7 @@ function buildGenAiRootAttributes(
 /**
  * Owns all telemetry concerns for a single agent runtime: resolving the
  * effective telemetry config, mapping it to the AI SDK's
- * `experimental_telemetry` shape, building LangSmith/AI-SDK span attributes,
+ * `telemetry` shape, building LangSmith/AI-SDK span attributes,
  * and wrapping the generate/stream loops and tool calls in active spans.
  *
  * Keeps provider-specific attribute formatting out of the core loop. Holds a
@@ -156,11 +156,11 @@ export class RuntimeTelemetry {
 		await Telemetry.forceFlush(this.resolve(options));
 	}
 
-	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
+	/** Map resolved telemetry to the AI SDK's telemetry shape. */
 	buildTelemetryOptions(options?: ExecutionOptions): {
-		experimental_telemetry?: TelemetrySettings;
+		telemetry?: TelemetryOptions;
 	} {
-		return buildExperimentalTelemetry(this.resolve(options), {
+		return buildAiSdkTelemetry(this.resolve(options), {
 			fallbackFunctionId: this.config.name,
 		});
 	}
@@ -170,8 +170,11 @@ export class RuntimeTelemetry {
 		options: ExecutionOptions | undefined,
 		runId: string,
 		fn: () => Promise<T>,
+<<<<<<< HEAD
 		// Seam for TRUST-308 (nesting delegated sub-agent spans under the parent
 		// agent trace) — unused today, every root span is self-contained.
+=======
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		links?: OpaqueSpanLink[],
 	): Promise<T> {
 		const t = this.resolve(options);
@@ -183,9 +186,19 @@ export class RuntimeTelemetry {
 		return await t.tracer.startActiveSpan(
 			spanName,
 			{
+<<<<<<< HEAD
 				// Self-contained trace regardless of ambient context, so the span
 				// tree's shape is identical no matter how the agent was invoked.
 				root: true,
+=======
+				// Self-contained trace regardless of ambient context by default, so
+				// a top-level agent run's span tree is identical no matter how it was
+				// invoked. `rootAnchored: false` (set by `deriveSubAgentTelemetry` for
+				// delegated sub-agent runs) omits `root` instead, so the span nests
+				// under whatever OTel context is already active — the parent's
+				// delegate-tool-call span, when run in-process inside it.
+				...(t.rootAnchored === false ? {} : { root: true }),
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				...(links?.length ? { links } : {}),
 				attributes: this.buildTelemetryRootAttributes(t, spanName, runId),
 			},

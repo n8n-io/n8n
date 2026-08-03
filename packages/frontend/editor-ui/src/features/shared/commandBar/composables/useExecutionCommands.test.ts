@@ -41,7 +41,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 
 const mockToastShowMessage = vi.fn();
 const mockToastShowError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockToastShowMessage,
 		showError: mockToastShowError,
@@ -56,7 +56,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),

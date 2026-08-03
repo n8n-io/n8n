@@ -19,7 +19,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionFloor } from '@n8n/api-types';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	EnterpriseEditionFeature,
 	EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL,

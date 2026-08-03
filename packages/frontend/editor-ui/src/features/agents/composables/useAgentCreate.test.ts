@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { useAgentCreate } from './useAgentCreate';
 import type { AgentResource } from '../types';
@@ -17,8 +18,8 @@ vi.mock('./useProjectAgentsList', () => ({ upsertProjectAgentsListCache }));
 vi.mock('./useAgentNavigation', () => ({
 	useAgentNavigation: () => ({ openBuilder }),
 }));
-vi.mock('@/app/composables/useToast', () => ({ useToast: () => ({ showError }) }));
-vi.mock('@/app/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({ saveCurrentWorkflow }),
 }));
@@ -64,7 +65,7 @@ describe('useAgentCreate', () => {
 		expect(setReference.mock.invocationCallOrder[0]).toBeLessThan(
 			onCreated.mock.invocationCallOrder[0],
 		);
-		expect(track).toHaveBeenCalledWith('User created agent', {
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
 			agent_id: 'agent-1',
 			source: 'ndv_banner',
 		});

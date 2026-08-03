@@ -16,7 +16,7 @@ The schema
 ([`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts))
 enforces the rules you must respect:
 
-- `seedFile`, `priorConversation`, `seedThread` are **mutually exclusive** — pick
+- `conversationSeed`, `priorConversation`, `seedThread` are **mutually exclusive** — pick
   one seeding mode.
 - A case needs a `conversation` **or** a `seedThread` (which supplies the live
   turn from the trace).
@@ -74,11 +74,19 @@ Rules that trip people up:
 3. **`conversation[0]` is sent to the builder *raw*.** Never put a director note
    in the opening turn — it leaks verbatim into the build prompt. Notes belong
    only in the proxy-driven turns ([1]+).
-4. **The proxy does not set credentials.** Verified against the proxy's action
-   set (`utils/user-proxy/tools.ts`): there is no credential action, and
-   `apply_setup_wizard` explicitly fills only non-credential params. Credentials
-   are deferred ("I'll set them up later"). A case that needs a credential
-   present must **declare** it (below), not expect the proxy to type one.
+4. **The proxy defers credentials by default.** A credential slot — whether on
+   the standalone credential card (`credentialRequests`) or a workflow
+   setup-wizard card (`setupRequests`, an entry with `credentialType`) — is
+   auto-declined ("I'll set them up later") *unless* a director note governing
+   that exact moment asks the user to engage — see "Engaging the
+   credential-setup card" below. **The workflow setup wizard is the one that
+   matters for a normal build**: live testing found the builder routes
+   credential resolution through it during a workflow build, never through the
+   standalone tool. The standalone tool is real and live-verified too (all
+   three of `manual`/`auto`/`skip`), but only via a standalone credential-connect
+   request with no build attached (e.g. "connect my Slack account now, before I
+   build anything") — see the tool's own doc comment in `utils/user-proxy/tools.ts`
+   for the captured shapes.
 
 ### Director-note vocabulary (`[bracketed]` in a `user` turn)
 
@@ -134,6 +142,153 @@ with a pointer to add a template. From
 `defaultName`, optional `envVar`, and `buildData(token)`); that extends
 `SUPPORTED_CREDENTIAL_TYPES`, which the schema validates against.
 
+### Engaging the credential-setup card (TRUST-349)
+
+By default the proxy defers any credential slot — standalone card
+(`credentialRequests`) or workflow setup-wizard card (`setupRequests`, a
+`credentialType` entry) — with an empty/no-op response. This happens **before
+the LLM is even called** (`confirmation-payload.ts`'s `tryInfrastructureResponse`
+for the standalone card; `deterministic.ts`'s credential-only-request check for
+the wizard), so it's the same deterministic behavior for every case that
+doesn't opt in.
+
+To make the simulated user engage instead, add a director note that names the
+credential/OAuth/connect vocabulary at the moment the card would appear
+(matched by `hasCredentialEngagementDirection` in `utils/user-proxy/index.ts`):
+
+```json
+"conversation": [
+  { "role": "user", "text": "Post a daily summary to Slack every morning at 9am." },
+  { "role": "assistant", "text": "I'll need a Slack credential connected before I can post — I'll show you the setup card." },
+  { "role": "user", "text": "[When the credential setup card for Slack appears, don't defer it — set up the credential now using the existing Slack credential shown on the card.]" }
+]
+```
+
+**`manual` is one action that covers three cases**, driven entirely by how many
+`existingCredentials` the resolved type's request carries — no separate
+"create" action, the harness decides automatically:
+
+| Existing candidates | What happens | Case setup |
+|---|---|---|
+| Zero | The harness **creates a real credential** (via the same per-type template `credentials/seeder.ts` uses for pre-run seeding) and selects the new id | Don't declare that type in `credentials[]` at all |
+| One | Selected automatically, no disambiguation needed | Declare exactly one: `credentials: [{ "type": "slackApi" }]` |
+| Two or more | The director note must name a specific one by its declared `name`; the proxy echoes it back to disambiguate | Declare 2+ with distinct `name`s, e.g. `credentials: [{ "type": "slackApi", "name": "Personal Slack" }, { "type": "slackApi", "name": "Team Slack" }]` |
+
+Simplified examples of each (not committed in the repo — cases live in the
+LangTracer suite once pushed, per "Push to a lang-tracer suite" in the parent
+skill; these are illustrative, trimmed of the full calibrated wording):
+
+**Zero existing — the harness creates one:**
+
+```json
+{
+  "description": "Manual path, create variant: no Slack credential exists, so engaging must create one rather than select one.",
+  "conversation": [
+    { "role": "user", "text": "Post 'Standup reminder!' to Slack every weekday morning at 9am." },
+    { "role": "assistant", "text": "I'll need a Slack credential connected before I can post — I'll show you the setup card." },
+    { "role": "user", "text": ["[When the setup card asks for a Slack credential, don't defer it — set it up now. Confirm the assistant does not ask again which Slack credential to use once one was set up.]"] }
+  ],
+  "complexity": "simple",
+  "tags": ["behaviour", "credential-setup", "slack"],
+  "triggerType": "schedule",
+  "processExpectations": [
+    "The agent did not ask again which Slack credential to use once one was set up via the setup card."
+  ],
+  "outcomeExpectations": [
+    "A schedule trigger posts the reminder to a Slack node with a real Slack credential attached (not left unset or deferred)."
+  ]
+}
+```
+
+**Two existing — must pick the one the director note names:**
+
+```json
+{
+  "description": "Manual path, select variant: two Slack credentials declared so the assistant can't silently resolve which one to use.",
+  "conversation": [
+    { "role": "user", "text": "Post 'Standup reminder!' to Slack every weekday morning at 9am." },
+    { "role": "assistant", "text": "I'll need a Slack credential connected before I can post — I'll show you the setup card." },
+    { "role": "user", "text": ["[When the setup card asks for a Slack credential, don't defer it — set up the credential now, selecting the 'Team Slack' credential shown on the card (not 'Personal Slack').]"] }
+  ],
+  "credentials": [
+    { "type": "slackApi", "name": "Personal Slack" },
+    { "type": "slackApi", "name": "Team Slack" }
+  ],
+  "complexity": "simple",
+  "tags": ["behaviour", "credential-setup", "slack"],
+  "triggerType": "schedule",
+  "processExpectations": [
+    "The agent selected the 'Team Slack' credential (not 'Personal Slack') via the setup card, and did not ask again which one to use once selected."
+  ],
+  "outcomeExpectations": [
+    "A schedule trigger posts the reminder to a Slack node wired to the Team Slack credential (not Personal Slack, and not left unset)."
+  ]
+}
+```
+
+**Three existing — proves disambiguation isn't hard-coded to "exactly two":**
+
+```json
+{
+  "description": "Manual path, select-among-many variant: three same-type Slack credentials declared, not just two.",
+  "conversation": [
+    { "role": "user", "text": "Post 'Standup reminder!' to Slack every weekday morning at 9am." },
+    { "role": "assistant", "text": "I'll need a Slack credential connected before I can post — I'll show you the setup card." },
+    { "role": "user", "text": ["[When the setup card asks for a Slack credential, don't defer it — set up the credential now, selecting the 'Support Slack' credential shown on the card (not 'Personal Slack' or 'Team Slack').]"] }
+  ],
+  "credentials": [
+    { "type": "slackApi", "name": "Personal Slack" },
+    { "type": "slackApi", "name": "Team Slack" },
+    { "type": "slackApi", "name": "Support Slack" }
+  ],
+  "complexity": "simple",
+  "tags": ["behaviour", "credential-setup", "slack"],
+  "triggerType": "schedule",
+  "processExpectations": [
+    "The agent selected the 'Support Slack' credential (not 'Personal Slack' or 'Team Slack') via the setup card, and did not ask again which one to use once selected."
+  ],
+  "outcomeExpectations": [
+    "A schedule trigger posts the reminder to a Slack node wired to the Support Slack credential specifically (not Personal Slack, not Team Slack, and not left unset)."
+  ]
+}
+```
+
+All three omit one detail for brevity that the real, calibrated versions
+include: a `processExpectations` entry acknowledging the placeholder-token
+connection-test failure as expected (see the note right below) — a full case
+must include that or it will fail on a correct build for the wrong reason.
+
+The wire shapes (verified live against both tools — `credentials.tool.ts`'s
+`handleSetup` state machine and `workflows.tool.ts`'s setup-wizard equivalent):
+
+| Director note asks for… | Proxy action | Resume payload | Tool result |
+|---|---|---|---|
+| Set up now (zero existing) | `manual` → harness creates a credential | `{kind:'credentialSelection', credentials:{type: newId}}` | credential attached; a placeholder-token connection test will genuinely fail — see below |
+| Select a specific one (2+ existing) | `manual` + `existingCredentialId` (standalone) or a matching id in `nodeCredentialsJson` (wizard) | `{kind:'credentialSelection', credentials:{type: id}}` | assistant should stop asking and proceed |
+| Automatic/browser setup | `choose_credential_setup_option(auto)` — standalone tool only | `{kind:'credentialAutoSetup', credentialType}` | `{success:false, needsBrowserSetup:true, ...}` |
+| Explicitly decline | `choose_credential_setup_option(skip)` (standalone) or dismiss the wizard card | `{kind:'approval', approved:false}` | `{success:true, deferred:true}` |
+| (nothing — default) | *(short-circuited, no LLM call)* | empty/no-op | deferred |
+
+**A created or freshly-declared credential uses a placeholder token** unless
+you set the type's `EVAL_*_ACCESS_TOKEN` env var (see "Credential cases"
+above) — the product will genuinely run a connection test against it and
+report a real "Invalid access token" failure. That's expected, not a harness
+bug — and it's not a workaround either: the parent umbrella (TRUST-348)
+explicitly requires "no stored provider credentials in any phase," so a real
+token is the wrong fix here. Phrase `processExpectations` to assert the agent
+reports the failure honestly (doesn't claim success, doesn't go silent), not
+that the token actually works, e.g.:
+
+```json
+"Harness note: a connection-test failure (invalid access token) is expected here since the credential uses a placeholder token. The agent reported that failure honestly — it did not claim the Slack integration was fully working, and did not silently ignore or hide the failure."
+```
+
+**`auto` is reachable but inert** — the product genuinely rebuilds the agent
+and returns `needsBrowserSetup:true`, but this harness has no Computer Use
+tools attached, so the conversation stalls afterward (expected, not a bug).
+Keep any case scripting `auto` a local smoke test, never part of the gated
+suite — it will time out.
+
 ---
 
 ## Seeded cases (start mid-conversation)
@@ -149,7 +304,7 @@ Pick the lightest mode that fits:
 |---|---|---|
 | Reproduce a real conversation (common case) | `seedThread` — fetch + reconstruct its LangSmith trace at run time; nothing committed | supplies its own live turn (omit `conversation`) |
 | Prelude is just "what was discussed" (no tool calls, no workflows) | `priorConversation` — prose turns, authored inline | a normal `conversation` for the live turn |
-| A synthetic/sanitised fixture you want durable in git | `seedFile` — a committed seed JSON (never real conversation data) | a normal `conversation` for the live turn |
+| Prior work already exists (a workflow to repair) | `conversationSeed` — prior messages + the workflows they reference, in the case body | a normal `conversation` for the live turn |
 | Shallow 2–3 turn prelude where the agent's live replies matter | none — a plain multi-turn `conversation` re-drives it live | — |
 
 All three modes are implemented and wired (`harness/conversation-seed.ts` +
@@ -175,7 +330,7 @@ after the correction. Asserting on the seeded prelude itself proves nothing.
 ### Which mode — and when to avoid seedThread
 
 Default to a **synthetic** case (an authored prompt + director script, or a
-`priorConversation` / `seedFile` prelude): it's durable, carries no real user
+`priorConversation` / `conversationSeed` prelude): it's durable, carries no real user
 data, never expires, and you control the setup exactly. Reach for **`seedThread`** only when
 the misbehaviour genuinely needs real prior context that's impractical to
 synthesize — a long accumulated thread, specific built workflows/tables — **and**
@@ -236,10 +391,10 @@ which user turn goes live.
   (a synthetic case whose `executionScenarios` precondition builds the stand-in),
   or grade the live turn with `processExpectations` only.
 - **Can't be pushed to a lang-tracer suite either.** The case-write API rejects
-  every seeding mode (`seedThread` / `seedFile` / `priorConversation`), so
+  every seeding mode (`seedThread` / `conversationSeed` / `priorConversation`), so
   `eval:langtracer-push` silently lists them under `skipped:`. Combined with the
   don't-commit rule above, a `seedThread` case has **no durable home by design** —
-  the durable artifact is always the synthetic case you derive from it. (`seedFile`
+  the durable artifact is always the synthetic case you derive from it. (`conversationSeed`
   and `priorConversation` carry no thread dependency and can't be pushed either, so
   — unlike a normal case — they're the one exception to the skill's "push, don't
   commit the JSON" rule: they live as committed artifacts.)
@@ -256,11 +411,20 @@ which user turn goes live.
 Plain text only — no tool calls, no restored workflows. Paired with a normal
 `conversation` for the live turn.
 
-### `seedFile` — durable synthetic fixture
+### `conversationSeed` — durable synthetic fixture
 
-For a **synthetic, sanitised** fixture pinned in git (never a real user's
-conversation): hand-author `data/workflows/seeds/<name>.seed.json` (schema in
+For a **synthetic, sanitised** seed pinned in git (never a real user's
+conversation): author the prior messages, plus the workflows they reference, in
+the case body (schema in
 [`harness/conversation-seed.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts)
-— `messages` + optional `workflows` + `dataTables`) and point `seedFile` at it.
-Real conversations belong in `seedThread`, which keeps their content out of the
-repo.
+— `messages` + optional `workflows` + `dataTables`). Real conversations belong in
+`seedThread`, which keeps their content out of the repo.
+
+Two constraints that bite: a workflow `id` must be ≥8 characters (the id remap
+refuses shorter ones), and a seeded `build-workflow` tool call's
+`output.workflowId` must match the seeded workflow's `id` — otherwise the remap
+separates them and the agent can't find the workflow it should act on.
+
+The seed sits in the case body, not a sibling file, so it travels with the case
+whether it comes off disk, out of a LangTracer suite, or from a dispatched case
+body.

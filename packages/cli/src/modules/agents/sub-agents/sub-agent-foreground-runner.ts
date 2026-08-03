@@ -1,11 +1,15 @@
 import {
 	assertSubAgentTaskPath,
 	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+	deriveSubAgentTelemetry,
 	renderDelegateSubAgentPrompt,
 	type AgentExecutionCounter,
 	type AgentMessage,
+	type BuiltTelemetry,
 	type CredentialProvider,
 	type GenerateResult,
+	type SerializableAgentState,
+	type StreamChunk,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
@@ -14,6 +18,8 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+
+import type { AgentRunTelemetryType } from '@/interfaces';
 
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
@@ -28,9 +34,22 @@ export interface SubAgentForegroundRunContext {
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId?: string;
 	credentialProvider: CredentialProvider;
+	/**
+	 * Telemetry classification inherited from the delegating parent run. A
+	 * sub-agent always runs its own published snapshot, so classifying by that
+	 * alone would report `production` for every delegation — including ones made
+	 * while the parent is being tested in the builder preview.
+	 */
+	runType: AgentRunTelemetryType;
 	executionCounter?: AgentExecutionCounter;
 	/** Parent run's abort signal — cancelling the parent cancels this child. */
 	abortSignal?: AbortSignal;
+	/**
+	 * Parent's live, resolved telemetry, forwarded per-request. Derived (via
+	 * `deriveSubAgentTelemetry`) into the child's own telemetry so it shares the
+	 * parent's tracer and nests under the parent's delegate-tool-call span.
+	 */
+	telemetry?: BuiltTelemetry;
 	/**
 	 * Interactive n8n user of the delegating parent run; used to filter the
 	 * sub-agent's node/workflow tools by their access. Absent when the parent
@@ -43,6 +62,8 @@ export interface SubAgentForegroundRunContext {
 	 * (model fetch, MCP fetch, tool execution contexts).
 	 */
 	instrumentation?: AgentRuntimeInstrumentation;
+	/** Optional callback to forward child stream chunks to the parent chat. */
+	onChunk?: (chunk: StreamChunk) => void;
 }
 
 export interface SubAgentForegroundResult {
@@ -108,6 +129,7 @@ export class SubAgentForegroundRunner {
 			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
 			runtimeProfile: 'sub-agent',
+			runType: context.runType,
 			parentAgentIdForDelegation: context.parentAgentId,
 			user: context.user,
 			instrumentation: context.instrumentation,
@@ -115,11 +137,13 @@ export class SubAgentForegroundRunner {
 
 		// Abort the child when the parent run is cancelled.
 		const abortSignal = context.abortSignal;
+		const telemetry = deriveSubAgentTelemetry(context.telemetry);
 
 		const prompt = renderDelegateSubAgentPrompt(request);
 		try {
 			const resultStream = await agent.stream(prompt, {
 				...(abortSignal !== undefined ? { abortSignal } : {}),
+				...(telemetry !== undefined ? { telemetry } : {}),
 				persistence: {
 					resourceId,
 					threadId,
@@ -132,6 +156,7 @@ export class SubAgentForegroundRunner {
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				recorder.record(value);
+				context.onChunk?.(value);
 				if (value.type === 'tool-call-suspended') {
 					childSuspended = true;
 				}
@@ -147,6 +172,7 @@ export class SubAgentForegroundRunner {
 				threadId,
 				parentThreadId: request.parentThreadId,
 				parentAgentId: context.parentAgentId,
+				runType: context.runType,
 				taskPath,
 				prompt,
 				record: messageRecord,
@@ -161,9 +187,7 @@ export class SubAgentForegroundRunner {
 						messages: [],
 						finishReason: 'error',
 						error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
-						getState: () => {
-							throw new Error('getState is not implemented for sub-agent foreground runner');
-						},
+						getState: () => resultStream.getState(),
 					},
 				};
 			}
@@ -172,6 +196,7 @@ export class SubAgentForegroundRunner {
 				resultStream.runId,
 				messageRecord,
 				structuredOutput,
+				() => resultStream.getState(),
 			);
 
 			return {
@@ -201,6 +226,7 @@ export class SubAgentForegroundRunner {
 		threadId: string;
 		parentThreadId?: string;
 		parentAgentId?: string;
+		runType: AgentRunTelemetryType;
 		taskPath: SubAgentTaskPath;
 		prompt: string;
 		record: MessageRecord;
@@ -211,6 +237,7 @@ export class SubAgentForegroundRunner {
 			threadId,
 			parentThreadId,
 			parentAgentId,
+			runType,
 			taskPath,
 			prompt,
 			record,
@@ -230,7 +257,7 @@ export class SubAgentForegroundRunner {
 					...(parentAgentId !== undefined ? { parentAgentId } : {}),
 				},
 				telemetry: {
-					runType: 'production',
+					runType,
 					configuration: buildAgentConfigurationTelemetryFromConfig(runtimeSource.config),
 				},
 			});
@@ -261,6 +288,7 @@ function buildGenerateResultFromRecord(
 	runId: string,
 	record: MessageRecord,
 	structuredOutput: unknown,
+	getState: () => SerializableAgentState,
 ): GenerateResult {
 	const messages = createAssistantMessages(record.assistantResponse);
 	const finishReason = toKnownFinishReason(record.finishReason);
@@ -279,9 +307,7 @@ function buildGenerateResultFromRecord(
 			: {}),
 		...(structuredOutput !== undefined ? { structuredOutput } : {}),
 		...(record.error !== null ? { error: record.error } : {}),
-		getState: () => {
-			throw new Error('getState is not implemented for sub-agent foreground runner');
-		},
+		getState,
 	};
 	return result;
 }

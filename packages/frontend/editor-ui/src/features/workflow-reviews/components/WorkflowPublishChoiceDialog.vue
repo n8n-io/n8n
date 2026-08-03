@@ -86,7 +86,11 @@ const chooseReview = () => {
 
 .dontShowAgain {
 	:deep(label) {
+<<<<<<< HEAD
 		color: var(--color--text--tint-1);
+=======
+		color: var(--text-color--subtler);
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	}
 }
 </style>

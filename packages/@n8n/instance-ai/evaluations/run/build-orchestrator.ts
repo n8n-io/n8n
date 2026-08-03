@@ -16,13 +16,26 @@ import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/
 import type { CliArgs } from '../cli/args';
 import { buildWorkflowViaMcp, type McpBuildSettings } from '../cli/mcp-builder';
 import type { N8nClient } from '../clients/n8n-client';
+<<<<<<< HEAD
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
+=======
+import {
+	fetchAgentScenarioContext,
+	findAgentArtifactRef,
+	type executeAgentScenario,
+} from '../harness/agent-execution';
+import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
+import type { BuildResult } from '../harness/build-workflow';
+import { captureThreadRunDebug } from '../harness/capture-run-debug';
+import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 import type { EvalLogger } from '../harness/logger';
 import {
 	fetchPrebuiltBuild,
 	pickPrebuiltWorkflowId,
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
+<<<<<<< HEAD
 import {
 	effectiveTimeoutMs,
 	fetchAgentScenarioContext,
@@ -32,6 +45,10 @@ import {
 	type executeAgentScenario,
 	type executeScenario,
 } from '../harness/runner';
+=======
+import type { executeScenario } from '../harness/scenario-execution';
+import type { ScenarioSeedContext } from '../harness/seed-tables';
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 import { isTransientNetworkError } from '../harness/transient-error';
 import type {
 	BuildExpectationResult,
@@ -62,8 +79,13 @@ export interface Lane {
 }
 
 /** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
+<<<<<<< HEAD
  *  McpBuildResult: the numbers cover the LAST attempt, so totals are a lower
  *  bound when retries happened (same semantics as the manifest flow's stats). */
+=======
+ *  McpBuildResult: cost and turns are summed across every attempt of the
+ *  build, so totals are the run's true spend (failed attempts cost money too). */
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 export interface McpBuildSpend {
 	costUsd: number;
 	turns: number;
@@ -74,7 +96,11 @@ export type BuildArgs = Pick<
 	| 'conversation'
 	| 'messageBudget'
 	| 'credentials'
+<<<<<<< HEAD
 	| 'seedFile'
+=======
+	| 'conversationSeed'
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	| 'priorConversation'
 	| 'seedThread'
 	| 'executionScenarios'
@@ -96,6 +122,10 @@ export interface LaneState {
 		workflowJsons: BuildResult['workflowJsons'];
 		buildTrace?: BuildResult['buildTrace'];
 		timeoutMs: number;
+<<<<<<< HEAD
+=======
+		seedContext?: ScenarioSeedContext;
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	tracedExecuteAgent: (execArgs: {
 		agentId: string;
@@ -200,6 +230,12 @@ export interface CachedBuild {
 	build: BuildResult;
 	lane: LaneState;
 	buildDurationMs: number;
+<<<<<<< HEAD
+=======
+	/** `claude` spend for this case's build (`--build-via-mcp` only) — feeds the
+	 *  per-row build_cost_usd/build_turns feedback and eval-results.json. */
+	buildSpend?: McpBuildSpend;
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 }
 
 export interface BuildOrchestratorDeps {
@@ -290,6 +326,10 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	function stashBuildExpectations(
 		key: string,
 		fileSlug: string,
+<<<<<<< HEAD
+=======
+		client: N8nClient,
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		build: BuildResult,
 		isPrebuilt: boolean,
 	): void {
@@ -305,11 +345,29 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		if (expectations.length === 0) return;
 		buildExpectationsByKey.set(
 			key,
+<<<<<<< HEAD
 			verifyBuildExpectations(expectations, {
 				transcript,
 				workflowJson: build.workflowJsons[0],
 				metrics: build.conversationMetrics,
 			}).catch((error: unknown) =>
+=======
+			(async () =>
+				await verifyBuildExpectations(expectations, {
+					transcript,
+					workflowJson: build.workflowJsons[0],
+					metrics: build.conversationMetrics,
+					// Rendered non-workflow artifacts (agent AND config-eval), sectioned
+					// with "(no <type> produced)" fallbacks, so outcome expectations can
+					// judge artifact existence, absence and content — parity with the
+					// retired direct loop, which always threaded resolveArtifactContext.
+					artifactContext: await resolveArtifactContext({
+						artifactRefs: build.artifactRefs ?? [],
+						client,
+						logger,
+					}),
+				}))().catch((error: unknown) =>
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				allFailVerdicts(
 					expectations,
 					`judge error: ${error instanceof Error ? error.message : String(error)}`,
@@ -335,6 +393,12 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				const lane = await allocator.acquire(fileSlug);
 				const start = Date.now();
 				let build: BuildResult;
+<<<<<<< HEAD
+=======
+				// Local collector so this case's spend stays attributable to its own
+				// rows; drained into the run-wide record right after the build.
+				const caseSpend: McpBuildSpend[] = [];
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				try {
 					build = await buildWorkflowViaMcpOnLane({
 						lane: lane.runner,
@@ -344,7 +408,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						args,
 						logDir: mcpBuildLogDir ?? process.cwd(),
 						logger,
+<<<<<<< HEAD
 						buildSpend: mcpBuildSpend,
+=======
+						buildSpend: caseSpend,
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 					});
 				} finally {
 					// Release as soon as the build (incl. fetch-back) is done — the
@@ -352,6 +420,10 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					// holding the slot through it would idle the lane's build capacity.
 					allocator.release(lane, fileSlug);
 				}
+<<<<<<< HEAD
+=======
+				mcpBuildSpend.push(...caseSpend);
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				{
 					const transient = await isTransportFailure(build, lane);
 					if (!build.success) build.transportFailure = transient;
@@ -364,7 +436,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				stashTranscript(build);
 				// isPrebuilt=true: MCP builds have no build transcript, so only
 				// outcome expectations are judged (against the workflow), like prebuilt.
+<<<<<<< HEAD
 				stashBuildExpectations(key, fileSlug, build, true);
+=======
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
@@ -374,7 +450,13 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						logger,
 					});
 				}
+<<<<<<< HEAD
 				return { build, lane, buildDurationMs };
+=======
+				// One collector entry per buildWorkflowViaMcpOnLane call (attempts are
+				// summed inside buildWorkflowViaMcp), so [0] is this build's whole spend.
+				return { build, lane, buildDurationMs, buildSpend: caseSpend[0] };
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			}
 			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
 			if (prebuiltId !== undefined) {
@@ -390,7 +472,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
+<<<<<<< HEAD
 				stashBuildExpectations(key, fileSlug, build, true);
+=======
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
@@ -428,7 +514,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						conversation: entry.conversation,
 						messageBudget: entry.messageBudget,
 						credentials: entry.credentials,
+<<<<<<< HEAD
 						seedFile: entry.seedFile,
+=======
+						conversationSeed: entry.conversationSeed,
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 						priorConversation: entry.priorConversation,
 						seedThread: entry.seedThread,
 						executionScenarios: entry.executionScenarios,
@@ -452,8 +542,13 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			}
 			buildDurations.set(key, buildDurationMs);
 			stashTranscript(build);
+<<<<<<< HEAD
 			stashBuildExpectations(key, fileSlug, build, false);
 			stashAgentContext(key, lane.runner.client, build);
+=======
+			stashAgentContext(key, lane.runner.client, build);
+			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			stashRunDebug(lane.runner.client, build);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,

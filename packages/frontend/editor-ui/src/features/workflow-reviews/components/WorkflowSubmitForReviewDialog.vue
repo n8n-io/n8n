@@ -4,7 +4,10 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nButton,
+<<<<<<< HEAD
 	N8nCallout,
+=======
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	N8nDialog,
 	N8nDialogFooter,
 	N8nIcon,
@@ -16,7 +19,11 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
+<<<<<<< HEAD
 import { useToast } from '@/app/composables/useToast';
+=======
+import { useToast } from '@n8n/composables/useToast';
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import {
@@ -35,7 +42,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
+<<<<<<< HEAD
 	submitted: [];
+=======
+	submitted: [workflowReviewRequestId: string];
+	conflict: [];
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 }>();
 
 const i18n = useI18n();
@@ -47,8 +59,11 @@ const reviewStatusStore = useWorkflowReviewStatusStore();
 const reviewTitle = ref('');
 const description = ref('');
 const isSubmitting = ref(false);
+<<<<<<< HEAD
 const hasConflict = ref(false);
 const existingReviewRequestId = ref<string>();
+=======
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 const selectedReviewerId = ref('');
 const eligibleReviewers = ref<WorkflowReviewEligibleReviewer[]>([]);
 const isLoadingReviewers = ref(false);
@@ -65,17 +80,34 @@ const reviewerOptions = computed<IUser[]>(() =>
 	})),
 );
 
+<<<<<<< HEAD
 const loadEligibleReviewers = async () => {
+=======
+let loadReviewersSequence = 0;
+
+const loadEligibleReviewers = async () => {
+	const sequence = ++loadReviewersSequence;
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	isLoadingReviewers.value = true;
 	try {
 		const { data } = await fetchEligibleReviewers(rootStore.restApiContext, {
 			workflowId: props.workflowId,
 		});
+<<<<<<< HEAD
 		eligibleReviewers.value = data;
 	} catch {
 		eligibleReviewers.value = [];
 	} finally {
 		isLoadingReviewers.value = false;
+=======
+		if (sequence !== loadReviewersSequence) return;
+		eligibleReviewers.value = data;
+	} catch {
+		if (sequence !== loadReviewersSequence) return;
+		eligibleReviewers.value = [];
+	} finally {
+		if (sequence === loadReviewersSequence) isLoadingReviewers.value = false;
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	}
 };
 
@@ -86,8 +118,11 @@ watch(
 
 		reviewTitle.value = '';
 		description.value = '';
+<<<<<<< HEAD
 		hasConflict.value = false;
 		existingReviewRequestId.value = undefined;
+=======
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		selectedReviewerId.value = '';
 		eligibleReviewers.value = [];
 		void loadEligibleReviewers();
@@ -107,12 +142,26 @@ const handleOpenAutoFocus = (event: Event) => {
 const submit = async () => {
 	if (isSubmitDisabled.value) return;
 
+<<<<<<< HEAD
 	isSubmitting.value = true;
 	hasConflict.value = false;
 	existingReviewRequestId.value = undefined;
 
 	try {
 		const workflowVersionId = await props.flushSave();
+=======
+	const workflowId = props.workflowId;
+
+	isSubmitting.value = true;
+
+	try {
+		const workflowVersionId = await props.flushSave();
+
+		// Navigated away while saving: flushSave reads the version of the workflow
+		// that is open now, so pairing it with the pinned id would mismatch.
+		if (props.workflowId !== workflowId) return;
+
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		if (!workflowVersionId) {
 			toast.showError(
 				new Error(i18n.baseText('workflowReviews.submitForReview.error.save')),
@@ -122,6 +171,7 @@ const submit = async () => {
 		}
 
 		const trimmedDescription = description.value.trim();
+<<<<<<< HEAD
 		await createWorkflowReviewRequest(rootStore.restApiContext, {
 			title: reviewTitle.value.trim(),
 			description: trimmedDescription || undefined,
@@ -142,6 +192,37 @@ const submit = async () => {
 			existingReviewRequestId.value =
 				typeof workflowReviewRequestId === 'string' ? workflowReviewRequestId : undefined;
 			// TODO(LIGO-806): link to the existing review and offer updating it to the current version
+=======
+		const reviewRequest = await createWorkflowReviewRequest(rootStore.restApiContext, {
+			title: reviewTitle.value.trim(),
+			description: trimmedDescription || undefined,
+			workflows: [{ workflowId, workflowVersionId }],
+			reviewerUserIds: selectedReviewerId.value ? [selectedReviewerId.value] : undefined,
+		});
+
+		// Navigated away mid-flight: the review belongs to a workflow this dialog no
+		// longer targets, and writing it here would corrupt the current one's status.
+		if (props.workflowId !== workflowId) return;
+
+		// install the response before clearing the local flag so the
+		// publish gate never opens while a refetch is in flight
+		reviewStatusStore.setOpenReview(workflowId, reviewRequest);
+		reviewRequiredStore.setReviewRequired(workflowId, false);
+		emit('update:open', false);
+		emit('submitted', reviewRequest.id);
+	} catch (error) {
+		if (error instanceof ResponseError && error.httpStatusCode === 409) {
+			// The conflict proves an open review this client didn't know about — lock
+			// immediately and hand off to the update-review dialog.
+			void reviewStatusStore.fetchStatus(workflowId);
+
+			// Navigated away mid-flight: the conflict belongs to the pinned workflow,
+			// so the update-review dialog must not open for the current one.
+			if (props.workflowId !== workflowId) return;
+
+			emit('update:open', false);
+			emit('conflict');
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			return;
 		}
 
@@ -212,10 +293,13 @@ const submit = async () => {
 					</template>
 				</N8nUserSelect>
 			</N8nInputLabel>
+<<<<<<< HEAD
 			<N8nCallout v-if="hasConflict" theme="danger" data-test-id="workflow-review-conflict-error">
 				{{ i18n.baseText('workflowReviews.submitForReview.error.conflict') }}
 			</N8nCallout>
 
+=======
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			<N8nDialogFooter>
 				<N8nButton
 					type="button"

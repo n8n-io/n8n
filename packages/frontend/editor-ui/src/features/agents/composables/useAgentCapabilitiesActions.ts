@@ -1,7 +1,7 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -33,6 +33,8 @@ export interface AgentCapabilitiesTelemetry {
 	trackOpenedAddSkillModal?: () => void;
 	trackTriggerListChanged?: (triggers: string[]) => void;
 	trackTriggerAdded?: (payload: { triggerType: string; triggers: string[] }) => void;
+	trackRemovedTool?: (ref: AgentJsonToolConfig) => void;
+	trackRemovedMcpServer?: (server: AgentJsonMcpServerConfig) => void;
 }
 
 export interface UseAgentCapabilitiesActionsDeps {
@@ -223,6 +225,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						(_, i) => i !== mcpServerIndex,
 					);
 					scheduleConfigUpdate({ mcpServers: nextMcpServers });
+					telemetry?.trackRemovedMcpServer?.(mcpServer);
 				},
 			},
 		});
@@ -372,8 +375,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	function onRemoveTool(index: number) {
 		const currentTools = localConfig.value?.tools ?? [];
 		if (index < 0 || index >= currentTools.length) return;
+		const removed = currentTools[index];
 		const nextTools = currentTools.filter((_, i) => i !== index);
 		scheduleConfigUpdate({ tools: nextTools });
+		telemetry?.trackRemovedTool?.(removed);
 	}
 
 	function onRemoveSkill(id: string) {

@@ -18,8 +18,14 @@ const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary
  * Backend differences are capability-driven:
  * - Backends with native object metadata (S3, Azure) store it on the object.
  * FS keeps it in companion `{fileId}.metadata` entries.
+<<<<<<< HEAD
  * - Deletion happens only on backends that can delete by prefix (FS). Others
  * delegate deletion, e.g. to bucket lifecycle policies.
+=======
+ * - Deletion by file id works on all backends. Location-wide deletion happens
+ * only on backends that can delete by prefix (FS); others delegate it, e.g. to
+ * bucket lifecycle policies.
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
  */
 export class BinaryDataBlobManager implements BinaryData.Manager {
 	constructor(
@@ -77,6 +83,7 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	}
 
 	async deleteManyByFileId(ids: string[]) {
+<<<<<<< HEAD
 		if (!this.byteStore.deletePrefix) return;
 
 		const locations = ids.flatMap((id) => {
@@ -89,6 +96,24 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 		});
 
 		await this.deleteBinaryDataDirs(locations);
+=======
+		const keys = ids.flatMap((fileId) => {
+			try {
+				this.parseFileId(fileId);
+			} catch {
+				this.errorReporter.warn('Could not parse file ID. Skip deletion', {
+					extra: { fileId },
+				});
+				return [];
+			}
+
+			return this.byteStore.getMetadata ? [fileId] : [fileId, this.metadataKey(fileId)];
+		});
+
+		if (keys.length > 0) {
+			await this.byteStore.delete(keys);
+		}
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	}
 
 	async copyByFileId(targetLocation: BinaryData.FileLocation, sourceFileId: string) {

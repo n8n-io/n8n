@@ -1,4 +1,8 @@
 import type { ITelemetrySettings } from '@n8n/api-types';
+<<<<<<< HEAD
+=======
+import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 import type { IDataObject, ITelemetryTrackProperties, NodeParameterValueType } from 'n8n-workflow';
 import { hasInjectionContext, inject, type InjectionKey } from 'vue';
 import type { RouteLocation } from 'vue-router';
@@ -40,6 +44,10 @@ export interface Telemetry {
 		options: TelemetryIdentifyOptions & { versionCli: string },
 	): void;
 	identify(options: TelemetryIdentifyOptions): void;
+<<<<<<< HEAD
+=======
+	track<T extends TelemetryEventDef>(event: T, properties: InferTelemetryProps<T>): void;
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	track(event: string, properties?: ITelemetryTrackProperties): void;
 	page(route: RouteLocation): void;
 	reset(): void;

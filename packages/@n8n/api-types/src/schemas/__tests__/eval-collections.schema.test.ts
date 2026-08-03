@@ -3,6 +3,10 @@ import {
 	averageNormalizedScore,
 	metricScaleFromConfig,
 	metricScalesFromConfig,
+<<<<<<< HEAD
+=======
+	metricScalesFromSnapshot,
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	normalizedScores,
 	normalizeMetricScore,
 	RESERVED_METRIC_KEYS,
@@ -200,6 +204,42 @@ describe('metricScalesFromConfig', () => {
 	});
 });
 
+<<<<<<< HEAD
+=======
+describe('metricScalesFromSnapshot', () => {
+	const OPENAI = '@n8n/n8n-nodes-langchain.lmChatOpenAi';
+	const snapshot = {
+		id: 'cfg-1',
+		metrics: [
+			{
+				id: 'm1',
+				name: 'Markdown Formatting',
+				type: 'llm_judge',
+				config: {
+					preset: 'correctness',
+					provider: OPENAI,
+					credentialId: 'cred-1',
+					model: 'gpt-4o',
+					outputType: 'numeric',
+					inputs: { actualAnswer: 'a', expectedAnswer: 'b' },
+				},
+			},
+		],
+	};
+
+	it("resolves scales from a frozen snapshot's metrics", () => {
+		expect(metricScalesFromSnapshot(snapshot)).toEqual({ 'Markdown Formatting': 'oneToFive' });
+	});
+
+	it('returns null when the snapshot lacks a valid metrics array (→ caller falls back)', () => {
+		expect(metricScalesFromSnapshot(null)).toBeNull();
+		expect(metricScalesFromSnapshot({})).toBeNull();
+		expect(metricScalesFromSnapshot({ metrics: 'nope' })).toBeNull();
+		expect(metricScalesFromSnapshot({ metrics: [{ name: 'x' }] })).toBeNull();
+	});
+});
+
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 describe('normalizedScores', () => {
 	it('drops operational/unknown-scale metrics and keeps scored ones', () => {
 		const scores = normalizedScores({ correctness: 5, totalTokens: 1234, helpfulness: 4 });

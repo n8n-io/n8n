@@ -5,6 +5,12 @@
  */
 export const WORKFLOW_MCP_TRIGGER_SCOPES: string[] = [];
 
+/** Scopes advertised for per-workflow Form trigger resources. Empty, like MCP triggers. */
+export const FORM_TRIGGER_SCOPES: string[] = [];
+
+/** Scopes advertised for per-workflow Webhook trigger resources. */
+export const WEBHOOK_TRIGGER_SCOPES: string[] = [];
+
 export function trimTrailingSlash(path: string): string {
 	if (path.endsWith('/')) {
 		path = path.slice(0, -1);
@@ -31,6 +37,9 @@ export function trimSlashes(path: string): string {
  * This keeps `resolveByPath` — which matches against `/{endpoint}/…` — working the
  * same for sub-path deployments as for root deployments, and matches the path the
  * unauthenticated well-known route already receives (relative to the mount point).
+ *
+ * The query string is dropped — it reaches resolvers as a separate argument, so it
+ * never belongs in a path used for matching.
  */
 export function resourceUrlToWebhookPath(
 	resourceUrl: string,
@@ -54,4 +63,31 @@ export function resourceUrlToWebhookPath(
 	}
 
 	return url.pathname.slice(basePath.length);
+}
+
+/**
+ * The canonical per-trigger path of a webhook row, relative to `/{endpoint}/`: the
+ * templated path for dynamic webhooks (`<webhookId>/user/:id`), the path itself for
+ * static ones. Keyed off `webhookId` — set exactly when a segment starts with `:` —
+ * since a static path may contain a colon that is not a route parameter.
+ */
+export function webhookResourcePath(webhookPath: string, webhookId?: string): string {
+	return webhookId ? `${webhookId}/${webhookPath}` : webhookPath;
+}
+
+/**
+ * Serialise the HTTP method a webhook resource URL is scoped to, as `?method=GET`.
+ *
+ * One path can host several triggers as long as their methods are disjoint, so the
+ * method selects which trigger a resource URL names. It is a *selector*, not part
+ * of the trigger's identity — see the resolver for why that distinction matters.
+ */
+export function methodQueryString(method: string): string {
+	return `?method=${method.toUpperCase()}`;
+}
+
+/** Parse a `method` query value into its canonical form, or `undefined` if absent. */
+export function parseMethodParam(value: string | null | undefined): string | undefined {
+	const method = value?.trim().toUpperCase();
+	return method === '' ? undefined : method;
 }

@@ -23,6 +23,7 @@ import { createCasePipeline, type CasePipeline } from './case-pipeline';
 import { LaneAllocator } from './lane-allocator';
 import type { CliArgs } from '../cli/args';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+<<<<<<< HEAD
 import type { EvalLogger } from '../harness/logger';
 import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
 import {
@@ -33,6 +34,19 @@ import {
 	workflowExpectedForCase,
 	type BuildResult,
 } from '../harness/runner';
+=======
+import { executeAgentScenario } from '../harness/agent-execution';
+import {
+	buildWorkflow,
+	workflowExpectedForCase,
+	type BuildResult,
+} from '../harness/build-workflow';
+import { cleanupBuild } from '../harness/cleanup';
+import type { EvalLogger } from '../harness/logger';
+import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
+import { executeScenario } from '../harness/scenario-execution';
+import type { ScenarioSeedContext } from '../harness/seed-tables';
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,
@@ -139,7 +153,11 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						conversation: buildArgs.conversation,
 						messageBudget: buildArgs.messageBudget,
 						credentials: buildArgs.credentials,
+<<<<<<< HEAD
 						seedFile: buildArgs.seedFile,
+=======
+						conversationSeed: buildArgs.conversationSeed,
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
 						executionScenarios: buildArgs.executionScenarios,
@@ -161,6 +179,10 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 					workflowJsons: BuildResult['workflowJsons'];
 					buildTrace?: BuildResult['buildTrace'];
 					timeoutMs: number;
+<<<<<<< HEAD
+=======
+					seedContext?: ScenarioSeedContext;
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				}) =>
 					await executeScenario(
 						lane.client,
@@ -172,6 +194,11 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						undefined,
 						execArgs.buildTrace,
 						args.pinAiRoots,
+<<<<<<< HEAD
+=======
+						execArgs.seedContext,
+						args.outputDir,
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 					),
 			),
 			tracedExecuteAgent: wrap(
@@ -194,6 +221,10 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						execArgs.timeoutMs,
 						execArgs.testCaseName,
 						execArgs.buildTrace,
+<<<<<<< HEAD
+=======
+						args.outputDir,
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 					),
 			),
 		};

@@ -10,8 +10,9 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import {
 	HITL_APPROVE_ACTION_ID,
 	HITL_DECLINE_ACTION_ID,
@@ -61,6 +62,13 @@ export function toMultiOptionsCsv(value: unknown): string {
 	return '';
 }
 
+// Display label for a Slack user in pickers. Real names are friendlier but aren't
+// unique in Slack, so the handle is appended to keep same-named users distinguishable.
+// `real_name` is optional, so bots and unconfigured accounts show the handle alone.
+export function formatUserLabel(user: { name: string; real_name?: string }): string {
+	return user.real_name ? `${user.real_name} (@${user.name})` : user.name;
+}
+
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
@@ -96,14 +104,15 @@ export async function slackApiRequest(
 	};
 
 	const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
-	const response = await this.helpers.requestWithAuthentication.call(
-		this,
-		credentialType,
-		options,
-		{
+	let response;
+	try {
+		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
 			oauth2: oAuth2Options,
-		},
-	);
+		});
+	} catch (error) {
+		if (error instanceof NodeOperationError) throw error;
+		throw new NodeOperationError(this.getNode(), error as Error);
+	}
 
 	const responseData = options.resolveWithFullResponse ? response.body : response;
 

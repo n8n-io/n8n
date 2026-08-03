@@ -3,8 +3,13 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+<<<<<<< HEAD
 import type { EvalLogger } from '../harness/logger';
 import { abortedWorkflowTestCaseResult } from '../harness/runner';
+=======
+import { abortedWorkflowTestCaseResult } from '../harness/cleanup';
+import type { EvalLogger } from '../harness/logger';
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 import { runEvalAndPersist } from '../run/persist';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 

@@ -1,5 +1,9 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+<<<<<<< HEAD
+=======
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 
 import NewAgentView from '../views/NewAgentView.vue';
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
@@ -29,10 +33,17 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
+<<<<<<< HEAD
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mocks.track }),
 }));
 vi.mock('@/app/composables/useToast', () => ({
+=======
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: mocks.track }),
+}));
+vi.mock('@n8n/composables/useToast', () => ({
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	useToast: () => ({ showError: mocks.showError }),
 }));
 vi.mock('@/features/ai/instanceAi/instanceAi.store', () => ({
@@ -71,7 +82,11 @@ describe('NewAgentView', () => {
 			'agents.new.defaultName',
 		);
 		expect(mocks.upsertProjectAgentsListCache).toHaveBeenCalledWith('project-1', agent);
+<<<<<<< HEAD
 		expect(mocks.track).toHaveBeenCalledWith('User created agent', {
+=======
+		expect(mocks.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			agent_id: 'agent-1',
 			source: 'create_blank',
 		});

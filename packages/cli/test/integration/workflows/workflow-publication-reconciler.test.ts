@@ -1,4 +1,5 @@
 import {
+	createWorkflowHistory,
 	createWorkflowWithHistory,
 	mockInstance,
 	setActiveVersion,
@@ -13,6 +14,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
+import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import type { INode, INodeTypeData } from 'n8n-workflow';
 
@@ -57,11 +59,21 @@ const scheduleNode = (suffix: string): INode => ({
 	parameters: {},
 });
 
+const manualTriggerNode = (suffix: string): INode => ({
+	id: `node-${suffix}`,
+	name: `Manual ${suffix}`,
+	type: 'n8n-nodes-base.manualTrigger',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+});
+
 beforeAll(async () => {
 	await testDb.init();
 
 	const nodes: INodeTypeData = {
 		'n8n-nodes-base.scheduleTrigger': { type: new ScheduleTrigger(), sourcePath: '' },
+		'n8n-nodes-base.manualTrigger': { type: new ManualTrigger(), sourcePath: '' },
 	};
 	await utils.initNodeTypes(nodes);
 
@@ -237,6 +249,142 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		await reconciler.reconcile();
 
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+	});
+
+	test('heals a published-version mapping rolled back to an older version', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('skew');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// A parameter-only newer version is published: the trigger node set is
+		// identical, so no node-id diff can distinguish the two versions.
+		const newVersionId = 'version-2-param-only';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [{ ...trigger, parameters: { rule: { interval: [{ field: 'hours' }] } } }],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(newVersionId);
+
+		// A stalled processor (zombie writer) rolls the mapping back to the old
+		// version after its record already resolved: no in-flight record remains,
+		// and the running trigger's node id still matches the desired one.
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+		await reconciler.reconcile();
+
+		// The skew check enqueued a third record and the drain converged the
+		// mapping back to the active version.
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(newVersionId);
+		expect(await outboxRepository.countBy({ workflowId: workflow.id })).toBe(3);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('removes a published-version mapping left behind by a missed unpublish', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('missed-unpublish');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// An unpublish fully applied elsewhere (triggers down, status rows
+		// cleared, record terminal), after which a zombie writer restored the
+		// mapping row: no node-id detection has anything to see — only the
+		// version comparison can find the stale mapping.
+		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
+		await activeWorkflowTriggers.remove(workflow.id);
+		await triggerStatusRepository.delete({ workflowId: workflow.id });
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(
+			workflow.versionId,
+		);
+
+		await reconciler.reconcile();
+
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBeNull();
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('leaves a skewed workflow with an in-flight publication for that record to converge', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('skew-in-flight');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// Mid-flight publish of a parameter-only new version: `activeVersionId`
+		// commits together with the pending record, and the mapping still points
+		// at the old version. Expected skew — that record owns convergence.
+		const newVersionId = 'version-2-in-flight';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [{ ...trigger, parameters: { rule: { interval: [{ field: 'hours' }] } } }],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId);
+
+		expect(await outboxRepository.findVersionSkewedWorkflowIds()).not.toContain(workflow.id);
+
+		await reconciler.reconcile();
+
+		// Untouched: the mapping still points at the old version and the pending
+		// record is still pending — reconciliation neither enqueued nor drained.
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(
+			workflow.versionId,
+		);
+		expect((await outboxRepository.findInFlightByWorkflowId(workflow.id))?.status).toBe('pending');
+
+		// The exclusion also holds while the record is being processed (in_progress).
+		await outboxRepository.claimNextPendingRecord();
+		expect(await outboxRepository.findVersionSkewedWorkflowIds()).not.toContain(workflow.id);
+	});
+
+	test('records persisted rows for a pseudo-only workflow, keeping it out of leader handoff and reconciliation', async () => {
+		const owner = await createOwner();
+
+		const trigger = manualTriggerNode('pseudo');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// Activation is untouched: a genuine publish still registers the no-op
+		// trigger's registry slot, and the status row (whose presence drives the
+		// publication status API) exists — but classified `persisted`, because the
+		// node is fired by the execution engine, never through the registry.
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+		const rows = await triggerStatusRepository.findByWorkflowId(workflow.id);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({
+			nodeId: trigger.id,
+			status: 'activated',
+			triggerKind: 'persisted',
+		});
+
+		// Leader handoff on a fresh leader: nothing is registered locally, but a
+		// pseudo-only workflow has no real trigger work to republish.
+		await activeWorkflowTriggers.remove(workflow.id);
+		await outboxRepository.enqueueForLeaderHandoff();
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+
+		// The reconciler ignores persisted rows even though the node is not
+		// registered — no re-enqueue loop.
+		await reconciler.reconcile();
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+		expect(activeWorkflowTriggers.get(workflow.id)).toBeUndefined();
 	});
 
 	test('a pass with nothing missing enqueues no work', async () => {

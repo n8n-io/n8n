@@ -1,13 +1,39 @@
 import { createPinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+<<<<<<< HEAD
+=======
+import { createMemoryHistory, createRouter } from 'vue-router';
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { LOCAL_STORAGE_WORKFLOW_REVIEW_SUBMITTED_DIALOG_HIDDEN } from '@/app/constants/localStorage';
 import { useUsersStore } from '@/features/settings/users/users.store';
+<<<<<<< HEAD
 import WorkflowReviewSubmittedDialog from './WorkflowReviewSubmittedDialog.vue';
 
 const renderComponent = createComponentRenderer(WorkflowReviewSubmittedDialog, {
 	props: { open: false },
+=======
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
+import WorkflowReviewSubmittedDialog from './WorkflowReviewSubmittedDialog.vue';
+
+const router = createRouter({
+	history: createMemoryHistory(),
+	routes: [
+		{
+			path: '/workflow-review-requests/:reviewRequestId?',
+			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+			component: { template: '<div />' },
+		},
+	],
+});
+
+const renderComponent = createComponentRenderer(WorkflowReviewSubmittedDialog, {
+	props: { open: false, workflowReviewRequestId: 'review-1' },
+	// The real RouterLink resolves the named route, so the test asserts the URL
+	// the user actually lands on rather than the raw `to` object.
+	global: { plugins: [router], stubs: { RouterLink: false } },
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 });
 
 const renderOpenDialog = async (pinia: ReturnType<typeof createPinia>) => {
@@ -21,15 +47,39 @@ describe('WorkflowReviewSubmittedDialog', () => {
 		localStorage.clear();
 	});
 
+<<<<<<< HEAD
 	it('renders the confirmation and closes from Got it', async () => {
 		const pinia = createPinia();
 		useUsersStore(pinia).currentUserId = 'user-1';
 		const { getByRole, getByText, emitted } = await renderOpenDialog(pinia);
+=======
+	it('links to the submitted review', async () => {
+		const pinia = createPinia();
+		useUsersStore(pinia).currentUserId = 'user-1';
+		const { getByRole } = await renderOpenDialog(pinia);
+
+		expect(getByRole('link', { name: 'your submission' })).toHaveAttribute(
+			'href',
+			'/workflow-review-requests/review-1',
+		);
+	});
+
+	it('renders the confirmation and closes from Got it', async () => {
+		const pinia = createPinia();
+		useUsersStore(pinia).currentUserId = 'user-1';
+		const { getByRole, getByTestId, emitted } = await renderOpenDialog(pinia);
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 
 		expect(
 			getByRole('dialog', { name: 'Workflow version submitted for review' }),
 		).toBeInTheDocument();
+<<<<<<< HEAD
 		expect(getByText(/You can view your submission in the reviews area/)).toBeInTheDocument();
+=======
+		expect(getByTestId('workflow-review-submitted-dialog')).toHaveTextContent(
+			'You can view your submission in the reviews area',
+		);
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 
 		await userEvent.click(getByRole('button', { name: 'Got it' }));
 

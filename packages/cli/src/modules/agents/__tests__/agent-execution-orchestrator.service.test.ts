@@ -1,4 +1,4 @@
-import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
+import type { Agent as RuntimeAgent, SerializableAgentState, StreamChunk } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
@@ -26,6 +26,18 @@ const schema: AgentJsonConfig = {
 	name: 'Support Agent',
 	model: 'anthropic/claude-sonnet-4-5',
 	instructions: 'Help users',
+};
+
+const telemetryContext = {
+	runType: 'test' as const,
+	configuration: {
+		model: schema.model,
+		channels: [],
+		tool_types: [],
+		tool_count: 0,
+		num_skills: 0,
+		memory_type: 'none' as const,
+	},
 };
 
 function makeReadableStream(chunks: StreamChunk[]): ReadableStream<StreamChunk> {
@@ -74,14 +86,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 		toolRegistry: mock<ToolRegistry>(),
 		projectId,
 		agentId,
-		telemetryConfiguration: {
-			model: schema.model,
-			channels: [],
-			tool_types: [],
-			tool_count: 0,
-			num_skills: 0,
-			memory_type: 'none' as const,
-		},
+		telemetryConfiguration: telemetryContext.configuration,
 	};
 }
 
@@ -133,6 +138,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('streams chat responses and records suspended executions', async () => {
 		const { service, executionService } = makeService();
+		const abortController = new AbortController();
 		const runtime = makeRuntime([
 			{ type: 'text-start', id: 'text-1' },
 			{ type: 'text-delta', id: 'text-1', delta: 'Choose one' },
@@ -153,6 +159,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
+				telemetry: telemetryContext,
+				abortSignal: abortController.signal,
 			}),
 		);
 
@@ -162,6 +170,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({
 				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 				executionCounter: expect.any(Object),
+				abortSignal: abortController.signal,
 			}),
 		);
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
@@ -172,6 +181,49 @@ describe('AgentExecutionOrchestratorService', () => {
 				record: expect.objectContaining({ assistantResponse: 'Choose one' }),
 			}),
 		);
+	});
+
+	it('awaits recordMessage and notifies onExecutionRecorded with the returned id', async () => {
+		const { service, executionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		const onExecutionRecorded = vi.fn();
+
+		await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				onExecutionRecorded,
+			}),
+		);
+
+		expect(executionService.recordMessage).toHaveBeenCalled();
+		expect(onExecutionRecorded).toHaveBeenCalledWith('execution-1');
+	});
+
+	it('still records the message when onExecutionRecorded is omitted', async () => {
+		const { service, executionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+
+		await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+			}),
+		);
+
+		expect(executionService.recordMessage).toHaveBeenCalled();
 	});
 
 	it('executes in-app chat against the draft runtime', async () => {
@@ -391,6 +443,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
+				telemetry: telemetryContext,
 			}),
 		);
 
@@ -426,6 +479,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					message: 'hello',
 					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 					projectId,
+					telemetry: telemetryContext,
 				}),
 			),
 		).rejects.toThrow('reader failed while consuming stream');
@@ -439,6 +493,45 @@ describe('AgentExecutionOrchestratorService', () => {
 					assistantResponse: 'partial answer',
 					finishReason: 'error',
 					error: 'reader failed while consuming stream',
+				}),
+			}),
+		);
+	});
+
+	it('persists an aborted chat stream as cancelled without discarding partial output', async () => {
+		const { service, executionService } = makeService();
+		const abortController = new AbortController();
+		const runtime = makeRuntime([
+			{ type: 'text-start', id: 'text-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'partial answer' },
+			{ type: 'error', error: new Error('This operation was aborted') },
+			{ type: 'finish', finishReason: 'error' },
+		]);
+		const stream = service.streamChatResponse({
+			agentInstance: runtime.agent,
+			toolRegistry: runtime.toolRegistry,
+			agentId,
+			message: 'hello',
+			memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+			projectId,
+			telemetry: telemetryContext,
+			abortSignal: abortController.signal,
+			onExecutionRecorded: vi.fn(),
+		});
+
+		await stream.next();
+		await stream.next();
+		abortController.abort();
+		await collect(stream);
+
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userMessage: 'hello',
+				record: expect.objectContaining({
+					assistantResponse: 'partial answer',
+					finishReason: 'cancelled',
+					error: null,
+					timeline: [expect.objectContaining({ type: 'text', content: 'partial answer' })],
 				}),
 			}),
 		);
@@ -460,9 +553,15 @@ describe('AgentExecutionOrchestratorService', () => {
 		await expect(
 			service.getConversationHistory({ threadId: 'thread-1', projectId, agentId }),
 		).resolves.toEqual([
-			{ id: 'execution-1:user', role: 'user', content: [{ type: 'text', text: 'Hi' }] },
+			{
+				id: 'execution-1:user',
+				executionId: 'execution-1',
+				role: 'user',
+				content: [{ type: 'text', text: 'Hi' }],
+			},
 			{
 				id: 'execution-1:assistant',
+				executionId: 'execution-1',
 				role: 'assistant',
 				content: [{ type: 'text', text: 'Hello' }],
 			},
@@ -493,6 +592,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		} as never);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
+		const abortController = new AbortController();
 		await collect(
 			service.resumeForChat({
 				agentId,
@@ -501,13 +601,18 @@ describe('AgentExecutionOrchestratorService', () => {
 				toolCallId: 'tc-1',
 				resumeData: { value: 'yes' },
 				integrationType: 'slack',
+				abortSignal: abortController.signal,
 			}),
 		);
 
 		expect(runtime.agent.resume).toHaveBeenCalledWith(
 			'stream',
 			{ value: 'yes' },
-			expect.objectContaining({ runId: 'run-1', toolCallId: 'tc-1' }),
+			expect.objectContaining({
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				abortSignal: abortController.signal,
+			}),
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');
@@ -524,6 +629,83 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+<<<<<<< HEAD
+=======
+	it('persists an aborted resumed stream as cancelled without discarding partial output', async () => {
+		const { service, checkpointStorage, runtimeCacheService, executionService } = makeService();
+		const abortController = new AbortController();
+		const runtime = makeRuntime([
+			{ type: 'text-start', id: 'text-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'partial resumed answer' },
+			{ type: 'error', error: new Error('This operation was aborted') },
+			{ type: 'finish', finishReason: 'error' },
+		]);
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const stream = service.resumeForChat({
+			agentId,
+			projectId,
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: { value: 'yes' },
+			abortSignal: abortController.signal,
+			onExecutionRecorded: vi.fn(),
+		});
+
+		await stream.next();
+		await stream.next();
+		abortController.abort();
+		await collect(stream);
+
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userMessage: null,
+				hitlStatus: 'resumed',
+				record: expect.objectContaining({
+					assistantResponse: 'partial resumed answer',
+					finishReason: 'cancelled',
+					error: null,
+					timeline: [expect.objectContaining({ type: 'text', content: 'partial resumed answer' })],
+				}),
+			}),
+		);
+	});
+
+	it('atomically cancels only suspended checkpoints owned by the preview user', async () => {
+		const { service, checkpointStorage } = makeService();
+		const checkpoint: SerializableAgentState = {
+			status: 'suspended',
+			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			pendingToolCalls: {},
+		};
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
+		checkpointStorage.cancelSuspended.mockResolvedValue(true);
+
+		await expect(
+			service.cancelChatRun({
+				agentId,
+				runId: 'run-1',
+				resourceId: 'draft-chat:user-1',
+			}),
+		).resolves.toBe(true);
+		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledWith('run-1', checkpoint, agentId);
+
+		checkpointStorage.cancelSuspended.mockClear();
+		await expect(
+			service.cancelChatRun({
+				agentId,
+				runId: 'run-1',
+				resourceId: 'draft-chat:another-user',
+			}),
+		).resolves.toBe(false);
+		expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
+	});
+
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	it('passes tracing telemetry returned by AgentRunTracingService into stream() and resume()', async () => {
 		const { service, checkpointStorage, runtimeCacheService, agentRunTracingService } =
 			makeService();
@@ -544,6 +726,10 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
+<<<<<<< HEAD
+=======
+				telemetry: telemetryContext,
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			}),
 		);
 		expect(runtime.agent.stream).toHaveBeenCalledWith(

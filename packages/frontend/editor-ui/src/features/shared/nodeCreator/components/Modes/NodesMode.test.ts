@@ -42,7 +42,11 @@ function messageAnAgentElement(): NodeCreateElement {
 		subcategory: '*',
 		properties: mockSimplifiedNodeType({
 			name: MESSAGE_AN_AGENT_NODE_TYPE,
+<<<<<<< HEAD
 			displayName: 'AI Agent V1',
+=======
+			displayName: 'AI Agent V2',
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			group: ['transform'],
 		}),
 	};
@@ -69,13 +73,21 @@ describe('NodesMode', () => {
 		const { emitted } = render({ pinia });
 		await nextTick();
 
+<<<<<<< HEAD
 		await userEvent.click(screen.getByText('AI Agent V1'));
+=======
+		await userEvent.click(screen.getByText('AI Agent V2'));
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 
 		expect(emitted('nodeTypeSelected')).toBeUndefined();
 
 		const activeStack = useViewStacks().activeViewStack;
 		expect(activeStack.mode).toBe('agents');
+<<<<<<< HEAD
 		expect(activeStack.title).toBe('AI Agent V1');
+=======
+		expect(activeStack.title).toBe('AI Agent V2');
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		expect(activeStack.hasSearch).toBe(true);
 		expect(activeStack.rootView).toBe(REGULAR_NODE_CREATOR_VIEW);
 	});

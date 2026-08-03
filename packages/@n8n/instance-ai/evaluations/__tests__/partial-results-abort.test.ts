@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { abortedWorkflowTestCaseResult } from '../harness/runner';
+=======
+import { abortedWorkflowTestCaseResult } from '../harness/cleanup';
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 import { classifyScenarioExecutionError } from '../harness/transient-error';
 import { aggregateResults } from '../run/aggregator';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';

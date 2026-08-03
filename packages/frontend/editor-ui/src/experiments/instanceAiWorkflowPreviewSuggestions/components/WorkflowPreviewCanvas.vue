@@ -119,7 +119,7 @@ function resetStates() {
 let animationTimer: ReturnType<typeof setTimeout> | null = null;
 let stopped = false;
 
-async function sleep(ms: number): Promise<void> {
+async function delayAnimation(ms: number): Promise<void> {
 	return new Promise((resolve) => {
 		animationTimer = setTimeout(resolve, ms);
 	});
@@ -131,7 +131,7 @@ async function runNodeAnimation() {
 	for (const step of executionSteps.value) {
 		if (stopped) return;
 		for (const id of step) nodeStates[id] = 'running';
-		await sleep(NODE_RUNNING_DURATION_MS);
+		await delayAnimation(NODE_RUNNING_DURATION_MS);
 		if (stopped) return;
 		for (const id of step) nodeStates[id] = 'success';
 	}

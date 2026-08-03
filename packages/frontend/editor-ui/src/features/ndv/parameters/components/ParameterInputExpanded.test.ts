@@ -30,7 +30,12 @@ vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
 	};
 });
 
+<<<<<<< HEAD
 vi.mock('@/app/composables/useTelemetry', () => ({
+=======
+vi.mock('@n8n/composables/useTelemetry', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/composables/useTelemetry')>()),
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	useTelemetry: () => ({
 		track: vi.fn(),
 	}),

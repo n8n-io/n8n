@@ -224,6 +224,49 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
+	 * Workflows whose `workflow_published_version` mapping disagrees with the
+	 * workflow's canonical `activeVersionId`, in either direction: published but
+	 * the mapping is stale or missing (a lost or rolled-back publication), or
+	 * unpublished but a mapping row remains (a missed unpublish).
+	 *
+	 * Workflows with an in-flight (pending/in_progress) record are excluded:
+	 * mid-publication skew is expected, and that record is about to converge it.
+	 * The exclusion lives in the same statement as the detection, so there is no
+	 * torn read between "is it skewed" and "is it in flight". This also covers
+	 * the applier's mid-apply window: publish/unpublish commit the
+	 * `activeVersionId` change and the outbox enqueue in one transaction, and the
+	 * applier only mutates the mapping while its record is `in_progress` — so a
+	 * skew visible with no in-flight record is a real divergence (e.g. a stalled
+	 * processor writing the mapping after losing its lease), never a normal
+	 * mid-flight state.
+	 */
+	async findVersionSkewedWorkflowIds(): Promise<string[]> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+		const publishedVersionTableName = this.getTableName('workflow_published_version');
+
+		// `(x IS NULL) <> (y IS NULL) OR x <> y` is the portable spelling of
+		// `activeVersionId IS DISTINCT FROM publishedVersionId`, which sqlite
+		// lacks; both-null (never published, no mapping) compares as equal.
+		const rows: Array<{ workflowId: string }> = await this.query(
+			`SELECT w."id" AS "workflowId"
+			 FROM ${workflowTableName} w
+			 LEFT JOIN ${publishedVersionTableName} pv ON pv."workflowId" = w."id"
+			 WHERE (
+				 (w."activeVersionId" IS NULL) <> (pv."workflowId" IS NULL)
+				 OR w."activeVersionId" <> pv."publishedVersionId"
+			 )
+			 AND NOT EXISTS (
+				 SELECT 1 FROM ${outboxTableName} o
+				 WHERE o."workflowId" = w."id"
+				 AND o."status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 )`,
+		);
+
+		return rows.map((row) => row.workflowId);
+	}
+
+	/**
 	 * Atomically claim the oldest pending record by transitioning its status to
 	 * `in_progress`. Postgres uses `FOR UPDATE SKIP LOCKED` so concurrent
 	 * consumers never receive the same row; SQLite serializes the find-then-update

@@ -8,7 +8,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { PersistedWorkflowPlanItem } from '../workflow-import.types';
+import type { PersistedWorkflowOutcome, PersistedWorkflowPlanItem } from '../workflow-import.types';
 import { WorkflowPublisher } from '../workflow-publisher';
 import { WorkflowPublishingPolicy } from '../workflow-publishing-policy.types';
 
@@ -189,7 +189,11 @@ describe('WorkflowPublisher', () => {
 				updateItem,
 				workflow,
 				WorkflowPublishingPolicy.MatchSource,
+<<<<<<< HEAD
 				new Map([['wf-stubbed', 'stub-credential']]),
+=======
+				'stub-credential',
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			);
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
@@ -213,7 +217,11 @@ describe('WorkflowPublisher', () => {
 				createItem(true),
 				workflow,
 				WorkflowPublishingPolicy.PublishAll,
+<<<<<<< HEAD
 				new Map([['wf-1', 'stub-credential']]),
+=======
+				'stub-credential',
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			);
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
@@ -246,7 +254,11 @@ describe('WorkflowPublisher', () => {
 				updateItem,
 				workflow,
 				WorkflowPublishingPolicy.PreservePublishedState,
+<<<<<<< HEAD
 				new Map([['wf-stubbed', 'stub-credential']]),
+=======
+				'stub-credential',
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			);
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
@@ -281,7 +293,11 @@ describe('WorkflowPublisher', () => {
 				updateItem,
 				workflow,
 				WorkflowPublishingPolicy.UnpublishAll,
+<<<<<<< HEAD
 				new Map([['wf-broken', 'missing-node-type']]),
+=======
+				'missing-node-type',
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			);
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
@@ -291,5 +307,85 @@ describe('WorkflowPublisher', () => {
 			expect(result.workflow).toBe(unpublished);
 			expect(result.publishing).toEqual({ state: 'unpublished' });
 		});
+<<<<<<< HEAD
+=======
+	});
+	describe('applyToPackage', () => {
+		const persisted = (sourceWorkflowId: string): PersistedWorkflowOutcome => ({
+			status: 'created',
+			sourceWorkflowId,
+			workflow: mock<WorkflowEntity>({
+				id: `local-${sourceWorkflowId}`,
+				versionId: 'v1',
+				activeVersionId: null,
+				isArchived: false,
+			}),
+			item: {
+				action: 'create',
+				sourceWorkflowId,
+				decidedId: `local-${sourceWorkflowId}`,
+				sourcePublished: false,
+				parentFolderId: null,
+				entity: mock<WorkflowEntity>(),
+			},
+		});
+
+		/** Source workflow ids in the order the publisher activated them. */
+		const activationOrder = () =>
+			workflowService.activateWorkflow.mock.calls.map(([, workflowId]) =>
+				String(workflowId).replace('local-', ''),
+			);
+
+		beforeEach(() => {
+			workflowService.activateWorkflow.mockImplementation(async (_user, workflowId) =>
+				mock<WorkflowEntity>({ id: String(workflowId) }),
+			);
+		});
+
+		it('publishes a sub-workflow before the workflow that calls it', async () => {
+			// CHEDDAR is written first but calls BRIE, so BRIE must be published first — activation
+			// rejects a parent whose referenced sub-workflow is not yet published.
+			const published = await publisher.applyToPackage({
+				user,
+				persisted: [persisted('CHEDDAR'), persisted('BRIE')],
+				policy: WorkflowPublishingPolicy.PublishAll,
+				subWorkflowRequirements: [{ id: 'BRIE', name: 'BRIE', usedByWorkflows: ['CHEDDAR'] }],
+			});
+
+			expect(activationOrder()).toEqual(['BRIE', 'CHEDDAR']);
+			expect(published.get('BRIE')?.publishing).toEqual({ state: 'published' });
+			expect(published.get('CHEDDAR')?.publishing).toEqual({ state: 'published' });
+		});
+
+		it('keeps written order when no sub-workflow dependencies are declared', async () => {
+			await publisher.applyToPackage({
+				user,
+				persisted: [persisted('CHEDDAR'), persisted('BRIE')],
+				policy: WorkflowPublishingPolicy.PublishAll,
+				subWorkflowRequirements: undefined,
+			});
+
+			expect(activationOrder()).toEqual(['CHEDDAR', 'BRIE']);
+		});
+
+		it('never publishes a skipped workflow and reports it as unchanged', async () => {
+			const published = await publisher.applyToPackage({
+				user,
+				persisted: [
+					{
+						status: 'skipped' as const,
+						sourceWorkflowId: 'BRIE',
+						workflow: mock<WorkflowEntity>({ id: 'local-BRIE' }),
+					},
+				],
+				policy: WorkflowPublishingPolicy.PublishAll,
+				subWorkflowRequirements: undefined,
+			});
+
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			// Absent from the map; callers report `unchanged` for anything the phase left alone.
+			expect(published.has('BRIE')).toBe(false);
+		});
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	});
 });

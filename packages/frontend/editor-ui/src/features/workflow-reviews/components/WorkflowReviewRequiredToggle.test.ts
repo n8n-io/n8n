@@ -111,8 +111,16 @@ describe('WorkflowReviewRequiredToggle', () => {
 				id: 'req-1',
 				state: 'open',
 				decision: 'pending',
+<<<<<<< HEAD
 				createdAt: '2026-07-20T10:00:00.000Z',
 				updatedAt: '2026-07-20T10:00:00.000Z',
+=======
+				workflowVersionId: 'ver-1',
+				createdAt: '2026-07-20T10:00:00.000Z',
+				updatedAt: '2026-07-20T10:00:00.000Z',
+				decisionBy: null,
+				approvedVersionPublicationState: null,
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			} as const;
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValueOnce({
 				count: 1,

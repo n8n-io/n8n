@@ -351,7 +351,11 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		expect(metrics.sweep.runsCrashResumed).toBe(0);
 	});
 
+<<<<<<< HEAD
 	it('terminalizes orphaned spawned children with the user-cancel wording', async () => {
+=======
+	it('terminalizes orphaned spawned children as cancelled without an error', async () => {
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		const { sweeper, published } = buildSweeper({
 			events: [runStart(), agentSpawned('child-orphaned')],
 		});
@@ -361,10 +365,18 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		expect(published.map((e) => e.type)).toEqual(['agent-completed', 'run-finish']);
 		const completed = published[0];
 		expect(completed.type === 'agent-completed' && completed.agentId).toBe('child-orphaned');
+<<<<<<< HEAD
 		// Matches the live cancel path's wording for spawned agents.
 		expect(completed.type === 'agent-completed' && completed.payload.error).toBe(
 			'Cancelled by user',
 		);
+=======
+		expect(completed.type === 'agent-completed' && completed.payload).toEqual({
+			role: 'agent-builder',
+			result: '',
+			status: 'cancelled',
+		});
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	});
 
 	it('is idempotent and scoped to the requested thread', async () => {

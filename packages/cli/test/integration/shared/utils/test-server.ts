@@ -255,6 +255,16 @@ export const setupTestServer = ({
 						break;
 					}
 
+<<<<<<< HEAD
+=======
+					case 'oidc': {
+						const { OidcService } = await import('@/modules/sso-oidc/oidc.service.ee.js');
+						await Container.get(OidcService).init();
+						await import('@/modules/sso-oidc/oidc.controller.ee.js');
+						break;
+					}
+
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 					case 'otel': {
 						const { OtelService } = await import('@/modules/otel/otel.service.js');
 						await Container.get(OtelService).init();
@@ -316,6 +326,10 @@ export const setupTestServer = ({
 
 					case 'roleMappingRule':
 						await import('@/modules/provisioning.ee/role-mapping-rule.controller.ee.js');
+						break;
+
+					case 'provisioning':
+						await import('@/modules/provisioning.ee/provisioning.controller.ee.js');
 						break;
 
 					case 'dynamic-node-parameters':

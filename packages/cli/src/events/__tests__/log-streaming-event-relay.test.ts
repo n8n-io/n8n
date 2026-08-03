@@ -76,7 +76,14 @@ describe('LogStreamingEventRelay', () => {
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
+<<<<<<< HEAD
 					variableMissingMode: 'do-nothing',
+=======
+					variableMissingMode: 'create-stub',
+					variableParentPolicy: 'project',
+					tagMissingMode: 'create',
+					tagConflictPolicy: 'skip',
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -105,6 +112,14 @@ describe('LogStreamingEventRelay', () => {
 					variables: {
 						matched: 0,
 						missing: 1,
+						created: 0,
+						requirements: 1,
+					},
+					tags: {
+						matched: 1,
+						created: 0,
+						renamed: 0,
+						skipped: 0,
 						requirements: 1,
 					},
 				},
@@ -133,7 +148,14 @@ describe('LogStreamingEventRelay', () => {
 						dataTableMatchingMode: 'by-id',
 						dataTableMissingMode: 'create',
 						dataTableSchemaConflictPolicy: 'keep-existing',
+<<<<<<< HEAD
 						variableMissingMode: 'do-nothing',
+=======
+						variableMissingMode: 'create-stub',
+						variableParentPolicy: 'project',
+						tagMissingMode: 'create',
+						tagConflictPolicy: 'skip',
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 					},
 					packageSourceId: 'source-instance-1',
 					packageVersion: '1',
@@ -165,6 +187,7 @@ describe('LogStreamingEventRelay', () => {
 					credentials: 1,
 					dataTables: 1,
 					variables: 1,
+					tags: 1,
 				},
 			};
 

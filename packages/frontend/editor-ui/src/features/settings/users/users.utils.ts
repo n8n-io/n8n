@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
 	CALENDLY_TRIGGER_NODE_TYPE,
 	CLEARBIT_NODE_TYPE,
@@ -62,29 +63,15 @@ import {
 	PRODUCT_GOAL,
 	SECURITY_GOAL,
 } from './users.constants';
+=======
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 import { ROLE } from '@n8n/api-types';
-import type {
-	IPersonalizationSurveyAnswersV1,
-	IPersonalizationSurveyAnswersV2,
-	IPersonalizationSurveyAnswersV3,
-	IPersonalizationSurveyVersions,
-	IUser,
-} from '@n8n/rest-api-client/api/users';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { ILogInStatus } from './users.types';
-import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 
 /*
 	Utility functions used to handle users in n8n
 */
-
-function isPersonalizationSurveyV2OrLater(
-	data: IPersonalizationSurveyVersions,
-): data is
-	| IPersonalizationSurveyAnswersV2
-	| IPersonalizationSurveyAnswersV3
-	| IPersonalizationSurveyAnswersV4 {
-	return 'version' in data;
-}
 
 export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } = {
 	LoggedIn: 'LoggedIn', // Can be owner or member or default user
@@ -92,6 +79,7 @@ export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } =
 };
 
 export const isUserGlobalOwner = (user: IUser): boolean => user.role === ROLE.Owner;
+<<<<<<< HEAD
 
 export function getPersonalizedNodeTypes(
 	answers:
@@ -331,3 +319,5 @@ function getPersonalizationSurveyV1(answers: IPersonalizationSurveyAnswersV1) {
 
 	return nodeTypes;
 }
+=======
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf

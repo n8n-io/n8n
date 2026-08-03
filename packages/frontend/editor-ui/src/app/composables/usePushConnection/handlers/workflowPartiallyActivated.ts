@@ -1,5 +1,5 @@
 import type { WorkflowPartiallyActivated } from '@n8n/api-types/push/workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';

@@ -1,14 +1,16 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
+import type { TelemetryOptions, ToolCallRepairFunction, ToolSet } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
 
 import { incrementMessageCount, incrementTokenCountFromUsage } from './execution-counter';
 import { GenerateSink } from './generate-sink';
+import { hydrateFileParts } from './hydrate-file-parts';
 import type { RunOutputSink, RunServices } from './run-output-sink';
 import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
 import {
 	extractSettledToolCalls,
+	formatMcpConnectionNote,
 	makeErrorStream,
 	mergeUsage,
 	normalizeInput,
@@ -17,6 +19,7 @@ import { StreamSink } from './stream-sink';
 import { isCancellation } from '../../sdk/cancellation';
 import { computeCost, getModelCost, type ModelCost } from '../../sdk/catalog';
 import type {
+	BuiltFileStore,
 	BuiltMemory,
 	BuiltProviderTool,
 	BuiltTelemetry,
@@ -25,10 +28,12 @@ import type {
 	EpisodicMemoryConfig,
 	FinishReason,
 	GenerateResult,
+	McpConnectionFailedEvent,
 	ObservationalMemoryConfig,
 	ObservationLogMemoryConfig,
 	PendingToolCall,
 	RunOptions,
+	ReasoningLevel,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
@@ -88,12 +93,15 @@ export interface AgentRuntimeConfig {
 	};
 	providerTools?: BuiltProviderTool[];
 	memory?: BuiltMemory;
+	/** Host store resolving file-reference content parts to bytes before LLM calls. */
+	fileStore?: BuiltFileStore;
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 	episodicMemory?: EpisodicMemoryConfig;
 	structuredOutput?: z.ZodType | JSONSchema7;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
+	reasoning?: ReasoningLevel;
 	promptCaching?: PromptCachingConfig;
 	eventBus?: AgentEventBus;
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
@@ -114,6 +122,14 @@ export interface AgentRuntimeConfig {
 	runState?: RunStateManager;
 	/** Host callback for observational-memory background task lifecycle events. */
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/**
+	 * Per-server MCP connection failures recorded during `Agent.build()` when
+	 * resolving MCP tools. Tools from these servers were skipped; the runtime
+	 * surfaces each as a non-fatal `warning` stream chunk at the start of a
+	 * stream so hosts can tell the user an MCP server was unavailable without
+	 * aborting the run.
+	 */
+	mcpConnectionFailures?: McpConnectionFailedEvent[];
 }
 
 const MAX_LOOP_ITERATIONS = 30;
@@ -336,6 +352,9 @@ export class AgentRuntime {
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
+		await hydrateFileParts(list.messages(), this.config.fileStore, {
+			threadId: state.persistence?.threadId,
+		});
 
 		const toolForValidation = this.context
 			.getCurrentTools(state.persistence)
@@ -490,6 +509,9 @@ export class AgentRuntime {
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
+		await hydrateFileParts(list.messages(), this.config.fileStore, {
+			threadId: state.persistence?.threadId,
+		});
 
 		let abortScope: AgentAbortScope | undefined;
 		try {
@@ -568,6 +590,11 @@ export class AgentRuntime {
 		// is authoritative for completed turns, so this must not abort the turn.
 		await this.memory.persistInputMessages(list, options);
 
+		// Hydrate after the eager persist so stored input stays reference-only.
+		await hydrateFileParts(list.messages(), this.config.fileStore, {
+			threadId: options?.persistence?.threadId,
+		});
+
 		return list;
 	}
 
@@ -608,16 +635,18 @@ export class AgentRuntime {
 		toolMap: Map<string, BuiltTool>,
 		options?: ExecutionOptions,
 	): {
-		experimental_telemetry?: TelemetrySettings;
-		experimental_repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
-		experimental_onStepStart?: ExecutionOptions['onStepStart'];
-		onStepFinish?: ExecutionOptions['onStepFinish'];
+		telemetry?: TelemetryOptions;
+		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
+		onStepStart?: ExecutionOptions['onStepStart'];
+		onStepEnd?: ExecutionOptions['onStepEnd'];
 	} {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
-			...(options?.onStepStart ? { experimental_onStepStart: options.onStepStart } : {}),
-			...(options?.onStepFinish ? { onStepFinish: options.onStepFinish } : {}),
-			experimental_repairToolCall: async (options) => {
+			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
+			...(options?.onStepEnd || options?.onStepFinish
+				? { onStepEnd: options.onStepEnd ?? options.onStepFinish }
+				: {}),
+			repairToolCall: async (options) => {
 				return await fixToolCall(
 					{
 						toolCall: options.toolCall,
@@ -690,6 +719,10 @@ export class AgentRuntime {
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { list, options, abortScope, pendingResume } = ctx;
 		this.context.hydrateDeferredToolsFromList(list);
+		// Inject a model-facing note for any MCP servers that failed to connect
+		// during build(). The agent can mention the outage to the user when
+		// relevant; the note is system-message only and never persisted.
+		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
 
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
@@ -790,6 +823,7 @@ export class AgentRuntime {
 				abortSignal: abortScope.signal,
 				hasTools,
 				aiTools: cached.aiTools,
+				reasoning: staticLoopContext.reasoning,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
@@ -889,6 +923,18 @@ export class AgentRuntime {
 			withRootSpan: async (operation, options, runId, fn) =>
 				await this.telemetry.withRootSpan(operation, options, runId, fn),
 			runLoop: async (guard) => {
+				// Surface MCP connection failures as non-fatal warnings before the
+				// first LLM step. Tools from these servers were skipped during
+				// build(); the run continues with the remaining tools.
+				for (const failure of this.config.mcpConnectionFailures ?? []) {
+					void guard.write({
+						type: 'warning',
+						message: failure.error,
+						code: 'mcp_connection_failed',
+						source: 'mcp',
+						server: failure.server,
+					});
+				}
 				sink = new StreamSink(guard, this.createRunServices(), ctx.options);
 				await this.runAgentLoop(ctx, sink);
 			},

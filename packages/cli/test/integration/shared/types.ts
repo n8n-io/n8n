@@ -22,6 +22,10 @@ type EndpointGroup =
 	| 'community-packages'
 	| 'ldap'
 	| 'saml'
+<<<<<<< HEAD
+=======
+	| 'oidc'
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	| 'otel'
 	| 'sourceControl'
 	| 'eventBus'
@@ -40,6 +44,7 @@ type EndpointGroup =
 	| 'project'
 	| 'role'
 	| 'roleMappingRule'
+	| 'provisioning'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'

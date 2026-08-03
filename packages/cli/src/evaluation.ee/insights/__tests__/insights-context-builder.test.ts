@@ -50,7 +50,10 @@ describe('InsightsContextBuilder', () => {
 		const context = await builder.build('wf-1', {
 			collectionName: 'Tuning',
 			winnerLabel: 'B',
+<<<<<<< HEAD
 			scaleByMetric: {},
+=======
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			versions: [
 				{
 					testRunId: 'tr-b',
@@ -58,6 +61,10 @@ describe('InsightsContextBuilder', () => {
 					versionLabel: 'B',
 					avgScore: 1,
 					scores: { correctness: 1 },
+<<<<<<< HEAD
+=======
+					metricScales: {},
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				},
 			],
 		});
@@ -74,7 +81,10 @@ describe('InsightsContextBuilder', () => {
 		const context = await builder.build('wf-1', {
 			collectionName: 'Tuning',
 			winnerLabel: 'B',
+<<<<<<< HEAD
 			scaleByMetric: {},
+=======
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			versions: [
 				{
 					testRunId: 'tr-a',
@@ -82,6 +92,10 @@ describe('InsightsContextBuilder', () => {
 					versionLabel: 'A',
 					avgScore: 0.4,
 					scores: { correctness: 0.4 },
+<<<<<<< HEAD
+=======
+					metricScales: {},
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				},
 				{
 					testRunId: 'tr-b',
@@ -89,6 +103,10 @@ describe('InsightsContextBuilder', () => {
 					versionLabel: 'B',
 					avgScore: 1,
 					scores: { correctness: 1 },
+<<<<<<< HEAD
+=======
+					metricScales: {},
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				},
 			],
 		});
@@ -107,6 +125,50 @@ describe('InsightsContextBuilder', () => {
 		expect(versionA.regressedCases[0].baseOutput).toContain('four');
 	});
 
+<<<<<<< HEAD
+=======
+	it('normalizes each run on its own frozen scale, not a shared one', async () => {
+		// Base scored "Quality" 5 on a 1–5 scale (→100%); version scored 0.4 on a
+		// unit scale (→40%). Using one shared scale would misnormalize a side.
+		testCaseExecutionRepo.getManyByTestRunId.mockImplementation((async (runId: string) =>
+			runId === 'tr-b'
+				? [{ runIndex: 0, metrics: { Quality: 5 }, inputs: {}, outputs: { answer: 'base' } }]
+				: [
+						{ runIndex: 0, metrics: { Quality: 0.4 }, inputs: {}, outputs: { answer: 'ver' } },
+					]) as unknown as TestCaseExecutionRepository['getManyByTestRunId']);
+
+		const context = await builder.build('wf-1', {
+			collectionName: 'Tuning',
+			winnerLabel: 'B',
+			versions: [
+				{
+					testRunId: 'tr-a',
+					workflowVersionId: 'v-a',
+					versionLabel: 'A',
+					avgScore: 0.4,
+					scores: { Quality: 0.4 },
+					metricScales: { Quality: 'unit' },
+				},
+				{
+					testRunId: 'tr-b',
+					workflowVersionId: 'v-b',
+					versionLabel: 'B',
+					avgScore: 1,
+					scores: { Quality: 1 },
+					metricScales: { Quality: 'oneToFive' },
+				},
+			],
+		});
+
+		const versionA = context.versions.find((v) => v.label === 'A')!;
+		expect(versionA.regressedCases).toHaveLength(1);
+		expect(versionA.regressedCases[0]).toMatchObject({
+			baseScorePercent: 100, // 5 on the base run's oneToFive scale
+			versionScorePercent: 40, // 0.4 on the version run's unit scale
+		});
+	});
+
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	it("surfaces a modified node's changed prompt text (before → after) so the cause is citable", async () => {
 		const agent = (systemMessage: string) => ({
 			id: 'agent-1',
@@ -127,7 +189,10 @@ describe('InsightsContextBuilder', () => {
 		const context = await builder.build('wf-1', {
 			collectionName: 'Tuning',
 			winnerLabel: 'B',
+<<<<<<< HEAD
 			scaleByMetric: {},
+=======
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			versions: [
 				{
 					testRunId: 'tr-a',
@@ -135,6 +200,10 @@ describe('InsightsContextBuilder', () => {
 					versionLabel: 'A',
 					avgScore: 0.4,
 					scores: { correctness: 0.4 },
+<<<<<<< HEAD
+=======
+					metricScales: {},
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				},
 				{
 					testRunId: 'tr-b',
@@ -142,6 +211,10 @@ describe('InsightsContextBuilder', () => {
 					versionLabel: 'B',
 					avgScore: 1,
 					scores: { correctness: 1 },
+<<<<<<< HEAD
+=======
+					metricScales: {},
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 				},
 			],
 		});

@@ -13,7 +13,7 @@ import {
 	isStreamingTimelineEntry,
 	type ArtifactInfo,
 } from '../agentTimeline.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';

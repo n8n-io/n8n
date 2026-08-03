@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { ApiError } from '../client';
-import { toPackagesError } from '../commands/package/shared';
+import { toPackagesError } from '../commands/package/package-error';
 
 describe('toPackagesError', () => {
 	it('returns non-ApiError values unchanged', () => {
@@ -66,6 +66,38 @@ describe('toPackagesError', () => {
 		expect(hint).toContain('w1, w2');
 	});
 
+<<<<<<< HEAD
+=======
+	it('lists tag-unresolved issues for a 409', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'tag-unresolved',
+						kind: 'rename-drift',
+						sourceId: 't1',
+						name: 'prod',
+						existingName: 'production',
+						usedByWorkflows: ['w1'],
+					},
+					{
+						type: 'tag-unresolved',
+						kind: 'permission-denied',
+						missingScope: 'tag:create',
+						usedByWorkflows: ['w2'],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('tag "prod" (t1) unresolved (rename-drift)');
+		expect(hint).toContain('w1');
+		expect(hint).toContain('requires the tag:create scope');
+		expect(hint).toContain('w2');
+	});
+
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	it('leaves other ApiErrors without issue details unchanged', () => {
 		const error = new ApiError(400, 'Bad request');
 		expect(toPackagesError(error)).toBe(error);

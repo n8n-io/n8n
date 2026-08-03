@@ -336,7 +336,11 @@ function handlePageSizeChange(newPageSize: number) {
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
 	data,
-	columns: columnsDefinition.value,
+	// A getter keeps the column set reactive, so tables can add/remove columns
+	// after mount (e.g. contextual columns that depend on the active tab).
+	get columns() {
+		return columnsDefinition.value;
+	},
 	get rowCount() {
 		return props.itemsLength;
 	},

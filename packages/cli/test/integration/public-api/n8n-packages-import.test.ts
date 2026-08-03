@@ -201,6 +201,7 @@ describe('POST /n8n-packages/import', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
 			.field('workflowConflictPolicy', 'fail')
+			.field('workflowIdPolicy', 'new')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
@@ -235,6 +236,13 @@ describe('POST /n8n-packages/import', () => {
 			variables: {
 				matched: [],
 				missing: [],
+				stubbed: [],
+			},
+			tags: {
+				matched: [],
+				created: [],
+				renamed: [],
+				skipped: [],
 			},
 		});
 
@@ -258,6 +266,12 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
 			.field('variableMissingMode', 'do-nothing')
+<<<<<<< HEAD
+=======
+			.field('variableParentPolicy', 'project')
+			.field('tagMissingMode', 'do-nothing')
+			.field('tagConflictPolicy', 'fail')
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);

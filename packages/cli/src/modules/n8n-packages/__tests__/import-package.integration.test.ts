@@ -73,6 +73,12 @@ type ImportPackageParams = Omit<
 	| 'dataTableMissingMode'
 	| 'dataTableSchemaConflictPolicy'
 	| 'variableMissingMode'
+<<<<<<< HEAD
+=======
+	| 'variableParentPolicy'
+	| 'tagMissingMode'
+	| 'tagConflictPolicy'
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 > &
 	Partial<
 		Pick<
@@ -89,6 +95,12 @@ type ImportPackageParams = Omit<
 			| 'dataTableMissingMode'
 			| 'dataTableSchemaConflictPolicy'
 			| 'variableMissingMode'
+<<<<<<< HEAD
+=======
+			| 'variableParentPolicy'
+			| 'tagMissingMode'
+			| 'tagConflictPolicy'
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		>
 	>;
 
@@ -105,6 +117,12 @@ async function importPackage(params: ImportPackageParams) {
 		dataTableMissingMode: DataTableMissingMode.Create,
 		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
 		variableMissingMode: 'do-nothing',
+<<<<<<< HEAD
+=======
+		variableParentPolicy: 'project',
+		tagMissingMode: 'create',
+		tagConflictPolicy: 'skip',
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		...params,
 	});
 }
@@ -1209,6 +1227,14 @@ describe('Package import event emission', () => {
 				variables: {
 					matched: 0,
 					missing: 0,
+					created: 0,
+					requirements: 0,
+				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					skipped: 0,
 					requirements: 0,
 				},
 			});
@@ -1293,6 +1319,14 @@ describe('Package import event emission', () => {
 				variables: {
 					matched: 0,
 					missing: 0,
+					created: 0,
+					requirements: 0,
+				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					skipped: 0,
 					requirements: 0,
 				},
 			});
@@ -1346,6 +1380,14 @@ describe('Package import event emission', () => {
 				variables: {
 					matched: 0,
 					missing: 0,
+					created: 0,
+					requirements: 0,
+				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					skipped: 0,
 					requirements: 0,
 				},
 			});
@@ -1401,6 +1443,14 @@ describe('Package import event emission', () => {
 				variables: {
 					matched: 0,
 					missing: 0,
+					created: 0,
+					requirements: 0,
+				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					skipped: 0,
 					requirements: 0,
 				},
 			});

@@ -9,6 +9,7 @@ import {
 	hasSubMenu,
 	isInputCursorAtEnd,
 	isInputCursorAtStart,
+	isNavigableItem,
 	scrollHighlightedItemIntoView,
 } from './DropdownMenu.utils';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
@@ -105,7 +106,7 @@ const updateHighlightedItem = (
 
 	const highlightedItem = oldItems[highlightedIndex.value];
 	const newIndex = newItems.findIndex((item) => item.id === highlightedItem?.id);
-	highlightedIndex.value = newItems[newIndex]?.disabled ? -1 : newIndex;
+	highlightedIndex.value = isNavigableItem(newItems[newIndex]) ? newIndex : -1;
 };
 
 const debouncedEmitSearch = useDebounceFn((term: string, sequence: number) => {
@@ -156,13 +157,14 @@ const selectHighlightedItem = () => {
 	if (highlightedIndex.value < 0) return;
 
 	const item = props.items[highlightedIndex.value];
-	if (!item || item.disabled) return;
+	if (!isNavigableItem(item)) return;
 
 	if (hasSubMenu(item)) {
 		handleSubMenuOpenChange(highlightedIndex.value, true);
 	} else {
 		emit('select', item.id);
-		emit('close');
+		// Toggle-style rows (keepOpen) stay open on keyboard select, matching click.
+		if (!item.keepOpen) emit('close');
 	}
 };
 
@@ -174,7 +176,7 @@ const closeOpenSubMenu = () => {
 
 const handleItemHover = (index: number) => {
 	const item = props.items[index];
-	if (!item || item.disabled) return;
+	if (!isNavigableItem(item)) return;
 
 	highlightedIndex.value = index;
 

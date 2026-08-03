@@ -28,6 +28,12 @@ export type InsightsContextVersion = {
 	versionLabel: string;
 	avgScore: number | null;
 	scores: Record<string, number>;
+<<<<<<< HEAD
+=======
+	// This run's frozen-snapshot scales, so per-case scores normalize on the same
+	// scales as the aggregate (not the current config, which may have changed).
+	metricScales: Record<string, MetricScale>;
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 };
 
 export type InsightsContextCase = {
@@ -145,10 +151,16 @@ export class InsightsContextBuilder {
 			collectionName: string;
 			versions: InsightsContextVersion[];
 			winnerLabel: string;
+<<<<<<< HEAD
 			scaleByMetric: Record<string, MetricScale>;
 		},
 	): Promise<InsightsContext> {
 		const { collectionName, versions, winnerLabel, scaleByMetric } = params;
+=======
+		},
+	): Promise<InsightsContext> {
+		const { collectionName, versions, winnerLabel } = params;
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		const base = versions.find((version) => version.versionLabel === winnerLabel) ?? versions[0];
 
 		const baseNodes = await this.loadNodes(workflowId, base.workflowVersionId);
@@ -165,7 +177,12 @@ export class InsightsContextBuilder {
 				workflowDiff: isBase ? null : await this.diff(workflowId, baseNodes, version),
 				regressedCases: isBase
 					? []
+<<<<<<< HEAD
 					: await this.regressedCases(baseCasesByIndex, version, scaleByMetric),
+=======
+					: // Each side normalizes on its own run's frozen scales.
+						await this.regressedCases(baseCasesByIndex, base.metricScales, version),
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			});
 		}
 
@@ -236,8 +253,13 @@ export class InsightsContextBuilder {
 			number,
 			{ metrics: Record<string, number | boolean> | null; outputs: unknown }
 		>,
+<<<<<<< HEAD
 		version: InsightsContextVersion,
 		scaleByMetric: Record<string, MetricScale>,
+=======
+		baseScales: Record<string, MetricScale>,
+		version: InsightsContextVersion,
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	): Promise<InsightsContextCase[]> {
 		const versionCases = await this.testCaseExecutionRepo.getManyByTestRunId(version.testRunId, {
 			take: CASE_FETCH_LIMIT,
@@ -247,8 +269,14 @@ export class InsightsContextBuilder {
 		versionCases.forEach((testCase, position) => {
 			const key = testCase.runIndex ?? position;
 			const baseCase = baseCasesByIndex.get(key);
+<<<<<<< HEAD
 			const baseScore = averageNormalizedScore(baseCase?.metrics, scaleByMetric);
 			const versionScore = averageNormalizedScore(testCase.metrics, scaleByMetric);
+=======
+			// Base and version each normalize on their own run's frozen scales.
+			const baseScore = averageNormalizedScore(baseCase?.metrics, baseScales);
+			const versionScore = averageNormalizedScore(testCase.metrics, version.metricScales);
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			// Only rank cases where both sides scored and the version did worse.
 			if (baseScore === null || versionScore === null) return;
 			const drop = baseScore - versionScore;

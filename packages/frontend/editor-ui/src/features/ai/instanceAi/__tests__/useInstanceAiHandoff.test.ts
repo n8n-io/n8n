@@ -20,7 +20,11 @@ vi.mock('uuid', () => ({ v4: () => 'thread-1' }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {}, pushRef: 'push-ref' }),
 }));
+<<<<<<< HEAD
 vi.mock('@/app/composables/useToast', () => ({
+=======
+vi.mock('@n8n/composables/useToast', () => ({
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	useToast: () => ({ showError: mocks.showError }),
 }));
 vi.mock('../instanceAi.store', () => ({
@@ -86,6 +90,21 @@ describe('useInstanceAiHandoff', () => {
 			source: 'agent-preview',
 			agentId: 'agent-1',
 			threadId: 'thread-1',
+		});
+	});
+
+	it('forwards executionId when provided', () => {
+		expect(
+			buildInstanceAiAgentPreviewHandoffContext({
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				executionId: 'exec-1',
+			}),
+		).toEqual({
+			source: 'agent-preview',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			executionId: 'exec-1',
 		});
 	});
 

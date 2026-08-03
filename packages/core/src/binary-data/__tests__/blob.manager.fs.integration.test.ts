@@ -226,7 +226,11 @@ describe('deleteMany', () => {
 });
 
 describe('deleteManyByFileId', () => {
+<<<<<<< HEAD
 	it('deletes the binary_data dirs of execution and custom file ids', async () => {
+=======
+	it('deletes execution and custom file ids along with their metadata companions', async () => {
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 		const { fileId: executionFileId } = await manager.store(executionLocation, body, {});
 		const customLocation = FileLocation.ofCustom({
 			pathSegments: ['agents', 'a1', 'knowledge-files', 'f1'],
@@ -237,6 +241,21 @@ describe('deleteManyByFileId', () => {
 
 		await expect(manager.getAsBuffer(executionFileId)).rejects.toThrow(FileNotFoundError);
 		await expect(manager.getAsBuffer(customFileId)).rejects.toThrow(FileNotFoundError);
+<<<<<<< HEAD
+=======
+		await expect(manager.getMetadata(executionFileId)).rejects.toThrow(FileNotFoundError);
+		await expect(manager.getMetadata(customFileId)).rejects.toThrow(FileNotFoundError);
+	});
+
+	it('leaves sibling files in the same binary_data dir intact', async () => {
+		const { fileId: deletedFileId } = await manager.store(executionLocation, body, {});
+		const { fileId: siblingFileId } = await manager.store(executionLocation, body, {});
+
+		await manager.deleteManyByFileId([deletedFileId]);
+
+		await expect(manager.getAsBuffer(deletedFileId)).rejects.toThrow(FileNotFoundError);
+		expect((await manager.getAsBuffer(siblingFileId)).equals(body)).toBe(true);
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	});
 
 	it('deletes a custom file nested under an execution-like prefix, not that execution', async () => {
@@ -273,9 +292,15 @@ describe('deleteManyByFileId', () => {
 
 			await manager.deleteManyByFileId([malformedId, fileId]);
 
+<<<<<<< HEAD
 			expect(errorReporter.warn).toHaveBeenCalledWith(
 				`Could not parse file ID ${malformedId}. Skip deletion`,
 			);
+=======
+			expect(errorReporter.warn).toHaveBeenCalledWith('Could not parse file ID. Skip deletion', {
+				extra: { fileId: malformedId },
+			});
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			await expect(manager.getAsBuffer(fileId)).rejects.toThrow(FileNotFoundError);
 		},
 	);

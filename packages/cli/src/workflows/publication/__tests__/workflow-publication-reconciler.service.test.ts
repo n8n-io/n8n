@@ -61,6 +61,7 @@ beforeEach(() => {
 	triggerStatusRepository.findActivatedInMemoryTriggers.mockResolvedValue([]);
 	outboxRepository.enqueueByWorkflowIds.mockResolvedValue();
 	outboxRepository.findInFlightByWorkflowId.mockResolvedValue(null);
+	outboxRepository.findVersionSkewedWorkflowIds.mockResolvedValue([]);
 	outboxConsumer.drainPending.mockResolvedValue(0);
 	setRegistered({});
 	activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([]);
@@ -178,6 +179,19 @@ describe('WorkflowPublicationReconciler', () => {
 			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-2']);
 		});
 
+		it('re-enqueues a workflow whose published version diverged from the active version', async () => {
+			outboxRepository.findVersionSkewedWorkflowIds.mockResolvedValue(['wf-skew']);
+
+			await service.reconcile();
+
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-skew']);
+			expect(outboxConsumer.drainPending).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', versionSkewCount: 1, deficientCount: 0 }),
+			);
+		});
+
 		it('catches and reports errors without throwing', async () => {
 			triggerStatusRepository.findActivatedInMemoryTriggers.mockRejectedValue(
 				new Error('DB error'),
@@ -246,6 +260,30 @@ describe('WorkflowPublicationReconciler', () => {
 			await service.reconcile();
 
 			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
+		});
+
+		it('reports a failing ghost teardown and keeps reconciling', async () => {
+			// One ghost whose teardown throws must not take down the rest of the
+			// surplus pass — nor the missing/skew detections that run after it.
+			activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-bad', 'wf-good']);
+			activeWorkflowTriggers.remove.mockImplementation(async (workflowId) => {
+				if (workflowId === 'wf-bad') throw new Error('closeFunction failed');
+				return true;
+			});
+
+			await service.reconcile();
+
+			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-good');
+			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(Error), {
+				shouldBeLogged: true,
+			});
+			// The pass carried on into the later detections.
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalled();
+			expect(outboxRepository.findVersionSkewedWorkflowIds).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', surplusCount: 1 }),
+			);
 		});
 
 		it('re-checks under the lock and skips a workflow republished since detection', async () => {

@@ -26,9 +26,22 @@ const getBinaryDataFromNode = (
 	context: IWebhookFunctions,
 	nodeName: string,
 ): IDataObject | undefined => {
+<<<<<<< HEAD
 	return context.evaluateExpression(`{{ ${getNodeReference(nodeName)}.first().binary }}`) as
 		| IDataObject
 		| undefined;
+=======
+	try {
+		return context.evaluateExpression(`{{ ${getNodeReference(nodeName)}.first().binary }}`) as
+			| IDataObject
+			| undefined;
+	} catch {
+		// Parent nodes without run data (e.g. branches of another Form Trigger,
+		// or nodes that ran before a resumed waiting form in queue mode) throw
+		// an ExpressionError — treat them as having no binary data.
+		return undefined;
+	}
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 };
 
 const getInputDataFieldNames = (inputDataFieldName: string) => {

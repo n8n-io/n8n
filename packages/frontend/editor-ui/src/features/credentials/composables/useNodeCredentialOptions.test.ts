@@ -89,7 +89,12 @@ const slackNode: INodeUi = {
 	credentials: {},
 };
 
-function createCredential(overrides: { id: string; name: string; type: string }) {
+function createCredential(overrides: {
+	id: string;
+	name: string;
+	type: string;
+	usageScope?: 'project' | 'instance';
+}) {
 	return {
 		...overrides,
 		isManaged: false,
@@ -212,6 +217,24 @@ describe('useNodeCredentialOptions', () => {
 		).toEqual(['httpBasicAuth']);
 	});
 
+<<<<<<< HEAD
+=======
+	it('excludes instance credentials from node options', () => {
+		credentialsStore.state.credentials['instance-cred'] = createCredential({
+			id: 'instance-cred',
+			name: 'Instance Slack Token',
+			type: 'slackApi',
+			usageScope: 'instance',
+		});
+
+		const { credentialTypesNodeDescriptionDisplayed } = setupOptions();
+
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[0].options.map((option) => option.id),
+		).not.toContain('instance-cred');
+	});
+
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 	it('disables mixed credential behavior when override is set', () => {
 		const slackApiDescription = slackNodeType.credentials[0];
 		const { showMixedCredentials } = setupOptions('slackApi');

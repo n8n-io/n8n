@@ -7,14 +7,23 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
+<<<<<<< HEAD
 import { AgentExecutionService } from './agent-execution.service';
+=======
+import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
+import { Telemetry } from '@/telemetry';
+
+import { AgentExecutionService, type RecordMessageParams } from './agent-execution.service';
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { ExecutionRecorder } from './execution-recorder';
+import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import type { ToolRegistry } from './tool-registry';
+import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
+import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { streamAgentChunks } from './utils/agent-stream';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
@@ -39,6 +48,11 @@ export interface ExecuteForChatConfig {
 	user: User;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	/** Stored attachments to include as file parts on the user turn. */
+	attachments?: StoredAttachmentRef[];
+	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
+	onExecutionRecorded?: (executionId: string) => void;
+	abortSignal?: AbortSignal;
 }
 
 export interface ExecuteForChatPublishedConfig {
@@ -47,6 +61,7 @@ export interface ExecuteForChatPublishedConfig {
 	message: string;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
@@ -78,6 +93,9 @@ export interface ResumeForChatConfig {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
+	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
+	onExecutionRecorded?: (executionId: string) => void;
+	abortSignal?: AbortSignal;
 }
 
 export interface ExecuteForTaskPublishedConfig {
@@ -120,15 +138,19 @@ export interface StreamChatResponseConfig {
 	agentId: string;
 	userId?: string;
 	message: string;
+	attachments?: StoredAttachmentRef[];
 	memory: AgentMemoryScope;
 	projectId: string;
 	source?: string;
 	taskId?: string;
 	taskVersionId?: string;
-	telemetry?: {
+	telemetry: {
 		runType: AgentRunTelemetryType;
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
+	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
+	onExecutionRecorded?: (executionId: string) => void;
+	abortSignal?: AbortSignal;
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -142,6 +164,14 @@ function getMaxIterationsChunks(): StreamChunk[] {
 		},
 		{ type: 'text-end', id },
 	];
+}
+
+function normalizeAbortedMessageRecord(
+	record: MessageRecord,
+	abortSignal?: AbortSignal,
+): MessageRecord {
+	if (!abortSignal?.aborted) return record;
+	return { ...record, finishReason: 'cancelled', error: null };
 }
 
 /**
@@ -182,6 +212,29 @@ export class AgentExecutionOrchestratorService {
 		return executionsToMessagesDto(detail.executions);
 	}
 
+	async cancelChatRun(params: {
+		agentId: string;
+		runId: string;
+		resourceId: string;
+	}): Promise<boolean> {
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(params.runId);
+		if (checkpointStatus.status !== 'active') return false;
+
+		const { checkpoint } = checkpointStatus;
+		if (
+			checkpoint.status !== 'suspended' ||
+			checkpoint.persistence?.resourceId !== params.resourceId
+		) {
+			return false;
+		}
+
+		return await this.n8nCheckpointStorage.cancelSuspended(
+			params.runId,
+			checkpoint,
+			params.agentId,
+		);
+	}
+
 	/**
 	 * Resume a suspended tool call and yield the resulting stream chunks.
 	 * Used by chat integration handlers to continue an agent run after
@@ -197,6 +250,8 @@ export class AgentExecutionOrchestratorService {
 			integrationType,
 			user,
 			usePublishedVersion = true,
+			onExecutionRecorded,
+			abortSignal,
 		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
@@ -258,8 +313,13 @@ export class AgentExecutionOrchestratorService {
 				executionCounter: createAgentExecutionCounter(this.telemetry, {
 					agentId,
 					userId: user?.id,
+					runType,
 				}),
 				...(tracing ? { telemetry: tracing } : {}),
+<<<<<<< HEAD
+=======
+				...(abortSignal ? { abortSignal } : {}),
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -274,9 +334,11 @@ export class AgentExecutionOrchestratorService {
 			// Always record resumed executions — even if they suspend again (chained HITL)
 			// or fail while streaming. Don't repeat the original user message — the
 			// pre-suspension execution already has it.
-			const messageRecord = recorder.getMessageRecord();
-			void this.agentExecutionService
-				.recordMessage({
+			const messageRecord = normalizeAbortedMessageRecord(recorder.getMessageRecord(), abortSignal);
+			await this.persistRecordedExecution({
+				onExecutionRecorded,
+				failureMessage: 'Failed to record resumed agent execution',
+				params: {
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
@@ -288,14 +350,8 @@ export class AgentExecutionOrchestratorService {
 						runType,
 						configuration: runtime.telemetryConfiguration,
 					},
-				})
-				.catch((error) => {
-					this.logger.warn('Failed to record resumed agent execution', {
-						agentId,
-						threadId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
+				},
+			});
 		}
 	}
 
@@ -303,7 +359,16 @@ export class AgentExecutionOrchestratorService {
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, user, memory } = config;
+		const {
+			agentId,
+			projectId,
+			message,
+			user,
+			memory,
+			attachments,
+			onExecutionRecorded,
+			abortSignal,
+		} = config;
 
 		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
 		// runtime scoped to this specific user's tool access.
@@ -328,12 +393,15 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			userId: user.id,
 			message,
+			attachments,
 			memory,
 			projectId: runtime.projectId,
 			telemetry: {
 				runType: 'test',
 				configuration: runtime.telemetryConfiguration,
 			},
+			onExecutionRecorded,
+			abortSignal,
 		});
 	}
 
@@ -345,7 +413,7 @@ export class AgentExecutionOrchestratorService {
 	async *executeForChatPublished(
 		config: ExecuteForChatPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, memory, integrationType } = config;
+		const { agentId, projectId, message, memory, integrationType, attachments } = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
 		// No `user` (see ExecuteForChatPublishedConfig): this is the shared,
@@ -364,6 +432,7 @@ export class AgentExecutionOrchestratorService {
 			toolRegistry: runtime.toolRegistry,
 			agentId,
 			message,
+			attachments,
 			memory,
 			projectId: runtime.projectId,
 			source: integrationType,
@@ -453,12 +522,15 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			userId,
 			message,
+			attachments,
 			memory,
 			projectId,
 			source,
 			taskId,
 			taskVersionId,
 			telemetry,
+			onExecutionRecorded,
+			abortSignal,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -474,10 +546,23 @@ export class AgentExecutionOrchestratorService {
 				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
 
+<<<<<<< HEAD
 			const resultStream = await agentInstance.stream(message, {
 				persistence: { threadId, resourceId },
 				executionCounter: createAgentExecutionCounter(this.telemetry, { agentId, userId }),
 				...(tracing ? { telemetry: tracing } : {}),
+=======
+			const input = attachments?.length ? buildInboundUserMessage(message, attachments) : message;
+			const resultStream = await agentInstance.stream(input, {
+				persistence: { threadId, resourceId },
+				executionCounter: createAgentExecutionCounter(this.telemetry, {
+					agentId,
+					userId,
+					runType: telemetry.runType,
+				}),
+				...(tracing ? { telemetry: tracing } : {}),
+				...(abortSignal ? { abortSignal } : {}),
+>>>>>>> 891dba318100e072fc55bba909ef6b316f78abcf
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -504,28 +589,57 @@ export class AgentExecutionOrchestratorService {
 		} finally {
 			// Always record — even if suspended or failed, the pre-suspension/error
 			// response text and tool calls are valuable.
-			const messageRecord = recorder.getMessageRecord();
-			void this.agentExecutionService
-				.recordMessage({
+			const messageRecord = normalizeAbortedMessageRecord(recorder.getMessageRecord(), abortSignal);
+			await this.persistRecordedExecution({
+				onExecutionRecorded,
+				failureMessage: 'Failed to record agent execution',
+				params: {
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
 					projectId,
 					userMessage: message,
+					attachments,
 					record: messageRecord,
 					hitlStatus: recorder.suspended ? 'suspended' : undefined,
 					source,
 					taskId,
 					taskVersionId,
 					telemetry,
-				})
-				.catch((error) => {
-					this.logger.warn('Failed to record agent execution', {
-						agentId,
-						threadId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
+				},
+			});
+		}
+	}
+
+	/**
+	 * Persist a streamed turn. Awaits when `onExecutionRecorded` is set so SSE
+	 * `done` can carry executionId; otherwise fire-and-forget.
+	 */
+	private async persistRecordedExecution(args: {
+		onExecutionRecorded?: (executionId: string) => void;
+		params: RecordMessageParams;
+		failureMessage: string;
+	}): Promise<void> {
+		const { onExecutionRecorded, params, failureMessage } = args;
+		const persist = async () => {
+			const executionId = await this.agentExecutionService.recordMessage(params);
+			onExecutionRecorded?.(executionId);
+		};
+		const logFailure = (error: unknown) => {
+			this.logger.warn(failureMessage, {
+				agentId: params.agentId,
+				threadId: params.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		};
+		if (onExecutionRecorded) {
+			try {
+				await persist();
+			} catch (error) {
+				logFailure(error);
+			}
+		} else {
+			void persist().catch(logFailure);
 		}
 	}
 }
