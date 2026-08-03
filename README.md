@@ -32,6 +32,10 @@ docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n
 
 Access the editor at http://localhost:5678
 
+Or skip the server entirely and have an instance deployed and managed for you, with storage, backups, email and a subdomain included:
+
+[![Deploy with Zenith](https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg)](https://zenith.hosting/host/n8n)
+
 ## Resources
 
 - 📚 [Documentation](https://docs.n8n.io)
