@@ -31,7 +31,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Node.js and install dependencies
+      - name: Setup Node.js and Build
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: 'pnpm --filter n8n... build'
