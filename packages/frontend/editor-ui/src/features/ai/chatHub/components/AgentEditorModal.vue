@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useUsersStore } from '@/features/settings/users/users.store';

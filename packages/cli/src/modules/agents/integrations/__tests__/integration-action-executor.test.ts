@@ -958,4 +958,163 @@ describe('ChatIntegrationActionExecutor', () => {
 			},
 		});
 	});
+
+	describe('respond in chat-triggered turns', () => {
+		const chatTurnContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: {
+				type: 'thread' as const,
+				threadId: 'slack:C123:123.456',
+				channelId: 'slack:C123',
+			},
+			replyExpectation: 'required' as const,
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		function buildExecutor() {
+			const thread = { post: vi.fn().mockResolvedValue({ id: '123.457' }) };
+			const chat = mock<ChatInstance>();
+			chat.thread.mockReturnValue(thread as never);
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.getChatInstance.mockReturnValue(chat);
+			const registry = buildRegistry();
+			Container.set(ChatIntegrationRegistry, registry);
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+			return { executor, descriptor, thread };
+		}
+
+		it('rejects a text-only respond because the reply text is already delivered', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Hello again' } },
+				awaitResponse: false,
+				currentMessageContext: chatTurnContext,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: 'ACTION_FAILED',
+					message: expect.stringContaining('already delivered'),
+				},
+			});
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('allows a respond that carries a card', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: {
+					message: {
+						text: 'Summary',
+						card: { components: [{ type: 'section', text: 'Details' }] },
+					},
+				},
+				awaitResponse: false,
+				currentMessageContext: chatTurnContext,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalled();
+		});
+
+		it('allows a text-only respond outside chat-triggered turns', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Task update' } },
+				awaitResponse: false,
+				currentMessageContext: { ...chatTurnContext, replyExpectation: undefined },
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledWith('Task update');
+		});
+	});
+
+	describe('do_not_respond', () => {
+		const slackMessageContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: {
+				type: 'thread' as const,
+				threadId: 'slack:C123:123.456',
+				channelId: 'slack:C123',
+			},
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		it('succeeds without touching the chat instance when the reply is optional', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'do_not_respond',
+				input: {},
+				awaitResponse: false,
+				currentMessageContext: { ...slackMessageContext, replyExpectation: 'optional' },
+			});
+
+			expect(result).toEqual({
+				ok: true,
+				silent: true,
+				note: expect.stringContaining('No reply will be sent'),
+			});
+			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the reply expectation is required', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'do_not_respond',
+				input: {},
+				awaitResponse: false,
+				currentMessageContext: { ...slackMessageContext, replyExpectation: 'required' },
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'REPLY_REQUIRED', message: expect.stringContaining('reply is expected') },
+			});
+			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the reply expectation is unset or the message context is missing', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			for (const currentMessageContext of [slackMessageContext, undefined]) {
+				const result = await executor.execute({
+					descriptor,
+					action: 'do_not_respond',
+					input: {},
+					awaitResponse: false,
+					currentMessageContext,
+				});
+
+				expect(result).toEqual({
+					ok: false,
+					error: { code: 'REPLY_REQUIRED', message: expect.any(String) },
+				});
+			}
+			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		});
+	});
 });

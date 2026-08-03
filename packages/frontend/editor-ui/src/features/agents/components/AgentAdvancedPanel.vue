@@ -12,13 +12,14 @@ import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
 
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useModelCatalog } from '../composables/useModelCatalog';
 import type { AgentJsonConfig } from '../types';
 import {
 	PROVIDER_CAPABILITIES,
 	ANTHROPIC_CACHE_TTL_OPTIONS,
 	type AnthropicCacheTtl,
 } from '../provider-capabilities';
-import { parseProvider } from '../utils/model-string';
+import { modelToString, parseModelString, parseProvider } from '../utils/model-string';
 import {
 	getNativeWebSearchArgs,
 	getWebSearchMethod,
@@ -31,6 +32,7 @@ import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
+const { catalog, ensureLoaded } = useModelCatalog();
 const DEFAULT_CAPABILITIES = {
 	promptCaching: false,
 	webSearch: false,
@@ -50,6 +52,7 @@ const props = withDefaults(
 		config: AgentJsonConfig | null;
 		disabled?: boolean;
 		collapsible?: boolean;
+		projectId?: string;
 	}>(),
 	{
 		disabled: false,
@@ -61,8 +64,31 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const isExpanded = ref(!props.collapsible);
 
 const provider = computed(() => parseProvider(props.config?.model));
+const selectedModel = computed(() => parseModelString(modelToString(props.config?.model)));
+const selectedCatalogModel = computed(() => {
+	if (!selectedModel.value) return undefined;
+	return catalog.value[selectedModel.value.provider]?.models[selectedModel.value.name];
+});
+const isReasoningUnavailable = computed(
+	() => !selectedModel.value || selectedCatalogModel.value?.reasoning === false,
+);
+const reasoningHintKey = computed(() => {
+	if (!selectedModel.value) return 'agents.builder.advanced.reasoning.noModelHint';
+	if (selectedCatalogModel.value?.reasoning === false) {
+		return 'agents.builder.advanced.reasoning.unsupportedHint';
+	}
+	return 'agents.builder.advanced.reasoning.hint';
+});
 const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
 const hasNativeWebSearch = computed(() => Boolean(capabilities.value.webSearch));
+
+watch(
+	() => props.projectId,
+	(projectId) => {
+		if (projectId) void ensureLoaded(projectId);
+	},
+	{ immediate: true },
+);
 
 // ---------------------------------------------------------------------------
 // Generic helper for numeric config fields
@@ -541,13 +567,17 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.reasoning.label')
 						}}</N8nText>
-						<N8nText size="small" :class="shared.dataEntrySubLabel">
-							{{ i18n.baseText('agents.builder.advanced.reasoning.hint') }}
+						<N8nText
+							size="small"
+							:class="shared.dataEntrySubLabel"
+							data-testid="agent-reasoning-hint"
+						>
+							{{ i18n.baseText(reasoningHintKey) }}
 						</N8nText>
 					</div>
 					<N8nSwitch2
 						:model-value="reasoningEnabled"
-						:disabled="props.disabled"
+						:disabled="props.disabled || isReasoningUnavailable"
 						:class="$style.switchControl"
 						data-testid="agent-reasoning-toggle"
 						@update:model-value="(v) => onReasoningToggle(Boolean(v))"
@@ -566,7 +596,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						<N8nSelect
 							:model-value="reasoningLevel"
 							size="small"
-							:disabled="props.disabled"
+							:disabled="props.disabled || isReasoningUnavailable"
 							:class="$style.shortInput"
 							data-testid="agent-reasoning-effort-select"
 							@update:model-value="onReasoningLevelChange"

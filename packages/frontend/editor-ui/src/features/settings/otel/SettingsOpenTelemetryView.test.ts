@@ -8,7 +8,7 @@ import type { OtelSettingsResponse } from './otel.api';
 
 const showMessage = vi.fn();
 const showError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError }),
 }));
 

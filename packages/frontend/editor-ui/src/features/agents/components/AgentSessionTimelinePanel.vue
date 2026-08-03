@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import type {
 	AgentExecution,
