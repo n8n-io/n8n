@@ -247,6 +247,8 @@ const emit = defineEmits<{
 	font-size: var(--font-size--2xs);
 	margin-left: var(--spacing--2xs);
 	word-break: break-word;
+	/** Fixes DS-538 where text was optically un-aligned from baseline **/
+	transform: translateY(-1px);
 }
 
 .collapse-icon {
