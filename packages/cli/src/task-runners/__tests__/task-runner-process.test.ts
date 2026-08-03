@@ -304,6 +304,22 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock).toHaveBeenCalledTimes(1);
 		});
 
+		it('should relaunch on exit again after a stop and an explicit restart', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			const stopPromise = taskRunnerProcess.stop();
+			child.emit('exit', 0);
+			await stopPromise;
+
+			await taskRunnerProcess.start();
+			child.emit('exit', 1);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(spawnMock).toHaveBeenCalledTimes(3);
+		});
+
 		it('should stop retrying once shutdown begins', async () => {
 			const child = createChildProcess(42);
 			spawnMock.mockReturnValue(child);

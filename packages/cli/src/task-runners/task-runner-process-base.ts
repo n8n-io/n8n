@@ -72,6 +72,7 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 
 	async start() {
 		assert(!this.process, `${this.name} already running`);
+		this.isShuttingDown = false;
 
 		const grantToken = await this.authService.createGrantToken();
 		const taskBrokerUri = `http://127.0.0.1:${this.runnerConfig.port}`;
