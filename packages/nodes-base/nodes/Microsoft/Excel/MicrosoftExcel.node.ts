@@ -7,19 +7,20 @@ import { MicrosoftExcelV2 } from './v2/MicrosoftExcelV2.node';
 export class MicrosoftExcel extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'Microsoft Excel 365',
+			displayName: 'Microsoft Excel (OneDrive)',
 			name: 'microsoftExcel',
 			icon: 'file:excel.svg',
 			group: ['input'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-			description: 'Consume Microsoft Excel API',
-			defaultVersion: 2.1,
+			description: 'Consume the Microsoft Excel API for workbooks stored in OneDrive',
+			defaultVersion: 2.2,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new MicrosoftExcelV1(baseDescription),
 			2: new MicrosoftExcelV2(baseDescription),
 			2.1: new MicrosoftExcelV2(baseDescription),
+			2.2: new MicrosoftExcelV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

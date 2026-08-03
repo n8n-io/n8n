@@ -1,10 +1,15 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
+import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
+import type {
+	DeepPartial,
+	EntityManager,
+	FindOptionsWhere,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
-import { Project, ProjectRelation, User } from '../entities';
+import { ApiKey, Project, ProjectRelation, User } from '../entities';
 
 @Service()
 export class UserRepository extends Repository<User> {
@@ -12,10 +17,28 @@ export class UserRepository extends Repository<User> {
 		super(User, dataSource.manager);
 	}
 
-	async findManyByIds(userIds: string[]) {
+	async findManyByIds(
+		userIds: string[],
+		options?: {
+			includeRole: boolean;
+		},
+	) {
 		return await this.find({
 			where: { id: In(userIds) },
+			relations: options?.includeRole ? ['role'] : undefined,
 		});
+	}
+
+	async findByApiKey(apiKey: string) {
+		const keyOwner = await this.createQueryBuilder('user')
+			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
+			.leftJoinAndSelect('user.role', 'role')
+			.leftJoinAndSelect('role.scopes', 'scopes')
+			.where('apiKey.apiKey = :apiKey', { apiKey })
+			.select(['user', 'role', 'scopes'])
+			.getOne();
+
+		return keyOwner;
 	}
 
 	/**
@@ -26,6 +49,9 @@ export class UserRepository extends Repository<User> {
 	 * With `update` it would only receive the updated fields, e.g. the `id`
 	 * would be missing. test('does not use `Repository.update`, but
 	 * `Repository.save` instead'.
+	 *
+	 * Also don't use this method to change a user's role.
+	 * Use `UserService.changeUserRole` instead.
 	 */
 	async update(...args: Parameters<Repository<User>['update']>) {
 		return await super.update(...args);
@@ -102,15 +128,23 @@ export class UserRepository extends Repository<User> {
 				entityManager.create(Project, {
 					type: 'personal',
 					name: userWithRole.createPersonalProjectName(),
+					creatorId: savedUser.id,
 				}),
 			);
+
 			await entityManager.save<ProjectRelation>(
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
 					userId: savedUser.id,
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					role: {
+						slug:
+							userWithRole.role.slug !== 'global:chatUser'
+								? PROJECT_OWNER_ROLE_SLUG
+								: PROJECT_VIEWER_ROLE_SLUG,
+					},
 				}),
 			);
+
 			return { user: userWithRole, project: savedProject };
 		};
 		if (transactionManager) {
@@ -122,6 +156,43 @@ export class UserRepository extends Repository<User> {
 	}
 
 	/**
+	 * Find enabled users whose global/project is in the given slug sets. Role slugs
+	 * are passed in so this package stays scope-agnostic.
+	 *
+	 * Loads `role` and `authIdentities` because the `@AfterLoad` hook needs
+	 * both to compute `isPending` (a raw `password IS NOT NULL` filter would
+	 * wrongly drop SSO/LDAP users).
+	 */
+	async findEligibleByProjectOrGlobalRoles({
+		projectId,
+		projectRoleSlugs,
+		globalRoleSlugs,
+	}: {
+		projectId: string;
+		projectRoleSlugs: string[];
+		globalRoleSlugs: string[];
+	}): Promise<User[]> {
+		const where: Array<FindOptionsWhere<User>> = [];
+		if (globalRoleSlugs.length > 0) {
+			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+		}
+		if (projectRoleSlugs.length > 0) {
+			where.push({
+				disabled: false,
+				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
+			});
+		}
+		if (where.length === 0) {
+			return [];
+		}
+
+		return await this.find({
+			where,
+			relations: { role: true, authIdentities: true },
+		});
+	}
+
+	/**
 	 * Find the user that owns the personal project that owns the workflow.
 	 *
 	 * Returns null if the workflow does not exist or is owned by a team project.
@@ -130,8 +201,12 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG]) },
+					project: {
+						type: 'personal',
+						creatorId: Not(IsNull()),
+						sharedWorkflows: { workflowId, role: 'workflow:owner' },
+					},
 				},
 			},
 			relations: ['role'],
@@ -147,8 +222,9 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG]) },
 					projectId,
+					project: { type: 'personal', creatorId: Not(IsNull()) },
 				},
 			},
 			relations: ['role'],
@@ -208,6 +284,22 @@ export class UserRepository extends Repository<User> {
 			}
 		}
 
+		if (filter?.ids !== undefined && filter.ids.length > 0) {
+			queryBuilder.andWhere('user.id IN (:...ids)', {
+				ids: filter.ids,
+			});
+		}
+
+		if (filter?.isPending !== undefined) {
+			if (filter.isPending) {
+				queryBuilder.andWhere('user.password IS NULL AND user.role <> :ownerRole', {
+					ownerRole: 'global:owner',
+				});
+			} else {
+				queryBuilder.andWhere('user.password IS NOT NULL');
+			}
+		}
+
 		if (filter?.fullText !== undefined) {
 			const fullTextFilter = `%${filter.fullText}%`;
 			queryBuilder.andWhere(
@@ -222,6 +314,15 @@ export class UserRepository extends Repository<User> {
 							email: fullTextFilter,
 						});
 				}),
+			);
+		}
+
+		if (filter?.projectId !== undefined) {
+			queryBuilder.innerJoin(
+				'user.projectRelations',
+				'userListProjectFilter',
+				'userListProjectFilter.projectId = :userListProjectId',
+				{ userListProjectId: filter.projectId },
 			);
 		}
 
@@ -296,7 +397,6 @@ export class UserRepository extends Repository<User> {
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);
 		queryBuilder.leftJoinAndSelect('user.role', 'role');
-		queryBuilder.leftJoinAndSelect('role.scopes', 'scopes');
 
 		return queryBuilder;
 	}

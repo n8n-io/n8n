@@ -9,9 +9,12 @@ export interface TabOptions<Value extends string | number> {
 	iconPosition?: 'left' | 'right';
 	variant?: 'default' | 'danger';
 	href?: string;
+	/** Prevents selecting the tab (greyed out); combine with `tooltip` to explain why. */
+	disabled?: boolean;
 	tooltip?: string;
 	align?: 'left' | 'right';
 	to?: RouteLocationRaw;
 	notification?: boolean;
 	tag?: string;
+	preview?: boolean;
 }

@@ -17,8 +17,8 @@ ruleTester.run('no-internal-package-import', NoInternalPackageImportRule, {
 
 	invalid: [
 		{
-			code: 'import { UpdateDataStoreDto } from "@n8n/api-types/src/dto/data-store/update-data-store.dto"',
-			output: 'import { UpdateDataStoreDto } from "@n8n/api-types"',
+			code: 'import { UpdateDataTableDto } from "@n8n/api-types/src/dto/data-table/update-data-table.dto"',
+			output: 'import { UpdateDataTableDto } from "@n8n/api-types"',
 			errors: [{ messageId: 'noInternalPackageImport' }],
 		},
 		{

@@ -9,6 +9,13 @@ export class OdooApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				'⚠️ The /jsonrpc endpoint used by this credential is deprecated and will be removed in Odoo 22 (fall 2028) and Odoo Online 21.1 (winter 2027). Migrate to the API Key credential when upgrading to Odoo 19+. <a href="https://www.odoo.com/documentation/19.0/developer/reference/external_rpc_api.html" target="_blank">Learn more</a>',
+			name: 'deprecationNotice',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Site URL',
 			name: 'url',
 			type: 'string',

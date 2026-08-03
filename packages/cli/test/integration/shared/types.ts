@@ -12,6 +12,7 @@ type EndpointGroup =
 	| 'me'
 	| 'users'
 	| 'auth'
+	| 'oauth1'
 	| 'oauth2'
 	| 'owner'
 	| 'passwordReset'
@@ -21,6 +22,8 @@ type EndpointGroup =
 	| 'community-packages'
 	| 'ldap'
 	| 'saml'
+	| 'oidc'
+	| 'otel'
 	| 'sourceControl'
 	| 'eventBus'
 	| 'license'
@@ -37,24 +40,46 @@ type EndpointGroup =
 	| 'debug'
 	| 'project'
 	| 'role'
+	| 'roleMappingRule'
+	| 'provisioning'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
 	| 'ai'
 	| 'folder'
 	| 'insights'
-	| 'data-store'
 	| 'module-settings'
+	| 'security-settings'
 	| 'data-table'
-	| 'third-party-licenses';
+	| 'third-party-licenses'
+	| 'mcp'
+	| 'workflowDependencies'
+	| 'encryption-keys'
+	| 'workflow-reviews'
+	| 'test-webhooks';
 
-type ModuleName = 'insights' | 'external-secrets' | 'community-packages' | 'data-table';
+type ModuleName =
+	| 'insights'
+	| 'external-secrets'
+	| 'community-packages'
+	| 'data-table'
+	| 'mcp'
+	| 'oauth-server'
+	| 'dynamic-credentials'
+	| 'log-streaming'
+	| 'ldap'
+	| 'redaction'
+	| 'source-control'
+	| 'token-exchange'
+	| 'workflow-reviews';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 	modules?: ModuleName[];
+	/** Override the default test timeout (ms) for the shared `beforeAll` setup hook. */
+	setupTimeout?: number;
 }
 
 export type SuperAgentTest = TestAgent;

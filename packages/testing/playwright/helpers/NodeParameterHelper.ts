@@ -58,6 +58,7 @@ export class NodeParameterHelper {
 				break;
 			case 'text':
 				await this.ndv.setParameterInput(parameterName, value);
+				await this.ndv.waitForDebounce();
 				break;
 			case 'switch':
 				await this.ndv.setParameterSwitch(parameterName, value === 'true');
@@ -80,10 +81,11 @@ export class NodeParameterHelper {
 			await this.setParameter('responseMode', config.responseMode, 'dropdown');
 	}
 
-	/**
-	 * Simplified HTTP Request node parameter configuration
-	 * @param config - Configuration object with parameter values
-	 */
+	async getWebhookPath(): Promise<string> {
+		const input = this.ndv.getParameterInputField('path');
+		return await input.inputValue();
+	}
+
 	async httpRequest(config: {
 		method?: string;
 		url?: string;

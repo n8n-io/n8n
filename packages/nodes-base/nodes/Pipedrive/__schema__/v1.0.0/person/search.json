@@ -16,10 +16,24 @@
         "id": {
             "type": "integer"
         },
+        "name": {
+            "type": "string"
+        },
         "notes": {
             "type": "array",
             "items": {
                 "type": "string"
+            }
+        },
+        "organization": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
             }
         },
         "owner": {
@@ -49,5 +63,5 @@
             "type": "integer"
         }
     },
-    "version": 5
+    "version": 7
 }

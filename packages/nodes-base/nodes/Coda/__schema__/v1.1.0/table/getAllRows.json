@@ -4,9 +4,15 @@
         "id": {
             "type": "string"
         },
-        "Status": {
+        "pathway": {
+            "type": "string"
+        },
+        "promise": {
+            "type": "string"
+        },
+        "scope": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 4
 }

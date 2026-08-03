@@ -1,13 +1,13 @@
-import { useStorage } from '@/composables/useStorage';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useStorage } from '@/app/composables/useStorage';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS,
 	TEMPLATE_ONBOARDING_EXPERIMENT,
 	VIEWS,
-} from '@/constants';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+} from '@/app/constants';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
 import { jsonParse } from 'n8n-workflow';

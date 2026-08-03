@@ -1,23 +1,28 @@
+import type { ZodClass } from '@n8n/api-types';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { Constructable } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
-import type { RequestHandler } from 'express';
+import type { ApiKeyScope, Scope } from '@n8n/permissions';
+import type { RequestHandler, Router } from 'express';
 
-export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
+import type { KeyedRateLimiterConfig, RateLimiterLimits } from './rate-limit';
+
+export type ApiKeyScopeRequirement =
+	| ApiKeyScope
+	| { anyOf: readonly ApiKeyScope[] }
+	| { allOf: readonly ApiKeyScope[] };
+
+export type ResponseDtoClass = Pick<ZodClass, 'parse'>;
+
+export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
 export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
 
-export interface RateLimit {
-	/**
-	 * The maximum number of requests to allow during the `window` before rate limiting the client.
-	 * @default 5
-	 */
-	limit?: number;
-	/**
-	 * How long we should remember the requests.
-	 * @default 300_000 (5 minutes)
-	 */
-	windowMs?: number;
+export interface CorsOptions {
+	allowedOrigins: string[];
+	allowedMethods: Method[];
+	allowedHeaders: string[];
+	allowCredentials?: boolean;
+	maxAge?: number;
 }
 
 export type HandlerName = string;
@@ -33,16 +38,51 @@ export interface RouteMetadata {
 	middlewares: RequestHandler[];
 	usesTemplates: boolean;
 	skipAuth: boolean;
+	/** Whether to allow requests from bot user agents (e.g. Slackbot) */
+	allowBots: boolean;
 	allowSkipPreviewAuth: boolean;
 	allowSkipMFA: boolean;
-	rateLimit?: boolean | RateLimit;
+	allowUnauthenticated: boolean;
+	apiKeyAuth: boolean;
+	cors?: Partial<CorsOptions> | true;
+	/** Whether to apply IP-based rate limiting to the route */
+	ipRateLimit?: boolean | RateLimiterLimits;
+	/** Whether to apply keyed rate limiting to the route */
+	keyedRateLimit?: KeyedRateLimiterConfig;
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;
+	apiKeyScope?: ApiKeyScopeRequirement;
+	responseDto?: ResponseDtoClass;
 	args: Arg[];
+	router?: Router;
 }
+
+/**
+ * Metadata for static routers mounted on a controller.
+ * Picks relevant fields from RouteMetadata and makes router required.
+ */
+export type StaticRouterMetadata = {
+	path: string;
+	router: Router;
+} & Partial<
+	Pick<
+		RouteMetadata,
+		| 'skipAuth'
+		| 'allowSkipPreviewAuth'
+		| 'allowSkipMFA'
+		| 'middlewares'
+		| 'ipRateLimit'
+		| 'keyedRateLimit'
+		| 'licenseFeature'
+		| 'accessScope'
+	>
+>;
 
 export interface ControllerMetadata {
 	basePath: `/${string}`;
+	// If true, the controller will be registered on the root path without the any prefix
+	registerOnRootPath?: boolean;
+	isPublicApi?: boolean;
 	middlewares: HandlerName[];
 	routes: Map<HandlerName, RouteMetadata>;
 }

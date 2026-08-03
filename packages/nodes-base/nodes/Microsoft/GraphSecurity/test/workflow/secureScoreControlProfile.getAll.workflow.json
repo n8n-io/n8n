@@ -1,0 +1,108 @@
+{
+	"name": "Microsoft GraphSecurity SecureScoreControlProfile GetAll Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger-id",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "secureScoreControlProfile",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-id",
+			"name": "Microsoft Graph Security",
+			"type": "n8n-nodes-base.microsoftGraphSecurity",
+			"typeVersion": 1,
+			"position": [1040, 360],
+			"credentials": {
+				"microsoftGraphSecurityOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft Graph Security OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Graph Security": [
+			{
+				"json": {
+					"id": "test-control-profile-1",
+					"azureTenantId": "tenant-123",
+					"controlName": "Enable multifactor authentication",
+					"controlCategory": "Identity",
+					"actionType": "Config",
+					"service": "AAD",
+					"maxScore": 10,
+					"tier": "Core",
+					"userImpact": "Low",
+					"implementationCost": "Low",
+					"rank": 1,
+					"threats": ["Account Breach", "Credential Theft"],
+					"deprecated": false,
+					"remediation": "Enable multi-factor authentication for all users",
+					"remediationImpact": "Users will need to use an additional authentication method",
+					"actionUrl": "https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/MFA",
+					"controlStateUpdates": [],
+					"vendorInformation": {
+						"provider": "Microsoft",
+						"vendor": "Microsoft"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": "test-control-profile-2",
+					"azureTenantId": "tenant-456",
+					"controlName": "Enable conditional access",
+					"controlCategory": "Identity",
+					"actionType": "Config",
+					"service": "AAD",
+					"maxScore": 15,
+					"tier": "Core",
+					"userImpact": "Medium",
+					"implementationCost": "Medium",
+					"rank": 2,
+					"threats": ["Account Breach", "Data Exfiltration"],
+					"deprecated": false,
+					"remediation": "Configure conditional access policies",
+					"remediationImpact": "Users may need to authenticate differently based on location",
+					"actionUrl": "https://portal.azure.com/#blade/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade",
+					"controlStateUpdates": [],
+					"vendorInformation": {
+						"provider": "Microsoft",
+						"vendor": "Microsoft"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Graph Security",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "test-version-id",
+	"id": "test-workflow-id",
+	"meta": {
+		"instanceId": "test-instance-id"
+	},
+	"tags": []
+}

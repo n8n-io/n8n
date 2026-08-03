@@ -2,6 +2,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 import { ToolInputParsingException } from '@langchain/core/tools';
+import { Command as MockedCommandCtor } from '@langchain/langgraph';
 import type { Command as CommandType } from '@langchain/langgraph';
 
 import { createWorkflow, createNode } from '../../../test/test-utils';
@@ -14,7 +15,7 @@ import { executeToolsInParallel } from '../tool-executor';
 type MockedCommand = CommandType & { _isCommand: boolean };
 
 // Mock LangGraph dependencies
-jest.mock('@langchain/langgraph', () => {
+vi.mock('@langchain/langgraph', () => {
 	// Mock Command class
 	class MockCommand {
 		_isCommand = true;
@@ -26,7 +27,7 @@ jest.mock('@langchain/langgraph', () => {
 	}
 
 	return {
-		isCommand: jest.fn((obj: unknown) => {
+		isCommand: vi.fn((obj: unknown) => {
 			return (
 				obj instanceof MockCommand || (obj && (obj as { _isCommand?: boolean })._isCommand === true)
 			);
@@ -35,10 +36,10 @@ jest.mock('@langchain/langgraph', () => {
 	};
 });
 
-// Get properly typed Command from mock
-const MockCommand = jest.requireMock<{
-	Command: new (params: { update: unknown }) => MockedCommand;
-}>('@langchain/langgraph').Command;
+// Get properly typed Command from mock (the static import resolves to the mocked class)
+const MockCommand = MockedCommandCtor as unknown as new (params: {
+	update: unknown;
+}) => MockedCommand;
 
 describe('tool-executor', () => {
 	describe('executeToolsInParallel', () => {
@@ -48,21 +49,26 @@ describe('tool-executor', () => {
 			workflowOperations: null,
 			messages,
 			workflowContext: {},
+			workflowValidation: null,
+			validationHistory: [],
+			techniqueCategories: [],
 			previousSummary: 'EMPTY',
+			templateIds: [],
+			cachedTemplates: [],
 		});
 
 		// Helper to create mock tool
 		const createMockTool = (result: unknown) =>
 			({
-				invoke: jest.fn().mockResolvedValue(result),
+				invoke: vi.fn().mockResolvedValue(result),
 				name: 'mock-tool',
 				description: 'Mock tool',
 				schema: {},
-				func: jest.fn(),
+				func: vi.fn(),
 			}) as unknown as DynamicStructuredTool;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should execute single tool successfully', async () => {
@@ -363,7 +369,7 @@ describe('tool-executor', () => {
 			it('should wrap schema validation errors as ValidationError', async () => {
 				const mockTool = createMockTool(null);
 				// Mock tool throwing a ToolInputParsingException
-				mockTool.invoke = jest
+				mockTool.invoke = vi
 					.fn()
 					.mockRejectedValue(
 						new ToolInputParsingException('Received tool input did not match expected schema'),
@@ -399,7 +405,7 @@ describe('tool-executor', () => {
 			it('should wrap schema validation errors with "expected schema" message as ValidationError', async () => {
 				const mockTool = createMockTool(null);
 				// Mock tool throwing a regular Error with schema validation message
-				mockTool.invoke = jest
+				mockTool.invoke = vi
 					.fn()
 					.mockRejectedValue(new Error('Tool input validation failed: expected schema'));
 
@@ -433,7 +439,7 @@ describe('tool-executor', () => {
 			it('should wrap other tool errors as ToolExecutionError', async () => {
 				const mockTool = createMockTool(null);
 				// Mock tool throwing a generic error
-				mockTool.invoke = jest.fn().mockRejectedValue(new Error('Connection timeout'));
+				mockTool.invoke = vi.fn().mockRejectedValue(new Error('Connection timeout'));
 
 				const aiMessage = new AIMessage('');
 				aiMessage.tool_calls = [
@@ -463,7 +469,7 @@ describe('tool-executor', () => {
 			it('should handle non-Error objects thrown by tools', async () => {
 				const mockTool = createMockTool(null);
 				// Mock tool throwing a non-Error object
-				mockTool.invoke = jest.fn().mockRejectedValue('String error');
+				mockTool.invoke = vi.fn().mockRejectedValue('String error');
 
 				const aiMessage = new AIMessage('');
 				aiMessage.tool_calls = [
@@ -498,7 +504,7 @@ describe('tool-executor', () => {
 				const mockSuccessTool = createMockTool(successMessage);
 
 				const mockFailureTool = createMockTool(null);
-				mockFailureTool.invoke = jest
+				mockFailureTool.invoke = vi
 					.fn()
 					.mockRejectedValue(
 						new ToolInputParsingException('Received tool input did not match expected schema'),
@@ -703,6 +709,176 @@ describe('tool-executor', () => {
 			expect(result.messages).toContain(aiResultMessage);
 			expect(result.messages).toContain(toolResultMessage);
 			expect(result.workflowOperations).toHaveLength(1);
+		});
+
+		it('should collect validationHistory from tool state updates', async () => {
+			const validation1 = {
+				result: 'success',
+				checks: { total: 5, passed: 5, failed: 0 },
+			};
+			const validation2 = {
+				result: 'warning',
+				checks: { total: 3, passed: 2, failed: 1 },
+			};
+
+			const command1 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Validation 1', tool_call_id: 'call-1' })],
+					validationHistory: [validation1],
+				},
+			});
+
+			const command2 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Validation 2', tool_call_id: 'call-2' })],
+					validationHistory: [validation2],
+				},
+			});
+
+			const mockTool1 = createMockTool(command1);
+			const mockTool2 = createMockTool(command2);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'validate_tool_1',
+					args: {},
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'validate_tool_2',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([
+				['validate_tool_1', mockTool1],
+				['validate_tool_2', mockTool2],
+			]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.validationHistory).toBeDefined();
+			expect(result.validationHistory).toHaveLength(2);
+			expect(result.validationHistory).toContain(validation1);
+			expect(result.validationHistory).toContain(validation2);
+		});
+
+		it('should collect techniqueCategories from tool state updates', async () => {
+			const categories1 = ['scraping', 'data-transformation'];
+			const categories2 = ['notifications', 'scheduling'];
+
+			const command1 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Categorized', tool_call_id: 'call-1' })],
+					techniqueCategories: categories1,
+				},
+			});
+
+			const command2 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Categorized', tool_call_id: 'call-2' })],
+					techniqueCategories: categories2,
+				},
+			});
+
+			const mockTool1 = createMockTool(command1);
+			const mockTool2 = createMockTool(command2);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'categorize_tool_1',
+					args: {},
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'categorize_tool_2',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([
+				['categorize_tool_1', mockTool1],
+				['categorize_tool_2', mockTool2],
+			]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.techniqueCategories).toBeDefined();
+			expect(result.techniqueCategories).toHaveLength(4);
+			expect(result.techniqueCategories).toEqual([...categories1, ...categories2]);
+		});
+
+		it('should collect cachedTemplates from tool state updates', async () => {
+			const templates1 = [
+				{
+					name: 'Template 1',
+					workflow: { nodes: [], connections: {}, name: 'Template 1' },
+				},
+			];
+			const templates2 = [
+				{
+					name: 'Template 2',
+					workflow: { nodes: [], connections: {}, name: 'Template 2' },
+				},
+			];
+
+			const command1 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Examples', tool_call_id: 'call-1' })],
+					cachedTemplates: templates1,
+				},
+			});
+
+			const command2 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'More Examples', tool_call_id: 'call-2' })],
+					cachedTemplates: templates2,
+				},
+			});
+
+			const mockTool1 = createMockTool(command1);
+			const mockTool2 = createMockTool(command2);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'examples_tool_1',
+					args: {},
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'examples_tool_2',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([
+				['examples_tool_1', mockTool1],
+				['examples_tool_2', mockTool2],
+			]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.cachedTemplates).toBeDefined();
+			// Should have 2 templates collected
+			expect(result.cachedTemplates).toHaveLength(2);
 		});
 	});
 });

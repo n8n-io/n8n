@@ -2,15 +2,18 @@ import { Role, RoleRepository, Scope, ScopeRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope as ScopeType } from '@n8n/permissions';
 
+import { RoleCacheService } from '@/services/role-cache.service';
+
 /**
  * Creates a test role with given parameters
  */
 export async function createRole(overrides: Partial<Role> = {}): Promise<Role> {
 	const roleRepository = Container.get(RoleRepository);
+	const roleCacheService = Container.get(RoleCacheService);
 
 	const defaultRole: Partial<Role> = {
 		slug: `test-role-${Math.random().toString(36).substring(7)}`,
-		displayName: 'Test Role',
+		displayName: `Test Role ${Math.random().toString(36).substring(7)}`,
 		description: 'A test role for integration testing',
 		systemRole: false,
 		roleType: 'project',
@@ -20,7 +23,11 @@ export async function createRole(overrides: Partial<Role> = {}): Promise<Role> {
 	const roleData = { ...defaultRole, ...overrides };
 	const role = Object.assign(new Role(), roleData);
 
-	return await roleRepository.save(role);
+	const createdRole = await roleRepository.save(role);
+
+	// Force refresh the role cache to include the newly created role (important when running concurrent tests)
+	await roleCacheService.refreshCache();
+	return createdRole;
 }
 
 /**
@@ -164,11 +171,7 @@ export async function cleanupRolesAndScopes(): Promise<void> {
 		.getMany();
 
 	for (const role of testRoles) {
-		try {
-			await roleRepository.delete({ slug: role.slug });
-		} catch (error) {
-			// Ignore errors for system roles or roles with dependencies
-		}
+		await roleRepository.delete({ slug: role.slug });
 	}
 
 	// Delete test scopes
@@ -178,10 +181,6 @@ export async function cleanupRolesAndScopes(): Promise<void> {
 		.getMany();
 
 	for (const scope of testScopes) {
-		try {
-			await scopeRepository.delete({ slug: scope.slug });
-		} catch (error) {
-			// Ignore errors for scopes with dependencies
-		}
+		await scopeRepository.delete({ slug: scope.slug });
 	}
 }

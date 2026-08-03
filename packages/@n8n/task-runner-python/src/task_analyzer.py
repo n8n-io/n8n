@@ -1,22 +1,32 @@
 import ast
 import hashlib
-import sys
-from typing import Set, Tuple
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
+from src.format_validation import find_blocked_format_tokens
+from src.import_validation import validate_module_import
+from src.config.security_config import SecurityConfig
 from src.constants import (
     MAX_VALIDATION_CACHE_SIZE,
     ERROR_RELATIVE_IMPORT,
-    ERROR_STDLIB_DISALLOWED,
-    ERROR_EXTERNAL_DISALLOWED,
+    ERROR_DANGEROUS_NAME,
     ERROR_DANGEROUS_ATTRIBUTE,
+    ERROR_NAME_MANGLED_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
-    ALWAYS_BLOCKED_ATTRIBUTES,
-    UNSAFE_ATTRIBUTES,
+    ERROR_DANGEROUS_STRING_PATTERN,
+    ERROR_MATCH_PATTERN_ATTRIBUTE,
+    ERROR_MATCH_POSITIONAL_PATTERN,
+    ERROR_GLOBAL_BLOCKED_NAME,
+    ERROR_FUNCDEF_BLOCKED_NAME,
+    ERROR_CLASSDEF_BLOCKED_NAME,
+    ERROR_PARAM_BLOCKED_NAME,
+    ERROR_BARE_FORMAT_ATTRIBUTE,
+    BLOCKED_ATTRIBUTES,
+    BLOCKED_NAMES,
+    FORMAT_METHOD_NAMES,
 )
 
-CacheKey = Tuple[str, Tuple]  # (code_hash, allowlists_tuple)
+CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
@@ -24,16 +34,11 @@ ValidationCache = OrderedDict[CacheKey, CachedViolations]
 class SecurityValidator(ast.NodeVisitor):
     """AST visitor that enforces import allowlists and blocks dangerous attribute access."""
 
-    def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
-        self.checked_modules: Set[str] = set()
+    def __init__(self, security_config: SecurityConfig):
+        self.checked_modules: set[str] = set()
         self.violations: list[str] = []
-
-        self.stdlib_allow = stdlib_allow
-        self.external_allow = external_allow
-        self._stdlib_allowed_str = self._format_allowed(stdlib_allow)
-        self._external_allowed_str = self._format_allowed(external_allow)
-        self._stdlib_allow_all = "*" in stdlib_allow
-        self._external_allow_all = "*" in external_allow
+        self.security_config = security_config
+        self._call_func_attr_ids: set[int] = set()
 
     # ========== Detection ==========
 
@@ -43,6 +48,10 @@ class SecurityValidator(ast.NodeVisitor):
         for alias in node.names:
             module_name = alias.name
             self._validate_import(module_name, node.lineno)
+            if alias.asname and alias.asname in BLOCKED_NAMES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_NAME.format(name=alias.asname)
+                )
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -53,27 +62,55 @@ class SecurityValidator(ast.NodeVisitor):
         elif node.module:
             self._validate_import(node.module, node.lineno)
 
+        for alias in node.names:
+            if alias.asname and alias.asname in BLOCKED_NAMES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_NAME.format(name=alias.asname)
+                )
+            elif alias.name in BLOCKED_NAMES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_NAME.format(name=alias.name)
+                )
+
+        self.generic_visit(node)
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if node.id in BLOCKED_NAMES:
+            self._add_violation(node.lineno, ERROR_DANGEROUS_NAME.format(name=node.id))
+
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
         """Detect access to unsafe attributes that could bypass security restrictions."""
 
-        if node.attr in UNSAFE_ATTRIBUTES:
-            # Block regardless of context
-            if node.attr in ALWAYS_BLOCKED_ATTRIBUTES:
-                self._add_violation(
-                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
-                )
-            # Block in attribute chains (e.g., x.__class__.__bases__) or on literals (e.g., "".__class__)
-            elif isinstance(node.value, (ast.Attribute, ast.Constant)):
-                self._add_violation(
-                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
-                )
+        if node.attr in BLOCKED_ATTRIBUTES:
+            self._add_violation(
+                node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
+            )
+
+        if (
+            node.attr in FORMAT_METHOD_NAMES
+            and id(node) not in self._call_func_attr_ids
+        ):
+            self._add_violation(
+                node.lineno, ERROR_BARE_FORMAT_ATTRIBUTE.format(attr=node.attr)
+            )
+
+        if node.attr.startswith("_") and "__" in node.attr:
+            parts = node.attr.split("__", 1)
+            if len(parts) == 2 and parts[0].startswith("_"):
+                self._add_violation(node.lineno, ERROR_NAME_MANGLED_ATTRIBUTE)
 
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
         """Detect calls to __import__() that could bypass security restrictions."""
+
+        if (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr in FORMAT_METHOD_NAMES
+        ):
+            self._call_func_attr_ids.add(id(node.func))
 
         is_import_call = (
             # __import__()
@@ -101,6 +138,160 @@ class SecurityValidator(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_Subscript(self, node: ast.Subscript) -> None:
+        """Detect dict access to blocked attributes, e.g. __builtins__['__spec__']"""
+
+        is_builtins_access = (
+            # __builtins__['__spec__']
+            (
+                isinstance(node.value, ast.Name)
+                and node.value.id in {"__builtins__", "builtins"}
+            )
+            # obj.__builtins__['__spec__']
+            or (
+                isinstance(node.value, ast.Attribute)
+                and node.value.attr in {"__builtins__", "builtins"}
+            )
+        )
+
+        if (
+            is_builtins_access
+            and isinstance(node.slice, ast.Constant)
+            and isinstance(node.slice.value, str)
+        ):
+            key = node.slice.value
+            if key in BLOCKED_ATTRIBUTES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=key)
+                )
+
+        self.generic_visit(node)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        """Detect string constants containing dangerous format patterns or
+        equal to a blocked name/attribute."""
+
+        if isinstance(node.value, str):
+            self._scan_string_literal(node.value, node.lineno)
+
+        self.generic_visit(node)
+
+    def visit_BinOp(self, node: ast.BinOp) -> None:
+        """Detect compile-time string concatenations that assemble to a
+        blocked name or attribute."""
+
+        if isinstance(node.op, ast.Add):
+            assembled = self._try_assemble_string_concat(node)
+            if assembled is not None:
+                self._scan_string_literal(assembled, node.lineno)
+
+        self.generic_visit(node)
+
+    def visit_Global(self, node: ast.Global) -> None:
+        """Detect global declarations of blocked names, e.g. `global __builtins__`"""
+
+        for name in node.names:
+            if name in BLOCKED_NAMES:
+                self._add_violation(
+                    node.lineno, ERROR_GLOBAL_BLOCKED_NAME.format(name=name)
+                )
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        """Detect function definitions with blocked names, e.g. `def __builtins__(): pass`"""
+
+        if node.name in BLOCKED_NAMES:
+            self._add_violation(
+                node.lineno, ERROR_FUNCDEF_BLOCKED_NAME.format(name=node.name)
+            )
+        self.generic_visit(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        """Detect async function definitions with blocked names."""
+
+        if node.name in BLOCKED_NAMES:
+            self._add_violation(
+                node.lineno, ERROR_FUNCDEF_BLOCKED_NAME.format(name=node.name)
+            )
+        self.generic_visit(node)
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        """Detect class definitions with blocked names, e.g. `class __builtins__: pass`"""
+
+        if node.name in BLOCKED_NAMES:
+            self._add_violation(
+                node.lineno, ERROR_CLASSDEF_BLOCKED_NAME.format(name=node.name)
+            )
+        self.generic_visit(node)
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
+        if node.name and node.name in BLOCKED_NAMES:
+            self._add_violation(
+                node.lineno, ERROR_DANGEROUS_NAME.format(name=node.name)
+            )
+        self.generic_visit(node)
+
+    def visit_arg(self, node: ast.arg) -> None:
+        if node.arg in BLOCKED_NAMES:
+            self._add_violation(
+                node.lineno, ERROR_PARAM_BLOCKED_NAME.format(name=node.arg)
+            )
+        self.generic_visit(node)
+
+    def visit_MatchClass(self, node: ast.MatchClass) -> None:
+        """Detect match patterns that extract blocked attributes, e.g. `case AttributeError(obj=x)`"""
+
+        if node.patterns:
+            self._add_violation(node.lineno, ERROR_MATCH_POSITIONAL_PATTERN)
+
+        for attr in node.kwd_attrs:
+            if attr in BLOCKED_ATTRIBUTES:
+                self._add_violation(
+                    node.lineno, ERROR_MATCH_PATTERN_ATTRIBUTE.format(attr=attr)
+                )
+
+        self.generic_visit(node)
+
+    def _check_format_string(self, s: str, lineno: int) -> None:
+        """Check if a string contains format patterns that access blocked attributes."""
+
+        for token in find_blocked_format_tokens(s):
+            self._add_violation(
+                lineno, ERROR_DANGEROUS_STRING_PATTERN.format(attr=token)
+            )
+
+    def _scan_string_literal(self, s: str, lineno: int) -> None:
+        """Validate a string literal (or compile-time-assembled string) via
+        an exact-match check against the blocked name / attribute sets, and
+        a format-template scan."""
+
+        if s in BLOCKED_NAMES:
+            self._add_violation(lineno, ERROR_DANGEROUS_NAME.format(name=s))
+            return
+        if s in BLOCKED_ATTRIBUTES:
+            self._add_violation(lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=s))
+            return
+        self._check_format_string(s, lineno)
+
+    def _try_assemble_string_concat(self, node: ast.AST) -> str | None:
+        """Recursively fold a tree of ``ast.BinOp(Add)`` over string constants
+        into a single string. Returns ``None`` if any operand is not a string
+        constant (or a string-folding BinOp)."""
+
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            left = self._try_assemble_string_concat(node.left)
+            if left is None:
+                return None
+            right = self._try_assemble_string_concat(node.right)
+            if right is None:
+                return None
+            return left + right
+
+        return None
+
     # ========== Validation ==========
 
     def _validate_import(self, module_path: str, lineno: int) -> None:
@@ -117,29 +308,13 @@ class SecurityValidator(ast.NodeVisitor):
 
         self.checked_modules.add(module_name)
 
-        is_stdlib = module_name in sys.stdlib_module_names
-        is_external = not is_stdlib
-
-        if is_stdlib and (self._stdlib_allow_all or module_name in self.stdlib_allow):
-            return
-
-        if is_external and (
-            self._external_allow_all or module_name in self.external_allow
-        ):
-            return
-
-        error, allowed_str = (
-            (ERROR_STDLIB_DISALLOWED, self._stdlib_allowed_str)
-            if is_stdlib
-            else (ERROR_EXTERNAL_DISALLOWED, self._external_allowed_str)
+        is_allowed, error_msg = validate_module_import(
+            module_path, self.security_config
         )
 
-        self._add_violation(
-            lineno, error.format(module=module_path, allowed=allowed_str)
-        )
-
-    def _format_allowed(self, allow_set: Set[str]) -> str:
-        return ", ".join(sorted(allow_set)) if allow_set else "none"
+        if not is_allowed:
+            assert error_msg is not None
+            self._add_violation(lineno, error_msg)
 
     def _add_violation(self, lineno: int, message: str) -> None:
         self.violations.append(f"Line {lineno}: {message}")
@@ -148,14 +323,16 @@ class SecurityValidator(ast.NodeVisitor):
 class TaskAnalyzer:
     _cache: ValidationCache = OrderedDict()
 
-    def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
-        self._stdlib_allow = stdlib_allow
-        self._external_allow = external_allow
+    def __init__(self, security_config: SecurityConfig):
+        self._security_config = security_config
         self._allowlists = (
-            tuple(sorted(stdlib_allow)),
-            tuple(sorted(external_allow)),
+            tuple(sorted(security_config.stdlib_allow)),
+            tuple(sorted(security_config.external_allow)),
         )
-        self._allow_all = "*" in stdlib_allow and "*" in external_allow
+        self._allow_all = (
+            "*" in security_config.stdlib_allow
+            and "*" in security_config.external_allow
+        )
 
     def validate(self, code: str) -> None:
         if self._allow_all:
@@ -163,20 +340,18 @@ class TaskAnalyzer:
 
         cache_key = self._to_cache_key(code)
         cached_violations = self._cache.get(cache_key)
-        cache_hit = cached_violations is not None
 
-        if cache_hit:
+        if cached_violations is not None:
             self._cache.move_to_end(cache_key)
 
             if len(cached_violations) == 0:
                 return
 
-            if len(cached_violations) > 0:
-                self._raise_security_error(cached_violations)
+            self._raise_security_error(cached_violations)
 
         tree = ast.parse(code)
 
-        security_validator = SecurityValidator(self._stdlib_allow, self._external_allow)
+        security_validator = SecurityValidator(self._security_config)
         security_validator.visit(tree)
 
         self._set_in_cache(cache_key, security_validator.violations)

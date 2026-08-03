@@ -7,7 +7,7 @@ export class HighLevelOAuth2Api implements ICredentialType {
 
 	displayName = 'HighLevel OAuth2 API';
 
-	documentationUrl = 'highLevel';
+	documentationUrl = 'highlevel';
 
 	icon: Icon = 'file:icons/highLevel.svg';
 
@@ -68,7 +68,7 @@ export class HighLevelOAuth2Api implements ICredentialType {
 			type: 'notice',
 			default: '',
 			displayOptions: {
-				hideOnCloud: true,
+				showOnDeployment: 'hosted',
 			},
 		},
 	];

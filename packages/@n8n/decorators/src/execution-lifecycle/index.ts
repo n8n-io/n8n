@@ -5,5 +5,6 @@ export type {
 	NodeExecuteAfterContext,
 	WorkflowExecuteBeforeContext,
 	WorkflowExecuteAfterContext,
+	WorkflowExecuteResumeContext,
 } from './lifecycle-metadata';
 export { LifecycleMetadata } from './lifecycle-metadata';

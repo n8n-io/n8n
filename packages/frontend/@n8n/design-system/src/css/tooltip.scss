@@ -13,16 +13,16 @@
 		position: absolute;
 		border-radius: 4px;
 		padding: var.$tooltip-padding;
-		z-index: var.$index-popper;
+		z-index: var.$index-tooltip;
 		font-size: var.$tooltip-font-size;
 		line-height: 1.2;
 		min-width: 10px;
 		word-wrap: break-word;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 
 		a {
-			color: var(--color-primary);
-			font-weight: var(--font-weight-bold);
+			color: var(--color--primary);
+			font-weight: var(--font-weight--bold);
 		}
 
 		.el-popper__arrow,

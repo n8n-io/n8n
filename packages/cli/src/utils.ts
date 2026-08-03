@@ -1,14 +1,32 @@
-import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
-import type { INode, INodeType } from 'n8n-workflow';
+import { CliWorkflowOperationError, isHitlToolType, SubworkflowOperationError } from 'n8n-workflow';
+import type { INode, INodeType, Workflow } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
 
 /**
  * Returns if the given id is a valid workflow id
+ * id should be 16 characters but we allow <=21 to support longer IDs from December 2025
  */
 export function isWorkflowIdValid(id: string | null | undefined): boolean {
-	// TODO: could also check if id only contains nanoId characters
-	return typeof id === 'string' && id?.length <= 16;
+	return typeof id === 'string' && id.length > 0 && id.length <= 21;
+}
+
+/**
+ * Strips the "Tool"/"HitlTool" suffix from a tool-variant node type (e.g. `openAiTool`
+ * → `openAi`), yielding the base node type. Kept in sync with the editor-ui
+ * `stripToolSuffix` so backend and frontend agree on the lookup fallback.
+ */
+export function stripToolSuffix(nodeType: string): string {
+	return nodeType.replace(/HitlTool$/, '').replace(/Tool$/, '');
+}
+
+/**
+ * Whether the given resolved node (version) can back the synthetic tool name.
+ * HITL tools have no capability requirement; regular tools need the base node
+ * version to declare `usableAsTool`.
+ */
+export function satisfiesToolCapability(syntheticToolName: string, nodeType: INodeType): boolean {
+	return isHitlToolType(syntheticToolName) || !!nodeType.description.usableAsTool;
 }
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
@@ -86,6 +104,7 @@ export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
 
 	return (
 		!nodeType.execute &&
+		!nodeType.supplyData &&
 		!nodeType.poll &&
 		!nodeType.trigger &&
 		(!nodeType.webhook || isDeclarativeNode) &&
@@ -122,3 +141,45 @@ export const getAllKeyPaths = (
 	}
 	return paths;
 };
+
+/**
+ * Sets Microsoft 365 observability environment variables to their default values if not already set.
+ * Sets ENABLE_OBSERVABILITY and ENABLE_A365_OBSERVABILITY_EXPORTER to 'true' if they are undefined or empty.
+ */
+export function setMicrosoftObservabilityDefaults(): void {
+	if (process.env.ENABLE_OBSERVABILITY === undefined || process.env.ENABLE_OBSERVABILITY === '') {
+		process.env.ENABLE_OBSERVABILITY = 'true';
+	}
+	if (
+		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === undefined ||
+		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === ''
+	) {
+		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+	}
+}
+
+export function containsExpression(testString: string): boolean {
+	return /^=.*\{\{.+\}\}/.test(testString);
+}
+
+export function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * When N8N_EXPRESSION_ENGINE=vm, expressions run in an isolate that must be acquired
+ * for this workflow before any code resolves {{ }} in parameters or credentials.
+ */
+export async function withExpressionIsolate<T>(
+	workflow: Workflow,
+	fn: () => Promise<T>,
+): Promise<T> {
+	// Release is not reference-counted: only release if this scope newly acquired
+	// the isolate, otherwise we'd return the outer caller's bridge to the pool mid-use.
+	const acquired = await workflow.expression.acquireIsolate();
+	try {
+		return await fn();
+	} finally {
+		if (acquired) await workflow.expression.releaseIsolate();
+	}
+}

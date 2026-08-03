@@ -11,7 +11,7 @@ import type {
 	INodeExecutionData,
 	JsonObject,
 	JsonValue,
-	DataStoreColumnJsType,
+	DataTableColumnJsType,
 } from 'n8n-workflow';
 
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
@@ -52,7 +52,7 @@ function isOutputsArray(
 	);
 }
 
-export function toDataTableValue(value: JsonValue): DataStoreColumnJsType {
+export function toDataTableValue(value: JsonValue): DataTableColumnJsType {
 	if (
 		typeof value === 'string' ||
 		typeof value === 'number' ||
@@ -139,7 +139,7 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 	const source = this.getNodeParameter('source', 0) as string;
 
 	if (source === 'dataTable') {
-		if (this.helpers.getDataStoreProxy === undefined) {
+		if (this.helpers.getDataTableProxy === undefined) {
 			throw new NodeOperationError(
 				this.getNode(),
 				'Attempted to use Data table node but the module is disabled',
@@ -149,7 +149,7 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		const dataTableId = this.getNodeParameter('dataTableId', 0, undefined, {
 			extractValue: true,
 		}) as string;
-		const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
+		const dataTableProxy = await this.helpers.getDataTableProxy(dataTableId);
 
 		const rowId = typeof evaluationTrigger.row_id === 'number' ? evaluationTrigger.row_id : 1;
 
@@ -169,7 +169,7 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 			});
 		}
 
-		await dataTableProxy.updateRow({
+		await dataTableProxy.updateRows({
 			filter: {
 				type: 'and',
 				filters: [

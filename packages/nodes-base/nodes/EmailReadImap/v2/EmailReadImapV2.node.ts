@@ -35,7 +35,7 @@ const versionDescription: INodeTypeDescription = {
 	icon: 'fa:inbox',
 	iconColor: 'green',
 	group: ['trigger'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	description: 'Triggers the workflow when a new email is received',
 	eventTriggerDescription: 'Waiting for you to receive an email',
 	defaults: {
@@ -46,14 +46,13 @@ const versionDescription: INodeTypeDescription = {
 		header: '',
 		executionsHelp: {
 			inactive:
-				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time an email is received, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, publish it. Then every time an email is received, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 			active:
 				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time an email is received, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 		},
 		activationHint:
-			"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
+			'Once you’ve finished building your workflow, publish it to have it also listen continuously (you just won’t see those executions here).',
 	},
-	usableAsTool: true,
 	inputs: [],
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
@@ -388,6 +387,9 @@ export class EmailReadImapV2 implements INodeType {
 					});
 
 					if (connection) {
+						// Create a fresh copy to avoid accumulating filters across calls
+						const currentSearchCriteria = [...searchCriteria];
+
 						/**
 						 * Only process new emails:
 						 * - If we've seen emails before (lastMessageUid is set), fetch messages higher UID.
@@ -409,19 +411,19 @@ export class EmailReadImapV2 implements INodeType {
 							 * - You can check if UIDs changed in the above example
 							 * by checking UIDValidity.
 							 */
-							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+							currentSearchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
 						} else if (node.typeVersion > 2 && options.trackLastMessageId !== false) {
-							searchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
+							currentSearchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
 						}
 
 						this.logger.debug('Querying for new messages on node "EmailReadImap"', {
-							searchCriteria,
+							searchCriteria: currentSearchCriteria,
 						});
 
 						try {
 							await getNewEmails.call(this, {
 								imapConnection: connection,
-								searchCriteria,
+								searchCriteria: currentSearchCriteria,
 								postProcessAction,
 								getText,
 								getAttachment,
@@ -465,21 +467,31 @@ export class EmailReadImapV2 implements INodeType {
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
 			return await imapConnect(config).then((conn) => {
+				let errorReported = false;
+
 				conn.on('close', (_hadError: boolean) => {
 					if (isCurrentlyReconnecting) {
 						this.logger.debug('Email Read Imap: Connected closed for forced reconnecting');
 					} else if (closeFunctionWasCalled) {
 						this.logger.debug('Email Read Imap: Shutting down workflow - connected closed');
-					} else {
+					} else if (!errorReported) {
 						this.logger.error('Email Read Imap: Connected closed unexpectedly');
-						this.emitError(new Error('Imap connection closed unexpectedly'));
+						this.emitError(
+							new NodeOperationError(this.getNode(), 'IMAP connection closed unexpectedly', {
+								description:
+									'The IMAP server closed the connection without reporting an error, usually because the server (or a proxy/firewall) periodically closes long-lived connections, or was temporarily unavailable. n8n will automatically retry reactivating the workflow. If this happens on a regular cycle, enable the "Force Reconnect" option with an interval shorter than that cycle, so n8n reconnects before the server does.',
+							}),
+						);
 					}
+					conn.removeAllListeners();
 				});
 				conn.on('error', (error) => {
-					const errorCode = ((error as JsonObject).code as string).toUpperCase();
+					const errorCode =
+						((error as JsonObject).code as string | undefined)?.toUpperCase() ?? 'UNKNOWN';
 					this.logger.debug(`IMAP connection experienced an error: (${errorCode})`, {
 						error: error as Error,
 					});
+					errorReported = true;
 					this.emitError(error as Error);
 				});
 				return conn;

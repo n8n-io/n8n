@@ -2,19 +2,25 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 
 import type {
 	AgentMessageChunk,
+	MessagesCompactedChunk,
 	ToolProgressChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
 } from '../../types/streaming';
 import type { BuilderToolBase } from '../stream-processor';
-import { processStreamChunk, createStreamProcessor, formatMessages } from '../stream-processor';
+import {
+	processStreamChunk,
+	createStreamProcessor,
+	formatMessages,
+	cleanContextTags,
+} from '../stream-processor';
 
 describe('stream-processor', () => {
 	describe('processStreamChunk', () => {
 		describe('updates mode', () => {
-			it('should process agent messages with text content', () => {
+			it('should process responder messages with text content', () => {
 				const chunk = {
-					agent: {
+					responder: {
 						messages: [{ content: 'Hello, this is a test message' }],
 					},
 				};
@@ -29,9 +35,9 @@ describe('stream-processor', () => {
 				expect(message.text).toBe('Hello, this is a test message');
 			});
 
-			it('should process agent messages with array content (multi-part)', () => {
+			it('should process responder messages with array content (multi-part)', () => {
 				const chunk = {
-					agent: {
+					responder: {
 						messages: [
 							{
 								content: [
@@ -52,7 +58,7 @@ describe('stream-processor', () => {
 				expect(message.text).toBe('Part 1\nPart 2');
 			});
 
-			it('should handle delete_messages with refresh message', () => {
+			it('should skip delete_messages (responder handles user message)', () => {
 				const chunk = {
 					delete_messages: {
 						messages: [{ content: 'Some deleted message' }],
@@ -61,13 +67,10 @@ describe('stream-processor', () => {
 
 				const result = processStreamChunk('updates', chunk);
 
-				expect(result).toBeDefined();
-				expect(result?.messages).toHaveLength(1);
-				const message = result?.messages[0] as AgentMessageChunk;
-				expect(message.text).toBe('Deleted, refresh?');
+				expect(result).toBeNull();
 			});
 
-			it('should handle compact_messages returning last message', () => {
+			it('should emit messages-compacted event for compact_messages', () => {
 				const chunk = {
 					compact_messages: {
 						messages: [
@@ -82,13 +85,13 @@ describe('stream-processor', () => {
 
 				expect(result).toBeDefined();
 				expect(result?.messages).toHaveLength(1);
-				const message = result?.messages[0] as AgentMessageChunk;
-				expect(message.text).toBe('Last message to display');
+				const message = result?.messages[0] as MessagesCompactedChunk;
+				expect(message.type).toBe('messages-compacted');
 			});
 
-			it('should handle compact_messages with empty content', () => {
+			it('should handle responder with empty content', () => {
 				const chunk = {
-					agent: {
+					responder: {
 						messages: [{ content: 'First message' }, { content: [{ type: 'text', text: '' }] }],
 					},
 				};
@@ -120,9 +123,43 @@ describe('stream-processor', () => {
 				expect(message.codeSnippet).toBe(JSON.stringify(workflowData, null, 2));
 			});
 
+			it('should handle create_workflow_name with generated name', () => {
+				const workflowData = {
+					nodes: [] as unknown[],
+					connections: {},
+					name: 'Email Automation Workflow',
+				};
+				const chunk = {
+					create_workflow_name: {
+						workflowJSON: workflowData,
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeDefined();
+				expect(result?.messages).toHaveLength(1);
+				const message = result?.messages[0] as WorkflowUpdateChunk;
+				expect(message.role).toBe('assistant');
+				expect(message.type).toBe('workflow-updated');
+				expect(message.codeSnippet).toBe(JSON.stringify(workflowData, null, 2));
+			});
+
+			it('should ignore create_workflow_name without a name', () => {
+				const chunk = {
+					create_workflow_name: {
+						workflowJSON: { nodes: [], connections: {} },
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeNull();
+			});
+
 			it('should ignore chunks without relevant content', () => {
 				const chunk = {
-					agent: {
+					responder: {
 						messages: [{ content: '' }], // Empty content
 					},
 				};
@@ -146,7 +183,7 @@ describe('stream-processor', () => {
 
 			it('should handle empty messages arrays', () => {
 				const chunk = {
-					agent: {
+					responder: {
 						messages: [],
 					},
 				};
@@ -154,6 +191,35 @@ describe('stream-processor', () => {
 				const result = processStreamChunk('updates', chunk);
 
 				expect(result).toBeNull();
+			});
+
+			it('should return null for chunks with invalid structure', () => {
+				const chunk = {
+					invalid: 'structure',
+					random: 'data',
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for null chunks', () => {
+				const result = processStreamChunk('updates', null);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for undefined chunks', () => {
+				const result = processStreamChunk('updates', undefined);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for primitive chunks', () => {
+				expect(processStreamChunk('updates', 'string')).toBeNull();
+				expect(processStreamChunk('updates', 123)).toBeNull();
+				expect(processStreamChunk('updates', true)).toBeNull();
 			});
 		});
 
@@ -181,6 +247,23 @@ describe('stream-processor', () => {
 				expect(result?.messages[0]).toEqual(toolChunk);
 			});
 
+			it('should process assistant message chunks', () => {
+				const messageChunk: AgentMessageChunk = {
+					role: 'assistant',
+					type: 'message',
+					text: 'Here is how to set up credentials...',
+				};
+
+				const result = processStreamChunk('custom', messageChunk);
+
+				expect(result).toBeDefined();
+				expect(result?.messages).toHaveLength(1);
+				const message = result?.messages[0] as AgentMessageChunk;
+				expect(message.role).toBe('assistant');
+				expect(message.type).toBe('message');
+				expect(message.text).toBe('Here is how to set up credentials...');
+			});
+
 			it('should ignore non-tool chunks in custom mode', () => {
 				const chunk = {
 					type: 'something-else',
@@ -190,6 +273,28 @@ describe('stream-processor', () => {
 				const result = processStreamChunk('custom', chunk);
 
 				expect(result).toBeNull();
+			});
+
+			it('should return null for chunks missing type property', () => {
+				const chunk = {
+					id: 'tool-1',
+					toolName: 'add_nodes',
+				};
+
+				const result = processStreamChunk('custom', chunk);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for null chunks in custom mode', () => {
+				const result = processStreamChunk('custom', null);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for primitive values in custom mode', () => {
+				expect(processStreamChunk('custom', 'string')).toBeNull();
+				expect(processStreamChunk('custom', 123)).toBeNull();
 			});
 		});
 
@@ -207,9 +312,9 @@ describe('stream-processor', () => {
 	describe('createStreamProcessor', () => {
 		it('should yield only non-null outputs', async () => {
 			async function* mockStream(): AsyncGenerator<[string, unknown], void, unknown> {
-				yield ['updates', { agent: { messages: [{ content: 'Test' }] } }];
-				yield ['updates', { agent: { messages: [{ content: '' }] } }]; // Will produce null
-				yield ['updates', { agent: { messages: [{ content: 'Test 2' }] } }];
+				yield ['updates', { responder: { messages: [{ content: 'Test' }] } }];
+				yield ['updates', { responder: { messages: [{ content: '' }] } }]; // Will produce null
+				yield ['updates', { responder: { messages: [{ content: 'Test 2' }] } }];
 			}
 
 			const processor = createStreamProcessor(mockStream());
@@ -226,7 +331,7 @@ describe('stream-processor', () => {
 
 		it('should process multiple chunks in sequence', async () => {
 			async function* mockStream(): AsyncGenerator<[string, unknown], void, unknown> {
-				yield ['updates', { agent: { messages: [{ content: 'Message 1' }] } }];
+				yield ['updates', { responder: { messages: [{ content: 'Message 1' }] } }];
 				yield ['custom', { type: 'tool', toolName: 'test_tool' } as ToolProgressChunk];
 				yield ['updates', { delete_messages: { messages: [{ content: 'deleted' }] } }];
 			}
@@ -238,10 +343,9 @@ describe('stream-processor', () => {
 				results.push(output);
 			}
 
-			expect(results).toHaveLength(3);
+			expect(results).toHaveLength(2);
 			expect((results[0].messages[0] as AgentMessageChunk).text).toBe('Message 1');
 			expect((results[1].messages[0] as ToolProgressChunk).toolName).toBe('test_tool');
-			expect((results[2].messages[0] as AgentMessageChunk).text).toBe('Deleted, refresh?');
 		});
 
 		it('should handle empty stream', async () => {
@@ -271,6 +375,239 @@ describe('stream-processor', () => {
 				role: 'user',
 				type: 'message',
 				text: 'Hello from user',
+			});
+		});
+
+		it('should extract versionId from additional_kwargs as revertVersionId', () => {
+			const message = new HumanMessage({ content: 'Revert to this version' });
+			message.additional_kwargs = { versionId: 'version-123' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Revert to this version',
+				revertVersionId: 'version-123',
+			});
+		});
+
+		it('should extract messageId from additional_kwargs as id', () => {
+			const message = new HumanMessage({ content: 'Hello' });
+			message.additional_kwargs = { messageId: 'msg-456' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Hello',
+				id: 'msg-456',
+			});
+		});
+
+		it('should extract both versionId and messageId from additional_kwargs', () => {
+			const message = new HumanMessage({ content: 'Test message' });
+			message.additional_kwargs = { versionId: 'version-789', messageId: 'msg-789' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Test message',
+				revertVersionId: 'version-789',
+				id: 'msg-789',
+			});
+		});
+
+		it('should not include revertVersionId when versionId is missing', () => {
+			const message = new HumanMessage({ content: 'Normal message' });
+			message.additional_kwargs = { messageId: 'msg-001' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Normal message',
+				id: 'msg-001',
+			});
+			expect(result[0]).not.toHaveProperty('revertVersionId');
+		});
+
+		it('should include HumanMessage and extract versionId even without messageId', () => {
+			const message = new HumanMessage({ content: 'Another message' });
+			message.additional_kwargs = { versionId: 'version-999' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Another message',
+				revertVersionId: 'version-999',
+			});
+			expect(result[0]).not.toHaveProperty('id');
+		});
+
+		it('should preserve existing message properties with versionId and messageId', () => {
+			const message = new HumanMessage({ content: 'Complete message' });
+			message.additional_kwargs = { versionId: 'version-complete', messageId: 'msg-complete' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			const formatted = result[0];
+			expect(formatted.role).toBe('user');
+			expect(formatted.type).toBe('message');
+			expect(formatted.text).toBe('Complete message');
+			expect(formatted.revertVersionId).toBe('version-complete');
+			expect(formatted.id).toBe('msg-complete');
+		});
+
+		it('should include HumanMessage with undefined additional_kwargs', () => {
+			const message = new HumanMessage({ content: 'Message without kwargs' });
+			// Message is created without additional_kwargs, so it's undefined by default
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Message without kwargs',
+			});
+			expect(result[0]).not.toHaveProperty('revertVersionId');
+			expect(result[0]).not.toHaveProperty('id');
+		});
+
+		it('should include HumanMessage with empty additional_kwargs object', () => {
+			const message = new HumanMessage({ content: 'Empty kwargs' });
+			message.additional_kwargs = {};
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Empty kwargs',
+			});
+			expect(result[0]).not.toHaveProperty('revertVersionId');
+			expect(result[0]).not.toHaveProperty('id');
+		});
+
+		it('should only include revertVersionId when versionId is a string', () => {
+			const message = new HumanMessage({ content: 'Non-string versionId' });
+			message.additional_kwargs = { versionId: 123, messageId: 'msg-123' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Non-string versionId',
+				id: 'msg-123',
+			});
+			expect(result[0]).not.toHaveProperty('revertVersionId');
+		});
+
+		it('should include HumanMessage when messageId is not a string but exclude id from output', () => {
+			const message = new HumanMessage({ content: 'Non-string messageId' });
+			message.additional_kwargs = { versionId: 'version-456', messageId: 456 };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Non-string messageId',
+				revertVersionId: 'version-456',
+			});
+			expect(result[0]).not.toHaveProperty('id');
+		});
+
+		it('should format HumanMessage with array content (multi-part messages)', () => {
+			const messages = [
+				new HumanMessage({
+					content: [
+						{ type: 'text', text: 'Part 1' },
+						{ type: 'text', text: 'Part 2' },
+						{ type: 'image_url', image_url: 'http://example.com/image.png' },
+					],
+				}),
+			];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Part 1\nPart 2',
+			});
+		});
+
+		it('should strip context tags from HumanMessage content', () => {
+			const messageWithContext = `User question here
+<current_workflow_json>
+{"nodes": [], "connections": {}}
+</current_workflow_json>
+<current_simplified_execution_data>
+{"runData": {}}
+</current_simplified_execution_data>
+<current_execution_nodes_schemas>
+[{"nodeName": "test"}]
+</current_execution_nodes_schemas>`;
+
+			const messages = [new HumanMessage(messageWithContext)];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'User question here',
+			});
+		});
+
+		it('should strip context tags from HumanMessage array content', () => {
+			const messages = [
+				new HumanMessage({
+					content: [
+						{
+							type: 'text',
+							text: `Workflow executed successfully.
+<current_workflow_json>
+{"nodes": []}
+</current_workflow_json>
+<current_simplified_execution_data>
+{"runData": {}}
+</current_simplified_execution_data>
+<current_execution_nodes_schemas>
+[{"nodeName": "Manual Trigger"}]
+</current_execution_nodes_schemas>`,
+						},
+					],
+				}),
+			];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Workflow executed successfully.',
 			});
 		});
 
@@ -439,7 +776,9 @@ describe('stream-processor', () => {
 			expect(result[2].updates).toHaveLength(2); // input and output
 		});
 
-		it('should handle AIMessage with both content and tool_calls', () => {
+		it('should handle AIMessage with both content and tool_calls - only include tool calls', () => {
+			// When an AIMessage has tool_calls, the content is intermediate LLM "thinking" text
+			// that should be skipped. Only the tool calls should be formatted.
 			const aiMessage = new AIMessage('I will add a node for you');
 			aiMessage.tool_calls = [
 				{
@@ -454,13 +793,9 @@ describe('stream-processor', () => {
 
 			const result = formatMessages(messages);
 
-			expect(result).toHaveLength(2);
-			expect(result[0]).toEqual({
-				role: 'assistant',
-				type: 'message',
-				text: 'I will add a node for you',
-			});
-			expect(result[1].type).toBe('tool');
+			// Only tool message, content is skipped
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('tool');
 		});
 
 		it('should handle tool calls without args', () => {
@@ -908,6 +1243,550 @@ describe('stream-processor', () => {
 				type: 'output',
 				data: { success: true, connectionId: 'conn-1' },
 			});
+		});
+	});
+
+	describe('createStreamProcessor with subgraph events', () => {
+		it('should process parent events [streamMode, data]', async () => {
+			async function* mockStream(): AsyncGenerator<[string, unknown], void, unknown> {
+				yield ['updates', { responder: { messages: [{ content: 'Hello from parent' }] } }];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(1);
+			expect((results[0].messages[0] as AgentMessageChunk).text).toBe('Hello from parent');
+		});
+
+		it('should process subgraph events [namespace[], streamMode, data]', async () => {
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				// Non-skipped subgraph event
+				yield [['some_other_graph'], 'updates', { responder: { messages: [{ content: 'Test' }] } }];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(1);
+		});
+
+		it('should filter out message events from builder_subgraph namespace', async () => {
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				// UUID-appended namespace format used by LangGraph
+				yield [
+					['builder_subgraph:612f4bc3-b308-53a8-b2e8-01543d375dff'],
+					'updates',
+					{ responder: { messages: [{ content: 'Internal builder message' }] } },
+				];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(0);
+		});
+
+		it('should filter out message events from discovery_subgraph namespace', async () => {
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				yield [
+					['discovery_subgraph:abc-123'],
+					'updates',
+					{ responder: { messages: [{ content: 'Internal discovery message' }] } },
+				];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(0);
+		});
+
+		it('should allow tool progress events from subgraphs', async () => {
+			const toolChunk: ToolProgressChunk = {
+				id: 'tool-1',
+				toolCallId: 'call-1',
+				type: 'tool',
+				role: 'assistant',
+				toolName: 'add_nodes',
+				status: 'running',
+				updates: [],
+			};
+
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				yield [['builder_subgraph:uuid'], 'custom', toolChunk];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(1);
+			expect((results[0].messages[0] as ToolProgressChunk).toolName).toBe('add_nodes');
+		});
+
+		it('should allow process_operations events from subgraphs', async () => {
+			const workflowData = { nodes: [], connections: {} };
+
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				yield [
+					['builder_subgraph:uuid'],
+					'updates',
+					{ process_operations: { workflowJSON: workflowData, workflowOperations: null } },
+				];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(1);
+			expect((results[0].messages[0] as WorkflowUpdateChunk).type).toBe('workflow-updated');
+		});
+
+		it('should handle mixed parent and subgraph events', async () => {
+			async function* mockStream(): AsyncGenerator<
+				[string, unknown] | [string[], string, unknown],
+				void,
+				unknown
+			> {
+				// Parent event
+				yield ['updates', { responder: { messages: [{ content: 'User-facing response' }] } }];
+				// Filtered subgraph event
+				yield [
+					['builder_subgraph:uuid'],
+					'updates',
+					{ responder: { messages: [{ content: 'Internal' }] } },
+				];
+				// Another parent event
+				yield ['custom', { type: 'tool', toolName: 'test_tool' } as ToolProgressChunk];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(2);
+			expect((results[0].messages[0] as AgentMessageChunk).text).toBe('User-facing response');
+			expect((results[1].messages[0] as ToolProgressChunk).toolName).toBe('test_tool');
+		});
+
+		it('should ignore malformed events', async () => {
+			async function* mockStream(): AsyncGenerator<unknown, void, unknown> {
+				yield ['updates', { responder: { messages: [{ content: 'Valid' }] } }];
+				yield null;
+				yield undefined;
+				yield 'just a string';
+				yield 12345;
+				yield { not: 'an array' };
+				yield ['updates', { responder: { messages: [{ content: 'Also valid' }] } }];
+			}
+
+			// Cast to expected type for processor
+			const processor = createStreamProcessor(
+				mockStream() as AsyncGenerator<[string, unknown], void, unknown>,
+			);
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(2);
+		});
+
+		it('should handle nested namespace arrays', async () => {
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				// Nested namespaces like parent:child:grandchild
+				yield [
+					['parent_graph', 'builder_subgraph:uuid'],
+					'updates',
+					{ responder: { messages: [{ content: 'Nested internal' }] } },
+				];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			// Should be filtered because one of the namespaces matches skipped prefix
+			expect(results).toHaveLength(0);
+		});
+
+		it('should not filter subgraph events when node is in SKIPPED_NODES list', async () => {
+			async function* mockStream(): AsyncGenerator<
+				[string[], string, unknown] | [string, unknown],
+				void,
+				unknown
+			> {
+				// 'tools' node is in SKIPPED_NODES - subgraph filtering should NOT block this event
+				// (subgraph filtering only blocks events with EMITTING nodes like 'responder')
+				yield [
+					['builder_subgraph:uuid'],
+					'updates',
+					{ tools: { messages: [{ content: 'Tool execution' }] } },
+				];
+				// Follow-up parent event to verify stream processing continues normally
+				yield ['updates', { responder: { messages: [{ content: 'Parent response' }] } }];
+			}
+
+			const processor = createStreamProcessor(
+				mockStream() as AsyncGenerator<[string, unknown], void, unknown>,
+			);
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			// First event: no output because 'tools' doesn't emit (but wasn't filtered)
+			// Second event: parent 'agent' produces output, proving stream wasn't blocked
+			expect(results).toHaveLength(1);
+			expect((results[0].messages[0] as AgentMessageChunk).text).toBe('Parent response');
+		});
+	});
+
+	describe('cleanContextTags', () => {
+		// Import cleanContextTags for direct testing
+		it('should remove workflow context tags from text', () => {
+			const input = `Question here
+<current_workflow_json>
+{"nodes": []}
+</current_workflow_json>
+<current_simplified_execution_data>
+{}
+</current_simplified_execution_data>
+<current_execution_nodes_schemas>
+[]
+</current_execution_nodes_schemas>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('Question here');
+		});
+
+		it('should handle text without context tags', () => {
+			const input = 'Plain text without any tags';
+			const result = cleanContextTags(input);
+			expect(result).toBe('Plain text without any tags');
+		});
+
+		it('should extract user request from XML tag format', () => {
+			const input = `<previous_requests>
+test
+</previous_requests>
+<workflow_file path="/workflow.js">
+1: const wf = workflow('id', 'name');
+</workflow_file>
+<user_request>
+add set node
+</user_request>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('add set node');
+		});
+
+		it('should extract multiline user request from XML tag', () => {
+			const input = `<workflow_file path="/workflow.js">
+code
+</workflow_file>
+<user_request>
+add a set node
+and connect it to the trigger
+</user_request>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('add a set node\nand connect it to the trigger');
+		});
+
+		it('should strip code builder tags when no user request marker found', () => {
+			const input = `<previous_requests>
+old request
+</previous_requests>
+<workflow_file path="/workflow.js">
+code
+</workflow_file>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('');
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should handle responder node messages (user-facing)', () => {
+			const chunk = {
+				responder: {
+					messages: [{ content: 'Final response to user' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeDefined();
+			expect(result?.messages).toHaveLength(1);
+			const message = result?.messages[0] as AgentMessageChunk;
+			expect(message.text).toBe('Final response to user');
+		});
+
+		it('should skip supervisor node messages', () => {
+			const chunk = {
+				supervisor: {
+					messages: [{ content: 'Supervisor internal message' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeNull();
+		});
+
+		it('should skip assistant_subgraph state updates (text streamed via custom events)', () => {
+			const chunk = {
+				assistant_subgraph: {
+					messages: [{ content: 'Assistant response text' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeNull();
+		});
+
+		it('should skip tools node messages', () => {
+			const chunk = {
+				tools: {
+					messages: [{ content: 'Tool execution result' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeNull();
+		});
+
+		it('should filter messages containing workflow context XML', () => {
+			const chunk = {
+				responder: {
+					messages: [{ content: 'Here is <current_workflow_json>{}</current_workflow_json>' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeNull();
+		});
+
+		// ============================================================================
+		// Plan mode interrupt tests
+		// ============================================================================
+
+		it('should process a questions interrupt from updates stream', () => {
+			const chunk = {
+				__interrupt__: [
+					{
+						value: {
+							type: 'questions',
+							introMessage: 'Before I proceed:',
+							questions: [
+								{
+									id: 'q1',
+									question: 'Which provider?',
+									type: 'single',
+									options: ['Gmail', 'Outlook'],
+								},
+							],
+						},
+						id: 'int-q1',
+					},
+				],
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeDefined();
+			expect(result?.messages).toHaveLength(1);
+			const msg = result!.messages[0] as {
+				type: string;
+				questions: unknown[];
+				introMessage?: string;
+			};
+			expect(msg.type).toBe('questions');
+			expect(msg.questions).toHaveLength(1);
+			expect(msg.introMessage).toBe('Before I proceed:');
+			expect(result?.interruptId).toBe('int-q1');
+		});
+
+		it('should process a plan interrupt from updates stream', () => {
+			const plan = {
+				summary: 'Weather alerts via Slack',
+				trigger: 'Daily at 7 AM',
+				steps: [{ description: 'Check forecast' }, { description: 'Send notification' }],
+			};
+			const chunk = {
+				__interrupt__: [
+					{
+						value: { type: 'plan', plan },
+						id: 'int-p1',
+					},
+				],
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeDefined();
+			expect(result?.messages).toHaveLength(1);
+			const msg = result!.messages[0] as { type: string; plan: typeof plan };
+			expect(msg.type).toBe('plan');
+			expect(msg.plan).toEqual(plan);
+			expect(result?.interruptId).toBe('int-p1');
+		});
+
+		it('should return null for empty __interrupt__ array', () => {
+			const chunk = { __interrupt__: [] };
+			const result = processStreamChunk('updates', chunk);
+			expect(result).toBeNull();
+		});
+
+		it('should return null for __interrupt__ with invalid value', () => {
+			const chunk = { __interrupt__: [{ value: 'not an object', id: 'x' }] };
+			const result = processStreamChunk('updates', chunk);
+			expect(result).toBeNull();
+		});
+
+		it('should return null for __interrupt__ with unknown type', () => {
+			const chunk = {
+				__interrupt__: [{ value: { type: 'unknown_type', data: {} }, id: 'x' }],
+			};
+			const result = processStreamChunk('updates', chunk);
+			expect(result).toBeNull();
+		});
+
+		it('should handle interrupt without id', () => {
+			const chunk = {
+				__interrupt__: [
+					{
+						value: {
+							type: 'questions',
+							questions: [{ id: 'q1', question: 'Test?', type: 'text' }],
+						},
+					},
+				],
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeDefined();
+			expect(result?.interruptId).toBeUndefined();
+		});
+
+		it('should handle stream mode with single character (edge case)', () => {
+			// Single character stream modes should return null (length <= 1 check)
+			const result = processStreamChunk('u', { responder: { messages: [{ content: 'Test' }] } });
+
+			// Actually processStreamChunk handles this at the processParentEvent level
+			// but processStreamChunk itself doesn't have this check - it checks mode names
+			// 'u' is not 'updates' or 'custom', so it returns null
+			expect(result).toBeNull();
+		});
+	});
+
+	describe('createStreamProcessor - interrupt deduplication', () => {
+		async function collectResults(stream: AsyncIterable<StreamOutput>): Promise<StreamOutput[]> {
+			const results: StreamOutput[] = [];
+			for await (const result of stream) {
+				results.push(result);
+			}
+			return results;
+		}
+
+		it('should deduplicate interrupts with the same id', async () => {
+			const interruptChunk = {
+				__interrupt__: [
+					{
+						value: {
+							type: 'questions',
+							questions: [{ id: 'q1', question: 'Service?', type: 'single' }],
+						},
+						id: 'interrupt-123',
+					},
+				],
+			};
+
+			// Simulate same interrupt emitted twice (parent + subgraph)
+			async function* fakeStream() {
+				yield ['updates', interruptChunk] as [string, unknown];
+				yield ['updates', interruptChunk] as [string, unknown];
+			}
+
+			const results = await collectResults(createStreamProcessor(fakeStream()));
+
+			expect(results).toHaveLength(1);
+			expect(results[0].interruptId).toBe('interrupt-123');
+		});
+
+		it('should allow interrupts with different ids', async () => {
+			const makeInterrupt = (id: string) => ({
+				__interrupt__: [
+					{
+						value: {
+							type: 'questions',
+							questions: [{ id: 'q1', question: 'Test?', type: 'text' }],
+						},
+						id,
+					},
+				],
+			});
+
+			async function* fakeStream() {
+				yield ['updates', makeInterrupt('int-1')] as [string, unknown];
+				yield ['updates', makeInterrupt('int-2')] as [string, unknown];
+			}
+
+			const results = await collectResults(createStreamProcessor(fakeStream()));
+
+			expect(results).toHaveLength(2);
+		});
+
+		it('should pass through non-interrupt events without dedup', async () => {
+			const responderChunk = {
+				responder: { messages: [{ content: 'Hello' }] },
+			};
+
+			async function* fakeStream() {
+				yield ['updates', responderChunk] as [string, unknown];
+				yield ['updates', responderChunk] as [string, unknown];
+			}
+
+			const results = await collectResults(createStreamProcessor(fakeStream()));
+
+			expect(results).toHaveLength(2);
 		});
 	});
 });

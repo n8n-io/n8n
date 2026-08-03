@@ -1,0 +1,38 @@
+@use './date-picker/date-table.scss';
+@use './date-picker/month-table.scss';
+@use './date-picker/year-table.scss';
+@use './date-picker/time-spinner.scss';
+@use './date-picker/picker.scss';
+@use './date-picker/date-picker.scss';
+@use './date-picker/date-range-picker.scss';
+@use './date-picker/time-range-picker.scss';
+@use './date-picker/time-picker.scss';
+@use './input.scss';
+@use './scrollbar.scss';
+@use './popper';
+
+.el-picker-panel__footer {
+	.el-picker-panel__link-btn {
+		border: 1px;
+		border-radius: var(--radius--sm);
+		color: var(--text--color);
+
+		&:hover {
+			background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+		}
+		&:active {
+			background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
+		}
+		&:last-child {
+			background: var(--color--orange-400);
+			color: var(--color--neutral-white);
+
+			&:hover {
+				background-color: var(--color--orange-500);
+			}
+			&:active {
+				background-color: var(--color--orange-600);
+			}
+		}
+	}
+}

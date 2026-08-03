@@ -1,6 +1,26 @@
 {
     "type": "object",
     "properties": {
+        "attendees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "organizer": {
+                        "type": "boolean"
+                    },
+                    "responseStatus": {
+                        "type": "string"
+                    },
+                    "self": {
+                        "type": "boolean"
+                    }
+                }
+            }
+        },
         "created": {
             "type": "string"
         },
@@ -9,8 +29,14 @@
             "properties": {
                 "email": {
                     "type": "string"
+                },
+                "self": {
+                    "type": "boolean"
                 }
             }
+        },
+        "description": {
+            "type": "string"
         },
         "end": {
             "type": "object",
@@ -39,6 +65,9 @@
             "type": "string"
         },
         "kind": {
+            "type": "string"
+        },
+        "location": {
             "type": "string"
         },
         "organizer": {
@@ -87,5 +116,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 4
 }

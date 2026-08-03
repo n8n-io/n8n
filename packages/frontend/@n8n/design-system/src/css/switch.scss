@@ -24,13 +24,13 @@
 		height: var.$switch-height;
 		display: inline-block;
 		font-size: var.$switch-font-size;
-		font-weight: var(--font-weight-medium);
+		font-weight: var(--font-weight--medium);
 		cursor: pointer;
 		vertical-align: middle;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 
 		@include mixins.when(active) {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 
 		@include mixins.m(left) {
@@ -65,7 +65,7 @@
 		border-radius: var.$switch-core-border-radius;
 		box-sizing: border-box;
 		background: var.$switch-off-color;
-		border: 1px solid var(--color-switch-border-color);
+		border: 1px solid var(--switch--border-color);
 		cursor: pointer;
 		transition:
 			border-color 0.1s,

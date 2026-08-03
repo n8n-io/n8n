@@ -41,6 +41,10 @@ function createUserMessage(text: string, files: File[] = []): ChatMessage {
 function processMessageResponse(response: SendMessageResponse): string {
 	let textMessage = response.output ?? response.text ?? response.message ?? '';
 
+	if (typeof textMessage === 'object' && textMessage.type && textMessage.type === 'text') {
+		return textMessage.text;
+	}
+
 	if (textMessage === '' && Object.keys(response).length > 0) {
 		try {
 			textMessage = JSON.stringify(response, null, 2);
@@ -49,7 +53,7 @@ function processMessageResponse(response: SendMessageResponse): string {
 		}
 	}
 
-	return textMessage;
+	return textMessage as string;
 }
 
 interface EmptyStreamConfig {
@@ -115,6 +119,7 @@ interface StreamingMessageConfig {
 	messages: Ref<ChatMessage[]>;
 	receivedMessage: Ref<ChatMessageText | null>;
 	streamingManager: StreamingMessageManager;
+	blockUserInput: Ref<boolean>;
 }
 
 /**
@@ -122,8 +127,17 @@ interface StreamingMessageConfig {
  * Sets up streaming event handlers and processes the response chunks
  * @param config - Configuration object for streaming message handling
  */
-async function handleStreamingMessage(config: StreamingMessageConfig): Promise<void> {
-	const { text, files, sessionId, options, messages, receivedMessage, streamingManager } = config;
+async function handleStreamingMessage(config: StreamingMessageConfig): Promise<boolean> {
+	const {
+		text,
+		files,
+		sessionId,
+		options,
+		messages,
+		receivedMessage,
+		streamingManager,
+		blockUserInput,
+	} = config;
 
 	const handlers: api.StreamingEventHandlers = {
 		onChunk: (chunk: string, nodeId?: string, runIndex?: number) => {
@@ -132,8 +146,18 @@ async function handleStreamingMessage(config: StreamingMessageConfig): Promise<v
 		onBeginMessage: (nodeId: string, runIndex?: number) => {
 			handleNodeStart(nodeId, streamingManager, runIndex);
 		},
-		onEndMessage: (nodeId: string, runIndex?: number) => {
-			handleNodeComplete(nodeId, streamingManager, runIndex);
+		onEndMessage: async (nodeId: string, runIndex?: number) => {
+			const shouldBlock = await handleNodeComplete(
+				nodeId,
+				streamingManager,
+				runIndex,
+				text,
+				options,
+				messages,
+			);
+			if (shouldBlock) {
+				blockUserInput.value = true;
+			}
 		},
 	};
 
@@ -149,6 +173,8 @@ async function handleStreamingMessage(config: StreamingMessageConfig): Promise<v
 	if (!hasReceivedChunks) {
 		handleEmptyStreamResponse({ receivedMessage, messages });
 	}
+
+	return hasReceivedChunks;
 }
 
 interface NonStreamingMessageConfig {
@@ -177,7 +203,7 @@ async function handleNonStreamingMessage(
 
 	const receivedMessage = createBotMessage();
 	receivedMessage.text = processMessageResponse(sendMessageResponse);
-	return { botMessage: receivedMessage };
+	return { response: sendMessageResponse, botMessage: receivedMessage };
 }
 
 export const ChatPlugin: Plugin<ChatOptions> = {
@@ -187,6 +213,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 		const messages = ref<ChatMessage[]>([]);
 		const currentSessionId = ref<string | null>(null);
 		const waitingForResponse = ref(false);
+		const blockUserInput = ref(false);
 
 		const initialMessages = computed<ChatMessage[]>(() =>
 			(options.initialMessages ?? []).map((text) => ({
@@ -213,8 +240,13 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			const streamingManager = new StreamingMessageManager();
 
 			try {
+				// Call beforeMessageSent handler if provided
+				if (options.beforeMessageSent) {
+					await options.beforeMessageSent(text);
+				}
+
 				if (options?.enableStreaming) {
-					await handleStreamingMessage({
+					const hasReceivedChunks = await handleStreamingMessage({
 						text,
 						files,
 						sessionId: currentSessionId.value as string,
@@ -222,7 +254,16 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						messages,
 						receivedMessage,
 						streamingManager,
+						blockUserInput,
 					});
+
+					// Call afterMessageSent handler if provided
+					if (options.afterMessageSent) {
+						await options.afterMessageSent(text, {
+							hasReceivedChunks,
+							message: receivedMessage.value ?? '',
+						});
+					}
 				} else {
 					const result = await handleNonStreamingMessage({
 						text,
@@ -239,6 +280,10 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 					if (result.botMessage) {
 						receivedMessage.value = result.botMessage;
 						messages.value.push(result.botMessage);
+					}
+
+					if (options.afterMessageSent) {
+						await options.afterMessageSent(text, result.response);
 					}
 				}
 			} catch (error) {
@@ -259,7 +304,15 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				return;
 			}
 
-			const sessionId = localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
+			// Use provided sessionId if available, otherwise check localStorage or generate new one
+			let sessionId = options.sessionId ?? localStorage.getItem(localStorageSessionIdKey);
+
+			// Save to localStorage if it was newly generated
+			if (!sessionId) {
+				sessionId = uuidv4();
+				localStorage.setItem(localStorageSessionIdKey, sessionId);
+			}
+
 			const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
 
 			messages.value = (previousMessagesResponse?.data || []).map((message, index) => ({
@@ -268,18 +321,30 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
 			}));
 
-			if (messages.value.length) {
-				currentSessionId.value = sessionId;
-			}
+			// Always set currentSessionId to preserve manually set sessionIds
+			currentSessionId.value = sessionId;
+
+			// Store the sessionId in localStorage for future use
+			localStorage.setItem(localStorageSessionIdKey, sessionId);
 
 			return sessionId;
 		}
 
 		// eslint-disable-next-line @typescript-eslint/require-await
 		async function startNewSession() {
-			currentSessionId.value = uuidv4();
+			// Use provided sessionId if available, otherwise generate new one
+			const existingSessionId = localStorage.getItem(localStorageSessionIdKey);
 
-			localStorage.setItem(localStorageSessionIdKey, currentSessionId.value);
+			// Only preserve existing sessionId if loadPreviousSession is enabled
+			// When loadPreviousSession is false, always generate a new session
+			if (existingSessionId && options.loadPreviousSession && !options.sessionId) {
+				// Preserve existing sessionId (e.g., manually set by user)
+				currentSessionId.value = existingSessionId;
+			} else {
+				currentSessionId.value = options.sessionId ?? uuidv4();
+				// Generate new UUID and save to localStorage
+				localStorage.setItem(localStorageSessionIdKey, currentSessionId.value);
+			}
 		}
 
 		const chatStore = {
@@ -287,6 +352,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			messages,
 			currentSessionId,
 			waitingForResponse,
+			blockUserInput,
 			loadPreviousSession,
 			startNewSession,
 			sendMessage,

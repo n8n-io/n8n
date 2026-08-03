@@ -1,0 +1,62 @@
+name: 'Release: Build Daytona snapshot'
+
+on:
+  workflow_call:
+    inputs:
+      n8n_version:
+        description: 'n8n version to build the Daytona snapshot for'
+        required: true
+        type: string
+    secrets:
+      DAYTONA_API_KEY_DEV:
+        required: true
+      DAYTONA_API_URL_DEV:
+        required: false
+      DAYTONA_API_KEY_PROD:
+        required: true
+      DAYTONA_API_URL_PROD:
+        required: false
+      # Shared fallback URL used when an env-specific URL secret isn't set.
+      DAYTONA_API_URL:
+        required: false
+
+  workflow_dispatch:
+    inputs:
+      n8n_version:
+        description: 'n8n version to build the Daytona snapshot for (e.g. 1.123.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-snapshot:
+    name: Build versioned Daytona snapshot (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Dev is best-effort: a dev failure is reported but does not block the release.
+    # Only the prod publish gates the release.
+    continue-on-error: ${{ matrix.environment == 'dev' }}
+    strategy:
+      # Publish to every environment even if one fails, so a partial outage is visible.
+      fail-fast: false
+      matrix:
+        environment: [dev, prod]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js and build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Build versioned Daytona snapshot
+        env:
+          N8N_VERSION: ${{ inputs.n8n_version }}
+          # Each branch is guarded on its own environment so an empty/unset key
+          # resolves to '' (and fails the script) rather than falling back to the
+          # other environment's credentials.
+          DAYTONA_API_KEY: ${{ matrix.environment == 'dev' && secrets.DAYTONA_API_KEY_DEV || matrix.environment == 'prod' && secrets.DAYTONA_API_KEY_PROD || '' }}
+          # Fall back to the shared DAYTONA_API_URL when an env-specific URL isn't set.
+          DAYTONA_API_URL: ${{ matrix.environment == 'dev' && secrets.DAYTONA_API_URL_DEV || matrix.environment == 'prod' && secrets.DAYTONA_API_URL_PROD || secrets.DAYTONA_API_URL }}
+        run: node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version "$N8N_VERSION"

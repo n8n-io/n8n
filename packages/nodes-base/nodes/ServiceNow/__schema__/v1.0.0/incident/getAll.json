@@ -19,6 +19,14 @@
         "approval_set": {
             "type": "string"
         },
+        "assigned_to": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                }
+            }
+        },
         "business_duration": {
             "type": "string"
         },
@@ -44,9 +52,6 @@
                     "type": "string"
                 }
             }
-        },
-        "category": {
-            "type": "string"
         },
         "cause": {
             "type": "string"
@@ -120,12 +125,6 @@
         "notify": {
             "type": "string"
         },
-        "number": {
-            "type": "string"
-        },
-        "opened_at": {
-            "type": "string"
-        },
         "opened_by": {
             "type": "object",
             "properties": {
@@ -149,10 +148,7 @@
         "parent": {
             "type": "string"
         },
-        "priority": {
-            "type": "string"
-        },
-        "problem_id": {
+        "parent_incident": {
             "type": "string"
         },
         "reassignment_count": {
@@ -161,14 +157,22 @@
         "reopen_count": {
             "type": "string"
         },
-        "reopened_by": {
-            "type": "string"
-        },
         "reopened_time": {
             "type": "string"
         },
         "resolved_at": {
             "type": "string"
+        },
+        "resolved_by": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
         },
         "rfc": {
             "type": "string"
@@ -176,19 +180,16 @@
         "route_reason": {
             "type": "string"
         },
-        "severity": {
+        "service_offering": {
             "type": "string"
         },
-        "short_description": {
+        "severity": {
             "type": "string"
         },
         "sla_due": {
             "type": "string"
         },
         "state": {
-            "type": "string"
-        },
-        "subcategory": {
             "type": "string"
         },
         "sys_class_name": {
@@ -224,9 +225,6 @@
             "type": "string"
         },
         "sys_updated_by": {
-            "type": "string"
-        },
-        "sys_updated_on": {
             "type": "string"
         },
         "task_effective_number": {
@@ -266,5 +264,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

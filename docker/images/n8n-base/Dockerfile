@@ -1,45 +1,38 @@
-ARG NODE_VERSION=22
+# Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
+# The tag is the human-readable version; Docker resolves by the digest. Bump the tag and
+# digest together when updating the base image.
+FROM dhi.io/node:24.18.0-alpine3.24-dev@sha256:d508453231109fbe96a39045ecc794ac18f8b99ca218a0806833d65bb2750e03
 
-# ==============================================================================
-# STAGE 1: Builder for Base Dependencies
-# ==============================================================================
-FROM node:${NODE_VERSION}-alpine AS builder
-
-# Install fonts
-RUN \
-  apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
-  update-ms-fonts && \
-  fc-cache -f && \
-  apk del .build-deps-fonts && \
-  find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
-
-# Install essential OS dependencies
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" >> /etc/apk/repositories && echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories && \
-    apk update && \
+# Install all dependencies in a single layer to minimize image size
+RUN apk add --no-cache busybox-binsh && \
+    # Install fonts
+    apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
+    update-ms-fonts && \
+    fc-cache -f && \
+    apk del .build-deps-fonts && \
+    find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
+    # Install OS dependencies. No blanket `apk upgrade` — it floats the whole
+    # world off the Alpine repos at build time and defeats the pinned base;
+    # patched bytes come from bumping the pinned DHI digest instead. git and
+    # openssl omitted: the base already provides git and the libssl3/libcrypto3
+    # libs Node uses (the openssl CLI binary isn't needed at runtime).
     apk add --no-cache \
-        git \
         openssh \
-        openssl \
         graphicsmagick \
         tini \
         tzdata \
         ca-certificates \
-        libc6-compat \
-        jq
+        libc6-compat && \
+    # Cleanup
+    rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
+    apk del apk-tools
 
-# Install full-icu
-RUN npm install -g full-icu@1.5.0
-
-RUN rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
-  apk del apk-tools
-
-# ==============================================================================
-# STAGE 2: Final Base Runtime Image
-# ==============================================================================
-FROM node:${NODE_VERSION}-alpine
-
-COPY --from=builder / /
+# Alpine 3.24 ships node at /usr/bin; symlink it to /usr/local/bin so the path
+# matches what the cloud launch and AppArmor profile expect.
+RUN mkdir -p /usr/local/bin && ln -sf /usr/bin/node /usr/local/bin/node
 
 WORKDIR /home/node
-ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
+# This base image installs global npm modules under /usr/local; set NODE_PATH
+# so packages added via `npm install -g` are require()-able at runtime.
+ENV NODE_PATH=/usr/local/lib/node_modules
 EXPOSE 5678/tcp

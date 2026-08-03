@@ -34,7 +34,7 @@ export class SendGridApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.sendgrid.com/v3',
-			url: '/marketing/contacts',
+			url: '/scopes',
 		},
 	};
 }

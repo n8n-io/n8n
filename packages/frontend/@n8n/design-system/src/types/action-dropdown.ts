@@ -5,7 +5,9 @@ import type { IconName } from '../components/N8nIcon/icons';
 export interface ActionDropdownItem<T extends string> {
 	id: T;
 	label: string;
+	testId?: string;
 	badge?: string;
+	description?: string;
 	badgeProps?: Record<string, unknown>;
 	icon?: IconName;
 	divided?: boolean;
@@ -13,4 +15,6 @@ export interface ActionDropdownItem<T extends string> {
 	shortcut?: KeyboardShortcut;
 	customClass?: string;
 	checked?: boolean;
+	/** Destructive items (delete, revoke, ...) turn danger-red on hover. */
+	variant?: 'default' | 'destructive';
 }

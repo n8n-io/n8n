@@ -1,4 +1,8 @@
+import { Time } from '@n8n/constants';
+import z from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 @Config
 class PruningIntervalsConfig {
@@ -38,7 +42,54 @@ class QueueRecoveryConfig {
 }
 
 @Config
+class RecoveryConfig {
+	/**
+	 * Number of last executions to check when determining if a workflow should be deactivated
+	 * when all of the last N executions have crashed.
+	 */
+	@Env('N8N_WORKFLOW_AUTODEACTIVATION_MAX_LAST_EXECUTIONS')
+	maxLastExecutions: number = 3;
+
+	/**
+	 * Whether to automatically deactivate workflows that have all their last executions crashed.
+	 */
+	@Env('N8N_WORKFLOW_AUTODEACTIVATION_ENABLED')
+	workflowDeactivationEnabled: boolean = false;
+}
+
+const nonNegativeIntSchema = z.coerce.number().int().nonnegative();
+
+@Config
+class QueueRetentionConfig {
+	/**
+	 * How many completed Bull jobs to keep in Redis.
+	 *
+	 * - `0` removes completed jobs immediately (default).
+	 * - `n` keeps the last `n` completed jobs and trims older ones.
+	 */
+	@Env('N8N_EXECUTIONS_QUEUE_KEEP_LAST_COMPLETED', nonNegativeIntSchema)
+	keepLastCompleted: number = 0;
+
+	/**
+	 * How many failed Bull jobs to keep in Redis.
+	 *
+	 * - `0` removes failed jobs immediately (default).
+	 * - `n` keeps the last `n` completed jobs and trims older ones.
+	 */
+	@Env('N8N_EXECUTIONS_QUEUE_KEEP_LAST_FAILED', nonNegativeIntSchema)
+	keepLastFailed: number = 0;
+}
+
+const executionModeSchema = z.enum(['regular', 'queue']);
+
+export type ExecutionMode = z.infer<typeof executionModeSchema>;
+
+@Config
 export class ExecutionsConfig {
+	/** Whether to run executions in regular mode (in-process) or scaling mode (in workers). */
+	@Env('EXECUTIONS_MODE', executionModeSchema)
+	mode: ExecutionMode = 'regular';
+
 	/**
 	 * How long (seconds) a workflow execution may run for before timeout.
 	 * On timeout, the execution will be forcefully stopped. `-1` for unlimited.
@@ -47,9 +98,9 @@ export class ExecutionsConfig {
 	@Env('EXECUTIONS_TIMEOUT')
 	timeout: number = -1;
 
-	/** How long (seconds) a workflow execution may run for at most. */
+	/** Upper bound in seconds for execution timeout. Default: 1 hour. */
 	@Env('EXECUTIONS_TIMEOUT_MAX')
-	maxTimeout: number = 3600; // 1h
+	maxTimeout: number = 1 * Time.hours.toSeconds;
 
 	/** Whether to delete past executions on a rolling basis. */
 	@Env('EXECUTIONS_DATA_PRUNE')
@@ -83,6 +134,12 @@ export class ExecutionsConfig {
 	@Nested
 	queueRecovery: QueueRecoveryConfig;
 
+	@Nested
+	queueRetention: QueueRetentionConfig;
+
+	@Nested
+	recovery: RecoveryConfig;
+
 	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_ON_ERROR')
 	saveDataOnError: 'all' | 'none' = 'all';
@@ -98,4 +155,43 @@ export class ExecutionsConfig {
 	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
 	saveDataManualExecutions: boolean = true;
+
+	/**
+	 * Max byte size of execution run data to load for display.
+	 * Executions whose data exceeds this are returned without their run data.
+	 * Does not affect operational reads (retry, resume, crash recovery).
+	 * `0` disables.
+	 */
+	@Env('EXECUTIONS_DATA_MAX_DISPLAY_SIZE')
+	maxDisplaySize: number = 100 * 1024 * 1024; // 100 MB
+
+	/**
+	 * Maximum size in MiB of a webhook response a worker sends back to the main instance
+	 * inside a queue message, in queue mode.
+	 *
+	 * Redis holds several copies of a response while the message is in flight, so budget
+	 * about 1.5 times this value in Redis memory for each response in flight.
+	 *
+	 * With `N8N_WEBHOOK_RESPONSE_RELAY_OFFLOAD_ENABLED` turned on, a larger body goes to
+	 * the binary-data store and the main instance reads it back from there. Otherwise the
+	 * node fails. Only the body can go to the store, so a response whose headers alone
+	 * exceed this limit fails either way.
+	 */
+	@Env('N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX', positiveIntSchema)
+	webhookResponseRelaySizeMaxMiB: number = 64;
+
+	/**
+	 * Whether a worker stores a response body over `N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX` in
+	 * the binary-data store, so the main instance can stream it to the client, instead of
+	 * failing the node.
+	 *
+	 * Needs `N8N_DEFAULT_BINARY_DATA_MODE` set to a mode with a store (`filesystem`,
+	 * `database`, `s3`, or `azure`), and a store every instance can read.
+	 *
+	 * Only the worker reads this setting. Turn it on once every main instance runs a version
+	 * that reads a stored body: an older main returns the storage reference instead of the
+	 * response body.
+	 */
+	@Env('N8N_WEBHOOK_RESPONSE_RELAY_OFFLOAD_ENABLED')
+	webhookResponseRelayOffloadEnabled: boolean = false;
 }

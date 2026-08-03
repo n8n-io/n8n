@@ -22,6 +22,10 @@ export declare namespace ExecutionRequest {
 			filters?: IDataObject;
 			ids?: string[];
 		};
+
+		type StopMany = {
+			filter: ExecutionSummaries.StopExecutionFilterQuery; // stringified `FilterFields`
+		};
 	}
 
 	namespace RouteParams {
@@ -41,11 +45,14 @@ export declare namespace ExecutionRequest {
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId>;
 
+	type GetVersions = AuthenticatedRequest<{ workflowId: string }>;
+
 	type Delete = AuthenticatedRequest<{}, {}, BodyParams.DeleteFilter>;
 
 	type Retry = AuthenticatedRequest<RouteParams.ExecutionId, {}, { loadWorkflow?: boolean }, {}>;
 
 	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
+	type StopMany = AuthenticatedRequest<{}, {}, BodyParams.StopMany>;
 
 	type Update = AuthenticatedRequest<RouteParams.ExecutionId, {}, ExecutionUpdatePayload, {}>;
 }

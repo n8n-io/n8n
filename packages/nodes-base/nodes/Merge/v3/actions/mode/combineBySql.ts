@@ -1,7 +1,6 @@
 import { Container } from '@n8n/di';
-import alasql from 'alasql';
-import type { Database } from 'alasql';
 import { ErrorReporter } from 'n8n-core';
+
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,15 +10,22 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
 import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
+import {
+	isSandboxMemoryError,
+	resetSandboxCache,
+	runAlaSqlInSandbox,
+} from '../../helpers/sandbox-utils';
 
 type OperationOptions = {
-	emptyQueryResult: 'success' | 'empty';
+	emptyQueryResult?: 'success' | 'empty';
+	queryParameters?: string | number | unknown[];
 };
+
+type QueryParameterValue = string | number | boolean | null;
 
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
@@ -36,6 +42,13 @@ export const properties: INodeProperties[] = [
 			rows: 5,
 			editor: 'sqlEditor',
 		},
+	},
+	{
+		displayName:
+			'Use query parameters for dynamic values. Expressions in the query text become part of the SQL. Add values in <b>Options > Query Parameters</b> and reference them with <code>?</code> placeholders.',
+		name: 'queryParametersNotice',
+		type: 'notice',
+		default: '',
 	},
 	{
 		displayName: 'Options',
@@ -60,13 +73,23 @@ export const properties: INodeProperties[] = [
 					},
 				],
 				default: 'empty',
+				displayOptions: {
+					show: {
+						'@version': [3.2],
+					},
+				},
+			},
+			{
+				displayName: 'Query Parameters',
+				name: 'queryParameters',
+				type: 'string',
+				default: '',
+				placeholder: 'value1,value2,value3',
+				description:
+					'Comma-separated list of values to use as query parameters. Reference them in the query with ? placeholders. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/#use-query-parameters" target="_blank">More info</a>.',
+				hint: 'Reference query parameters with ? placeholders',
 			},
 		],
-		displayOptions: {
-			show: {
-				'@version': [3.2],
-			},
-		},
 	},
 ];
 
@@ -79,49 +102,90 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 const prepareError = (node: INode, error: Error) => {
-	let message = '';
-	if (typeof error === 'string') {
-		message = error;
-	} else {
-		message = error.message;
-	}
-	throw new NodeOperationError(node, error, {
-		message: 'Issue while executing query',
-		description: message,
-		itemIndex: 0,
-	});
+	const raw = typeof error === 'string' ? error : error.message;
+	const isDisposed = isSandboxMemoryError(error);
+	const isTimeout = /script execution timed out/i.test(raw);
+
+	if (isDisposed) resetSandboxCache();
+
+	const message = isDisposed
+		? 'Dataset too large for the SQL sandbox'
+		: isTimeout
+			? 'SQL query exceeded the 30 second execution limit'
+			: 'Issue while executing query';
+	const description = isDisposed
+		? 'Try filtering or aggregating upstream, or split the input into smaller batches before the Merge node.'
+		: isTimeout
+			? 'Simplify the query (remove unnecessary JOINs) or reduce the number of input rows.'
+			: raw;
+
+	throw new NodeOperationError(node, error, { message, description, itemIndex: 0 });
 };
+
+function parseQueryParameterValue(value: string): string | number {
+	const numberValue = Number(value);
+
+	return value !== '' && !Number.isNaN(numberValue) ? numberValue : value;
+}
+
+function validateQueryParameterValue(
+	node: INode,
+	value: unknown,
+	index: number,
+): QueryParameterValue {
+	if (
+		value === null ||
+		typeof value === 'string' ||
+		typeof value === 'number' ||
+		typeof value === 'boolean'
+	) {
+		return value;
+	}
+
+	throw new NodeOperationError(
+		node,
+		`Query parameter ${index + 1} must be a string, number, boolean, or null`,
+		{ itemIndex: 0 },
+	);
+}
+
+function getQueryParameterValues(
+	node: INode,
+	queryParameters: OperationOptions['queryParameters'],
+): QueryParameterValue[] {
+	if (queryParameters === undefined || queryParameters === '') return [];
+	if (Array.isArray(queryParameters)) {
+		return queryParameters.map((value, index) => validateQueryParameterValue(node, value, index));
+	}
+	if (typeof queryParameters === 'number') return [queryParameters];
+	if (typeof queryParameters !== 'string') {
+		throw new NodeOperationError(node, 'Query parameters must be a string, number, or array', {
+			itemIndex: 0,
+		});
+	}
+
+	return queryParameters.split(',').map((entry) => parseQueryParameterValue(entry.trim()));
+}
 
 async function executeSelectWithMappedPairedItems(
 	node: INode,
 	inputsData: INodeExecutionData[][],
 	query: string,
+	parameters: unknown[],
 	returnSuccessItemIfEmpty: boolean,
 ): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const db: typeof Database = new (alasql as any).Database(node.id);
+	const tableData = inputsData.map((inputData) =>
+		inputData.map((entry) => ({ ...entry.json, pairedItem: entry.pairedItem })),
+	);
 
 	try {
-		for (let i = 0; i < inputsData.length; i++) {
-			const inputData = inputsData[i];
-
-			db.exec(`CREATE TABLE input${i + 1}`);
-			db.tables[`input${i + 1}`].data = inputData.map((entry) => ({
-				...entry.json,
-				pairedItem: entry.pairedItem,
-			}));
-		}
-	} catch (error) {
-		throw new NodeOperationError(node, error, {
-			message: 'Issue while creating table from',
-			description: error.message,
-			itemIndex: 0,
-		});
-	}
-
-	try {
-		const result: IDataObject[] = db.exec(modifySelectQuery(query, inputsData.length));
+		const result = await runAlaSqlInSandbox(
+			tableData,
+			modifySelectQuery(query, inputsData.length),
+			parameters,
+		);
 
 		for (const item of result) {
 			if (Array.isArray(item)) {
@@ -136,8 +200,6 @@ async function executeSelectWithMappedPairedItems(
 		}
 	} catch (error) {
 		prepareError(node, error as Error);
-	} finally {
-		delete alasql.databases[node.id];
 	}
 
 	return [returnData];
@@ -151,12 +213,16 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 	const pairedItem: IPairedItemData[] = [];
 	const options = this.getNodeParameter('options', 0, {}) as OperationOptions;
+	const workflowId = this.getWorkflow().id;
 
 	let query = this.getNodeParameter('query', 0) as string;
 
 	for (const resolvable of getResolvables(query)) {
 		query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
 	}
+
+	// the value is resolved once, not on each execution, because merge mode runs once for all items
+	const parameters = getQueryParameterValues(node, options.queryParameters);
 
 	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
 	const returnSuccessItemIfEmpty =
@@ -168,6 +234,7 @@ export async function execute(
 				node,
 				inputsData,
 				query,
+				parameters,
 				returnSuccessItemIfEmpty,
 			);
 		} catch (error) {
@@ -176,64 +243,55 @@ export async function execute(
 					nodeName: node.name,
 					nodeType: node.type,
 					nodeVersion: node.typeVersion,
-					workflowId: this.getWorkflow().id,
+					workflowId,
 				},
 			});
 		}
 	}
 
-	const db: typeof Database = new (alasql as any).Database(node.id);
+	for (let i = 0; i < inputsData.length; i++) {
+		const inputData = inputsData[i];
 
-	try {
-		for (let i = 0; i < inputsData.length; i++) {
-			const inputData = inputsData[i];
+		inputData.forEach((item, index) => {
+			if (item.pairedItem === undefined) {
+				item.pairedItem = index;
+			}
 
-			inputData.forEach((item, index) => {
-				if (item.pairedItem === undefined) {
-					item.pairedItem = index;
-				}
-
-				if (typeof item.pairedItem === 'number') {
-					pairedItem.push({
-						item: item.pairedItem,
-						input: i,
-					});
-					return;
-				}
-
-				if (Array.isArray(item.pairedItem)) {
-					const pairedItems = item.pairedItem
-						.filter((p) => p !== undefined)
-						.map((p) => (typeof p === 'number' ? { item: p } : p))
-						.map((p) => {
-							return {
-								item: p.item,
-								input: i,
-							};
-						});
-					pairedItem.push.apply(pairedItem, pairedItems);
-					return;
-				}
-
+			if (typeof item.pairedItem === 'number') {
 				pairedItem.push({
-					item: item.pairedItem.item,
+					item: item.pairedItem,
 					input: i,
 				});
-			});
+				return;
+			}
 
-			db.exec(`CREATE TABLE input${i + 1}`);
-			db.tables[`input${i + 1}`].data = inputData.map((entry) => entry.json);
-		}
-	} catch (error) {
-		throw new NodeOperationError(node, error, {
-			message: 'Issue while creating table from',
-			description: error.message,
-			itemIndex: 0,
+			if (Array.isArray(item.pairedItem)) {
+				const pairedItems = item.pairedItem
+					.filter((p) => p !== undefined)
+					.map((p) => (typeof p === 'number' ? { item: p } : p))
+					.map((p) => {
+						return {
+							item: p.item,
+							input: i,
+						};
+					});
+				pairedItem.push.apply(pairedItem, pairedItems);
+				return;
+			}
+
+			pairedItem.push({
+				item: item.pairedItem.item,
+				input: i,
+			});
 		});
 	}
 
+	const tableData: IDataObject[][] = inputsData.map((inputData) =>
+		inputData.map((entry) => entry.json),
+	);
+
 	try {
-		const result: IDataObject[] = db.exec(query);
+		const result = await runAlaSqlInSandbox(tableData, query, parameters);
 
 		for (const item of result) {
 			if (Array.isArray(item)) {
@@ -251,8 +309,6 @@ export async function execute(
 		}
 	} catch (error) {
 		prepareError(node, error as Error);
-	} finally {
-		delete alasql.databases[node.id];
 	}
 
 	return [returnData];

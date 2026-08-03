@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
-import type { IconSize, CalloutTheme } from '@n8n/design-system/types';
-
+import type { IconSize, CalloutTheme } from '../../types';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 const CALLOUT_DEFAULT_ICONS: Record<string, IconName> = {
 	info: 'info',
@@ -17,6 +17,7 @@ const CALLOUT_DEFAULT_ICONS: Record<string, IconName> = {
 interface CalloutProps {
 	theme: CalloutTheme;
 	icon?: IconName;
+	iconTooltip?: string;
 	iconSize?: IconSize;
 	iconless?: boolean;
 	slim?: boolean;
@@ -26,6 +27,7 @@ interface CalloutProps {
 
 defineOptions({ name: 'N8nCallout' });
 const props = withDefaults(defineProps<CalloutProps>(), {
+	iconTooltip: undefined,
 	iconSize: 'medium',
 	roundCorners: true,
 });
@@ -59,7 +61,10 @@ const getIconSize = computed<IconSize>(() => {
 	<div :class="classes" role="alert">
 		<div :class="$style.messageSection">
 			<div v-if="!iconless" :class="$style.icon">
-				<N8nIcon :icon="getIcon" :size="getIconSize" />
+				<N8nTooltip v-if="iconTooltip" :content="iconTooltip">
+					<N8nIcon :icon="getIcon" :size="getIconSize" />
+				</N8nTooltip>
+				<N8nIcon v-else :icon="getIcon" :size="getIconSize" />
 			</div>
 			<N8nText size="small">
 				<slot />
@@ -76,23 +81,23 @@ const getIconSize = computed<IconSize>(() => {
 .callout {
 	display: flex;
 	justify-content: space-between;
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-xs);
-	border: var(--border-width-base) var(--border-style-base);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--xs);
+	border: var(--border-width) var(--border-style);
 	align-items: center;
-	line-height: var(--font-line-height-xloose);
-	border-color: var(--color-callout-info-border);
-	background-color: var(--color-callout-info-background);
-	color: var(--color-callout-info-font);
+	line-height: var(--line-height--xl);
+	border-color: var(--callout--border-color--info);
+	background-color: var(--callout--color--background--info);
+	color: var(--callout--color--text--info);
 
 	&.slim {
-		line-height: var(--font-line-height-xloose);
-		padding: var(--spacing-3xs) var(--spacing-2xs);
+		line-height: var(--line-height--xl);
+		padding: var(--spacing--3xs) var(--spacing--2xs);
 	}
 
 	a {
-		color: var(--color-secondary-link);
-		font-weight: var(--font-weight-medium);
+		color: var(--link--color--secondary);
+		font-weight: var(--font-weight--medium);
 		text-decoration-line: underline;
 		text-decoration-style: solid;
 		text-decoration-skip-ink: none;
@@ -103,7 +108,7 @@ const getIconSize = computed<IconSize>(() => {
 }
 
 .round {
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 }
 
 .onlyBottomBorder {
@@ -119,59 +124,59 @@ const getIconSize = computed<IconSize>(() => {
 
 .info,
 .custom {
-	border-color: var(--color-callout-info-border);
-	background-color: var(--color-callout-info-background);
-	color: var(--color-callout-info-font);
+	border-color: var(--callout--border-color--info);
+	background-color: var(--callout--color--background--info);
+	color: var(--callout--color--text--info);
 
 	.icon {
-		color: var(--color-callout-info-icon);
+		color: var(--callout--icon-color--info);
 	}
 }
 
 .success {
-	border-color: var(--color-callout-success-border);
-	background-color: var(--color-callout-success-background);
-	color: var(--color-callout-success-font);
+	border-color: var(--callout--border-color--success);
+	background-color: var(--callout--color--background--success);
+	color: var(--callout--color--text--success);
 
 	.icon {
-		color: var(--color-callout-success-icon);
+		color: var(--callout--icon-color--success);
 	}
 }
 
 .warning {
-	border-color: var(--color-callout-warning-border);
-	background-color: var(--color-callout-warning-background);
-	color: var(--color-callout-warning-font);
+	border-color: var(--callout--border-color--warning);
+	background-color: var(--callout--color--background--warning);
+	color: var(--callout--color--text--warning);
 
 	.icon {
-		color: var(--color-callout-warning-icon);
+		color: var(--callout--icon-color--warning);
 	}
 }
 
 .danger {
-	border-color: var(--color-callout-danger-border);
-	background-color: var(--color-callout-danger-background);
-	color: var(--color-callout-danger-font);
+	border-color: var(--callout--border-color--danger);
+	background-color: var(--callout--color--background--danger);
+	color: var(--callout--color--text--danger);
 
 	.icon {
-		color: var(--color-callout-danger-icon);
+		color: var(--callout--icon-color--danger);
 	}
 }
 
 .icon {
 	line-height: 1;
-	margin-right: var(--spacing-xs);
+	margin-right: var(--spacing--xs);
 }
 
 .secondary {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	border-color: var(--color-callout-secondary-border);
-	background-color: var(--color-callout-secondary-background);
-	color: var(--color-callout-secondary-font);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	border-color: var(--callout--border-color--secondary);
+	background-color: var(--callout--color--background--secondary);
+	color: var(--callout--color--text--secondary);
 
 	.icon {
-		color: var(--color-callout-secondary-icon);
+		color: var(--callout--icon-color--secondary);
 	}
 }
 </style>

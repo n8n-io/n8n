@@ -1,14 +1,14 @@
 import vue from '@vitejs/plugin-vue';
-import { posix as pathPosix, resolve, sep as pathSep } from 'path';
+import { resolve } from 'path';
 import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { codecovVitePlugin } from '@codecov/vite-plugin';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
-import iconsResolver from 'unplugin-icons/resolver';
-import components from 'unplugin-vue-components/vite';
+import { lucideIconsPlugin } from '../@n8n/design-system/src/icons/lucide/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
@@ -26,11 +26,22 @@ const packagesDir = resolve(__dirname, '..', '..');
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
+	// Stub out @n8n/expression-runtime for browser build (it pulls in isolated-vm, a Node.js-only native module)
+	{
+		find: '@n8n/expression-runtime',
+		replacement: resolve(__dirname, 'vite/expression-runtime-stub.ts'),
+	},
 	// Ensure bare imports resolve to sources (not dist)
 	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
+	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
+	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
 	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
+	},
+	{
+		find: /^@n8n\/chat-hub(.+)$/,
+		replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src$1'),
 	},
 	{
 		find: /^@n8n\/api-requests(.+)$/,
@@ -41,8 +52,16 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
 	},
 	{
+		find: /^@n8n\/frontend-module-sdk$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'frontend-module-sdk', 'src/index.ts'),
+	},
+	{
 		find: /^@n8n\/constants(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
+	},
+	{
+		find: /^@n8n\/design-system$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src/index.ts'),
 	},
 	{
 		find: /^@n8n\/design-system(.+)$/,
@@ -55,6 +74,14 @@ const alias = [
 	{
 		find: /^@n8n\/stores(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
+	},
+	{
+		find: /^@n8n\/telemetry$/,
+		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src/index.ts'),
+	},
+	{
+		find: /^@n8n\/telemetry(.+)$/,
+		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src$1'),
 	},
 	{
 		find: /^@n8n\/utils(.+)$/,
@@ -71,37 +98,39 @@ const alias = [
 	{
 		// For sanitize-html
 		find: 'source-map-js',
-		replacement: resolve(__dirname, 'src/source-map-js-shim'),
+		replacement: resolve(__dirname, 'vite/source-map-js-shim'),
 	},
 ];
 
+const { RELEASE: release } = process.env;
+
 const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
+	lucideIconsPlugin(),
 	icons({
 		compiler: 'vue3',
-		autoInstall: true,
-	}),
-	components({
-		dts: './src/components.d.ts',
-		resolvers: [
-			(componentName) => {
-				if (componentName.startsWith('N8n'))
-					return { name: componentName, from: '@n8n/design-system' };
-			},
-			iconsResolver({
-				prefix: 'Icon',
-			}),
-		],
+		autoInstall: NODE_ENV === 'development',
 	}),
 	viteStaticCopy({
 		targets: [
 			{
-				src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'),
-				dest: resolve(__dirname, 'dist'),
+				src: 'node_modules/web-tree-sitter/tree-sitter.wasm',
+				dest: '.',
+				rename: { stripBase: true },
 			},
 			{
-				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
-				dest: resolve(__dirname, 'dist'),
+				src: 'node_modules/curlconverter/dist/tree-sitter-bash.wasm',
+				dest: '.',
+				rename: { stripBase: true },
+			},
+			// wa-sqlite WASM files for OPFS database support (no cross-origin isolation needed)
+			{
+				src: 'node_modules/wa-sqlite/dist/wa-sqlite.wasm',
+				dest: 'assets',
+			},
+			{
+				src: 'node_modules/wa-sqlite/dist/wa-sqlite-async.wasm',
+				dest: 'assets',
 			},
 		],
 	}),
@@ -123,11 +152,13 @@ const plugins: UserConfig['plugins'] = [
 			],
 		},
 	}),
-	legacy({
-		modernTargets: browsers,
-		modernPolyfills: true,
-		renderLegacyChunks: false,
-	}),
+	...(release
+		? [
+				legacy({
+					modernTargets: browsers,
+				}),
+			]
+		: []),
 	{
 		name: 'Insert config script',
 		transformIndexHtml: (html, ctx) => {
@@ -142,9 +173,9 @@ const plugins: UserConfig['plugins'] = [
 		},
 	},
 	// For sanitize-html
-	nodePolyfills({
-		include: ['fs', 'path', 'url', 'util', 'timers'],
-	}),
+	// nodePolyfills({
+	// 	include: ['fs', 'path', 'url', 'util', 'timers'],
+	// }),
 	{
 		name: 'i18n-locales-hmr',
 		configureServer(server) {
@@ -166,9 +197,32 @@ const plugins: UserConfig['plugins'] = [
 			return [];
 		},
 	},
+	...(release
+		? [
+				sentryVitePlugin({
+					org: 'n8nio',
+					project: 'instance-frontend',
+					authToken: process.env.SENTRY_AUTH_TOKEN,
+					telemetry: false,
+					release: {
+						name: `n8n@${release}`,
+					},
+				}),
+			]
+		: []),
+	// Only run on non-release builds to prevent double upload from @vitejs/plugin-legacy
+	...(process.env.CODECOV_TOKEN && !release
+		? [
+				codecovVitePlugin({
+					enableBundleAnalysis: true,
+					bundleName: 'editor-ui',
+					uploadToken: process.env.CODECOV_TOKEN,
+					debug: true,
+				}),
+			]
+		: []),
 ];
 
-const { RELEASE: release } = process.env;
 const target = browserslistToEsbuild(browsers);
 
 export default mergeConfig(
@@ -184,11 +238,12 @@ export default mergeConfig(
 		base: publicPath,
 		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {
+			preprocessorMaxWorkers: 2,
 			preprocessorOptions: {
 				scss: {
 					additionalData: [
 						'',
-						'@use "@/n8n-theme-variables.scss" as *;',
+						'@use "@/app/css/_variables.scss" as *;',
 						'@use "@n8n/design-system/css/mixins" as mixins;',
 					].join('\n'),
 				},
@@ -196,13 +251,14 @@ export default mergeConfig(
 		},
 		build: {
 			minify: !!release,
-			sourcemap: !!release,
+			// Coverage builds emit INLINE maps so browser V8 coverage carries the
+			// map in the script source and monocart resolves offsets back to src.
+			sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
 			target,
 		},
 		optimizeDeps: {
-			esbuildOptions: {
-				target,
-			},
+			exclude: ['wa-sqlite'],
+			rolldownOptions: {},
 		},
 		worker: {
 			format: 'es',

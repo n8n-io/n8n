@@ -7,6 +7,8 @@ import type {
 } from '../../v2/actions/Interfaces';
 import {
 	enrichColumns,
+	escapeSqlIdentifier,
+	escapeSqlString,
 	rowExport,
 	simplify_new,
 	splitStringColumnsToArrays,
@@ -14,6 +16,53 @@ import {
 import type { TDtableMetadataColumns } from '../../v2/types';
 
 describe('Seatable > v2 > GenericFunctions', () => {
+	describe('escapeSqlIdentifier', () => {
+		it('should escape backticks by doubling them', () => {
+			expect(escapeSqlIdentifier('table`name')).toBe('table``name');
+		});
+
+		it('should escape multiple backticks', () => {
+			expect(escapeSqlIdentifier('a`b`c')).toBe('a``b``c');
+		});
+
+		it('should leave safe identifiers unchanged', () => {
+			expect(escapeSqlIdentifier('Employees')).toBe('Employees');
+			expect(escapeSqlIdentifier('my_table')).toBe('my_table');
+		});
+
+		it('should handle empty string', () => {
+			expect(escapeSqlIdentifier('')).toBe('');
+		});
+	});
+
+	describe('escapeSqlString', () => {
+		it('should escape double quotes', () => {
+			expect(escapeSqlString('" OR 1=1 OR "')).toBe('\\" OR 1=1 OR \\"');
+		});
+
+		it('should escape single quotes', () => {
+			expect(escapeSqlString("' OR 1=1 --")).toBe("\\' OR 1=1 --");
+		});
+
+		it('should escape backslashes', () => {
+			expect(escapeSqlString('back\\slash')).toBe('back\\\\slash');
+		});
+
+		it('should escape backslash before quote to prevent double-escaping bypass', () => {
+			expect(escapeSqlString("\\' OR 1=1 --")).toBe("\\\\\\' OR 1=1 --");
+		});
+
+		it('should leave safe strings unchanged', () => {
+			expect(escapeSqlString('admin')).toBe('admin');
+			expect(escapeSqlString('hello world')).toBe('hello world');
+			expect(escapeSqlString('user@example.com')).toBe('user@example.com');
+		});
+
+		it('should handle empty string', () => {
+			expect(escapeSqlString('')).toBe('');
+		});
+	});
+
 	describe('rowExport', () => {
 		const mockColumns: TDtableMetadataColumns = [
 			{ key: 'a', name: 'id', type: 'text' },

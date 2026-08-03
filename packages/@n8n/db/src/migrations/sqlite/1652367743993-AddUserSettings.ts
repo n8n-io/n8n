@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class AddUserSettings1652367743993 implements ReversibleMigration {
-	transaction = false as const;
+	withFKsDisabled = true as const;
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(

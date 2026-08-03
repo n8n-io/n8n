@@ -1,20 +1,24 @@
-import type { Component, Plugin } from 'vue';
-import { render } from '@testing-library/vue';
+import { computed, type Plugin } from 'vue';
+import { render, type RenderOptions as TestingLibraryRenderOptions } from '@testing-library/vue';
 import { i18nInstance } from '@n8n/i18n';
-import { GlobalComponentsPlugin } from '@/plugins/components';
-import { GlobalDirectivesPlugin } from '@/plugins/directives';
-import { FontAwesomePlugin } from '@/plugins/icons';
+import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
+import { N8nPlugin } from '@n8n/design-system';
 import type { Pinia } from 'pinia';
 import { PiniaVuePlugin } from 'pinia';
-import type { Telemetry } from '@/plugins/telemetry';
+import type { Telemetry } from '@/app/plugins/telemetry';
 import vueJsonPretty from 'vue-json-pretty';
 import merge from 'lodash/merge';
 import type { TestingPinia } from '@pinia/testing';
-import * as components from '@n8n/design-system/components';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
-export type RenderComponent = Parameters<typeof render>[0];
-export type RenderOptions = Parameters<typeof render>[1] & {
+export type RenderOptions<T> = Omit<TestingLibraryRenderOptions<T>, 'props'> & {
 	pinia?: TestingPinia | Pinia;
+	props?: Partial<TestingLibraryRenderOptions<T>['props']>;
 };
 
 const TelemetryPlugin: Plugin<{}> = {
@@ -26,33 +30,19 @@ const TelemetryPlugin: Plugin<{}> = {
 	},
 };
 
-const TestingGlobalComponentsPlugin: Plugin<{}> = {
-	install(app) {
-		for (const [name, component] of Object.entries(components)) {
-			app.component(name, component as unknown as Component);
-		}
-	},
-};
-
 const defaultOptions = {
 	global: {
 		stubs: {
-			'router-link': true,
-			'vue-json-pretty': vueJsonPretty,
+			RouterLink: {
+				template: '<a><slot /></a>',
+			},
+			VueJsonPretty: vueJsonPretty,
 		},
-		plugins: [
-			i18nInstance,
-			PiniaVuePlugin,
-			FontAwesomePlugin,
-			GlobalComponentsPlugin,
-			GlobalDirectivesPlugin,
-			TelemetryPlugin,
-			TestingGlobalComponentsPlugin,
-		],
+		plugins: [i18nInstance, PiniaVuePlugin, N8nPlugin, GlobalDirectivesPlugin, TelemetryPlugin],
 	},
 };
 
-export function renderComponent(component: RenderComponent, options: RenderOptions = {}) {
+export function renderComponent<T>(component: T, options: RenderOptions<T> = {}) {
 	const { pinia, ...renderOptions } = options;
 
 	return render(component, {
@@ -67,25 +57,33 @@ export function renderComponent(component: RenderComponent, options: RenderOptio
 				...(renderOptions.global?.plugins ?? []),
 				...(pinia ? [pinia] : []),
 			],
+			provide: {
+				// Mirror App.vue, which always provides the workflow document store.
+				// injectNDVStore()/injectWorkflowDocumentStore() resolve strictly from
+				// this key, so a default keeps components that don't set up their own
+				// scope working (replicates the former workflowId-based fallback).
+				// Tests override it by passing their own `global.provide`.
+				[WorkflowDocumentStoreKey as symbol]: computed(() =>
+					useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)),
+				),
+				...(renderOptions.global?.provide ?? {}),
+			},
 		},
-	});
+	} as TestingLibraryRenderOptions<T>);
 }
 
-export function createComponentRenderer(
-	component: RenderComponent,
-	defaultOptions: RenderOptions = {},
-) {
-	return (options: RenderOptions = {}, rendererOptions: { merge?: boolean } = {}) =>
+export function createComponentRenderer<T>(component: T, defaultOptions: RenderOptions<T> = {}) {
+	return (options: RenderOptions<T> = {}, rendererOptions: { merge?: boolean } = {}) =>
 		renderComponent(
 			component,
 			rendererOptions.merge
 				? merge(defaultOptions, options)
-				: {
+				: ({
 						...defaultOptions,
 						...options,
 						props: {
-							...defaultOptions.props,
-							...options.props,
+							...(defaultOptions.props ?? {}),
+							...(options.props ?? {}),
 						},
 						global: {
 							...defaultOptions.global,
@@ -95,6 +93,6 @@ export function createComponentRenderer(
 								...options.global?.provide,
 							},
 						},
-					},
+					} as RenderOptions<T>),
 		);
 }

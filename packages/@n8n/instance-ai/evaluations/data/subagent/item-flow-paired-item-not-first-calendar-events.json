@@ -1,0 +1,9 @@
+{
+	"id": "item-flow-paired-item-not-first-calendar-events",
+	"prompt": "Build a workflow that reviews multiple declined Gmail calendar invites in one run and archives only the ones whose matching Google Calendar event has every required attendee declined. For each Gmail invite item, extract its calendar event ID from the email body, then fetch that exact Calendar event for that same item. There can be multiple emails in one execution, so do not reuse the first event ID for every item. Use the paired item relationship when referencing the extraction node; do not use .first() for the event ID. The workflow is incomplete unless it has a final Gmail message archive action after the all-declined check; configure that archive action as `operation: 'removeLabels'` with `labelIds: ['INBOX']` for the matching messages.",
+	"annotations": {
+		"itemFlow": {
+			"requiresPairedItemReferences": true
+		}
+	}
+}

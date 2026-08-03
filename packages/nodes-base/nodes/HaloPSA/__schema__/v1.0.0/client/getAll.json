@@ -4,9 +4,6 @@
         "accountmanagertech": {
             "type": "integer"
         },
-        "accountsid": {
-            "type": "string"
-        },
         "actionemail": {
             "type": "integer"
         },
@@ -48,9 +45,6 @@
         "customertype": {
             "type": "integer"
         },
-        "dbc_company_id": {
-            "type": "string"
-        },
         "default_currency_code": {
             "type": "integer"
         },
@@ -74,9 +68,6 @@
         },
         "item_tax_code": {
             "type": "integer"
-        },
-        "itglue_id": {
-            "type": "string"
         },
         "jira_validated": {
             "type": "boolean"
@@ -114,20 +105,8 @@
         "qbo_company_id": {
             "type": "string"
         },
-        "ref": {
-            "type": "string"
-        },
         "sectech": {
             "type": "integer"
-        },
-        "sentinel_resource_group_name": {
-            "type": "string"
-        },
-        "sentinel_subscription_id": {
-            "type": "string"
-        },
-        "sentinel_workspace_name": {
-            "type": "string"
         },
         "service_tax_code": {
             "type": "integer"
@@ -155,10 +134,7 @@
         },
         "use": {
             "type": "string"
-        },
-        "xero_tenant_id": {
-            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

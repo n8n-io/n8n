@@ -1,0 +1,56 @@
+{
+	"name": "Databricks SQL Polling Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"warehouseId": {
+					"mode": "id",
+					"value": "warehouse123"
+				},
+				"query": "SELECT id, name FROM test_table"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "sql-execute-002",
+			"name": "Execute SQL Polling",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Execute SQL Polling": [
+			{ "json": { "id": "1", "name": "Alice" } },
+			{ "json": { "id": "2", "name": "Bob" } }
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Execute SQL Polling",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

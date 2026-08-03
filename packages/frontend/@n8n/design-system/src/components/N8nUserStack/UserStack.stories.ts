@@ -1,20 +1,25 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { StoryFn } from '@storybook/vue3-vite';
 
-import UserStack from './UserStack.vue';
+import N8nUserStack from './UserStack.vue';
 
 export default {
-	title: 'Modules/UserStack',
-	component: UserStack,
+	title: 'Core/UserStack',
+	component: N8nUserStack,
+
+	parameters: {
+		docs: {
+			description: { component: 'An overlapping avatar stack for displaying multiple users.' },
+		},
+	},
 };
 
 const Template: StoryFn = (args) => ({
 	setup: () => ({ args }),
-	props: args,
 	components: {
-		UserStack,
+		N8nUserStack,
 	},
-	template: '<n8n-user-stack v-bind="args" />',
+	template: '<UserStack v-bind="args" />',
 });
 
 export const WithGroups = Template.bind({});

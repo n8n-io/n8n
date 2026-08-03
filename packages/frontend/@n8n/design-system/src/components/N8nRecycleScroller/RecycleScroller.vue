@@ -2,7 +2,7 @@
 import type { ComponentPublicInstance } from 'vue';
 import { computed, onMounted, onBeforeMount, ref, nextTick, watch } from 'vue';
 
-import type { ItemWithKey } from '@n8n/design-system/types';
+import type { ItemWithKey } from '../../types';
 
 interface RecycleScrollerProps {
 	itemSize: number;
@@ -33,7 +33,9 @@ const itemPositionCache = computed(() => {
 			const key = item[props.itemKey];
 			const prevItem = props.items[index - 1];
 			const prevItemPosition = prevItem ? acc[prevItem[props.itemKey]] : 0;
-			const prevItemSize = prevItem ? itemSizeCache.value[prevItem[props.itemKey]] : 0;
+			const prevItemSize = prevItem
+				? (itemSizeCache.value[prevItem[props.itemKey]] ?? props.itemSize)
+				: 0;
 
 			acc[key] = prevItemPosition + prevItemSize;
 
@@ -60,7 +62,7 @@ const startIndex = computed(() => {
 const endIndex = computed(() => {
 	const foundIndex = props.items.findIndex((item) => {
 		const itemPosition = itemPositionCache.value[item[props.itemKey]];
-		const itemSize = itemSizeCache.value[item[props.itemKey]];
+		const itemSize = itemSizeCache.value[item[props.itemKey]] ?? props.itemSize;
 
 		return itemPosition + itemSize >= scrollTop.value + wrapperHeight.value;
 	});
@@ -94,7 +96,9 @@ watch(
 const scrollerHeight = computed(() => {
 	const lastItem = props.items[props.items.length - 1];
 	const lastItemPosition = lastItem ? itemPositionCache.value[lastItem[props.itemKey]] : 0;
-	const lastItemSize = lastItem ? itemSizeCache.value[lastItem[props.itemKey]] : props.itemSize;
+	const lastItemSize = lastItem
+		? (itemSizeCache.value[lastItem[props.itemKey]] ?? props.itemSize)
+		: props.itemSize;
 
 	return lastItemPosition + lastItemSize;
 });
@@ -148,7 +152,10 @@ function onUpdateItemSize(item: { [key: string]: string }) {
 	void nextTick(() => {
 		const itemId = item[props.itemKey];
 		const itemRef = itemRefs.value[itemId] as HTMLElement;
-		const previousSize = itemSizeCache.value[itemId];
+		// The virtual layout positions an unmeasured row as if it were
+		// `itemSize` tall, so that is the height to compensate against — using
+		// the raw cache miss here would scroll by NaN and reset to the top.
+		const previousSize = itemSizeCache.value[itemId] ?? props.itemSize;
 		const size = itemRef ? itemRef.offsetHeight : props.itemSize;
 		const difference = size - previousSize;
 
@@ -182,6 +189,26 @@ function onScroll() {
 
 	scrollTop.value = wrapperRef.value.scrollTop;
 }
+
+function scrollTo(position: number) {
+	if (!wrapperRef.value) {
+		return;
+	}
+
+	wrapperRef.value.scrollTop = position;
+	scrollTop.value = wrapperRef.value.scrollTop;
+}
+
+function scrollToKey(key: Item[Key]) {
+	const position = itemPositionCache.value[key];
+	if (position === undefined) {
+		return;
+	}
+
+	scrollTo(position);
+}
+
+defineExpose({ scrollToKey, scrollTo, scrollTop });
 </script>
 
 <template>

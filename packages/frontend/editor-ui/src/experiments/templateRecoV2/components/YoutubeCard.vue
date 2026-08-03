@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store';
+import { N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	videoId: string;
@@ -35,10 +36,10 @@ const openYouTubeVideo = () => {
 .tutorial {
 	display: flex;
 	flex-direction: row;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 }
 
 .video {
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 }
 </style>

@@ -7,6 +7,12 @@
         "member": {
             "type": "object",
             "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "domainId": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -25,5 +31,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

@@ -403,6 +403,14 @@
                         }
                     }
                 },
+                "hs_updated_by_user_id": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "hs_v2_date_entered_lead": {
                     "type": "object",
                     "properties": {
@@ -465,5 +473,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

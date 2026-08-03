@@ -2,20 +2,31 @@ import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { DateTime } from 'luxon';
+import { mock } from 'vitest-mock-extended';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsController } from '../insights.controller';
 
+function expectDatesClose(actual: Date, expected: Date, maxDriftMs?: number) {
+	const maxDrift = maxDriftMs ?? 60000; // default to 1 minute
+	expect(Math.abs(actual.getTime() - expected.getTime())).toBeLessThanOrEqual(maxDrift);
+}
+
+// Request from an owner-like user holding the global `workflow:read` scope, so
+// every workflow is accessible.
+const authReq = () =>
+	mock<AuthenticatedRequest>({
+		user: { role: { scopes: [{ slug: 'workflow:read' }] } },
+	} as unknown as AuthenticatedRequest);
+
 beforeAll(async () => {
 	await testDb.init();
-	Container.set(
-		LicenseState,
-		mock<LicenseState>({
-			getInsightsMaxHistory: jest.fn().mockReturnValue(-1),
-		}),
-	);
 });
 
 afterAll(async () => {
@@ -24,14 +35,22 @@ afterAll(async () => {
 
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
+	const workflowSharingService = mockInstance(WorkflowSharingService);
 	let controller: InsightsController;
+	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
+	const today = DateTime.now().toJSDate();
+	const licenseState = mock<LicenseState>();
 
-	beforeAll(async () => {
+	beforeAll(() => {
+		Container.set(LicenseState, licenseState);
 		controller = Container.get(InsightsController);
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.resetAllMocks();
+
+		licenseState.getInsightsMaxHistory.mockReturnValue(-1);
+		licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
 	});
 
 	describe('getInsightsSummary', () => {
@@ -40,15 +59,17 @@ describe('InsightsController', () => {
 			insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([]);
 
 			// ACT
-			const response = await controller.getInsightsSummary(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-			);
+			const response = await controller.getInsightsSummary(authReq(), mock<Response>());
 
 			// ASSERT
 			expect(
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
-			).toHaveBeenCalledWith({ periodLengthInDays: 7 });
+			).toHaveBeenCalledWith({ startDate: expect.any(Date), endDate: expect.any(Date) });
+
+			const callArgs =
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({
 				total: { deviation: null, unit: 'count', value: 0 },
@@ -69,15 +90,23 @@ describe('InsightsController', () => {
 			]);
 
 			// ACT
-			const response = await controller.getInsightsSummary(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-			);
+			const response = await controller.getInsightsSummary(authReq(), mock<Response>());
 
 			// ASSERT
 			expect(
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
-			).toHaveBeenCalledWith({ periodLengthInDays: 7 });
+			).toHaveBeenCalledWith(
+				expect.objectContaining({
+					startDate: expect.any(Date),
+					endDate: expect.any(Date),
+					projectId: undefined,
+				}),
+			);
+
+			const callArgs =
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({
 				total: { deviation: null, unit: 'count', value: 30 },
@@ -102,15 +131,23 @@ describe('InsightsController', () => {
 			]);
 
 			// ACT
-			const response = await controller.getInsightsSummary(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-			);
+			const response = await controller.getInsightsSummary(authReq(), mock<Response>());
 
 			// ASSERT
 			expect(
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
-			).toHaveBeenCalledWith({ periodLengthInDays: 7 });
+			).toHaveBeenCalledWith(
+				expect.objectContaining({
+					startDate: expect.any(Date),
+					endDate: expect.any(Date),
+					projectId: undefined,
+				}),
+			);
+
+			const callArgs =
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({
 				total: { deviation: 10, unit: 'count', value: 30 },
@@ -121,9 +158,12 @@ describe('InsightsController', () => {
 			});
 		});
 
-		it('should use the query filters when provided', async () => {
-			// ARRANGE
-			insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([
+		describe('with query filters', () => {
+			const mockRepositoryResponse: Array<{
+				period: 'previous' | 'current';
+				type: 0 | 1 | 2 | 3;
+				total_value: string | number;
+			}> = [
 				{ period: 'previous', type: TypeToNumber.success, total_value: 16 },
 				{ period: 'previous', type: TypeToNumber.failure, total_value: 4 },
 				{ period: 'previous', type: TypeToNumber.runtime_ms, total_value: 40 },
@@ -132,28 +172,133 @@ describe('InsightsController', () => {
 				{ period: 'current', type: TypeToNumber.failure, total_value: 10 },
 				{ period: 'current', type: TypeToNumber.runtime_ms, total_value: 300 },
 				{ period: 'current', type: TypeToNumber.time_saved_min, total_value: 10 },
-			]);
+			];
 
-			// ACT
-			const response = await controller.getInsightsSummary(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				{ dateRange: 'month', projectId: 'test-project' },
-			);
-
-			expect(
-				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
-			).toHaveBeenCalledWith({
-				periodLengthInDays: 30,
-				projectId: 'test-project',
-			});
-
-			expect(response).toEqual({
+			const expectedResponse = {
 				total: { deviation: 10, unit: 'count', value: 30 },
 				failed: { deviation: 6, unit: 'count', value: 10 },
 				failureRate: { deviation: 0.333 - 0.2, unit: 'ratio', value: 0.333 },
 				averageRunTime: { deviation: 300 / 30 - 40 / 20, unit: 'millisecond', value: 10 },
 				timeSaved: { deviation: 5, unit: 'minute', value: 10 },
+			};
+
+			it('should use the query filters when provided', async () => {
+				const startDate = DateTime.now().minus({ days: 12, hours: 12 }).toJSDate();
+				const endDate = DateTime.now().minus({ days: 4, hours: 5 }).toJSDate();
+
+				// ARRANGE
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+					mockRepositoryResponse,
+				);
+
+				// ACT
+				const response = await controller.getInsightsSummary(authReq(), mock<Response>(), {
+					startDate,
+					endDate,
+					projectId: 'test-project',
+				});
+
+				expect(
+					insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+				).toHaveBeenCalledWith({
+					startDate,
+					endDate,
+					projectId: 'test-project',
+				});
+
+				expect(response).toEqual(expectedResponse);
+			});
+
+			it('should default the endDate to today when not provided', async () => {
+				const startDate = DateTime.now().startOf('day').minus({ days: 12, minutes: 43 }).toJSDate();
+
+				// ARRANGE
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+					mockRepositoryResponse,
+				);
+
+				// ACT
+				const response = await controller.getInsightsSummary(authReq(), mock<Response>(), {
+					startDate,
+					projectId: 'test-project',
+				});
+
+				expect(
+					insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+				).toHaveBeenCalledWith(
+					expect.objectContaining({
+						startDate,
+						endDate: expect.any(Date),
+						projectId: 'test-project',
+					}),
+				);
+
+				const callArgs =
+					insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
+				expectDatesClose(callArgs.endDate, today);
+
+				expect(response).toEqual(expectedResponse);
+			});
+
+			it('should throw a BadRequestError when endDate is before startDate', async () => {
+				const execution = controller.getInsightsSummary(authReq(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+					endDate: new Date('2025-06-01'),
+					projectId: 'test-project',
+				});
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow('endDate must be the same as or after startDate');
+			});
+		});
+
+		describe('with license restrictions', () => {
+			it('should throw a forbidden error when hourly data is requested without a license', async () => {
+				// ARRANGE
+				licenseState.getInsightsMaxHistory.mockReturnValue(-1);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(false);
+
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([
+					{ period: 'previous', type: TypeToNumber.success, total_value: 16 },
+					{ period: 'current', type: TypeToNumber.success, total_value: 20 },
+				]);
+
+				// ACT & ASSERT
+				const execution = controller.getInsightsSummary(authReq(), mock<Response>(), {
+					startDate: new Date('2025-06-01T00:00:00Z'),
+					// same day as startDate to force 'hour' granularity
+					endDate: new Date('2025-06-01T00:00:00Z'),
+				});
+
+				await expect(execution).rejects.toThrow(ForbiddenError);
+				await expect(execution).rejects.toThrow(
+					'Hourly data is not available with your current license',
+				);
+			});
+
+			it('should throw a forbidden error when date range exceeds license limit', async () => {
+				// ARRANGE
+				const outOfRangeStart = DateTime.now().startOf('day').minus({ days: 20 }).toJSDate();
+				const endDate = DateTime.now().startOf('day').minus({ days: 4 }).toJSDate();
+
+				licenseState.getInsightsMaxHistory.mockReturnValue(14);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([
+					{ period: 'previous', type: TypeToNumber.success, total_value: 16 },
+					{ period: 'current', type: TypeToNumber.success, total_value: 20 },
+				]);
+
+				// ACT & ASSERT
+				const execution = controller.getInsightsSummary(authReq(), mock<Response>(), {
+					startDate: outOfRangeStart,
+					endDate,
+				});
+
+				await expect(execution).rejects.toThrow(ForbiddenError);
+				await expect(execution).rejects.toThrow(
+					'The selected date range exceeds the maximum history allowed by your license',
+				);
 			});
 		});
 	});
@@ -201,29 +346,36 @@ describe('InsightsController', () => {
 			},
 		];
 
+		beforeEach(() => {
+			// getSharedWorkflowIds returns all workflow IDs for the owner-like user
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(
+				mockRows.map((row) => row.workflowId),
+			);
+		});
+
 		it('should return empty insights by workflow if no data', async () => {
 			// ARRANGE
 			insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({ count: 0, rows: [] });
 
 			// ACT
-			const response = await controller.getInsightsByWorkflow(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				{
-					skip: 0,
-					take: 5,
-					sortBy: 'total:desc',
-					dateRange: 'week',
-				},
-			);
-
-			// ASSERT
-			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
-				maxAgeInDays: 7,
+			const response = await controller.getInsightsByWorkflow(authReq(), mock<Response>(), {
 				skip: 0,
 				take: 5,
 				sortBy: 'total:desc',
 			});
+
+			// ASSERT
+			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
+				startDate: expect.any(Date),
+				endDate: expect.any(Date),
+				skip: 0,
+				take: 5,
+				sortBy: 'total:desc',
+			});
+
+			const callArgs = insightsByPeriodRepository.getInsightsByWorkflow.mock.calls[0][0];
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({ count: 0, data: [] });
 		});
@@ -236,58 +388,171 @@ describe('InsightsController', () => {
 			});
 
 			// ACT
-			const response = await controller.getInsightsByWorkflow(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				{
-					skip: 0,
-					take: 5,
-					sortBy: 'total:desc',
-					dateRange: 'week',
-				},
-			);
-
-			// ASSERT
-			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
-				maxAgeInDays: 7,
+			const response = await controller.getInsightsByWorkflow(authReq(), mock<Response>(), {
 				skip: 0,
 				take: 5,
 				sortBy: 'total:desc',
 			});
 
-			expect(response).toEqual({ count: 3, data: mockRows });
-		});
-
-		it('should use the query filters when provided', async () => {
-			// ARRANGE
-			insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
-				count: mockRows.length,
-				rows: mockRows,
+			// ASSERT
+			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
+				startDate: expect.any(Date),
+				endDate: expect.any(Date),
+				skip: 0,
+				take: 5,
+				sortBy: 'total:desc',
 			});
 
-			// ACT
-			const response = await controller.getInsightsByWorkflow(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				{
+			const callArgs = insightsByPeriodRepository.getInsightsByWorkflow.mock.calls[0][0];
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.endDate, today);
+
+			expect(response).toEqual({
+				count: 3,
+				data: mockRows.map((row) => ({ ...row, hasReadAccess: true })),
+			});
+		});
+
+		describe('with query filters', () => {
+			it('should use the query filters when provided', async () => {
+				// ARRANGE
+				const startDate = DateTime.now().minus({ days: 365 }).toJSDate();
+				const endDate = DateTime.now().minus({ days: 335 }).toJSDate();
+				insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+					count: mockRows.length,
+					rows: mockRows,
+				});
+
+				// ACT
+				const response = await controller.getInsightsByWorkflow(authReq(), mock<Response>(), {
+					startDate,
+					endDate,
 					skip: 5,
 					take: 10,
 					sortBy: 'failureRate:asc',
-					dateRange: 'month',
 					projectId: 'test-project',
-				},
-			);
+				});
 
-			// ASSERT
-			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
-				maxAgeInDays: 30,
-				skip: 5,
-				take: 10,
-				sortBy: 'failureRate:asc',
-				projectId: 'test-project',
+				// ASSERT
+				expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
+					startDate,
+					endDate,
+					skip: 5,
+					take: 10,
+					sortBy: 'failureRate:asc',
+					projectId: 'test-project',
+				});
+
+				expect(response).toEqual({
+					count: 3,
+					data: mockRows.map((row) => ({ ...row, hasReadAccess: true })),
+				});
 			});
 
-			expect(response).toEqual({ count: 3, data: mockRows });
+			it('should default the endDate to today when not provided', async () => {
+				// ARRANGE
+				const startDate = DateTime.now().startOf('day').minus({ days: 70 }).toJSDate();
+				insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+					count: mockRows.length,
+					rows: mockRows,
+				});
+
+				// ACT
+				const response = await controller.getInsightsByWorkflow(authReq(), mock<Response>(), {
+					startDate,
+					skip: 0,
+					take: 5,
+					sortBy: 'total:desc',
+				});
+
+				// ASSERT
+				expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
+					startDate,
+					endDate: expect.any(Date),
+					skip: 0,
+					take: 5,
+					sortBy: 'total:desc',
+				});
+
+				const callArgs = insightsByPeriodRepository.getInsightsByWorkflow.mock.calls[0][0];
+				expectDatesClose(callArgs.endDate, today);
+
+				expect(response).toEqual({
+					count: 3,
+					data: mockRows.map((row) => ({ ...row, hasReadAccess: true })),
+				});
+			});
+
+			it('should throw a BadRequestError when endDate is before startDate', async () => {
+				const startDate = DateTime.now().startOf('day').minus({ days: 10 }).toJSDate();
+				const endDate = DateTime.now().startOf('day').minus({ days: 12 }).toJSDate();
+
+				const execution = controller.getInsightsByWorkflow(authReq(), mock<Response>(), {
+					startDate,
+					endDate,
+					skip: 0,
+					take: 5,
+					sortBy: 'total:desc',
+				});
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow('endDate must be the same as or after startDate');
+			});
+		});
+
+		describe('with license restrictions', () => {
+			it('should throw a forbidden error when hourly data is requested without a license', async () => {
+				// ARRANGE
+				licenseState.getInsightsMaxHistory.mockReturnValue(30);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(false);
+
+				insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+					count: 0,
+					rows: [],
+				});
+
+				// ACT & ASSERT
+				const execution = controller.getInsightsByWorkflow(authReq(), mock<Response>(), {
+					startDate: new Date('2025-06-01T00:00:00Z'),
+					endDate: new Date('2025-06-01T00:00:00Z'),
+					skip: 0,
+					take: 5,
+					sortBy: 'total:desc',
+				});
+
+				await expect(execution).rejects.toThrow(ForbiddenError);
+				await expect(execution).rejects.toThrow(
+					'Hourly data is not available with your current license',
+				);
+			});
+
+			it('should throw a forbidden error when date range exceeds license limit', async () => {
+				// ARRANGE
+				const outOfRangeStart = DateTime.now().startOf('day').minus({ days: 32 }).toJSDate();
+				const endDate = DateTime.now().startOf('day').minus({ days: 4 }).toJSDate();
+
+				licenseState.getInsightsMaxHistory.mockReturnValue(31);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+				insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+					count: 0,
+					rows: [],
+				});
+
+				// ACT & ASSERT
+				const execution = controller.getInsightsByWorkflow(authReq(), mock<Response>(), {
+					startDate: outOfRangeStart,
+					endDate,
+					skip: 0,
+					take: 5,
+					sortBy: 'total:desc',
+				});
+
+				await expect(execution).rejects.toThrow(ForbiddenError);
+				await expect(execution).rejects.toThrow(
+					'The selected date range exceeds the maximum history allowed by your license',
+				);
+			});
 		});
 	});
 
@@ -309,113 +574,181 @@ describe('InsightsController', () => {
 			},
 		];
 
+		const expectedResponse = [
+			{
+				date: '2023-10-01T00:00:00.000Z',
+				values: {
+					succeeded: 10,
+					timeSaved: 0,
+					failed: 2,
+					averageRunTime: 10 / 12,
+					failureRate: 2 / 12,
+					total: 12,
+				},
+			},
+			{
+				date: '2023-10-02T00:00:00.000Z',
+				values: {
+					succeeded: 12,
+					timeSaved: 0,
+					failed: 4,
+					averageRunTime: 10 / 16,
+					failureRate: 4 / 16,
+					total: 16,
+				},
+			},
+		];
+
 		it('should return insights by time with empty data', async () => {
-			// ARRANGE
 			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
 
-			// ACT
-			const response = await controller.getInsightsByTime(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				{ dateRange: 'week' },
-			);
+			const response = await controller.getInsightsByTime(authReq(), mock<Response>(), {});
 
-			// ASSERT
 			expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
 				insightTypes: ['time_saved_min', 'runtime_ms', 'success', 'failure'],
-				maxAgeInDays: 7,
+				startDate: expect.any(Date),
+				endDate: expect.any(Date),
 				periodUnit: 'day',
 			});
+
+			const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.endDate, today);
+
 			expect(response).toEqual([]);
 		});
 
 		it('should return insights by time', async () => {
-			// ARRANGE
 			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
 
-			// ACT
-			const response = await controller.getInsightsByTime(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				{ dateRange: 'year' },
-			);
+			const response = await controller.getInsightsByTime(authReq(), mock<Response>(), {});
 
-			// ASSERT
 			expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
 				insightTypes: ['time_saved_min', 'runtime_ms', 'success', 'failure'],
-				maxAgeInDays: 365,
-				periodUnit: 'week',
+				startDate: expect.any(Date),
+				endDate: expect.any(Date),
+				periodUnit: 'day',
 			});
 
-			expect(response).toEqual([
-				{
-					date: '2023-10-01T00:00:00.000Z',
-					values: {
-						succeeded: 10,
-						timeSaved: 0,
-						failed: 2,
-						averageRunTime: 10 / 12,
-						failureRate: 2 / 12,
-						total: 12,
-					},
-				},
-				{
-					date: '2023-10-02T00:00:00.000Z',
-					values: {
-						succeeded: 12,
-						timeSaved: 0,
-						failed: 4,
-						averageRunTime: 10 / 16,
-						failureRate: 4 / 16,
-						total: 16,
-					},
-				},
-			]);
+			const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.endDate, today);
+
+			expect(response).toEqual(expectedResponse);
 		});
 
-		it('should use the projectId query filters when provided', async () => {
-			// ARRANGE
-			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
+		describe('with query filters', () => {
+			it('should use the query filters for startDate and endDate when provided', async () => {
+				const startDate = DateTime.now().minus({ days: 365 }).toJSDate();
+				const endDate = DateTime.now().minus({ days: 365 }).toJSDate();
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
 
-			// ACT
-			const response = await controller.getInsightsByTime(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				{ dateRange: 'month', projectId: 'test-project' },
-			);
+				const response = await controller.getInsightsByTime(authReq(), mock<Response>(), {
+					startDate,
+					endDate,
+				});
 
-			// ASSERT
-			expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
-				insightTypes: ['time_saved_min', 'runtime_ms', 'success', 'failure'],
-				maxAgeInDays: 30,
-				periodUnit: 'day',
-				projectId: 'test-project',
+				expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
+					insightTypes: ['time_saved_min', 'runtime_ms', 'success', 'failure'],
+					startDate,
+					endDate,
+					periodUnit: 'hour',
+				});
+
+				expect(response).toEqual(expectedResponse);
 			});
 
-			expect(response).toEqual([
-				{
-					date: '2023-10-01T00:00:00.000Z',
-					values: {
-						succeeded: 10,
-						timeSaved: 0,
-						failed: 2,
-						averageRunTime: 10 / 12,
-						failureRate: 2 / 12,
-						total: 12,
-					},
-				},
-				{
-					date: '2023-10-02T00:00:00.000Z',
-					values: {
-						succeeded: 12,
-						timeSaved: 0,
-						failed: 4,
-						averageRunTime: 10 / 16,
-						failureRate: 4 / 16,
-						total: 16,
-					},
-				},
-			]);
+			it('should use the query filters for projectId when provided', async () => {
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
+
+				const response = await controller.getInsightsByTime(authReq(), mock<Response>(), {
+					projectId: 'test-project',
+				});
+
+				expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
+					insightTypes: ['time_saved_min', 'runtime_ms', 'success', 'failure'],
+					startDate: expect.any(Date),
+					endDate: expect.any(Date),
+					periodUnit: 'day',
+					projectId: 'test-project',
+				});
+
+				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
+				expectDatesClose(callArgs.startDate, sevenDaysAgo);
+				expectDatesClose(callArgs.endDate, today);
+
+				expect(response).toEqual(expectedResponse);
+			});
+
+			it('should default the endDate to today when not provided', async () => {
+				const startDate = DateTime.now().startOf('day').minus({ years: 1 }).toJSDate();
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
+
+				const response = await controller.getInsightsByTime(authReq(), mock<Response>(), {
+					startDate,
+				});
+
+				expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
+					insightTypes: ['time_saved_min', 'runtime_ms', 'success', 'failure'],
+					startDate,
+					endDate: expect.any(Date),
+					periodUnit: 'week',
+				});
+
+				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
+				expectDatesClose(callArgs.endDate, today);
+
+				expect(response).toEqual(expectedResponse);
+			});
+
+			it('should throw a BadRequestError when endDate is before startDate', async () => {
+				const execution = controller.getInsightsByTime(authReq(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+					endDate: new Date('2025-06-01'),
+				});
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow('endDate must be the same as or after startDate');
+			});
+		});
+
+		describe('with license restrictions', () => {
+			it('should throw a forbidden error when hourly data is requested without a license', async () => {
+				licenseState.getInsightsMaxHistory.mockReturnValue(30);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(false);
+
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+
+				const execution = controller.getInsightsByTime(authReq(), mock<Response>(), {
+					startDate: new Date('2025-06-01T00:00:00Z'),
+					endDate: new Date('2025-06-01T00:00:00Z'),
+				});
+
+				await expect(execution).rejects.toThrow(ForbiddenError);
+				await expect(execution).rejects.toThrow(
+					'Hourly data is not available with your current license',
+				);
+			});
+
+			it('should throw a forbidden error when date range exceeds license limit', async () => {
+				const outOfRangeStart = DateTime.now().startOf('day').minus({ months: 2 }).toJSDate();
+				const endDate = DateTime.now().startOf('day').minus({ days: 4 }).toJSDate();
+
+				licenseState.getInsightsMaxHistory.mockReturnValue(14);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+
+				const execution = controller.getInsightsByTime(authReq(), mock<Response>(), {
+					startDate: outOfRangeStart,
+					endDate,
+				});
+
+				await expect(execution).rejects.toThrow(ForbiddenError);
+				await expect(execution).rejects.toThrow(
+					'The selected date range exceeds the maximum history allowed by your license',
+				);
+			});
 		});
 	});
 
@@ -431,73 +764,131 @@ describe('InsightsController', () => {
 			},
 		];
 
+		const expectedResponse = [
+			{
+				date: '2023-10-01T00:00:00.000Z',
+				values: {
+					timeSaved: 0,
+				},
+			},
+			{
+				date: '2023-10-02T00:00:00.000Z',
+				values: {
+					timeSaved: 2,
+				},
+			},
+		];
+
 		it('should return insights by time with limited data', async () => {
-			// ARRANGE
 			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
 
-			// ACT
-			const response = await controller.getTimeSavedInsightsByTime(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				{ dateRange: 'week' },
-			);
+			const response = await controller.getTimeSavedInsightsByTime(authReq(), mock<Response>(), {});
 
-			// ASSERT
 			expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
 				insightTypes: ['time_saved_min'],
-				maxAgeInDays: 7,
+				startDate: expect.any(Date),
+				endDate: expect.any(Date),
 				periodUnit: 'day',
 			});
 
-			expect(response).toEqual([
-				{
-					date: '2023-10-01T00:00:00.000Z',
-					values: {
-						timeSaved: 0,
-					},
-				},
-				{
-					date: '2023-10-02T00:00:00.000Z',
-					values: {
-						timeSaved: 2,
-					},
-				},
-			]);
+			const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.endDate, today);
+
+			expect(response).toEqual(expectedResponse);
 		});
 
-		it('should use the projectId query filters when provided', async () => {
-			// ARRANGE
-			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
+		describe('with query filters', () => {
+			it('should use the query filters for projectId when provided', async () => {
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
 
-			// ACT
-			const response = await controller.getTimeSavedInsightsByTime(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				{ dateRange: 'month', projectId: 'test-project' },
-			);
+				const response = await controller.getTimeSavedInsightsByTime(authReq(), mock<Response>(), {
+					projectId: 'test-project',
+				});
 
-			// ASSERT
-			expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
-				insightTypes: ['time_saved_min'],
-				maxAgeInDays: 30,
-				periodUnit: 'day',
-				projectId: 'test-project',
+				expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
+					insightTypes: ['time_saved_min'],
+					startDate: expect.any(Date),
+					endDate: expect.any(Date),
+					periodUnit: 'day',
+					projectId: 'test-project',
+				});
+
+				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
+				expectDatesClose(callArgs.startDate, sevenDaysAgo);
+				expectDatesClose(callArgs.endDate, today);
+
+				expect(response).toEqual(expectedResponse);
 			});
 
-			expect(response).toEqual([
-				{
-					date: '2023-10-01T00:00:00.000Z',
-					values: {
-						timeSaved: 0,
-					},
-				},
-				{
-					date: '2023-10-02T00:00:00.000Z',
-					values: {
-						timeSaved: 2,
-					},
-				},
-			]);
+			it('should use the query filters for startDate and endDate when provided', async () => {
+				const startDate = DateTime.now().startOf('day').minus({ days: 90 }).toJSDate();
+				const endDate = today;
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
+
+				const response = await controller.getTimeSavedInsightsByTime(authReq(), mock<Response>(), {
+					startDate,
+					endDate,
+				});
+
+				expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
+					insightTypes: ['time_saved_min'],
+					startDate,
+					endDate,
+					periodUnit: 'week',
+				});
+
+				expect(response).toEqual(expectedResponse);
+			});
+
+			it('should throw a BadRequestError when endDate is before startDate', async () => {
+				const execution = controller.getTimeSavedInsightsByTime(authReq(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+					endDate: new Date('2025-06-01'),
+				});
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow('endDate must be the same as or after startDate');
+			});
+		});
+
+		describe('with license restrictions', () => {
+			it('should throw a forbidden error when hourly data is requested without a license', async () => {
+				licenseState.getInsightsMaxHistory.mockReturnValue(30);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(false);
+
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+
+				const execution = controller.getTimeSavedInsightsByTime(authReq(), mock<Response>(), {
+					startDate: new Date('2025-06-01T00:00:00Z'),
+					endDate: new Date('2025-06-01T00:00:00Z'),
+				});
+
+				await expect(execution).rejects.toThrow(ForbiddenError);
+				await expect(execution).rejects.toThrow(
+					'Hourly data is not available with your current license',
+				);
+			});
+
+			it('should throw a forbidden error when date range exceeds license limit', async () => {
+				const outOfRangeStart = DateTime.now().startOf('day').minus({ days: 32 }).toJSDate();
+				const endDate = DateTime.now().startOf('day').minus({ days: 4 }).toJSDate();
+
+				licenseState.getInsightsMaxHistory.mockReturnValue(31);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+
+				const execution = controller.getTimeSavedInsightsByTime(authReq(), mock<Response>(), {
+					startDate: outOfRangeStart,
+					endDate,
+				});
+
+				await expect(execution).rejects.toThrow(ForbiddenError);
+				await expect(execution).rejects.toThrow(
+					'The selected date range exceeds the maximum history allowed by your license',
+				);
+			});
 		});
 	});
 });

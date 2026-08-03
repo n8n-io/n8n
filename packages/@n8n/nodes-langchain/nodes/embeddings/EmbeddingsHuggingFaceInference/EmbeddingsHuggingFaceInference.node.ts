@@ -2,6 +2,7 @@ import type { InferenceProviderOrPolicy } from '@huggingface/inference';
 import { PROVIDERS_OR_POLICIES } from '@huggingface/inference';
 import { HuggingFaceInferenceEmbeddings } from '@langchain/community/embeddings/hf';
 import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	NodeOperationError,
 	type INodeType,
@@ -10,8 +11,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 export class EmbeddingsHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
@@ -103,6 +103,18 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 
 		if ('provider' in options && !isValidHFProviderOrPolicy(options.provider)) {
 			throw new NodeOperationError(this.getNode(), 'Unsupported provider');
+		}
+
+		if (
+			'endpointUrl' in options &&
+			typeof options.endpointUrl === 'string' &&
+			options.endpointUrl
+		) {
+			assertCredentialAllowsUrl({
+				node: this.getNode(),
+				credentialData: credentials,
+				url: options.endpointUrl,
+			});
 		}
 
 		const embeddings = new HuggingFaceInferenceEmbeddings({

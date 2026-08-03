@@ -1,0 +1,66 @@
+{
+	"name": "AWS ELB Get Many Listener Certificates All Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "listenerCertificate",
+				"operation": "getMany",
+				"loadBalancerId": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-lb/1234567890123456",
+				"listenerId": "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/test-lb/1234567890123456/f2f7dc8efc522ab2",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.awsElb",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "node-id",
+			"name": "Get Many Listener Certificates All",
+			"credentials": {
+				"aws": {
+					"id": "credential-id",
+					"name": "Test AWS Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Many Listener Certificates All": [
+			{
+				"json": {
+					"CertificateArn": "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012",
+					"IsDefault": "false"
+				}
+			},
+			{
+				"json": {
+					"CertificateArn": "arn:aws:acm:us-east-1:123456789012:certificate/87654321-4321-4321-4321-210987654321",
+					"IsDefault": "true"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Many Listener Certificates All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

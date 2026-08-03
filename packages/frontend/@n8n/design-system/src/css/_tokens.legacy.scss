@@ -1,0 +1,146 @@
+/**
+ * Non-semantic compatibility tokens.
+ *
+ * These are intentionally separated from semantic tokens to make migration
+ * progress explicit while preserving backwards compatibility.
+ */
+
+/**
+  * CSS Variable Naming Migration with Backwards Compatibility
+  *
+  * We are migrating from single-dash format (--color-primary-shade-1) to a new
+  * double-dash format (--color--primary--shade-1) to align with design system guidelines.
+  *
+  * To maintain backwards compatibility for users (for example embed customers that customize n8n)
+  * we use CSS variable fallbacks:
+  * --color--primary: var(--color-primary, var(--color--orange-300))
+  *
+  * This ensures:
+  * 1. New code using --color--primary--* works correctly
+  * 2. Legacy code using --color-primary-* continues to work
+  * 3. External integrations and custom CSS won't break
+  * 4. Gradual migration path without breaking changes
+  *
+  */
+
+/* stylelint-disable @n8n/css-var-naming */
+
+@mixin theme-legacy {
+	--color--primary--h: 7;
+	--color--primary--s: 100%;
+	--color--primary--l: 68%;
+
+	// Legacy tokens (kept for compatibility)
+
+	// Primary
+	--color--primary--shade-1: var(--color-primary-shade-1, var(--color--primary));
+	--color--primary: var(--color-primary, var(--color--orange-500));
+	--color--primary--tint-1: var(--color-primary-tint-1, var(--color--orange-400));
+	--color--primary--tint-2: var(--color-primary-tint-2, var(--color--orange-250));
+	--color--primary--tint-3: var(--color-primary-tint-3, var(--color--orange-100));
+	--text--color: var(--text-color);
+
+	// Secondary
+	--color--secondary--shade-1: var(--color-secondary-shade-1, var(--color--purple-700));
+	--color--secondary: var(--color-secondary, var(--color--purple-600));
+	--color--secondary--tint-1: var(--color-secondary-tint-1, var(--color--purple-300));
+	--color--secondary--tint-2: var(--color-secondary-tint-3, var(--color--purple-200));
+
+	// Success
+	--color--success--shade-1: var(--color-success-shade-1, var(--color--green-700));
+	--color--success: var(--color-success, var(--color--green-600));
+	--color--success--tint-1: var(--color-success-light, var(--color--green-300));
+	--color--success--tint-2: var(--color-success-light-2, var(--color--green-200));
+	--color--success--tint-3: var(--color-success-tint-1, var(--color--green-100));
+	--color--success--tint-4: var(--color-success-tint-2, var(--color--green-50));
+
+	// Warning
+	--color--warning--shade-1: var(--color-warning-shade-1, var(--color--gold-500));
+	--color--warning: var(--color-warning, var(--color--gold-600));
+	--color--warning--tint-1: var(--color-warning-tint-1, var(--color--gold-200));
+	--color--warning--tint-2: var(--color-warning-tint-2, var(--color--gold-50));
+
+	// Danger
+	--color--danger--shade-1: var(--color-danger-shade-1, var(--color--red-700));
+	--color--danger: var(--color-danger, var(--color--red-600));
+	--color--danger--tint-1: var(--color-danger-light, var(--color--red-400));
+	--color--danger--tint-2: var(--color-danger-light-2, var(--color--red-300));
+	--color--danger--tint-3: var(--color-danger-tint-1, var(--color--red-100));
+	--color--danger--tint-4: var(--color-danger-tint-2, var(--color--red-50));
+
+	// Text
+	--color--text--shade-1: var(--color-text-dark, var(--color--neutral-900));
+	--color--text: var(--color-text-base, var(--color--neutral-700));
+	--color--text--tint-1: var(--color-text-light, var(--color--neutral-500));
+	--color--text--tint-2: var(--color-text-lighter, var(--color--neutral-200));
+	--color--text--tint-3: var(--color-text-xlight, var(--color--neutral-white));
+	--color--text--danger: var(--color-text-danger, var(--color--red-600));
+
+	// Foreground
+	--color--foreground--shade-2: var(--color-foreground-xdark, var(--color--neutral-500));
+	--color--foreground--shade-1: var(--color-foreground-dark, var(--color--neutral-250));
+	--color--foreground: var(--color-foreground-base, var(--color--neutral-200));
+	--color--foreground--tint-1: var(--color-foreground-light, var(--color--neutral-150));
+	--color--foreground--tint-2: var(--color-foreground-xlight, var(--color--neutral-white));
+
+	// Background
+	--color--background--shade-2: var(--color-background-dark, var(--color--neutral-950));
+	--color--background--shade-1: var(--color-background-medium, var(--color--neutral-200));
+	--color--background: var(--color-background-base, var(--color--neutral-125));
+	--color--background--light-1: var(--color-background-light-base, var(--color--neutral-100));
+	--color--background--light-2: var(--color-background-light, var(--color--neutral-50));
+	--color--background--light-3: var(--color-background-xlight, var(--color--neutral-white));
+
+	--shadow: var(
+		--box-shadow-base,
+		0 2px 4px var(--color--black-alpha-200),
+		0 0 6px var(--color--black-alpha-100)
+	);
+	--shadow--dark: var(
+		--box-shadow-dark,
+		0 2px 4px var(--color--black-alpha-200),
+		0 0 6px var(--color--black-alpha-200)
+	);
+	--shadow--light: var(--box-shadow-light, 0 2px 12px 0 var(--color--black-alpha-100));
+	--shadow--card-hover: 0 2px 8px rgba(68, 28, 23, 0.1);
+
+	--radius--xl: var(--border-radius-xlarge, 12px);
+	--radius--lg: var(--border-radius-large, 8px);
+	--radius: var(--border-radius-base, 4px);
+	--radius--sm: var(--border-radius-small, 2px);
+	--border-color--light: var(--border-color-light, var(--color--foreground--tint-1));
+
+	--border-style: var(--border-style-base, solid);
+	--border-width: var(--border-width-base, 1px);
+	--border: var(--border-base, var(--border-width) var(--border-style) var(--border-color));
+}
+
+@mixin theme-dark-legacy {
+	--color--danger: var(--color--red-400);
+
+	--color--text--shade-1: var(--color--neutral-white);
+	--color--text: var(--color--neutral-200);
+	--color--text--tint-1: var(--color--neutral-400);
+	--color--text--tint-2: var(--color--neutral-600);
+	--color--text--tint-3: var(--color--neutral-800);
+	--color--text--danger: var(--color--red-400);
+
+	--color--foreground--shade-2: var(--color--neutral-400);
+	--color--foreground--shade-1: var(--color--neutral-700);
+	--color--foreground: var(--color--neutral-800);
+	--color--foreground--tint-1: var(--color--neutral-850);
+	--color--foreground--tint-2: var(--color--neutral-950);
+
+	--color--background--shade-2: var(--color--neutral-150);
+	--color--background--shade-1: var(--color--neutral-600);
+	--color--background: var(--color--neutral-700);
+	--color--background--light-1: var(--color--neutral-850);
+	--color--background--light-2: var(--color--neutral-950);
+	--color--background--light-3: var(--color--neutral-900);
+
+	--border: var(
+		--border-base,
+		var(--border-width) var(--border-style) var(--color--white-alpha-100)
+	);
+}
+/* stylelint-enable @n8n/css-var-naming */

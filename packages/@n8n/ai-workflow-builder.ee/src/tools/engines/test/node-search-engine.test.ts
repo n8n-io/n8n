@@ -76,17 +76,12 @@ describe('NodeSearchEngine', () => {
 		it('should find nodes by exact name match', () => {
 			const results = searchEngine.searchByName('Code');
 
-			expect(results).toHaveLength(1);
+			expect(results.length).toBeGreaterThanOrEqual(1);
+			// First result should be the Code node with highest score
 			expect(results[0].name).toBe('n8n-nodes-base.code');
 			expect(results[0].displayName).toBe('Code');
-			// Should have display name exact match, display name contains, name contains (code is in the name),
-			// and description contains ("Run custom JavaScript code")
-			const expectedScore =
-				SCORE_WEIGHTS.DISPLAY_NAME_EXACT +
-				SCORE_WEIGHTS.DISPLAY_NAME_CONTAINS +
-				SCORE_WEIGHTS.NAME_CONTAINS +
-				SCORE_WEIGHTS.DESCRIPTION_CONTAINS;
-			expect(results[0].score).toBe(expectedScore);
+			// Should have a positive score from sublimeSearch fuzzy matching
+			expect(results[0].score).toBeGreaterThan(0);
 		});
 
 		it('should find nodes by partial name match', () => {
@@ -104,7 +99,7 @@ describe('NodeSearchEngine', () => {
 
 			expect(results).toHaveLength(1);
 			expect(results[0].name).toBe('n8n-nodes-base.code');
-			expect(results[0].score).toBe(SCORE_WEIGHTS.DESCRIPTION_CONTAINS);
+			expect(results[0].score).toBeGreaterThan(0);
 		});
 
 		it('should find nodes by alias match', () => {
@@ -112,7 +107,7 @@ describe('NodeSearchEngine', () => {
 
 			expect(results).toHaveLength(1);
 			expect(results[0].name).toBe('n8n-nodes-base.httpBin');
-			expect(results[0].score).toBeGreaterThanOrEqual(SCORE_WEIGHTS.ALIAS_CONTAINS);
+			expect(results[0].score).toBeGreaterThan(0);
 		});
 
 		it('should handle case-insensitive search', () => {
@@ -144,11 +139,7 @@ describe('NodeSearchEngine', () => {
 
 			// HTTP Request should have highest score (name + display name + description)
 			expect(results[0].name).toBe('n8n-nodes-base.httpRequest');
-			expect(results[0].score).toBe(
-				SCORE_WEIGHTS.NAME_CONTAINS +
-					SCORE_WEIGHTS.DISPLAY_NAME_CONTAINS +
-					SCORE_WEIGHTS.DESCRIPTION_CONTAINS,
-			);
+			expect(results[0].score).toBeGreaterThan(0);
 		});
 
 		it('should handle nodes without description', () => {
@@ -306,6 +297,7 @@ describe('NodeSearchEngine', () => {
 				name: 'test.node',
 				displayName: 'Test Node',
 				description: 'Test description',
+				version: 1,
 				inputs: ['main'] as NodeConnectionType[],
 				outputs: ['main'] as NodeConnectionType[],
 				score: 100,
@@ -324,6 +316,7 @@ describe('NodeSearchEngine', () => {
 				name: 'test.node',
 				displayName: 'Test Node',
 				description: 'Test',
+				version: 1,
 				inputs: ['main', 'ai_tool'] as NodeConnectionType[],
 				outputs: ['main', 'main'] as NodeConnectionType[],
 				score: 50,
@@ -340,6 +333,7 @@ describe('NodeSearchEngine', () => {
 				name: 'test.node',
 				displayName: 'Test Node',
 				description: 'Test',
+				version: 1,
 				inputs: '={{ $parameter.inputs }}' as `={{${string}}}`,
 				outputs: '={{ $parameter.outputs }}' as `={{${string}}}`,
 				score: 50,
@@ -356,6 +350,7 @@ describe('NodeSearchEngine', () => {
 				name: 'test.node',
 				displayName: 'Test Node',
 				description: 'Test',
+				version: 1,
 				inputs: [
 					{ type: NodeConnectionTypes.Main },
 					{ type: NodeConnectionTypes.AiTool, required: false },
@@ -435,6 +430,104 @@ describe('NodeSearchEngine', () => {
 			specialChars.forEach((char) => {
 				expect(() => searchEngine.searchByName(char)).not.toThrow();
 			});
+		});
+	});
+
+	describe('node version deduplication', () => {
+		it('should deduplicate nodes with same name but different versions', () => {
+			const nodeV1 = createNodeType({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request V1',
+				version: 1,
+			});
+			const nodeV2 = createNodeType({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request V2',
+				version: 2,
+			});
+			const nodeV3 = createNodeType({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request V3',
+				version: 3,
+			});
+
+			const engine = new NodeSearchEngine([nodeV1, nodeV2, nodeV3]);
+			const results = engine.searchByName('http');
+
+			// Should only return one node (the latest version)
+			expect(results).toHaveLength(1);
+			expect(results[0]?.version).toBe(3);
+			expect(results[0]?.displayName).toBe('HTTP Request V3');
+		});
+
+		it('should handle array versions and return latest', () => {
+			const nodeV1 = createNodeType({
+				name: 'n8n-nodes-base.code',
+				displayName: 'Code V1',
+				version: 1,
+			});
+			const nodeV2V3 = createNodeType({
+				name: 'n8n-nodes-base.code',
+				displayName: 'Code V2-3',
+				version: [2, 3],
+			});
+
+			const engine = new NodeSearchEngine([nodeV1, nodeV2V3]);
+			const results = engine.searchByName('code');
+
+			// Should return the node with array version [2, 3] as latest
+			expect(results).toHaveLength(1);
+			expect(results[0]?.version).toBe(3);
+			expect(results[0]?.displayName).toBe('Code V2-3');
+		});
+
+		it('should return latest version when comparing single version vs array version', () => {
+			const nodeV1V2 = createNodeType({
+				name: 'n8n-nodes-base.webhook',
+				displayName: 'Webhook V1-2',
+				version: [1, 2],
+			});
+			const nodeV3 = createNodeType({
+				name: 'n8n-nodes-base.webhook',
+				displayName: 'Webhook V3',
+				version: 3,
+			});
+
+			const engine = new NodeSearchEngine([nodeV1V2, nodeV3]);
+			const results = engine.searchByName('webhook');
+
+			expect(results).toHaveLength(1);
+			expect(results[0]?.version).toBe(3);
+			expect(results[0]?.displayName).toBe('Webhook V3');
+		});
+
+		it('should include version field in all search results', () => {
+			const results = searchEngine.searchByName('code');
+
+			expect(results.length).toBeGreaterThan(0);
+			results.forEach((result) => {
+				expect(result.version).toBeDefined();
+				expect(typeof result.version).toBe('number');
+			});
+		});
+
+		it('should include version field in connection type search results', () => {
+			const results = searchEngine.searchByConnectionType(NodeConnectionTypes.AiTool);
+
+			expect(results.length).toBeGreaterThan(0);
+			results.forEach((result) => {
+				expect(result.version).toBeDefined();
+				expect(typeof result.version).toBe('number');
+			});
+		});
+
+		it('should include version in formatted XML output', () => {
+			const results = searchEngine.searchByName('code', 1);
+			expect(results.length).toBeGreaterThan(0);
+
+			const formatted = searchEngine.formatResult(results[0]);
+			expect(formatted).toContain('<node_version>');
+			expect(formatted).toMatch(/<node_version>\d+<\/node_version>/);
 		});
 	});
 });

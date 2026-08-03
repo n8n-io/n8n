@@ -159,6 +159,7 @@ export async function execute(
 	try {
 		// TODO: At some point it should be possible to use item dependent parameters.
 		//       Is however important to then not make one separate request each.
+		// Whole-batch operation: one request set for all items; request-level params (including the SP target) are read at item 0.
 		const workbookId = this.getNodeParameter('workbook', 0, undefined, {
 			extractValue: true,
 		}) as string;
@@ -179,6 +180,10 @@ export async function execute(
 			'GET',
 			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
 			{},
+			undefined,
+			undefined,
+			undefined,
+			0,
 		);
 		const columnsRow = columnsData.value.map((column: IDataObject) => column.name);
 
@@ -242,6 +247,10 @@ export async function execute(
 			'POST',
 			`/drive/items/${workbookId}/workbook/createSession`,
 			{ persistChanges: true },
+			undefined,
+			undefined,
+			undefined,
+			0,
 		);
 		const responseData = await microsoftApiRequest.call(
 			this,
@@ -251,6 +260,7 @@ export async function execute(
 			{},
 			'',
 			{ 'workbook-session-id': id },
+			0,
 		);
 		await microsoftApiRequest.call(
 			this,
@@ -260,6 +270,7 @@ export async function execute(
 			{},
 			'',
 			{ 'workbook-session-id': id },
+			0,
 		);
 
 		const rawData = options.rawData as boolean;

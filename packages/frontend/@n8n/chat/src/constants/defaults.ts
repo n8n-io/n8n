@@ -1,3 +1,5 @@
+import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
+import { MessageComponentKey } from '@n8n/chat/constants/messageComponents';
 import type { ChatOptions } from '@n8n/chat/types';
 
 export const defaultOptions: ChatOptions = {
@@ -22,10 +24,15 @@ export const defaultOptions: ChatOptions = {
 			getStarted: 'New Conversation',
 			inputPlaceholder: 'Type your question..',
 			closeButtonTooltip: 'Close chat',
+			repostButton: 'Repost message',
+			reuseButton: 'Reuse message',
 		},
 	},
 	theme: {},
 	enableStreaming: false,
+	messageComponents: {
+		[MessageComponentKey.WITH_BUTTONS]: MessageWithButtons,
+	},
 };
 
 export const defaultMountingTarget = '#n8n-chat';

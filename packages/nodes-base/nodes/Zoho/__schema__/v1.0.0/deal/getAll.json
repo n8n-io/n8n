@@ -90,6 +90,20 @@
                 }
             }
         },
+        "Campaign_Source": {
+            "type": "null"
+        },
+        "Contact_Name": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "Created_By": {
             "type": "object",
             "properties": {
@@ -150,20 +164,12 @@
         "Probability": {
             "type": "integer"
         },
-        "Tag": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                }
-            }
+        "Reason_For_Loss__s": {
+            "type": "null"
+        },
+        "Stage": {
+            "type": "string"
         }
     },
-    "version": 2
+    "version": 4
 }

@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "price": {
+            "type": "number"
+        },
         "time": {
             "type": "string"
         },
@@ -8,5 +11,5 @@
             "type": "number"
         }
     },
-    "version": 1
+    "version": 3
 }

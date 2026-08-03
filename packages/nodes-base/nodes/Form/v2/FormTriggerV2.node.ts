@@ -13,9 +13,11 @@ import {
 	appendAttributionToForm,
 	formDescription,
 	formFields,
+	formFieldsDynamic,
 	formRespondMode,
 	formTitle,
 	formTriggerPanel,
+	ipAllowlist,
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
@@ -34,14 +36,23 @@ const useWorkflowTimezone: INodeProperties = {
 const descriptionV2: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
 	name: 'formTrigger',
-	icon: 'file:form.svg',
+	icon: 'node:form-trigger',
+	iconColor: 'teal',
 	group: ['trigger'],
 	// since trigger and node are sharing descriptions and logic we need to sync the versions
 	// and keep them aligned in both nodes
-	version: [2, 2.1, 2.2, 2.3],
+	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6],
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'On form submission',
+	},
+	builderHint: {
+		relatedNodes: [
+			{
+				nodeType: 'n8n-nodes-base.form',
+				relationHint: 'Add pages and final page to the form',
+			},
+		],
 	},
 
 	inputs: [],
@@ -82,6 +93,7 @@ const descriptionV2: INodeTypeDescription = {
 			},
 		},
 	],
+	sensitiveOutputFields: ['headers.authorization', 'headers.cookie', 'headers.x-auth-token'],
 	properties: [
 		{
 			displayName: 'Authentication',
@@ -98,11 +110,56 @@ const descriptionV2: INodeTypeDescription = {
 				},
 			],
 			default: 'none',
+			displayOptions: { show: { '@version': [{ _cnd: { lte: 2.5 } }] } },
+			builderHint: {
+				propertyHint:
+					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+			},
+		},
+		{
+			displayName: 'Authentication',
+			name: FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+			type: 'options',
+			options: [
+				{
+					name: 'Basic Auth',
+					value: 'basicAuth',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'n8n User Auth',
+					value: 'n8nUserAuth',
+					description: 'Require user to be logged in with their n8n account',
+				},
+				{
+					name: 'None',
+					value: 'none',
+				},
+			],
+			default: 'none',
+			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.6 } }] } },
+			builderHint: {
+				propertyHint:
+					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+			},
+		},
+		{
+			displayName: 'Require Workflow Execute Permission',
+			name: 'requireExecuteAccess',
+			type: 'boolean',
+			default: false,
+			envFeatureFlag: 'FORM_TRIGGER_OAUTH2',
+			displayOptions: {
+				show: { authentication: ['n8nUserAuth'], '@version': [{ _cnd: { gte: 2.6 } }] },
+			},
+			description:
+				'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
 		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
 		formDescription,
-		formFields,
+		{ ...formFields, displayOptions: { show: { '@version': [{ _cnd: { lt: 2.5 } }] } } },
+		{ ...formFieldsDynamic, displayOptions: { show: { '@version': [{ _cnd: { gte: 2.5 } }] } } },
 		{ ...formRespondMode, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		{
 			...formRespondMode,
@@ -136,6 +193,7 @@ const descriptionV2: INodeTypeDescription = {
 			default: {},
 			options: [
 				appendAttributionToForm,
+				ipAllowlist,
 				{
 					displayName: 'Button Label',
 					description: 'The label of the submit button in the form',
@@ -162,6 +220,20 @@ const descriptionV2: INodeTypeDescription = {
 					type: 'boolean',
 					default: false,
 					description: 'Whether to ignore requests from bots like link previewers and web crawlers',
+				},
+				{
+					displayName: 'Include User in Output',
+					name: 'includeUserInOutput',
+					type: 'boolean',
+					default: true,
+					description:
+						"Whether to include the logged-in user's ID, email and name in the trigger output",
+					displayOptions: {
+						show: {
+							'/authentication': ['n8nUserAuth'],
+							'@version': [{ _cnd: { gte: 2.6 } }],
+						},
+					},
 				},
 				{
 					...useWorkflowTimezone,
@@ -198,6 +270,13 @@ const descriptionV2: INodeTypeDescription = {
 					},
 					default: cssVariables.trim(),
 					description: 'Override default styling of the public form interface with CSS',
+				},
+				{
+					displayName: 'Show Headers',
+					name: 'showHeaders',
+					type: 'boolean',
+					default: false,
+					description: 'Whether the form submit request headers are shown',
 				},
 			],
 		},

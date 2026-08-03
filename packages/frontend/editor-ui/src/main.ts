@@ -10,30 +10,38 @@ import 'vue-json-pretty/lib/styles.css';
 import '@n8n/design-system/css/index.scss';
 // import '@n8n/design-system/css/tailwind/index.css';
 
-import './n8n-theme.scss';
+import '@/main.scss';
+import '@/features/ai/assistant/aiBuilderDiff.scss';
 // Ensure i18n HMR owner is evaluated as early as possible in dev
-import '@/dev/i18nHmr';
+import '@/app/dev/i18nHmr';
 
-import App from '@/App.vue';
-import router from './router';
+import App from '@/app/App.vue';
+import router from '@/app/router';
 
+import { IconBodyLoaderKey } from '@n8n/design-system';
+import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
 import { i18nInstance } from '@n8n/i18n';
 
-import { TelemetryPlugin } from './plugins/telemetry';
-import { GlobalComponentsPlugin } from './plugins/components';
-import { GlobalDirectivesPlugin } from './plugins/directives';
-import { FontAwesomePlugin } from './plugins/icons';
+import { TelemetryPlugin } from '@/app/plugins/telemetry';
+import { GlobalComponentsPlugin } from '@/app/plugins/components';
+import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
-import { ChartJSPlugin } from '@/plugins/chartjs';
-import { SentryPlugin } from '@/plugins/sentry';
-import { registerModuleRoutes } from '@/moduleInitializer/moduleInitializer';
+import { ChartJSPlugin } from '@/app/plugins/chartjs';
+import { SentryPlugin } from '@/app/plugins/sentry';
+import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
+import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
+import { installRenderTracker } from '@/app/dev/render-tracker';
 
 import type { VueScanOptions } from 'z-vue-scan';
+
+registerVitePreloadErrorHandler();
 
 const pinia = createPinia();
 
 const app = createApp(App);
+
+app.provide(IconBodyLoaderKey, loadLucideIconBody);
 
 app.use(SentryPlugin);
 
@@ -43,13 +51,18 @@ registerModuleRoutes(router);
 
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
-app.use(FontAwesomePlugin);
 app.use(GlobalComponentsPlugin);
 app.use(GlobalDirectivesPlugin);
 app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+
+// Opt-in component re-render counter for the canvas performance benchmark.
+// No-op unless the N8N_RENDER_TRACKING localStorage flag is set, so it is
+// inert for real users. Must run before mount so the mixin covers every
+// component.
+installRenderTracker(app);
 
 if (import.meta.env.VUE_SCAN) {
 	const { default: VueScan } = await import('z-vue-scan');
@@ -59,6 +72,10 @@ if (import.meta.env.VUE_SCAN) {
 }
 
 app.mount('#app');
+
+if (import.meta.env.DEV) {
+	void import('@/app/dev/dev-panel').then((m) => m.mountDevPanel());
+}
 
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed

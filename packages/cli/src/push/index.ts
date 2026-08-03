@@ -1,5 +1,5 @@
 import type { PushMessage } from '@n8n/api-types';
-import { inProduction, Logger } from '@n8n/backend-common';
+import { inProduction, Logger, TypedEmitter } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -8,31 +8,31 @@ import { ServerResponse } from 'http';
 import type { Server } from 'http';
 import pick from 'lodash/pick';
 import { InstanceSettings } from 'n8n-core';
-import { deepCopy } from 'n8n-workflow';
 import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { TypedEmitter } from '@/typed-emitter';
 
-import { validateOriginHeaders } from './origin-validator';
+import { validateSseOrigin, validateWebSocketOrigin } from './origin-validator';
+import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
-import type { OnPushMessage, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
+import {
+	type OnPushMessage,
+	type PushResponse,
+	type SSEPushRequest,
+	type WebSocketPushRequest,
+} from './types';
 import { WebSocketPush } from './websocket.push';
 
 type PushEvents = {
 	editorUiConnected: string;
 	message: OnPushMessage;
 };
-
-/**
- * Max allowed size of a push message in bytes. Events going through the pubsub
- * channel are trimmed if exceeding this size.
- */
-const MAX_PAYLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5 MiB
 
 /**
  * Push service for uni- or bi-directional communication with frontend clients.
@@ -96,8 +96,15 @@ export class Push extends TypedEmitter<PushEvents> {
 			`/${restEndpoint}/push`,
 
 			this.authService.createAuthMiddleware({ allowSkipMFA: false }),
-			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
-				this.handleRequest(req, res),
+			(req, res) => {
+				if (!isWebSocketPushRequest(req) && !isSSEPushRequest(req)) {
+					throw new BadRequestError('Request is not a PushRequest');
+				}
+				if (!isPushResponse(res)) {
+					throw new InternalServerError('Malformed response object');
+				}
+				return this.handleRequest(req, res);
+			},
 		);
 	}
 
@@ -114,7 +121,7 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
 		} else if (inProduction) {
-			const validation = validateOriginHeaders(headers);
+			const validation = ws ? validateWebSocketOrigin(headers) : validateSseOrigin(headers);
 			if (!validation.isValid) {
 				this.logger.warn(
 					'Origin header does NOT match the expected origin. ' +
@@ -228,45 +235,30 @@ export class Push extends TypedEmitter<PushEvents> {
 	 * See {@link shouldRelayViaPubSub} for more details.
 	 */
 	private relayViaPubSub(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
-		const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
-
-		if (eventSizeBytes <= MAX_PAYLOAD_SIZE_BYTES) {
-			void this.publisher.publishCommand({
-				command: 'relay-execution-lifecycle-event',
-				payload: { ...pushMsg, pushRef, asBinary },
-			});
-			return;
-		}
-
-		// too large for pubsub channel, trim it
-
 		const { type } = pushMsg;
-		const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
-		const eventMb = toMb(eventSizeBytes);
-		const maxMb = toMb(MAX_PAYLOAD_SIZE_BYTES);
 
 		if (type === 'nodeExecuteAfterData') {
-			this.logger.warn(
-				`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Skipping...`,
-			);
-			// In case of nodeExecuteAfterData, we omit the message entirely. We
-			// already include the amount of items in the nodeExecuteAfter message,
-			// based on which the FE will construct placeholder data. The actual
-			// data is then fetched at the end of the execution.
-			return;
-		}
+			const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
 
-		this.logger.warn(`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Trimming...`);
+			if (eventSizeBytes > MAX_PUBSUB_PAYLOAD_BYTES) {
+				const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
+				const eventMb = toMb(eventSizeBytes);
+				const maxMb = toMb(MAX_PUBSUB_PAYLOAD_BYTES);
 
-		const pushMsgCopy = deepCopy(pushMsg);
-
-		if (pushMsgCopy.type === 'executionFinished') {
-			pushMsgCopy.data.rawData = ''; // prompt client to fetch from DB
+				this.logger.warn(
+					`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Skipping...`,
+				);
+				// In case of nodeExecuteAfterData, we omit the message entirely. We
+				// already include the amount of items in the nodeExecuteAfter message,
+				// based on which the FE will construct placeholder data. The actual
+				// data is then fetched at the end of the execution.
+				return;
+			}
 		}
 
 		void this.publisher.publishCommand({
 			command: 'relay-execution-lifecycle-event',
-			payload: { ...pushMsgCopy, pushRef, asBinary },
+			payload: { ...pushMsg, pushRef, asBinary },
 		});
 	}
 }

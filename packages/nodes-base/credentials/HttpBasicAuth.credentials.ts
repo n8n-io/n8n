@@ -5,7 +5,7 @@ export class HttpBasicAuth implements ICredentialType {
 
 	displayName = 'Basic Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 
@@ -17,6 +17,7 @@ export class HttpBasicAuth implements ICredentialType {
 			name: 'user',
 			type: 'string',
 			default: '',
+			resolvableField: true,
 		},
 		{
 			displayName: 'Password',
@@ -26,6 +27,7 @@ export class HttpBasicAuth implements ICredentialType {
 				password: true,
 			},
 			default: '',
+			resolvableField: true,
 		},
 	];
 }

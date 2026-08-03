@@ -10,7 +10,7 @@ export class TheHiveProjectApi implements ICredentialType {
 
 	displayName = 'The Hive 5 API';
 
-	documentationUrl = 'theHive';
+	documentationUrl = 'thehive';
 
 	properties: INodeProperties[] = [
 		{

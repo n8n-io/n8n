@@ -5,6 +5,8 @@ import { WithTimestampsAndStringId } from './abstract-entity';
 import type { SharedCredentials } from './shared-credentials';
 import type { ICredentialsDb } from './types-db';
 
+export type CredentialUsageScope = 'project' | 'instance';
+
 @Entity()
 export class CredentialsEntity extends WithTimestampsAndStringId implements ICredentialsDb {
 	@Column({ length: 128 })
@@ -35,6 +37,34 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	 */
 	@Column({ default: false })
 	isManaged: boolean;
+
+	/**
+	 * Whether the credential is available for use by all users.
+	 */
+	@Column({ default: false })
+	isGlobal: boolean;
+
+	/**
+	 * Whether the credential can be dynamically resolved by a resolver.
+	 */
+	@Column({ default: false })
+	isResolvable: boolean;
+
+	/**
+	 * Whether the credential resolver should allow falling back to static credentials
+	 * if dynamic resolution fails.
+	 */
+	@Column({ default: false })
+	resolvableAllowFallback: boolean;
+
+	/**
+	 * ID of the dynamic credential resolver associated with this credential.
+	 */
+	@Column({ type: 'varchar', nullable: true })
+	resolverId: string | null;
+
+	@Column({ type: 'varchar', length: 16, default: 'project' })
+	usageScope: CredentialUsageScope;
 
 	toJSON() {
 		const { shared, ...rest } = this;

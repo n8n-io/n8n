@@ -126,10 +126,50 @@ describe('NodeReferenceParserUtils', () => {
 				expected: 'someRandomExpression("oldName")',
 			},
 			{
-				expression: '$("old\\"Name")',
-				previousName: 'old\\"Name',
+				expression: '$("someone\'s node")',
+				previousName: "someone's node",
+				newName: 'other node',
+				expected: '$("other node")',
+			},
+			{
+				expression: '$(\'some "node"\')',
+				previousName: 'some "node"',
+				newName: 'other node',
+				expected: "$('other node')",
+			},
+			{
+				expression: '$("test\\\\some")',
+				previousName: 'test\\some',
+				newName: 'other node',
+				expected: '$("other node")',
+			},
+			{
+				expression: '$("old name")',
+				previousName: 'old name',
+				newName: 'new "name"',
+				expected: '$("new \\"name\\"")',
+			},
+			{
+				expression: '$("old name")',
+				previousName: 'old name',
+				newName: "new 'name'",
+				expected: '$("new \\\'name\\\'")',
+			},
+			{
+				expression: '$("test some")',
+				previousName: 'test some',
+				newName: 'other\\node',
+				expected: '$("other\\\\node")',
+			},
+			{
+				// $("old\"Na\\me\'") -> old"Na\me'
+				expression: '$("old\\"Na\\\\me\\\'")',
+				// old"Na\me'
+				previousName: 'old"Na\\me\'',
+				// n\'ew\"Name
 				newName: 'n\\\'ew\\"Name',
-				expected: '$("n\\\'ew\\"Name")',
+				// $("n\\\'ew\\\"Name") -> n\'ew\"Name
+				expected: '$("n\\\\\\\'ew\\\\\\"Name")',
 			},
 		])(
 			'should correctly transform expression "$expression" with previousName "$previousName" and newName "$newName"',
@@ -741,6 +781,48 @@ describe('NodeReferenceParserUtils', () => {
 					name: 'A',
 				},
 			]);
+		});
+
+		it('should extract "fieldToSplitOut" constant fields in n8n-nodes-base.splitOut', () => {
+			nodes = [
+				{
+					parameters: {
+						fieldToSplitOut: 'foo,bar',
+					},
+					type: 'n8n-nodes-base.splitOut',
+					typeVersion: 1,
+					position: [200, 200],
+					id: 'splitOutNodeId',
+					name: 'A',
+				},
+			];
+			nodeNames = ['A', 'B'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['A']);
+			expect([...result.variables.entries()]).toEqual([
+				['foo', '$json.foo'],
+				['bar', '$json.bar'],
+			]);
+		});
+
+		it('should error at extracting "fieldToSplitOut" expression in n8n-nodes-base.splitOut', () => {
+			nodes = [
+				{
+					parameters: {
+						fieldToSplitOut: '={{ foo,bar }}',
+					},
+					type: 'n8n-nodes-base.splitOut',
+					typeVersion: 1,
+					position: [200, 200],
+					id: 'splitOutNodeId',
+					name: 'A',
+				},
+			];
+			nodeNames = ['A', 'B'];
+
+			expect(() =>
+				extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['A']),
+			).toThrow('not supported');
 		});
 	});
 });

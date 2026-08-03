@@ -4,11 +4,14 @@ import { action } from 'storybook/actions';
 import N8nUserSelect from './UserSelect.vue';
 
 export default {
-	title: 'Modules/UserSelect',
+	title: 'Core/UserSelect',
 	component: N8nUserSelect,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		docs: {
+			description: { component: 'A user picker for selecting one or more users from a list.' },
+		},
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

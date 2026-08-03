@@ -1,9 +1,8 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
-import { mysqlMigrations } from '../../migrations/mysqldb';
 import { postgresMigrations } from '../../migrations/postgresdb';
 import { sqliteMigrations } from '../../migrations/sqlite';
 import { DbConnectionOptions } from '../db-connection-options';
@@ -25,7 +24,7 @@ describe('DbConnectionOptions', () => {
 		moduleRegistry,
 	);
 
-	beforeEach(() => jest.resetAllMocks());
+	beforeEach(() => vi.resetAllMocks());
 
 	const commonOptions = {
 		entityPrefix: 'test_prefix_',
@@ -53,32 +52,17 @@ describe('DbConnectionOptions', () => {
 				dbConfig.type = 'sqlite';
 				dbConfig.sqlite = {
 					database: 'test.sqlite',
-					poolSize: 0,
-					enableWAL: false,
+					poolSize: 3,
 					executeVacuumOnStartup: false,
 				};
 			});
 
-			it('should return SQLite connection options when type is sqlite', () => {
-				const result = dbConnectionOptions.getOptions();
-
-				expect(result).toEqual({
-					type: 'sqlite',
-					enableWAL: false,
-					...commonOptions,
-					database: path.resolve(n8nFolder, 'test.sqlite'),
-					migrations: sqliteMigrations,
-				});
-			});
-
-			it('should return SQLite connection options with pooling when poolSize > 0', () => {
-				dbConfig.sqlite.poolSize = 5;
-
+			it('should return SQLite pooled connection options when type is sqlite', () => {
 				const result = dbConnectionOptions.getOptions();
 
 				expect(result).toEqual({
 					type: 'sqlite-pooled',
-					poolSize: 5,
+					poolSize: 3,
 					enableWAL: true,
 					acquireTimeout: 60_000,
 					destroyTimeout: 5_000,
@@ -94,13 +78,19 @@ describe('DbConnectionOptions', () => {
 				dbConfig.type = 'postgresdb';
 				dbConfig.postgresdb = {
 					database: 'test_db',
-					host: 'localhost',
-					port: 5432,
-					user: 'postgres',
-					password: 'password',
-					schema: 'public',
-					poolSize: 2,
-					connectionTimeoutMs: 20000,
+					host: 'pg.test.example.com',
+					port: 5433,
+					user: 'test_user',
+					password: 'test_password',
+					schema: 'test_schema',
+					poolSize: 5,
+					connectionTimeoutMs: 15_000,
+					destroyTimeoutMs: 10_000,
+					idleTimeoutMs: 25_000,
+					statementTimeoutMs: 60_000,
+					maxConnectionLifetimeMs: 1_800_000,
+					keepAlive: false,
+					keepAliveInitialDelayMs: 5_000,
 					ssl: {
 						enabled: false,
 						ca: '',
@@ -108,7 +98,6 @@ describe('DbConnectionOptions', () => {
 						key: '',
 						rejectUnauthorized: true,
 					},
-					idleTimeoutMs: 30000,
 				};
 			});
 
@@ -119,17 +108,22 @@ describe('DbConnectionOptions', () => {
 					type: 'postgres',
 					...commonOptions,
 					database: 'test_db',
-					host: 'localhost',
-					port: 5432,
-					username: 'postgres',
-					password: 'password',
-					schema: 'public',
-					poolSize: 2,
+					host: 'pg.test.example.com',
+					port: 5433,
+					username: 'test_user',
+					password: 'test_password',
+					schema: 'test_schema',
+					poolSize: 5,
 					migrations: postgresMigrations,
-					connectTimeoutMS: 20000,
+					connectTimeoutMS: 15_000,
+					statementTimeout: 60_000,
 					ssl: false,
 					extra: {
-						idleTimeoutMillis: 30000,
+						idleTimeoutMillis: 25_000,
+						keepAlive: false,
+						keepAliveInitialDelayMillis: 5_000,
+						maxLifetimeSeconds: 1800,
+						connectionTimeoutMillis: 15_000,
 					},
 				});
 			});
@@ -147,56 +141,38 @@ describe('DbConnectionOptions', () => {
 
 				expect(result).toMatchObject({ ssl });
 			});
-		});
 
-		describe('for MySQL / MariaDB', () => {
-			beforeEach(() => {
-				dbConfig.mysqldb = {
-					database: 'test_db',
-					host: 'localhost',
-					port: 3306,
-					user: 'root',
-					password: 'password',
-					poolSize: 10,
-				};
-			});
-
-			it('should return MySQL connection options when type is mysqldb', () => {
-				dbConfig.type = 'mysqldb';
+			it('should omit maxLifetimeSeconds when maxConnectionLifetimeMs is 0', () => {
+				dbConfig.postgresdb.maxConnectionLifetimeMs = 0;
 
 				const result = dbConnectionOptions.getOptions();
 
-				expect(result).toEqual({
-					type: 'mysql',
-					...commonOptions,
-					database: 'test_db',
-					host: 'localhost',
-					port: 3306,
-					username: 'root',
-					password: 'password',
-					migrations: mysqlMigrations,
-					timezone: 'Z',
-					poolSize: 10,
-				});
+				expect(result.extra).not.toHaveProperty('maxLifetimeSeconds');
 			});
 
-			it('should return MariaDB connection options when type is mariadb', () => {
-				dbConfig.type = 'mariadb';
+			it('should clamp sub-second maxConnectionLifetimeMs values to 1 second', () => {
+				// Guards against silent rounding-to-0, which would unintentionally disable the lifetime cap.
+				dbConfig.postgresdb.maxConnectionLifetimeMs = 500;
 
 				const result = dbConnectionOptions.getOptions();
 
-				expect(result).toEqual({
-					type: 'mariadb',
-					...commonOptions,
-					database: 'test_db',
-					host: 'localhost',
-					port: 3306,
-					username: 'root',
-					password: 'password',
-					migrations: mysqlMigrations,
-					timezone: 'Z',
-					poolSize: 10,
-				});
+				expect(result.extra).toMatchObject({ maxLifetimeSeconds: 1 });
+			});
+
+			it('should set connectionTimeoutMillis in extra when connectionTimeoutMs is positive', () => {
+				dbConfig.postgresdb.connectionTimeoutMs = 15_000;
+
+				const result = dbConnectionOptions.getOptions();
+
+				expect(result.extra).toMatchObject({ connectionTimeoutMillis: 15_000 });
+			});
+
+			it('should omit connectionTimeoutMillis when connectionTimeoutMs is 0', () => {
+				dbConfig.postgresdb.connectionTimeoutMs = 0;
+
+				const result = dbConnectionOptions.getOptions();
+
+				expect(result.extra).not.toHaveProperty('connectionTimeoutMillis');
 			});
 		});
 

@@ -1,7 +1,9 @@
 import type { Locator, Page } from '@playwright/test';
 
+import { ActionToggle } from './ActionToggle';
+
 /**
- * AddResource component for creating workflows, credentials, folders, and data stores.
+ * AddResource component for creating workflows, credentials, folders, and data tables.
  * Represents the "add resource" functionality in the project header.
  *
  * @example
@@ -9,33 +11,17 @@ import type { Locator, Page } from '@playwright/test';
  * await n8n.workflows.addResource.workflow();
  * await n8n.workflows.addResource.credential();
  * await n8n.workflows.addResource.folder();
- * await n8n.workflows.addResource.dataStore();
+ * await n8n.workflows.addResource.dataTable();
  */
 export class AddResource {
-	constructor(private page: Page) {}
+	private readonly actionToggle: ActionToggle;
+
+	constructor(private page: Page) {
+		this.actionToggle = new ActionToggle(this.page);
+	}
 
 	getWorkflowButton(): Locator {
 		return this.page.getByTestId('add-resource-workflow');
-	}
-
-	getDropdownButton(): Locator {
-		return this.page.getByTestId('add-resource');
-	}
-
-	getCredentialAction(): Locator {
-		return this.page.getByTestId('action-credential');
-	}
-
-	getFolderAction(): Locator {
-		return this.page.getByTestId('action-folder');
-	}
-
-	getDataStoreAction(): Locator {
-		return this.page.getByTestId('action-dataStore');
-	}
-
-	getAction(actionType: string): Locator {
-		return this.page.getByTestId(`action-${actionType}`);
 	}
 
 	async workflow(): Promise<void> {
@@ -43,17 +29,20 @@ export class AddResource {
 	}
 
 	async credential(): Promise<void> {
-		await this.getDropdownButton().click();
-		await this.getCredentialAction().click();
+		await this.page.getByTestId('add-resource-credential').click();
 	}
 
 	async folder(): Promise<void> {
-		await this.getDropdownButton().click();
-		await this.getFolderAction().click();
+		await this.page.getByTestId('add-resource').click();
+		await this.actionToggle.getAction('folder').click();
 	}
 
-	async dataStore(): Promise<void> {
-		await this.getDropdownButton().click();
-		await this.getDataStoreAction().click();
+	async dataTable(fromDataTableTab: boolean = true): Promise<void> {
+		if (fromDataTableTab) {
+			await this.page.getByTestId('add-resource-dataTable').click();
+		} else {
+			await this.page.getByTestId('add-resource').click();
+			await this.actionToggle.getAction('dataTable').click();
+		}
 	}
 }

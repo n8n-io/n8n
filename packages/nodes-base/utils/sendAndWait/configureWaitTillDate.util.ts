@@ -1,4 +1,4 @@
-import { ApplicationError, NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { NodeOperationError, UserError, WAIT_INDEFINITELY } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 
 export function configureWaitTillDate(
@@ -51,7 +51,7 @@ export function configureWaitTillDate(
 			}
 
 			if (isNaN(waitTill.getTime())) {
-				throw new ApplicationError('Invalid date format');
+				throw new UserError('Invalid date format');
 			}
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), 'Could not configure Limit Wait Time', {

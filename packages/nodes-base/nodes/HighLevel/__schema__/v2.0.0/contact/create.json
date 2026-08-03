@@ -1,6 +1,34 @@
 {
     "type": "object",
     "properties": {
+        "additionalEmails": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "validEmailDate": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "additionalPhones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "phone": {
+                        "type": "string"
+                    },
+                    "phoneLabel": {
+                        "type": "null"
+                    }
+                }
+            }
+        },
         "country": {
             "type": "string"
         },
@@ -71,6 +99,9 @@
         "locationId": {
             "type": "string"
         },
+        "source": {
+            "type": "string"
+        },
         "tags": {
             "type": "array",
             "items": {
@@ -81,5 +112,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 4
 }

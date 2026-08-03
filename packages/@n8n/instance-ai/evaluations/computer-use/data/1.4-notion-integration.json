@@ -1,0 +1,28 @@
+{
+	"id": "1.4-notion-integration",
+	"category": "browser",
+	"prompt": "I want to connect n8n to my Notion workspace. Help me create an integration and share the right databases with it.",
+	"budgets": { "maxToolCalls": 50, "maxDurationMs": 600000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 50,
+			"maxToolResultTokensEst": 200000,
+			"maxSingleToolResultTokensEst": 50000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["notion|my-integrations|integration token"],
+			"mustNotMatch": [
+				"taking a while",
+				"let me try (a )?different",
+				"couldn['’]t (load|connect|reach)",
+				"timed? out",
+				"unable to (load|access|reach)"
+			]
+		}
+	],
+	"tags": ["browser", "oauth", "requires:browser-bootstrap", "requires:third-party-account:notion"]
+}

@@ -6,5 +6,6 @@ export default defineConfig(nodeConfig, {
 		// TODO: Remove this
 		'no-prototype-builtins': 'warn',
 		'@typescript-eslint/require-await': 'warn',
+		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 	},
 });
