@@ -38,6 +38,15 @@ describe('applyForwardedChildChunk', () => {
 		]);
 		vi.useRealTimers();
 	});
+
+	it('records no segment for reasoning that never emits a delta', () => {
+		const trace = emptyChildTrace();
+
+		applyForwardedChildChunk(trace, { type: 'reasoning-start', id: 'r-1' });
+		applyForwardedChildChunk(trace, { type: 'reasoning-end', id: 'r-1' });
+
+		expect(trace.reasoningSegments).toEqual([]);
+	});
 });
 
 describe('settleChildTrace', () => {

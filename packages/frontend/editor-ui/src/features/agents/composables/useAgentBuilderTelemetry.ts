@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 import isEqual from 'lodash/isEqual';
-import { type AgentIntegrationStatusEntry } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentIntegrationStatusEntry } from '@n8n/api-types';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
@@ -10,7 +10,11 @@ import {
 	type AgentTelemetryStatus,
 } from './agentTelemetry.utils';
 import { syncAgentIntegrationStatusCache } from './useAgentIntegrationStatus';
-import { useAgentTelemetry, type AgentConfigPart } from './useAgentTelemetry';
+import {
+	useAgentTelemetry,
+	type AgentConfigPart,
+	type AgentCredentialKind,
+} from './useAgentTelemetry';
 import type { AgentResource, AgentJsonConfig } from '../types';
 
 /**
@@ -146,6 +150,9 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 
 	function emitEditedEvents(parts: AgentConfigPart[], s: EditSnapshot) {
 		if (parts.length === 0) return;
+		// Only meaningful for the model part, which is the one a credential change maps to.
+		const credentialKind: AgentCredentialKind =
+			s.config?.credential === AI_GATEWAY_MANAGED_TAG ? 'n8n_credits' : 'own';
 		withFingerprint(s.config, s.connectedTriggers, (configVersion) => {
 			for (const part of parts) {
 				agentTelemetry.trackEditedConfig({
@@ -153,6 +160,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 					part,
 					configVersion,
 					status: s.status,
+					...(part === 'model' ? { credentialKind } : {}),
 				});
 			}
 		});

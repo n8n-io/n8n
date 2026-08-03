@@ -17,7 +17,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { validateOriginHeaders } from './origin-validator';
+import { validateSseOrigin, validateWebSocketOrigin } from './origin-validator';
 import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
@@ -121,7 +121,7 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
 		} else if (inProduction) {
-			const validation = validateOriginHeaders(headers);
+			const validation = ws ? validateWebSocketOrigin(headers) : validateSseOrigin(headers);
 			if (!validation.isValid) {
 				this.logger.warn(
 					'Origin header does NOT match the expected origin. ' +

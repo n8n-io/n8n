@@ -1,5 +1,5 @@
 import type { WorkflowFailedToActivate } from '@n8n/api-types/push/workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useActivationError } from '@/app/composables/useActivationError';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';

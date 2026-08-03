@@ -14,6 +14,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
+import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import type { INode, INodeTypeData } from 'n8n-workflow';
 
@@ -58,11 +59,21 @@ const scheduleNode = (suffix: string): INode => ({
 	parameters: {},
 });
 
+const manualTriggerNode = (suffix: string): INode => ({
+	id: `node-${suffix}`,
+	name: `Manual ${suffix}`,
+	type: 'n8n-nodes-base.manualTrigger',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+});
+
 beforeAll(async () => {
 	await testDb.init();
 
 	const nodes: INodeTypeData = {
 		'n8n-nodes-base.scheduleTrigger': { type: new ScheduleTrigger(), sourcePath: '' },
+		'n8n-nodes-base.manualTrigger': { type: new ManualTrigger(), sourcePath: '' },
 	};
 	await utils.initNodeTypes(nodes);
 
@@ -338,6 +349,42 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		// The exclusion also holds while the record is being processed (in_progress).
 		await outboxRepository.claimNextPendingRecord();
 		expect(await outboxRepository.findVersionSkewedWorkflowIds()).not.toContain(workflow.id);
+	});
+
+	test('records persisted rows for a pseudo-only workflow, keeping it out of leader handoff and reconciliation', async () => {
+		const owner = await createOwner();
+
+		const trigger = manualTriggerNode('pseudo');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// Activation is untouched: a genuine publish still registers the no-op
+		// trigger's registry slot, and the status row (whose presence drives the
+		// publication status API) exists — but classified `persisted`, because the
+		// node is fired by the execution engine, never through the registry.
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+		const rows = await triggerStatusRepository.findByWorkflowId(workflow.id);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({
+			nodeId: trigger.id,
+			status: 'activated',
+			triggerKind: 'persisted',
+		});
+
+		// Leader handoff on a fresh leader: nothing is registered locally, but a
+		// pseudo-only workflow has no real trigger work to republish.
+		await activeWorkflowTriggers.remove(workflow.id);
+		await outboxRepository.enqueueForLeaderHandoff();
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+
+		// The reconciler ignores persisted rows even though the node is not
+		// registered — no re-enqueue loop.
+		await reconciler.reconcile();
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+		expect(activeWorkflowTriggers.get(workflow.id)).toBeUndefined();
 	});
 
 	test('a pass with nothing missing enqueues no work', async () => {

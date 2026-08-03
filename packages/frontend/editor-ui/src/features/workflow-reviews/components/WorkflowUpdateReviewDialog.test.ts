@@ -15,7 +15,7 @@ import WorkflowUpdateReviewDialog from './WorkflowUpdateReviewDialog.vue';
 
 const mockShowError = vi.fn();
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError }),
 }));
 
@@ -31,6 +31,8 @@ const openReview = {
 	workflowVersionId: 'version-1',
 	createdAt: '2024-01-01T00:00:00.000Z',
 	updatedAt: '2024-01-01T00:00:00.000Z',
+	decisionBy: null,
+	approvedVersionPublicationState: null,
 };
 
 const router = createRouter({

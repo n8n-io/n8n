@@ -167,6 +167,11 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
+	/** Ownership check only — skips `findByIdAndProjectId`'s `activeVersion` load. */
+	async existsByIdAndProjectId(id: string, projectId: string): Promise<boolean> {
+		return await this.exists({ where: { id, projectId } });
+	}
+
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,
