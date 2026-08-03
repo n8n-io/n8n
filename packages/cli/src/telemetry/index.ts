@@ -10,6 +10,7 @@ import {
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -17,6 +18,7 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import type {
+	AgentRunTelemetryType,
 	IAgentConfigurationTelemetryProperties,
 	IAgentExecutionTrackProperties,
 	IAgentTurnFinishedTrackProperties,
@@ -72,6 +74,7 @@ interface IAgentExecutionCountsBuffer {
 	[bufferKey: string]: {
 		agent_id: string;
 		user_id?: string;
+		run_type: AgentRunTelemetryType;
 		message_count: number;
 		token_count: number;
 		tool_call_count: number;
@@ -81,6 +84,7 @@ interface IAgentExecutionCountsBuffer {
 interface IAgentSessionMetrics {
 	latency_ms: number;
 	cost: number;
+	token_count: number;
 	tool_call_count: number;
 	num_skills: number;
 	turn_count: number;
@@ -287,8 +291,12 @@ export class Telemetry {
 		this.executionCountsBuffer = {};
 	}
 
-	private getAgentExecutionCountsBufferKey(agentId: string, userId?: string) {
-		return userId ? `${agentId}:${userId}` : agentId;
+	private getAgentExecutionCountsBufferKey(
+		agentId: string,
+		runType: AgentRunTelemetryType,
+		userId?: string,
+	) {
+		return userId ? `${agentId}:${runType}:${userId}` : `${agentId}:${runType}`;
 	}
 
 	private flushAgentExecutionCounts() {
@@ -298,13 +306,15 @@ export class Telemetry {
 		});
 
 		for (const bufferKey of keysToReport) {
-			// Agent-level aggregate window keyed by persisted agent ID plus optional n8n user ID.
-			// A resume-only window may legitimately report tokens or tools with message_count = 0.
-			const { agent_id, user_id, ...counts } = this.agentExecutionCountsBuffer[bufferKey];
-			this.track('Agent execution count', {
-				event_version: '1',
+			// Agent-level aggregate window keyed by persisted agent ID, run type and optional
+			// n8n user ID. A resume-only window may legitimately report tokens or tools with
+			// message_count = 0.
+			const { agent_id, user_id, run_type, ...counts } = this.agentExecutionCountsBuffer[bufferKey];
+			this.track(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
+				event_version: '2',
 				agent_id,
 				...(user_id ? { user_id } : {}),
+				run_type,
 				...counts,
 			});
 		}
@@ -328,6 +338,7 @@ export class Telemetry {
 
 			const latencyMsSum = sessions.reduce((total, session) => total + session.latency_ms, 0);
 			const costSum = sessions.reduce((total, session) => total + session.cost, 0);
+			const tokenCountSum = sessions.reduce((total, session) => total + session.token_count, 0);
 			const toolCallCountSum = sessions.reduce(
 				(total, session) => total + session.tool_call_count,
 				0,
@@ -335,7 +346,7 @@ export class Telemetry {
 			const numSkillsSum = sessions.reduce((total, session) => total + session.num_skills, 0);
 			const turnCount = sessions.reduce((total, session) => total + session.turn_count, 0);
 
-			this.track('Agent session metrics', {
+			this.track(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS, {
 				event_version: '1',
 				agent_id: bucket.agent_id,
 				...(bucket.agent_type ? { agent_type: bucket.agent_type } : {}),
@@ -346,6 +357,7 @@ export class Telemetry {
 				turn_count: turnCount,
 				latency_ms_sum: latencyMsSum,
 				cost_sum: costSum,
+				token_count_sum: tokenCountSum,
 				tool_call_count_sum: toolCallCountSum,
 				num_skills_sum: numSkillsSum,
 			});
@@ -420,15 +432,17 @@ export class Telemetry {
 		const {
 			agent_id,
 			user_id,
+			run_type,
 			message_count = 0,
 			token_count = 0,
 			tool_call_count = 0,
 		} = properties;
-		const bufferKey = this.getAgentExecutionCountsBufferKey(agent_id, user_id);
+		const bufferKey = this.getAgentExecutionCountsBufferKey(agent_id, run_type, user_id);
 
 		this.agentExecutionCountsBuffer[bufferKey] = this.agentExecutionCountsBuffer[bufferKey] ?? {
 			agent_id,
 			...(user_id ? { user_id } : {}),
+			run_type,
 			message_count: 0,
 			token_count: 0,
 			tool_call_count: 0,
@@ -457,6 +471,7 @@ export class Telemetry {
 		const session = bucket.sessions[properties.thread_id] ?? {
 			latency_ms: 0,
 			cost: 0,
+			token_count: 0,
 			tool_call_count: 0,
 			num_skills: properties.configuration.num_skills,
 			turn_count: 0,
@@ -464,6 +479,7 @@ export class Telemetry {
 
 		session.latency_ms += properties.latency_ms;
 		session.cost += properties.cost;
+		session.token_count += properties.token_count;
 		session.tool_call_count += properties.tool_call_count;
 		session.turn_count++;
 		bucket.sessions[properties.thread_id] = session;
