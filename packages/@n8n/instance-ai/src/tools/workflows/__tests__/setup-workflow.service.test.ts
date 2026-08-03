@@ -801,6 +801,30 @@ describe('analyzeWorkflow', () => {
 		expect(result).toHaveLength(0);
 	});
 
+	it('keeps settled failing-test requests when includeSettled is set', async () => {
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(makeWorkflowJSON([node]));
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as Mock).mockResolvedValue({
+			success: false,
+			message: 'Invalid token',
+		});
+
+		const result = await analyzeWorkflow(context, 'wf-1', undefined, { includeSettled: true });
+
+		expect(result).toHaveLength(1);
+		expect(result[0].needsAction).toBe(false);
+		expect(result[0].credentialTestResult).toEqual({ success: false, message: 'Invalid token' });
+	});
+
 	it('keeps credential-only requests whose bound credential id is not stored', async () => {
 		const node = makeNode({
 			credentials: { slackApi: { id: 'cred-gone', name: 'Imported Slack' } },

@@ -1272,6 +1272,13 @@ export async function analyzeWorkflow(
 	context: InstanceAiContext,
 	workflowId: string,
 	triggerResults?: Record<string, { status: 'success' | 'error' | 'listening'; error?: string }>,
+	options?: {
+		/** Keep settled requests (needsAction=false) in the result. For reporting
+		 *  consumers only (e.g. the apply path surfacing a just-applied credential
+		 *  whose test failed) — never for card rendering, where settled slots must
+		 *  stay hidden. */
+		includeSettled?: boolean;
+	},
 ): Promise<SetupRequest[]> {
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
 
@@ -1296,11 +1303,16 @@ export async function analyzeWorkflow(
 				req.isTrigger ||
 				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
 		)
-		// Hide cards the user has nothing to do on: credentials already set and
-		// tested, no parameter issues, not a trigger awaiting testing. Trigger
-		// steps are always kept — triggers require user testing regardless of
+		// Hide cards the user has nothing to do on: credentials already set,
+		// no parameter issues, not a trigger awaiting testing. Trigger steps
+		// are always kept — triggers require user testing regardless of
 		// credential state.
-		.filter((req) => !!req.needsAction || (req.isTrigger && !!req.isTestable));
+		.filter(
+			(req) =>
+				options?.includeSettled === true ||
+				!!req.needsAction ||
+				(req.isTrigger && !!req.isTestable),
+		);
 
 	sortByExecutionOrder(
 		setupRequests,
