@@ -17,6 +17,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
@@ -41,6 +42,7 @@ export class AgentConfigService {
 		private readonly credentialsService: CredentialsService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly eventService: EventService,
+		private readonly setupCompletionService: AgentSetupCompletionService,
 	) {}
 
 	/**
@@ -239,9 +241,19 @@ export class AgentConfigService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
+		// Gate evaluated against the state about to be written; the marker is
+		// claimed and reported only once that write succeeded.
+		const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
+			entity,
+			projectId,
+			credentialProvider,
+			user,
+		);
+
 		const saved = await this.agentRepository.save(entity);
 		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
+		await emitSetupCompleted?.();
 
 		if (tasksProvided) {
 			const referencedTaskIds = new Set((validatedConfig.tasks ?? []).map((ref) => ref.id));

@@ -6,13 +6,13 @@ import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { STORES } from '@n8n/stores';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
 import type { IWorkflowDb } from '@/Interface';
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	return {
 		useToast: () => ({

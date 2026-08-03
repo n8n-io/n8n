@@ -2,14 +2,19 @@ import type { Mocked } from 'vitest';
 import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowRepository } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
 
+import type { Telemetry } from '@/telemetry';
+
 import { AgentConfigService } from '../agent-config.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -23,6 +28,10 @@ const baseConfig: AgentJsonConfig = {
 	instructions: 'Help users',
 };
 
+const storedCustomTool = {
+	tool_1: { code: 'a', descriptor: { name: 'tool_1', description: 'a', inputSchema: {} } },
+} as unknown as Agent['tools'];
+
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
 		id: agentId,
@@ -34,6 +43,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		tools: {},
 		skills: {},
 		integrations: [],
+		setupCompletedAt: null,
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
 		...overrides,
 	} as unknown as Agent;
@@ -47,8 +57,15 @@ function makeService() {
 	const credentialsService = mock<CredentialsService>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const eventService = mock<EventService>();
+	const agentValidationService = mock<AgentValidationService>();
+	const telemetry = mock<Telemetry>();
 
+	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+		status: 'valid',
+		issues: [],
+	});
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
@@ -69,6 +86,7 @@ function makeService() {
 		credentialsService,
 		workflowRepository,
 		eventService,
+		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 	);
 
 	return {
@@ -80,6 +98,8 @@ function makeService() {
 		credentialsService,
 		workflowRepository,
 		eventService,
+		agentValidationService,
+		telemetry,
 	};
 }
 
@@ -617,6 +637,41 @@ describe('AgentConfigService', () => {
 					subAgents: { agents: [{ agentId, useWhen: 'Use for self-delegation.' }] },
 				}),
 			).rejects.toThrow('cannot use itself');
+		});
+
+		it('reports setup completion after claiming the marker', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			const agent = makeAgent({ tools: storedCustomTool });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				tools: [{ type: 'custom', id: 'tool_1' }],
+			} as unknown as AgentJsonConfig);
+
+			expect(agentRepository.claimSetupCompleted).toHaveBeenCalledWith(agentId, expect.any(Date));
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
+				expect.objectContaining({ agent_id: agentId, tool_count: 1 }),
+			);
+		});
+
+		it('does not report setup completion when the save fails', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ tools: storedCustomTool }),
+			);
+			agentRepository.save.mockRejectedValue(new Error('db down'));
+
+			await expect(
+				service.updateConfig(agentId, projectId, {
+					...baseConfig,
+					tools: [{ type: 'custom', id: 'tool_1' }],
+				} as unknown as AgentJsonConfig),
+			).rejects.toThrow('db down');
+
+			expect(agentRepository.claimSetupCompleted).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 	});
 });

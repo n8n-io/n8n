@@ -23,6 +23,7 @@ import { Telemetry } from '@/telemetry';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentValidationService } from './agent-validation.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
@@ -89,6 +90,7 @@ export class AgentPublishService {
 		private readonly credentialsService: CredentialsService,
 		private readonly telemetry: Telemetry,
 		private readonly eventService: EventService,
+		private readonly setupCompletionService: AgentSetupCompletionService,
 	) {}
 
 	async publishAgent(
@@ -136,6 +138,16 @@ export class AgentPublishService {
 			options.ignoreDraftIntegrations,
 		);
 
+		// Backstop: a channel connect publishes the agent in the same request that
+		// adds its first capability, bypassing the config-save path. Marking here
+		// keeps "setup completed" a superset of "published".
+		const emitSetupCompleted = this.setupCompletionService.recordPublishedSetupComplete(
+			agent,
+			projectId,
+			user,
+			targetHistory ? targetHistory.schema : agent.schema,
+		);
+
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (targetHistory) {
 				agent.activeVersionId = targetHistory.versionId;
@@ -174,6 +186,7 @@ export class AgentPublishService {
 			source,
 			version_id: agent.activeVersionId!,
 		});
+		await emitSetupCompleted?.();
 
 		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {

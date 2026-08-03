@@ -6,7 +6,7 @@ import type { RoleMember, RoleMembersResponse } from '@n8n/api-types';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 

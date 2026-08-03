@@ -26,7 +26,7 @@ import { registerToastNotifier } from '@/app/init/toastNotifier';
 const showMessage = vi.fn();
 const showToast = vi.fn();
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
 }));
 

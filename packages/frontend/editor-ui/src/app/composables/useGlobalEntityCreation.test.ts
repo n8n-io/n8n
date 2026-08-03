@@ -4,7 +4,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { mockedStore } from '@/__tests__/utils';
 import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
@@ -37,7 +37,7 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {

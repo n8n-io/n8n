@@ -42,6 +42,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
+import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
@@ -253,6 +254,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<WorkflowRepository>(),
 			mock<EventService>(),
+			mock<AgentSetupCompletionService>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
@@ -298,6 +300,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			telemetry,
 			mock<EventService>(),
+			mock<AgentSetupCompletionService>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(

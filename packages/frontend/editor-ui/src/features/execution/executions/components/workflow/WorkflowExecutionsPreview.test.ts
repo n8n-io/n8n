@@ -22,7 +22,7 @@ import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 const showMessage = vi.fn();
 const showError = vi.fn();
 const showToast = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError, showToast }),
 }));
 
