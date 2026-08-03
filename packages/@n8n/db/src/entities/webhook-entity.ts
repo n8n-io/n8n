@@ -29,10 +29,8 @@ export class WebhookEntity {
 	 * - Dynamic: `${uuid}/user/:id/posts`
 	 *
 	 * Appended to `${instanceUrl}/webhook/` or `${instanceUrl}/test-webhook/`.
-	 * For dynamic webhooks this is the templated path (placeholders intact), which
-	 * the OAuth resolver uses as the canonical, per-trigger resource identity.
 	 */
-	get uniquePath() {
+	private get uniquePath() {
 		return this.webhookPath.includes(':')
 			? [this.webhookId, this.webhookPath].join('/')
 			: this.webhookPath;

@@ -192,6 +192,7 @@ export class AgentExecutionService {
 					configuration: params.telemetry.configuration,
 					latency_ms: record.duration,
 					cost: record.totalCost ?? 0,
+					token_count: record.usage?.totalTokens ?? 0,
 					tool_call_count: record.timeline.filter((t) => t.type === 'tool-call').length,
 				});
 			} catch (error) {
