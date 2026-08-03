@@ -21,6 +21,8 @@ export interface ArtifactTab {
 	name: string;
 	icon: IconName;
 	projectId?: string;
+	/** An agent artifact with no agent row behind it yet. */
+	pending?: boolean;
 }
 
 const ARTIFACT_ICON_MAP: Record<string, IconName> = {
@@ -50,6 +52,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 					name: entry.name,
 					icon: ARTIFACT_ICON_MAP[entry.type] ?? 'file',
 					projectId: entry.projectId,
+					pending: entry.pending,
 				});
 			}
 		}
@@ -81,6 +84,11 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	const activeAgentProjectId = computed(() => {
 		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
 		return tab?.type === 'agent' ? (tab.projectId ?? null) : null;
+	});
+
+	const activeAgentPending = computed(() => {
+		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'agent' && tab.pending === true;
 	});
 
 	const executionResultsByWorkflow = computed(() => {
@@ -116,10 +124,19 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		return undefined;
 	});
 
-	// Open the attached resource on arrival. Only when nothing is open, so it
-	// never steals focus from an agent-driven open or a user selection.
+	// An unsaved new-agent artifact carries no attachment (there is no agent to
+	// attach yet), so it opens off the thread's pending marker instead — the user
+	// arrived here by asking for a new agent, so it should already be on screen.
+	const pendingAgentTabId = computed(() => allArtifactTabs.value.find((tab) => tab.pending)?.id);
+
+	const initialArtifactId = computed(
+		() => firstAttachedArtifactId.value ?? pendingAgentTabId.value,
+	);
+
+	// Open the arriving resource. Only when nothing is open, so it never steals
+	// focus from an agent-driven open or a user selection.
 	watch(
-		firstAttachedArtifactId,
+		initialArtifactId,
 		(id) => {
 			if (!id || activeTabId.value !== undefined) return;
 			activeTabId.value = id;
@@ -430,6 +447,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		activeDataTableProjectId,
 		activeAgentId,
 		activeAgentProjectId,
+		activeAgentPending,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,

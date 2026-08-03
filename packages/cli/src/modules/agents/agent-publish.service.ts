@@ -22,9 +22,11 @@ import { Telemetry } from '@/telemetry';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentValidationService } from './agent-validation.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
+import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
@@ -86,6 +88,7 @@ export class AgentPublishService {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly telemetry: Telemetry,
+		private readonly setupCompletionService: AgentSetupCompletionService,
 	) {}
 
 	async publishAgent(
@@ -133,6 +136,16 @@ export class AgentPublishService {
 			options.ignoreDraftIntegrations,
 		);
 
+		// Backstop: a channel connect publishes the agent in the same request that
+		// adds its first capability, bypassing the config-save path. Marking here
+		// keeps "setup completed" a superset of "published".
+		const emitSetupCompleted = this.setupCompletionService.recordPublishedSetupComplete(
+			agent,
+			projectId,
+			user,
+			targetHistory ? targetHistory.schema : agent.schema,
+		);
+
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (targetHistory) {
 				agent.activeVersionId = targetHistory.versionId;
@@ -170,6 +183,7 @@ export class AgentPublishService {
 			source,
 			version_id: agent.activeVersionId!,
 		});
+		await emitSetupCompleted?.();
 
 		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
@@ -374,6 +388,29 @@ export class AgentPublishService {
 	 */
 	async hasPublishHistory(agentId: string): Promise<boolean> {
 		return await this.agentHistoryRepository.existsForAgent(agentId);
+	}
+
+	/**
+	 * Load one published version snapshot (schema, tools, skills) plus its
+	 * frozen task rows, for read-only inspection.
+	 */
+	async getVersion(
+		agentId: string,
+		projectId: string,
+		versionId: string,
+	): Promise<{ agent: Agent; version: AgentHistory; tasks: AgentTaskSnapshot[] }> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
+		if (!version) {
+			throw new NotFoundError(`Version "${versionId}" not found for agent "${agentId}"`);
+		}
+
+		const tasks = await this.agentTaskSnapshotRepository.findByVersionId(versionId);
+		return { agent, version, tasks };
 	}
 
 	async listPublishHistory(

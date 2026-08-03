@@ -4,7 +4,7 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 } from '../communityNodes.constants';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
@@ -16,7 +16,7 @@ import { useRouter } from 'vue-router';
 import { usePushConnection } from '@/app/composables/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { N8nEmptyState, N8nButton, N8nHeading, N8nNotice } from '@n8n/design-system';

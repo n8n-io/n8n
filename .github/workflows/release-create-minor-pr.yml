@@ -2,12 +2,47 @@ name: 'Release: Create Minor Release PR'
 
 on:
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Create the release PR even if a minor release already went live this week.'
+        type: boolean
+        default: false
   # schedule:
   #   - cron: 0 8 * * 2 # 9am CET (UTC+1), Tuesday
 
+permissions:
+  contents: read
+
 jobs:
+  check-cadence:
+    name: Check release cadence
+    runs-on: ubuntu-latest
+    steps:
+      # Guards against a misbehaving scheduler dispatching this workflow more than once a week.
+      - name: Fail if a minor release already went live this week
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          if [ "$FORCE" = "true" ]; then
+            echo "Force input set, skipping cadence check."
+            exit 0
+          fi
+          LAST_LIVE=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,publishedAt \
+            --jq '[.[] | select(.publishedAt != null and (.tagName | test("^n8n@[0-9]+\\.[0-9]+\\.0$")))] | max_by(.publishedAt).publishedAt // empty')
+          if [ -n "$LAST_LIVE" ] && [ "$(date -u -d "$LAST_LIVE" +%G-%V)" = "$(date -u +%G-%V)" ]; then
+            echo "::error::A minor release already went live this week ($LAST_LIVE). Re-run with the 'force' input to override."
+            exit 1
+          fi
+          echo "No minor release this week yet (last went live: ${LAST_LIVE:-never}), proceeding."
+
   create-release-pr:
     name: Create release PR
+    needs: [check-cadence]
+    # The called workflow requires these; a caller cannot grant less than it requests.
+    permissions:
+      contents: write
+      pull-requests: write
     uses: ./.github/workflows/release-create-pr.yml
     secrets: inherit
     with:

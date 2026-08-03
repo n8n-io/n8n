@@ -1,17 +1,21 @@
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
+	DEFAULT_AGENT_PERSONALISATION,
+	getRandomAgentPersonalisationGradient,
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
 	type AgentJsonConfig,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { In, ProjectRelationRepository } from '@n8n/db';
+import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
@@ -19,7 +23,11 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
-import { AgentRepository } from './repositories/agent.repository';
+import {
+	AgentRepository,
+	type AgentSummary,
+	type AgentSummaryFilters,
+} from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { EventService } from '@/events/event.service';
 
@@ -29,6 +37,7 @@ export class AgentsService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
@@ -38,23 +47,53 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
-	async create(projectId: string, name: string): Promise<Agent> {
+	/**
+	 * `id` lets the caller mint the agent id before deciding to persist it, so a
+	 * surface can reference the agent (an artifact tab, a thread binding) while
+	 * it is still unsaved. Both the REST and the builder path may then race to
+	 * create the same id; the loser adopts the winner's row rather than failing.
+	 */
+	async create(
+		projectId: string,
+		name: string,
+		{ availableInMCP = false, id }: { availableInMCP?: boolean; id?: string } = {},
+	): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
 			model: '',
 			instructions: '',
 			tools: [],
 			skills: [],
+			// Seeded at birth so every agent has a distinct tile, and so the builder
+			// sees an existing icon name when it reads the config — without one it
+			// invents its own, which the icon tile cannot render.
+			personalisation: {
+				icon: DEFAULT_AGENT_PERSONALISATION.icon,
+				gradient: getRandomAgentPersonalisationGradient(),
+			},
 		};
 
 		const agent = this.agentRepository.create({
+			...(id ? { id } : {}),
 			name,
 			projectId,
 			schema: defaultConfig,
 			versionId: uuid(),
+			availableInMCP,
 		});
 
-		const saved = await this.agentRepository.save(agent);
+		let saved: Agent;
+		try {
+			saved = await this.agentRepository.save(agent);
+		} catch (error) {
+			if (!id || !isUniqueConstraintError(error)) throw error;
+			// Only adopt the existing row when it is the agent this caller asked
+			// for. An id taken in another project is a genuine collision.
+			const existing = await this.agentRepository.findByIdAndProjectId(id, projectId);
+			if (!existing) throw error;
+			this.logger.debug('Adopted concurrently created SDK agent', { agentId: id, projectId });
+			return existing;
+		}
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
 
@@ -161,6 +200,35 @@ export class AgentsService {
 		});
 	}
 
+	/**
+	 * Lean agent listing (no JSON config columns, no activeVersion join) with
+	 * filters and limit applied in the database.
+	 */
+	async findSummariesInProjects(
+		projectIds: string[] | null,
+		options: AgentSummaryFilters = {},
+	): Promise<AgentSummary[]> {
+		return await this.agentRepository.findSummariesByProjectIds(projectIds, options);
+	}
+
+	/**
+	 * Resolves an agent by ID within the projects the user can access. Agent IDs
+	 * are globally unique, so this lets callers address an agent without knowing
+	 * its project up front. Mirrors `@ProjectScope`'s access model: global agent
+	 * scopes (instance owners/admins) grant access without an explicit project
+	 * relation.
+	 */
+	async findByIdForUser(agentId: string, user: User): Promise<Agent | null> {
+		if (hasGlobalScope(user, 'agent:read')) {
+			return await this.agentRepository.findById(agentId);
+		}
+
+		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
+		const projectIds = projectRelations.map((pr) => pr.projectId);
+
+		return await this.agentRepository.findByIdInProjects(agentId, projectIds);
+	}
+
 	async findByUserPaginated(
 		userId: string,
 		options: ListAgentsQueryDto,
@@ -206,6 +274,15 @@ export class AgentsService {
 		}
 
 		await this.agentKnowledgeService.destroySandbox(projectId, agentId);
+
+		try {
+			await this.agentChatAttachmentService.deleteByAgent(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to delete chat attachments on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {

@@ -11,6 +11,7 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentPublishService } from '../agent-publish.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
@@ -46,6 +47,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		tools: {},
 		skills: {},
 		integrations: [],
+		setupCompletedAt: null,
 		...overrides,
 	} as unknown as Agent;
 }
@@ -114,6 +116,7 @@ function makeService() {
 		configurable: true,
 	});
 
+	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	agentHistoryRepository.saveVersion.mockResolvedValue(makeHistory());
 	customToolsService.snapshotConfiguredTools.mockReturnValue(null);
 	chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
@@ -145,6 +148,7 @@ function makeService() {
 		agentValidationService,
 		credentialsService,
 		telemetry,
+		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 	);
 
 	return {
@@ -316,6 +320,41 @@ describe('AgentPublishService', () => {
 			source: 'builder',
 			version_id: versionId,
 		});
+	});
+
+	it('marks setup complete when publishing an agent that never passed the config-save path', async () => {
+		// Connecting a chat channel adds the first capability and publishes in the
+		// same request, so without this backstop the agent would be published
+		// while still unmarked.
+		const { service, agentRepository, telemetry } = makeService();
+		const agent = makeAgent({ integrations: [{ type: 'slack', credentialId: 'slack-cred' }] });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await service.publishAgent(agentId, projectId, user, 'channel_connect');
+
+		expect(agent.setupCompletedAt).toBeInstanceOf(Date);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
+			expect.objectContaining({ agent_id: agentId, trigger_count: 1, status: 'production' }),
+		);
+	});
+
+	it('does not re-report setup completion for an already marked agent', async () => {
+		const { service, agentRepository, telemetry } = makeService();
+		const completedAt = new Date('2026-01-01T00:00:00.000Z');
+		const agent = makeAgent({
+			integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
+			setupCompletedAt: completedAt,
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await service.publishAgent(agentId, projectId, user, 'editor');
+
+		expect(agent.setupCompletedAt).toBe(completedAt);
+		expect(telemetry.track).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
+			expect.anything(),
+		);
 	});
 
 	it('rejects publishing when a configured task body is missing', async () => {
@@ -513,6 +552,34 @@ describe('AgentPublishService', () => {
 		expect(taskRepo.update).toHaveBeenCalledWith(
 			'task-1',
 			expect.objectContaining({ objective: 'Use the older task objective' }),
+		);
+	});
+
+	it('returns a version snapshot with its task snapshots', async () => {
+		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository } =
+			makeService();
+		const version = makeHistory({ versionId: 'old-version' });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(version);
+		taskSnapshotRepository.findByVersionId.mockResolvedValue([makeTaskSnapshot()]);
+
+		const result = await service.getVersion(agentId, projectId, 'old-version');
+
+		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith(
+			'old-version',
+			agentId,
+		);
+		expect(result.version).toBe(version);
+		expect(result.tasks).toEqual([makeTaskSnapshot()]);
+	});
+
+	it('throws when the requested version does not exist for the agent', async () => {
+		const { service, agentRepository, agentHistoryRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(null);
+
+		await expect(service.getVersion(agentId, projectId, 'nope')).rejects.toThrow(
+			'Version "nope" not found for agent "agent-1"',
 		);
 	});
 

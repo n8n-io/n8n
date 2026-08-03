@@ -4,7 +4,11 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import { DATA_TABLES_TOOL_ID, DOMAIN_TOOL_IDS, EVAL_CONFIG_TOOL_ID } from '../../src/tools/tool-ids';
+import {
+	DATA_TABLES_TOOL_ID,
+	DOMAIN_TOOL_IDS,
+	EVAL_CONFIG_TOOL_ID,
+} from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
 	ArtifactRef,
@@ -494,7 +498,7 @@ export function seededTurnCounters(seededTurns: TranscriptTurn[]): TurnCounter[]
 	});
 }
 
-/** Prepend the seeded prefix's counters to live metrics so a seedThread case's
+/** Prepend the seeded prefix's counters to live metrics so a seeded case's
  *  metrics span the whole conversation (matching the unified transcript). Live
  *  `reachedRunFinishCleanly` is preserved (it describes the evaluated run); an
  *  empty prefix returns metrics deep-equal to the live ones. */

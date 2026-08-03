@@ -564,9 +564,9 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'Test Workflow')).toBe(true);
 	});
 
-	it('sets thinking config', async () => {
+	it('sets generic reasoning effort', async () => {
 		const config = makeConfig({
-			config: { thinking: { provider: 'anthropic', budgetTokens: 5000 } },
+			config: { reasoning: 'high' },
 		});
 
 		const agent = await buildFromJson(
@@ -580,8 +580,7 @@ describe('buildFromJson()', () => {
 		);
 		const snap: AgentSnapshot = agent.snapshot;
 
-		expect(snap.thinking).not.toBeNull();
-		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
+		expect(snap.reasoning).toBe('high');
 	});
 
 	it('sets prompt caching config with an Anthropic ttl', async () => {

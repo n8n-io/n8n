@@ -8,6 +8,11 @@ export interface ProvisioningConfig {
 	scopesProvisionInstanceRole: boolean;
 	scopesProvisionProjectRoles: boolean;
 	scopesUseExpressionMapping: boolean;
+	/**
+	 * Default condition: role slug (or BLOCK_ACCESS_ASSIGNMENT) applied when a
+	 * login doesn't resolve to an instance role. Unset preserves legacy behavior.
+	 */
+	defaultInstanceRole?: string;
 }
 
 export type ProvisioningConfigPatch = Partial<ProvisioningConfig> & {

@@ -1,7 +1,7 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -81,6 +81,12 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * don't support suspend/resume — the config modals hide the toggle.
 	 */
 	supportsToolApproval?: boolean;
+	/**
+	 * Creates the agent row if the host is still showing an unsaved agent, so a
+	 * handler that calls an agent-scoped API has something to call it against.
+	 * Hosts whose agent always exists omit it.
+	 */
+	ensureAgentPersisted?: () => Promise<void>;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
 
@@ -101,6 +107,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		scheduleSkillSave,
 		localSkills,
 		supportsToolApproval,
+		ensureAgentPersisted,
 		telemetry,
 	} = deps;
 
@@ -435,6 +442,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						let versionId: string | null;
 						let skillId: string;
 						try {
+							await ensureAgentPersisted?.();
 							const result = await createAgentSkill(
 								rootStore.restApiContext,
 								targetProjectId,

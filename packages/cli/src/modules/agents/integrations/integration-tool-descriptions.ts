@@ -26,6 +26,12 @@ export function buildActionToolDescription(
 		...descriptor.actionToolDefinitions.map((definition) => `- ${definition.description}`),
 		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include cards that wait for a user response.`,
 		'respond uses the latest message context for this integration connection.',
+		'If this turn was triggered by an inbound chat message, your final reply text is posted to that conversation automatically — do not duplicate it with a text-only respond. Call respond only with message.card, or after switching to a different target.',
+		...(descriptor.actions.includes('do_not_respond')
+			? [
+					'Always reply to direct messages and direct mentions. For messages in subscribed group channels or threads where you have nothing useful to add, or when explicitly asked not to reply, call do_not_respond as your final action and end the turn without writing any text.',
+				]
+			: []),
 		'Use message.card for cards, images, key-value summaries, and feedback requests. Include components such as section, fields, image, divider, button, select, or radio_select.',
 		'For fields components, use { type: "fields", fields: [{ label: "Account", value: "Acme" }] }. The key items is also accepted as a fields alias.',
 		'For button components, use { type: "button", label: "Approve", value: "approve" }. If label is omitted, text is used as the button label.',

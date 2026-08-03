@@ -16,24 +16,23 @@ import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/
 import type { CliArgs } from '../cli/args';
 import { buildWorkflowViaMcp, type McpBuildSettings } from '../cli/mcp-builder';
 import type { N8nClient } from '../clients/n8n-client';
+import {
+	fetchAgentScenarioContext,
+	findAgentArtifactRef,
+	type executeAgentScenario,
+} from '../harness/agent-execution';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
+import type { BuildResult } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
+import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
 import {
 	fetchPrebuiltBuild,
 	pickPrebuiltWorkflowId,
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
-import {
-	effectiveTimeoutMs,
-	fetchAgentScenarioContext,
-	findAgentArtifactRef,
-	runWorkflowChecks,
-	type BuildResult,
-	type executeAgentScenario,
-	type executeScenario,
-	type ScenarioSeedContext,
-} from '../harness/runner';
+import type { executeScenario } from '../harness/scenario-execution';
+import type { ScenarioSeedContext } from '../harness/seed-tables';
 import { isTransientNetworkError } from '../harness/transient-error';
 import type {
 	BuildExpectationResult,
@@ -76,9 +75,7 @@ export type BuildArgs = Pick<
 	| 'conversation'
 	| 'messageBudget'
 	| 'credentials'
-	| 'seedFile'
-	| 'priorConversation'
-	| 'seedThread'
+	| 'seed'
 	| 'executionScenarios'
 	| 'outcomeExpectations'
 > & { timeoutMs: number };
@@ -451,9 +448,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						conversation: entry.conversation,
 						messageBudget: entry.messageBudget,
 						credentials: entry.credentials,
-						seedFile: entry.seedFile,
-						priorConversation: entry.priorConversation,
-						seedThread: entry.seedThread,
+						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,
 						outcomeExpectations: entry.outcomeExpectations,
 						timeoutMs,

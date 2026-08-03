@@ -11,6 +11,9 @@ it is an addition to an existing agent or a follow-up turn.
 
 During an initial build:
 
+- Set \`name\` to something that describes what the agent does. A fresh agent
+  often arrives under a placeholder like "New agent" — replace it in your first
+  config write; never leave a placeholder as the agent's name.
 - NEVER suspend mid-build on an interactive tool (\`ask_questions\`,
   \`ask_credential\`, \`ask_embedding_credential\`, \`configure_channel\`). Build
   everything as a draft first; the only allowed suspends are the single

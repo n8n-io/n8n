@@ -341,7 +341,7 @@ describe('useAgentToolRefAdapter', () => {
 	});
 
 	describe('updateWorkflowToolRef()', () => {
-		it('merges edited fields into the ref, preserving type and workflow reference', () => {
+		it('merges edited fields into the ref, preserving type', () => {
 			const original: AgentJsonToolRef = {
 				type: 'workflow',
 				workflow: 'Notify Sales',
@@ -353,6 +353,7 @@ describe('useAgentToolRefAdapter', () => {
 				name: 'Ping Sales',
 				description: 'new',
 				allOutputs: true,
+				workflow: 'Notify Sales',
 			});
 			expect(updated).toStrictEqual({
 				type: 'workflow',
@@ -363,6 +364,23 @@ describe('useAgentToolRefAdapter', () => {
 			});
 		});
 
+		it('persists a changed workflow target', () => {
+			const original: AgentJsonToolRef = {
+				type: 'workflow',
+				workflow: 'Notify Sales',
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+			};
+			const updated = updateWorkflowToolRef(original, {
+				name: 'Invoice Sender',
+				description: 'new',
+				allOutputs: false,
+				workflow: 'Invoice Sender',
+			});
+			expect(updated).toMatchObject({ workflow: 'Invoice Sender', name: 'Invoice Sender' });
+		});
+
 		it('is a no-op for non-workflow refs', () => {
 			const nodeRef: AgentJsonToolRef = {
 				type: 'node',
@@ -370,7 +388,12 @@ describe('useAgentToolRefAdapter', () => {
 				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
 			};
 			expect(
-				updateWorkflowToolRef(nodeRef, { name: 'x', description: 'y', allOutputs: true }),
+				updateWorkflowToolRef(nodeRef, {
+					name: 'x',
+					description: 'y',
+					allOutputs: true,
+					workflow: 'z',
+				}),
 			).toBe(nodeRef);
 		});
 	});

@@ -3,12 +3,12 @@ import { AGENT_BUILDER_DEFAULT_MODEL } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useAgentModelCredentials } from '../../composables/useAgentModelCredentials';
 import { useAgentProjectId } from '../../composables/useAgentProjectId';
 import AgentModelSelector from '../AgentModelSelector.vue';
 import { computed, watch } from 'vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useAgentBuilderSettingsStore } from '../../agentBuilderSettings.store';
 import { sanitizeModelId } from '../../utils/model-string';
 import { useModelCatalog } from '../../composables/useModelCatalog';
@@ -60,6 +60,11 @@ const showCustomPicker = computed(() => store.mode === 'custom' || !isProxyAvail
 const filteredAgents = computed<AgentModelsByProvider>(() =>
 	getModelsForPicker(credentialsByProvider.value),
 );
+
+const boundCredentialId = computed(() => {
+	const settings = store.effectiveSettings;
+	return settings.mode === 'custom' ? settings.credentialId : null;
+});
 
 const selectedAgent = computed<AgentModelOption | null>(() => {
 	const settings = store.effectiveSettings;
@@ -206,6 +211,7 @@ function onCancel() {
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
+				:bound-credential-id="boundCredentialId"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
 			/>

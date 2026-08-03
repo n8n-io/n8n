@@ -1,12 +1,12 @@
-// Conversation seeding for eval builds — backs the `seedFile` (synthetic) and
-// `priorConversation` (prose) paths. Real conversations use `seedThread`
-// (reconstructed from a LangSmith trace; see langsmith-seed.ts).
+// Conversation seeding for eval builds — the restore payload behind the case
+// schema's `seed` slot. `mode: 'inline'` carries this payload in the case body;
+// `mode: 'replay'` reconstructs one from a LangSmith trace at run time (see
+// langsmith-seed.ts). Either way the shape below is what reaches restore-thread.
 
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
@@ -20,7 +20,7 @@ import {
 import type { ConversationTurn, TranscriptStep, TranscriptTurn } from '../types';
 
 // ---------------------------------------------------------------------------
-// Seed file schema
+// Seed schema
 // ---------------------------------------------------------------------------
 
 const SeedWorkflowSchema = z.object({
@@ -44,11 +44,85 @@ const SeedDataTableSchema = z.object({
 	// of a trace and are kept out of the eval instance entirely.
 });
 
+/** A content block. Only `type` is ours to require — the block shapes belong to
+ *  the agent's message store, so an unrecognised one is accepted and simply not
+ *  interpreted. `.passthrough()` is load-bearing: `z.object` strips unknown keys,
+ *  which would silently gut `toolCallId`/`input`/`output` from every tool call. */
+const SeedMessageBlockSchema = z
+	.object({
+		type: z.string().min(1, 'a content block needs a non-empty `type`'),
+	})
+	.passthrough();
+
+/** A message envelope. Validated because a hand-authored seed is now the primary
+ *  path, and a malformed message is stored verbatim AND skipped by
+ *  `transcriptPrefixFromSeed` — so the case grades against a transcript that
+ *  doesn't match what the agent actually saw. Envelope only; block internals are
+ *  the store's contract, not ours. */
+const seedMessageObjectSchema = z
+	.object({
+		// The required_error names both authoring forms: a message that is neither a
+		// full envelope nor a well-formed `{role, text}` shorthand lands here, and
+		// "Required" alone wouldn't hint that the shorthand exists.
+		id: z
+			.string({
+				required_error:
+					'is required — a prior message is either a full envelope (id/role/type/createdAt/content) or the `{role, text}` shorthand',
+			})
+			.min(1),
+		// Restricted to the two roles the transcript builder renders: any other
+		// value is guaranteed to vanish from the judge transcript, which is the
+		// exact silent failure this schema exists to catch. If the message store
+		// gains a role, the builder needs updating too — fail loudly then.
+		// Optional in the shape because a `custom` message carries no role; the
+		// refine below requires it for every message that is actually rendered.
+		role: z.enum(['user', 'assistant']).optional(),
+		/** The store's own discriminator (`llm`, `custom`, …) — not enumerated. */
+		type: z.string().min(1),
+		/** Ordering before the live turn depends on this being a real timestamp. */
+		createdAt: z
+			.string()
+			.min(1)
+			.refine((v) => !Number.isNaN(Date.parse(v)), {
+				message: 'must be a parseable timestamp (e.g. an ISO 8601 string)',
+			}),
+		content: z.array(SeedMessageBlockSchema).optional(),
+	})
+	.passthrough();
+
+/** Inferred from the pre-`superRefine` shape — identical type, but resolving the
+ *  refined `ZodEffects` chain trips "type instantiation excessively deep" under
+ *  CI's type-aware lint (same reason as `EvalTestCaseInput` in schema.ts). */
+export type SeedMessage = z.infer<typeof seedMessageObjectSchema>;
+
+export const SeedMessageSchema = seedMessageObjectSchema.superRefine((message, ctx) => {
+	// `custom` messages are stored but never rendered (no role, any content
+	// shape). Everything else is read by the transcript builder, which needs a
+	// role it renders and an array of blocks.
+	if (message.type === 'custom') return;
+	if (message.role === undefined) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['role'],
+			message:
+				'is required (only `type: custom` messages may omit it — they are stored but never rendered)',
+		});
+	}
+	if (!Array.isArray(message.content)) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['content'],
+			message:
+				'must be an array of content blocks (only `type: custom` messages may omit it — they are stored but never rendered)',
+		});
+	}
+});
+
 export const ConversationSeedSchema = z.object({
 	/** Provenance (thread id, instance, export time) — informational only. */
 	source: z.record(z.unknown()).optional(),
 	/** Native agent message log (user/assistant turns with resolved tool-call blocks). */
-	messages: z.array(z.record(z.unknown())).min(1),
+	messages: z.array(SeedMessageSchema).min(1),
 	/** Workflows the history references, recreated on restore. */
 	workflows: z.array(SeedWorkflowSchema).default([]),
 	/** Data tables the history references, recreated (and id-rewritten) on restore. */
@@ -57,44 +131,96 @@ export const ConversationSeedSchema = z.object({
 
 export type ConversationSeed = z.infer<typeof ConversationSeedSchema>;
 
-export function loadConversationSeed(filePath: string): ConversationSeed {
-	let raw: unknown;
-	try {
-		raw = JSON.parse(readFileSync(filePath, 'utf-8'));
-	} catch (error) {
-		throw new Error(
-			`Failed to read conversation seed ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
-		);
-	}
-	const parsed = ConversationSeedSchema.safeParse(raw);
-	if (!parsed.success) {
-		const issues = parsed.error.issues
-			.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
-			.join('\n');
-		throw new Error(`Invalid conversation seed ${filePath}:\n${issues}`);
-	}
-	return parsed.data;
+// ---------------------------------------------------------------------------
+// `{role, text}` shorthand → seed messages
+// ---------------------------------------------------------------------------
+
+/** A `{role, text}` prior message — the authoring sugar the `priorConversation`
+ *  key used to be. Recognised by its EXACT key set (and valid values), so a full
+ *  envelope is never mistaken for one, and a near-miss falls through to the
+ *  envelope schema and gets a real error instead of being expanded into a
+ *  message the transcript builder would silently drop. */
+function isShorthandTurn(
+	value: unknown,
+): value is { role: ConversationTurn['role']; text: string | string[] } {
+	if (!isRecord(value)) return false;
+	const keys = Object.keys(value);
+	if (keys.length !== 2 || !keys.includes('role') || !keys.includes('text')) return false;
+	if (value.role !== 'user' && value.role !== 'assistant') return false;
+	return (
+		typeof value.text === 'string' ||
+		(Array.isArray(value.text) && value.text.every((line) => typeof line === 'string'))
+	);
 }
 
-// ---------------------------------------------------------------------------
-// Prose prior turns → seed messages
-// ---------------------------------------------------------------------------
-
-/** Convert authored prose turns into native llm messages, stamped slightly in
- *  the past (ascending) so they order before the live turn. */
-export function seedFromProse(turns: ConversationTurn[]): ConversationSeed {
-	const base = Date.now() - (turns.length + 1) * 1000;
-	return {
-		messages: turns.map((turn, index) => ({
+/**
+ * Expand `{role, text}` shorthand messages into native llm envelopes; anything
+ * else passes through for the envelope schema to validate.
+ *
+ * Array-level rather than per-message because the stamped timestamps ascend by
+ * position — slightly in the past, so seeded history always orders before the
+ * live turn and a shorthand author cannot get the ordering wrong. A full
+ * envelope keeps its own authored `createdAt`.
+ */
+export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
+	const base = Date.now() - (messages.length + 1) * 1000;
+	return messages.map((message, index) => {
+		if (!isShorthandTurn(message)) return message;
+		return {
 			id: randomUUID(),
 			type: 'llm',
-			role: turn.role,
-			content: [{ type: 'text', text: turn.text }],
+			role: message.role,
+			// Array form = lines, joined — same normalization as
+			// `conversationTurnTextSchema` applies to an authored conversation turn.
+			content: [
+				{
+					type: 'text',
+					text: Array.isArray(message.text) ? message.text.join('\n') : message.text,
+				},
+			],
 			createdAt: new Date(base + index * 1000).toISOString(),
-		})),
-		workflows: [],
-		dataTables: [],
+		};
+	});
+}
+
+/**
+ * Pull an inline seed's timestamps back into the past when the author put any of
+ * them in the future.
+ *
+ * The shorthand stamps its own ascending pre-live timestamps, so it can't get
+ * this wrong; a full envelope keeps what it was authored with, and a future
+ * stamp sorts the seeded turn AFTER the live turn — the agent then sees its own
+ * history out of order, and the judge grades a transcript that never happened.
+ *
+ * Restamps the WHOLE sequence, not just the offending entry. A per-message clamp
+ * reorders relative to the array: `[future A, past B]` leaves B alone and moves A
+ * to ~now, so the store presents B then A while `transcriptPrefixFromSeed` still
+ * grades array order. Array order is the authority, so the rewrite reproduces it
+ * on the same ascending slots the shorthand uses. Authored timestamps are
+ * therefore only preserved when every one of them is already in the past.
+ *
+ * Inline (hand-authored) seeds only — a `replay` seed is reconstructed from a
+ * real trace and never reaches this schema, so no real timestamp can be moved.
+ */
+export function clampFutureSeedTimestamps(messages: unknown[]): unknown[] {
+	const now = Date.now();
+	const stampOf = (message: unknown): number | undefined => {
+		if (!isRecord(message) || typeof message.createdAt !== 'string') return undefined;
+		const at = Date.parse(message.createdAt);
+		// Unparseable is the envelope schema's error to report, not ours to paper over.
+		return Number.isNaN(at) ? undefined : at;
 	};
+	const anyFuture = messages.some((message) => (stampOf(message) ?? -Infinity) >= now);
+	if (!anyFuture) return messages;
+
+	const base = now - (messages.length + 1) * 1000;
+	return messages.map((message, index) => {
+		if (stampOf(message) === undefined) return message;
+		return {
+			...(message as Record<string, unknown>),
+			createdAt: new Date(base + index * 1000).toISOString(),
+		};
+	});
 }
 
 // ---------------------------------------------------------------------------

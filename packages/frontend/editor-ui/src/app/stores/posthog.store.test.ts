@@ -1,14 +1,14 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FrontendSettings } from '@n8n/api-types';
 import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
 import { nextTick } from 'vue';
 import { defaultSettings } from '@/__tests__/defaults';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import type { FeatureFlags } from 'n8n-workflow';
 import postHogInitStub from '../../../public/static/posthog.init.js?raw';
 

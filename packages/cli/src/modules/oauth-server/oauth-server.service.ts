@@ -22,7 +22,12 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { INSTANCE_MCP_RESOURCE_ID } from '@/modules/mcp/mcp-protected-resource';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
@@ -31,8 +36,6 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { UserManagementMailer } from '@/user-management/email';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
@@ -102,6 +105,8 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly userConsentRepository: UserConsentRepository,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly mailer: UserManagementMailer,
+		private readonly urlService: UrlService,
+		private readonly eventService: EventService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -109,7 +114,7 @@ export class OAuthServerService implements OAuthServerProvider {
 			getClient: async (clientId: string): Promise<OAuthClientInformationFull | undefined> => {
 				const client = await this.oauthClientRepository.findOneBy({ id: clientId });
 				if (!client) {
-					return undefined;
+					return await this.resolveVirtualClient(clientId);
 				}
 
 				// Some clients echo back the `scope` they saw on registration and
@@ -146,6 +151,7 @@ export class OAuthServerService implements OAuthServerProvider {
 					clientSecret: client.client_secret ?? null,
 					clientSecretExpiresAt: client.client_secret_expires_at ?? null,
 					tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
+					isFirstParty: false,
 				});
 
 				await this.enforceClientLimit(client.client_id);
@@ -157,7 +163,7 @@ export class OAuthServerService implements OAuthServerProvider {
 
 	/** Returns true when the instance is already at or above the registered-client cap. */
 	async isClientLimitReached(): Promise<boolean> {
-		const clientCount = await this.oauthClientRepository.count();
+		const clientCount = await this.oauthClientRepository.countBy({ isFirstParty: false });
 		return clientCount >= this.globalConfig.endpoints.mcpMaxRegisteredClients;
 	}
 
@@ -166,7 +172,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		limit: number;
 		atCapacity: boolean;
 	}> {
-		const count = await this.oauthClientRepository.count();
+		const count = await this.oauthClientRepository.countBy({ isFirstParty: false });
 		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
 		return { count, limit, atCapacity: count >= limit };
 	}
@@ -180,7 +186,7 @@ export class OAuthServerService implements OAuthServerProvider {
 	 * — matching the response shape of the pre-check guard at the route layer.
 	 */
 	private async enforceClientLimit(clientId: string): Promise<void> {
-		const clientCount = await this.oauthClientRepository.count();
+		const clientCount = await this.oauthClientRepository.countBy({ isFirstParty: false });
 		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
 		if (clientCount > limit) {
 			await this.oauthClientRepository.delete({ id: clientId });
@@ -190,6 +196,62 @@ export class OAuthServerService implements OAuthServerProvider {
 			);
 			throw new OAuthClientLimitReachedError(limit);
 		}
+	}
+
+	/**
+	 * On-demand per-trigger virtual client for a first-party protected resource
+	 * (form trigger). Public + PKCE, single redirect_uri = the trigger URL (which
+	 * equals the client_id and the resource URL). The row is persisted lazily only
+	 * to satisfy the FKs from auth codes / tokens; it is never a DCR client and is
+	 * excluded from the registered-client cap.
+	 */
+	private async resolveVirtualClient(
+		clientId: string,
+	): Promise<OAuthClientInformationFull | undefined> {
+		// First-party resources are form triggers served under the (test) webhook base
+		// URL, so a client_id that isn't can never resolve to one. Skip the resolver
+		// sweep + lazy upsert for anything else, so the unauthenticated /authorize path
+		// can't be used to fan out DB lookups on arbitrary client_ids.
+		if (!this.isFormTriggerClientId(clientId)) {
+			return undefined;
+		}
+
+		const resource = await this.resourceRegistry.getByResourceUrl(clientId);
+		if (!resource?.isFirstParty) {
+			return undefined;
+		}
+
+		await this.oauthClientRepository.upsert(
+			{
+				id: clientId,
+				name: resource.displayName ?? clientId,
+				redirectUris: [clientId],
+				grantTypes: ['authorization_code'],
+				tokenEndpointAuthMethod: 'none',
+				clientSecret: null,
+				clientSecretExpiresAt: null,
+				isFirstParty: true,
+			},
+			['id'],
+		);
+
+		return {
+			client_id: clientId,
+			client_name: resource.displayName ?? clientId,
+			redirect_uris: [clientId],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+			response_types: ['code'],
+			logo_uri: undefined,
+			tos_uri: undefined,
+		};
+	}
+
+	/** Whether a client_id could be a form-trigger resource URL (served under a webhook base URL). */
+	private isFormTriggerClientId(clientId: string): boolean {
+		return [this.urlService.getWebhookBaseUrl(), this.urlService.getTestWebhookBaseUrl()]
+			.map((base) => (base.endsWith('/') ? base : `${base}/`))
+			.some((base) => clientId.startsWith(base));
 	}
 
 	private validateClientRegistration(client: OAuthClientInformationFull): void {
@@ -393,6 +455,21 @@ export class OAuthServerService implements OAuthServerProvider {
 			grantedScopes,
 		);
 
+		// Completion of the authorization-code grant is the point at which the user
+		// has finished the OAuth flow for this client. The authorization server is
+		// shared by every protected resource on the instance (MCP, forms, ...), so
+		// only grants targeting the instance MCP server count as MCP usage.
+		const grantedResource = finalResource
+			? await this.resourceRegistry.getByResourceUrl(finalResource)
+			: this.resourceRegistry.getDefaultResource();
+		if (grantedResource?.id === INSTANCE_MCP_RESOURCE_ID) {
+			this.eventService.emit('mcp-oauth-completed', {
+				userId: authRecord.userId,
+				clientId: client.client_id,
+				clientName: client.client_name,
+			});
+		}
+
 		return {
 			access_token: accessToken,
 			token_type: 'Bearer',
@@ -445,7 +522,19 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new InvalidResourceIndicatorError(resource, knownResources);
 		}
 
-		return normalizedResource;
+		// Keep the caller's spelling when it exactly names one of the resource's own
+		// URLs — the MCP server publishes several, and a client reaching it through the
+		// instance hostname must get the audience it asked for.
+		//
+		// Otherwise return the canonical URL. Lookup deliberately tolerates equivalent
+		// spellings (a webhook's `?method=` query survives percent-encoding), and
+		// echoing one of those back would mint an `aud` that the resource gate — which
+		// compares against `getAudiences()` — can never match, leaving the client
+		// holding a token that silently 401s forever.
+		const declaredUrls = match.getResourceUrls?.() ?? [match.getResourceUrl()];
+		const isDeclared = declaredUrls.some((url) => url.replace(/\/$/, '') === normalizedResource);
+
+		return isDeclared ? normalizedResource : match.getResourceUrl();
 	}
 
 	async revokeToken(
@@ -506,6 +595,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		if (options.type) {
 			const registered = await this.oauthClientRepository.find({
 				select: { id: true, name: true },
+				where: { isFirstParty: false },
 			});
 			clientIds = registered
 				.filter((client) => matchesTypeFilter(client.name, options.type!))
@@ -552,8 +642,8 @@ export class OAuthServerService implements OAuthServerProvider {
 		// dedicated counts rather than the filtered page above.
 		const [consentOwners, mineCount, allCount] = await Promise.all([
 			listAll ? this.userConsentRepository.findConsentOwners() : undefined,
-			this.userConsentRepository.countBy({ userId: user.id }),
-			canSeeAll ? this.userConsentRepository.count() : undefined,
+			this.userConsentRepository.countConnectedConsents(user.id),
+			canSeeAll ? this.userConsentRepository.countConnectedConsents() : undefined,
 		]);
 		const owners = consentOwners ? sortOwners(consentOwners) : undefined;
 		const totals: ConnectedOAuthClientTotals = { mine: mineCount };

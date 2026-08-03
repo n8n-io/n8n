@@ -21,6 +21,7 @@ export interface ProjectExportRequest {
 	user: User;
 	projectIds: string[];
 	writer: PackageWriter;
+	includeTags: boolean;
 }
 
 interface ProjectExportResult {
@@ -109,6 +110,7 @@ export class ProjectExporter {
 			user: request.user,
 			folderIds,
 			writer: request.writer,
+			includeTags: request.includeTags,
 			basePrefix: target,
 		});
 	}
@@ -127,6 +129,7 @@ export class ProjectExporter {
 			user: request.user,
 			workflowIds: rootWorkflowIds,
 			writer: request.writer,
+			includeTags: request.includeTags,
 			basePrefix: target,
 		});
 	}

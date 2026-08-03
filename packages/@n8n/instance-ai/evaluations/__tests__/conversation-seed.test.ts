@@ -1,11 +1,7 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import {
-	loadConversationSeed,
+	ConversationSeedSchema,
+	expandSeedMessageShorthand,
 	remapSeedWorkflowIds,
-	seedFromProse,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from '../harness/conversation-seed';
@@ -46,49 +42,125 @@ function makeSeed(): ConversationSeed {
 	};
 }
 
-describe('loadConversationSeed', () => {
-	const dir = mkdtempSync(join(tmpdir(), 'conversation-seed-'));
+describe('ConversationSeedSchema message envelope', () => {
+	const message = (over: Record<string, unknown> = {}) => ({
+		id: 'm1',
+		role: 'user',
+		type: 'llm',
+		createdAt: '2026-01-01T00:00:00.000Z',
+		content: [{ type: 'text', text: 'build it' }],
+		...over,
+	});
+	const parse = (...messages: Array<Record<string, unknown>>) =>
+		ConversationSeedSchema.safeParse({ messages });
+	const errorOf = (result: ReturnType<typeof parse>) =>
+		result.success ? '' : JSON.stringify(result.error.issues);
 
-	it('loads and validates a seed file', () => {
-		const path = join(dir, 'valid.seed.json');
-		writeFileSync(path, JSON.stringify(makeSeed()));
-
-		const seed = loadConversationSeed(path);
-		expect(seed.messages).toHaveLength(2);
-		expect(seed.workflows[0].id).toBe(WF_ID);
+	it('accepts a well-formed message', () => {
+		expect(parse(message()).success).toBe(true);
 	});
 
-	it('defaults workflows to an empty array', () => {
-		const path = join(dir, 'no-workflows.seed.json');
-		writeFileSync(path, JSON.stringify({ messages: [{ id: 'm1' }] }));
+	for (const field of ['id', 'role', 'type', 'createdAt', 'content'] as const) {
+		it(`rejects a message missing ${field}`, () => {
+			const broken = message();
+			delete broken[field];
+			const result = parse(broken);
+			expect(result.success).toBe(false);
+			expect(errorOf(result)).toContain(field);
+		});
+	}
 
-		expect(loadConversationSeed(path).workflows).toEqual([]);
+	it('rejects a role the transcript builder would silently drop', () => {
+		// The typo'd-role case: stored verbatim, then skipped by
+		// transcriptPrefixFromSeed, so the case grades a transcript the agent never saw.
+		const result = parse(message({ role: 'assistent' }));
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('role');
 	});
 
-	it('rejects a seed without messages, naming the file', () => {
-		const path = join(dir, 'empty.seed.json');
-		writeFileSync(path, JSON.stringify({ messages: [] }));
-
-		expect(() => loadConversationSeed(path)).toThrow(/Invalid conversation seed .*empty\.seed/);
+	it('rejects a createdAt that is not a real timestamp', () => {
+		// Ordering before the live turn depends on this parsing.
+		const result = parse(message({ createdAt: 'yesterday' }));
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('createdAt');
 	});
 
-	it('rejects a missing file with a readable error', () => {
-		expect(() => loadConversationSeed(join(dir, 'nope.seed.json'))).toThrow(
-			/Failed to read conversation seed/,
+	it('rejects content that is not an array of blocks', () => {
+		expect(parse(message({ content: 'build it' })).success).toBe(false);
+		expect(parse(message({ content: [{ text: 'no type' }] })).success).toBe(false);
+	});
+
+	it('accepts an unknown block type — block shapes are the message store’s contract', () => {
+		expect(parse(message({ content: [{ type: 'some-future-block', payload: {} }] })).success).toBe(
+			true,
 		);
+	});
+
+	it('accepts a custom message with no role and non-array content (stored, never rendered)', () => {
+		const result = parse(
+			{ id: 'c1', type: 'custom', data: { widget: 'card' }, createdAt: '2026-01-01T00:00:00Z' },
+			message(),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('preserves unknown keys on messages and blocks rather than stripping them', () => {
+		// The load-bearing one: z.object strips unknown keys by default, which would
+		// silently gut toolCallId/input/output from every tool call before restore.
+		const result = ConversationSeedSchema.safeParse({
+			messages: [
+				message({
+					messageGroupId: 'mg-1',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-1',
+							toolName: 'build-workflow',
+							state: 'resolved',
+							input: { name: 'Digest' },
+							output: { success: true, workflowId: 'AbCdEf1234567890' },
+						},
+					],
+				}),
+			],
+		});
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		const [only] = result.data.messages;
+		expect(only.messageGroupId).toBe('mg-1');
+		expect(only.content?.[0]).toMatchObject({
+			toolCallId: 'tc-1',
+			toolName: 'build-workflow',
+			state: 'resolved',
+			input: { name: 'Digest' },
+			output: { success: true, workflowId: 'AbCdEf1234567890' },
+		});
+	});
+
+	it('accepts what the shorthand expansion produces', () => {
+		// The case schema expands shorthand BEFORE this schema validates it, so an
+		// expansion that stopped satisfying the envelope would fail every seed.
+		const messages = expandSeedMessageShorthand([
+			{ role: 'user', text: 'hi' },
+			{ role: 'assistant', text: 'hello' },
+		]);
+		expect(ConversationSeedSchema.safeParse({ messages }).success).toBe(true);
+	});
+
+	it('still requires at least one message', () => {
+		expect(ConversationSeedSchema.safeParse({ messages: [] }).success).toBe(false);
 	});
 });
 
-describe('seedFromProse', () => {
-	it('converts turns to llm text messages with ascending past timestamps', () => {
-		const seed = seedFromProse([
+describe('expandSeedMessageShorthand', () => {
+	it('converts shorthand turns to llm text messages with ascending past timestamps', () => {
+		const messages = expandSeedMessageShorthand([
 			{ role: 'user', text: 'Digest to #cosmic-otter-alerts please' },
 			{ role: 'assistant', text: 'Done — daily at 9am.' },
 		]);
 
-		expect(seed.workflows).toEqual([]);
-		expect(seed.messages).toHaveLength(2);
-		const [first, second] = seed.messages;
+		expect(messages).toHaveLength(2);
+		const [first, second] = messages as Array<Record<string, unknown>>;
 		expect(first).toMatchObject({
 			type: 'llm',
 			role: 'user',
@@ -100,6 +172,29 @@ describe('seedFromProse', () => {
 		const t1 = new Date(String(second.createdAt)).getTime();
 		expect(t1).toBeGreaterThan(t0);
 		expect(t1).toBeLessThan(Date.now());
+	});
+
+	it('passes a full envelope through untouched', () => {
+		const envelope = {
+			id: 'm1',
+			type: 'llm',
+			role: 'assistant' as const,
+			createdAt: '2026-06-29T09:00:00.000Z',
+			content: [{ type: 'text', text: 'authored' }],
+		};
+		expect(expandSeedMessageShorthand([envelope])[0]).toBe(envelope);
+	});
+
+	it('leaves a near-miss shorthand alone so the envelope schema reports it', () => {
+		// Expanding these would produce a message the transcript builder silently
+		// drops; passing them through means the envelope schema rejects them loudly.
+		const nearMisses = [
+			{ role: 'user', text: 42 },
+			{ role: 'system', text: 'hi' },
+			{ role: 'user', text: 'hi', extra: true },
+			{ role: 'user' },
+		];
+		expect(expandSeedMessageShorthand(nearMisses)).toEqual(nearMisses);
 	});
 });
 
@@ -118,7 +213,19 @@ describe('remapSeedWorkflowIds', () => {
 	});
 
 	it('returns the seed untouched when there are no workflows', () => {
-		const seed = seedFromProse([{ role: 'user', text: 'hi' }]);
+		const seed: ConversationSeed = {
+			messages: [
+				{
+					id: 'm1',
+					type: 'llm',
+					role: 'user',
+					createdAt: '2026-06-29T09:00:00.000Z',
+					content: [{ type: 'text', text: 'hi' }],
+				},
+			],
+			workflows: [],
+			dataTables: [],
+		};
 		expect(remapSeedWorkflowIds(seed)).toBe(seed);
 	});
 

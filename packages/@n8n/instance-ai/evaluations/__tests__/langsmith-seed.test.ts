@@ -106,7 +106,8 @@ describe('reconstructSeedFromThread', () => {
 		// Only turn 1 is seeded — the pinned turn and everything after it are excluded.
 		const userTexts = result.seed.messages
 			.filter((m) => m.role === 'user')
-			.map((m) => (m.content as Array<{ text: string }>)[0].text);
+			// Block fields are `unknown` by design (the store owns block shapes).
+			.map((m) => (m.content?.[0] as { text: string } | undefined)?.text ?? '');
 		expect(userTexts).toEqual(['Build Otter Digest, daily 9am']);
 	});
 
@@ -961,7 +962,7 @@ describe('reconstructSeedFromThread — workspace auto-discovery', () => {
 // Dual-tenant READS (US→EU migration): a seed ref's `endpoint` selects which
 // LangSmith tenant to read from. Writes are unaffected (they stay on the home
 // tenant elsewhere). The endpoint→key mapping is the cross-repo contract that
-// LangTracer's exported `seedThread.endpoint` rides on (TRUST-212).
+// LangTracer's exported `seed.endpoint` rides on (TRUST-212).
 describe('configFor — dual-tenant read resolution', () => {
 	const EU = 'https://eu.api.smith.langchain.com';
 	const US = 'https://api.smith.langchain.com';

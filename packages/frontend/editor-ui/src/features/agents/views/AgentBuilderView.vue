@@ -21,8 +21,8 @@ import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -32,6 +32,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
+	createAgent,
 	deleteAgent,
 	listAgentFiles,
 	uploadAgentFiles,
@@ -57,9 +58,12 @@ import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
-import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import {
+	removeProjectAgentFromListCache,
+	upsertProjectAgentsListCache,
+} from '../composables/useProjectAgentsList';
 import { useInstanceAiAgentPreviewHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
-import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
+import { addMissingAgentPersonalisation } from '@n8n/api-types';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -74,9 +78,12 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
+import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -85,14 +92,23 @@ const props = withDefaults(
 		artifactAgentId?: string;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
+		/** True when no agent row exists behind `artifactAgentId` yet — the builder
+		 *  renders a local default config and creates the agent on the first edit. */
+		artifactAgentPending?: boolean;
 	}>(),
 	{
 		artifactMode: false,
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
 		artifactEditingLocked: false,
+		artifactAgentPending: false,
 	},
 );
+
+const emit = defineEmits<{
+	/** The agent behind an unsaved artifact now exists. */
+	persisted: [agent: AgentResource];
+}>();
 
 const route = useRoute();
 const router = useRouter();
@@ -109,6 +125,8 @@ const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
+const mcpStore = useMCPStore();
+const mcp = useMcp();
 
 // Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
 // the backend: Daytona sandbox env vars (N8N_AGENTS_AI_SANDBOX_ENABLED +
@@ -146,6 +164,11 @@ const effectiveCanEditAgent = computed(() => canEditAgent.value && !props.artifa
 
 const isVersionHistoryOpen = ref(false);
 
+// Whether the preview shows the session trace (true) instead of the chat
+// (false). Local toggle only — no URL sync; the standalone session route
+// covers shareable deep-links.
+const isPreviewTraceOpen = ref(false);
+
 async function onSendPreviewToAssistant(executionId?: string) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
@@ -169,6 +192,13 @@ async function onSendPreviewToAssistant(executionId?: string) {
  *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
+/**
+ * No agent row exists behind `agentId` yet. The id was minted by whoever opened
+ * this artifact, so the config edits below can create the agent under it at the
+ * moment the user first configures something — and until then nothing is
+ * persisted. Cleared by `ensureAgentPersisted`.
+ */
+const isUnsaved = ref(false);
 /** Queues `agentUpdated` bus events that land mid-initialize for replay (see `onExternalAgentUpdated`). */
 const pendingExternalRefresh = ref(false);
 const agentName = ref('');
@@ -221,6 +251,15 @@ const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilder
 	executionsCount,
 	routeBacked: computed(() => !isArtifactMode.value),
 });
+
+// Knowledge, Executions and Settings all read agent-scoped endpoints, so they
+// have nothing to show until the agent exists. Configuring the agent is what
+// creates it, so that is the only tab worth offering first.
+const visibleMainTabOptions = computed(() =>
+	isUnsaved.value
+		? mainTabOptions.value.filter((tab) => tab.value === 'agent')
+		: mainTabOptions.value,
+);
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -334,7 +373,7 @@ async function fetchAgentFiles(
 }
 
 async function onUploadAgentFiles(files: File[]) {
-	if (files.length === 0 || !agent.value?.activeVersionId) return;
+	if (files.length === 0) return;
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
 		showError(
@@ -382,6 +421,7 @@ async function onUploadAgentFiles(files: File[]) {
 	const targetAgentId = agentId.value;
 	agentFilesUploading.value = true;
 	try {
+		await ensureAgentPersisted();
 		const uploadedFiles = await uploadAgentFiles(
 			rootStore.restApiContext,
 			targetProjectId,
@@ -508,18 +548,9 @@ function closePreview() {
 	});
 }
 
-function openMemorySettings() {
-	void router.push({
-		name: AGENT_BUILDER_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value },
-		query: { ...getBuilderQuery(), section: 'settings' },
-	});
-}
-
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
-	warmAgentKnowledgeSandboxForPage();
 }
 
 function onUnpublished(updated: AgentResource) {
@@ -568,7 +599,9 @@ function bindPreviewSession() {
 }
 
 function warmAgentKnowledgeSandboxForPage() {
-	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value?.activeVersionId) return;
+	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value) return;
+	// No agent row to warm a sandbox for yet.
+	if (isUnsaved.value) return;
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
@@ -600,10 +633,57 @@ interface SkillAutosaveSnapshot {
 	skill: AgentSkill;
 }
 
+interface McpAvailabilitySnapshot {
+	type: 'mcp';
+	projectId: string;
+	agentId: string;
+	enabled: boolean;
+}
+
+/**
+ * Create the agent the first time the user actually configures something, so an
+ * artifact that is only looked at never reaches the database. Every mutating
+ * path funnels through here; the cached promise keeps the independent autosave
+ * chains (config, skill, MCP) from racing into two agents.
+ *
+ * The agent is created under the already-minted `agentId`, so an agent-building
+ * chat request on the same thread converges on this agent rather than a second
+ * one (the backend adopts the existing row on an id collision).
+ */
+let persistPromise: Promise<void> | null = null;
+async function ensureAgentPersisted(): Promise<void> {
+	if (!isUnsaved.value) return;
+	persistPromise ??= (async () => {
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		const created = await createAgent(
+			rootStore.restApiContext,
+			targetProjectId,
+			localConfig.value?.name ?? locale.baseText('agents.new.defaultName'),
+			{ id: targetAgentId },
+		);
+		isUnsaved.value = false;
+		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+			agent.value = created;
+		}
+		upsertProjectAgentsListCache(targetProjectId, created);
+		// Lets the artifact host record that this agent is real now. Without it a
+		// reload would re-enter draft mode and overwrite the saved config with an
+		// empty one, since the pending marker itself cannot be deleted.
+		emit('persisted', created);
+	})().catch((error) => {
+		// Let the next edit retry rather than stranding the agent unsaved.
+		persistPromise = null;
+		throw error;
+	});
+	await persistPromise;
+}
+
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' | undefined> {
 	// The AI may be mutating this agent right now — a save queued just before
 	// the lock engaged must not persist its now-stale full config over it.
 	if (props.artifactEditingLocked) return 'skipped';
+	await ensureAgentPersisted();
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).
@@ -625,6 +705,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 
 async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<'skipped' | undefined> {
 	if (props.artifactEditingLocked) return 'skipped';
+	await ensureAgentPersisted();
 	const result = await updateAgentSkill(
 		rootStore.restApiContext,
 		snapshot.projectId,
@@ -680,18 +761,76 @@ const skillAutosave = useAgentConfigAutosave<SkillAutosaveSnapshot>({
 		showError(error, locale.baseText('agents.builder.skills.saveError'));
 	},
 });
+// The MCP availability flag lives on the agent resource, not the JSON config,
+// so it saves through its own autosave loop — while sharing the header's
+// Saving/Saved indicator with config and skill edits.
+const mcpAvailabilityOverride = ref<boolean | null>(null);
+const agentAvailableInMcp = computed(
+	() => mcpAvailabilityOverride.value ?? agent.value?.availableInMCP ?? false,
+);
+
+async function saveMcpAvailability(
+	snapshot: McpAvailabilitySnapshot,
+): Promise<'skipped' | undefined> {
+	await ensureAgentPersisted();
+	await mcpStore.toggleAgentMcpAccess(snapshot.agentId, snapshot.enabled);
+	if (snapshot.enabled) {
+		mcp.trackMcpAccessEnabledForAgent(snapshot.agentId);
+	}
+	if (isStaleAgentTarget(snapshot.projectId, snapshot.agentId)) return undefined;
+	if (agent.value?.id === snapshot.agentId) {
+		agent.value = { ...agent.value, availableInMCP: snapshot.enabled };
+	}
+	// Keep the override if the user flipped the switch again while this save
+	// was in flight — the newer value has its own save chained behind us.
+	if (mcpAvailabilityOverride.value === snapshot.enabled) {
+		mcpAvailabilityOverride.value = null;
+	}
+	return undefined;
+}
+
+const mcpAutosave = useAgentConfigAutosave<McpAvailabilitySnapshot>({
+	save: saveMcpAvailability,
+	onError: (error: unknown) => {
+		// Revert the optimistic toggle — unlike config edits there is no local
+		// pending state that a later autosave would persist.
+		mcpAvailabilityOverride.value = null;
+		showError(error, locale.baseText('agents.toggleMCP.error.title'));
+	},
+});
+
+function onToggleMcpAccess(enabled: boolean) {
+	if (!agent.value) return;
+	mcpAvailabilityOverride.value = enabled;
+	mcpAutosave.scheduleAutosave({
+		type: 'mcp',
+		projectId: projectId.value,
+		agentId: agentId.value,
+		enabled,
+	});
+}
+
 const saveStatus = computed(() => {
-	if (configAutosave.saveStatus.value === 'saving' || skillAutosave.saveStatus.value === 'saving') {
+	const statuses = [
+		configAutosave.saveStatus.value,
+		skillAutosave.saveStatus.value,
+		mcpAutosave.saveStatus.value,
+	];
+	if (statuses.includes('saving')) {
 		return 'saving';
 	}
-	if (configAutosave.saveStatus.value === 'saved' || skillAutosave.saveStatus.value === 'saved') {
+	if (statuses.includes('saved')) {
 		return 'saved';
 	}
 	return 'idle';
 });
 
 async function settleAutosave() {
-	await Promise.all([configAutosave.settleAutosave(), skillAutosave.settleAutosave()]);
+	await Promise.all([
+		configAutosave.settleAutosave(),
+		skillAutosave.settleAutosave(),
+		mcpAutosave.settleAutosave(),
+	]);
 }
 
 async function flushAutosave() {
@@ -700,9 +839,14 @@ async function flushAutosave() {
 	if (props.artifactEditingLocked) {
 		configAutosave.cancelPendingAutosave();
 		skillAutosave.cancelPendingAutosave();
+		mcpAutosave.cancelPendingAutosave();
 		return;
 	}
-	await Promise.all([configAutosave.flushAutosave(), skillAutosave.flushAutosave()]);
+	await Promise.all([
+		configAutosave.flushAutosave(),
+		skillAutosave.flushAutosave(),
+		mcpAutosave.flushAutosave(),
+	]);
 }
 
 // Makes the lock a write boundary rather than only a disabled UI state: drop
@@ -802,6 +946,7 @@ const caps = useAgentCapabilitiesActions({
 	projectId,
 	agentId,
 	connectedTriggers,
+	ensureAgentPersisted,
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
 		// The persisted validation result no longer reflects the working copy —
@@ -1070,6 +1215,33 @@ async function onHeaderAction(action: string) {
 	}
 }
 
+/**
+ * Stand-in for the resource the create endpoint would have returned, so the
+ * editor and its children can treat an unsaved agent like any other freshly
+ * created one instead of every consumer having to handle a null agent.
+ */
+function draftAgentResource(personalisation: AgentJsonConfig['personalisation']): AgentResource {
+	const now = new Date().toISOString();
+	return {
+		resourceType: 'agent',
+		id: agentId.value,
+		name: locale.baseText('agents.new.defaultName'),
+		projectId: projectId.value,
+		schema: personalisation ? { personalisation } : null,
+		availableInMCP: false,
+		isCompiled: false,
+		isRunnable: false,
+		hasPublishHistory: false,
+		createdAt: now,
+		updatedAt: now,
+		versionId: null,
+		activeVersionId: null,
+		tools: {},
+		skills: {},
+		activeVersion: null,
+	};
+}
+
 async function initialize() {
 	clearTimeout(externalRefreshTimer);
 	// A refresh queued for the previous agent must not fire against this one.
@@ -1079,12 +1251,14 @@ async function initialize() {
 	// fresh data anyway. Only events arriving during this init need replaying.
 	pendingExternalRefresh.value = false;
 	try {
-		// Flush any pending/in-flight save for the previous agent before we tear
-		// down its state — without this, an autosave scheduled by edits in the
-		// previous agent could land after we've already swapped to the new one.
-		// The save itself snapshots agentId at schedule-time, so the persisted
-		// data is correct; settling here keeps localConfig/agent state consistent.
-		await settleAutosave();
+		// Persist a pending MCP toggle before the new agent can replace its
+		// snapshot. Other pending edits remain governed by their existing
+		// switch/revert behavior.
+		await Promise.all([
+			configAutosave.settleAutosave(),
+			skillAutosave.settleAutosave(),
+			mcpAutosave.flushAutosave(),
+		]);
 		// Drop any per-agent telemetry state from the previous agent — an in-flight
 		// save for the previous agent would've already flushed pending edits before
 		// we got here, and a scheduled-but-not-fired save wouldn't flush correctly
@@ -1093,6 +1267,7 @@ async function initialize() {
 
 		agent.value = null;
 		agentName.value = '';
+		mcpAvailabilityOverride.value = null;
 		activeChatSessionId.value = null;
 		localConfig.value = null;
 		connectedTriggers.value = [];
@@ -1102,13 +1277,35 @@ async function initialize() {
 		deletingAgentFileId.value = null;
 		repointConfigValidation(projectId.value, agentId.value);
 
-		await Promise.all([
-			fetchAgent(),
-			fetchConfig(projectId.value, agentId.value),
-			fetchAgentFiles(),
-			refreshConfigValidation(projectId.value, agentId.value),
-		]);
-		persistMissingPersonalisationGradient();
+		// An agent that does not exist yet has nothing to fetch: stand up the same
+		// blank config the backend would have written, and let the first edit
+		// create it (see `ensureAgentPersisted`). The personalisation backfill is
+		// skipped too — it schedules a save, which would persist on mount alone.
+		isUnsaved.value = props.artifactAgentPending;
+		if (isUnsaved.value) {
+			const draftConfig: AgentJsonConfig = {
+				name: locale.baseText('agents.new.defaultName'),
+				model: '',
+				instructions: '',
+				tools: [],
+				skills: [],
+			};
+			// Seed the icon and gradient the backfill would normally add, so the
+			// draft looks like any other new agent and the first save carries them.
+			// Seeded rather than backfilled because the backfill schedules a save,
+			// which would persist the agent on mount.
+			localConfig.value = addMissingAgentPersonalisation(draftConfig) ?? draftConfig;
+			agent.value = draftAgentResource(localConfig.value.personalisation);
+			agentName.value = agent.value.name;
+		} else {
+			await Promise.all([
+				fetchAgent(),
+				fetchConfig(projectId.value, agentId.value),
+				fetchAgentFiles(),
+				refreshConfigValidation(projectId.value, agentId.value),
+			]);
+			persistMissingPersonalisationGradient();
+		}
 		builderTelemetry.captureToolsBaseline();
 		builderTelemetry.captureSkillsBaseline();
 		builderTelemetry.captureTasksBaseline();
@@ -1122,9 +1319,11 @@ async function initialize() {
 		// Stop any in-flight auto-refresh from the previous agent before kicking
 		// off a new fetch — keeps the store tied to the current project/agent.
 		sessionsStore.stopAutoRefresh();
-		void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
-			sessionsStore.startAutoRefresh();
-		});
+		if (!isUnsaved.value) {
+			void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
+				sessionsStore.startAutoRefresh();
+			});
+		}
 		void (async () => {
 			// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 			// will correct it once the user expands the Triggers section.
@@ -1150,7 +1349,11 @@ async function initialize() {
 	}
 }
 
-watch(agentId, initialize, { immediate: true });
+// Also re-initialize when the artifact stops being pending: the chat path
+// creates the agent under this same id, so the id never changes, but the view
+// must leave draft mode — otherwise it keeps skipping the agent-scoped fetches
+// and hiding the tabs for an agent that now exists.
+watch([agentId, () => props.artifactAgentPending], initialize, { immediate: true });
 
 onBeforeUnmount(() => {
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
@@ -1176,7 +1379,15 @@ watch(
 watch(isPreviewMode, (preview) => {
 	if (preview) {
 		bindPreviewSession();
+	} else {
+		isPreviewTraceOpen.value = false;
 	}
+});
+
+// Leaving a session (switching sessions) should drop back to the chat rather
+// than carry the trace-open state across to a different session.
+watch(effectiveSessionId, () => {
+	isPreviewTraceOpen.value = false;
 });
 
 function exitContinueMode() {
@@ -1300,13 +1511,14 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			v-if="isPreviewMode"
 			:breadcrumb-items="previewBreadcrumbItems"
 			:session-title="currentSessionTitle"
-			:session-id="effectiveSessionId"
 			:has-session="currentSessionHasMessages"
 			:session-options="sessionOptions"
+			:trace-open="isPreviewTraceOpen"
 			@breadcrumb-select="onPreviewBreadcrumbSelect"
 			@session-select="onSessionPick"
 			@new-chat="onNewChat"
 			@close-preview="closePreview"
+			@toggle-trace="isPreviewTraceOpen = !isPreviewTraceOpen"
 		/>
 		<AgentBuilderHeader
 			v-else
@@ -1363,7 +1575,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			</div>
 			<template v-else>
 				<AgentPreviewChatPage
-					v-if="isPreviewMode"
+					v-if="isPreviewMode && !isPreviewTraceOpen"
 					:initialized="initialized"
 					:project-id="projectId"
 					:agent-id="agentId"
@@ -1374,7 +1586,13 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:can-send-to-assistant="canSendPreviewToInstanceAi"
 					@continue-loaded="onContinueLoaded"
 					@send-to-assistant="onSendPreviewToAssistant"
-					@open-memory-settings="openMemorySettings"
+				/>
+
+				<AgentSessionTimelinePanel
+					v-else-if="isPreviewMode && isPreviewTraceOpen && effectiveSessionId"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:thread-id="effectiveSessionId"
 				/>
 
 				<AgentBuilderEditorColumn
@@ -1393,8 +1611,10 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
 					:can-edit-agent="effectiveCanEditAgent"
+					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
-					:main-tab-options="mainTabOptions"
+					:main-tab-options="visibleMainTabOptions"
+					:agent-unsaved="isUnsaved"
 					:executions-description="executionsDescription"
 					:artifact-mode="isArtifactMode"
 					:config-validation-issues="configValidation?.issues ?? []"
@@ -1413,6 +1633,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"
+					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
