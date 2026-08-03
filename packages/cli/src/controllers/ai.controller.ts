@@ -42,12 +42,6 @@ export class AiController {
 		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
-	private requireAiGatewayEnabled(): void {
-		if (!this.aiGatewayService.isEnabled()) {
-			throw new BadRequestError('n8n Connect is not enabled on this instance');
-		}
-	}
-
 	private toAiAssistantResponseError(error: APIResponseError) {
 		switch (error.statusCode) {
 			case 413:
@@ -254,7 +248,7 @@ export class AiController {
 	@Licensed('feat:aiGateway')
 	@Get('/gateway/config')
 	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
-		this.requireAiGatewayEnabled();
+		this.aiGatewayService.assertEnabled();
 		try {
 			return await this.aiGatewayService.getGatewayConfig();
 		} catch (e) {
@@ -266,7 +260,7 @@ export class AiController {
 	@Licensed('feat:aiGateway')
 	@Get('/gateway/wallet')
 	async getGatewayWallet(req: AuthenticatedRequest): Promise<{ budget: number; balance: number }> {
-		this.requireAiGatewayEnabled();
+		this.aiGatewayService.assertEnabled();
 		try {
 			return await this.aiGatewayService.getWallet(req.user.id);
 		} catch (e) {
@@ -282,7 +276,7 @@ export class AiController {
 		_: Response,
 		@Query query: AiGatewayUsageQueryDto,
 	): Promise<AiGatewayUsageResponse> {
-		this.requireAiGatewayEnabled();
+		this.aiGatewayService.assertEnabled();
 		try {
 			return await this.aiGatewayService.getUsage(req.user.id, query.offset, query.limit);
 		} catch (e) {

@@ -9,6 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -98,6 +99,18 @@ describe('AiGatewayService', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('assertEnabled()', () => {
+		it('allows licensed instances when the opt-out is not set', () => {
+			expect(() => makeService().assertEnabled()).not.toThrow();
+		});
+
+		it('rejects instances that opt out', () => {
+			expect(() => makeService({ aiGatewayEnabled: false }).assertEnabled()).toThrow(
+				BadRequestError,
+			);
+		});
 	});
 
 	describe('getGatewayConfig()', () => {

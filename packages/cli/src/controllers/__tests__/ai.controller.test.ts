@@ -41,7 +41,7 @@ describe('AiController', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		aiGatewayService.isEnabled.mockReturnValue(true);
+		aiGatewayService.assertEnabled.mockImplementation(() => {});
 
 		response.header.mockReturnThis();
 		response.status.mockReturnThis();
@@ -656,7 +656,9 @@ describe('AiController', () => {
 
 	describe('getGatewayWallet', () => {
 		it('should reject gateway requests when n8n Connect is disabled', async () => {
-			aiGatewayService.isEnabled.mockReturnValue(false);
+			aiGatewayService.assertEnabled.mockImplementation(() => {
+				throw new BadRequestError('n8n Connect is not enabled on this instance');
+			});
 			const query = mock<AiGatewayUsageQueryDto>({ offset: 0, limit: 10 });
 
 			await expect(controller.getGatewayConfig()).rejects.toThrow(BadRequestError);

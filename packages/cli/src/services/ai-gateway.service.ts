@@ -15,6 +15,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -68,10 +69,20 @@ export class AiGatewayService {
 	) {}
 
 	/**
-	 * Instance-level n8n Connect enablement (ENV), plus assistant base URL.
+	 * Whether this instance is licensed and configured for n8n Connect.
 	 */
 	isEnabled(): boolean {
-		return this.globalConfig.aiGateway.enabled && !!this.globalConfig.aiAssistant.baseUrl;
+		return (
+			this.licenseState.isAiGatewayLicensed() &&
+			this.globalConfig.aiGateway.enabled &&
+			!!this.globalConfig.aiAssistant.baseUrl
+		);
+	}
+
+	assertEnabled(): void {
+		if (!this.isEnabled()) {
+			throw new BadRequestError('n8n Connect is not enabled on this instance');
+		}
 	}
 
 	/**
@@ -317,9 +328,7 @@ export class AiGatewayService {
 	 * Never propagates gateway or config errors.
 	 */
 	async isAvailable(): Promise<AiGatewayAvailability> {
-		if (!this.isEnabled() || !this.licenseState.isAiGatewayLicensed()) {
-			return { available: false };
-		}
+		if (!this.isEnabled()) return { available: false };
 		try {
 			const config = await this.getGatewayConfig();
 			return { available: true, config };
@@ -371,7 +380,7 @@ export class AiGatewayService {
 	 * authoritative n8n Connect provider → credential-type support gate.
 	 */
 	async getCredentialTypeForProvider(provider: string): Promise<string | undefined> {
-		if (!this.licenseState.isAiGatewayLicensed()) return undefined;
+		if (!this.isEnabled()) return undefined;
 		const config = await this.getGatewayConfig();
 		return AiGatewayService.matchCredentialTypeForProvider(config, provider);
 	}
@@ -389,7 +398,7 @@ export class AiGatewayService {
 	 * answer is preferable to a network call here.
 	 */
 	getCredentialTypeForProviderCached(provider: string): string | null | undefined {
-		if (!this.licenseState.isAiGatewayLicensed()) return null;
+		if (!this.isEnabled()) return null;
 		if (!this.gatewayConfig) return undefined;
 		return AiGatewayService.matchCredentialTypeForProvider(this.gatewayConfig, provider) ?? null;
 	}

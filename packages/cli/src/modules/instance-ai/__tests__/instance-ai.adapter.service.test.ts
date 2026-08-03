@@ -3522,12 +3522,13 @@ function createAdapterWithGatewayMock(
 		credentialsService?: unknown;
 		telemetry?: unknown;
 		enabled?: boolean;
-		licensed?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
 		getGatewayConfig,
-		isEnabled: vi.fn().mockReturnValue(overrides?.enabled ?? true),
+		assertEnabled: vi.fn().mockImplementation(() => {
+			if (overrides?.enabled === false) throw new Error('n8n Connect is disabled');
+		}),
 	};
 	const args = Array.from(
 		{ length: 35 },
@@ -3554,7 +3555,7 @@ function createAdapterWithGatewayMock(
 		getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
 	args[25] = {
-		isLicensed: vi.fn().mockReturnValue(overrides?.licensed ?? true),
+		isLicensed: vi.fn().mockReturnValue(true),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25];
 	args[29] = (overrides?.telemetry ?? {
 		track: vi.fn(),
@@ -3605,18 +3606,6 @@ describe('getGatewayConfigOrNull', () => {
 			providerConfig: {},
 		});
 		const adapter = createAdapterWithGatewayMock(getGatewayConfig, { enabled: false });
-
-		await expect(callGet(adapter)).resolves.toBeNull();
-		expect(getGatewayConfig).not.toHaveBeenCalled();
-	});
-
-	it('returns null without calling the service when the AI Gateway is not licensed', async () => {
-		const getGatewayConfig = vi.fn().mockResolvedValue({
-			nodes: ['openAi'],
-			credentialTypes: ['openAiApi'],
-			providerConfig: {},
-		});
-		const adapter = createAdapterWithGatewayMock(getGatewayConfig, { licensed: false });
 
 		await expect(callGet(adapter)).resolves.toBeNull();
 		expect(getGatewayConfig).not.toHaveBeenCalled();
