@@ -26,7 +26,7 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: vi.fn(),
 	})),
@@ -38,7 +38,7 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
 	})),
@@ -109,12 +109,14 @@ const setup = (
 		packages?: PublicInstalledPackage[];
 		isUnverifiedPackagesEnabled?: boolean;
 		availablePackageCount?: number;
+		communityNodesManagedByEnv?: boolean;
 	} = {},
 ) => {
 	const {
 		packages = [],
 		isUnverifiedPackagesEnabled = true,
 		availablePackageCount = -1,
+		communityNodesManagedByEnv = false,
 	} = overrides;
 
 	vi.mocked(getInstalledCommunityNodes).mockResolvedValue(packages);
@@ -124,7 +126,10 @@ const setup = (
 		stubActions: false,
 		initialState: {
 			[STORES.SETTINGS]: {
-				settings: { unverifiedCommunityNodesEnabled: isUnverifiedPackagesEnabled },
+				settings: {
+					unverifiedCommunityNodesEnabled: isUnverifiedPackagesEnabled,
+					communityNodesManagedByEnv,
+				},
 			},
 		},
 	});
@@ -199,6 +204,41 @@ describe('SettingsCommunityNodesView', () => {
 			getByText('Install a community node').click();
 
 			expect(uiStore.openModal).toHaveBeenCalledWith(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
+		});
+
+		it('hides the empty state install button when packages are managed by env', async () => {
+			const { queryByText } = setup({ communityNodesManagedByEnv: true });
+			await flushPromises();
+
+			expect(queryByText('Install a community node')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('canInstall', () => {
+		it('shows the managed-by-env notice when packages are managed by env', async () => {
+			const { getByTestId } = setup({ communityNodesManagedByEnv: true });
+			await flushPromises();
+
+			expect(getByTestId('community-nodes-managed-by-env')).toBeInTheDocument();
+		});
+
+		it('does not show the managed-by-env notice when packages are not managed by env', async () => {
+			const { queryByTestId } = setup({ communityNodesManagedByEnv: false });
+			await flushPromises();
+
+			expect(queryByTestId('community-nodes-managed-by-env')).not.toBeInTheDocument();
+		});
+
+		it('hides the header install button when packages are managed by env even if unverified packages are enabled', async () => {
+			const pkg = makePackage('n8n-nodes-managed');
+			const { queryByText } = setup({
+				packages: [pkg],
+				isUnverifiedPackagesEnabled: true,
+				communityNodesManagedByEnv: true,
+			});
+			await flushPromises();
+
+			expect(queryByText('Install')).not.toBeInTheDocument();
 		});
 	});
 

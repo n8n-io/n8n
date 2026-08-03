@@ -9,7 +9,7 @@ describe('Test PipedriveV2, deal => getAll', () => {
 
 	nock('https://api.pipedrive.com/api/v2')
 		.get('/deals')
-		.query({ limit: 2 })
+		.query({ limit: 2, owner_id: 25455458 })
 		.reply(200, {
 			success: true,
 			data: [

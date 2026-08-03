@@ -68,14 +68,14 @@ function createMockContext(): MutablePluginContext {
 		workflowId: 'test-workflow',
 		workflowName: 'Test Workflow',
 		settings: {},
-		addNodeWithSubnodes: jest.fn((node: NodeInstance<string, string, unknown>) => {
+		addNodeWithSubnodes: vi.fn((node: NodeInstance<string, string, unknown>) => {
 			nodes.set(node.name, {
 				instance: node,
 				connections: new Map(),
 			});
 			return node.name;
 		}),
-		addBranchToGraph: jest.fn((branch: unknown) => {
+		addBranchToGraph: vi.fn((branch: unknown) => {
 			const branchNode = branch as NodeInstance<string, string, unknown>;
 			nodes.set(branchNode.name, {
 				instance: branchNode,
@@ -284,7 +284,7 @@ describe('splitInBatchesHandler', () => {
 
 			// Mock addBranchToGraph to call addNodes recursively (simulating nested SIB)
 			let recursiveCallCount = 0;
-			ctx.addBranchToGraph = jest.fn((branch: unknown) => {
+			ctx.addBranchToGraph = vi.fn((branch: unknown) => {
 				const branchNode = branch as NodeInstance<string, string, unknown>;
 				ctx.nodes.set(branchNode.name, {
 					instance: branchNode,
@@ -390,7 +390,7 @@ describe('splitInBatchesHandler', () => {
 				workflowId: 'test-workflow',
 				workflowName: 'Test Workflow',
 				settings: {},
-				addNodeWithSubnodes: jest.fn((node: NodeInstance<string, string, unknown>) => {
+				addNodeWithSubnodes: vi.fn((node: NodeInstance<string, string, unknown>) => {
 					nodes.set(node.name, {
 						instance: node,
 						connections: new Map<string, Map<number, ConnectionTarget[]>>([
@@ -399,7 +399,7 @@ describe('splitInBatchesHandler', () => {
 					});
 					return node.name;
 				}),
-				addBranchToGraph: jest.fn((branch: unknown) => {
+				addBranchToGraph: vi.fn((branch: unknown) => {
 					const branchNode = branch as NodeInstance<string, string, unknown>;
 					if (!nodes.has(branchNode.name)) {
 						nodes.set(branchNode.name, {
@@ -460,7 +460,7 @@ describe('splitInBatchesHandler', () => {
 				workflowId: 'test-workflow',
 				workflowName: 'Test Workflow',
 				settings: {},
-				addNodeWithSubnodes: jest.fn((node: NodeInstance<string, string, unknown>) => {
+				addNodeWithSubnodes: vi.fn((node: NodeInstance<string, string, unknown>) => {
 					nodes.set(node.name, {
 						instance: node,
 						connections: new Map<string, Map<number, ConnectionTarget[]>>([
@@ -469,7 +469,7 @@ describe('splitInBatchesHandler', () => {
 					});
 					return node.name;
 				}),
-				addBranchToGraph: jest.fn((branch: unknown) => {
+				addBranchToGraph: vi.fn((branch: unknown) => {
 					const branchNode = branch as NodeInstance<string, string, unknown>;
 					if (!nodes.has(branchNode.name)) {
 						nodes.set(branchNode.name, {
@@ -505,7 +505,7 @@ describe('splitInBatchesHandler', () => {
 				workflowId: 'test-workflow',
 				workflowName: 'Test Workflow',
 				settings: {},
-				addNodeWithSubnodes: jest.fn((node: NodeInstance<string, string, unknown>) => {
+				addNodeWithSubnodes: vi.fn((node: NodeInstance<string, string, unknown>) => {
 					nodes.set(node.name, {
 						instance: node,
 						connections: new Map<string, Map<number, ConnectionTarget[]>>([
@@ -514,7 +514,7 @@ describe('splitInBatchesHandler', () => {
 					});
 					return node.name;
 				}),
-				addBranchToGraph: jest.fn((branch: unknown) => {
+				addBranchToGraph: vi.fn((branch: unknown) => {
 					const branchNode = branch as NodeInstance<string, string, unknown>;
 					if (!nodes.has(branchNode.name)) {
 						nodes.set(branchNode.name, {

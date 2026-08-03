@@ -5,6 +5,7 @@ import { ERROR_MESSAGES, BASE_URL_V2, AIRTOP_HOOKS_BASE_URL } from '../../../con
 import * as methods from '../../../methods';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
+import type { Mock } from 'vitest';
 
 const AGENTS_ENDPOINT = `${BASE_URL_V2}/agents`;
 const AGENTS_HOOKS_ENDPOINT = `${AIRTOP_HOOKS_BASE_URL}/agents`;
@@ -67,7 +68,7 @@ const createMockLoadOptionsFunction = (
 		getCurrentNodeParameter(parameterName: string) {
 			return nodeParameters[parameterName];
 		},
-		getCredentials: jest.fn(),
+		getCredentials: vi.fn(),
 		getNode: () => ({
 			id: '1',
 			name: 'Airtop node',
@@ -79,25 +80,21 @@ const createMockLoadOptionsFunction = (
 	} as unknown as ILoadOptionsFunctions;
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(),
+		apiRequest: vi.fn(),
 	};
 });
 
 describe('Test Airtop, agent run operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-	});
-
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should list available agents', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockAgentsListResponse);
 
 		const mockLoadOptions = createMockLoadOptionsFunction();
@@ -121,7 +118,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should get agent input parameters schema for selected agent ID', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
 
 		const mockLoadOptions = createMockLoadOptionsFunction({
@@ -164,7 +161,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should validate required agent parameters', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
 
 		const nodeParameters = {
@@ -191,7 +188,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should return invocationId without waiting for agent completion', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		// First call: getAgentDetails
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
 		// Second call: invoke agent webhook
@@ -236,7 +233,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should wait for agent until response contains an output', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 
 		// Mock getAgentDetails
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
@@ -320,7 +317,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should return empty results when no agents are available', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce({ agents: [] });
 
 		const mockLoadOptions = createMockLoadOptionsFunction();
@@ -330,7 +327,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should return empty fields when agent has no parameters schema', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce({
 			id: 'test-agent-123',
 			name: 'Test Agent',
@@ -350,7 +347,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should filter agents by name when search filter is provided', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockAgentsListResponse);
 
 		const mockLoadOptions = createMockLoadOptionsFunction();
@@ -365,7 +362,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should wrap agent parameters in configVars when executing', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		// First call: getAgentDetails
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
 		// Second call: invoke agent webhook
@@ -413,7 +410,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should pass all required parameters successfully', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
 		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
 		apiRequestMock.mockResolvedValueOnce(mockAgentStatusResponseWithOutput);

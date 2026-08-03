@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import * as transport from '../../../../transport';
@@ -14,10 +15,11 @@ describe('OpenAI Classify Operation', () => {
 		position: [0, 0],
 		parameters: {},
 	} as INode;
-	const apiRequestSpy = vi.spyOn(transport, 'apiRequest');
+	let apiRequestSpy: MockInstance;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		apiRequestSpy = vi.spyOn(transport, 'apiRequest');
 	});
 
 	it('should use omni-moderation-latest model when version is 2.1', async () => {

@@ -1,10 +1,15 @@
-import type { Response } from 'express';
+import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { Request, Response } from 'express';
 import { rm } from 'fs/promises';
 import isbot from 'isbot';
+import jwt from 'jsonwebtoken';
 import { DateTime } from 'luxon';
-import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
+import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
+	INode,
 	INodeExecutionData,
+	IUser,
 	MultiPartFormData,
 	IDataObject,
 	IWebhookFunctions,
@@ -21,6 +26,7 @@ import {
 	tryToParseUrl,
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
+	UnexpectedError,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -34,6 +40,41 @@ import {
 } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
+
+/**
+ * Time-to-live for the form auth token embedded in n8nUserAuth forms.
+ * Long enough for users to fill out a form, short enough to limit damage
+ * if the token leaks (e.g. via malicious HTML in form fields).
+ */
+const FORM_USER_AUTH_TOKEN_TTL_SECONDS = 60 * 60;
+
+export const getNodeReference = (nodeName: string) => `$(${JSON.stringify(nodeName)})`;
+
+type FormUserAuthClaims = {
+	sub: string;
+	email: string;
+	firstName: string;
+	lastName: string;
+	nid: string;
+	wid: string;
+};
+
+function isFormUserAuthClaims(value: unknown): value is FormUserAuthClaims {
+	if (typeof value !== 'object' || value === null) return false;
+	const c = value as Record<string, unknown>;
+	return (
+		typeof c.sub === 'string' &&
+		typeof c.email === 'string' &&
+		typeof c.firstName === 'string' &&
+		typeof c.lastName === 'string' &&
+		typeof c.nid === 'string' &&
+		typeof c.wid === 'string'
+	);
+}
+
+export function isFormOAuth2Enabled(): boolean {
+	return process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 === 'true';
+}
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
@@ -373,7 +414,7 @@ export function addFormResponseDataToReturnItem(
 		if (field.fieldType === 'number') {
 			value = Number(value);
 		}
-		if (field.fieldType === 'text') {
+		if (field.fieldType === 'text' || field.fieldType === 'email') {
 			value = String(value).trim();
 		}
 		if (
@@ -403,6 +444,7 @@ export async function prepareFormReturnItem(
 	formFields: FormFieldsParameter,
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
+	authedUser?: IUser,
 ) {
 	const req = context.getRequestObject() as MultiPartFormData.Request;
 	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
@@ -485,11 +527,24 @@ export async function prepareFormReturnItem(
 
 	returnItem.json.formMode = mode;
 
+	if (context.getNodeParameter('options.showHeaders', false)) {
+		returnItem.json.headers = context.getHeaderData();
+	}
+
 	if (
 		context.getNode().type === FORM_TRIGGER_NODE_TYPE &&
 		Object.keys(context.getRequestObject().query || {}).length
 	) {
 		returnItem.json.formQueryParameters = context.getRequestObject().query;
+	}
+
+	if (authedUser) {
+		returnItem.json.user = {
+			id: authedUser.id,
+			email: authedUser.email,
+			firstName: authedUser.firstName,
+			lastName: authedUser.lastName,
+		};
 	}
 
 	return returnItem;
@@ -538,8 +593,9 @@ export function renderForm({
 			(node) => node.type === FORM_TRIGGER_NODE_TYPE,
 		) as NodeTypeAndVersion;
 		try {
+			const triggerRef = getNodeReference(trigger.name);
 			const triggerQueryParameters = context.evaluateExpression(
-				`{{ $('${trigger?.name}').first().json.formQueryParameters }}`,
+				`{{ ${triggerRef}.first().json.formQueryParameters }}`,
 			) as IDataObject;
 
 			if (triggerQueryParameters) {
@@ -573,12 +629,301 @@ export function renderForm({
 	res.render('form-trigger', data);
 }
 
+/**
+ * Build the absolute URL the user originally requested, honouring
+ * `x-forwarded-*` headers so it survives behind a reverse proxy. The full URL
+ * is required so the post-signin redirect uses `window.location.href = redirect`
+ * in SigninView.vue (the `router.push` branch only handles SPA routes, and the
+ * public form is served outside the Vue app).
+ *
+ * Security note: `x-forwarded-host` / `x-forwarded-proto` are attacker-controlled
+ * unless the deployer puts a trusted proxy in front (recommended). The redirect
+ * value flows through SigninView.vue's `isRedirectSafe()`, which enforces a
+ * same-origin check (`url.origin === window.location.origin`). So a spoofed
+ * Host header can at worst break the post-signin redirect for that user — it
+ * cannot redirect to an attacker-controlled origin.
+ */
+function buildAbsoluteFormUrl(req: Request): string {
+	const headerValue = (name: string) => {
+		const raw = req.headers[name];
+		return typeof raw === 'string' ? raw.trim() : undefined;
+	};
+	const protocol = headerValue('x-forwarded-proto') ?? req.protocol ?? 'http';
+	const host = headerValue('x-forwarded-host') ?? req.headers.host ?? '';
+	return `${protocol}://${host}${req.originalUrl}`;
+}
+
 export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
 	return nodes.some(
 		(n) =>
 			n.type === FORM_NODE_TYPE || (n.type === WAIT_NODE_TYPE && n.parameters?.resume === 'form'),
 	);
 };
+
+/**
+ * Generate a form auth token for n8nUserAuth. The token embeds the user info
+ * in a signed JWT so the POST handler can authenticate the submission without
+ * relying on the `n8n-auth` cookie (cookies aren't sent on fetch requests from
+ * the sandboxed form page because the document has a null origin and the
+ * cookie is `SameSite=Lax`).
+ *
+ * The `nid` and `wid` claims bind the token to a specific node + webhook,
+ * preventing replay across forms. Signed with HS256 using the instance's
+ * hmac signature secret.
+ */
+export function generateFormUserAuthToken(node: INode, user: IUser): string {
+	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
+	const payload: FormUserAuthClaims = {
+		sub: user.id,
+		email: user.email,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		nid: node.id,
+		wid: node.webhookId ?? '',
+	};
+	return jwt.sign(payload, secret, {
+		algorithm: 'HS256',
+		expiresIn: FORM_USER_AUTH_TOKEN_TTL_SECONDS,
+	});
+}
+
+/**
+ * Verify a form auth token issued by `generateFormUserAuthToken`. Returns the
+ * encoded user on success or `null` on any failure (bad format, expired,
+ * wrong signature, wrong node). The caller decides how to surface the failure.
+ */
+export function verifyFormUserAuthToken(token: string, node: INode): IUser | null {
+	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
+	let claims: unknown;
+	try {
+		claims = jwt.verify(token, secret, { algorithms: ['HS256'] });
+	} catch {
+		return null;
+	}
+	if (!isFormUserAuthClaims(claims)) return null;
+	if (claims.nid !== node.id) return null;
+	if (claims.wid !== (node.webhookId ?? '')) return null;
+	return {
+		id: claims.sub,
+		email: claims.email,
+		firstName: claims.firstName,
+		lastName: claims.lastName,
+	};
+}
+
+function trimTrailingSlash(url: string): string {
+	return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
+// Carries the OAuth2 access token across the single same-site redirect from the
+// provider callback to the clean form URL, so `code`/`state` never reach the
+// sandboxed form page. The token is otherwise already embedded in the form HTML
+// (the page sends it back as `x-auth-token` on POST), so this is not a new exposure.
+const FORM_OAUTH_COOKIE_NAME = 'n8n-form-oauth';
+
+function formOAuthCookieOptions(req: Request, resourceUrl: string) {
+	// Derive `secure` from the request scheme (honouring x-forwarded-proto, as
+	// buildAbsoluteFormUrl does) rather than config, so the cookie is actually sent
+	// back on the follow-up GET over http in dev while staying Secure over https.
+	const forwardedProto = req.headers['x-forwarded-proto'];
+	const proto = (typeof forwardedProto === 'string' ? forwardedProto.trim() : '') || req.protocol;
+	return {
+		httpOnly: true,
+		sameSite: 'lax' as const, // must be Lax: sent on our own top-level 302 → GET
+		secure: proto === 'https',
+		path: new URL(resourceUrl).pathname, // scope the bearer token to this form
+	};
+}
+
+function setFormOAuthToken(res: Response, req: Request, resourceUrl: string, token: string): void {
+	res.cookie(FORM_OAUTH_COOKIE_NAME, token, {
+		...formOAuthCookieOptions(req, resourceUrl),
+		maxAge: 60_000, // one redirect hop; short by design
+	});
+}
+
+function readFormOAuthToken(req: Request): string | null {
+	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-form-oauth=([^;]+)/);
+	return match ? decodeURIComponent(match[1].trim()) : null;
+}
+
+function clearFormOAuthToken(res: Response, req: Request, resourceUrl: string): void {
+	res.clearCookie(FORM_OAUTH_COOKIE_NAME, formOAuthCookieOptions(req, resourceUrl));
+}
+
+/**
+ * Authenticate an `n8nUserAuth` request via:
+ * 1. the `n8n-auth` cookie (sent on top-level GET when the user is logged in), or
+ * 2. the `x-auth-token` form auth token (used on POST and multi-step page
+ *    navigations from the sandboxed form page that can't send cookies).
+ *
+ * On success returns the user. On failure sends the appropriate response
+ * (302 to `/signin` on GET, 401 on POST) and returns `null` — the caller
+ * must abort with `noWebhookResponse`.
+ */
+async function authenticateFormUserOrRespond(
+	context: IWebhookFunctions,
+	oauth2Enabled: boolean = false,
+): Promise<{ user: IUser; token: string | null } | null> {
+	const req = context.getRequestObject();
+
+	if (oauth2Enabled) {
+		const res = context.getResponseObject();
+		const url = context.getNodeWebhookUrl('default');
+		if (!url) {
+			throw new UnexpectedError('Webhook URL not found for the node');
+		}
+		const resourceUrl = trimTrailingSlash(url);
+		if (req.method === 'GET') {
+			const { code, state } = req.query;
+
+			if (typeof req.query.error === 'string') {
+				// The provider returned an error (e.g. the user denied consent). Restarting the
+				// flow here would loop straight back to the same denial, so stop and report.
+				context.logger.warn('Form OAuth2 authorization was denied or failed', {
+					error: req.query.error,
+					error_description: req.query.error_description,
+				});
+				res.status(403).send('Access denied');
+				res.end();
+				return null;
+			}
+
+			// handle OAuth2 callback from the provider (code + state query params)
+			if (typeof code === 'string' && typeof state === 'string') {
+				try {
+					const authorizationResult = await context.completeN8nOAuth2Flow(code, state);
+					if (authorizationResult.valid) {
+						// TODO: exchange the OAuth2 token to a specficly scoped token.
+						// Don't render the form here: the callback URL still carries `code`/`state`,
+						// which must never reach the sandboxed form page. Stash the token in a
+						// one-hop cookie and redirect to the clean resource URL — the follow-up GET
+						// (below) picks up the cookie and renders the form.
+						setFormOAuthToken(res, req, resourceUrl, authorizationResult.token);
+						// Re-append the original query params (dropped by the first provider
+						// redirect, stashed against this flow's `state` on the fresh GET) so the
+						// follow-up GET restores field prefill and `formQueryParameters`.
+						const preservedQuery = authorizationResult.metadata?.query;
+						res.writeHead(302, {
+							Location: preservedQuery ? `${resourceUrl}?${preservedQuery}` : resourceUrl,
+						});
+						res.end();
+						return null;
+					}
+					// We fall through to the redirect below to restart the OAuth2 flow if the callback is invalid.
+					context.logger.warn('Form OAuth2 flow failed, restarting', {
+						reason: authorizationResult.reason,
+					});
+				} catch (error) {
+					// Ignore errors and fall through to the redirect below
+					context.logger.warn('Form OAuth2 flow failed, restarting', {
+						error,
+					});
+				}
+			} else {
+				// Not a provider callback. If we just completed the flow, the token rides in a
+				// one-hop cookie set on the redirect above. Consume it once and render.
+				const cookieToken = readFormOAuthToken(req);
+				if (cookieToken) {
+					clearFormOAuthToken(res, req, resourceUrl);
+					const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
+					if (validation.valid) {
+						return { user: validation.user, token: cookieToken };
+					}
+					// Stale/invalid cookie — fall through to restart the OAuth2 flow.
+				}
+			}
+
+			// Stash the original query params against this flow's OAuth `state` so we can
+			// restore them after the bounce. Only on a genuine fresh GET — a callback
+			// fall-through (invalid completion) carries `code`/`state`, which we must not
+			// preserve as the form's query, and whose original query was consumed with the
+			// now-invalid state, so a restart begins clean.
+			const isCallback = typeof code === 'string' && typeof state === 'string';
+			const originalQuery = isCallback ? '' : req.originalUrl.split('?').slice(1).join('?');
+
+			try {
+				// start authentication flow by redirecting to the OAuth2 provider's authorization URL
+				const authorizationUrl = await context.beginN8nOAuth2Flow(
+					resourceUrl,
+					originalQuery ? { query: originalQuery } : undefined,
+				);
+				res.writeHead(302, {
+					Location: authorizationUrl,
+				});
+				res.end();
+			} catch (error) {
+				// Can't build the authorization URL — nothing to redirect to, so abort.
+				context.logger.warn('Form OAuth2 flow failed', {
+					error,
+				});
+				throw new UnexpectedError('Form OAuth2 flow failed');
+			}
+			return null;
+		} else {
+			// For POST requests, the OAuth2 flow is not applicable. We fall through to the cookie and token checks below.
+			const formToken = req.headers['x-auth-token'];
+			if (typeof formToken === 'string' && formToken) {
+				const validation = await context.validateN8nOAuth2Token(formToken, resourceUrl);
+				if (validation.valid) {
+					await context.establishTriggerIdentity(formToken, resourceUrl); // seeds the run
+					return {
+						user: validation.user,
+						token: null,
+					};
+				}
+			}
+			res.status(401).send();
+			return null;
+		}
+	}
+
+	// Parse the raw Cookie header rather than `req.cookies` because the webhook
+	// path may bypass cookie-parser middleware in some deployments.
+	const cookieMatch = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-auth=([^;]+)/);
+	if (cookieMatch) {
+		try {
+			return {
+				user: await context.validateCookieAuth(cookieMatch[1].trim()),
+				token: null,
+			};
+		} catch {}
+	}
+
+	const formToken = req.headers['x-auth-token'];
+	if (typeof formToken === 'string' && formToken) {
+		const user = verifyFormUserAuthToken(formToken, context.getNode());
+		if (user) return { user, token: null };
+	}
+
+	const res = context.getResponseObject();
+	if (req.method === 'GET') {
+		res.writeHead(302, {
+			Location: `/signin?redirect=${encodeURIComponent(buildAbsoluteFormUrl(req))}`,
+		});
+		res.end();
+	} else {
+		res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+		res.status(401).send();
+	}
+	return null;
+}
+
+/**
+ * Multi-step Form/Wait nodes inherit `authentication` from the upstream
+ * Form Trigger. This wrapper short-circuits when n8nUserAuth isn't in use.
+ *
+ * Returns `{ authedUser }` on success, `{ responded: true }` after sending a
+ * 302/401 on failure, or `{}` if the trigger doesn't require auth.
+ */
+export async function validateFormPageAuth(
+	context: IWebhookFunctions,
+	triggerAuthentication: string,
+): Promise<{ authedUser?: IUser; responded?: boolean }> {
+	if (triggerAuthentication !== 'n8nUserAuth') return {};
+	const { user } = (await authenticateFormUserOrRespond(context, false)) ?? {};
+	return user ? { authedUser: user } : { responded: true };
+}
 
 export async function formWebhook(
 	context: IWebhookFunctions,
@@ -600,6 +945,7 @@ export async function formWebhook(
 		appendAttribution?: boolean;
 		buttonLabel?: string;
 		customCss?: string;
+		includeUserInOutput?: boolean;
 	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
@@ -611,24 +957,48 @@ export async function formWebhook(
 		return { noWebhookResponse: true };
 	}
 
-	try {
-		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
-			throw new WebhookAuthorizationError(403);
+	if (options.ignoreBots && isbot(req.headers['user-agent'])) {
+		res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+		res.status(401).send();
+		return { noWebhookResponse: true };
+	}
+
+	const authentication = context.getNodeParameter(authProperty, 'none') as string;
+	let authedUser: IUser | undefined;
+	let oAuth2Token: string | undefined;
+	if (node.typeVersion > 1) {
+		if (authentication === 'n8nUserAuth') {
+			const { user, token } =
+				(await authenticateFormUserOrRespond(context, isFormOAuth2Enabled())) ?? {};
+			if (!user) return { noWebhookResponse: true };
+			authedUser = user;
+			oAuth2Token = token ?? undefined;
+		} else {
+			try {
+				await validateWebhookAuthentication(context, authProperty);
+			} catch (error) {
+				if (error instanceof WebhookAuthorizationError) {
+					res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+					res.status(401).send();
+					return { noWebhookResponse: true };
+				}
+				throw error;
+			}
 		}
-		if (node.typeVersion > 1) {
-			await validateWebhookAuthentication(context, authProperty);
-		}
-	} catch (error) {
-		if (error instanceof WebhookAuthorizationError) {
-			res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
-			res.status(401).send();
-			return { noWebhookResponse: true };
-		}
-		throw error;
 	}
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+
+	for (const field of formFields) {
+		if (field.fieldType === 'html') {
+			let html = field.html ?? '';
+			for (const resolvable of getResolvables(html)) {
+				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
+			}
+			field.html = html;
+		}
+	}
 
 	const method = context.getRequestObject().method;
 
@@ -680,7 +1050,18 @@ export async function formWebhook(
 
 		let authToken: string | undefined;
 		if (node.typeVersion > 1) {
-			authToken = await generateFormPostBasicAuthToken(context, authProperty);
+			if (authentication === 'n8nUserAuth' && authedUser) {
+				if (!isFormOAuth2Enabled()) {
+					// Cookies aren't sent on POST from the sandboxed form page
+					// (null origin + SameSite=Lax). Embed an HMAC token so the
+					// POST handler can re-authenticate the user.
+					authToken = generateFormUserAuthToken(node, authedUser);
+				} else {
+					authToken = oAuth2Token;
+				}
+			} else {
+				authToken = await generateFormPostBasicAuthToken(context, authProperty);
+			}
 		}
 
 		renderForm({
@@ -710,7 +1091,14 @@ export async function formWebhook(
 		useWorkflowTimezone = true;
 	}
 
-	const returnItem = await prepareFormReturnItem(context, formFields, mode, useWorkflowTimezone);
+	const userForOutput = options.includeUserInOutput === false ? undefined : authedUser;
+	const returnItem = await prepareFormReturnItem(
+		context,
+		formFields,
+		mode,
+		useWorkflowTimezone,
+		userForOutput,
+	);
 
 	return {
 		webhookResponse: { status: 200 },
@@ -718,7 +1106,11 @@ export async function formWebhook(
 	};
 }
 
-export function resolveRawData(context: IWebhookFunctions, rawData: string) {
+type ExpressionResolutionContext = Pick<IWebhookFunctions, 'evaluateExpression'>;
+
+export function resolveRawData(context: ExpressionResolutionContext, rawData: string) {
+	if (!rawData) return rawData;
+
 	const resolvables = getResolvables(rawData);
 	let returnData: string = rawData;
 
@@ -747,21 +1139,16 @@ type ParseFormFieldsOptions = {
 	fieldsParameterName: string;
 	mode?: 'test' | 'production';
 };
+
 export function parseFormFields(context: IWebhookFunctions, options: ParseFormFieldsOptions) {
 	let fields: FormFieldsParameter = [];
 	if (options.defineForm === 'json') {
-		try {
-			const jsonOutput = context.getNodeParameter(options.fieldsParameterName, '', {
+		const getJsonOutput = () =>
+			context.getNodeParameter(options.fieldsParameterName, '', {
 				rawExpressions: true,
 			}) as string;
 
-			fields = tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
-		} catch (error) {
-			throw new NodeOperationError(context.getNode(), error.message, {
-				description: error.message,
-				type: options.mode === 'test' ? 'manual-form-test' : undefined,
-			});
-		}
+		fields = parseJsonFormFields(context, getJsonOutput, options.mode);
 	} else {
 		fields = context.getNodeParameter(options.fieldsParameterName, []) as FormFieldsParameter;
 		for (const field of fields) {
@@ -775,4 +1162,27 @@ export function parseFormFields(context: IWebhookFunctions, options: ParseFormFi
 		}
 	}
 	return fields;
+}
+
+type ParseJsonFormFieldsCtx = Pick<IWebhookFunctions, 'evaluateExpression' | 'getNode'>;
+
+/**
+ * @throws {NodeOperationError} if the JSON is invalid or cannot be parsed into form fields
+ */
+export function parseJsonFormFields(
+	context: ParseJsonFormFieldsCtx,
+	getJsonOutput: () => string,
+	mode?: 'test' | 'production',
+) {
+	try {
+		const jsonOutput = getJsonOutput();
+
+		return tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
+	} catch (e) {
+		const error = ensureError(e);
+		throw new NodeOperationError(context.getNode(), error.message, {
+			description: error.message,
+			type: mode === 'test' ? 'manual-form-test' : undefined,
+		});
+	}
 }

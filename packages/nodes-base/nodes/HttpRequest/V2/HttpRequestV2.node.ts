@@ -13,11 +13,14 @@ import type {
 import {
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	removeCircularRefs,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
+
+import { sleep } from '@n8n/utils/sleep';
+
+import { applyTemplatedAuth } from '@utils/templated-auth';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
@@ -647,6 +650,7 @@ export class HttpRequestV2 implements INodeType {
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
+		let httpTemplatedCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
 		let nodeCredentialType;
@@ -674,6 +678,10 @@ export class HttpRequestV2 implements INodeType {
 				try {
 					httpQueryAuth = await this.getCredentials('httpQueryAuth');
 				} catch {}
+			} else if (genericAuthType === 'httpTemplatedCustomAuth') {
+				try {
+					httpTemplatedCustomAuth = await this.getCredentials('httpTemplatedCustomAuth');
+				} catch {}
 			} else if (genericAuthType === 'oAuth1Api') {
 				try {
 					oAuth1Api = await this.getCredentials('oAuth1Api');
@@ -697,6 +705,7 @@ export class HttpRequestV2 implements INodeType {
 			httpDigestAuth,
 			httpHeaderAuth,
 			httpQueryAuth,
+			httpTemplatedCustomAuth,
 			oAuth1Api,
 			oAuth2Api,
 		]) {
@@ -740,7 +749,21 @@ export class HttpRequestV2 implements INodeType {
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const url = this.getNodeParameter('url', itemIndex) as string;
+			let url = this.getNodeParameter('url', itemIndex);
+
+			if (typeof url !== 'string') {
+				const actualType = url === null ? 'null' : typeof url;
+				throw new NodeOperationError(
+					this.getNode(),
+					`URL parameter must be a string, got ${actualType}`,
+				);
+			}
+
+			url = url.trim();
+
+			if (!url) {
+				throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
+			}
 
 			if (!url.startsWith('http://') && !url.startsWith('https://')) {
 				throw new NodeOperationError(
@@ -1030,6 +1053,12 @@ export class HttpRequestV2 implements INodeType {
 					sendImmediately: false,
 				};
 				authDataKeys.auth = ['pass'];
+			}
+			if (httpTemplatedCustomAuth !== undefined) {
+				const templatedAuth = applyTemplatedAuth(httpTemplatedCustomAuth, requestOptions);
+				if (templatedAuth.headers) authDataKeys.headers = Object.keys(templatedAuth.headers);
+				if (templatedAuth.body) authDataKeys.body = Object.keys(templatedAuth.body);
+				if (templatedAuth.qs) authDataKeys.qs = Object.keys(templatedAuth.qs);
 			}
 
 			if (requestOptions.headers!.accept === undefined) {

@@ -6,6 +6,7 @@
  */
 
 import { createLogger } from './logger';
+import { isAllowedRelayUrl } from './relayAllowlist';
 import { RelayConnection, isEligibleTab } from './relayConnection';
 import type { ExtensionMessage, TabManagementSettings } from './types';
 
@@ -37,7 +38,7 @@ async function loadSettings(): Promise<TabManagementSettings> {
 // Relay URL storage (for deduplicating connect.html tabs)
 // ---------------------------------------------------------------------------
 
-const CONNECT_PAGE = '/dist/connect.html';
+const CONNECT_PAGE = 'connect.html';
 const RELAY_URL_KEY = 'pendingRelayUrl';
 
 // ---------------------------------------------------------------------------
@@ -122,7 +123,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 	if (!changeInfo.url) return;
 
 	const extOrigin = chrome.runtime.getURL('');
-	if (!changeInfo.url.startsWith(extOrigin) || !changeInfo.url.includes(CONNECT_PAGE)) return;
+	if (!changeInfo.url.startsWith(extOrigin)) return;
 
 	const parsed = new URL(changeInfo.url);
 	const relayUrl = parsed.searchParams.get('mcpRelayUrl');
@@ -141,7 +142,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 		await chrome.storage.session.set({ [RELAY_URL_KEY]: relayUrl });
 
 		// Check for an existing connect.html tab to reuse
-		const connectUrl = chrome.runtime.getURL('dist/connect.html');
+		const connectUrl = chrome.runtime.getURL(CONNECT_PAGE);
 		const allConnectTabs = await chrome.tabs.query({ url: `${connectUrl}*` });
 		const existing = allConnectTabs.find((t) => t.id !== tabId && t.id !== undefined);
 
@@ -149,17 +150,16 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 			// Reuse existing tab: focus it and close the duplicate
 			log.debug('reusing existing connect.html tab:', existing.id);
 			await chrome.tabs.update(existing.id, { active: true });
-			await chrome.tabs.reload(existing.id);
 			if (existing.windowId !== undefined) {
 				await chrome.windows.update(existing.windowId, { focused: true });
 			}
 			await chrome.tabs.remove(tabId);
 
-			// Notify existing tab about the new relay URL
+			// The existing tab stays loaded, so its listener is alive to apply the new relay URL.
 			try {
 				await chrome.runtime.sendMessage({ type: 'relayUrlReady', relayUrl });
 			} catch {
-				// Tab may not have a listener ready yet — it will read from storage on next mount
+				// Defensive: the stored RELAY_URL_KEY covers a missed message on next mount.
 			}
 		}
 		// If no existing tab, let the new one load normally — App.vue reads relay URL from storage
@@ -275,6 +275,12 @@ async function connectToRelay(
 	selectedTabIds: number[],
 ): Promise<{ success: boolean; error?: string }> {
 	log.debug('connectToRelay:', relayUrl, 'selectedTabs:', selectedTabIds.length);
+
+	if (!isAllowedRelayUrl(relayUrl)) {
+		log.warn('refusing relay connection to disallowed host:', relayUrl);
+		return { success: false, error: 'Refusing to connect: not a recognized n8n instance.' };
+	}
+
 	// Clean up existing connection
 	disconnect();
 
@@ -378,7 +384,7 @@ chrome.action.onClicked.addListener(() => {
 });
 
 async function openOrFocusConnectTab(): Promise<void> {
-	const connectUrl = chrome.runtime.getURL('dist/connect.html');
+	const connectUrl = chrome.runtime.getURL(CONNECT_PAGE);
 	const existing = await chrome.tabs.query({ url: `${connectUrl}*` });
 
 	if (existing.length > 0 && existing[0].id !== undefined) {

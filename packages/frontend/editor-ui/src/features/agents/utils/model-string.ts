@@ -1,8 +1,10 @@
 /**
  * Model identifier helpers. The canonical storage format is `"<provider>/<name>"`.
- * Centralised here because three callers (Agent panel, Advanced panel, AskLlm
- * card) used to roll their own and drifted on naming + edge cases.
+ * Centralised here because multiple callers (Agent info panel, memory panel,
+ * sub-agents panel) used to roll their own and drifted on naming + edge cases.
  */
+
+import { AGENT_MODEL_STRING_REGEX } from '@n8n/api-types';
 
 export interface ParsedModel {
 	provider: string;
@@ -11,8 +13,8 @@ export interface ParsedModel {
 
 /** Split `"<provider>/<name>"` on the first `/`. Returns null when malformed. */
 export function parseModelString(model: string): ParsedModel | null {
+	if (!AGENT_MODEL_STRING_REGEX.test(model)) return null;
 	const slashIndex = model.indexOf('/');
-	if (slashIndex <= 0) return null;
 	return { provider: model.slice(0, slashIndex), name: model.slice(slashIndex + 1) };
 }
 

@@ -1,16 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { Router } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import type { WorkflowSettingsUpdated } from '@n8n/api-types/push/workflow';
 
 import { workflowSettingsUpdated } from './workflowSettingsUpdated';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { mockedStore } from '@/__tests__/utils';
+import type { PushHandlerOptions } from './types';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
+		workflowId: '',
 		allNodes: [],
 		name: '',
 		settings: {},
@@ -25,6 +29,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
 	createWorkflowDocumentId: (id: string) => id,
+	injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 }));
 
 const makeEvent = (
@@ -37,14 +42,15 @@ const makeEvent = (
 });
 
 describe('workflowSettingsUpdated', () => {
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let options: PushHandlerOptions;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
-		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
+		mockWorkflowDocumentStore.workflowId = '';
+		options = { router: mock<Router>(), documentId: createWorkflowDocumentId('current') };
 	});
 
 	it('merges partial settings into an existing list entry', async () => {
@@ -56,7 +62,7 @@ describe('workflowSettingsUpdated', () => {
 			},
 		} as unknown as typeof workflowsListStore.workflowsById;
 
-		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }));
+		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }), options);
 
 		expect(workflowsListStore.workflowsById['wf-1'].settings).toEqual({
 			availableInMCP: true,
@@ -69,7 +75,7 @@ describe('workflowSettingsUpdated', () => {
 			'wf-1': { id: 'wf-1', name: 'wf' },
 		} as unknown as typeof workflowsListStore.workflowsById;
 
-		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }));
+		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }), options);
 
 		expect(workflowsListStore.workflowsById['wf-1'].settings).toEqual({
 			availableInMCP: true,
@@ -77,16 +83,16 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('does nothing for the document store when the workflow is not the active one', async () => {
-		workflowsStore.workflow.id = 'other-workflow';
+		mockWorkflowDocumentStore.workflowId = 'other-workflow';
 
-		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }));
+		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }), options);
 
 		expect(mockWorkflowDocumentStore.mergeSettings).not.toHaveBeenCalled();
 		expect(mockWorkflowDocumentStore.setChecksum).not.toHaveBeenCalled();
 	});
 
 	it('merges settings and uses payload checksum for the active document', async () => {
-		workflowsStore.workflow.id = 'wf-current';
+		mockWorkflowDocumentStore.workflowId = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',
@@ -98,6 +104,7 @@ describe('workflowSettingsUpdated', () => {
 
 		await workflowSettingsUpdated(
 			makeEvent('wf-current', { availableInMCP: true }, 'fresh-checksum'),
+			options,
 		);
 
 		expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledWith({ availableInMCP: true });
@@ -106,7 +113,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('applies settings but skips checksum refresh when none is provided', async () => {
-		workflowsStore.workflow.id = 'wf-current';
+		mockWorkflowDocumentStore.workflowId = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',
@@ -116,7 +123,7 @@ describe('workflowSettingsUpdated', () => {
 			},
 		} as unknown as typeof workflowsListStore.workflowsById;
 
-		await workflowSettingsUpdated(makeEvent('wf-current', { availableInMCP: true }));
+		await workflowSettingsUpdated(makeEvent('wf-current', { availableInMCP: true }), options);
 
 		expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledWith({ availableInMCP: true });
 		expect(mockWorkflowDocumentStore.setChecksum).not.toHaveBeenCalled();
@@ -124,7 +131,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('merges multiple settings keys in one event', async () => {
-		workflowsStore.workflow.id = 'wf-current';
+		mockWorkflowDocumentStore.workflowId = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',
@@ -135,6 +142,7 @@ describe('workflowSettingsUpdated', () => {
 
 		await workflowSettingsUpdated(
 			makeEvent('wf-current', { availableInMCP: true, timezone: 'UTC' }),
+			options,
 		);
 
 		expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledWith({

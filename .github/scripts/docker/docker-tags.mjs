@@ -9,7 +9,7 @@ class TagGenerator {
 		this.githubOutput = process.env.GITHUB_OUTPUT || null;
 	}
 
-	generate({ image, version, platform, includeDockerHub = false, sha = '' }) {
+	generate({ image, version, platform, includeDockerHub = false, sha = '', date = '' }) {
 		let imageName = image;
 		let versionSuffix = '';
 
@@ -42,6 +42,20 @@ class TagGenerator {
 			tags.shaPrimaryTag = shaGhcr[0].replace(/-amd64$|-arm64$/, '');
 		}
 
+		// Generate additional date-based tags (e.g. v3-nightly-20260625) for nightly builds
+		if (date) {
+			const dateVersion = `${version}-${date}`;
+			const datePlatformTag = `${dateVersion}${versionSuffix}${platformSuffix}`;
+			const dateGhcr = [`ghcr.io/${this.githubOwner}/${imageName}:${datePlatformTag}`];
+			const dateDocker = includeDockerHub
+				? [`${this.dockerUsername}/${imageName}:${datePlatformTag}`]
+				: [];
+			tags.all = [...tags.all, ...dateGhcr, ...dateDocker];
+			tags.ghcr = [...tags.ghcr, ...dateGhcr];
+			tags.docker = [...tags.docker, ...dateDocker];
+			tags.datePrimaryTag = dateGhcr[0].replace(/-amd64$|-arm64$/, '');
+		}
+
 		return tags;
 	}
 
@@ -58,18 +72,21 @@ class TagGenerator {
 			if (tags.shaPrimaryTag) {
 				outputs.push(`${prefixStr}sha_primary_tag=${tags.shaPrimaryTag}`);
 			}
+			if (tags.datePrimaryTag) {
+				outputs.push(`${prefixStr}date_primary_tag=${tags.datePrimaryTag}`);
+			}
 			appendFileSync(this.githubOutput, outputs.join('\n') + '\n');
 		} else {
 			console.log(JSON.stringify(tags, null, 2));
 		}
 	}
 
-	generateAll({ version, platform, includeDockerHub = false, sha = '' }) {
+	generateAll({ version, platform, includeDockerHub = false, sha = '', date = '' }) {
 		const images = ['n8n', 'runners', 'runners-distroless'];
 		const results = {};
 
 		for (const image of images) {
-			const tags = this.generate({ image, version, platform, includeDockerHub, sha });
+			const tags = this.generate({ image, version, platform, includeDockerHub, sha, date });
 			const prefix = image.replace('-distroless', '_distroless');
 			results[prefix] = tags;
 
@@ -105,6 +122,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 				platform: getArg('platform'),
 				includeDockerHub: hasFlag('include-docker'),
 				sha: getArg('sha') || '',
+				date: getArg('date') || '',
 			});
 			if (!generator.githubOutput) {
 				console.log(JSON.stringify(results, null, 2));
@@ -121,6 +139,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 				platform: getArg('platform'),
 				includeDockerHub: hasFlag('include-docker'),
 				sha: getArg('sha') || '',
+				date: getArg('date') || '',
 			});
 			generator.output(tags);
 		}

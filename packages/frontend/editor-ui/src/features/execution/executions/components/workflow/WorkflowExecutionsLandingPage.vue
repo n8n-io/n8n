@@ -4,27 +4,24 @@ import { useRoute, useRouter } from 'vue-router';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
 
 const workflowId = useInjectWorkflowId();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
-const executionCount = computed(() => workflowsStore.currentWorkflowExecutions.length);
+const executionCount = computed(
+	() => workflowExecutionStateStore.value.currentWorkflowExecutions.length,
+);
 const containsTrigger = computed(() => workflowDocumentStore.value.workflowTriggerNodes.length > 0);
 
 function onSetupFirstStep(): void {

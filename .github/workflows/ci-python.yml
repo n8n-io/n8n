@@ -51,6 +51,6 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: packages/@n8n/task-runner-python/coverage.xml
-          flags: tests
+          flags: python
           name: task-runner-python
           fail_ci_if_error: false

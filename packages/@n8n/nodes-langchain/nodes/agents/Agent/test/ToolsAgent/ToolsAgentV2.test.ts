@@ -99,6 +99,61 @@ describe('toolsAgentExecute', () => {
 		expect(result[0][1].json).toEqual({ output: { text: 'success 2' } });
 	});
 
+	it('should report tool_calls.total from completed tool runs even when returnIntermediateSteps is false', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options.batching.batchSize') return defaultValue;
+			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+			if (param === 'options')
+				return {
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		// Simulate two completed tool calls by firing the tool-end callback twice.
+		const mockExecutor = {
+			invoke: vi.fn().mockImplementation(async (_invokeParams, executeOptions) => {
+				const callbacks = (executeOptions?.callbacks ?? []) as Array<{
+					handleToolEnd?: () => void;
+				}>;
+				for (const cb of callbacks) {
+					cb.handleToolEnd?.();
+					cb.handleToolEnd?.();
+				}
+				return { output: 'final answer' };
+			}),
+		};
+
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		await toolsAgentExecute.call(mockContext);
+
+		expect(mockContext.setMetadata).toHaveBeenCalledWith({
+			tracing: expect.objectContaining({
+				'ai.agent.version': 'v2',
+				'ai.agent.tool_calls.total': 2,
+				'ai.agent.execution.succeeded': true,
+			}),
+		});
+	});
+
 	it('should pass tracing metadata to tracing config', async () => {
 		const mockNode = mock<INode>();
 		mockNode.typeVersion = 2;
@@ -308,6 +363,13 @@ describe('toolsAgentExecute', () => {
 		);
 
 		await expect(toolsAgentExecute.call(mockContext)).rejects.toThrow('Test error');
+		expect(mockContext.setMetadata).toHaveBeenCalledWith({
+			tracing: expect.objectContaining({
+				'ai.agent.version': 'v2',
+				'ai.agent.items.failed': 1,
+				'ai.agent.execution.succeeded': false,
+			}),
+		});
 	});
 
 	it('should fetch output parser with correct item index', async () => {

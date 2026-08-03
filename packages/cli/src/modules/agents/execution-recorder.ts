@@ -1,39 +1,49 @@
-import { UPDATE_WORKING_MEMORY_TOOL_NAME, type StreamChunk } from '@n8n/agents';
+import type { StreamChunk } from '@n8n/agents';
+import {
+	applyForwardedChildChunk,
+	emptyChildTrace,
+	settleChildTrace,
+	type PersistedChildTrace,
+} from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
 import type { ToolRegistry } from './tool-registry';
 
-/** Pull the human-readable working-memory content out of the WM tool's input. */
-function workingMemoryContentFromInput(input: unknown): string {
-	if (input && typeof input === 'object' && !Array.isArray(input)) {
-		const maybe = (input as Record<string, unknown>).memory;
-		if (typeof maybe === 'string') return maybe;
-	}
-	return JSON.stringify(input, null, 2);
-}
+/** Cap on child trace characters persisted per delegation. Tighter than the
+ *  live forwarding budget because this is written into every parent execution row. */
+const CHILD_TRACE_PERSIST_CHAR_BUDGET = 4_000;
 
 /**
- * Walk a nodeParameters tree and substitute every `$fromAI('key', ...)`
- * expression with the value the LLM passed for that key (or the call's
- * default when the LLM didn't provide one). Used when recording a
- * `kind: 'node'` tool call so the timeline shows the resolved values the
- * node would have run with — not the raw template strings the user
+ * Walk a nodeParameters tree and substitute templated values with what the
+ * LLM passed: both `$fromAI('key', ...)` placeholders and `={{ $json.path }}`
+ * lookups (the LLM's structured input is the node's `$json` at runtime — see
+ * `node-tool-factory.ts` where input flows in as `[{ json: input }]`). Used
+ * when recording a `kind: 'node'` tool call so the timeline shows the values
+ * the node would have run with, not the raw template strings the user
  * configured.
  *
  * Pure best-effort: parsing failures fall through to the raw string. The
  * goal is a clearer log entry, not exact expression-engine fidelity.
  */
-function resolveFromAIInValue(value: unknown, llmArgs: Record<string, unknown>): unknown {
-	if (typeof value === 'string') return resolveFromAIInString(value, llmArgs);
-	if (Array.isArray(value)) return value.map((v) => resolveFromAIInValue(v, llmArgs));
+function resolveTemplatesInValue(value: unknown, llmArgs: Record<string, unknown>): unknown {
+	if (typeof value === 'string') return resolveTemplatesInString(value, llmArgs);
+	if (Array.isArray(value)) return value.map((v) => resolveTemplatesInValue(v, llmArgs));
 	if (value !== null && typeof value === 'object') {
 		const out: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(value)) {
-			out[k] = resolveFromAIInValue(v, llmArgs);
+			out[k] = resolveTemplatesInValue(v, llmArgs);
 		}
 		return out;
 	}
 	return value;
+}
+
+function resolveTemplatesInString(str: string, llmArgs: Record<string, unknown>): unknown {
+	const afterFromAI = resolveFromAIInString(str, llmArgs);
+	if (typeof afterFromAI !== 'string') return afterFromAI;
+	return resolveJsonRefsInString(afterFromAI, llmArgs);
 }
 
 function resolveFromAIInString(str: string, llmArgs: Record<string, unknown>): unknown {
@@ -81,20 +91,126 @@ function resolveFromAIInString(str: string, llmArgs: Record<string, unknown>): u
 	});
 }
 
+// Single full-string expression like `={{ $json.foo.bar }}`. Captures the
+// dotted path after `$json`. Bracket access and JS expressions are out of
+// scope here — this resolver is for display only, not for actual node
+// execution.
+const FULL_JSON_REF_PATTERN = /^=\s*\{\{\s*\$json((?:\s*\.\s*[a-zA-Z_$][\w$]*)+)\s*\}\}\s*$/;
+const INLINE_JSON_REF_PATTERN = /\{\{\s*\$json((?:\s*\.\s*[a-zA-Z_$][\w$]*)+)\s*\}\}/g;
+
+function resolveJsonRefsInString(str: string, llmArgs: Record<string, unknown>): unknown {
+	if (!str.startsWith('=') || !str.includes('$json')) return str;
+
+	const fullMatch = str.match(FULL_JSON_REF_PATTERN);
+	if (fullMatch) {
+		const resolved = lookupJsonPath(llmArgs, fullMatch[1]);
+		return resolved === undefined ? str : resolved;
+	}
+
+	let replaced = false;
+	const out = str.replace(INLINE_JSON_REF_PATTERN, (match, path: string) => {
+		const resolved = lookupJsonPath(llmArgs, path);
+		if (resolved === undefined) return match;
+		replaced = true;
+		if (typeof resolved === 'object') return JSON.stringify(resolved);
+		return String(resolved);
+	});
+	return replaced ? out : str;
+}
+
+function lookupJsonPath(root: Record<string, unknown>, dottedPath: string): unknown {
+	const segments = dottedPath
+		.split('.')
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+	let cur: unknown = root;
+	for (const seg of segments) {
+		if (cur === null || cur === undefined) return undefined;
+		if (typeof cur !== 'object') return undefined;
+		cur = (cur as Record<string, unknown>)[seg];
+	}
+	return cur;
+}
+
+/**
+ * Tool errors arrive on the `tool-result` chunk as raw `Error` instances
+ * (see `agent-runtime.ts` → `tool-result` write on `batch.errors`). Persisting
+ * those directly produces `"output": {}` because `Error.name`/`message`/`stack`
+ * are non-enumerable, so the timeline drops the diagnostic the UI needs. Wrap
+ * Errors and bare strings into an enumerable `{ error }` shape; pass through
+ * objects that already carry their own shape.
+ */
+function normaliseToolErrorOutput(output: unknown): unknown {
+	if (output instanceof Error) {
+		return { error: output.message || output.name || 'Tool execution failed' };
+	}
+	if (typeof output === 'string') {
+		return { error: output };
+	}
+	return output;
+}
+
+function normaliseStreamError(error: unknown): string {
+	if (error instanceof Error) {
+		return scrubSecretsInText(error.message || error.name || 'Agent execution failed');
+	}
+	if (typeof error === 'string') return scrubSecretsInText(error);
+
+	const sanitized = sanitizeExecutionLogValue(error);
+	try {
+		return scrubSecretsInText(JSON.stringify(sanitized));
+	} catch {
+		return scrubSecretsInText(String(error));
+	}
+}
+
+const REDACTED_VALUE = '[REDACTED]';
+const CIRCULAR_VALUE = '[Circular]';
+
+function isSecretKey(key: string): boolean {
+	const probe = `${key}=value`;
+	return scrubSecretsInText(probe) !== probe;
+}
+
+function sanitizeExecutionLogValue(value: unknown, seen = new WeakSet<object>()): unknown {
+	if (typeof value === 'string') return scrubSecretsInText(value);
+
+	if (Array.isArray(value)) {
+		if (seen.has(value)) return CIRCULAR_VALUE;
+		seen.add(value);
+		const sanitized = value.map((item) => sanitizeExecutionLogValue(item, seen));
+		seen.delete(value);
+		return sanitized;
+	}
+
+	if (!isRecord(value)) return value;
+
+	if (seen.has(value)) return CIRCULAR_VALUE;
+	seen.add(value);
+
+	const sanitized: Record<string, unknown> = {};
+	for (const [key, item] of Object.entries(value)) {
+		sanitized[key] = isSecretKey(key) ? REDACTED_VALUE : sanitizeExecutionLogValue(item, seen);
+	}
+
+	seen.delete(value);
+	return sanitized;
+}
+
+function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | undefined {
+	const sanitized = sanitizeExecutionLogValue(value);
+	return isRecord(sanitized) ? sanitized : undefined;
+}
+
 export interface RecordedUsage {
 	promptTokens: number;
 	completionTokens: number;
 	totalTokens: number;
 }
 
-export interface RecordedToolCall {
-	name: string;
-	input: unknown;
-	output: unknown;
-}
-
 export type TimelineEvent =
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
+	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
 	| {
 			type: 'tool-call';
 			kind: 'tool' | 'workflow' | 'node';
@@ -119,13 +235,9 @@ export type TimelineEvent =
 			 * detail viewer can show what the node was set up to do.
 			 */
 			nodeParameters?: Record<string, unknown>;
+			childTrace?: PersistedChildTrace;
 	  }
-	| { type: 'working-memory'; content: string; timestamp: number }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null;
-}
 
 /**
  * Collects execution data from agent stream chunks.
@@ -137,12 +249,10 @@ export interface MessageRecord {
 	finishReason: string;
 	usage: RecordedUsage | null;
 	totalCost: number | null;
-	toolCalls: RecordedToolCall[];
 	timeline: TimelineEvent[];
 	startTime: number;
 	duration: number;
 	error: string | null;
-	workingMemory: string | null;
 }
 
 export class ExecutionRecorder {
@@ -157,6 +267,9 @@ export class ExecutionRecorder {
 	/** Text buffer for the current segment (flushed to timeline on boundaries). */
 	private textBuffer: string[] = [];
 
+	/** Reasoning buffer for the current segment (kept separate from user-facing text). */
+	private reasoningBuffer: string[] = [];
+
 	private model: string | null = null;
 
 	private finishReason = 'unknown';
@@ -165,42 +278,73 @@ export class ExecutionRecorder {
 
 	private totalCost: number | null = null;
 
-	private toolCalls: RecordedToolCall[] = [];
-
 	private timeline: TimelineEvent[] = [];
 
 	/** Wall-clock when the first text-delta of the current segment arrived. */
 	private textStartTime: number | null = null;
 
+	/** Wall-clock when the current reasoning segment started. */
+	private reasoningStartTime: number | null = null;
+
 	private _suspended = false;
 
 	private error: string | null = null;
 
-	private workingMemory: string | null = null;
-
 	private readonly startTime = Date.now();
+
+	private childTraceChars = new Map<string, number>();
 
 	/** Feed a stream chunk into the recorder. */
 	record(chunk: StreamChunk): void {
 		switch (chunk.type) {
 			case 'text-delta':
+				this.flushReasoningBuffer();
 				if (this.textStartTime === null) this.textStartTime = Date.now();
 				this.textParts.push(chunk.delta);
 				this.textBuffer.push(chunk.delta);
 				break;
-			case 'tool-call':
-				if (chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
-					this.recordWorkingMemoryUpdate(workingMemoryContentFromInput(chunk.input));
-				} else {
-					this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
-				}
+			case 'reasoning-start':
+				this.flushTextBuffer();
+				this.flushReasoningBuffer();
+				this.reasoningStartTime = Date.now();
 				break;
-			case 'tool-result':
-				if (chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
-					// WM tool-result is already represented by the timeline entry
-					// pushed at tool-call time; nothing more to do here.
-					break;
+			case 'reasoning-delta':
+				this.flushTextBuffer();
+				if (this.reasoningStartTime === null) this.reasoningStartTime = Date.now();
+				this.reasoningBuffer.push(chunk.delta);
+				break;
+			case 'reasoning-end':
+				this.flushReasoningBuffer();
+				break;
+			case 'tool-call':
+				this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
+				break;
+			case 'tool-execution-start':
+				this.recordToolExecutionStart(chunk.toolCallId, chunk.startTime);
+				break;
+			case 'tool-execution-end':
+				this.recordToolExecutionEnd(chunk.toolCallId, chunk.isError, chunk.endTime);
+				break;
+			case 'subagent-chunk': {
+				if (chunk.parentToolCallId === undefined) break;
+				const entry = this.findOpenTimelineToolCall(chunk.parentToolCallId);
+				if (!entry) break;
+				let inner = chunk.chunk;
+				if (inner.type === 'text-delta' || inner.type === 'reasoning-delta') {
+					// Trim rather than skip whole: a delta straddling the cap would
+					// otherwise be persisted in full and overshoot it.
+					const used = this.childTraceChars.get(chunk.parentToolCallId) ?? 0;
+					const remaining = CHILD_TRACE_PERSIST_CHAR_BUDGET - used;
+					if (remaining <= 0) break;
+					const delta = inner.delta.slice(0, remaining);
+					this.childTraceChars.set(chunk.parentToolCallId, used + delta.length);
+					inner = { ...inner, delta };
 				}
+				entry.childTrace ??= emptyChildTrace();
+				applyForwardedChildChunk(entry.childTrace, inner);
+				break;
+			}
+			case 'tool-result':
 				this.recordToolResult(
 					chunk.toolCallId,
 					chunk.toolName,
@@ -209,6 +353,7 @@ export class ExecutionRecorder {
 				);
 				break;
 			case 'finish':
+				this.flushReasoningBuffer();
 				this.flushTextBuffer();
 				this.finishReason = chunk.finishReason;
 				if (chunk.usage) {
@@ -219,9 +364,10 @@ export class ExecutionRecorder {
 					};
 				}
 				this.model = chunk.model ?? null;
-				this.totalCost = chunk.totalCost ?? chunk.usage?.cost ?? null;
+				this.totalCost = chunk.usage?.cost ?? null;
 				break;
 			case 'tool-call-suspended':
+				this.flushReasoningBuffer();
 				this.flushTextBuffer();
 				this._suspended = true;
 				this.timeline.push({
@@ -232,8 +378,9 @@ export class ExecutionRecorder {
 				});
 				break;
 			case 'error': {
-				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
-				this.error = errMsg;
+				this.flushReasoningBuffer();
+				this.flushTextBuffer();
+				this.error = normaliseStreamError(chunk.error);
 				break;
 			}
 		}
@@ -246,6 +393,7 @@ export class ExecutionRecorder {
 
 	/** Build the final message record after the stream has ended. */
 	getMessageRecord(): MessageRecord {
+		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 		return {
 			assistantResponse: this.textParts.join(''),
@@ -253,12 +401,10 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
-			toolCalls: this.toolCalls,
 			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
 			error: this.error,
-			workingMemory: this.workingMemory,
 		};
 	}
 
@@ -281,42 +427,53 @@ export class ExecutionRecorder {
 		this.textStartTime = null;
 	}
 
-	private recordWorkingMemoryUpdate(content: string): void {
-		this.flushTextBuffer();
-		this.workingMemory = content;
-		this.timeline.push({
-			type: 'working-memory',
-			content,
-			timestamp: Date.now(),
-		});
+	/** Flush accumulated reasoning without including it in `assistantResponse`. */
+	private flushReasoningBuffer(): void {
+		if (this.reasoningBuffer.length === 0) {
+			this.reasoningStartTime = null;
+			return;
+		}
+		const content = this.reasoningBuffer.join('');
+		if (content.trim()) {
+			const now = Date.now();
+			this.timeline.push({
+				type: 'reasoning',
+				content,
+				timestamp: this.reasoningStartTime ?? now,
+				endTime: now,
+			});
+		}
+		this.reasoningBuffer = [];
+		this.reasoningStartTime = null;
 	}
 
 	/**
-	 * Record a discrete `tool-call` chunk from the stream. Maintains both the
-	 * flat `toolCalls` array (backward compat) and the ordered timeline. The
-	 * matching `tool-result` chunk closes the timeline entry.
+	 * Record a discrete `tool-call` chunk from the stream. The matching
+	 * `tool-result` chunk closes the timeline entry.
 	 */
 	private recordToolCall(toolCallId: string, name: string, input: unknown): void {
+		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 
-		this.toolCalls.push({ name, input, output: undefined });
+		const recordedInput = sanitizeExecutionLogValue(input);
 
 		const entry = this.registry.get(name);
-		// Resolve `$fromAI(...)` expressions in nodeParameters using the LLM's
-		// args so the timeline shows the values the node would have run with
-		// (e.g. the actual prompt text) rather than raw template strings.
+		// Resolve both `$fromAI(...)` placeholders and simple `={{ $json.x }}`
+		// references in nodeParameters using the LLM's args, so the timeline
+		// shows the values the node would have run with (e.g. the actual
+		// prompt text) rather than raw template strings.
 		const llmArgs =
 			input !== null && typeof input === 'object' ? (input as Record<string, unknown>) : {};
 		const resolvedNodeParameters =
 			entry?.nodeParameters !== undefined
-				? (resolveFromAIInValue(entry.nodeParameters, llmArgs) as Record<string, unknown>)
+				? sanitizeExecutionLogRecord(resolveTemplatesInValue(entry.nodeParameters, llmArgs))
 				: undefined;
 		this.timeline.push({
 			type: 'tool-call',
 			kind: entry?.kind ?? 'tool',
 			name,
 			toolCallId,
-			input,
+			input: recordedInput,
 			output: undefined as unknown,
 			startTime: Date.now(),
 			endTime: 0,
@@ -329,6 +486,47 @@ export class ExecutionRecorder {
 			nodeDisplayName: entry?.nodeDisplayName,
 			nodeParameters: resolvedNodeParameters,
 		});
+	}
+
+	/**
+	 * Real per-tool execution start, bridged from the runtime event bus. The
+	 * `tool-call` chunk only marks when the model emitted the call; this marks
+	 * when the handler actually started. Uses the server-stamped `startTime`
+	 * carried on the chunk so the persisted duration matches the live one
+	 * exactly (the FE reads the same value off the stream).
+	 */
+	private recordToolExecutionStart(toolCallId: string, startTime: number): void {
+		if (!toolCallId) return;
+		const entry = this.findOpenTimelineToolCall(toolCallId);
+		if (entry) entry.startTime = startTime;
+	}
+
+	/**
+	 * Real per-tool execution end, bridged from the runtime event bus. Closes
+	 * the timeline entry with the server-stamped finish time so concurrently-
+	 * executed tools keep distinct durations — the batched `tool-result` chunks
+	 * all arrive together and would otherwise share a single end timestamp.
+	 */
+	private recordToolExecutionEnd(toolCallId: string, isError: boolean, endTime: number): void {
+		if (!toolCallId) return;
+		const entry = this.findOpenTimelineToolCall(toolCallId);
+		if (entry) {
+			entry.endTime = endTime;
+			entry.success = !isError;
+			if (entry.childTrace) settleChildTrace(entry.childTrace);
+		}
+	}
+
+	/** Most recent not-yet-closed timeline tool-call entry for a tool call id. */
+	private findOpenTimelineToolCall(
+		toolCallId: string,
+	): (TimelineEvent & { type: 'tool-call' }) | undefined {
+		return [...this.timeline]
+			.reverse()
+			.find(
+				(e): e is TimelineEvent & { type: 'tool-call' } =>
+					e.type === 'tool-call' && e.toolCallId === toolCallId && e.endTime === 0,
+			);
 	}
 
 	/**
@@ -347,30 +545,29 @@ export class ExecutionRecorder {
 		output: unknown,
 		isError: boolean,
 	): void {
-		const pendingFlat = [...this.toolCalls]
-			.reverse()
-			.find((tc) => tc.name === name && tc.output === undefined);
-		if (pendingFlat) {
-			pendingFlat.output = output;
-		} else {
-			this.toolCalls.push({ name, input: undefined, output });
-		}
+		const recordedOutput = sanitizeExecutionLogValue(
+			isError ? normaliseToolErrorOutput(output) : output,
+		);
 
 		const pendingTimeline = [...this.timeline]
 			.reverse()
 			.find(
 				(e): e is TimelineEvent & { type: 'tool-call' } =>
 					e.type === 'tool-call' &&
-					(toolCallId ? e.toolCallId === toolCallId : e.name === name) &&
-					e.endTime === 0,
+					(toolCallId ? e.toolCallId === toolCallId : e.name === name && e.endTime === 0),
 			);
 		if (pendingTimeline) {
-			pendingTimeline.output = output;
-			pendingTimeline.endTime = Date.now();
+			pendingTimeline.output = recordedOutput;
 			pendingTimeline.success = !isError;
+			// `tool-execution-end` (real per-tool finish) normally closed this entry
+			// already; only fall back to the batched result time if it never fired.
+			if (pendingTimeline.endTime === 0) {
+				pendingTimeline.endTime = Date.now();
+			}
+			if (pendingTimeline.childTrace) settleChildTrace(pendingTimeline.childTrace);
 
-			if (pendingTimeline.kind === 'workflow' && isRecord(output)) {
-				const execId = output.executionId;
+			if (pendingTimeline.kind === 'workflow' && isRecord(recordedOutput)) {
+				const execId = recordedOutput.executionId;
 				if (typeof execId === 'string') {
 					pendingTimeline.workflowExecutionId = execId;
 				}
@@ -378,6 +575,7 @@ export class ExecutionRecorder {
 			return;
 		}
 
+		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 		const entry = this.registry.get(name);
 		const now = Date.now();
@@ -387,7 +585,7 @@ export class ExecutionRecorder {
 			name,
 			toolCallId,
 			input: undefined,
-			output,
+			output: recordedOutput,
 			startTime: now,
 			endTime: now,
 			success: !isError,
@@ -397,10 +595,13 @@ export class ExecutionRecorder {
 			nodeType: entry?.nodeType,
 			nodeTypeVersion: entry?.nodeTypeVersion,
 			nodeDisplayName: entry?.nodeDisplayName,
-			nodeParameters: entry?.nodeParameters,
+			nodeParameters:
+				entry?.nodeParameters !== undefined
+					? sanitizeExecutionLogRecord(entry.nodeParameters)
+					: undefined,
 		};
-		if (synthesized.kind === 'workflow' && isRecord(output)) {
-			const execId = output.executionId;
+		if (synthesized.kind === 'workflow' && isRecord(recordedOutput)) {
+			const execId = recordedOutput.executionId;
 			if (typeof execId === 'string') {
 				synthesized.workflowExecutionId = execId;
 			}

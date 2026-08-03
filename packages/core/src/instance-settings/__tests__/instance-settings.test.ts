@@ -1,8 +1,17 @@
 import type { Logger } from '@n8n/backend-common';
 import { InstanceSettingsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
-jest.mock('node:fs', () => mock<typeof fs>());
 import * as fs from 'node:fs';
+import { mock } from 'vitest-mock-extended';
+
+vi.mock('node:fs', async () => {
+	const { mock: hoistedMock } = await import('vitest-mock-extended');
+	const proxy = hoistedMock<typeof fs>();
+	return new Proxy(proxy, {
+		get: (target, prop, receiver) =>
+			prop === 'default' ? receiver : Reflect.get(target, prop, receiver),
+		has: (target, prop) => prop === 'default' || Reflect.has(target, prop),
+	});
+});
 
 import { InstanceSettings } from '../instance-settings';
 import { WorkerMissingEncryptionKey } from '../worker-missing-encryption-key.error';
@@ -23,7 +32,7 @@ describe('InstanceSettings', () => {
 		);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		mockFs.statSync.mockReturnValue({ mode: 0o600 } as fs.Stats);
 
 		process.argv[2] = 'main';
@@ -215,8 +224,8 @@ describe('InstanceSettings', () => {
 
 	describe('initialize', () => {
 		const mockRepo = {
-			findActiveByType: jest.fn(),
-			insertOrIgnore: jest.fn(),
+			findActiveByType: vi.fn(),
+			insertOrIgnore: vi.fn(),
 		};
 
 		let settings: InstanceSettings;
@@ -271,6 +280,17 @@ describe('InstanceSettings', () => {
 					algorithm: null,
 				});
 				expect(settings.instanceId).toEqual(derivedId);
+			});
+
+			it('should keep derivedInstanceId unchanged when an override is applied', async () => {
+				const derived = settings.derivedInstanceId;
+				expect(derived).toEqual(settings.instanceId);
+
+				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('env-pinned-id');
+				expect(settings.derivedInstanceId).toEqual(derived);
 			});
 
 			it('should use the winner row when a concurrent insert is ignored', async () => {
@@ -339,6 +359,32 @@ describe('InstanceSettings', () => {
 				await settings.initialize(mockRepo);
 
 				expect(settings.hmacSignatureSecret).toEqual('winner-hmac');
+			});
+		});
+
+		describe('canSeed: false', () => {
+			it('should not create missing rows and keep the derived values', async () => {
+				const derivedId = settings.instanceId;
+				const derivedHmac = settings.hmacSignatureSecret;
+
+				await settings.initialize(mockRepo, { canSeed: false });
+
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalled();
+				expect(settings.instanceId).toEqual(derivedId);
+				expect(settings.hmacSignatureSecret).toEqual(derivedHmac);
+			});
+
+			it('should still adopt env vars and existing DB rows', async () => {
+				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+					type === 'signing.hmac' ? { value: 'db-stored-hmac' } : null,
+				);
+
+				await settings.initialize(mockRepo, { canSeed: false });
+
+				expect(settings.instanceId).toEqual('env-pinned-id');
+				expect(settings.hmacSignatureSecret).toEqual('db-stored-hmac');
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalled();
 			});
 		});
 	});

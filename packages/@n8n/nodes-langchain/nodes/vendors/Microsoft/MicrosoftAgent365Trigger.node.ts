@@ -7,6 +7,8 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
+import { authorizeJWT } from '@microsoft/agents-hosting';
+
 import { getInputs } from '../../agents/Agent/V2/utils';
 
 import {
@@ -217,7 +219,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				'microsoftAgent365Api',
 			)) as MicrosoftAgent365Credentials;
 
-			const agent = createMicrosoftAgentApplication(credentials);
+			const { agent, authConfig } = createMicrosoftAgentApplication(credentials);
 
 			const activityCapture: ActivityCapture = {
 				input: '',
@@ -227,11 +229,19 @@ export class MicrosoftAgent365Trigger implements INodeType {
 
 			const callback = configureAdapterProcessCallback(this, agent, credentials, activityCapture);
 
-			(req as any).user = {
-				aud: credentials.clientId,
-				appid: credentials.clientId,
-				azp: credentials.clientId,
-			};
+			// authorizeJWT verifies the Bot Framework token (sets req.user) and 401s on failure
+			let authorized = false;
+			await authorizeJWT(authConfig)(req, res, (err?: unknown) => {
+				if (!err) authorized = true;
+			});
+
+			if (!authorized) {
+				// backstop: ensure a 401 is sent even if the middleware didn't
+				if (!res.headersSent) {
+					res.status(401).send({ error: 'Unauthorized' });
+				}
+				return { noWebhookResponse: true };
+			}
 
 			await agent.adapter.process(req, res, callback);
 

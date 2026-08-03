@@ -9,6 +9,8 @@ export const userScopes = [
 	'files:read',
 	'files:write',
 	'groups:read',
+	// Private-channel management: conversations.create/invite/kick/archive/rename/setTopic.
+	'groups:write',
 	'groups:history',
 	'im:read',
 	'im:history',
@@ -23,6 +25,8 @@ export const userScopes = [
 	'users.profile:read',
 	'users.profile:write',
 	'users:read',
+	// Needed so /users.info returns the responder's email for the HITL capture-responder option.
+	'users:read.email',
 	'search:read',
 ];
 

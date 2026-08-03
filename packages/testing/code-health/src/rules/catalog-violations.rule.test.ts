@@ -126,6 +126,35 @@ catalog:
 		expect(violations).toHaveLength(0);
 	});
 
+	it('ignores peer dependencies (they express compatibility ranges)', async () => {
+		writeFile(
+			tmpDir,
+			'pnpm-workspace.yaml',
+			`
+packages:
+  - packages/*
+catalog:
+  eslint: 9.29.0
+`,
+		);
+		writeFile(
+			tmpDir,
+			'packages/node-cli/package.json',
+			JSON.stringify(
+				{
+					name: 'node-cli',
+					peerDependencies: { eslint: '>= 9' },
+				},
+				null,
+				2,
+			),
+		);
+
+		const violations = await rule.analyze(context());
+
+		expect(violations).toHaveLength(0);
+	});
+
 	it('ignores workspace references', async () => {
 		writeFile(
 			tmpDir,
@@ -194,6 +223,35 @@ catalog: {}
 		expect(violations).toHaveLength(2);
 		expect(violations[0].message).toContain('some-lib');
 		expect(violations[0].message).toContain('2 different versions');
+	});
+
+	it('ignores package.json under src/template (scaffolding templates)', async () => {
+		writeFile(
+			tmpDir,
+			'pnpm-workspace.yaml',
+			`
+packages:
+  - packages/*
+catalog:
+  typescript: 5.9.2
+`,
+		);
+		writeFile(
+			tmpDir,
+			'packages/node-cli/src/template/templates/example/template/package.json',
+			JSON.stringify(
+				{
+					name: '{{nodePackageName}}',
+					devDependencies: { typescript: '5.9.2' },
+				},
+				null,
+				2,
+			),
+		);
+
+		const violations = await rule.analyze(context());
+
+		expect(violations).toHaveLength(0);
 	});
 
 	it('does not flag cross-package when versions match', async () => {

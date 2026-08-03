@@ -1,20 +1,36 @@
+import type { Mock } from 'vitest';
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/naming-convention -- mocks the Slack-style SDK (PascalCase components) and intentionally uses any-based factory wrappers */
-// Define mocks inline inside the factory to avoid jest.mock hoisting issues
-type MockFn = jest.Mock<any, any[]>;
-const mockButton: MockFn = jest.fn((opts) => ({ type: 'button', ...opts }));
-const mockCard: MockFn = jest.fn((opts) => ({ type: 'card', ...opts }));
-const mockActions: MockFn = jest.fn((children) => ({ type: 'actions', children }));
-const mockCardText: MockFn = jest.fn((content) => ({ type: 'text', content }));
-const mockSection: MockFn = jest.fn((children) => ({ type: 'section', children }));
-const mockDivider: MockFn = jest.fn(() => ({ type: 'divider' }));
-const mockImage: MockFn = jest.fn((opts) => ({ type: 'image', ...opts }));
-const mockSelect: MockFn = jest.fn((opts) => ({ type: 'select', ...opts }));
-const mockSelectOption: MockFn = jest.fn((opts) => ({ type: 'select_option', ...opts }));
-const mockRadioSelect: MockFn = jest.fn((opts) => ({ type: 'radio_select', ...opts }));
-const mockFields: MockFn = jest.fn((children) => ({ type: 'fields', children }));
-const mockField: MockFn = jest.fn((opts) => ({ type: 'field', ...opts }));
+// Define mocks inline inside the factory to avoid vi.mock hoisting issues
+type MockFn = Mock<(...args: any[]) => any>;
+const {
+	mockButton,
+	mockCard,
+	mockActions,
+	mockCardText,
+	mockSection,
+	mockDivider,
+	mockImage,
+	mockSelect,
+	mockSelectOption,
+	mockRadioSelect,
+	mockFields,
+	mockField,
+} = vi.hoisted(() => ({
+	mockButton: vi.fn((opts: any) => ({ type: 'button', ...opts })) as MockFn,
+	mockCard: vi.fn((opts: any) => ({ type: 'card', ...opts })) as MockFn,
+	mockActions: vi.fn((children: any) => ({ type: 'actions', children })) as MockFn,
+	mockCardText: vi.fn((content: any) => ({ type: 'text', content })) as MockFn,
+	mockSection: vi.fn((children: any) => ({ type: 'section', children })) as MockFn,
+	mockDivider: vi.fn(() => ({ type: 'divider' })) as MockFn,
+	mockImage: vi.fn((opts: any) => ({ type: 'image', ...opts })) as MockFn,
+	mockSelect: vi.fn((opts: any) => ({ type: 'select', ...opts })) as MockFn,
+	mockSelectOption: vi.fn((opts: any) => ({ type: 'select_option', ...opts })) as MockFn,
+	mockRadioSelect: vi.fn((opts: any) => ({ type: 'radio_select', ...opts })) as MockFn,
+	mockFields: vi.fn((children: any) => ({ type: 'fields', children })) as MockFn,
+	mockField: vi.fn((opts: any) => ({ type: 'field', ...opts })) as MockFn,
+}));
 
-jest.mock('../esm-loader', () => {
+vi.mock('../esm-loader', () => {
 	// These reference the hoisted variables above via closure
 
 	const wrap =
@@ -35,7 +51,7 @@ jest.mock('../esm-loader', () => {
 	const Field = wrap(mockField);
 
 	return {
-		loadChatSdk: jest.fn().mockResolvedValue({
+		loadChatSdk: vi.fn().mockResolvedValue({
 			Button,
 			Card,
 			Actions,
@@ -53,12 +69,15 @@ jest.mock('../esm-loader', () => {
 });
 
 import { ComponentMapper } from '../component-mapper';
+import { ChatIntegrationRegistry } from '../agent-chat-integration';
+import { SlackIntegration } from '../platforms/slack-integration';
+import { Container } from '@n8n/di';
 
 describe('ComponentMapper', () => {
 	let mapper: ComponentMapper;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mapper = new ComponentMapper();
 	});
 
@@ -96,6 +115,91 @@ describe('ComponentMapper', () => {
 			expect(mockCard).toHaveBeenCalledWith({
 				title: 'Approval Required',
 				children: expect.arrayContaining([expect.objectContaining({ type: 'actions' })]),
+			});
+		});
+
+		it('should use a button text field as its label when label is absent', async () => {
+			// Models trained on real Slack Block Kit (where buttons carry `text`)
+			// often emit the caption under `text` instead of `label`. Recover it
+			// rather than falling back to the generic 'Action' placeholder.
+			const payload = {
+				components: [
+					{
+						type: 'button',
+						text: 'Approve & Send to Acme',
+						value: 'approve_send',
+						style: 'primary',
+					},
+				],
+			};
+
+			await mapper.toCard(payload, runId, toolCallId);
+
+			expect(mockButton).toHaveBeenCalledWith(
+				expect.objectContaining({ label: 'Approve & Send to Acme' }),
+			);
+		});
+
+		it('should prefer label over text when both are present on a button', async () => {
+			const payload = {
+				components: [{ type: 'button', label: 'Approve', text: 'ignored', value: 'yes' }],
+			};
+
+			await mapper.toCard(payload, runId, toolCallId);
+
+			expect(mockButton).toHaveBeenCalledWith(expect.objectContaining({ label: 'Approve' }));
+		});
+
+		it('should use button text as the label when label is omitted', async () => {
+			const payload = {
+				title: 'Approve / Reject Demo',
+				components: [
+					{ type: 'button' as const, text: 'Approve', style: 'primary', value: 'approve' },
+					{
+						type: 'button' as const,
+						text: 'Reject',
+						style: 'danger',
+						value: 'reject',
+					},
+				],
+			};
+
+			await mapper.toCard(payload, runId, toolCallId);
+
+			expect(mockButton).toHaveBeenNthCalledWith(1, {
+				id: `resume:${runId}:${toolCallId}:0`,
+				label: 'Approve',
+				style: 'primary',
+				value: JSON.stringify({ value: 'approve' }),
+			});
+			expect(mockButton).toHaveBeenNthCalledWith(2, {
+				id: `resume:${runId}:${toolCallId}:1`,
+				label: 'Reject',
+				style: 'danger',
+				value: JSON.stringify({ value: 'reject' }),
+			});
+		});
+
+		it('should preserve default button style and omit style when unset', async () => {
+			const payload = {
+				components: [
+					{ type: 'button' as const, label: 'Default', style: 'default', value: 'default' },
+					{ type: 'button' as const, label: 'Unset', value: 'unset' },
+				],
+			};
+
+			await mapper.toCard(payload, runId, toolCallId);
+
+			expect(mockButton).toHaveBeenNthCalledWith(1, {
+				id: `resume:${runId}:${toolCallId}:0`,
+				label: 'Default',
+				style: 'default',
+				value: JSON.stringify({ value: 'default' }),
+			});
+			expect(mockButton).toHaveBeenNthCalledWith(2, {
+				id: `resume:${runId}:${toolCallId}:1`,
+				label: 'Unset',
+				value: JSON.stringify({ value: 'unset' }),
 			});
 		});
 
@@ -199,7 +303,6 @@ describe('ComponentMapper', () => {
 			expect(mockButton).toHaveBeenCalledWith({
 				id: `resume:${runId}:${toolCallId}:0`,
 				label: 'Choose',
-				style: 'primary',
 				value: JSON.stringify({ value: 'date_0' }),
 			});
 			expect(mockActions).toHaveBeenCalledTimes(1);
@@ -296,14 +399,16 @@ describe('ComponentMapper', () => {
 			});
 		});
 
-		it('should default button style to primary when not danger', async () => {
+		it('should omit unsupported button styles', async () => {
 			const payload = {
 				components: [{ type: 'button', label: 'Go', style: 'secondary', value: 'go' }],
 			};
 
 			await mapper.toCard(payload, runId, toolCallId);
 
-			expect(mockButton).toHaveBeenCalledWith(expect.objectContaining({ style: 'primary' }));
+			expect(mockButton).toHaveBeenCalledWith(
+				expect.not.objectContaining({ style: expect.any(String) }),
+			);
 		});
 
 		it('should map select components into Actions', async () => {
@@ -358,6 +463,44 @@ describe('ComponentMapper', () => {
 			expect(mockActions).toHaveBeenCalled();
 		});
 
+		it('should preserve radio_select components for Slack cards', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new SlackIntegration());
+			Container.set(ChatIntegrationRegistry, registry);
+
+			const payload = {
+				components: [
+					{
+						type: 'radio_select' as const,
+						id: 'next-step',
+						label: 'Choose the next step:',
+						options: [
+							{ label: 'Send approved briefing confirmation', value: 'send' },
+							{ label: 'Escalate ticket', value: 'escalate' },
+						],
+					},
+				],
+			};
+
+			await mapper.toCard(payload, runId, toolCallId, undefined, undefined, 'slack');
+
+			expect(mockSelect).not.toHaveBeenCalled();
+			expect(mockRadioSelect).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: `ri-sel:next-step:${runId}:${toolCallId}`,
+					label: 'Choose the next step:',
+					options: expect.arrayContaining([
+						expect.objectContaining({
+							label: 'Send approved briefing confirmation',
+							value: 'send',
+						}),
+						expect.objectContaining({ label: 'Escalate ticket', value: 'escalate' }),
+					]),
+				}),
+			);
+			expect(mockActions).toHaveBeenCalled();
+		});
+
 		it('should map fields components', async () => {
 			const payload = {
 				components: [
@@ -373,6 +516,44 @@ describe('ComponentMapper', () => {
 			await mapper.toCard(payload, runId, toolCallId);
 			expect(mockField).toHaveBeenCalledTimes(2);
 			expect(mockFields).toHaveBeenCalled();
+		});
+
+		it('should map fields components that use items aliases', async () => {
+			const payload = {
+				components: [
+					{
+						type: 'fields' as const,
+						items: [
+							{ label: 'Account', value: 'Acme Corporation' },
+							{ label: 'Expansion ARR', value: '~$3,750,000 (30X)' },
+						],
+					},
+				],
+			};
+			await mapper.toCard(payload, runId, toolCallId);
+			expect(mockField).toHaveBeenCalledTimes(2);
+			expect(mockField).toHaveBeenCalledWith({
+				label: 'Account',
+				value: 'Acme Corporation',
+			});
+			expect(mockField).toHaveBeenCalledWith({
+				label: 'Expansion ARR',
+				value: '~$3,750,000 (30X)',
+			});
+			expect(mockFields).toHaveBeenCalled();
+		});
+
+		it('should skip empty fields components', async () => {
+			const payload = {
+				components: [
+					{
+						type: 'fields' as const,
+					},
+				],
+			};
+			await mapper.toCard(payload, runId, toolCallId);
+			expect(mockField).not.toHaveBeenCalled();
+			expect(mockFields).not.toHaveBeenCalled();
 		});
 	});
 

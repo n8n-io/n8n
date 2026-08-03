@@ -1,6 +1,6 @@
 import { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
 
@@ -9,7 +9,7 @@ const repository = Container.get(CredentialsRepository);
 
 describe('CredentialsRepository', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('findMany', () => {
@@ -59,6 +59,21 @@ describe('CredentialsRepository', () => {
 				CredentialsEntity,
 				expect.objectContaining({
 					select: expect.arrayContaining(['isGlobal']),
+				}),
+			);
+		});
+	});
+
+	describe('findStartingWith', () => {
+		it('only searches project credential names', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+
+			await repository.findStartingWith('API key');
+
+			expect(entityManager.find).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.objectContaining({
+					where: expect.objectContaining({ usageScope: 'project' }),
 				}),
 			);
 		});
@@ -187,6 +202,45 @@ describe('CredentialsRepository', () => {
 			);
 			expect(credentials).toHaveLength(1);
 		});
+
+		test('should narrow results by credential type when type is provided', async () => {
+			// ARRANGE
+			const slackCred = mock<CredentialsEntity>({
+				id: 'global-slack',
+				isGlobal: true,
+				type: 'slackOAuth2Api',
+			});
+			entityManager.find.mockResolvedValueOnce([slackCred]);
+
+			// ACT
+			const credentials = await repository.findAllGlobalCredentials({ type: 'slackOAuth2Api' });
+
+			// ASSERT — the where clause must include both isGlobal AND a type matcher
+			expect(entityManager.find).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.objectContaining({
+					where: expect.objectContaining({
+						isGlobal: true,
+						type: expect.anything(),
+					}),
+				}),
+			);
+			expect(credentials).toEqual([slackCred]);
+		});
+
+		test('should not add a type filter when type is omitted', async () => {
+			// ARRANGE
+			entityManager.find.mockResolvedValueOnce([]);
+
+			// ACT
+			await repository.findAllGlobalCredentials();
+
+			// ASSERT — where contains isGlobal but NOT type
+			const findCall = entityManager.find.mock.calls.find((call) => call[0] === CredentialsEntity);
+			const findArg = findCall?.[1] as { where?: Record<string, unknown> };
+			expect(findArg?.where).toBeDefined();
+			expect(findArg?.where).not.toHaveProperty('type');
+		});
 	});
 
 	describe('findAllPersonalCredentials', () => {
@@ -201,6 +255,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { project: { type: 'personal' } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -232,6 +287,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { project: { sharedWorkflows: { workflowId } } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -264,6 +320,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { projectId },
 			});
 			expect(credentials).toHaveLength(2);

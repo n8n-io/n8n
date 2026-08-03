@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -13,17 +13,17 @@ describe('Test Summarize Node, execute', () => {
 	beforeEach(() => {
 		summarizeNode = new Summarize();
 		mockExecuteFunctions = mock<IExecuteFunctions>({
-			getNode: jest.fn().mockReturnValue({ name: 'test-node' }),
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn(),
+			getNode: vi.fn().mockReturnValue({ name: 'test-node' }),
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn(),
 			helpers: {
-				constructExecutionMetaData: jest.fn().mockReturnValue([]),
+				constructExecutionMetaData: vi.fn().mockReturnValue([]),
 			},
 		});
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should handle field not found with hints if version > 1', async () => {

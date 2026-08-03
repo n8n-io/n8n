@@ -9,13 +9,9 @@ import SettingsEncryptionKeys from './SettingsEncryptionKeys.vue';
 import { useEncryptionKeysStore } from '../encryption-keys.store';
 import type { EncryptionKey } from '../encryption-keys.types';
 
-vi.mock('@/app/composables/useClipboard', () => ({
-	useClipboard: () => ({ copy: vi.fn() }),
-}));
-
 const showMessage = vi.fn();
 const showError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError }),
 }));
 
@@ -73,7 +69,7 @@ describe('SettingsEncryptionKeys', () => {
 		});
 	});
 
-	it('shows active and inactive status badges', async () => {
+	it('shows active and inactive status indicators', async () => {
 		seedStore({
 			items: [
 				makeKey({ status: 'active' }),

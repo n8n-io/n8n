@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { nextTick } from 'vue';
 
 import { useFocusedNodesStore } from './focusedNodes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -12,18 +13,12 @@ import {
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { mockedStore } from '@/__tests__/utils';
-import * as telemetryModule from '@/app/composables/useTelemetry';
+import * as telemetryModule from '@n8n/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { INodeUi } from '@/Interface';
 
 // Mock telemetry
 const track = vi.fn();
-vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
-	() =>
-		({
-			track,
-		}) as unknown as Telemetry,
-);
 
 // Mock posthog
 let featureEnabled = true;
@@ -62,9 +57,14 @@ const createMockNode = (id: string, name: string, type = 'n8n-nodes-base.httpReq
 describe('useFocusedNodesStore', () => {
 	let focusedNodesStore: ReturnType<typeof useFocusedNodesStore>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// `restoreMocks` restores this spy before each test, so re-establish it here.
+		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
+			() => ({ track }) as unknown as Telemetry,
+		);
 		featureEnabled = true;
 
 		setActivePinia(
@@ -74,9 +74,12 @@ describe('useFocusedNodesStore', () => {
 			}),
 		);
 
+		// The experiment is cloud-only; default to cloud so only the case under test varies.
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isCloudDeployment = true;
+
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflowId = 'wf-1';
-		workflowsStore.workflow.connections = {};
+		workflowsStore.setWorkflowId('wf-1');
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
@@ -98,6 +101,27 @@ describe('useFocusedNodesStore', () => {
 
 		it('should initialize with empty canvasSelectedNodeIds', () => {
 			expect(focusedNodesStore.canvasSelectedNodeIds.size).toBe(0);
+		});
+	});
+
+	describe('isFeatureEnabled', () => {
+		it('should be enabled on cloud when the experiment variant is on', () => {
+			expect(focusedNodesStore.isFeatureEnabled).toBe(true);
+		});
+
+		// Regression for ADO-5013: the experiment is cloud-only. AI can be
+		// licensed and the PostHog variant served on self-hosted instances,
+		// so the deployment gate must keep the feature off there.
+		it('should be disabled on self-hosted even when the experiment variant is on', () => {
+			settingsStore.isCloudDeployment = false;
+
+			expect(focusedNodesStore.isFeatureEnabled).toBe(false);
+		});
+
+		it('should be disabled on cloud when the experiment variant is off', () => {
+			featureEnabled = false;
+
+			expect(focusedNodesStore.isFeatureEnabled).toBe(false);
 		});
 	});
 
@@ -768,14 +792,17 @@ describe('useFocusedNodesStore', () => {
 		});
 
 		it('should include connections (deduplicated)', () => {
-			workflowsStore.workflow.connections = {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setConnections({
 				Trigger: {
 					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
 				},
 				'HTTP Request': {
 					main: [[{ node: 'Code', type: 'main', index: 0 }]],
 				},
-			};
+			});
 
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
@@ -840,7 +867,7 @@ describe('useFocusedNodesStore', () => {
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
 
-			workflowsStore.workflowId = 'wf-2';
+			workflowsStore.setWorkflowId('wf-2');
 			await nextTick();
 
 			expect(focusedNodesStore.focusedNodesMap).toEqual({});
@@ -853,7 +880,7 @@ describe('useFocusedNodesStore', () => {
 
 		it('should not track telemetry on workflowId change if no confirmed and oldId undefined', async () => {
 			// The initial wf-1 is set in beforeEach but no confirmed nodes
-			workflowsStore.workflowId = 'wf-2';
+			workflowsStore.setWorkflowId('wf-2');
 			await nextTick();
 
 			expect(track).not.toHaveBeenCalled();
@@ -925,7 +952,10 @@ describe('useFocusedNodesStore', () => {
 			const chatPanelStateStore = useChatPanelStateStore();
 			chatPanelStateStore.isOpen = true;
 
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(
+				useNDVStore,
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
 			ndvStore.activeNode = createMockNode(
 				'node-2',
 				'Code',

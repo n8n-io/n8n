@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
-import { MCP_STORE } from './mcp.constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { MCP_ENDPOINT, MCP_STORE } from './mcp.constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
@@ -11,17 +10,28 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	updateMcpSettings,
 	toggleWorkflowsMcpAccessApi,
+	toggleAgentsMcpAccessApi,
 	fetchApiKey,
 	rotateApiKey,
 	fetchOAuthClients,
 	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
+	fetchMcpAgents,
+	getAllowedRedirectUris,
+	updateAllowedRedirectUris,
 	type ToggleWorkflowsMcpAccessResponse,
 	type ToggleWorkflowsMcpAccessTarget,
+	type ToggleAgentsMcpAccessResponse,
+	type ToggleAgentsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
+import type { Agent } from '@/features/agents/agent.types';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import {
+	EMPTY_OAUTH_CLIENT_FILTERS,
+	type OAuthClientFilters,
+} from '@/features/ai/mcpAccess/clients.utils';
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
 import type {
 	ApiKey,
@@ -32,33 +42,97 @@ import type {
 import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
-	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const oauthClientScopeTools = ref<Record<string, string[]> | undefined>(undefined);
+	const oauthClientsOwnership = ref<'mine' | 'all'>('mine');
+	const oauthClientTotals = ref<{ mine: number; all?: number }>({ mine: 0 });
+	const oauthClientsPage = ref(0);
+	const oauthClientsPageSize = ref(10);
+	const oauthClientsFilters = ref<OAuthClientFilters>({ ...EMPTY_OAUTH_CLIENT_FILTERS });
+	/** Total rows matching the filters (across all pages) for the current ownership. */
+	const oauthClientsCount = ref(0);
+	/** Distinct consent owners for the "Connected by" filter (managers only). */
+	const oauthClientOwners = ref<Array<NonNullable<OAuthClientResponseDto['owner']>>>([]);
+	/** Monotonic token so a slow in-flight list fetch can't overwrite a newer one. */
+	let oauthClientsRequestSeq = 0;
+	const allowedRedirectUris = ref<string[]>([]);
 	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
 
+	// Backend-provided canonical URL, so a configured dedicated MCP base URL is
+	// reflected; the editor-base fallback covers settings not yet loaded.
+	const serverUrl = computed(
+		() =>
+			settingsStore.moduleSettings.mcp?.serverUrl ?? `${rootStore.urlBaseEditor}${MCP_ENDPOINT}`,
+	);
+
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
 		pageSize = 50,
-	): Promise<WorkflowListItem[]> {
-		const workflows = await workflowsListStore.fetchWorkflowsPage(
+	): Promise<{ data: WorkflowListItem[]; count: number }> {
+		const { data, count } = await workflowsListStore.fetchWorkflowsPageWithCount(
 			undefined, // projectId
 			page,
 			pageSize,
 			'updatedAt:desc',
 			{ isArchived: false, availableInMCP: true },
 			false, // includeFolders
-			false, // includeAllVersions
+			false, // onlySharedWithMe
 		);
-		return workflows.filter(isWorkflowListItem);
+		return { data: data.filter(isWorkflowListItem), count };
+	}
+
+	/**
+	 * Runs a page fetch, clamping to the last non-empty page when the requested
+	 * one shrank away (e.g. after removing access). Returns the effective 1-based
+	 * page so callers can sync their table state.
+	 */
+	async function clampToLastPage<T>(
+		fetchPage: (page: number, pageSize: number) => Promise<{ data: T[]; count: number }>,
+		page: number,
+		pageSize: number,
+	): Promise<{ data: T[]; count: number; page: number }> {
+		const response = await fetchPage(page, pageSize);
+		if (response.data.length === 0 && response.count > 0 && page > 1) {
+			const maxPage = Math.max(1, Math.ceil(response.count / pageSize));
+			const clamped = await fetchPage(maxPage, pageSize);
+			return { ...clamped, page: maxPage };
+		}
+		return { ...response, page };
+	}
+
+	async function fetchWorkflowsAvailableForMCPPage(
+		page: number,
+		pageSize: number,
+	): Promise<{ data: WorkflowListItem[]; count: number; page: number }> {
+		return await clampToLastPage(fetchWorkflowsAvailableForMCP, page, pageSize);
+	}
+
+	async function fetchAgentsAvailableForMCP(
+		page = 1,
+		pageSize = 50,
+	): Promise<{ data: Agent[]; count: number }> {
+		const { data, count } = await fetchMcpAgents(rootStore.restApiContext, {
+			skip: (page - 1) * pageSize,
+			take: pageSize,
+			availableInMCP: true,
+		});
+		return { data, count };
+	}
+
+	async function fetchAgentsAvailableForMCPPage(
+		page: number,
+		pageSize: number,
+	): Promise<{ data: Agent[]; count: number; page: number }> {
+		return await clampToLastPage(fetchAgentsAvailableForMCP, page, pageSize);
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
@@ -84,10 +158,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			}
 		}
 
-		if (workflowId === workflowsStore.workflowId) {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			workflowDocumentStore.mergeSettings({ availableInMCP });
-		}
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		workflowDocumentStore.mergeSettings({ availableInMCP });
 	}
 
 	// Toggle MCP access for a single workflow
@@ -101,7 +173,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		if (!(response.updatedIds ?? []).includes(workflowId)) {
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		if (!confirmedIds.has(workflowId)) {
 			throw new Error(
 				i18n.baseText('workflowSettings.toggleMCP.updateSkippedError', {
 					interpolate: { workflowId },
@@ -128,11 +205,51 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		for (const id of response.updatedIds ?? []) {
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		for (const id of confirmedIds) {
 			applyAvailableInMCPToLocalStores(id, availableInMCP);
 		}
 
 		return response;
+	}
+
+	// Toggle MCP access for a single agent
+	async function toggleAgentMcpAccess(
+		agentId: string,
+		availableInMCP: boolean,
+	): Promise<ToggleAgentsMcpAccessResponse> {
+		const response = await toggleAgentsMcpAccessApi(
+			rootStore.restApiContext,
+			{ agentIds: [agentId] },
+			availableInMCP,
+		);
+
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		if (!confirmedIds.has(agentId)) {
+			throw new Error(
+				i18n.baseText('agents.toggleMCP.updateSkippedError', {
+					interpolate: { agentId },
+				}),
+			);
+		}
+
+		return response;
+	}
+
+	/** Bulk-toggle MCP availability for agents, scoped by an id list, a project, or all agents. */
+	async function toggleAgentsMcpAccess(
+		target: ToggleAgentsMcpAccessTarget,
+		availableInMCP: boolean,
+	): Promise<ToggleAgentsMcpAccessResponse> {
+		return await toggleAgentsMcpAccessApi(rootStore.restApiContext, target, availableInMCP);
 	}
 
 	async function getOrCreateApiKey(): Promise<ApiKey> {
@@ -152,9 +269,58 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	async function getAllOAuthClients(): Promise<OAuthClientResponseDto[]> {
-		const response = await fetchOAuthClients(rootStore.restApiContext);
+		const seq = ++oauthClientsRequestSeq;
+		const filters = oauthClientsFilters.value;
+		const response = await fetchOAuthClients(rootStore.restApiContext, {
+			ownership: oauthClientsOwnership.value,
+			skip: oauthClientsPage.value * oauthClientsPageSize.value,
+			take: oauthClientsPageSize.value,
+			name: filters.search.trim() || undefined,
+			ownerId: filters.ownerId ?? undefined,
+			type: filters.type ?? undefined,
+			connected: filters.connected ?? undefined,
+		});
+
+		// A newer request (tab switch, search, pagination) superseded this one
+		// while it was in flight; drop the stale response so it can't overwrite
+		// the current selection.
+		if (seq !== oauthClientsRequestSeq) return response.data;
+
+		// Clamp to the last page when the requested one shrank away (e.g. after a revoke)
+		if (response.data.length === 0 && response.count > 0 && oauthClientsPage.value > 0) {
+			oauthClientsPage.value = Math.max(
+				0,
+				Math.ceil(response.count / oauthClientsPageSize.value) - 1,
+			);
+			return await getAllOAuthClients();
+		}
+
 		oauthClients.value = response.data;
+		oauthClientScopeTools.value = response.scopeTools;
+		oauthClientTotals.value = response.totals;
+		oauthClientsCount.value = response.count;
+		oauthClientOwners.value = response.owners ?? [];
 		return response.data;
+	}
+
+	async function setOAuthClientsOwnership(ownership: 'mine' | 'all'): Promise<void> {
+		oauthClientsOwnership.value = ownership;
+		oauthClientsPage.value = 0;
+		oauthClientsFilters.value = { ...EMPTY_OAUTH_CLIENT_FILTERS };
+		await getAllOAuthClients();
+	}
+
+	async function setOAuthClientsFilters(filters: OAuthClientFilters): Promise<void> {
+		oauthClientsFilters.value = filters;
+		oauthClientsPage.value = 0;
+		await getAllOAuthClients();
+	}
+
+	async function setOAuthClientsPagination(page: number, pageSize: number): Promise<void> {
+		// A page-size change restarts from the first page
+		oauthClientsPage.value = pageSize === oauthClientsPageSize.value ? page : 0;
+		oauthClientsPageSize.value = pageSize;
+		await getAllOAuthClients();
 	}
 
 	async function getInstanceClientStats(): Promise<InstanceMcpClientStatsResponseDto | null> {
@@ -170,10 +336,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		}
 	}
 
-	async function removeOAuthClient(clientId: string): Promise<DeleteOAuthClientResponseDto> {
-		const response = await deleteOAuthClient(rootStore.restApiContext, clientId);
-		// Remove the client from the local store
-		oauthClients.value = oauthClients.value.filter((client) => client.id !== clientId);
+	async function removeOAuthClient(
+		clientId: string,
+		userId?: string,
+	): Promise<DeleteOAuthClientResponseDto> {
+		const response = await deleteOAuthClient(rootStore.restApiContext, clientId, userId);
+		// Refetch instead of splicing locally so the tab totals stay accurate. The
+		// revoke already succeeded, so keep the refresh best-effort: a failed
+		// refetch must not turn a successful revoke into a reported error.
+		try {
+			await getAllOAuthClients();
+		} catch {
+			// Stale list/totals are acceptable; the next interaction refetches.
+		}
 		return response;
 	}
 
@@ -185,6 +360,14 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return await fetchMcpEligibleWorkflows(rootStore.restApiContext, options);
 	}
 
+	async function getMcpEligibleAgents(options?: {
+		take?: number;
+		skip?: number;
+		query?: string;
+	}): Promise<{ count: number; data: Agent[] }> {
+		return await fetchMcpAgents(rootStore.restApiContext, options);
+	}
+
 	function openConnectPopover(): void {
 		connectPopoverOpen.value = true;
 	}
@@ -193,23 +376,55 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		connectPopoverOpen.value = false;
 	}
 
+	async function fetchAllowedRedirectUris(): Promise<string[]> {
+		const response = await getAllowedRedirectUris(rootStore.restApiContext);
+		allowedRedirectUris.value = response.uris;
+		return response.uris;
+	}
+
+	async function setAllowedRedirectUris(uris: string[]): Promise<void> {
+		await updateAllowedRedirectUris(rootStore.restApiContext, uris);
+		allowedRedirectUris.value = uris;
+	}
+
 	return {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
+		serverUrl,
 		fetchWorkflowsAvailableForMCP,
+		fetchWorkflowsAvailableForMCPPage,
+		fetchAgentsAvailableForMCP,
+		fetchAgentsAvailableForMCPPage,
 		setMcpAccessEnabled,
 		toggleWorkflowMcpAccess,
 		toggleWorkflowsMcpAccess,
+		toggleAgentMcpAccess,
+		toggleAgentsMcpAccess,
 		currentUserMCPKey,
 		getOrCreateApiKey,
 		generateNewApiKey,
 		resetCurrentUserMCPKey,
 		oauthClients,
+		oauthClientsOwnership,
+		oauthClientTotals,
+		oauthClientOwners,
+		oauthClientsPage,
+		oauthClientsPageSize,
+		oauthClientsFilters,
+		oauthClientsCount,
+		setOAuthClientsOwnership,
+		setOAuthClientsFilters,
+		setOAuthClientsPagination,
 		instanceClientStats,
 		getAllOAuthClients,
+		oauthClientScopeTools,
 		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
+		getMcpEligibleAgents,
+		allowedRedirectUris,
+		fetchAllowedRedirectUris,
+		setAllowedRedirectUris,
 		connectPopoverOpen,
 		openConnectPopover,
 		closeConnectPopover,

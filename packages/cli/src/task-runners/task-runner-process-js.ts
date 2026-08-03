@@ -53,7 +53,7 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 	}
 
 	private getProcessEnvVars(grantToken: string, taskBrokerUri: string) {
-		const envVars: Record<string, string | undefined> = {
+		const envVars: Record<string, string | undefined> = Object.assign(Object.create(null), {
 			// system environment
 			PATH: process.env.PATH,
 			HOME: process.env.HOME ?? process.env.USERPROFILE,
@@ -78,7 +78,11 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 			N8N_RUNNERS_TASK_TIMEOUT: this.runnerConfig.taskTimeout.toString(),
 			N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
 			N8N_RUNNERS_INSECURE_MODE: process.env.N8N_RUNNERS_INSECURE_MODE,
-		};
+			// Forwarded so the internal runner's graceful-shutdown grace can be coordinated
+			// with n8n's (otherwise it falls back to the runner's own default).
+			N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT: process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT,
+			N8N_RUNNERS_SHUTDOWN_FORCE_KILL_MARGIN: process.env.N8N_RUNNERS_SHUTDOWN_FORCE_KILL_MARGIN,
+		});
 
 		if (this.runnerConfig.maxOldSpaceSize) {
 			envVars.NODE_OPTIONS = `--max-old-space-size=${this.runnerConfig.maxOldSpaceSize}`;

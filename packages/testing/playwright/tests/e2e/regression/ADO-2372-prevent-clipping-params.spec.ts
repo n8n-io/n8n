@@ -65,11 +65,10 @@ test.describe(
 
 			await expect(n8n.ndv.getInlineExpressionEditorInput().nth(0)).toBeVisible();
 
-			const editor = n8n.ndv.getInlineExpressionEditorInput().nth(0);
-			await expect(editor.locator('.cm-line').nth(0)).toHaveText('1 visible!');
-			await expect(editor.locator('.cm-line').nth(0)).toBeVisible();
-			await expect(editor.locator('.cm-line').nth(6)).toHaveText('7 not visible!');
-			await expect(editor.locator('.cm-line').nth(6)).not.toBeInViewport();
+			await expect(n8n.ndv.getInlineExpressionEditorLine(0)).toHaveText('1 visible!');
+			await expect(n8n.ndv.getInlineExpressionEditorLine(0)).toBeVisible();
+			await expect(n8n.ndv.getInlineExpressionEditorLine(6)).toHaveText('7 not visible!');
+			await expect(n8n.ndv.getInlineExpressionEditorLine(6)).not.toBeInViewport();
 		});
 	},
 );

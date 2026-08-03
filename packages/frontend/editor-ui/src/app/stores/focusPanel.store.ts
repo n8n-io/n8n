@@ -9,7 +9,7 @@ import {
 	type INodeProperties,
 	jsonParse,
 } from 'n8n-workflow';
-import { useWorkflowsStore } from './workflows.store';
+import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -45,15 +45,15 @@ type FocusPanelDataByWid = Record<string, FocusPanelData>;
 const DEFAULT_FOCUS_PANEL_DATA: FocusPanelData = { isActive: false, parameters: [] };
 
 export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
-	const workflowsStore = useWorkflowsStore();
+	const routeWorkflowId = useRouteWorkflowId();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(routeWorkflowId.value)),
 	);
 	const focusPanelStorage = useStorage(LOCAL_STORAGE_FOCUS_PANEL);
 
 	const focusPanelData = computed((): FocusPanelDataByWid => {
 		const defaultValue: FocusPanelDataByWid = {
-			[workflowsStore.workflowId]: DEFAULT_FOCUS_PANEL_DATA,
+			[routeWorkflowId.value]: DEFAULT_FOCUS_PANEL_DATA,
 		};
 
 		return focusPanelStorage.value
@@ -62,8 +62,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	});
 
 	const currentFocusPanelData = computed(
-		(): FocusPanelData =>
-			focusPanelData.value[workflowsStore.workflowId] ?? DEFAULT_FOCUS_PANEL_DATA,
+		(): FocusPanelData => focusPanelData.value[routeWorkflowId.value] ?? DEFAULT_FOCUS_PANEL_DATA,
 	);
 
 	const lastFocusTimestamp = ref(0);
@@ -105,7 +104,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	function _setOptions({
 		parameters,
 		isActive,
-		wid = workflowsStore.workflowId,
+		wid = routeWorkflowId.value,
 		width = undefined,
 		removeEmpty = false,
 	}: {

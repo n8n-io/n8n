@@ -7,11 +7,14 @@ import userEvent from '@testing-library/user-event';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRouter } from 'vue-router';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { nextTick } from 'vue';
-import { createTestWorkflow } from '@/__tests__/mocks';
+import { nextTick, shallowRef } from 'vue';
+import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -20,6 +23,8 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 		allNodes: [] as Array<{ id: string; name: string; type: string }>,
 		workflowTriggerNodes: [] as Array<{ id: string; name: string; type: string }>,
 		name: '',
+		documentId: 'test-id',
+		workflowId: 'test-workflow',
 		settings: {},
 		getPinDataSnapshot: () => ({}),
 	},
@@ -27,6 +32,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
@@ -42,6 +48,16 @@ const ModalStub = {
 };
 
 vi.mock('vue-router');
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 vi.mocked(useRouter);
 
@@ -68,26 +84,22 @@ const mockParentNode = {
 	name: 'Parent Node',
 };
 
-const mockRunData = {
-	data: {
+const mockExecutionResponse = createTestWorkflowExecutionResponse({
+	data: createRunExecutionData({
 		resultData: {
 			runData: {
 				['Test Node']: [
-					{
+					createTestTaskData({
 						inputOverride: {
 							[NodeConnectionTypes.AiTool]: [
 								[{ json: { query: { testParam: 'override', testBoolean: true } } }],
 							],
 						},
-					},
+					}),
 				],
 			},
 		},
-	},
-};
-
-const mockWorkflow = createTestWorkflow({
-	id: 'test-workflow',
+	}),
 });
 
 const mockTools = [
@@ -114,6 +126,7 @@ let projectsStore: MockedStore<typeof useProjectsStore>;
 describe('FromAiParametersModal', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia({
+			stubActions: false,
 			initialState: {
 				[STORES.UI]: {
 					modalsById: {
@@ -127,11 +140,14 @@ describe('FromAiParametersModal', () => {
 					modalStack: [FROM_AI_PARAMETERS_MODAL_KEY],
 				},
 				[STORES.WORKFLOWS]: {
-					workflow: mockWorkflow,
-					workflowExecutionData: mockRunData,
+					workflowId: 'test-workflow',
 				},
 			},
 		});
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(useWorkflowsStore().workflowId),
+		).setWorkflowExecutionData(mockExecutionResponse);
+
 		mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) => {
 			switch (name) {
 				case 'Test Node':

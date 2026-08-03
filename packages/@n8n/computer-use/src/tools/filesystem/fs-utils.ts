@@ -1,11 +1,15 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { TextDecoder } from 'node:util';
 
 import { isProtectedSettingsPath } from '../../config';
 import type { AffectedResource } from '../types';
 
 const MAX_ENTRIES = 10_000;
 const DEFAULT_MAX_DEPTH = 8;
+const BINARY_CHECK_SIZE = 8192;
+const MAX_CONTROL_CHAR_RATIO = 0.3;
+const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
 
 export const EXCLUDED_DIRS = new Set([
 	'node_modules',
@@ -25,6 +29,9 @@ export const EXCLUDED_DIRS = new Set([
 	'.output',
 	'.svelte-kit',
 ]);
+const NORMALIZED_EXCLUDED_DIRS = new Set(
+	[...EXCLUDED_DIRS].map((segment) => segment.toLowerCase()),
+);
 
 export interface TreeEntry {
 	path: string;
@@ -82,7 +89,7 @@ export async function scanDirectory(
 				break;
 			}
 
-			if (EXCLUDED_DIRS.has(entry.name) && entry.isDirectory()) continue;
+			if (isExcludedDirName(entry.name) && entry.isDirectory()) continue;
 			if (entry.name.startsWith('.') && !isAllowedDotFile(entry.name)) continue;
 
 			const entryRelPath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
@@ -131,6 +138,47 @@ function isAllowedDotFile(name: string): boolean {
 	return allowed.has(name);
 }
 
+export function assertNoExcludedSegments(absolutePath: string, basePath: string): void {
+	const relativePath = path.relative(path.resolve(basePath), path.resolve(absolutePath));
+	const segments = relativePath.split(path.sep).filter(Boolean);
+	const excludedSegment = segments.find(isExcludedDirName);
+	if (excludedSegment) {
+		throw new Error(`Access denied: "${excludedSegment}" is excluded from filesystem reads`);
+	}
+}
+
+export function isExcludedDirName(segment: string): boolean {
+	return NORMALIZED_EXCLUDED_DIRS.has(segment.toLowerCase());
+}
+
+export function isLikelyBinaryContent(buffer: Buffer): boolean {
+	if (buffer.length === 0) return false;
+	if (buffer.includes(0)) return true;
+
+	try {
+		utf8Decoder.decode(buffer);
+	} catch {
+		return true;
+	}
+
+	const checkSlice = buffer.subarray(0, Math.min(BINARY_CHECK_SIZE, buffer.length));
+	let controlChars = 0;
+	for (const byte of checkSlice) {
+		const isAllowedControl = byte === 9 || byte === 10 || byte === 12 || byte === 13;
+		if (byte < 32 && !isAllowedControl) {
+			controlChars++;
+		}
+	}
+
+	return controlChars / checkSlice.length > MAX_CONTROL_CHAR_RATIO;
+}
+
+interface ResolvedSafePath {
+	absolutePath: string;
+	realBasePath: string;
+	resolvedPath: string;
+}
+
 /**
  * Resolve a path safely within the base directory.
  *
@@ -150,7 +198,10 @@ function isAllowedDotFile(name: string): boolean {
  * Returns the logical absolute path (without resolving symlinks), so the
  * caller never needs to know that a symlink is involved.
  */
-export async function resolveSafePath(basePath: string, relativePath: string): Promise<string> {
+async function resolveSafePathDetails(
+	basePath: string,
+	relativePath: string,
+): Promise<ResolvedSafePath> {
 	const realBase = await fs.realpath(basePath);
 	const absolute = path.resolve(basePath, relativePath);
 
@@ -199,7 +250,22 @@ export async function resolveSafePath(basePath: string, relativePath: string): P
 		throw new Error(`Access denied: cannot access "${relativePath}"`);
 	}
 
-	return absolute;
+	return { absolutePath: absolute, realBasePath: realBase, resolvedPath: current };
+}
+
+export async function resolveSafePath(basePath: string, relativePath: string): Promise<string> {
+	const { absolutePath } = await resolveSafePathDetails(basePath, relativePath);
+	return absolutePath;
+}
+
+export async function resolveReadablePath(basePath: string, relativePath: string): Promise<string> {
+	const { absolutePath, realBasePath, resolvedPath } = await resolveSafePathDetails(
+		basePath,
+		relativePath,
+	);
+	assertNoExcludedSegments(absolutePath, basePath);
+	assertNoExcludedSegments(resolvedPath, realBasePath);
+	return absolutePath;
 }
 
 /**
@@ -213,7 +279,10 @@ export async function buildFilesystemResource(
 	toolGroup: 'filesystemRead' | 'filesystemWrite',
 	description: string,
 ): Promise<AffectedResource> {
-	const absolutePath = await resolveSafePath(dir, inputPath);
+	const absolutePath =
+		toolGroup === 'filesystemRead'
+			? await resolveReadablePath(dir, inputPath)
+			: await resolveSafePath(dir, inputPath);
 
 	return { toolGroup, resource: absolutePath, description };
 }

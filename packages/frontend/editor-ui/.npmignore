@@ -4,7 +4,6 @@
 !dist
 
 .browserslistrc
-jest.config.js
 postcss.config.js
 vue.config.js
 dist/report.html

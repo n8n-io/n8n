@@ -1,16 +1,27 @@
 import { i18n } from '@n8n/i18n';
-import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import {
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_OPTIN_MODAL_KEY,
 } from '@/app/constants/modals';
-import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
+import { VIEWS } from '@/app/constants';
+import {
+	INSTANCE_AI_VIEW,
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_SETTINGS_VIEW,
+	INSTANCE_AI_NEW_VIEW,
+} from './constants';
+import {
+	ensurePersonalProjectId,
+	provisionLaunchedThread,
+} from './composables/useInstanceAiHandoff';
+import { useInstanceAiAvailable } from './composables/useInstanceAiAvailability';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
+const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
+const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
-const InstanceAiOptinModal = async () => await import('./components/InstanceAiOptinModal.vue');
 const ComputerUseSetupModal = async () =>
 	await import('./components/modals/ComputerUseSetupModal.vue');
 const BrowserUseSetupModal = async () =>
@@ -23,27 +34,86 @@ export const InstanceAiModule: FrontendModuleDescription = {
 	icon: 'sparkles',
 	routes: [
 		{
-			name: INSTANCE_AI_VIEW,
+			path: '/assistant',
+			component: InstanceAiView,
+			meta: {
+				layout: 'instanceAi',
+				middleware: ['authenticated', 'custom'],
+			},
+			children: [
+				{
+					name: INSTANCE_AI_NEW_VIEW,
+					path: 'new',
+					component: InstanceAiEmptyView,
+					beforeEnter: async (to) => {
+						// Numeric ids only, so a crafted URL can't inject prompt text.
+						const raw = to.query.templateId;
+						if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
+							return { name: INSTANCE_AI_VIEW };
+						}
+						const templateId = raw;
+
+						// Same canonical gate as the button and website beacon, so the guard
+						// never refuses an entry point they advertise. Whoever can't use
+						// the assistant still gets the template.
+						if (!useInstanceAiAvailable().value) {
+							return { name: VIEWS.TEMPLATE_SETUP, params: { id: templateId } };
+						}
+
+						// Threads are project-bound; deep links launch into the personal project.
+						const projectId = await ensurePersonalProjectId();
+						if (!projectId) {
+							return { name: INSTANCE_AI_VIEW };
+						}
+
+						// The thread view sends the stashed kickoff after it hydrates, so the
+						// guard never races the runtime.
+						const threadId = await provisionLaunchedThread(
+							projectId,
+							{
+								message: i18n.baseText('instanceAi.launch.templateById.message', {
+									interpolate: { id: templateId },
+								}),
+							},
+							{ source: 'website-template', origin: 'external', sourceContext: { templateId } },
+						);
+						if (!threadId) {
+							return { name: INSTANCE_AI_VIEW };
+						}
+
+						// Redirect with no query → URL cleared, back-button won't re-fire this.
+						return { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
+					},
+				},
+				{
+					name: INSTANCE_AI_VIEW,
+					path: '',
+					component: InstanceAiEmptyView,
+				},
+				{
+					name: INSTANCE_AI_THREAD_VIEW,
+					path: ':threadId',
+					component: InstanceAiThreadView,
+					props: true,
+				},
+			],
+		},
+		// Permanent redirects from the legacy `/instance-ai` path to `/assistant`.
+		{
 			path: '/instance-ai',
-			component: InstanceAiView,
-			props: true,
-			meta: {
-				layout: 'instanceAi',
-				middleware: ['authenticated', 'custom'],
-			},
+			redirect: (to) => ({ name: INSTANCE_AI_VIEW, query: to.query, hash: to.hash }),
 		},
 		{
-			name: INSTANCE_AI_THREAD_VIEW,
 			path: '/instance-ai/:threadId',
-			component: InstanceAiView,
-			props: true,
-			meta: {
-				layout: 'instanceAi',
-				middleware: ['authenticated', 'custom'],
-			},
+			redirect: (to) => ({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: to.params.threadId },
+				query: to.query,
+				hash: to.hash,
+			}),
 		},
 		{
-			path: 'instance-ai',
+			path: 'assistant',
 			name: INSTANCE_AI_SETTINGS_VIEW,
 			component: SettingsInstanceAiView,
 			meta: {
@@ -51,9 +121,29 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
 					rbac: {
-						scope: 'instanceAi:message',
+						scope: ['instanceAi:message', 'instanceAi:manage'],
 					},
 				},
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		// Permanent redirect from the legacy `/settings/instance-ai` path.
+		{
+			path: 'instance-ai',
+			redirect: (to) => ({ name: INSTANCE_AI_SETTINGS_VIEW, query: to.query, hash: to.hash }),
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		// Permanent redirect from the removed `/settings/assistant/credentials` page.
+		{
+			path: 'assistant/credentials',
+			redirect: (to) => ({ name: INSTANCE_AI_SETTINGS_VIEW, query: to.query, hash: to.hash }),
+			meta: {
 				telemetry: {
 					pageCategory: 'settings',
 				},
@@ -66,7 +156,6 @@ export const InstanceAiModule: FrontendModuleDescription = {
 	},
 	resources: [],
 	modals: [
-		{ key: INSTANCE_AI_OPTIN_MODAL_KEY, component: InstanceAiOptinModal },
 		{ key: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY, component: ComputerUseSetupModal },
 		{ key: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY, component: BrowserUseSetupModal },
 	],
@@ -79,7 +168,9 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			preview: true,
 			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } });
+				return hasPermission(['rbac'], {
+					rbac: { scope: ['instanceAi:message', 'instanceAi:manage'] },
+				});
 			},
 		},
 	],

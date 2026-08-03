@@ -4,10 +4,8 @@ import { NodeOperationError } from 'n8n-workflow';
 import { convertJsonSchemaToResourceMapperFields } from './utils';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
-	getAuthHeaders,
-	connectMcpClient,
+	connectMcpClientForCredential,
 	getAllTools,
-	tryRefreshOAuth2Token,
 	mapToNodeOperationError,
 } from '../shared/utils';
 
@@ -21,14 +19,11 @@ export async function getToolParameters(
 	const serverTransport = this.getNodeParameter('serverTransport') as McpServerTransport;
 	const endpointUrl = this.getNodeParameter('endpointUrl') as string;
 	const node = this.getNode();
-	const { headers } = await getAuthHeaders(this, authentication);
-	const client = await connectMcpClient({
+	const client = await connectMcpClientForCredential(this, {
+		authentication,
 		serverTransport,
 		endpointUrl,
-		headers,
-		name: node.type,
-		version: node.typeVersion,
-		onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
+		surface: 'MCP Client',
 	});
 
 	if (!client.ok) {

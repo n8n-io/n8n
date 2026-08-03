@@ -74,6 +74,45 @@ describe('decryptJweToken', () => {
 	it('throws on a malformed token', async () => {
 		await expect(decryptJweToken('not.a.real.jwe.token', privateKey)).rejects.toThrow();
 	});
+
+	it.each(['A128CBC-HS256', 'A192CBC-HS384', 'A256CBC-HS512', 'A128GCM', 'A192GCM', 'A256GCM'])(
+		'decrypts when enc is "%s"',
+		async (enc) => {
+			const token = await new CompactEncrypt(new TextEncoder().encode(`payload-${enc}`))
+				.setProtectedHeader({ alg: ALG, enc })
+				.encrypt(publicKey);
+
+			const result = await decryptJweToken(token, privateKey);
+
+			expect(result).toBe(`payload-${enc}`);
+		},
+	);
+
+	it('rephrases jose JOSENotSupported into a domain-specific UserError naming the enc value', async () => {
+		const header = Buffer.from(
+			JSON.stringify({ alg: ALG, enc: 'UNSUPPORTED-ENC' }),
+			'utf8',
+		).toString('base64url');
+		const token = `${header}.aaa.bbb.ccc.ddd`;
+
+		await expect(decryptJweToken(token, privateKey)).rejects.toThrow(
+			/Re-register the client at the IdP/,
+		);
+		await expect(decryptJweToken(token, privateKey)).rejects.toThrow(/enc="UNSUPPORTED-ENC"/);
+	});
+
+	it('rephrases jose JOSENotSupported into a domain-specific UserError naming the alg value', async () => {
+		const header = Buffer.from(
+			JSON.stringify({ alg: 'UNSUPPORTED-ALG', enc: 'A256GCM' }),
+			'utf8',
+		).toString('base64url');
+		const token = `${header}.aaa.bbb.ccc.ddd`;
+
+		await expect(decryptJweToken(token, privateKey)).rejects.toThrow(
+			/Re-register the client at the IdP/,
+		);
+		await expect(decryptJweToken(token, privateKey)).rejects.toThrow(/alg="UNSUPPORTED-ALG"/);
+	});
 });
 
 describe('decryptJweTokenData', () => {

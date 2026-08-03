@@ -1,10 +1,12 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref, nextTick } from 'vue';
+import { ref, shallowRef, nextTick } from 'vue';
 import { waitFor } from '@testing-library/vue';
 import { useToolParameters } from './useToolParameters';
 import { useWorkflowsStore } from '../stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '../stores/workflowExecutionState.store';
+import type { WorkflowDocumentId } from '../stores/workflowDocument.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -15,10 +17,12 @@ import { AI_MCP_TOOL_NODE_TYPE } from '../constants';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
+		documentId: 'test-workflow@latest',
 		getNodeByName: vi.fn(),
 		getParentNodes: vi.fn().mockReturnValue([]),
 		allNodes: [],
 		workflowTriggerNodes: [],
+		workflowId: 'test-workflow',
 		name: '',
 		settings: {},
 		getPinDataSnapshot: () => ({}),
@@ -27,6 +31,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
@@ -46,8 +51,13 @@ describe('useToolParameters', () => {
 		// Setup default mocks
 		mockWorkflowDocumentStore.getNodeByName.mockReset();
 		projectsStore.currentProjectId = 'test-project';
-		workflowsStore.workflowId = 'test-workflow';
-		workflowsStore.getWorkflowExecution = null;
+		workflowsStore.setWorkflowId('test-workflow');
+		(
+			mockedStore(
+				useWorkflowExecutionStateStore,
+				'test-workflow@latest' as WorkflowDocumentId,
+			) as unknown as { activeExecution: unknown }
+		).activeExecution = null;
 		agentRequestStore.getQueryValue = vi.fn().mockReturnValue(null);
 	});
 
@@ -156,7 +166,12 @@ describe('useToolParameters', () => {
 				},
 			};
 
-			workflowsStore.getWorkflowExecution = {
+			(
+				mockedStore(
+					useWorkflowExecutionStateStore,
+					'test-workflow@latest' as WorkflowDocumentId,
+				) as unknown as { activeExecution: unknown }
+			).activeExecution = {
 				data: {
 					resultData: {
 						runData: {

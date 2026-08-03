@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { stampItemIndexOnError } from '../GenericFunctions';
+import { targetDescription } from './descriptions/TargetDescription';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
 import { linkedResourceFields, linkedResourceOperations } from './LinkedResourceDescription';
 import { listFields, listOperations } from './ListDescription';
@@ -35,9 +37,58 @@ export class MicrosoftToDo implements INodeType {
 			{
 				name: 'microsoftToDoOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftToDoOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftEntraServicePrincipalApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftEntraServicePrincipalApi'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'To Do OAuth2',
+						value: 'microsoftToDoOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+						description:
+							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Tasks.ReadWrite) on the credential.',
+					},
+					{
+						name: 'Microsoft Entra Service Principal (App-Only)',
+						value: 'microsoftEntraServicePrincipalApi',
+						description:
+							'App-only access via a Microsoft Entra app registration. Choose which user to act on.',
+					},
+				],
+				default: 'microsoftToDoOAuth2Api',
+			},
+			...targetDescription,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -74,7 +125,14 @@ export class MicrosoftToDo implements INodeType {
 			// select them easily
 			async getTaskLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const lists = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/todo/lists');
+				// loadOptions context: 0 is the transport's fallback read, not an item index.
+				const lists = await microsoftApiRequestAllItems.call(
+					this,
+					'value',
+					'GET',
+					'/todo/lists',
+					0,
+				);
 				for (const list of lists) {
 					returnData.push({
 						name: list.displayName as string,
@@ -112,6 +170,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'POST',
 							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
+							i,
 							body,
 							qs,
 						);
@@ -126,6 +185,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'DELETE',
 							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
+							i,
 							undefined,
 							qs,
 						);
@@ -141,6 +201,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'GET',
 							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
+							i,
 							undefined,
 							qs,
 						);
@@ -157,6 +218,7 @@ export class MicrosoftToDo implements INodeType {
 								'value',
 								'GET',
 								`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
+								i,
 								undefined,
 								qs,
 							);
@@ -166,6 +228,7 @@ export class MicrosoftToDo implements INodeType {
 								this,
 								'GET',
 								`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
+								i,
 								undefined,
 								qs,
 							);
@@ -186,6 +249,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'PATCH',
 							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
+							i,
 							body,
 							qs,
 						);
@@ -231,6 +295,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'POST',
 							`/todo/lists/${taskListId}/tasks`,
+							i,
 							body,
 							qs,
 						);
@@ -244,6 +309,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'DELETE',
 							`/todo/lists/${taskListId}/tasks/${taskId}`,
+							i,
 							undefined,
 							qs,
 						);
@@ -258,6 +324,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'GET',
 							`/todo/lists/${taskListId}/tasks/${taskId}`,
+							i,
 							undefined,
 							qs,
 						);
@@ -273,6 +340,7 @@ export class MicrosoftToDo implements INodeType {
 								'value',
 								'GET',
 								`/todo/lists/${taskListId}/tasks/`,
+								i,
 								undefined,
 								qs,
 							);
@@ -282,6 +350,7 @@ export class MicrosoftToDo implements INodeType {
 								this,
 								'GET',
 								`/todo/lists/${taskListId}/tasks/`,
+								i,
 								undefined,
 								qs,
 							);
@@ -324,6 +393,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'PATCH',
 							`/todo/lists/${taskListId}/tasks/${taskId}`,
+							i,
 							body,
 							qs,
 						);
@@ -341,7 +411,14 @@ export class MicrosoftToDo implements INodeType {
 							displayName: this.getNodeParameter('displayName', i) as string,
 						};
 
-						responseData = await microsoftApiRequest.call(this, 'POST', '/todo/lists/', body, qs);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'POST',
+							'/todo/lists/',
+							i,
+							body,
+							qs,
+						);
 
 						// https://docs.microsoft.com/en-us/graph/api/todotasklist-delete?view=graph-rest-1.0&tabs=http
 					} else if (operation === 'delete') {
@@ -350,6 +427,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'DELETE',
 							`/todo/lists/${listId}`,
+							i,
 							undefined,
 							qs,
 						);
@@ -362,6 +440,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'GET',
 							`/todo/lists/${listId}`,
+							i,
 							undefined,
 							qs,
 						);
@@ -375,6 +454,7 @@ export class MicrosoftToDo implements INodeType {
 								'value',
 								'GET',
 								'/todo/lists',
+								i,
 								undefined,
 								qs,
 							);
@@ -384,6 +464,7 @@ export class MicrosoftToDo implements INodeType {
 								this,
 								'GET',
 								'/todo/lists',
+								i,
 								undefined,
 								qs,
 							);
@@ -401,6 +482,7 @@ export class MicrosoftToDo implements INodeType {
 							this,
 							'PATCH',
 							`/todo/lists/${listId}`,
+							i,
 							body,
 							qs,
 						);
@@ -421,7 +503,8 @@ export class MicrosoftToDo implements INodeType {
 					returnData.push(...executionErrorData);
 					continue;
 				}
-				throw error;
+				// A NodeError from the transport may be missing the itemIndex, add it
+				throw stampItemIndexOnError(error, i);
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(

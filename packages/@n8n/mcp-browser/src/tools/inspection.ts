@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
-import type { ToolDefinition } from '../types';
+import { analyzeHtmlSensitivity, type SensitivityResult } from '../sensitivity/analyze-html';
+import type { ConnectionState, ToolDefinition } from '../types';
 import { formatCallToolResult, formatImageResponse } from '../utils';
 import { createConnectedTool, elementTargetSchema, pageIdField } from './helpers';
+import type { SensitivityRefusal } from './sensitivity-types';
 
 export function createInspectionTools(connection: BrowserConnection): ToolDefinition[] {
 	return [
@@ -26,6 +28,12 @@ const browserSnapshotSchema = z
 		scope: elementTargetSchema
 			.optional()
 			.describe('Optionally scope to a subtree rooted at this element'),
+		interactive: z
+			.boolean()
+			.optional()
+			.describe(
+				'When true, annotate interactive elements with @eN refs for use in click/type/etc. tools. Default: true.',
+			),
 		pageId: pageIdField,
 	})
 	.describe('Get ref-annotated accessibility tree of the page');
@@ -41,7 +49,7 @@ function browserSnapshot(connection: BrowserConnection): ToolDefinition {
 		'Use this tool as your primary way to observe the page. Returns a ref-annotated accessibility tree — a compact text representation of all visible elements. Each interactive element gets a numeric ref for use in subsequent tool calls (browser_click, browser_type, etc.). Snapshots are small and fast. Prefer this over browser_screenshot unless you specifically need visual/layout information.',
 		browserSnapshotSchema,
 		async (state, input, pageId) => {
-			const result = await state.adapter.snapshot(pageId, input.scope);
+			const result = await state.adapter.snapshot(pageId, input.scope, input.interactive);
 			return formatCallToolResult({ snapshot: result.tree });
 		},
 		browserSnapshotOutputSchema,
@@ -69,6 +77,9 @@ function browserScreenshot(connection: BrowserConnection): ToolDefinition {
 		'Take a screenshot of the page or a specific element. Returns a base64-encoded PNG image. Note: Prefer browser_snapshot for most tasks — it is smaller, faster, and returns refs for element targeting. Use screenshots only when you need visual information (layout, images, charts).',
 		browserScreenshotSchema,
 		async (state, input, pageId) => {
+			const refusal = await sensitivityRefusal(state, pageId);
+			if (refusal) return formatCallToolResult({ ...refusal });
+
 			const base64 = await state.adapter.screenshot(pageId, input.element, {
 				fullPage: input.fullPage,
 			});
@@ -164,6 +175,9 @@ function browserEvaluate(connection: BrowserConnection): ToolDefinition {
 		'Execute JavaScript in the page context and return the result. The script must be an expression or IIFE. The result is JSON-serialized.',
 		browserEvaluateSchema,
 		async (state, input, pageId) => {
+			const refusal = await sensitivityRefusal(state, pageId);
+			if (refusal) return formatCallToolResult({ ...refusal });
+
 			const result = await state.adapter.evaluate(pageId, input.script);
 			return formatCallToolResult({ result });
 		},
@@ -236,6 +250,9 @@ function browserPdf(connection: BrowserConnection): ToolDefinition {
 		'Generate a PDF of the current page.',
 		browserPdfSchema,
 		async (state, input, pageId) => {
+			const refusal = await sensitivityRefusal(state, pageId);
+			if (refusal) return formatCallToolResult({ ...refusal });
+
 			const result = await state.adapter.pdf(pageId, {
 				format: input.format,
 				landscape: input.landscape,
@@ -244,6 +261,37 @@ function browserPdf(connection: BrowserConnection): ToolDefinition {
 		},
 		browserPdfOutputSchema,
 	);
+}
+
+async function sensitivityRefusal(
+	state: ConnectionState,
+	pageId: string,
+): Promise<SensitivityRefusal | undefined> {
+	let sensitivity: SensitivityResult;
+	try {
+		sensitivity = analyzeHtmlSensitivity(await state.adapter.probePageHtml(pageId));
+	} catch {
+		return {
+			ok: false,
+			reason: 'probe_failed',
+			hint: 'sensitivity check could not run; retry, or use browser_snapshot if you need page state',
+		};
+	}
+	if (!sensitivity.ok) {
+		return {
+			ok: false,
+			reason: 'probe_failed',
+			hint: 'sensitivity check could not run; retry, or use browser_snapshot if you need page state',
+		};
+	}
+	if (sensitivity.sensitive) {
+		return {
+			ok: false,
+			reason: 'sensitive_context',
+			hint: 'use browser_snapshot; screenshot, PDF, and evaluate are suppressed because secrets are visible on this page',
+		};
+	}
+	return undefined;
 }
 
 // ---------------------------------------------------------------------------

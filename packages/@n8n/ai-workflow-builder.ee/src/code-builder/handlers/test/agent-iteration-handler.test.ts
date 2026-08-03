@@ -10,13 +10,13 @@ describe('AgentIterationHandler', () => {
 	let handler: AgentIterationHandler;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('invokeLlm', () => {
 		describe('onTokenUsage callback', () => {
 			it('should call onTokenUsage callback with token counts when tokens are used', async () => {
-				const onTokenUsage = jest.fn();
+				const onTokenUsage = vi.fn();
 
 				handler = new AgentIterationHandler({
 					onTokenUsage,
@@ -31,7 +31,7 @@ describe('AgentIterationHandler', () => {
 				});
 
 				const mockLlmWithTools = {
-					invoke: jest.fn().mockResolvedValue(mockResponse),
+					invoke: vi.fn().mockResolvedValue(mockResponse),
 				};
 
 				const messages = [new HumanMessage('Test')];
@@ -58,7 +58,7 @@ describe('AgentIterationHandler', () => {
 			});
 
 			it('should not call onTokenUsage when tokens are zero', async () => {
-				const onTokenUsage = jest.fn();
+				const onTokenUsage = vi.fn();
 
 				handler = new AgentIterationHandler({
 					onTokenUsage,
@@ -72,7 +72,7 @@ describe('AgentIterationHandler', () => {
 				});
 
 				const mockLlmWithTools = {
-					invoke: jest.fn().mockResolvedValue(mockResponse),
+					invoke: vi.fn().mockResolvedValue(mockResponse),
 				};
 
 				const messages = [new HumanMessage('Test')];
@@ -91,7 +91,7 @@ describe('AgentIterationHandler', () => {
 			});
 
 			it('should not call onTokenUsage when no usage metadata present', async () => {
-				const onTokenUsage = jest.fn();
+				const onTokenUsage = vi.fn();
 
 				handler = new AgentIterationHandler({
 					onTokenUsage,
@@ -103,7 +103,7 @@ describe('AgentIterationHandler', () => {
 				});
 
 				const mockLlmWithTools = {
-					invoke: jest.fn().mockResolvedValue(mockResponse),
+					invoke: vi.fn().mockResolvedValue(mockResponse),
 				};
 
 				const messages = [new HumanMessage('Test')];
@@ -132,7 +132,7 @@ describe('AgentIterationHandler', () => {
 				});
 
 				const mockLlmWithTools = {
-					invoke: jest.fn().mockResolvedValue(mockResponse),
+					invoke: vi.fn().mockResolvedValue(mockResponse),
 				};
 
 				const messages = [new HumanMessage('Test')];
@@ -155,8 +155,8 @@ describe('AgentIterationHandler', () => {
 
 		describe('per-iteration callbacks override', () => {
 			it('should use per-iteration callbacks when provided instead of constructor callbacks', async () => {
-				const constructorCallbacks = [{ handleLLMStart: jest.fn() }];
-				const iterationCallbacks = [{ handleLLMStart: jest.fn() }];
+				const constructorCallbacks = [{ handleLLMStart: vi.fn() }];
+				const iterationCallbacks = [{ handleLLMStart: vi.fn() }];
 
 				handler = new AgentIterationHandler({
 					callbacks: constructorCallbacks,
@@ -168,7 +168,7 @@ describe('AgentIterationHandler', () => {
 				});
 
 				const mockLlmWithTools = {
-					invoke: jest.fn().mockResolvedValue(mockResponse),
+					invoke: vi.fn().mockResolvedValue(mockResponse),
 				};
 
 				const messages = [new HumanMessage('Test')];
@@ -192,7 +192,7 @@ describe('AgentIterationHandler', () => {
 			});
 
 			it('should fall back to constructor callbacks when per-iteration callbacks are not provided', async () => {
-				const constructorCallbacks = [{ handleLLMStart: jest.fn() }];
+				const constructorCallbacks = [{ handleLLMStart: vi.fn() }];
 
 				handler = new AgentIterationHandler({
 					callbacks: constructorCallbacks,
@@ -204,7 +204,7 @@ describe('AgentIterationHandler', () => {
 				});
 
 				const mockLlmWithTools = {
-					invoke: jest.fn().mockResolvedValue(mockResponse),
+					invoke: vi.fn().mockResolvedValue(mockResponse),
 				};
 
 				const messages = [new HumanMessage('Test')];
@@ -230,7 +230,7 @@ describe('AgentIterationHandler', () => {
 
 	describe('getCallbacks', () => {
 		it('should return the configured callbacks', () => {
-			const callbacks = [{ handleLLMStart: jest.fn() }];
+			const callbacks = [{ handleLLMStart: vi.fn() }];
 			handler = new AgentIterationHandler({
 				callbacks,
 			});

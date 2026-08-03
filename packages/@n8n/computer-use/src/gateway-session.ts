@@ -14,6 +14,7 @@ export class GatewaySession {
 	private _dir: string;
 	private _permissions: Record<ToolGroup, PermissionMode>;
 	private readonly sessionAllows: Map<ToolGroup, Set<string>> = new Map();
+	private readonly _secretsBuffer: Map<string, Map<string, string>> = new Map();
 
 	constructor(
 		defaults: { permissions: Record<ToolGroup, PermissionMode>; dir: string },
@@ -100,8 +101,30 @@ export class GatewaySession {
 		set.add(resource);
 	}
 
-	clearSessionRules(): void {
+	clearSession(): void {
 		this.sessionAllows.clear();
+		this._secretsBuffer.clear();
+	}
+
+	// ---------------------------------------------------------------------------
+	// Secrets buffer
+	// ---------------------------------------------------------------------------
+
+	captureSecret(credentialsKey: string, field: string, value: string): void {
+		let fields = this._secretsBuffer.get(credentialsKey);
+		if (!fields) {
+			fields = new Map();
+			this._secretsBuffer.set(credentialsKey, fields);
+		}
+		fields.set(field, value);
+	}
+
+	getSecretFields(credentialsKey: string): Map<string, string> | undefined {
+		return this._secretsBuffer.get(credentialsKey);
+	}
+
+	clearSecrets(credentialsKey: string): void {
+		this._secretsBuffer.delete(credentialsKey);
 	}
 
 	// ---------------------------------------------------------------------------

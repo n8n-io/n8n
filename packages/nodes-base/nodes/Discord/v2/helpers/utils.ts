@@ -136,7 +136,7 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 				}
 			}
 
-			if (embedReturnData.author) {
+			if (embedReturnData.author && typeof embedReturnData.author === 'string') {
 				embedReturnData.author = {
 					name: embedReturnData.author,
 				};

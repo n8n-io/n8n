@@ -12,6 +12,7 @@ import {
 	type ProjectRelation,
 	type ProjectRelationRepository,
 	type ProjectRepository,
+	type SharedWorkflow,
 	type SharedWorkflowRepository,
 	type TagRepository,
 	type WorkflowTagMappingRepository,
@@ -21,27 +22,37 @@ import {
 	type WorkflowRepository,
 } from '@n8n/db';
 import { In } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
-import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
+vi.mock('node:fs/promises');
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlContextFactory } from '../source-control-context.factory';
+import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
 import type { ExportableProject } from '../types/exportable-project';
 import { SourceControlContext } from '../types/source-control-context';
 
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
-
-jest.mock('fast-glob');
+vi.mock('fast-glob');
 
 describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
@@ -52,7 +63,10 @@ describe('SourceControlImportService', () => {
 	const tagRepository = mock<TagRepository>();
 	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
 	const userRepository = mock<UserRepository>();
-	const credentialsRepository = mock<CredentialsRepository>();
+	const credentialsRepositoryManager = mock<EntityManager>();
+	const credentialsRepository = mock<CredentialsRepository>({
+		manager: credentialsRepositoryManager,
+	});
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const mockLogger = mock<Logger>();
 	const sourceControlContextFactory = mock<SourceControlContextFactory>();
@@ -61,13 +75,25 @@ describe('SourceControlImportService', () => {
 	const variablesRepository = mock<VariablesRepository>();
 	const workflowService = mock<WorkflowService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const workflowPublishGuard = mock<WorkflowPublishGuardProxy>();
 	const dataTableRepository = mock<DataTableRepository>();
 	const dataTableColumnRepository = mock<DataTableColumnRepository>();
 	const dataTableDDLService = mock<DataTableDDLService>();
+	const redactionEnforcementService = mock<RedactionEnforcementService>();
+	const dataTableSizeValidator = mock<DataTableSizeValidator>();
+	const activeWorkflowManager = mock<ActiveWorkflowManager>();
+	const executionPersistence = mock<ExecutionPersistence>();
+	const credentialsService = mock<CredentialsService>();
+	const transactionManager = mock<EntityManager>();
 
 	const globalAdminContext = new SourceControlContext(
 		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
 		[],
+		[],
+	);
+	const globalMemberContext = new SourceControlContext(
+		Object.assign(new User(), { id: 'user1', role: GLOBAL_MEMBER_ROLE }),
+		[Object.assign(new Project(), { id: 'project1', name: 'Team Project 1', type: 'team' })],
 		[],
 	);
 
@@ -86,7 +112,7 @@ describe('SourceControlImportService', () => {
 		workflowRepository,
 		workflowTagMappingRepository,
 		workflowService,
-		mock(),
+		credentialsService,
 		mock(),
 		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
@@ -96,12 +122,34 @@ describe('SourceControlImportService', () => {
 		dataTableRepository,
 		dataTableColumnRepository,
 		dataTableDDLService,
+		redactionEnforcementService,
+		dataTableSizeValidator,
+		activeWorkflowManager,
+		executionPersistence,
+		workflowPublishGuard,
 	);
 
-	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-	const fsReadFile = jest.spyOn(fsp, 'readFile');
+	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+	const fsReadFile = vi.spyOn(fsp, 'readFile');
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => {
+		vi.clearAllMocks();
+		workflowPublishGuard.assertCanPublish.mockResolvedValue(undefined);
+		credentialsRepository.find.mockResolvedValue([]);
+		transactionManager.upsert.mockImplementation(
+			async (_entity, value, conflictPaths) =>
+				await credentialsRepository.upsert(value as never, conflictPaths as never),
+		);
+		transactionManager.delete.mockImplementation(
+			async (_entity, criteria) => await sharedCredentialsRepository.delete(criteria as never),
+		);
+		credentialsRepositoryManager.transaction.mockImplementation(async (...args) => {
+			const callback = args.find((arg) => typeof arg === 'function');
+			if (!callback) throw new Error('Transaction callback is required');
+			return await callback(transactionManager);
+		});
+		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
+	});
 
 	describe('getRemoteVersionIdsFromFiles', () => {
 		const mockWorkflowFile = '/mock/workflow1.json';
@@ -160,6 +208,31 @@ describe('SourceControlImportService', () => {
 
 			expect(result).toHaveLength(0);
 		});
+
+		it('should read files in bounded batches and preserve order', async () => {
+			const fileCount = 45;
+			const files = Array.from({ length: fileCount }, (_, i) => `/mock/workflow${i}.json`);
+			globMock.mockResolvedValue(files);
+
+			// All reads of a batch start synchronously before any completes (the mock
+			// yields a microtask), so an unbounded implementation would reach 45 in flight
+			let inFlight = 0;
+			let maxInFlight = 0;
+			fsReadFile.mockImplementation(async (file) => {
+				inFlight++;
+				maxInFlight = Math.max(maxInFlight, inFlight);
+				await Promise.resolve();
+				inFlight--;
+				const index = /workflow(\d+)\.json$/.exec(file as string)?.[1];
+				return JSON.stringify({ id: `workflow${index}`, versionId: `v${index}` });
+			});
+
+			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
+
+			expect(maxInFlight).toBe(20);
+			expect(result).toHaveLength(fileCount);
+			expect(result.map((workflow) => workflow.id)).toEqual(files.map((_, i) => `workflow${i}`));
+		});
 	});
 
 	describe('importWorkflowFromWorkFolder', () => {
@@ -181,7 +254,16 @@ describe('SourceControlImportService', () => {
 				id: '1',
 				name: 'Workflow 1',
 				active: false,
-				nodes: [],
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
 				connections: {},
 				versionId: 'v1',
 				owner: {
@@ -189,6 +271,7 @@ describe('SourceControlImportService', () => {
 					personalEmail: 'user@example.com',
 				},
 				parentFolderId: null,
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }],
 			};
 			const mockWorkflowData2 = {
 				id: '2',
@@ -202,6 +285,7 @@ describe('SourceControlImportService', () => {
 					personalEmail: 'user@example.com',
 				},
 				parentFolderId: null,
+				nodeGroups: [],
 			};
 			const candidates = [
 				mock<SourceControlledFile>({ file: mockWorkflowFile1, id: mockWorkflowData1.id }),
@@ -231,6 +315,9 @@ describe('SourceControlImportService', () => {
 				expect.objectContaining({
 					id: mockWorkflowData1.id,
 					name: mockWorkflowData1.name,
+					nodes: mockWorkflowData1.nodes,
+					connections: mockWorkflowData1.connections,
+					nodeGroups: mockWorkflowData1.nodeGroups,
 				}),
 				['id'],
 			);
@@ -238,6 +325,9 @@ describe('SourceControlImportService', () => {
 				expect.objectContaining({
 					id: mockWorkflowData2.id,
 					name: mockWorkflowData2.name,
+					nodes: mockWorkflowData2.nodes,
+					connections: mockWorkflowData2.connections,
+					nodeGroups: mockWorkflowData2.nodeGroups,
 				}),
 				['id'],
 			);
@@ -286,6 +376,64 @@ describe('SourceControlImportService', () => {
 			expect(mockLogger.error).toHaveBeenCalledWith(
 				`Failed to parse workflow file ${mockWorkflowFile}`,
 				expect.any(Object),
+			);
+		});
+
+		it('should reset nodeGroups to empty when they are invalid', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow-bad-groups.json';
+			const mockWorkflowData = {
+				id: 'wf-1',
+				name: 'Workflow with bad groups',
+				active: false,
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				versionId: 'v1',
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['nonexistent-node'] }],
+				owner: { type: 'personal', personalEmail: 'user@example.com' },
+				parentFolderId: null,
+			};
+			const candidates = [
+				mock<SourceControlledFile>({ file: mockWorkflowFile, id: mockWorkflowData.id }),
+			];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), {
+					id: 'personal-project-id-123',
+					name: 'Personal Project',
+					type: 'personal',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				}),
+			);
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: mockWorkflowData.id }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile.mockResolvedValueOnce(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				`Workflow file ${mockWorkflowFile} has invalid nodeGroups, resetting to empty`,
+			);
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ id: mockWorkflowData.id, nodeGroups: [] }),
+				['id'],
 			);
 		});
 
@@ -541,6 +689,56 @@ describe('SourceControlImportService', () => {
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 		});
 
+		it('should clear active state when local workflow is archived with a lingering active version', async () => {
+			const mockUserId = 'user-id-123';
+			const mockUser = Object.assign(new User(), { id: mockUserId });
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Workflow',
+				nodes: [],
+				connections: {},
+				versionId: 'v2',
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			userRepository.findOne.mockResolvedValue(mockUser);
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Workflow',
+					active: true,
+					activeVersionId: 'v1',
+					isArchived: true,
+				}),
+			]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'workflow1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'none');
+
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'workflow1',
+					active: false,
+					activeVersionId: null,
+				}),
+				['id'],
+			);
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+		});
+
 		it('should unpublish archived workflows even if they were previously published', async () => {
 			const mockUserId = 'user-id-123';
 			const mockUser = Object.assign(new User(), { id: mockUserId });
@@ -780,6 +978,106 @@ describe('SourceControlImportService', () => {
 						versionId: 'v2',
 					}),
 				);
+			});
+
+			it('keeps the published version running when an open review blocks auto-publish', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'Reviewed Workflow',
+					versionId: 'v2',
+					nodes: [],
+					connections: {},
+					parentFolderId: null,
+				};
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					active: true,
+					activeVersionId: 'v1',
+					versionId: 'v1',
+				});
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+				workflowPublishGuard.assertCanPublish.mockRejectedValue(
+					new WorkflowPublishBlockedError({
+						reason: 'review_pending',
+						workflowReviewRequestId: 'review-1',
+					}),
+				);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })],
+					mockUserId,
+					'all',
+				);
+
+				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
+				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						versionId: 'v2',
+						active: true,
+						activeVersionId: 'v1',
+					}),
+					['id'],
+				);
+				expect(result).toEqual([
+					{
+						id: 'workflow1',
+						name: mockWorkflowFile,
+						publishingError: expect.stringContaining('review is open'),
+						publishingErrorDetails: {
+							reason: 'review_pending',
+							workflowReviewRequestId: 'review-1',
+						},
+					},
+				]);
+			});
+
+			it('returns review details when publication is blocked after a new workflow is imported', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'New Reviewed Workflow',
+					versionId: 'v1',
+					nodes: [],
+					connections: {},
+					parentFolderId: null,
+				};
+				workflowRepository.findByIds.mockResolvedValue([]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+				workflowService.activateWorkflow.mockRejectedValue(
+					new WorkflowPublishBlockedError({
+						reason: 'changes_requested',
+						workflowReviewRequestId: 'review-2',
+					}),
+				);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })],
+					mockUserId,
+					'all',
+				);
+
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						versionId: 'v1',
+						active: false,
+						activeVersionId: null,
+					}),
+					['id'],
+				);
+				expect(result).toEqual([
+					{
+						id: 'workflow1',
+						name: mockWorkflowFile,
+						publishingError: expect.stringContaining('requested changes'),
+						publishingErrorDetails: {
+							reason: 'changes_requested',
+							workflowReviewRequestId: 'review-2',
+						},
+					},
+				]);
 			});
 
 			it('should publish only previously published workflows with autoPublish="published"', async () => {
@@ -1087,6 +1385,96 @@ describe('SourceControlImportService', () => {
 				]);
 			});
 		});
+
+		describe('redaction policy enforcement', () => {
+			const mockUserId = 'user-id-123';
+
+			beforeEach(() => {
+				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+					Object.assign(new Project(), {
+						id: 'personal-project-id-123',
+						name: 'Personal Project',
+						type: 'personal',
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					}),
+				);
+				folderRepository.find.mockResolvedValue([]);
+				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+				workflowRepository.upsert.mockResolvedValue({
+					identifiers: [{ id: '1' }],
+					generatedMaps: [],
+					raw: [],
+				});
+			});
+
+			it('rejects an import when the incoming policy differs and enforcement is on', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: '1',
+					settings: { redactionPolicy: 'all' },
+				});
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+
+				fsReadFile.mockResolvedValueOnce(
+					JSON.stringify({
+						id: '1',
+						name: 'Workflow 1',
+						active: false,
+						nodes: [],
+						connections: {},
+						versionId: 'v1',
+						parentFolderId: null,
+						settings: { redactionPolicy: 'none' },
+					}),
+				);
+
+				redactionEnforcementService.assertPolicyChangeAllowed.mockRejectedValueOnce(
+					new Error('Workflow redaction policy cannot be weaker than the instance floor.'),
+				);
+
+				const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: '1' })];
+
+				await expect(service.importWorkflowFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
+					'Workflow redaction policy cannot be weaker than the instance floor.',
+				);
+
+				expect(redactionEnforcementService.assertPolicyChangeAllowed).toHaveBeenCalledWith(
+					'all',
+					'none',
+				);
+				expect(workflowRepository.upsert).not.toHaveBeenCalled();
+			});
+
+			it('allows the import to proceed when enforcement is off', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: '1',
+					settings: { redactionPolicy: 'all' },
+				});
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+
+				fsReadFile.mockResolvedValueOnce(
+					JSON.stringify({
+						id: '1',
+						name: 'Workflow 1',
+						active: false,
+						nodes: [],
+						connections: {},
+						versionId: 'v1',
+						parentFolderId: null,
+						settings: { redactionPolicy: 'none' },
+					}),
+				);
+
+				// Default mock returns undefined (no throw) — simulating enforcement off.
+				const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: '1' })];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+				expect(workflowRepository.upsert).toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('getRemoteCredentialsFromFiles', () => {
@@ -1113,6 +1501,42 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
+		it('should skip credentials that are instance credentials locally, for any caller', async () => {
+			globMock.mockResolvedValue(['/mock/credential1.json']);
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'cred1',
+					name: 'Disguised Credential',
+					type: 'oauth2Api',
+					data: {},
+					ownedBy: null,
+				}),
+			);
+			credentialsRepository.find.mockResolvedValue([
+				{ id: 'cred1', usageScope: 'instance' } as any,
+			]);
+
+			await expect(service.getRemoteCredentialsFromFiles(globalMemberContext)).resolves.toEqual([]);
+			await expect(service.getRemoteCredentialsFromFiles(globalAdminContext)).resolves.toEqual([]);
+		});
+
+		it('should skip remote credential files flagged as instance credentials', async () => {
+			globMock.mockResolvedValue(['/mock/credential1.json']);
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'cred1',
+					name: 'Provider Connection',
+					type: 'anthropicApi',
+					data: {},
+					ownedBy: null,
+					usageScope: 'instance',
+				}),
+			);
+			credentialsRepository.find.mockResolvedValue([]);
+
+			await expect(service.getRemoteCredentialsFromFiles(globalAdminContext)).resolves.toEqual([]);
+		});
+
 		it('should filter out files without valid credential data', async () => {
 			globMock.mockResolvedValue(['/mock/invalid.json']);
 			fsReadFile.mockResolvedValue('{}');
@@ -1120,6 +1544,31 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
 
 			expect(result).toHaveLength(0);
+		});
+
+		it('should read files in bounded batches and preserve order', async () => {
+			const fileCount = 45;
+			const files = Array.from({ length: fileCount }, (_, i) => `/mock/credential${i}.json`);
+			globMock.mockResolvedValue(files);
+
+			// All reads of a batch start synchronously before any completes (the mock
+			// yields a microtask), so an unbounded implementation would reach 45 in flight
+			let inFlight = 0;
+			let maxInFlight = 0;
+			fsReadFile.mockImplementation(async (file) => {
+				inFlight++;
+				maxInFlight = Math.max(maxInFlight, inFlight);
+				await Promise.resolve();
+				inFlight--;
+				const index = /credential(\d+)\.json$/.exec(file as string)?.[1];
+				return JSON.stringify({ id: `cred${index}`, name: `Credential ${index}`, type: 'oauth2' });
+			});
+
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			expect(maxInFlight).toBe(20);
+			expect(result).toHaveLength(fileCount);
+			expect(result.map((credential) => credential.id)).toEqual(files.map((_, i) => `cred${i}`));
 		});
 
 		it('should parse global credentials with isGlobal flag set to true', async () => {
@@ -1281,6 +1730,219 @@ describe('SourceControlImportService', () => {
 			// Verify the credential data was sanitized properly
 			const upsertCall = credentialsRepository.upsert.mock.calls[0][0] as Record<string, unknown>;
 			expect(upsertCall.data).toBeDefined();
+		});
+
+		it('should carry resolvable credential fields across environments', async () => {
+			// Arrange
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Private Credential',
+					type: 'credential',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			const mockCredentialData = {
+				id: 'cred1',
+				name: 'Private Credential',
+				type: 'oauth2Api',
+				data: {},
+				ownedBy: null,
+				isGlobal: false,
+				isResolvable: true,
+				resolvableAllowFallback: true,
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialData));
+			credentialsRepository.find.mockResolvedValue([]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.upsert.mockResolvedValue({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			// Act
+			await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			// Assert
+			expect(credentialsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'cred1',
+					isResolvable: true,
+					resolvableAllowFallback: true,
+				}),
+				['id'],
+			);
+		});
+
+		it('should skip credential files flagged as instance credentials', async () => {
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'credential',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'oauth2Api',
+					data: {},
+					ownedBy: null,
+					usageScope: 'instance',
+				}),
+			);
+			credentialsRepository.find.mockResolvedValue([]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+
+			const result = await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			expect(result).toEqual([]);
+			expect(credentialsRepository.upsert).not.toHaveBeenCalled();
+			expect(credentialsRepositoryManager.transaction).not.toHaveBeenCalled();
+		});
+
+		it('should not touch an existing instance credential even when the remote file omits usageScope', async () => {
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'credential',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'oauth2Api',
+					data: {},
+					ownedBy: null,
+				}),
+			);
+			credentialsRepository.find.mockResolvedValue([
+				{
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'oauth2Api',
+					data: undefined,
+					usageScope: 'instance',
+				} as any,
+			]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+
+			const result = await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			expect(result).toEqual([]);
+			expect(credentialsRepository.upsert).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('should not convert an existing project credential when a remote file declares instance', async () => {
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Workflow Credential',
+					type: 'credential',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'cred1',
+					name: 'Workflow Credential',
+					type: 'oauth2Api',
+					data: {},
+					ownedBy: null,
+					usageScope: 'instance',
+				}),
+			);
+			credentialsRepository.find.mockResolvedValue([
+				{
+					id: 'cred1',
+					name: 'Workflow Credential',
+					type: 'oauth2Api',
+					data: undefined,
+					usageScope: 'project',
+				} as any,
+			]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+
+			const result = await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			expect(result).toEqual([]);
+			expect(credentialsRepository.upsert).not.toHaveBeenCalled();
+		});
+
+		it('should default resolver fields to false when absent from the stub', async () => {
+			// Arrange - a stub written before resolver fields were tracked omits them
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Legacy Stub Credential',
+					type: 'credential',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			const mockCredentialData = {
+				id: 'cred1',
+				name: 'Legacy Stub Credential',
+				type: 'oauth2Api',
+				data: {},
+				ownedBy: null,
+				isGlobal: false,
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialData));
+			credentialsRepository.find.mockResolvedValue([]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.upsert.mockResolvedValue({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			// Act
+			await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			// Assert - git is the source of truth, so an absent flag defaults to false
+			// (same as isGlobal).
+			expect(credentialsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'cred1',
+					isResolvable: false,
+					resolvableAllowFallback: false,
+				}),
+				['id'],
+			);
 		});
 
 		it('should update an existing credential (verifies upsert is called)', async () => {
@@ -1938,7 +2600,7 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalVersionIdsFromDb', () => {
 		const now = new Date();
-		jest.useFakeTimers({ now });
+		vi.useFakeTimers({ now });
 
 		it('should replace invalid updatedAt with current timestamp', async () => {
 			const mockWorkflows = [
@@ -2089,6 +2751,31 @@ describe('SourceControlImportService', () => {
 			});
 		});
 
+		describe('deleteWorkflowsNotInWorkfolder', () => {
+			it('should wrap deletion failures with resource context', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const candidate = mock<SourceControlledFile>({ id: 'wf-1', name: 'My workflow' });
+				workflowService.delete.mockRejectedValueOnce(new Error('statement timeout'));
+
+				await expect(service.deleteWorkflowsNotInWorkfolder(user, [candidate])).rejects.toThrow(
+					'Failed to delete workflow(s) "My workflow" (wf-1) while pulling from source control: statement timeout',
+				);
+			});
+		});
+
+		describe('deletionError resource listing', () => {
+			it('should cap the number of resources listed in the error message', async () => {
+				const candidates = Array.from({ length: 12 }, (_, i) =>
+					mock<SourceControlledFile>({ id: `project-${i}`, name: `Project ${i}` }),
+				);
+				sharedWorkflowRepository.find.mockRejectedValueOnce(new Error('boom'));
+
+				await expect(service.deleteTeamProjectsNotInWorkfolder(candidates)).rejects.toThrow(
+					'"Project 9" (project-9) and 2 more while pulling from source control: boom',
+				);
+			});
+		});
+
 		describe('deleteFoldersNotInWorkfolder', () => {
 			it('should call folderRepository.delete with correct ids', async () => {
 				const candidates = [
@@ -2096,6 +2783,9 @@ describe('SourceControlImportService', () => {
 					mock<SourceControlledFile>({ id: 'folder2' }),
 					mock<SourceControlledFile>({ id: 'folder3' }),
 				];
+				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
+				workflowRepository.find.mockResolvedValue([]);
+
 				await service.deleteFoldersNotInWorkfolder(candidates as any);
 
 				expect(folderRepository.delete).toHaveBeenCalledWith({
@@ -2106,6 +2796,24 @@ describe('SourceControlImportService', () => {
 			it('should not call folderRepository.delete if candidates is empty', async () => {
 				await service.deleteFoldersNotInWorkfolder([]);
 				expect(folderRepository.delete).not.toHaveBeenCalled();
+			});
+
+			it('should drain workflows in the folder hierarchy before deleting folders', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
+				const straggler = Object.assign(new WorkflowEntity(), { id: 'wf-1', active: false });
+				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce(['subfolder1']);
+				workflowRepository.find.mockResolvedValueOnce([straggler]); // workflows in the hierarchy
+				workflowRepository.findOne.mockResolvedValueOnce(straggler); // active-flag lookup before draining
+
+				await service.deleteFoldersNotInWorkfolder(candidates as any);
+
+				expect(workflowRepository.find).toHaveBeenNthCalledWith(1, {
+					select: ['id'],
+					where: { parentFolder: { id: In(['folder1', 'subfolder1']) } },
+				});
+				expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+				expect(executionPersistence.hardDeleteByWorkflowId).toHaveBeenCalledWith('wf-1');
+				expect(folderRepository.delete).toHaveBeenCalledWith({ id: In(['folder1']) });
 			});
 		});
 	});
@@ -2627,6 +3335,7 @@ describe('SourceControlImportService', () => {
 					mock<SourceControlledFile>({ id: 'project-1' }),
 					mock<SourceControlledFile>({ id: 'project-2' }),
 				];
+				sharedWorkflowRepository.find.mockResolvedValue([]);
 
 				await service.deleteTeamProjectsNotInWorkfolder(candidates);
 
@@ -2640,6 +3349,82 @@ describe('SourceControlImportService', () => {
 
 				expect(projectRepository.delete).not.toHaveBeenCalled();
 			});
+
+			it('should deactivate and drain straggler workflows before deleting projects', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'project-1' })];
+				sharedWorkflowRepository.find.mockResolvedValueOnce([
+					{ workflowId: 'wf-active' },
+					{ workflowId: 'wf-inactive' },
+				] as SharedWorkflow[]);
+				workflowRepository.findOne
+					.mockResolvedValueOnce(
+						Object.assign(new WorkflowEntity(), { id: 'wf-active', active: true }),
+					)
+					.mockResolvedValueOnce(
+						Object.assign(new WorkflowEntity(), { id: 'wf-inactive', active: false }),
+					);
+
+				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+
+				expect(sharedWorkflowRepository.find).toHaveBeenCalledWith({
+					select: ['workflowId'],
+					where: { projectId: In(['project-1']), role: 'workflow:owner' },
+				});
+				expect(activeWorkflowManager.remove).toHaveBeenCalledTimes(1);
+				expect(activeWorkflowManager.remove).toHaveBeenCalledWith('wf-active');
+				expect(executionPersistence.hardDeleteByWorkflowId).toHaveBeenCalledWith('wf-active');
+				expect(executionPersistence.hardDeleteByWorkflowId).toHaveBeenCalledWith('wf-inactive');
+				expect(projectRepository.delete).toHaveBeenCalledWith({ id: In(['project-1']) });
+			});
+		});
+	});
+
+	describe('resolveRemoteDataTableProjectId', () => {
+		it('resolves a team owner to the team id', async () => {
+			await expect(
+				service.resolveRemoteDataTableProjectId(
+					{ type: 'team', teamId: 'team1', teamName: 'Team 1' },
+					'puller',
+				),
+			).resolves.toBe('team1');
+		});
+
+		it('resolves a known personal owner to their personal project', async () => {
+			userRepository.findOne.mockResolvedValue({ id: 'user1' } as any);
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({ id: 'pp1' } as any);
+
+			await expect(
+				service.resolveRemoteDataTableProjectId(
+					{ type: 'personal', personalEmail: 'owner@test.com' },
+					'puller',
+				),
+			).resolves.toBe('pp1');
+			expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('user1');
+		});
+
+		it("falls back to the pulling user's personal project for an unknown personal owner", async () => {
+			userRepository.findOne.mockResolvedValue(null);
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'pp-puller',
+			} as any);
+
+			await expect(
+				service.resolveRemoteDataTableProjectId(
+					{ type: 'personal', personalEmail: 'unknown@test.com' },
+					'puller',
+				),
+			).resolves.toBe('pp-puller');
+			expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('puller');
+		});
+
+		it("falls back to the pulling user's personal project when there is no owner", async () => {
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'pp-puller',
+			} as any);
+
+			await expect(service.resolveRemoteDataTableProjectId(null, 'puller')).resolves.toBe(
+				'pp-puller',
+			);
 		});
 	});
 
@@ -2651,7 +3436,7 @@ describe('SourceControlImportService', () => {
 					id: 'dt1',
 					name: 'Test Table 1',
 					projectId: 'project1',
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -2659,7 +3444,7 @@ describe('SourceControlImportService', () => {
 					id: 'dt2',
 					name: 'Test Table 2',
 					projectId: 'project2',
-					columns: [{ id: 'col2', name: 'Column 2', type: 'number', index: 0 }],
+					columns: [{ id: 'col2', name: 'Column2', type: 'number', index: 0 }],
 					createdAt: '2024-01-03T00:00:00.000Z',
 					updatedAt: '2024-01-04T00:00:00.000Z',
 				};
@@ -2673,7 +3458,7 @@ describe('SourceControlImportService', () => {
 					.mockResolvedValueOnce(JSON.stringify(mockDataTable2) as any);
 
 				// Act
-				const result = await service.getRemoteDataTablesFromFiles();
+				const result = await service.getRemoteDataTablesFromFiles(globalAdminContext);
 
 				// Assert
 				expect(result).toEqual([mockDataTable1, mockDataTable2]);
@@ -2688,7 +3473,7 @@ describe('SourceControlImportService', () => {
 				globMock.mockResolvedValue([]);
 
 				// Act
-				const result = await service.getRemoteDataTablesFromFiles();
+				const result = await service.getRemoteDataTablesFromFiles(globalAdminContext);
 
 				// Assert
 				expect(result).toEqual([]);
@@ -2714,10 +3499,54 @@ describe('SourceControlImportService', () => {
 					.mockResolvedValueOnce('invalid json' as any);
 
 				// Act
-				const result = await service.getRemoteDataTablesFromFiles();
+				const result = await service.getRemoteDataTablesFromFiles(globalAdminContext);
 
 				// Assert
 				expect(result).toEqual([mockDataTable]);
+			});
+
+			it('should return only data tables from authorized projects', async () => {
+				// Arrange
+				const authorizedDataTable = {
+					id: 'dt1',
+					name: 'Authorized Table',
+					ownedBy: { type: 'team', teamId: 'project1', teamName: 'Team Project 1' },
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+				const unauthorizedDataTable = {
+					id: 'dt2',
+					name: 'Unauthorized Table',
+					ownedBy: { type: 'team', teamId: 'project2', teamName: 'Team Project 2' },
+					columns: [],
+					createdAt: '2024-01-03T00:00:00.000Z',
+					updatedAt: '2024-01-04T00:00:00.000Z',
+				};
+				const unownedDataTable = {
+					id: 'dt3',
+					name: 'Unowned Table',
+					ownedBy: null,
+					columns: [],
+					createdAt: '2024-01-05T00:00:00.000Z',
+					updatedAt: '2024-01-06T00:00:00.000Z',
+				};
+
+				globMock.mockResolvedValue([
+					'/mock/n8n/git/datatables/dt1.json',
+					'/mock/n8n/git/datatables/dt2.json',
+					'/mock/n8n/git/datatables/dt3.json',
+				]);
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(authorizedDataTable) as any)
+					.mockResolvedValueOnce(JSON.stringify(unauthorizedDataTable) as any)
+					.mockResolvedValueOnce(JSON.stringify(unownedDataTable) as any);
+
+				// Act
+				const result = await service.getRemoteDataTablesFromFiles(globalMemberContext);
+
+				// Assert
+				expect(result).toEqual([authorizedDataTable, unownedDataTable]);
 			});
 		});
 
@@ -2729,7 +3558,7 @@ describe('SourceControlImportService', () => {
 						id: 'dt1',
 						name: 'Test Table',
 						projectId: 'project1',
-						columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+						columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 						createdAt: new Date('2024-01-01'),
 						updatedAt: new Date('2024-01-02'),
 						project: {
@@ -2744,7 +3573,7 @@ describe('SourceControlImportService', () => {
 				dataTableRepository.find.mockResolvedValue(mockDataTables as any);
 
 				// Act
-				const result = await service.getLocalDataTablesFromDb();
+				const result = await service.getLocalDataTablesFromDb(globalAdminContext);
 
 				// Assert
 				expect(result).toHaveLength(1);
@@ -2756,7 +3585,7 @@ describe('SourceControlImportService', () => {
 						projectId: 'project1',
 						projectName: 'Team Project 1',
 					},
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					filename: expect.stringContaining('dt1.json'),
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
@@ -2768,6 +3597,34 @@ describe('SourceControlImportService', () => {
 						'project.projectRelations',
 						'project.projectRelations.role',
 					],
+					where: {},
+				});
+			});
+
+			it('should scope database query to data tables in authorized projects', async () => {
+				// Arrange
+				const where = { project: { id: 'project1' } };
+				sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue(
+					where as any,
+				);
+				dataTableRepository.find.mockResolvedValue([]);
+
+				// Act
+				const result = await service.getLocalDataTablesFromDb(globalMemberContext);
+
+				// Assert
+				expect(result).toEqual([]);
+				expect(
+					sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter,
+				).toHaveBeenCalledWith(globalMemberContext);
+				expect(dataTableRepository.find).toHaveBeenCalledWith({
+					relations: [
+						'columns',
+						'project',
+						'project.projectRelations',
+						'project.projectRelations.role',
+					],
+					where,
 				});
 			});
 
@@ -2776,7 +3633,7 @@ describe('SourceControlImportService', () => {
 				dataTableRepository.find.mockResolvedValue([]);
 
 				// Act
-				const result = await service.getLocalDataTablesFromDb();
+				const result = await service.getLocalDataTablesFromDb(globalAdminContext);
 
 				// Assert
 				expect(result).toEqual([]);
@@ -2788,7 +3645,7 @@ describe('SourceControlImportService', () => {
 				dataTableRepository.find.mockRejectedValue(error);
 
 				// Act
-				const result = await service.getLocalDataTablesFromDb();
+				const result = await service.getLocalDataTablesFromDb(globalAdminContext);
 
 				// Assert
 				expect(result).toEqual([]);
@@ -2800,7 +3657,7 @@ describe('SourceControlImportService', () => {
 				dataTableRepository.find.mockRejectedValue(error);
 
 				// Act & Assert
-				await expect(service.getLocalDataTablesFromDb()).rejects.toThrow(
+				await expect(service.getLocalDataTablesFromDb(globalAdminContext)).rejects.toThrow(
 					'Database connection failed',
 				);
 			});
@@ -2828,6 +3685,8 @@ describe('SourceControlImportService', () => {
 				updatedAt: '2024-01-01T00:00:00.000Z',
 			};
 
+			let mockTransaction: { save: Mock; delete: Mock; insert: Mock };
+
 			beforeEach(() => {
 				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
 					mockPersonalProject as any,
@@ -2836,10 +3695,12 @@ describe('SourceControlImportService', () => {
 					mockPersonalProject,
 					{ id: 'project1', type: 'team' },
 				] as any);
+				dataTableDDLService.tableExists.mockResolvedValue(false);
 
-				const mockTransaction = {
-					save: jest.fn(async (_entity: any, data: any) => data),
-					delete: jest.fn(async () => {}),
+				mockTransaction = {
+					save: vi.fn(async (_entity: any, data: any) => data),
+					delete: vi.fn(async () => {}),
+					insert: vi.fn(async () => {}),
 				};
 
 				Object.defineProperty(dataTableRepository, 'manager', {
@@ -2847,7 +3708,7 @@ describe('SourceControlImportService', () => {
 						connection: {
 							options: { type: 'sqlite' },
 						},
-						transaction: jest.fn(async (callback: any) => {
+						transaction: vi.fn(async (callback: any) => {
 							return await callback(mockTransaction);
 						}),
 					},
@@ -2865,7 +3726,7 @@ describe('SourceControlImportService', () => {
 						teamId: 'project1',
 						teamName: 'Team Project 1',
 					},
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -2908,7 +3769,7 @@ describe('SourceControlImportService', () => {
 						projectName: 'User Name',
 						personalEmail: 'user@example.com',
 					},
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -2946,8 +3807,8 @@ describe('SourceControlImportService', () => {
 						teamName: 'Team Project 1',
 					},
 					columns: [
-						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+						{ id: 'col1', name: 'Column1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column2', type: 'number', index: 1 },
 					],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
@@ -2957,12 +3818,12 @@ describe('SourceControlImportService', () => {
 					id: 'dt1',
 					name: 'Old Name',
 					projectId: 'project1',
-					columns: [{ id: 'col1', name: 'Column 1' }],
+					columns: [{ id: 'col1', name: 'Column1' }],
 				};
 
 				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
 				dataTableRepository.findOne.mockResolvedValue(existingTable as any);
-				dataTableColumnRepository.find.mockResolvedValue([{ id: 'col1', name: 'Column 1' }] as any);
+				dataTableColumnRepository.find.mockResolvedValue([{ id: 'col1', name: 'Column1' }] as any);
 				dataTableColumnRepository.save.mockImplementation(async (col: any) => col);
 				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
 
@@ -3031,7 +3892,7 @@ describe('SourceControlImportService', () => {
 						teamId: 'project1',
 						teamName: 'Team Project 1',
 					},
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -3041,16 +3902,16 @@ describe('SourceControlImportService', () => {
 					name: 'Test Table',
 					projectId: 'project1',
 					columns: [
-						{ id: 'col1', name: 'Column 1' },
-						{ id: 'col2', name: 'Column 2' },
+						{ id: 'col1', name: 'Column1' },
+						{ id: 'col2', name: 'Column2' },
 					],
 				};
 
 				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
 				dataTableRepository.findOne.mockResolvedValue(existingTable as any);
 				dataTableColumnRepository.find.mockResolvedValue([
-					{ id: 'col1', name: 'Column 1' },
-					{ id: 'col2', name: 'Column 2' },
+					{ id: 'col1', name: 'Column1' },
+					{ id: 'col2', name: 'Column2' },
 				] as any);
 				dataTableColumnRepository.save.mockResolvedValue({ id: 'col1' } as any);
 				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
@@ -3061,7 +3922,7 @@ describe('SourceControlImportService', () => {
 				// Assert
 				expect(dataTableDDLService.dropColumnFromTable).toHaveBeenCalledWith(
 					'dt1',
-					'Column 2',
+					'Column2',
 					'sqlite',
 					expect.anything(),
 				);
@@ -3078,7 +3939,146 @@ describe('SourceControlImportService', () => {
 				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
 			});
 
-			it('should throw UserError when a data table with the same name but different ID exists locally', async () => {
+			describe('name collisions (same name, different id)', () => {
+				const incomingDataTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'team',
+						teamId: 'project1',
+						teamName: 'Team Project 1',
+					},
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				const localColumns = [
+					{ id: 'lc1', name: 'Column1', type: 'string', index: 0 },
+					{ id: 'lc2', name: 'LocalOnly', type: 'number', index: 1 },
+				];
+
+				const localTable = {
+					id: 'dt-old',
+					name: 'Test Table',
+					projectId: 'project1',
+					columns: localColumns,
+					createdAt: new Date('2023-01-01T00:00:00.000Z'),
+					updatedAt: new Date('2023-01-02T00:00:00.000Z'),
+				};
+
+				beforeEach(() => {
+					fsReadFile.mockResolvedValue(JSON.stringify(incomingDataTable) as any);
+					projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+					// Phase 2 looks the table up by (name, project); Phase 3 by the adopted id
+					dataTableRepository.findOne.mockImplementation(async (opts: any) =>
+						opts?.where?.id ? ({ id: 'dt1', columns: localColumns } as any) : (localTable as any),
+					);
+					dataTableColumnRepository.find.mockResolvedValue([] as any);
+					dataTableColumnRepository.save.mockImplementation(async (col: any) => col);
+				});
+
+				it('should adopt the incoming id on a name collision, even for a lossy merge', async () => {
+					// Act
+					const result = await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+					// Assert
+					expect(dataTableDDLService.renameTable).toHaveBeenCalledWith(
+						'dt-old',
+						'dt1',
+						'sqlite',
+						mockTransaction,
+					);
+					expect(mockTransaction.delete).toHaveBeenCalledWith(expect.anything(), {
+						id: 'dt-old',
+					});
+					expect(mockTransaction.insert).toHaveBeenCalledWith(
+						expect.anything(),
+						expect.objectContaining({ id: 'dt1', name: 'Test Table', projectId: 'project1' }),
+					);
+					// Matching (name, type) column adopts the incoming column id
+					expect(mockTransaction.insert).toHaveBeenCalledWith(
+						expect.anything(),
+						expect.objectContaining({ id: 'col1', name: 'Column1', dataTableId: 'dt1' }),
+					);
+					// Non-matching local column keeps its id (dropped later by schema alignment)
+					expect(mockTransaction.insert).toHaveBeenCalledWith(
+						expect.anything(),
+						expect.objectContaining({ id: 'lc2', name: 'LocalOnly', dataTableId: 'dt1' }),
+					);
+					expect(dataTableSizeValidator.reset).toHaveBeenCalled();
+					// The regular import path still runs
+					expect(dataTableRepository.upsert).toHaveBeenCalledWith(
+						expect.objectContaining({ id: 'dt1' }),
+						['id'],
+					);
+					expect(result?.reconciliationFailures).toEqual([]);
+				});
+
+				it('should degrade a failed adoption to a per-table conflict and import the rest', async () => {
+					// Arrange — a second, collision-free table in the same pull; the
+					// colliding table's adoption fails at the physical rename
+					const otherDataTable = {
+						...incomingDataTable,
+						id: 'dt2',
+						name: 'Other Table',
+						columns: [{ id: 'col9', name: 'Column9', type: 'string', index: 0 }],
+					};
+					const otherCandidate = {
+						...mockCandidate,
+						id: 'dt2',
+						name: 'Other Table',
+						file: '/mock/n8n/git/datatables/dt2.json',
+					};
+					fsReadFile.mockImplementation(async (file: any) =>
+						String(file).includes('dt2')
+							? (JSON.stringify(otherDataTable) as any)
+							: (JSON.stringify(incomingDataTable) as any),
+					);
+					dataTableRepository.findOne.mockImplementation(async (opts: any) => {
+						if (opts?.where?.id) return null;
+						return opts?.where?.name === 'Test Table' ? (localTable as any) : null;
+					});
+					dataTableDDLService.renameTable.mockRejectedValue(new Error('rename failed'));
+
+					// Act & Assert — resolves instead of rejecting; the colliding table is
+					// recorded as a conflict, the other table imports
+					await expect(
+						service.importDataTablesFromWorkFolder([mockCandidate, otherCandidate], mockUser.id),
+					).resolves.toMatchObject({
+						reconciliationFailures: [{ id: 'dt1', name: 'Test Table' }],
+					});
+					expect(mockLogger.error).toHaveBeenCalledWith(
+						expect.stringContaining('Test Table'),
+						expect.anything(),
+					);
+					expect(dataTableRepository.upsert).toHaveBeenCalledTimes(1);
+					expect(dataTableRepository.upsert).toHaveBeenCalledWith(
+						expect.objectContaining({ id: 'dt2' }),
+						['id'],
+					);
+				});
+
+				it('should complete a half-finished adoption without renaming again (idempotency)', async () => {
+					// Arrange — physical table already renamed, metadata still holds the old id
+					dataTableDDLService.tableExists.mockResolvedValue(true);
+
+					// Act
+					await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+					// Assert — metadata swap still runs, rename is skipped
+					expect(dataTableDDLService.renameTable).not.toHaveBeenCalled();
+					expect(mockTransaction.delete).toHaveBeenCalledWith(expect.anything(), {
+						id: 'dt-old',
+					});
+					expect(mockTransaction.insert).toHaveBeenCalledWith(
+						expect.anything(),
+						expect.objectContaining({ id: 'dt1' }),
+					);
+				});
+			});
+
+			it('should skip columns with invalid names', async () => {
 				// Arrange
 				const mockDataTable = {
 					id: 'dt1',
@@ -3088,67 +4088,61 @@ describe('SourceControlImportService', () => {
 						teamId: 'project1',
 						teamName: 'Team Project 1',
 					},
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [
+						{ id: 'col1', name: 'validName', type: 'string', index: 0 },
+						{
+							id: 'col2',
+							name: 'invalid" text); create INVALID table; --',
+							type: 'string',
+							index: 1,
+						},
+					],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
 
 				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
+				dataTableRepository.findOne.mockResolvedValue(null);
+				dataTableColumnRepository.find.mockResolvedValue([]);
+				dataTableColumnRepository.save.mockImplementation(async (col: any) => col);
 				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
 
-				// Return a different ID for the same name — simulates name collision
-				dataTableRepository.findOne.mockResolvedValueOnce({ id: 'dt-other' } as any);
+				// Act
+				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
 
-				// Act & Assert
-				await expect(
-					service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id),
-				).rejects.toThrow(
-					'A data table with the name <strong>Test Table</strong> already exists locally.',
+				// Assert
+				expect(dataTableDDLService.createTableWithColumns).toHaveBeenCalledWith(
+					'dt1',
+					expect.arrayContaining([expect.objectContaining({ id: 'col1', name: 'validName' })]),
+					expect.anything(),
 				);
-
-				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
+				const columns = (dataTableDDLService.createTableWithColumns as Mock).mock.calls[0][1];
+				expect(columns).not.toEqual(
+					expect.arrayContaining([expect.objectContaining({ id: 'col2' })]),
+				);
 			});
 
-			it('should not partially import when a name collision exists among multiple tables', async () => {
-				// Arrange — two tables: dt1 is valid, dt2 has a name collision
-				const validTable = {
-					id: 'dt1',
-					name: 'Valid Table',
-					ownedBy: { type: 'team', teamId: 'project1', teamName: 'Team Project 1' },
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
-					createdAt: '2024-01-01T00:00:00.000Z',
-					updatedAt: '2024-01-02T00:00:00.000Z',
-				};
-				const collidingTable = {
-					id: 'dt2',
-					name: 'Colliding Table',
-					ownedBy: { type: 'team', teamId: 'project1', teamName: 'Team Project 1' },
-					columns: [{ id: 'col2', name: 'Column 2', type: 'string', index: 0 }],
+			it('should skip data tables with invalid IDs', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'invalid"; create INVALID table;--',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'team',
+						teamId: 'project1',
+						teamName: 'Team Project 1',
+					},
+					columns: [{ id: 'col1', name: 'validName', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
 
-				fsReadFile
-					.mockResolvedValueOnce(JSON.stringify(validTable) as any)
-					.mockResolvedValueOnce(JSON.stringify(collidingTable) as any);
-				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
 
-				// First call (for "Valid Table") → no collision
-				dataTableRepository.findOne.mockResolvedValueOnce(null as any);
-				// Second call (for "Colliding Table") → collision with a different ID
-				dataTableRepository.findOne.mockResolvedValueOnce({ id: 'dt-other' } as any);
+				// Act
+				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
 
-				const candidate1 = { ...mockCandidate, id: 'dt1', name: 'Valid Table' };
-				const candidate2 = { ...mockCandidate, id: 'dt2', name: 'Colliding Table' };
-
-				// Act & Assert — the whole operation should fail
-				await expect(
-					service.importDataTablesFromWorkFolder([candidate1, candidate2], mockUser.id),
-				).rejects.toThrow(
-					'A data table with the name <strong>Colliding Table</strong> already exists locally.',
-				);
-
-				// No table should have been imported (no partial import)
+				// Assert
 				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
 			});
 		});

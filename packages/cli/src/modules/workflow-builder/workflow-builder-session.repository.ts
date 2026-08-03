@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
 	mapChatMessagesToStoredMessages,
 	mapStoredMessagesToChatMessages,
@@ -11,6 +10,7 @@ import {
 } from '@n8n/ai-workflow-builder';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { randomUUID } from 'node:crypto';
 
 import { WorkflowBuilderSession } from './workflow-builder-session.entity';
 
@@ -76,8 +76,11 @@ export class WorkflowBuilderSessionRepository
 	}
 
 	private parseThreadId(threadId: string): { workflowId: string; userId: string } {
-		// Format: "workflow-{workflowId}-user-{userId}"
-		const match = threadId.match(/^workflow-(.+)-user-(.+)$/);
+		// Format: "workflow-{workflowId}-user-{userId}" with an optional "-code" suffix
+		// for the code-builder agent thread variant. Strip the suffix before parsing so
+		// the greedy userId capture doesn't swallow it (userId is a uuid column in PG).
+		const normalized = threadId.endsWith('-code') ? threadId.slice(0, -'-code'.length) : threadId;
+		const match = normalized.match(/^workflow-(.+)-user-(.+)$/);
 		if (!match) {
 			throw new Error(`Invalid thread ID format: ${threadId}`);
 		}

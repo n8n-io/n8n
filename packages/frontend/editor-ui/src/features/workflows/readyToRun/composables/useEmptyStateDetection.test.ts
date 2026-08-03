@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RouteLocationNormalized } from 'vue-router';
 import { useEmptyStateDetection } from './useEmptyStateDetection';
 
@@ -9,11 +9,37 @@ const mockRoute = (overrides: Partial<RouteLocationNormalized> = {}) =>
 		...overrides,
 	}) as RouteLocationNormalized;
 
+const foldersStoreState = {
+	totalWorkflowCount: 0,
+	workflowsCountLoaded: true,
+};
+
+const credentialsStoreState = {
+	allCredentials: [] as unknown[],
+};
+
+const environmentsStoreState = {
+	variables: [] as unknown[],
+};
+
+const dataTableStoreState = {
+	totalCount: 0,
+};
+
 vi.mock('@/features/core/folders/folders.store', () => ({
-	useFoldersStore: () => ({
-		totalWorkflowCount: 0,
-		workflowsCountLoaded: true,
-	}),
+	useFoldersStore: () => foldersStoreState,
+}));
+
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => credentialsStoreState,
+}));
+
+vi.mock('@/features/settings/environments.ee/environments.store', () => ({
+	useEnvironmentsStore: () => environmentsStoreState,
+}));
+
+vi.mock('@/features/core/dataTable/dataTable.store', () => ({
+	useDataTableStore: () => dataTableStoreState,
 }));
 
 vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
@@ -26,6 +52,14 @@ vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => (
 vi.mock('vue-router', () => ({
 	useRoute: () => mockRoute(),
 }));
+
+beforeEach(() => {
+	foldersStoreState.totalWorkflowCount = 0;
+	foldersStoreState.workflowsCountLoaded = true;
+	credentialsStoreState.allCredentials = [];
+	environmentsStoreState.variables = [];
+	dataTableStoreState.totalCount = 0;
+});
 
 describe('useEmptyStateDetection', () => {
 	describe('isTrulyEmpty', () => {
@@ -86,6 +120,30 @@ describe('useEmptyStateDetection', () => {
 			const route = mockRoute({
 				query: { homeProject: 'true' },
 			});
+
+			expect(isTrulyEmpty(route)).toBe(false);
+		});
+
+		it('should return false when credentials exist', () => {
+			credentialsStoreState.allCredentials = [{ id: '1' }];
+			const { isTrulyEmpty } = useEmptyStateDetection();
+			const route = mockRoute();
+
+			expect(isTrulyEmpty(route)).toBe(false);
+		});
+
+		it('should return false when variables exist', () => {
+			environmentsStoreState.variables = [{ id: '1' }];
+			const { isTrulyEmpty } = useEmptyStateDetection();
+			const route = mockRoute();
+
+			expect(isTrulyEmpty(route)).toBe(false);
+		});
+
+		it('should return false when data tables exist', () => {
+			dataTableStoreState.totalCount = 1;
+			const { isTrulyEmpty } = useEmptyStateDetection();
+			const route = mockRoute();
 
 			expect(isTrulyEmpty(route)).toBe(false);
 		});

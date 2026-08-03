@@ -17,7 +17,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = defineProps<{
@@ -36,7 +35,6 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
@@ -96,8 +94,8 @@ const telemetryPayload = computed(() => {
 
 	return {
 		type: types,
-		template_id: workflowDocumentStore?.value?.meta?.templateId,
-		workflow_id: workflowsStore.workflowId,
+		template_id: workflowDocumentStore.value.meta?.templateId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		node_types: (props.state.allNodesUsingCredential ?? [props.state.node]).map((n) => n.type),
 		credential_type: props.state.credentialType,
 		has_parameters: hasParameters.value,

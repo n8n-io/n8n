@@ -113,14 +113,14 @@ export class ExtensionNotConnectedError extends McpBrowserError {
 	) {
 		const phaseHint =
 			phase === 'browser_not_launched'
-				? 'The browser process may not have started.'
+				? 'The browser process may not have started. Check that the browser is installed and accessible.'
 				: phase === 'extension_missing'
-					? 'The browser opened but the n8n AI Browser Bridge extension did not connect.'
+					? 'The browser opened but the user did not confirm the browser connection in time. Ask the user to look for the n8n AI Browser Bridge extension popup in their browser and click Connect. If the user does not see the popup, the extension may not be installed.'
 					: 'The extension did not connect within the timeout period.';
 		const install = extensionInstructions ? `\n${extensionInstructions}` : '';
 		super(
 			`Extension connection timed out after ${timeoutMs}ms`,
-			`${phaseHint}${install}\nThen retry browser_connect.`,
+			`${phaseHint}${install}\nThen call browser_connect again.`,
 		);
 	}
 }

@@ -1,53 +1,62 @@
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { WorkflowEntity } from '@n8n/db';
 import type { Request, Response } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { DynamicCredentialCorsService } from '../services/dynamic-credential-cors.service';
 import type { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 import { WorkflowStatusController } from '../workflow-status.controller';
 import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
 import type { UrlService } from '@/services/url.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { GlobalConfig } from '@n8n/config';
 
-jest.mock('../utils', () => ({
-	getDynamicCredentialMiddlewares: jest.fn(() => undefined),
+vi.mock('../utils', () => ({
+	getDynamicCredentialMiddlewares: vi.fn(() => undefined),
 }));
 
 describe('WorkflowStatusController', () => {
 	let controller: WorkflowStatusController;
-	let mockService: jest.Mocked<CredentialResolverWorkflowService>;
-	let mockUrlService: jest.Mocked<UrlService>;
-	let mockGlobalConfig: jest.Mocked<GlobalConfig>;
-	let mockDynamicCredentialCorsService: jest.Mocked<DynamicCredentialCorsService>;
-	let mockDynamicCredentialWebService: jest.Mocked<DynamicCredentialWebService>;
+	let mockService: Mocked<CredentialResolverWorkflowService>;
+	let mockUrlService: Mocked<UrlService>;
+	let mockGlobalConfig: Mocked<GlobalConfig>;
+	let mockDynamicCredentialCorsService: Mocked<DynamicCredentialCorsService>;
+	let mockDynamicCredentialWebService: Mocked<DynamicCredentialWebService>;
+	let mockWorkflowFinderService: Mocked<WorkflowFinderService>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockService = {
-			getWorkflowStatus: jest.fn(),
-		} as unknown as jest.Mocked<CredentialResolverWorkflowService>;
+			getWorkflowStatus: vi.fn(),
+		} as unknown as Mocked<CredentialResolverWorkflowService>;
 
 		mockUrlService = {
-			getInstanceBaseUrl: jest.fn().mockReturnValue('https://n8n.example.com'),
-		} as unknown as jest.Mocked<UrlService>;
+			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
+		} as unknown as Mocked<UrlService>;
 
 		mockGlobalConfig = {
 			endpoints: {
 				rest: 'rest',
 			},
-		} as unknown as jest.Mocked<GlobalConfig>;
+		} as unknown as Mocked<GlobalConfig>;
 
 		mockDynamicCredentialCorsService = {
-			applyCorsHeadersIfEnabled: jest.fn(),
-			preflightHandler: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialCorsService>;
+			applyCorsHeadersIfEnabled: vi.fn(),
+			preflightHandler: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialCorsService>;
 
 		mockDynamicCredentialWebService = mock<DynamicCredentialWebService>();
-		mockDynamicCredentialWebService.getCredentialContextFromRequest = jest.fn().mockReturnValue({
+		mockDynamicCredentialWebService.getCredentialContextFromRequest = vi.fn().mockReturnValue({
 			identity: 'mock-token',
 			version: 1,
 			metadata: {},
 		});
+
+		mockWorkflowFinderService = mock<WorkflowFinderService>();
+		// Default: caller can access the workflow
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 
 		controller = new WorkflowStatusController(
 			mockService,
@@ -55,7 +64,37 @@ describe('WorkflowStatusController', () => {
 			mockGlobalConfig,
 			mockDynamicCredentialCorsService,
 			mockDynamicCredentialWebService,
+			mockWorkflowFinderService,
 		);
+	});
+
+	describe('in-app access control', () => {
+		it('returns 404 when an authenticated user cannot access the workflow', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+			const req = mock<Request>();
+			req.params = { workflowId: 'foreign-workflow' };
+			req.headers = { authorization: 'Bearer token-123' };
+			// in-app session caller carries a user (set as own prop, as auth middleware does)
+			(req as unknown as { user?: unknown }).user = { id: 'user-123' };
+			const res = mock<Response>();
+
+			await expect(controller.checkWorkflowForExecution(req, res)).rejects.toThrow(NotFoundError);
+			expect(mockService.getWorkflowStatus).not.toHaveBeenCalled();
+		});
+
+		it('skips the user access check for external (token-only) callers', async () => {
+			mockService.getWorkflowStatus.mockResolvedValue([]);
+			const req = mock<Request>();
+			req.params = { workflowId: 'wf-1' };
+			req.headers = { authorization: 'Bearer token-123' };
+			// external resolver caller: no session user
+			(req as unknown as { user?: unknown }).user = undefined;
+			const res = mock<Response>();
+
+			await controller.checkWorkflowForExecution(req, res);
+			expect(mockWorkflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+			expect(mockService.getWorkflowStatus).toHaveBeenCalled();
+		});
 	});
 
 	describe('checkWorkflowForExecution', () => {

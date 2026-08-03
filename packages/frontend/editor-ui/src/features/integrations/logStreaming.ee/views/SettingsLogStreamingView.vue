@@ -14,22 +14,15 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip, N8nNotice } from '@n8n/design-system';
+import { N8nEmptyState, N8nButton, N8nHeading, N8nInfoTip, N8nNotice } from '@n8n/design-system';
 const environment = process.env.NODE_ENV;
 
 const settingsStore = useSettingsStore();
 const logStreamingStore = useLogStreamingStore();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const documentTitle = useDocumentTitle();
@@ -230,14 +223,14 @@ async function onEdit(destinationId?: string) {
 				</div>
 			</template>
 			<div v-else-if="!isManagedByEnv" data-test-id="action-box-licensed">
-				<N8nActionBox
+				<N8nEmptyState
 					:button-text="i18n.baseText(`settings.log-streaming.add`)"
 					@click:button="addDestination"
 				>
 					<template #heading>
 						<span v-n8n-html="i18n.baseText(`settings.log-streaming.addFirstTitle`)" />
 					</template>
-				</N8nActionBox>
+				</N8nEmptyState>
 			</div>
 		</template>
 		<template v-else>
@@ -247,7 +240,7 @@ async function onEdit(destinationId?: string) {
 				</N8nInfoTip>
 			</div>
 			<div data-test-id="action-box-unlicensed">
-				<N8nActionBox
+				<N8nEmptyState
 					:description="i18n.baseText('settings.log-streaming.actionBox.description')"
 					:button-text="i18n.baseText('settings.log-streaming.actionBox.button')"
 					@click:button="goToUpgrade"
@@ -255,7 +248,7 @@ async function onEdit(destinationId?: string) {
 					<template #heading>
 						<span v-n8n-html="i18n.baseText('settings.log-streaming.actionBox.title')" />
 					</template>
-				</N8nActionBox>
+				</N8nEmptyState>
 			</div>
 		</template>
 	</div>

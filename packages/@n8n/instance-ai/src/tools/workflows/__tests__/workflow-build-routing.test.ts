@@ -1,0 +1,106 @@
+import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
+import { withDeterministicRouting } from '../workflow-build-routing';
+
+function makeOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
+	return {
+		workItemId: 'src/workflows/main.workflow.ts',
+		taskId: 'src/workflows/main.workflow.ts',
+		workflowId: 'wf-1',
+		submitted: true,
+		triggerType: 'manual_or_testable',
+		triggerNodes: [{ nodeName: 'Start', nodeType: 'n8n-nodes-base.manualTrigger' }],
+		needsUserInput: false,
+		summary: 'Workflow saved.',
+		...overrides,
+	};
+}
+
+describe('withDeterministicRouting', () => {
+	it('marks manual-trigger workflows as ready for verification', () => {
+		const outcome = withDeterministicRouting(makeOutcome());
+
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+	});
+
+	it('marks non-deterministic-trigger workflows as ready (trigger gets a simulated fixture)', () => {
+		const outcome = withDeterministicRouting(
+			makeOutcome({
+				triggerNodes: [{ nodeName: 'On New Email', nodeType: 'n8n-nodes-base.gmailTrigger' }],
+			}),
+		);
+
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+	});
+
+	it('marks suffix-less trigger types (webhook, cron) as ready', () => {
+		for (const nodeType of ['n8n-nodes-base.webhook', 'n8n-nodes-base.cron']) {
+			const outcome = withDeterministicRouting(
+				makeOutcome({ triggerNodes: [{ nodeName: 'Entry', nodeType }] }),
+			);
+
+			expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		}
+	});
+
+	it('marks workflows without any trigger node as not verifiable', () => {
+		for (const triggerNodes of [
+			[],
+			undefined,
+			[{ nodeName: 'Set', nodeType: 'n8n-nodes-base.set' }],
+		]) {
+			const outcome = withDeterministicRouting(makeOutcome({ triggerNodes }));
+
+			expect(outcome.verificationReadiness).toMatchObject({
+				status: 'not_verifiable',
+				reason: 'no-trigger-node',
+			});
+		}
+	});
+
+	it('keeps workflows with unresolved placeholders ready for verification', () => {
+		const outcome = withDeterministicRouting(
+			makeOutcome({
+				hasUnresolvedPlaceholders: true,
+			}),
+		);
+
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		expect(outcome.setupRequirement).toEqual({
+			status: 'required',
+			reason: 'unresolved-placeholders',
+			guidance: 'Route the workflow through setup so the user can fill unresolved values.',
+		});
+	});
+
+	it('keeps workflows with mocked credentials ready for verification', () => {
+		const outcome = withDeterministicRouting(
+			makeOutcome({
+				mockedNodeNames: ['Send Email'],
+				mockedCredentialTypes: ['gmailOAuth2'],
+				mockedCredentialsByNode: { 'Send Email': ['gmailOAuth2'] },
+			}),
+		);
+
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		expect(outcome.setupRequirement).toEqual({
+			status: 'required',
+			reason: 'mocked-credentials',
+			guidance: 'Route the workflow through setup so the user can add real credentials.',
+		});
+	});
+
+	it('keeps workflows with pending setup requests ready for verification', () => {
+		const outcome = withDeterministicRouting({
+			...makeOutcome(),
+			workflowNeedsSetup: true,
+		});
+
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		expect(outcome.setupRequirement).toEqual({
+			status: 'required',
+			reason: 'workflow-needs-setup',
+			guidance: 'Route the workflow through setup so the user can fill pending node setup fields.',
+		});
+		expect('workflowNeedsSetup' in outcome).toBe(false);
+	});
+});

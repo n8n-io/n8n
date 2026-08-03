@@ -69,7 +69,7 @@ function handleToggleExpand() {
 
 function handleOpenNdv() {
 	if (node.value) {
-		ndvStore.setActiveNodeName(node.value.name, 'canvas_zoomed_view');
+		ndvStore.value.setActiveNodeName(node.value.name, 'canvas_zoomed_view');
 	}
 }
 

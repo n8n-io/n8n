@@ -81,8 +81,11 @@ export async function downloadFile(this: IWebhookFunctions, url: string): Promis
 	return response;
 }
 
-export async function verifySignature(this: IWebhookFunctions): Promise<boolean> {
-	const credential = await this.getCredentials('slackApi');
+export async function verifySignature(
+	this: IWebhookFunctions,
+	credentialType = 'slackApi',
+): Promise<boolean> {
+	const credential = await this.getCredentials(credentialType);
 	const req = this.getRequestObject();
 
 	const timestamp = req.header('x-slack-request-timestamp');

@@ -1,11 +1,8 @@
-/**
- * Shared agent factory for eval LLM calls.
- *
- * Centralizes model config, API key resolution, and text extraction
- * for the 3 eval call sites (hint generation, mock responses, pin data).
- */
+/** Shared agent factory + helpers for eval LLM calls (hint generation, mock responses, pin data). */
 
-import { Agent, Tool, type GenerateResult } from '@n8n/agents';
+import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
+
+import { applyAgentThinking } from '../agent/apply-agent-thinking';
 
 export { Tool };
 
@@ -17,31 +14,107 @@ export const SONNET_MODEL = 'anthropic/claude-sonnet-4-6';
 export const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001';
 
 // ---------------------------------------------------------------------------
-// API key resolution
+// Model config resolution
 // ---------------------------------------------------------------------------
 
-function getApiKey(): string {
+const PROVIDER_API_KEY_ENV: Record<string, string> = {
+	anthropic: 'ANTHROPIC_API_KEY',
+	google: 'GOOGLE_GENERATIVE_AI_API_KEY',
+	openai: 'OPENAI_API_KEY',
+	xai: 'XAI_API_KEY',
+};
+
+export interface EvalModelConfig {
+	modelId: string;
+	provider: string;
+	providerModelId: string;
+	apiKey: string;
+	url?: string;
+}
+
+function getModelId(model?: string): string {
+	const modelId =
+		model ??
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL ??
+		process.env.N8N_INSTANCE_AI_MODEL ??
+		SONNET_MODEL;
+	return modelId;
+}
+
+function getApiKey(modelId: string): string {
+	const [provider] = modelId.split('/');
+	const providerKeyEnv = PROVIDER_API_KEY_ENV[provider];
+	const providerKey = providerKeyEnv ? process.env[providerKeyEnv] : undefined;
 	const key =
 		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
-		process.env.N8N_AI_ANTHROPIC_KEY ??
-		process.env.ANTHROPIC_API_KEY;
+		(provider === 'anthropic' ? process.env.N8N_AI_ANTHROPIC_KEY : undefined) ??
+		providerKey;
+
 	if (!key) {
 		throw new Error(
-			'Missing API key. Set N8N_INSTANCE_AI_MODEL_API_KEY, N8N_AI_ANTHROPIC_KEY, or ANTHROPIC_API_KEY in your environment.',
+			`Missing API key for eval model "${modelId}". Set N8N_INSTANCE_AI_MODEL_API_KEY${
+				provider === 'anthropic'
+					? ' or N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY'
+					: providerKeyEnv
+						? ` or ${providerKeyEnv}`
+						: ''
+			} in your environment.`,
 		);
 	}
 	return key;
+}
+
+function getModelUrl(): string | undefined {
+	const url = process.env.N8N_INSTANCE_AI_MODEL_URL?.trim();
+	if (!url) return undefined;
+	return url;
+}
+
+export function resolveEvalModelConfig(model?: string): EvalModelConfig {
+	const modelId = getModelId(model);
+	const [provider, ...rest] = modelId.split('/');
+	const joinedProviderModelId = rest.join('/');
+	let providerModelId = modelId;
+	if (joinedProviderModelId.length > 0) {
+		providerModelId = joinedProviderModelId;
+	}
+	return {
+		modelId,
+		provider,
+		providerModelId,
+		apiKey: getApiKey(modelId),
+		url: getModelUrl(),
+	};
 }
 
 // ---------------------------------------------------------------------------
 // Agent factory
 // ---------------------------------------------------------------------------
 
-const CACHE_PROVIDER_OPTS = {
-	providerOptions: {
-		anthropic: { cacheControl: { type: 'ephemeral' as const } },
-	},
+/** Anthropic `providerOptions` payload that marks the preceding block as an ephemeral cache breakpoint. */
+export const EPHEMERAL_CACHE = {
+	anthropic: { cacheControl: { type: 'ephemeral' as const } },
 };
+
+const CACHE_PROVIDER_OPTS = {
+	providerOptions: EPHEMERAL_CACHE,
+};
+
+/**
+ * Env-based tiered model when configured, otherwise the caller's fallback.
+ * Deployments where the model is managed outside the environment (e.g. the
+ * cloud AI service proxy) have no eval API key, so without a fallback every
+ * in-product eval call would fail before reaching the LLM.
+ */
+function resolveAgentModel(model?: string, fallbackModelConfig?: ModelConfig): ModelConfig {
+	try {
+		const { modelId, apiKey, url } = resolveEvalModelConfig(model);
+		return { id: modelId, apiKey, url };
+	} catch (error) {
+		if (fallbackModelConfig) return fallbackModelConfig;
+		throw error;
+	}
+}
 
 export function createEvalAgent(
 	name: string,
@@ -49,18 +122,20 @@ export function createEvalAgent(
 		model?: string;
 		instructions: string;
 		cache?: boolean;
+		/** Host-resolved model used when no eval model API key is configured in the environment. */
+		fallbackModelConfig?: ModelConfig;
 	},
 ): Agent {
-	const agent = new Agent(name).model({
-		id: options.model ?? SONNET_MODEL,
-		apiKey: getApiKey(),
-	});
+	const model = resolveAgentModel(options.model, options.fallbackModelConfig);
+	const agent = new Agent(name).model(model);
 
 	if (options.cache) {
 		agent.instructions(options.instructions, CACHE_PROVIDER_OPTS);
 	} else {
 		agent.instructions(options.instructions);
 	}
+
+	applyAgentThinking(agent, model);
 
 	return agent;
 }

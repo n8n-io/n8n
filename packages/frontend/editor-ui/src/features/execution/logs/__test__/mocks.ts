@@ -4,13 +4,14 @@ import {
 	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
-import type { LogEntry } from '../logs.types';
+import type { NodeLogEntry } from '../logs.types';
 import { v4 as uuid } from 'uuid';
 
-export function createTestLogEntry(data: Partial<LogEntry> = {}): LogEntry {
+export function createTestLogEntry(data: Partial<NodeLogEntry> = {}): NodeLogEntry {
 	const executionId = data.executionId ?? 'test-execution-id';
 
 	return {
+		type: 'node',
 		node: createTestNode(),
 		runIndex: 0,
 		runData: createTestTaskData({}),

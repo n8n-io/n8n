@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: listDataTables
+  x-required-scope: dataTable:list
   x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
   tags:
     - DataTable
@@ -38,6 +39,7 @@ get:
 
 post:
   x-eov-operation-id: createDataTable
+  x-required-scope: dataTable:create
   x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
   tags:
     - DataTable

@@ -354,16 +354,15 @@ describe('Node Builder', () => {
 	});
 
 	describe('placeholder()', () => {
-		it('should create a placeholder value with hint', () => {
+		it('returns the placeholder marker string', () => {
 			const p = placeholder('Enter Channel');
-			expect(p.__placeholder).toBe(true);
-			expect(p.hint).toBe('Enter Channel');
+			expect(typeof p).toBe('string');
+			expect(p).toBe('<__PLACEHOLDER_VALUE__Enter Channel__>');
 		});
 
-		it('should serialize to placeholder format', () => {
+		it('JSON-serializes to the placeholder marker', () => {
 			const p = placeholder('API Key');
-			// eslint-disable-next-line @typescript-eslint/no-base-to-string -- Testing custom toString behavior
-			expect(String(p)).toBe('<__PLACEHOLDER_VALUE__API Key__>');
+			expect(JSON.stringify({ key: p })).toBe('{"key":"<__PLACEHOLDER_VALUE__API Key__>"}');
 		});
 	});
 
@@ -461,8 +460,8 @@ describe('Node Builder', () => {
 			expect((stored as { __newCredential?: boolean }).__newCredential).toBe(true);
 			expect((stored as { name?: string }).name).toBe('Slack Bot');
 			expect((stored as { id?: string }).id).toBeUndefined();
-			// The original __placeholder marker is gone — credentials maps never carry it.
-			expect((stored as { __placeholder?: boolean }).__placeholder).toBeUndefined();
+			// The placeholder marker string is gone — credentials maps never carry it.
+			expect(typeof stored).not.toBe('string');
 		});
 
 		it('serializes a placeholder() credential to undefined (omitted from JSON)', () => {
@@ -520,6 +519,63 @@ describe('Node Builder', () => {
 			const stored = updated.config.credentials?.slackApi;
 			expect((stored as { __newCredential?: boolean }).__newCredential).toBe(true);
 			expect((stored as { name?: string }).name).toBe('Slack Bot');
+		});
+
+		it('normalizes { value: placeholder() } shape to newCredential', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { value: placeholder('Slack token') } } },
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('Slack token');
+		});
+
+		it('normalizes { value: literal } shape to newCredential', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { value: 'My Slack Token' } } },
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('My Slack Token');
+		});
+
+		it('normalizes { id: placeholder, name: literal } to newCredential keyed by name', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { id: placeholder('id hint'), name: 'Slack Bot' } } },
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('Slack Bot');
+		});
+
+		it('normalizes { id: placeholder, name: placeholder } to newCredential keyed by name hint', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					credentials: {
+						slackApi: { id: placeholder('id hint'), name: placeholder('Slack Bot') },
+					},
+				},
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('Slack Bot');
+		});
+
+		it('passes a raw {id, name} CredentialReference through unchanged', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { id: 'cred-1', name: 'Slack Bot' } } },
+			});
+			expect(n.config.credentials?.slackApi).toEqual({ id: 'cred-1', name: 'Slack Bot' });
 		});
 	});
 

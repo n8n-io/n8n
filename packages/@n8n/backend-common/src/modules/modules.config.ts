@@ -4,10 +4,12 @@ import { UnknownModuleError } from './errors/unknown-module.error';
 
 export const MODULE_NAMES = [
 	'agents',
+	'agent-evals',
 	'insights',
 	'external-secrets',
 	'community-packages',
 	'data-table',
+	'oauth-server',
 	'mcp',
 	'provisioning',
 	'breaking-changes',
@@ -30,6 +32,9 @@ export const MODULE_NAMES = [
 	'instance-version-history',
 	'encryption-key-manager',
 	'oauth-jwe',
+	'runtime-credentials',
+	'n8n-packages',
+	'workflow-reviews',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

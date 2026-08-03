@@ -7,13 +7,16 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import nock from 'nock';
 import { v4 as uuid } from 'uuid';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
+import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
 import { Telemetry } from '@/telemetry';
 
 import { createCredentials } from '../shared/db/credentials';
@@ -106,8 +109,14 @@ const setupWorkflow = async () => {
 
 describe('Workflow Status API', () => {
 	let savedWorkflow: WorkflowEntity;
+	let isLeaderSpy: MockInstance;
 
 	beforeAll(async () => {
+		// Force leader role so N8nResolverSeeder.seed() runs (not no-op for followers).
+		isLeaderSpy = vi
+			.spyOn(Container.get(InstanceSettings), 'isLeader', 'get')
+			.mockReturnValue(true);
+
 		// Mock OAuth metadata endpoint for resolver validation
 		nock.cleanAll();
 		nock('https://auth.example.com')
@@ -140,11 +149,16 @@ describe('Workflow Status API', () => {
 			'DynamicCredentialResolver',
 		]);
 
+		// Re-seed the system credential resolver, which the dynamic-credentials proxy
+		// references for any workflow without an explicit `credentialResolverId`.
+		await Container.get(N8nResolverSeeder).seed();
+
 		({ savedWorkflow } = await setupWorkflow());
 	});
 
 	afterAll(async () => {
 		nock.cleanAll();
+		isLeaderSpy.mockRestore();
 		await testDb.terminate();
 		testServer.httpServer.close();
 	});

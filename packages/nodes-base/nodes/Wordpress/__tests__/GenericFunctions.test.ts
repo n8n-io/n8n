@@ -5,18 +5,18 @@ import { wordpressApiRequest, wordpressApiRequestAllItems } from '../GenericFunc
 describe('Wordpress > GenericFunctions', () => {
 	const mockFunctions: any = {
 		helpers: {
-			requestWithAuthentication: jest.fn(),
+			requestWithAuthentication: vi.fn(),
 		},
-		getCredentials: jest.fn().mockResolvedValue({
+		getCredentials: vi.fn().mockResolvedValue({
 			url: 'http://example.com',
 			allowUnauthorizedCerts: false,
 		}),
-		getNode: jest.fn(),
-		getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
+		getNode: vi.fn(),
+		getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockFunctions.getNodeParameter.mockReturnValue('basicAuth');
 		mockFunctions.getCredentials.mockResolvedValue({
 			url: 'http://example.com',
