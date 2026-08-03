@@ -28,6 +28,7 @@ import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 type SessionNavigationMode = 'route' | 'new-tab' | 'intent';
+type ParentTraceTarget = { agentId: string; threadId: string };
 
 const props = withDefaults(
 	defineProps<{
@@ -49,6 +50,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'open-conversation': [threadId: string];
 	'view-trace': [threadId: string];
+	'view-parent-trace': [target: ParentTraceTarget];
 }>();
 
 const i18n = useI18n();
@@ -58,6 +60,8 @@ const router = useRouter();
 const toast = useToast();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
+let disposed = false;
+let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
@@ -74,20 +78,24 @@ function onVisibilityChange() {
 
 onMounted(async () => {
 	if (!props.manageStoreLifecycle) return;
+	managesStoreLifecycle = true;
+	document.addEventListener('visibilitychange', onVisibilityChange);
 
 	if (projectId.value && agentId.value) {
 		try {
 			await sessionsStore.fetchThreads(projectId.value, agentId.value);
+			if (disposed) return;
 			sessionsStore.startAutoRefresh();
 		} catch (error) {
+			if (disposed) return;
 			toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 		}
 	}
-	document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
 onBeforeUnmount(() => {
-	if (!props.manageStoreLifecycle) return;
+	disposed = true;
+	if (!managesStoreLifecycle) return;
 
 	document.removeEventListener('visibilitychange', onVisibilityChange);
 	sessionsStore.stopAutoRefresh();
@@ -199,16 +207,33 @@ function onViewTrace(threadId: string) {
 	void router.push(target);
 }
 
+function onViewParentTrace(target: ParentTraceTarget) {
+	if (props.navigationMode === 'intent') {
+		emit('view-parent-trace', target);
+		return;
+	}
+
+	const routeTarget = {
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: {
+			projectId: projectId.value,
+			agentId: target.agentId,
+			threadId: target.threadId,
+		},
+	};
+	if (props.navigationMode === 'new-tab') {
+		window.open(router.resolve(routeTarget).href, '_blank');
+		return;
+	}
+	void router.push(routeTarget);
+}
+
 async function onAction(actionId: string, thread: AgentExecutionThread) {
 	if (actionId === 'goToParentRun') {
 		if (!thread.parentAgentId || !thread.parentThreadId) return;
-		void router.push({
-			name: AGENT_SESSION_DETAIL_VIEW,
-			params: {
-				projectId: projectId.value,
-				agentId: thread.parentAgentId,
-				threadId: thread.parentThreadId,
-			},
+		onViewParentTrace({
+			agentId: thread.parentAgentId,
+			threadId: thread.parentThreadId,
 		});
 		return;
 	}

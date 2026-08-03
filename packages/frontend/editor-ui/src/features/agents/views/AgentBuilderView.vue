@@ -67,6 +67,7 @@ import { addMissingAgentPersonalisation } from '@n8n/api-types';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
@@ -519,6 +520,21 @@ async function openPreview(preferredSessionId?: string) {
 		params: { projectId: projectId.value, agentId: agentId.value },
 		query,
 	});
+}
+
+function openSessionTrace(target: { agentId: string; threadId: string }) {
+	void router.push({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: {
+			projectId: projectId.value,
+			agentId: target.agentId,
+			threadId: target.threadId,
+		},
+	});
+}
+
+function onViewSessionTrace(threadId: string) {
+	openSessionTrace({ agentId: agentId.value, threadId });
 }
 
 async function onOpenPreview() {
@@ -1636,6 +1652,9 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
+					@open-session="openPreview"
+					@view-session-trace="onViewSessionTrace"
+					@view-parent-trace="openSessionTrace"
 				/>
 
 				<AgentVersionHistoryPanel

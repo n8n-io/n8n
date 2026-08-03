@@ -55,6 +55,7 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@n8n/design-system', () => ({
 	N8nActionDropdown: {
+		name: 'N8nActionDropdown',
 		template: '<div data-test-id="agent-session-actions" />',
 		props: ['items', 'activatorIcon'],
 		emits: ['select'],
@@ -177,8 +178,8 @@ async function mountView({
 
 describe('AgentSessionsListView', () => {
 	beforeEach(() => {
-		routerPush.mockClear();
-		routerResolve.mockClear();
+		fetchThreads.mockReset();
+		fetchThreads.mockResolvedValue(undefined);
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 		documentAddEventListenerSpy = vi.spyOn(document, 'addEventListener');
 		documentRemoveEventListenerSpy = vi.spyOn(document, 'removeEventListener');
@@ -202,6 +203,8 @@ describe('AgentSessionsListView', () => {
 			params: { projectId: 'project-1', agentId: 'agent-1' },
 			query: { continueSessionId: 'thread-1', section: '__executions' },
 		});
+		expect(routerResolve).not.toHaveBeenCalled();
+		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('opens the trace timeline when the trace icon button is clicked', async () => {
@@ -214,6 +217,8 @@ describe('AgentSessionsListView', () => {
 			name: 'AgentSessionDetailView',
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		});
+		expect(routerResolve).not.toHaveBeenCalled();
+		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('does not trigger row navigation when the trace button is clicked', async () => {
@@ -229,22 +234,31 @@ describe('AgentSessionsListView', () => {
 
 	it('opens the conversation in a new tab in new-tab navigation mode', async () => {
 		const wrapper = await mountView({ navigationMode: 'new-tab' });
+		const target = {
+			name: 'AgentPreviewView',
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+			query: { continueSessionId: 'thread-1', section: '__executions' },
+		};
 
 		await wrapper.find('[data-test-id="agent-session-list-item"]').trigger('click');
 
 		expect(routerPush).not.toHaveBeenCalled();
-		expect(routerResolve).toHaveBeenCalledTimes(1);
-		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
+		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
+		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
 	});
 
 	it('opens the trace in a new tab in new-tab navigation mode', async () => {
 		const wrapper = await mountView({ navigationMode: 'new-tab' });
+		const target = {
+			name: 'AgentSessionDetailView',
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		};
 
 		await wrapper.find('[data-test-id="agent-session-view-trace"]').trigger('click');
 
 		expect(routerPush).not.toHaveBeenCalled();
-		expect(routerResolve).toHaveBeenCalledTimes(1);
-		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
+		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
+		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
 	});
 
 	it('emits an open-conversation intent without navigating when a row is clicked', async () => {
@@ -267,6 +281,109 @@ describe('AgentSessionsListView', () => {
 		expect(routerPush).not.toHaveBeenCalled();
 		expect(routerResolve).not.toHaveBeenCalled();
 		expect(windowOpenSpy).not.toHaveBeenCalled();
+	});
+
+	it('opens the parent trace in the current tab by default', async () => {
+		const wrapper = await mountView({
+			threads: [makeThread({ parentAgentId: 'parent-agent-1', parentThreadId: 'parent-thread-1' })],
+		});
+
+		wrapper.getComponent({ name: 'N8nActionDropdown' }).vm.$emit('select', 'goToParentRun');
+		await flushPromises();
+
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentSessionDetailView',
+			params: {
+				projectId: 'project-1',
+				agentId: 'parent-agent-1',
+				threadId: 'parent-thread-1',
+			},
+		});
+		expect(routerResolve).not.toHaveBeenCalled();
+		expect(windowOpenSpy).not.toHaveBeenCalled();
+	});
+
+	it('opens the parent trace in a new tab in new-tab navigation mode', async () => {
+		const wrapper = await mountView({
+			navigationMode: 'new-tab',
+			threads: [makeThread({ parentAgentId: 'parent-agent-1', parentThreadId: 'parent-thread-1' })],
+		});
+		const target = {
+			name: 'AgentSessionDetailView',
+			params: {
+				projectId: 'project-1',
+				agentId: 'parent-agent-1',
+				threadId: 'parent-thread-1',
+			},
+		};
+
+		wrapper.getComponent({ name: 'N8nActionDropdown' }).vm.$emit('select', 'goToParentRun');
+		await flushPromises();
+
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
+		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
+	});
+
+	it('emits a parent trace intent in intent navigation mode', async () => {
+		const wrapper = await mountView({
+			navigationMode: 'intent',
+			manageStoreLifecycle: false,
+			threads: [makeThread({ parentAgentId: 'parent-agent-1', parentThreadId: 'parent-thread-1' })],
+		});
+
+		wrapper.getComponent({ name: 'N8nActionDropdown' }).vm.$emit('select', 'goToParentRun');
+		await flushPromises();
+
+		expect(wrapper.emitted('view-parent-trace')).toEqual([
+			[{ agentId: 'parent-agent-1', threadId: 'parent-thread-1' }],
+		]);
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerResolve).not.toHaveBeenCalled();
+		expect(windowOpenSpy).not.toHaveBeenCalled();
+	});
+
+	it('fetches, polls, and manages the visibility listener by default', async () => {
+		const wrapper = await mountView();
+		await flushPromises();
+
+		expect(fetchThreads).toHaveBeenCalledExactlyOnceWith('project-1', 'agent-1');
+		expect(startAutoRefresh).toHaveBeenCalledTimes(1);
+		const visibilityListenerCall = documentAddEventListenerSpy.mock.calls.find(
+			([eventName]) => eventName === 'visibilitychange',
+		);
+		expect(visibilityListenerCall).toBeDefined();
+
+		wrapper.unmount();
+
+		expect(documentRemoveEventListenerSpy).toHaveBeenCalledWith(
+			'visibilitychange',
+			visibilityListenerCall?.[1],
+		);
+		expect(stopAutoRefresh).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not re-arm lifecycle work when a pending fetch resolves after unmount', async () => {
+		const deferredFetch = Promise.withResolvers<undefined>();
+		fetchThreads.mockReturnValueOnce(deferredFetch.promise);
+		const wrapper = await mountView();
+
+		expect(documentAddEventListenerSpy).toHaveBeenCalledWith(
+			'visibilitychange',
+			expect.any(Function),
+		);
+		wrapper.unmount();
+		expect(documentRemoveEventListenerSpy).toHaveBeenCalledWith(
+			'visibilitychange',
+			expect.any(Function),
+		);
+		expect(stopAutoRefresh).toHaveBeenCalledTimes(1);
+
+		deferredFetch.resolve(undefined);
+		await flushPromises();
+
+		expect(startAutoRefresh).not.toHaveBeenCalled();
+		expect(documentAddEventListenerSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not manage the session store lifecycle when ownership is disabled', async () => {

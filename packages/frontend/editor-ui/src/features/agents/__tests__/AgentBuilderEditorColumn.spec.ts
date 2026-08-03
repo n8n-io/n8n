@@ -131,7 +131,7 @@ vi.mock('../views/AgentSessionsListView.vue', () => ({
 	default: {
 		name: 'AgentSessionsListView',
 		props: ['embedded', 'projectId', 'agentId', 'navigationMode', 'manageStoreLifecycle'],
-		emits: ['open-conversation', 'view-trace'],
+		emits: ['open-conversation', 'view-trace', 'view-parent-trace'],
 		template: '<div />',
 	},
 }));
@@ -297,6 +297,16 @@ describe('AgentBuilderEditorColumn', () => {
 
 		expect(wrapper.emitted('open-session')).toEqual([['thread-1']]);
 		expect(wrapper.emitted('view-session-trace')).toEqual([['thread-2']]);
+	});
+
+	it('forwards the typed parent trace intent from the Sessions list', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
+		const sessionsList = wrapper.findComponent({ name: 'AgentSessionsListView' });
+		const parentTrace = { agentId: 'parent-agent-1', threadId: 'parent-thread-1' };
+
+		sessionsList.vm.$emit('view-parent-trace', parentTrace);
+
+		expect(wrapper.emitted('view-parent-trace')).toEqual([[parentTrace]]);
 	});
 
 	it('renders controlled session detail under the Sessions tab and emits its back intent', async () => {

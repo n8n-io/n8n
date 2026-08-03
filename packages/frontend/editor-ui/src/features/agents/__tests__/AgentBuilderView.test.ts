@@ -485,7 +485,8 @@ const commonStubs = {
 	AgentSessionsListView: {
 		name: 'AgentSessionsListView',
 		template: '<div data-testid="stub-agent-sessions-list-view" />',
-		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab'],
+		props: ['embedded', 'projectId', 'agentId', 'navigationMode', 'manageStoreLifecycle'],
+		emits: ['open-conversation', 'view-trace', 'view-parent-trace'],
 	},
 	N8nButton: {
 		template:
@@ -911,6 +912,100 @@ describe('AgentBuilderView — preview routing', () => {
 				query: expect.objectContaining({ continueSessionId: 'thread-latest' }),
 			}),
 		);
+	});
+
+	it('opens the selected session from the editor intent in preview', async () => {
+		const wrapper = await renderView();
+		routerPush.mockClear();
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('open-session', 'thread-1');
+		await flushPromises();
+
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentPreviewView',
+			params: { projectId: 'p1', agentId: 'a1' },
+			query: { continueSessionId: 'thread-1' },
+		});
+	});
+
+	it('opens the selected session trace route from the editor intent', async () => {
+		const wrapper = await renderView();
+		routerPush.mockClear();
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('view-session-trace', 'thread-1');
+		await nextTick();
+
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentSessionDetailView',
+			params: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1' },
+		});
+	});
+
+	it('opens the parent session trace route from the editor intent', async () => {
+		const wrapper = await renderView();
+		routerPush.mockClear();
+
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('view-parent-trace', {
+			agentId: 'parent-agent-1',
+			threadId: 'parent-thread-1',
+		});
+		await nextTick();
+
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentSessionDetailView',
+			params: {
+				projectId: 'p1',
+				agentId: 'parent-agent-1',
+				threadId: 'parent-thread-1',
+			},
+		});
+	});
+
+	it('routes session intents with artifact project and agent ids', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+			},
+		});
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		routerPush.mockClear();
+		editor.vm.$emit('open-session', 'thread-1');
+		await flushPromises();
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentPreviewView',
+			params: { projectId: 'p2', agentId: 'a2' },
+			query: { continueSessionId: 'thread-1' },
+		});
+
+		routerPush.mockClear();
+		editor.vm.$emit('view-session-trace', 'thread-2');
+		await nextTick();
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentSessionDetailView',
+			params: { projectId: 'p2', agentId: 'a2', threadId: 'thread-2' },
+		});
+
+		routerPush.mockClear();
+		editor.vm.$emit('view-parent-trace', {
+			agentId: 'parent-agent-1',
+			threadId: 'parent-thread-1',
+		});
+		await nextTick();
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentSessionDetailView',
+			params: {
+				projectId: 'p2',
+				agentId: 'parent-agent-1',
+				threadId: 'parent-thread-1',
+			},
+		});
 	});
 
 	it('opens the preview route in the same tab from artifact mode', async () => {
@@ -1375,7 +1470,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('passes artifact ids and new-tab behavior into the embedded sessions list', async () => {
+	it('passes artifact ids and intent behavior into the embedded sessions list', async () => {
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1394,7 +1489,8 @@ describe('AgentBuilderView — three-column shell', () => {
 			embedded: true,
 			projectId: 'p2',
 			agentId: 'a2',
-			openSessionInNewTab: true,
+			navigationMode: 'intent',
+			manageStoreLifecycle: false,
 		});
 	});
 
