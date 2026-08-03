@@ -71,6 +71,7 @@ import {
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	EXECUTIONS_SECTION_KEY,
 	PROJECT_AGENTS,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -521,6 +522,17 @@ function previewRoute(sessionId?: string): RouteLocationRaw {
 	};
 }
 
+function artifactSessionPreviewRoute(threadId: string): RouteLocationRaw {
+	return {
+		name: AGENT_PREVIEW_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: {
+			[CONTINUE_SESSION_ID_PARAM]: threadId,
+			section: EXECUTIONS_SECTION_KEY,
+		},
+	};
+}
+
 async function openPreview(preferredSessionId?: string) {
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
 	activeChatSessionId.value = sessionId ?? null;
@@ -542,7 +554,7 @@ function openSession(threadId: string) {
 		return;
 	}
 
-	openSessionTarget(previewRoute(threadId));
+	openSessionTarget(artifactSessionPreviewRoute(threadId));
 }
 
 function openSessionTrace(target: { agentId: string; threadId: string }) {
@@ -1356,14 +1368,17 @@ async function initialize() {
 			credentialsStore.fetchAllCredentialsForWorkflow({ projectId: projectId.value }),
 			credentialsStore.fetchCredentialTypes(false),
 		]).catch(() => undefined);
-		// Stop any in-flight auto-refresh from the previous agent before kicking
-		// off a new fetch — keeps the store tied to the current project/agent.
-		sessionsStore.stopAutoRefresh();
-		if (!isUnsaved.value) {
-			void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
-				if (disposed || sessionsFetchRequestId !== latestSessionsFetchRequestId) return;
-				sessionsStore.startAutoRefresh();
-			});
+		// A stale initialize can resume after a newer one has already taken ownership of polling.
+		if (!disposed && sessionsFetchRequestId === latestSessionsFetchRequestId) {
+			// Stop any in-flight auto-refresh from the previous agent before kicking
+			// off a new fetch — keeps the store tied to the current project/agent.
+			sessionsStore.stopAutoRefresh();
+			if (!isUnsaved.value) {
+				void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
+					if (disposed || sessionsFetchRequestId !== latestSessionsFetchRequestId) return;
+					sessionsStore.startAutoRefresh();
+				});
+			}
 		}
 		void (async () => {
 			// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit

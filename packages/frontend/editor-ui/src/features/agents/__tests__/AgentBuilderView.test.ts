@@ -895,6 +895,35 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(startSessionAutoRefreshMock).not.toHaveBeenCalled();
 	});
 
+	it('keeps session polling owned by the latest overlapping initialize', async () => {
+		const staleAgentFetch = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
+		getAgentMock.mockReturnValueOnce(staleAgentFetch.promise);
+		const wrapper = await renderView({
+			waitForAsyncSetup: false,
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a1',
+			},
+		});
+		await flushPromises();
+		expect(getAgentMock).toHaveBeenCalledTimes(1);
+
+		await wrapper.setProps({ artifactAgentId: 'a2' });
+		await flushPromises();
+
+		expect(stopSessionAutoRefreshMock).toHaveBeenCalledTimes(1);
+		expect(fetchSessionThreadsMock).toHaveBeenCalledExactlyOnceWith('p2', 'a2');
+		expect(startSessionAutoRefreshMock).toHaveBeenCalledTimes(1);
+
+		staleAgentFetch.resolve(makeAgentResponse());
+		await flushPromises();
+
+		expect(stopSessionAutoRefreshMock).toHaveBeenCalledTimes(1);
+		expect(fetchSessionThreadsMock).toHaveBeenCalledExactlyOnceWith('p2', 'a2');
+		expect(startSessionAutoRefreshMock).toHaveBeenCalledTimes(1);
+	});
+
 	it('shows the manual editor for unbuilt agents', async () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
@@ -1004,6 +1033,35 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(windowOpen).not.toHaveBeenCalled();
 	});
 
+	it('opens an artifact conversation with only the legacy sessions query', async () => {
+		routeQuery.prompt = 'assistant prompt';
+		routeQuery.expandBuildChat = 'true';
+		routeQuery.section = 'settings';
+		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+			},
+		});
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		const previewTarget = {
+			name: 'AgentPreviewView',
+			params: { projectId: 'p2', agentId: 'a2' },
+			query: { continueSessionId: 'thread-1', section: '__executions' },
+		};
+
+		routerPush.mockClear();
+		routerResolve.mockClear();
+		editor.vm.$emit('open-session', 'thread-1');
+		await flushPromises();
+
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(previewTarget);
+		expect(windowOpen).toHaveBeenCalledExactlyOnceWith('/AgentPreviewView/p2/a2', '_blank');
+	});
+
 	it('opens artifact session intents in new tabs with artifact project and agent ids', async () => {
 		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const wrapper = await renderView({
@@ -1022,7 +1080,7 @@ describe('AgentBuilderView — preview routing', () => {
 		const previewTarget = {
 			name: 'AgentPreviewView',
 			params: { projectId: 'p2', agentId: 'a2' },
-			query: { continueSessionId: 'thread-1' },
+			query: { continueSessionId: 'thread-1', section: '__executions' },
 		};
 		expect(routerPush).not.toHaveBeenCalled();
 		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(previewTarget);
