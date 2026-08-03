@@ -226,12 +226,17 @@ jobs:
             #
             # Arms Node's diagnostic report on SIGUSR2 (requested in the log-capture
             # step). Keep flag and signal in sync — unarmed, SIGUSR2 kills the process.
+            # --report-exclude-env is REQUIRED: the report embeds
+            # `environmentVariables` by default, and this container's env holds the
+            # Anthropic, LangSmith and licence secrets. `::add-mask::` only redacts
+            # log output, never an uploaded artifact, so without this the report
+            # would carry them into the run's artifacts verbatim.
             docker run -d --name "n8n-eval-$((i+1))" \
               "${NETWORK_ARGS[@]}" \
               --memory 2.5g --memory-swap 2.5g \
               --restart on-failure \
               --log-opt max-size=50m --log-opt max-file=2 \
-              -e NODE_OPTIONS="--max-old-space-size=2048 --report-on-signal --report-signal=SIGUSR2 --report-directory=/tmp" \
+              -e NODE_OPTIONS="--max-old-space-size=2048 --report-on-signal --report-signal=SIGUSR2 --report-directory=/tmp --report-exclude-env" \
               -e EXECUTIONS_DATA_PRUNE=true \
               -e EXECUTIONS_DATA_MAX_AGE=1 \
               -e E2E_TESTS=true \
