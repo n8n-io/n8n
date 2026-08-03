@@ -76,7 +76,7 @@ let mockCurrentUser: { settings?: { dismissedCallouts?: Record<string, boolean> 
 const mockIsCalloutDismissed = vi.fn();
 const mockSetCalloutDismissed = vi.fn();
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
 		get isInstanceOwner() {
 			return mockIsInstanceOwner;

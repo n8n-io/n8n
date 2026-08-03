@@ -5,7 +5,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { getUpgradeOffer } from '@n8n/rest-api-client/api/cloudPlans';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
