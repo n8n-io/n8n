@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Agent } from '../entities/agent.entity';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
-import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
+import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 
