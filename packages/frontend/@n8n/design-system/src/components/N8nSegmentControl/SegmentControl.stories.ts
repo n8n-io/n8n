@@ -2,10 +2,10 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { defineComponent, ref } from 'vue';
 
-import type { IconName } from '../N8nIcon/icons';
 import N8nIcon from '../N8nIcon';
 import type { SegmentControlSize, SegmentOption } from './SegmentControl.types';
 import N8nSegmentControl from './SegmentControl.vue';
+import type { IconName } from '../N8nIcon/icons';
 
 const sizeOptions: SegmentControlSize[] = ['mini', 'small', 'default', 'large', 'xlarge'];
 

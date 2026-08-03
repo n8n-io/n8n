@@ -119,7 +119,7 @@ describe('components.N8nSegmentControl', () => {
 				expect(emitted('update:modelValue')).toBeTruthy();
 			});
 
-			const [value, event] = emitted('update:modelValue')![0] as [string, MouseEvent];
+			const [value, event] = emitted('update:modelValue')[0] as [string, MouseEvent];
 			expect(value).toBe('two');
 			expect(event).toMatchObject({ type: 'click' });
 		});
@@ -141,7 +141,7 @@ describe('components.N8nSegmentControl', () => {
 				expect(emitted('update:modelValue')).toBeTruthy();
 			});
 
-			const [, event] = emitted('update:modelValue')![0] as [string, MouseEvent];
+			const [, event] = emitted('update:modelValue')[0] as [string, MouseEvent];
 			expect(event.ctrlKey).toBe(true);
 			expect(event.metaKey).toBe(true);
 		});
@@ -162,7 +162,7 @@ describe('components.N8nSegmentControl', () => {
 			await userEvent.click(getByRole('radio', { name: 'Build' }));
 
 			await waitFor(() => {
-				const [value] = emitted('update:modelValue')![0] as [boolean, MouseEvent];
+				const [value] = emitted('update:modelValue')[0] as [boolean, MouseEvent];
 				expect(value).toBe(true);
 			});
 
@@ -177,7 +177,7 @@ describe('components.N8nSegmentControl', () => {
 			await userEvent.click(getByRole('radio', { name: 'Ask' }));
 
 			await waitFor(() => {
-				const emissions = emitted('update:modelValue') as Array<[boolean, MouseEvent]>;
+				const emissions = emitted('update:modelValue');
 				expect(emissions.at(-1)?.[0]).toBe(false);
 			});
 		});
@@ -199,7 +199,7 @@ describe('components.N8nSegmentControl', () => {
 			await userEvent.click(getByRole('radio', { name: 'String false' }));
 
 			await waitFor(() => {
-				const [value] = emitted('update:modelValue')![0] as [string | boolean, MouseEvent];
+				const [value] = emitted('update:modelValue')[0] as [string | boolean, MouseEvent];
 				expect(value).toBe('false');
 			});
 		});
@@ -217,7 +217,7 @@ describe('components.N8nSegmentControl', () => {
 			await userEvent.click(getByRole('radio', { name: 'Three' }));
 
 			await waitFor(() => {
-				const [value] = emitted('update:modelValue')![0] as [string, MouseEvent];
+				const [value] = emitted('update:modelValue')[0] as [string, MouseEvent];
 				expect(value).toBe('three');
 			});
 		});
