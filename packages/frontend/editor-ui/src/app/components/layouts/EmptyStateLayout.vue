@@ -13,6 +13,7 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import SurfaceMcpEmptyStateReminder from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateReminder.vue';
@@ -74,9 +75,13 @@ const handleReadyToRunClick = async () => {
 };
 
 const handleBuildAgentClick = () => {
-	agentTelemetry.trackClickedNewAgent('card');
+	const agentId = generateNanoId();
+	agentTelemetry.trackClickedNewAgent('card', agentId);
 	void router.push(
-		instanceAiCreateAgentRoute(builderProjectId.value ?? projectsStore.personalProject?.id ?? ''),
+		instanceAiCreateAgentRoute(
+			builderProjectId.value ?? projectsStore.personalProject?.id ?? '',
+			agentId,
+		),
 	);
 };
 

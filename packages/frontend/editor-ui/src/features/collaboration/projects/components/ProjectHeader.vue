@@ -21,6 +21,7 @@ import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
@@ -382,8 +383,9 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 		telemetry.track('User clicked header add variable button');
 	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
-		agentTelemetry.trackClickedNewAgent(source);
-		void router.push(instanceAiCreateAgentRoute(projectId));
+		const agentId = generateNanoId();
+		agentTelemetry.trackClickedNewAgent(source, agentId);
+		void router.push(instanceAiCreateAgentRoute(projectId, agentId));
 	},
 } as const;
 

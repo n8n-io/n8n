@@ -24,6 +24,7 @@ import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW } from '../constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import AgentCard from '../components/AgentCard.vue';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 
@@ -164,9 +165,10 @@ async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
 }
 
 function onCreateAgentClick() {
-	agentTelemetry.trackClickedNewAgent('button');
+	const agentId = generateNanoId();
+	agentTelemetry.trackClickedNewAgent('button', agentId);
 	const targetProjectId = projectId.value ?? projectsStore.personalProject?.id ?? '';
-	void router.push(instanceAiCreateAgentRoute(targetProjectId));
+	void router.push(instanceAiCreateAgentRoute(targetProjectId, agentId));
 }
 
 onMounted(async () => {
