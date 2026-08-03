@@ -40,7 +40,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
@@ -56,10 +56,15 @@ import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/
 import WorkflowSubmitForReviewDialog from '@/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue';
 import WorkflowReviewSubmittedDialog from '@/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue';
 import WorkflowUpdateReviewDialog from '@/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue';
+import WorkflowReviewStatusBanner from '@/features/workflow-reviews/components/WorkflowReviewStatusBanner.vue';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { useWorkflowReviewStatusSync } from '@/features/workflow-reviews/composables/useWorkflowReviewStatusSync';
 import { useWorkflowReviewDialogPreferences } from '@/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences';
+import {
+	REVIEW_INBOX_QUERY_PARAM,
+	WORKFLOW_REVIEW_REQUESTS_VIEW,
+} from '@/features/workflow-reviews/constants';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -81,7 +86,9 @@ const workflowDocumentStore = computed(() =>
 // Pass a getter so the composable re-syncs internally when the user navigates
 // to a different workflow without this component being remounted.
 useWorkflowPublicationStatusSync(() => workflowDocumentStore.value.documentId);
-useWorkflowReviewStatusSync(() => (props.isNewWorkflow ? undefined : props.id));
+const { refetch: refetchReviewStatus } = useWorkflowReviewStatusSync(() =>
+	props.isNewWorkflow ? undefined : props.id,
+);
 const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
@@ -106,9 +113,14 @@ const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
 );
 
-const showWorkflowReviewRequiredToggle = computed(
+const showWorkflowReviewControls = computed(
 	() => isWorkflowReviewsEnabled.value && !props.isNewWorkflow,
 );
+
+const latestReviewRequest = computed(() => reviewStatusStore.latestReviewRequest(props.id));
+
+/** Saved version of the working copy — what a review is pinned to, or diverges from. */
+const savedVersionId = computed(() => workflowDocumentStore.value.versionId || undefined);
 
 const autoSaveForPublish = ref(false);
 const isSaving = ref(false);
@@ -117,6 +129,7 @@ const showSubmitForReviewDialog = ref(false);
 const showReviewSubmittedDialog = ref(false);
 const submittedReviewRequestId = ref<string>();
 const showUpdateReviewDialog = ref(false);
+const isRetryingPublish = ref(false);
 
 watch(
 	() => props.id,
@@ -211,6 +224,16 @@ const hasUnpublishPermission = computed(() => props.workflowPermissions.unpublis
 const isPersonalSpace = computed(() => projectStore.currentProject?.type === ProjectTypes.Personal);
 
 /**
+ * Submitting changes and retrying a publish both need publish rights and write
+ * access. An archived workflow keeps the status readable but rejects both writes.
+ */
+const canActOnReview = computed(
+	() => !!hasPublishPermission.value && !collaborationReadOnly.value && !props.isArchived,
+);
+
+const canOpenReview = computed(() => !!hasPublishPermission.value);
+
+/**
  * Cancel autosave if scheduled or wait for it to finish if in progress
  * Save immediately if autosave idle or cancelled
  */
@@ -279,6 +302,44 @@ const onReviewUpdated = () => {
 /** The submit dialog hit a 409: an open review exists, so offer updating it instead. */
 const onReviewConflict = () => {
 	showUpdateReviewDialog.value = true;
+};
+
+const onOpenReviewFromBanner = async () => {
+	const review = latestReviewRequest.value;
+	if (!review) return;
+
+	await router.push({
+		name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+		params: { reviewRequestId: review.id },
+		// The inbox opens on its "Open" tab, so a closed review would land in a list
+		// that cannot contain its card. Keyed off the review's own state rather than
+		// an approved decision, so any way a review gets closed still lands right.
+		query:
+			review.state === 'closed' ? { [REVIEW_INBOX_QUERY_PARAM.state]: review.state } : undefined,
+	});
+};
+
+/**
+ * Publish the approved pinned version — not the working copy, which may already
+ * have moved on and was never reviewed.
+ */
+const onRetryPublishFromBanner = async () => {
+	const pinnedVersionId = latestReviewRequest.value?.workflowVersionId;
+	if (!pinnedVersionId || isRetryingPublish.value) return;
+
+	isRetryingPublish.value = true;
+	try {
+		// Errors are surfaced by the shared activation error handling; the banner
+		// stays put because the review status is unchanged on failure.
+		const { success } = await workflowActivate.publishWorkflow(props.id, pinnedVersionId);
+		if (success) {
+			// The active-version watcher covers the usual case, but a retry that
+			// lands on an unchanged active version must still clear the banner.
+			await refetchReviewStatus();
+		}
+	} finally {
+		isRetryingPublish.value = false;
+	}
 };
 
 const onPublishButtonClick = async () => {
@@ -470,6 +531,24 @@ const shouldDisablePublishButton = computed(() => {
 });
 
 const activeVersion = computed(() => workflowDocumentStore.value.activeVersion ?? null);
+
+/**
+ * The approved-but-unpublished banner is derived from publish history, so any
+ * publish or unpublish — from this canvas, another surface, or a push — has to
+ * re-resolve it. Watching the active version keeps publication code free of
+ * review concerns. The header only renders once the workflow is hydrated, so
+ * this never duplicates the sync's on-mount fetch.
+ */
+watch(
+	() => ({ workflowId: props.id, activeVersionId: activeVersion.value?.versionId ?? null }),
+	(current, previous) => {
+		// Workflow navigation already refetches through the status sync itself.
+		if (current.workflowId !== previous.workflowId) return;
+		if (current.activeVersionId === previous.activeVersionId) return;
+
+		void refetchReviewStatus();
+	},
+);
 
 const activeVersionName = computed(() => {
 	if (!activeVersion.value) {
@@ -694,6 +773,19 @@ defineExpose({
 				uiStore.stateIsDirty ? i18n.baseText('saveButton.save') : i18n.baseText('saveButton.saved')
 			}}
 		</N8nButton>
+		<div v-if="showWorkflowReviewControls" :class="$style.reviewStatusBannerSlot">
+			<WorkflowReviewStatusBanner
+				:review="latestReviewRequest"
+				:saved-version-id="savedVersionId"
+				:can-submit-changes="canActOnReview"
+				:can-retry-publish="canActOnReview"
+				:can-open-review="canOpenReview"
+				:is-publishing="isRetryingPublish"
+				@open-review="onOpenReviewFromBanner"
+				@submit-changes="showUpdateReviewDialog = true"
+				@retry-publish="onRetryPublishFromBanner"
+			/>
+		</div>
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
 			<div :class="$style.buttonGroup">
 				<N8nTooltip
@@ -763,7 +855,7 @@ defineExpose({
 				</N8nTooltip>
 				<N8nActionDropdown
 					:items="versionMenuActions"
-					:width="showWorkflowReviewRequiredToggle ? '230px' : undefined"
+					:width="showWorkflowReviewControls ? '230px' : undefined"
 					placement="bottom-end"
 					data-test-id="version-menu"
 					@select="onDropdownMenuSelect"
@@ -778,7 +870,7 @@ defineExpose({
 							data-test-id="version-menu-button"
 						/>
 					</template>
-					<template v-if="showWorkflowReviewRequiredToggle" #footer>
+					<template v-if="showWorkflowReviewControls" #footer>
 						<WorkflowReviewRequiredToggle :workflow-id="props.id" />
 					</template>
 				</N8nActionDropdown>
@@ -835,6 +927,18 @@ defineExpose({
 	.icon:focus {
 		outline: none;
 	}
+}
+
+/**
+ * Leftmost item of the header actions row. This component's container is
+ * `display: contents`, so this wrapper is a flex item of that row — but the
+ * production checklist is a sibling rendered before this component, so the
+ * position has to come from `order` rather than DOM placement.
+ */
+.reviewStatusBannerSlot {
+	display: inline-flex;
+	align-items: center;
+	order: -1;
 }
 
 .publishButtonWrapper {

@@ -106,4 +106,8 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 	async findByRunId(runId: string): Promise<AgentEvalResult[]> {
 		return await this.find({ where: { runId }, order: { runIndex: 'ASC' } });
 	}
+
+	async findById(id: string): Promise<AgentEvalResult | null> {
+		return await this.findOneBy({ id });
+	}
 }

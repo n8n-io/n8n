@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
 
 import { N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';

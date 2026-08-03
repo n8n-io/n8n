@@ -42,7 +42,7 @@ vi.mock('@n8n/design-system', () => ({
 }));
 
 // Reads a Pinia store for notifications — irrelevant to panel behavior.
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn() }),
 }));
 

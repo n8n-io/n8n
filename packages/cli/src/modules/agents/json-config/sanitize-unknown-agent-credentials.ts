@@ -2,6 +2,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	isDraftAgentConfig,
 	MANAGED_CREDENTIAL_TOKEN,
+	SUB_AGENT_TASK_DIFFICULTIES,
 } from '@n8n/api-types';
 
 function clearUnknownCredentialId(
@@ -24,13 +25,24 @@ function isManagedEpisodicMemoryCredentialPath(path: readonly string[]): boolean
 	return path.join('.') === 'memory.episodicMemory.credential';
 }
 
-/** Model-credential paths where the n8n Connect managed tag is a valid value. */
+/**
+ * Model-credential paths where the n8n Connect managed tag is a valid value.
+ * Memory worker models are ordinary chat models, so the gateway can serve them
+ * just like the main and per-difficulty models.
+ */
+const AI_GATEWAY_MODEL_CREDENTIAL_PATHS: ReadonlySet<string> = new Set([
+	'credential',
+	...SUB_AGENT_TASK_DIFFICULTIES.map(
+		(difficulty) => `subAgents.modelsByDifficulty.${difficulty}.credential`,
+	),
+	'memory.observationalMemory.observerModel.credential',
+	'memory.observationalMemory.reflectorModel.credential',
+	'memory.episodicMemory.extractorModel.credential',
+	'memory.episodicMemory.reflectorModel.credential',
+]);
+
 function isAiGatewayModelCredentialPath(path: readonly string[]): boolean {
-	const joined = path.join('.');
-	return (
-		joined === 'credential' ||
-		/^subAgents\.modelsByDifficulty\.(low|medium|high)\.credential$/.test(joined)
-	);
+	return AI_GATEWAY_MODEL_CREDENTIAL_PATHS.has(path.join('.'));
 }
 
 /** Managed credential tokens allowed to survive sanitization at the given path. */

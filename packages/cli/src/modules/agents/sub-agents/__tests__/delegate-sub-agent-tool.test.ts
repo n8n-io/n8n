@@ -73,6 +73,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			resolveInlineSubAgentProviderTools,
 		});
 
@@ -93,6 +94,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			inlineSubAgentModelsByDifficulty,
 		});
 
@@ -107,6 +109,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			policy: { maxChildren: 2 },
 		});
 
@@ -155,6 +158,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await tool.handler?.(
@@ -180,6 +184,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 		const parentTelemetry = {
 			enabled: true,
@@ -206,6 +211,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await tool.handler?.(
@@ -232,6 +238,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			],
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await tool.handler?.(
@@ -254,6 +261,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await expect(
@@ -281,6 +289,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 		const runSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.runSubAgent;
 		expect(runSubAgent).toBeDefined();
@@ -317,6 +326,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await expect(

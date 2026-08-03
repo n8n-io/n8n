@@ -15,6 +15,26 @@ const builderSessionIdentity = {
 
 const agentStatus = z.enum(['draft', 'production']);
 
+const agentRunType = z
+	.enum(['test', 'production'])
+	.describe('production means the run executed the published snapshot; test means it ran a draft');
+
+// Spread into the session-metrics payload, matching `IAgentConfigurationTelemetryProperties`.
+const agentConfigurationTelemetry = {
+	model: z.string().nullable(),
+	channels: z.array(z.string()),
+	tool_types: z.array(z.string()),
+	tool_count: z.number(),
+	num_skills: z.number(),
+	memory_type: z.enum([
+		'none',
+		'n8n',
+		'n8n_observational',
+		'n8n_episodic',
+		'n8n_observational_episodic',
+	]),
+};
+
 // The builder config-diff events capture status before the write, so a change
 // to a live agent reports 'production'. The frontend "User added/removed …"
 // twins derive status after the save — which always produces a new draft
@@ -50,6 +70,20 @@ const toolIdentity = {
 // agent_id is only attached when the tools modal can resolve the hosting agent.
 const optionalAgentId = z.string().optional();
 
+// Mirrors `agentCapabilityKindSchema` in @n8n/api-types minus 'agent', which
+// covers the core identity primitives (instructions, model, credential) —
+// required fields rather than capabilities. Inlined because this package
+// deliberately depends on zod alone.
+const agentCapabilityKind = z.enum([
+	'channel',
+	'tool',
+	'mcpServer',
+	'skill',
+	'task',
+	'subAgent',
+	'vectorStore',
+]);
+
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_PUBLISHED: {
 		name: 'Agent published',
@@ -63,6 +97,31 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			version_id: z.string().describe('AgentHistory versionId that became active'),
 		}),
 	},
+	AGENT_SETUP_COMPLETED: {
+		name: 'Agent setup completed',
+		description:
+			'The first time an agent reached a complete setup: it passes the same validation the Publish button requires, and has at least one configured capability. Fires at most once per agent, guarded by the persisted `agents.setupCompletedAt`. Emitted from the config-save path, with the publish path as a backstop so a published agent is always marked first.',
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z
+				.string()
+				.optional()
+				.describe('Absent for builder writes made without an acting user'),
+			capability_kinds: z
+				.array(agentCapabilityKind)
+				.describe('Capability kinds with at least one configured entry'),
+			capability_count: z.number().describe('Total configured capabilities across all kinds'),
+			tool_count: z.number(),
+			skill_count: z.number(),
+			sub_agent_count: z.number(),
+			mcp_server_count: z.number().describe('MCP servers with a URL set'),
+			vector_store_count: z.number(),
+			task_count: z.number(),
+			trigger_count: z.number().describe('Connected chat integrations; draft channels excluded'),
+			status: agentStatus,
+		}),
+	},
 	AGENT_UNPUBLISHED: {
 		name: 'Agent unpublished',
 		description:
@@ -73,6 +132,98 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			user_id: z.string(),
 			source: z.enum(['editor', 'builder']),
 		}),
+	},
+	AGENT_EXECUTION_COUNT: {
+		name: 'Agent execution count',
+		description:
+			'Six-hourly pulse of aggregate agent usage, bucketed by agent, run type and optional user. event_version 2 added run_type; version 1 rows are a mix of test and production and must not be read as production. token_count is broader than "Agent session metrics".cost_sum: it also covers LLM calls belonging to no single turn (title generation, observational/episodic memory, embeddings).',
+		properties: z.object({
+			event_version: z.literal('2'),
+			agent_id: z.string(),
+			user_id: z
+				.string()
+				.optional()
+				.describe('Present only for runs with an n8n user — absent for chat integrations and cron'),
+			run_type: agentRunType,
+			message_count: z
+				.number()
+				.describe('Fresh top-level user turns; delegated child runs excluded'),
+			token_count: z
+				.number()
+				.describe(
+					'Includes LLM calls belonging to no turn (title generation, memory, embeddings), so runs higher than "Agent session metrics".token_count_sum',
+				),
+			tool_call_count: z.number(),
+		}),
+	},
+	AGENT_SESSION_METRICS: {
+		name: 'Agent session metrics',
+		description:
+			'Six-hourly pulse of agent session and turn metrics, bucketed by agent, run type, turn status and configuration. Two token numbers exist across the agent events and they measure different things: token_count_sum here covers only the recorded turns, from the same usage as cost_sum so the two reconcile, while token_count on "Agent execution count" additionally covers LLM calls belonging to no turn (title generation, observational/episodic memory, embeddings) and so runs higher.',
+		properties: z.object({
+			event_version: z.literal('1'),
+			agent_id: z.string(),
+			agent_type: z.literal('inline').optional(),
+			run_type: agentRunType,
+			turn_status: z.enum(['succeeded', 'failed']),
+			session_count: z.number(),
+			turn_count: z.number(),
+			latency_ms_sum: z.number(),
+			cost_sum: z.number(),
+			token_count_sum: z
+				.number()
+				.describe('Recorded-turn tokens only; reconciles with cost_sum, unlike token_count'),
+			tool_call_count_sum: z.number(),
+			num_skills_sum: z.number(),
+			...agentConfigurationTelemetry,
+		}),
+	},
+	BUILDER_CREATED_AGENT: {
+		name: 'Builder created agent',
+		description:
+			'The Instance AI builder created an agent through its delegate. Only fires inside a thread context; the frontend "User created agent" twin covers the UI create paths.',
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			thread_id: z.string().describe('Instance AI thread hosting the builder session'),
+		}),
+	},
+	INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW: {
+		name: 'Instance AI opened from agent preview',
+		description:
+			'The user handed a preview chat session off to Instance AI from the agent builder preview panel.',
+		properties: z.object({
+			agent_id: z.string(),
+			preview_thread_id: z.string(),
+			preview_execution_id: z.string().optional(),
+		}),
+	},
+	USER_GAVE_MCP_ACCESS_TO_AGENT: {
+		name: 'User gave MCP access to agent',
+		description:
+			'An agent was exposed over MCP. The sibling "User gave MCP access to workflow" and "User toggled MCP access" events are not registered.',
+		properties: z.object({
+			agent_id: z.string(),
+		}),
+	},
+	USER_SELECTED_AGENTS_FOR_MCP: {
+		name: 'User selected agent from list',
+		description:
+			'The user confirmed a bulk agent selection in the MCP connect-agents dialog. Property is camelCase for warehouse continuity with existing rows.',
+		properties: z.object({
+			agentIds: z.array(z.string()),
+			count: z.number(),
+		}),
+	},
+	USER_DISMISSED_MCP_AGENTS_DIALOG: {
+		name: 'User dismissed mcp agents dialog',
+		description: 'The user closed the MCP connect-agents dialog without confirming a selection.',
+		properties: z.object({}),
+	},
+	USER_CLICKED_CONNECT_AGENTS_FROM_MCP_SETTINGS: {
+		name: 'User clicked connect agents from mcp settings',
+		description: 'The user opened the MCP connect-agents dialog from the MCP settings page.',
+		properties: z.object({}),
 	},
 	BUILDER_ADDED_TOOLS: {
 		name: 'Builder added tools to agent',
@@ -220,6 +371,12 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			]),
 			config_version: z.string(),
 			status: agentStatus,
+			credential_kind: z
+				.enum(['n8n_credits', 'own'])
+				.optional()
+				.describe(
+					'Which kind of model credential the agent now uses. Only set when part is "model".',
+				),
 			session_id: sessionId,
 		}),
 	},

@@ -124,6 +124,32 @@ describe('parseWithSchema — JSON Schema', () => {
 		expect(valid.success).toBe(true);
 	});
 
+	it('uses Unicode regex semantics by default', async () => {
+		const schema = {
+			type: 'object' as const,
+			properties: { value: { type: 'string', pattern: '^.$' } },
+			required: ['value'],
+		} as JSONSchema7;
+
+		const result = await parseWithSchema(schema, { value: '😀' });
+
+		expect(result.success).toBe(true);
+	});
+
+	it('tolerates patterns that are invalid under the regex u flag', async () => {
+		const schema = {
+			type: 'object' as const,
+			properties: { value: { type: 'string', pattern: '[\\w-.]' } },
+			required: ['value'],
+		} as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, { value: 'a' });
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, { value: '@' });
+		expect(invalid.success).toBe(false);
+	});
+
 	it('validates nested object properties', async () => {
 		const schema = {
 			type: 'object' as const,

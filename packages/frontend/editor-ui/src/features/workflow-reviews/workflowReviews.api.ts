@@ -1,5 +1,6 @@
 import type {
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestResponse,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	GetWorkflowReviewInboxSummaryResponse,
 	ListWorkflowReviewInboxResponse,
@@ -21,7 +22,7 @@ export type FetchWorkflowReviewInboxParams = {
 /** A decision a reviewer can submit; `pending` is the initial state, never an input. */
 export type WorkflowReviewDecisionInput = Exclude<WorkflowReviewRequestDecision, 'pending'>;
 
-/** Workflow-scoped list used by review-required toggle sync. */
+/** Workflow-scoped list used by the review status sync (toggle + canvas banner). */
 export async function fetchWorkflowReviewRequests(
 	context: IRestApiContext,
 	query: { workflowId: string; state?: WorkflowReviewRequestState; take?: number; skip?: number },
@@ -75,8 +76,8 @@ export async function decideWorkflowReviewRequest(
 	context: IRestApiContext,
 	workflowReviewRequestId: string,
 	payload: { decision: WorkflowReviewDecisionInput },
-): Promise<WorkflowReviewRequestSummary> {
-	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
+): Promise<DecideWorkflowReviewRequestResponse> {
+	return await makeRestApiRequest<DecideWorkflowReviewRequestResponse>(
 		context,
 		'POST',
 		`/workflow-review-requests/${workflowReviewRequestId}/decision`,
