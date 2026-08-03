@@ -72,11 +72,18 @@ describe('telemetry registration surface', () => {
 			expect.arrayContaining(['setTelemetry', 'TelemetryKey', 'getRegisteredTelemetry']),
 		);
 
-		// Compared as runtime export names, so every re-export shape is caught —
-		// named, aliased, or `export *`. An intersection rather than a fixed
-		// denylist, so a registration symbol added later needs no edit here.
-		// Type-only re-exports are erased and harmless: the plugin needs values.
-		const reExported = Object.keys(useTelemetryModule).filter((name) => name in registry);
+		// Matched on name *and* value identity, because each half catches what the
+		// other misses: name catches a local re-implementation exported under a
+		// registration name, value catches an aliased re-export
+		// (`setTelemetry as registerTelemetry`), whose name the registry never
+		// holds. `export *` trips both. Neither half is a fixed denylist, so a
+		// registration symbol added later is covered without editing this test.
+		// Type-only re-exports stay uncaught by design — erased at runtime, and
+		// starving the plugin takes the value.
+		const registryValues = new Set<unknown>(Object.values(registry));
+		const reExported = Object.entries(useTelemetryModule)
+			.filter(([name, value]) => name in registry || registryValues.has(value))
+			.map(([name]) => name);
 
 		expect(reExported).toEqual([]);
 	});
