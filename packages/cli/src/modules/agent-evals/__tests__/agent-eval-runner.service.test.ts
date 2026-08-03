@@ -207,6 +207,9 @@ describe('AgentEvalRunnerService', () => {
 			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(
 				'require these modules to be active: data-table',
 			);
+			// Not-found, so the whole agent-eval surface reads as absent when a module
+			// it depends on is off, rather than half-present.
+			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(NotFoundError);
 			expect(runRepository.createRun).not.toHaveBeenCalled();
 		});
 

@@ -139,14 +139,17 @@ describe('AgentEvalRatingService', () => {
 			expect(runRepository.findByIdAndAgentId).toHaveBeenCalledWith('run-1', AGENT_ID);
 		});
 
-		// Agent evals read agents and Data Tables, so a missing module must say which
-		// one rather than surfacing a TypeORM missing-metadata error.
-		it('reports an inactive dependency module as a bad request', async () => {
+		// With `agents` off there is no agent to address, so the surface reads as
+		// unknown rather than misused — and the message still names the module, so a
+		// TypeORM missing-metadata error never reaches the caller.
+		it('reports an inactive dependency module as not-found, naming the module', async () => {
 			moduleRegistry.isActive.mockReturnValue(false);
 
-			await expect(
-				service.rateResult(user, AGENT_ID, PROJECT_ID, 'res-1', { vote: 'up' }),
-			).rejects.toThrowError(BadRequestError);
+			const rate = async () =>
+				await service.rateResult(user, AGENT_ID, PROJECT_ID, 'res-1', { vote: 'up' });
+
+			await expect(rate()).rejects.toThrowError(NotFoundError);
+			await expect(rate()).rejects.toThrow('require these modules to be active');
 			expect(agentRepository.existsByIdAndProjectId).not.toHaveBeenCalled();
 		});
 	});
