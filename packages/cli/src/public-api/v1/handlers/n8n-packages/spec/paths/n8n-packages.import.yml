@@ -248,7 +248,10 @@ post:
                 with no value to write bundles nothing to compare, so every
                 policy leaves resolved variables alone: values excluded at
                 export, an exported value that was itself empty, or one
-                identical to the target's. Under `overwrite`, a project package
+                identical to the target's. The reverse does not hold: a resolved
+                variable holding an empty value — a stub an earlier import
+                created, say — still counts as a value, so `overwrite` fills it
+                and `fail` rejects it. Under `overwrite`, a project package
                 whose projects hold *different* values for a name they all
                 resolve to one row — a global none of them shadows, typically —
                 is rejected with a 409: one row cannot carry both values, and

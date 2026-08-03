@@ -1423,6 +1423,59 @@ describe('workflow package import — with variables', () => {
 			});
 		});
 
+		/**
+		 * A target row holding an empty value still holds a value, unlike an empty *package* value,
+		 * which is nothing to write. So `overwrite` fills such a row and `fail` rejects it, and a stub
+		 * an earlier import created is only filled by asking for it.
+		 */
+		describe('empty target value', () => {
+			async function importAgainst(variableConflictPolicy: 'keep-existing' | 'overwrite' | 'fail') {
+				const owner = await createOwner();
+				const targetProject = await createTeamProject('Target', owner);
+				const { workflow, packageBuffer } = await packageReferencing(owner, 'from-source');
+				await createProjectVariable('API_URL', '', targetProject);
+
+				return {
+					targetProject,
+					workflow,
+					result: await importPackage({
+						user: owner,
+						projectId: targetProject.id,
+						packageBuffer,
+						variableConflictPolicy,
+					}).catch((error: unknown) => error),
+				};
+			}
+
+			it('leaves the empty value in place under keep-existing', async () => {
+				const { targetProject, result } = await importAgainst('keep-existing');
+
+				expect(result).toMatchObject({ variables: { matched: ['API_URL'], updated: [] } });
+				expect((await variablesInProject(targetProject.id))[0].value).toBe('');
+			});
+
+			it('fills the empty value under overwrite', async () => {
+				const { targetProject, result } = await importAgainst('overwrite');
+
+				expect(result).toMatchObject({ variables: { matched: [], updated: ['API_URL'] } });
+				expect((await variablesInProject(targetProject.id))[0].value).toBe('from-source');
+			});
+
+			it('blocks the import under fail', async () => {
+				const { targetProject, workflow, result } = await importAgainst('fail');
+
+				expect((result as ConflictError).meta?.issues).toEqual([
+					{
+						type: 'variable-conflict',
+						name: 'API_URL',
+						projectId: targetProject.id,
+						usedByWorkflows: [workflow.id],
+					},
+				]);
+				expect((await variablesInProject(targetProject.id))[0].value).toBe('');
+			});
+		});
+
 		it.each(['keep-existing', 'overwrite', 'fail'] as const)(
 			'defers to the missing mode under %s when the variable does not resolve',
 			async (variableConflictPolicy) => {
