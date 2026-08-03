@@ -13,6 +13,7 @@ import {
 import { createRuntimeSkillRegistry, type RuntimeSkillSource } from '../../skills';
 import type {
 	AgentDbMessage,
+	AgentExecutionCounter,
 	BuiltTool,
 	GenerateResult,
 	InterruptibleToolContext,
@@ -290,7 +291,7 @@ describe('delegate sub-agent routing', () => {
 		});
 	});
 
-	it('passes the parent execution counter to inline child stream options', async () => {
+	it('rolls inline child tokens and tool calls up to the parent but not its message count', async () => {
 		const executionCounter = {
 			incrementMessageCount: vi.fn(),
 			incrementToolCallCount: vi.fn(),
@@ -313,7 +314,16 @@ describe('delegate sub-agent routing', () => {
 			executionCounter,
 		});
 
-		expect(runtimeGenerateOptions[0]).toEqual(expect.objectContaining({ executionCounter }));
+		const childCounter = runtimeGenerateOptions[0]?.executionCounter as
+			| AgentExecutionCounter
+			| undefined;
+		childCounter?.incrementMessageCount();
+		childCounter?.incrementToolCallCount();
+		childCounter?.incrementTokenCount(42);
+
+		expect(executionCounter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(executionCounter.incrementToolCallCount).toHaveBeenCalledOnce();
+		expect(executionCounter.incrementTokenCount).toHaveBeenCalledWith(42);
 	});
 
 	it('passes the exact parent runtime context to inline child generate options', async () => {

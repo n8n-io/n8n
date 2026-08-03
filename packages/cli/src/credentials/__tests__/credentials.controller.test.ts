@@ -445,6 +445,56 @@ describe('CredentialsController', () => {
 			expect(prepareUpdateDataSpy).not.toHaveBeenCalled();
 		});
 
+		it('should clear the OAuth token when switching a credential to a different auth type', async () => {
+			// A previous OAuth connection on `existingCredential.type` must not carry over once
+			// the credential is switched to a different auth method (e.g. Service Account -> OAuth).
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'oAuth2Api',
+					data: { clientId: 'cid' },
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(prepareUpdateDataSpy).toHaveBeenCalledWith(
+				ownerReq.user,
+				ownerReq.body,
+				existingCredential,
+				{ clearOauthTokenData: true },
+			);
+		});
+
+		it('should not clear the OAuth token when the auth type is unchanged', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: existingCredential.type,
+					data: { apiKey: 'updated-key' },
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(prepareUpdateDataSpy).toHaveBeenCalledWith(
+				ownerReq.user,
+				ownerReq.body,
+				existingCredential,
+				{ clearOauthTokenData: false },
+			);
+		});
+
 		it('should emit "credentials-updated" with jweEnabled true when JWE is enabled in payload', async () => {
 			// ARRANGE
 			const ownerReq = {

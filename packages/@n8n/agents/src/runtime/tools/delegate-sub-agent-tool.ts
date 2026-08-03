@@ -23,6 +23,7 @@ import type {
 import type { AgentMessage } from '../../types/sdk/message';
 import type { BuiltProviderTool, BuiltTool, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { withoutMessageCount } from '../loop/execution-counter';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
 export const INLINE_SUB_AGENT_ID = 'inline';
@@ -522,7 +523,7 @@ async function handleDelegateSubAgent(
 			...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
 			...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
 			...(ctx.executionCounter !== undefined
-				? { parentExecutionCounter: ctx.executionCounter }
+				? { parentExecutionCounter: withoutMessageCount(ctx.executionCounter) }
 				: {}),
 			...(ctx.runtimeContext !== undefined ? { parentRuntimeContext: ctx.runtimeContext } : {}),
 			...(ctx.parentTelemetry !== undefined ? { parentTelemetry: ctx.parentTelemetry } : {}),

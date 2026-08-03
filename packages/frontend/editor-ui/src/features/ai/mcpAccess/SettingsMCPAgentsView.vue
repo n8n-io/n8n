@@ -12,7 +12,8 @@ import type { TableOptions } from '@n8n/design-system/components/N8nDataTableSer
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { Agent } from '@/features/agents/agent.types';
@@ -137,7 +138,7 @@ const openConnectAgentsModal = () => {
 			onEnableMcpAccess: onBulkEnableAgentsMCPAccess,
 		},
 	});
-	telemetry.track('User clicked connect agents from mcp settings');
+	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CLICKED_CONNECT_AGENTS_FROM_MCP_SETTINGS, {});
 };
 
 const onBack = () => {

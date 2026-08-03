@@ -6,7 +6,7 @@ import { computed, onMounted, ref } from 'vue';
 import type { WorkflowListItem } from '@/Interface';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 defineProps<{
 	placeholder?: string;

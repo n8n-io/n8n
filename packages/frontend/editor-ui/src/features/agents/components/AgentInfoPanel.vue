@@ -7,12 +7,11 @@
 import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import shared from '../styles/agent-panel.module.scss';
@@ -130,8 +129,6 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	};
 });
 
-const isManagedCredential = computed(() => props.config?.credential === AI_GATEWAY_MANAGED_TAG);
-
 const panelTestId = computed(() => {
 	if (props.showModel && !props.showInstructions) return 'agent-model-panel';
 	if (!props.showModel && props.showInstructions) return 'agent-instructions-panel';
@@ -231,7 +228,6 @@ function onInstructionsInput(value: string) {
 				:project-id="projectId"
 				:warn-missing-credentials="true"
 				:bound-credential-id="props.config?.credential ?? null"
-				:is-managed-credential="isManagedCredential"
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"

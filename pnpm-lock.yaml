@@ -5181,9 +5181,6 @@ importers:
       parse-diff:
         specifier: ^0.11.1
         version: 0.11.1
-      pinia:
-        specifier: catalog:frontend
-        version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       reka-ui:
         specifier: ^2.5.0
         version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -5272,6 +5269,9 @@ importers:
       eslint-plugin-storybook:
         specifier: catalog:storybook
         version: 10.1.11(eslint@9.29.0(jiti@2.6.1))(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(typescript@6.0.2)
+      pinia:
+        specifier: catalog:frontend
+        version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       postcss:
         specifier: 8.5.10
         version: 8.5.10

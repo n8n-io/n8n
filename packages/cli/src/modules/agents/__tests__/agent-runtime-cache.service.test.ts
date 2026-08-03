@@ -93,6 +93,7 @@ describe('AgentRuntimeCacheService', () => {
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
 			agent,
 			expect.anything(),
+			'test',
 			undefined,
 			undefined,
 		);
@@ -123,6 +124,7 @@ describe('AgentRuntimeCacheService', () => {
 			2,
 			agent,
 			expect.anything(),
+			'test',
 			'n8n_chat',
 			undefined,
 		);
@@ -153,6 +155,7 @@ describe('AgentRuntimeCacheService', () => {
 			1,
 			agent,
 			expect.anything(),
+			'test',
 			undefined,
 			userA,
 		);
@@ -160,6 +163,7 @@ describe('AgentRuntimeCacheService', () => {
 			2,
 			agent,
 			expect.anything(),
+			'test',
 			undefined,
 			userB,
 		);
@@ -283,6 +287,7 @@ describe('AgentRuntimeCacheService', () => {
 				skills: activeVersion.skills,
 			}),
 			expect.anything(),
+			'production',
 			'slack',
 			undefined,
 		);

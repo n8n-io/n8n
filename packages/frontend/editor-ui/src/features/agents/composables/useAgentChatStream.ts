@@ -8,7 +8,7 @@ import type {
 	CancellationResumeData,
 } from '@n8n/api-types';
 import { applyForwardedChildChunk, emptyChildTrace } from '@n8n/api-types';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	cancelAgentChatRun,
