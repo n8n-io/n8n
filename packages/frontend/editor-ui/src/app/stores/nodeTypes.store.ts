@@ -9,6 +9,7 @@ import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	CREDENTIAL_ONLY_HTTP_NODE_VERSION,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	MODULE_ENABLED_NODES,
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -36,6 +37,7 @@ import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/u
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
+import { useInlineAgentsExperiment } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import type { WorkflowObjectAccessors } from '../types';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
@@ -43,7 +45,34 @@ export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	// The catalog is immutable and only ever wholesale-replaced, so skip deep
 	// reactivity to avoid proxying thousands of nested schema objects.
-	const nodeTypes = shallowRef<NodeTypesByTypeNameAndVersion>({});
+	const rawNodeTypes = shallowRef<NodeTypesByTypeNameAndVersion>({});
+
+	const { isFeatureEnabled: isInlineAgentsEnabled } = useInlineAgentsExperiment();
+
+	// Without inline agent creation the node only messages existing agents, so
+	// it keeps its pre-inline name on every surface (creator, canvas, NDV).
+	const nodeTypes = computed<NodeTypesByTypeNameAndVersion>({
+		get: () => {
+			const agentVersions = rawNodeTypes.value[MESSAGE_AN_AGENT_NODE_TYPE];
+			if (isInlineAgentsEnabled.value || !agentVersions) return rawNodeTypes.value;
+
+			const legacyName = 'Message an Agent';
+			const renamedVersions = Object.fromEntries(
+				Object.entries(agentVersions).map(([version, description]) => [
+					version,
+					{
+						...description,
+						displayName: legacyName,
+						defaults: { ...description.defaults, name: legacyName },
+					},
+				]),
+			);
+			return { ...rawNodeTypes.value, [MESSAGE_AN_AGENT_NODE_TYPE]: renamedVersions };
+		},
+		set: (value) => {
+			rawNodeTypes.value = value;
+		},
+	});
 
 	const vettedCommunityNodeTypes = shallowRef<Map<string, CommunityNodeType>>(new Map());
 
@@ -328,18 +357,20 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	// #region Methods
 	// ---------------------------------------------------------------------------
 
+	// Write through rawNodeTypes so the flag-driven rename in the `nodeTypes`
+	// getter is never persisted into the catalog.
 	const setNodeTypes = (newNodeTypes: INodeTypeDescription[] = []) => {
 		const groupedNodeTypes = groupNodeTypesByNameAndType(newNodeTypes);
-		nodeTypes.value = {
-			...nodeTypes.value,
+		rawNodeTypes.value = {
+			...rawNodeTypes.value,
 			...groupedNodeTypes,
 		};
 	};
 
 	const removeNodeTypes = (nodeTypesToRemove: INodeTypeDescription[]) => {
-		nodeTypes.value = nodeTypesToRemove.reduce(
+		rawNodeTypes.value = nodeTypesToRemove.reduce(
 			(oldNodes, newNodeType) => omit(newNodeType.name, oldNodes),
-			nodeTypes.value,
+			rawNodeTypes.value,
 		);
 	};
 
