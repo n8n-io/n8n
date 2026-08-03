@@ -254,6 +254,7 @@ describe('AgentPublishService', () => {
 			taskSnapshotRepository,
 			customToolsService,
 			runtimeCacheService,
+			chatIntegrationService,
 			agentValidationService,
 			telemetry,
 			trx,
@@ -262,6 +263,14 @@ describe('AgentPublishService', () => {
 		const configuredSkills = {
 			skill: { name: 'Skill', description: 'desc', instructions: 'Use it' },
 		};
+		const integrations = [
+			{ type: 'slack', credentialId: 'slack-1' },
+			{
+				type: 'telegram',
+				credentialId: 'telegram-1',
+				settings: { accessMode: 'private', allowedUsers: ['123'] },
+			},
+		] satisfies Agent['integrations'];
 		const agent = makeAgent({
 			schema: {
 				...schema,
@@ -270,6 +279,7 @@ describe('AgentPublishService', () => {
 				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 			},
 			skills: configuredSkills,
+			integrations,
 		});
 		const draftValidation = { status: 'valid' as const, issues: [] };
 		const task = {
@@ -313,6 +323,7 @@ describe('AgentPublishService', () => {
 		);
 		expect(agent.activeVersionId).toBe(versionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(chatIntegrationService.syncToConfig).toHaveBeenCalledWith(agent, [], integrations);
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_PUBLISHED, {
 			agent_id: agentId,
 			project_id: projectId,
@@ -323,14 +334,13 @@ describe('AgentPublishService', () => {
 	});
 
 	it('marks setup complete when publishing an agent that never passed the config-save path', async () => {
-		// Connecting a chat channel adds the first capability and publishes in the
-		// same request, so without this backstop the agent would be published
-		// while still unmarked.
+		// Explicit publish can be the first path to observe a complete setup, so
+		// the publish backstop must mark the agent before it becomes active.
 		const { service, agentRepository, telemetry } = makeService();
 		const agent = makeAgent({ integrations: [{ type: 'slack', credentialId: 'slack-cred' }] });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await service.publishAgent(agentId, projectId, user, 'channel_connect');
+		await service.publishAgent(agentId, projectId, user, 'editor');
 
 		expect(agent.setupCompletedAt).toBeInstanceOf(Date);
 		expect(telemetry.track).toHaveBeenCalledWith(
@@ -581,30 +591,6 @@ describe('AgentPublishService', () => {
 		await expect(service.getVersion(agentId, projectId, 'nope')).rejects.toThrow(
 			'Version "nope" not found for agent "agent-1"',
 		);
-	});
-
-	it('ignores other draft integrations when connecting a channel (ignoreDraftIntegrations)', async () => {
-		const { service, agentRepository, agentValidationService } = makeService();
-		const integrations = [
-			{ type: 'slack', credentialId: 'slack-1' },
-			{ type: 'telegram', credentialId: '' },
-		];
-		const agent = makeAgent({ integrations: integrations as never });
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-		await service.publishAgent(agentId, projectId, user, 'channel_connect', undefined, {
-			ignoreDraftIntegrations: true,
-		});
-
-		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
-			agent,
-			projectId,
-			expect.anything(),
-			expect.anything(),
-			'publish',
-			[{ type: 'slack', credentialId: 'slack-1' }],
-		);
-		expect(agent.integrations).toBe(integrations);
 	});
 
 	it('maps publish history rows and marks the active version', async () => {

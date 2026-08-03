@@ -4,7 +4,9 @@ import { defineTelemetryEvents } from '../define';
 
 const agentPublishSource = z
 	.enum(['editor', 'builder', 'channel_connect', 'slack_setup'])
-	.describe('Which surface triggered the publish');
+	.describe(
+		'Which surface triggered the publish. Editor and builder are current emitters; channel_connect and slack_setup are historical legacy values only.',
+	);
 
 const builderSessionIdentity = {
 	agent_id: z.string(),
@@ -88,7 +90,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_PUBLISHED: {
 		name: 'Agent published',
 		description:
-			'An agent version became the active published version, from any surface (editor Publish button, builder publish_agent tool, chat-channel connect auto-publish, or Slack app setup auto-publish). Does not fire for idempotent no-op publishes.',
+			"An explicit publish made an agent version active through the editor's Publish button or the builder's publish_agent tool. Does not fire for idempotent no-op publishes. The channel_connect and slack_setup source values are retained only for historical warehouse compatibility.",
 		properties: z.object({
 			agent_id: z.string(),
 			project_id: z.string(),
@@ -118,7 +120,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			mcp_server_count: z.number().describe('MCP servers with a URL set'),
 			vector_store_count: z.number(),
 			task_count: z.number(),
-			trigger_count: z.number().describe('Connected chat integrations; draft channels excluded'),
+			trigger_count: z.number().describe('Configured chat integrations; draft channels excluded'),
 			status: agentStatus,
 		}),
 	},
@@ -272,10 +274,10 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ADDED_TRIGGER: {
 		name: 'Builder added trigger to agent',
 		description:
-			'The Instance AI builder connected a chat channel to the target agent via the configure_channel tool, mirroring the frontend "User added trigger to agent" event.',
+			'The Instance AI builder configured and persisted a chat channel for the target agent through the configure_channel tool, mirroring the frontend "User added trigger to agent" event.',
 		properties: z.object({
 			...builderSessionIdentity,
-			trigger_type: z.string().describe('Chat integration type that was connected'),
+			trigger_type: z.string().describe('Chat integration type that was configured and persisted'),
 		}),
 	},
 	BUILDER_ASKED_QUESTIONS: {
@@ -382,11 +384,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	},
 	USER_ADDED_TRIGGER_TO_AGENT: {
 		name: 'User added trigger to agent',
-		description: 'The user connected a chat trigger to an agent from the builder.',
+		description: 'The user configured and persisted a chat trigger from the agent builder.',
 		properties: z.object({
 			agent_id: z.string(),
 			trigger_type: z.string(),
-			triggers: z.array(z.string()).describe('Connected trigger types after the change'),
+			triggers: z.array(z.string()).describe('Configured trigger types after the change'),
 			config_version: z.string(),
 			status: agentStatus,
 			session_id: sessionId,

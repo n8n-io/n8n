@@ -3,6 +3,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	CONFIGURE_CHANNEL_TOOL_NAME,
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
@@ -32,7 +33,6 @@ import type { AgentIntegrationPersistenceService } from '../agent-integration-pe
 import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
-import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
@@ -80,11 +80,6 @@ function makeService() {
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
 	const telemetry = mock<Telemetry>();
-	const agentValidationService = mock<AgentValidationService>();
-	agentValidationService.validateAgentConfiguration.mockResolvedValue({
-		status: 'valid',
-		issues: [],
-	});
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -123,7 +118,6 @@ function makeService() {
 		mock<SsrfProtectionService>(),
 		mock<FreeAiCreditsService>(),
 		telemetry,
-		agentValidationService,
 	);
 
 	return {
@@ -133,7 +127,6 @@ function makeService() {
 		attachableWorkflowsService,
 		agentTaskService,
 		agentPublishService,
-		agentValidationService,
 		nodeTypes,
 		outboundHttp,
 		telemetry,
@@ -267,6 +260,18 @@ describe('AgentsBuilderToolsService', () => {
 				.getTools(agentId, projectId, credentialProvider, user)
 				.json.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.FINISH_SETUP);
+		});
+
+		it('configure_channel approval carries configured, configMutated, and agentId', async () => {
+			const { service } = makeService();
+			const tool = getJsonTool(service, CONFIGURE_CHANNEL_TOOL_NAME);
+
+			const result = await tool.handler!(
+				{ integrationType: 'slack' },
+				{ ...ctx, resumeData: { approved: true } },
+			);
+
+			expect(result).toEqual({ configured: true, configMutated: true, agentId });
 		});
 
 		it('registers publish and unpublish tools in the builder toolset', () => {

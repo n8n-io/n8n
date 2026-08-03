@@ -10,9 +10,15 @@ const agentTelemetryMock = vi.hoisted(() => ({
 	trackRemovedTasks: vi.fn(),
 }));
 
+const integrationStatusCacheMock = vi.hoisted(() => ({
+	syncAgentIntegrationStatusCache: vi.fn(),
+}));
+
 vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => agentTelemetryMock,
 }));
+
+vi.mock('../composables/useAgentIntegrationStatus', () => integrationStatusCacheMock);
 
 function configWithTasks(...taskIds: string[]): AgentJsonConfig {
 	return {
@@ -237,5 +243,52 @@ describe('useAgentBuilderTelemetry', () => {
 			status: 'draft',
 		});
 		expect(agentTelemetryMock.trackRemovedTasks).not.toHaveBeenCalled();
+	});
+
+	it('seeds complete draft integrations as configured without caching empty credentials', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Agent One',
+			model: 'gpt-4',
+			instructions: 'Help users.',
+			integrations: [
+				{ type: 'slack', credentialId: 'cred-slack' },
+				{ type: 'telegram', credentialId: '' },
+			],
+		};
+		const { telemetry } = makeTelemetryDeps(config);
+
+		await expect(telemetry.fetchInitialTriggersBaseline(['slack', 'telegram'])).resolves.toEqual([
+			'slack',
+			'telegram',
+		]);
+
+		expect(integrationStatusCacheMock.syncAgentIntegrationStatusCache).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			['slack', 'telegram'],
+			[{ type: 'slack', credentialId: 'cred-slack' }],
+			'configured',
+		);
+	});
+
+	it('seeds integrations on a published agent as connected', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Agent One',
+			model: 'gpt-4',
+			instructions: 'Help users.',
+			integrations: [{ type: 'linear', credentialId: 'cred-linear' }],
+		};
+		const { deps, telemetry } = makeTelemetryDeps(config);
+		deps.agent.value = makeAgent({ activeVersionId: 'active-v1' });
+
+		await telemetry.fetchInitialTriggersBaseline(['linear']);
+
+		expect(integrationStatusCacheMock.syncAgentIntegrationStatusCache).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			['linear'],
+			[{ type: 'linear', credentialId: 'cred-linear' }],
+			'connected',
+		);
 	});
 });

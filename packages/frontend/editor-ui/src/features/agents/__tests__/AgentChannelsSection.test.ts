@@ -42,7 +42,6 @@ function mountSection(simpleChannelSetup?: boolean) {
 			connectedTriggers: [],
 			projectId: 'project-id',
 			agentId: 'agent-id',
-			isPublished: false,
 			simpleChannelSetup,
 		},
 		global: {
@@ -55,6 +54,17 @@ function mountSection(simpleChannelSetup?: boolean) {
 }
 
 describe('AgentChannelsSection', () => {
+	it('does not forward agent lifecycle state to channel setup', async () => {
+		const wrapper = mountSection();
+
+		await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+		await flushPromises();
+
+		const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+		expect(modal.attributes()).not.toHaveProperty('is-published');
+		expect(modal.attributes()).not.toHaveProperty('connected-channels');
+	});
+
 	describe('simpleChannelSetup', () => {
 		it('does not force simple setup on the channel modal by default', async () => {
 			const wrapper = mountSection();

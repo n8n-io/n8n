@@ -1,11 +1,16 @@
 import { ref, type Ref } from 'vue';
-import type { AgentIntegrationStatusEntry, AgentIntegrationSettings } from '@n8n/api-types';
+import type {
+	AgentIntegrationStatusEntry,
+	AgentIntegrationStatusResponse,
+	AgentIntegrationSettings,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { connectIntegration, disconnectIntegration, getIntegrationStatus } from './useAgentApi';
 
-type Status = 'connected' | 'disconnected' | 'unknown';
+type ConfirmedStatus = AgentIntegrationStatusResponse['status'];
+type Status = ConfirmedStatus | 'unknown';
 
 interface AgentIntegrationStatusState {
 	statuses: Ref<Record<string, Status>>;
@@ -20,7 +25,7 @@ interface AgentIntegrationStatusState {
 /**
  * Module-level cache keyed by `${projectId}:${agentId}` so every caller
  * (Triggers panel, Add-Trigger modal, future surfaces) sees the same
- * reactive state. When one caller connects/disconnects an integration, the
+ * reactive state. When one caller configures/disconnects an integration, the
  * other renders automatically — no events, no prop-drilling.
  */
 const cache = new Map<string, AgentIntegrationStatusState>();
@@ -52,6 +57,7 @@ function applyStatus(
 	state: AgentIntegrationStatusState,
 	integrationTypes: readonly string[],
 	integrations: AgentIntegrationStatusEntry[],
+	status: ConfirmedStatus,
 ): void {
 	for (const type of integrationTypes) {
 		state.statuses.value[type] = 'disconnected';
@@ -59,7 +65,7 @@ function applyStatus(
 		state.integrationSettings.value[type] = undefined;
 	}
 	for (const integration of integrations) {
-		state.statuses.value[integration.type] = 'connected';
+		state.statuses.value[integration.type] = status;
 		state.connectedCredentials.value[integration.type] =
 			typeof integration.credentialId === 'string' ? integration.credentialId : '';
 		state.integrationSettings.value[integration.type] = integration.settings;
@@ -71,8 +77,9 @@ export function syncAgentIntegrationStatusCache(
 	agentId: string,
 	integrationTypes: readonly string[],
 	integrations: AgentIntegrationStatusEntry[],
+	status: ConfirmedStatus,
 ): void {
-	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations);
+	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations, status);
 }
 
 export function useAgentIntegrationStatus(projectId: string, agentId: string) {
@@ -89,13 +96,13 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		state.fetchInFlight = (async () => {
 			try {
 				const result = await getIntegrationStatus(rootStore.restApiContext, projectId, agentId);
-				applyStatus(state, integrationTypes, result.integrations ?? []);
+				applyStatus(state, integrationTypes, result.integrations ?? [], result.status);
 			} catch {
 				// Mark only types we don't already have a confirmed answer for as
 				// `unknown` — a transient network/API failure shouldn't claim that
-				// a previously-connected integration is now disconnected.
+				// a confirmed configured or connected integration is now disconnected.
 				for (const type of integrationTypes) {
-					if (state.statuses.value[type] !== 'connected') {
+					if (!['configured', 'connected'].includes(state.statuses.value[type])) {
 						state.statuses.value[type] = 'unknown';
 					}
 				}
@@ -110,7 +117,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		type: string,
 		credId: string,
 		settings?: AgentIntegrationSettings,
-	): Promise<{ status: string; agent?: Awaited<ReturnType<typeof connectIntegration>>['agent'] }> {
+	): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> {
 		state.loadingMap.value[type] = true;
 		state.errorMessages.value[type] = '';
 		state.errorIsConflict.value[type] = false;
@@ -125,7 +132,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			);
 			// Reflect the change in the shared reactive state immediately so the
 			// other consumer re-renders without waiting for a round-trip refetch.
-			state.statuses.value[type] = 'connected';
+			state.statuses.value[type] = result.status;
 			state.connectedCredentials.value[type] = credId;
 			state.integrationSettings.value[type] = settings;
 			return result;
@@ -160,6 +167,10 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		return state.statuses.value[type] === 'connected';
 	}
 
+	function isConfigured(type: string): boolean {
+		return ['configured', 'connected'].includes(state.statuses.value[type]);
+	}
+
 	return {
 		statuses: state.statuses,
 		connectedCredentials: state.connectedCredentials,
@@ -171,5 +182,6 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		connect,
 		disconnect,
 		isConnected,
+		isConfigured,
 	};
 }

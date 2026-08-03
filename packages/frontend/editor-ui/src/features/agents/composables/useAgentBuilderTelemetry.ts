@@ -1,6 +1,10 @@
 import { ref, type Ref } from 'vue';
 import isEqual from 'lodash/isEqual';
-import { AI_GATEWAY_MANAGED_TAG, type AgentIntegrationStatusEntry } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	isDraftIntegration,
+	type AgentIntegrationStatusEntry,
+} from '@n8n/api-types';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
@@ -80,9 +84,9 @@ function deriveChangedParts(
 function integrationStatusEntriesFromConfig(
 	config: AgentJsonConfig | null,
 	knownTriggerTypes: readonly string[],
-): AgentIntegrationStatusEntry[] {
+): Array<AgentIntegrationStatusEntry & { credentialId: string }> {
 	const knownTypes = new Set(knownTriggerTypes);
-	const entries: AgentIntegrationStatusEntry[] = [];
+	const entries: Array<AgentIntegrationStatusEntry & { credentialId: string }> = [];
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
@@ -102,7 +106,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	const pendingEditedConfigParts = new Set<AgentConfigPart>();
 
 	// Baseline used to detect real trigger changes. The integrations panel emits
-	// its current connected list whenever it runs `fetchStatus()`, which includes
+	// its current configured list whenever it runs `fetchStatus()`, which includes
 	// the harmless panel-mount refresh. We only want to fire `User edited agent
 	// config` (part: 'triggers') when the list actually differs.
 	const triggersBaseline = ref<string[]>([]);
@@ -297,7 +301,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	}
 
 	/**
-	 * Eagerly derive connected trigger types so telemetry fingerprints are
+	 * Eagerly derive configured trigger types so telemetry fingerprints are
 	 * accurate even if the user never opens the Triggers section of the
 	 * settings sidebar. Integrations are already part of the fetched agent
 	 * config, so this does not need a separate integration-status request.
@@ -309,15 +313,19 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			deps.localConfig.value,
 			knownTriggerTypes,
 		);
-		const connected = integrations.map((integration) => integration.type).sort();
+		const configured = integrations.map((integration) => integration.type).sort();
+		const configuredIntegrations = integrations.filter(
+			(integration) => !isDraftIntegration(integration),
+		);
 		syncAgentIntegrationStatusCache(
 			deps.projectId.value,
 			deps.agentId.value,
 			knownTriggerTypes,
-			integrations,
+			configuredIntegrations,
+			deps.agent.value?.activeVersionId ? 'connected' : 'configured',
 		);
-		triggersBaseline.value = connected;
-		return connected;
+		triggersBaseline.value = configured;
+		return configured;
 	}
 
 	/** Reset all per-agent telemetry state when switching agents. */

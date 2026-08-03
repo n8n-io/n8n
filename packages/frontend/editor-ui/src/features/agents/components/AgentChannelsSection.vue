@@ -15,7 +15,6 @@ const props = withDefaults(
 		disabled?: boolean;
 		projectId: string;
 		agentId: string;
-		isPublished: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		simpleChannelSetup?: boolean;
 	}>(),
@@ -213,8 +212,6 @@ const remainingChannelOptionLabels = computed(() => {
 			v-model:view="channelModalView"
 			:agent-id="agentId"
 			:project-id="projectId"
-			:connected-channels="connectedTriggers"
-			:is-published="isPublished"
 			:simple-setup="simpleChannelSetup"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"

@@ -1,6 +1,5 @@
 import {
 	type AgentConfigValidationResponse,
-	isDraftIntegration,
 	type AgentJsonConfig,
 	type AgentSkill,
 	type AgentVersionListItemDto,
@@ -35,18 +34,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 
-export type AgentPublishSource = 'editor' | 'builder' | 'channel_connect' | 'slack_setup';
-
-export interface PublishAgentOptions {
-	syncIntegrations?: boolean;
-	/**
-	 * Validate as if not-yet-connected draft integrations (`credentialId: ''`)
-	 * didn't exist. Connect-time publishes (connecting one of several
-	 * drafted channels) pass this so another channel's still-unresolved
-	 * draft doesn't block publishing the one currently being connected.
-	 */
-	ignoreDraftIntegrations?: boolean;
-}
+export type AgentPublishSource = 'editor' | 'builder';
 
 export type ValidAgentConfigValidationResponse = AgentConfigValidationResponse & {
 	status: 'valid';
@@ -97,7 +85,6 @@ export class AgentPublishService {
 		user: User,
 		source: AgentPublishSource,
 		versionId?: string,
-		options: PublishAgentOptions = {},
 	): Promise<PublishAgentResult> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -127,18 +114,10 @@ export class AgentPublishService {
 					(await this.agentTaskRepository.findByAgentId(agentId)).map((task) => [task.id, task]),
 				);
 
-		const validation = await this.assertPublishable(
-			agent,
-			projectId,
-			user,
-			tasks,
-			targetHistory,
-			options.ignoreDraftIntegrations,
-		);
+		const validation = await this.assertPublishable(agent, projectId, user, tasks, targetHistory);
 
-		// Backstop: a channel connect publishes the agent in the same request that
-		// adds its first capability, bypassing the config-save path. Marking here
-		// keeps "setup completed" a superset of "published".
+		// Backstop: explicit publish can be the first path to observe a complete
+		// setup. Marking here keeps "setup completed" a superset of "published".
 		const emitSetupCompleted = this.setupCompletionService.recordPublishedSetupComplete(
 			agent,
 			projectId,
@@ -186,7 +165,7 @@ export class AgentPublishService {
 		await emitSetupCompleted?.();
 
 		const credentialIntegrations = agent.integrations ?? [];
-		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
+		if (credentialIntegrations.length > 0) {
 			await Container.get(ChatIntegrationService)
 				.syncToConfig(agent, [], credentialIntegrations)
 				.catch((error) =>
@@ -223,7 +202,6 @@ export class AgentPublishService {
 		user: User,
 		tasks: ReadonlyMap<string, AgentTask>,
 		targetHistory?: AgentHistory,
-		ignoreDraftIntegrations?: boolean,
 	): Promise<ValidAgentConfigValidationResponse> {
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -231,34 +209,20 @@ export class AgentPublishService {
 			user,
 		);
 
-		const baseIntegrations = agent.integrations ?? [];
-		const integrations = ignoreDraftIntegrations
-			? baseIntegrations.filter((integration) => !isDraftIntegration(integration))
-			: baseIntegrations;
-
 		const validation = targetHistory
 			? await this.agentValidationService.validateAgentHistoryConfiguration(
 					agent.id,
 					projectId,
 					targetHistory,
-					integrations,
+					agent.integrations ?? [],
 					credentialProvider,
 				)
-			: ignoreDraftIntegrations
-				? await this.agentValidationService.validateAgentEntityConfiguration(
-						agent,
-						projectId,
-						tasks,
-						credentialProvider,
-						'publish',
-						integrations,
-					)
-				: await this.agentValidationService.validateAgentEntityConfiguration(
-						agent,
-						projectId,
-						tasks,
-						credentialProvider,
-					);
+			: await this.agentValidationService.validateAgentEntityConfiguration(
+					agent,
+					projectId,
+					tasks,
+					credentialProvider,
+				);
 
 		requireValidValidation(validation);
 		return validation;

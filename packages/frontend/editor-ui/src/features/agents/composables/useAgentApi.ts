@@ -179,8 +179,8 @@ export const connectIntegration = async (
 	type: string,
 	credentialId: string,
 	settings?: AgentIntegrationSettings,
-): Promise<{ status: string; agent?: AgentResource }> => {
-	return await makeRestApiRequest(
+): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> => {
+	return await makeRestApiRequest<Pick<AgentIntegrationStatusResponse, 'status'>>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,

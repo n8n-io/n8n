@@ -48,7 +48,6 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
-import { AgentValidationService } from '../agent-validation.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
@@ -215,7 +214,6 @@ export class AgentsBuilderToolsService {
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
-		private readonly agentValidationService: AgentValidationService,
 	) {}
 
 	/**
@@ -234,7 +232,7 @@ export class AgentsBuilderToolsService {
 					typeof result === 'object' &&
 					result !== null &&
 					(('ok' in result && result.ok === true) ||
-						('connected' in result && result.connected === true) ||
+						('configured' in result && result.configured === true) ||
 						('completed' in result && result.completed === true))
 				) {
 					return { ...result, configMutated: true, agentId };
@@ -721,22 +719,6 @@ export class AgentsBuilderToolsService {
 						this.agentIntegrationPersistenceService
 							.listChatIntegrations()
 							.map((integration) => integration.type),
-					getPublishBlockers: async () => {
-						// Connecting a channel auto-publishes the agent, so gate it on the
-						// same publish validation. Integration issues are excluded: the
-						// draft channel entry itself (`credentialId: ""`) always reports
-						// missing_credential, and that's exactly what this channel phase
-						// is about to resolve.
-						const { issues } = await this.agentValidationService.validateAgentConfiguration(
-							agentId,
-							projectId,
-							credentialProvider,
-							'publish',
-						);
-						return issues
-							.filter((issue) => !issue.path.startsWith('integrations.'))
-							.map((issue) => ({ path: issue.path, code: issue.code }));
-					},
 				}),
 				agentId,
 			),

@@ -1,7 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { describe, expect, it, vi } from 'vitest';
 
+import AgentChannelLinearSetup from '../components/AgentChannelLinearSetup.vue';
 import AgentChannelSlackSetup from '../components/AgentChannelSlackSetup.vue';
+import AgentChannelTelegramSetup from '../components/AgentChannelTelegramSetup.vue';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -54,5 +56,16 @@ describe('AgentChannelSlackSetup', () => {
 		});
 
 		expect(getByTestId('slack-manual-configuration')).toBeInTheDocument();
+	});
+
+	it('does not expose publishing state on channel setup components', () => {
+		for (const component of [
+			AgentChannelSlackSetup,
+			AgentChannelLinearSetup,
+			AgentChannelTelegramSetup,
+		]) {
+			const props = (component as unknown as { props: Record<string, unknown> }).props;
+			expect(props).not.toHaveProperty('isPublished');
+		}
 	});
 });

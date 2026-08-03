@@ -16,8 +16,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
-import { AgentPublishService } from './agent-publish.service';
-import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
@@ -28,13 +26,11 @@ import { AgentRepository } from './repositories/agent.repository';
 export class AgentIntegrationsController {
 	constructor(
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly agentPublishService: AgentPublishService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentRepository: AgentRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly slackAppSetupService: SlackAppSetupService,
-		private readonly agentRunnableStateService: AgentRunnableStateService,
 	) {}
 
 	private async validateIntegration(dto: unknown) {
@@ -75,29 +71,17 @@ export class AgentIntegrationsController {
 			);
 		}
 
-		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
-			broadcast: false,
-		});
-		const { agent: publishedAgent, draftValidation } = await this.agentPublishService.publishAgent(
-			agentId,
-			agent.projectId,
-			req.user,
-			'channel_connect',
-			undefined,
-			{ syncIntegrations: false, ignoreDraftIntegrations: true },
+		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
+			agent,
+			integration,
+			{ broadcast: false, user: req.user },
 		);
+		if (savedAgent.activeVersionId === null) return { status: 'configured' };
+
 		await this.chatIntegrationService.connect(agentId, integration, agent.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
 
-		return {
-			status: 'connected',
-			agent: await this.agentRunnableStateService.addRunnableState(
-				publishedAgent,
-				agent.projectId,
-				req.user,
-				draftValidation,
-			),
-		};
+		return { status: 'connected' };
 	}
 
 	@Post('/:agentId/integrations/slack/app')
@@ -229,7 +213,12 @@ export class AgentIntegrationsController {
 				...('settings' in i ? { settings: i.settings } : {}),
 			}));
 		return {
-			status: chatIntegrations.length > 0 ? 'connected' : 'disconnected',
+			status:
+				chatIntegrations.length === 0
+					? 'disconnected'
+					: agent.activeVersionId === null
+						? 'configured'
+						: 'connected',
 			integrations: chatIntegrations,
 		};
 	}

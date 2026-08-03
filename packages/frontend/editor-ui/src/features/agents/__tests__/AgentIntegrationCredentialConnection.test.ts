@@ -70,6 +70,12 @@ function mountComponent(props = {}) {
 }
 
 describe('AgentIntegrationCredentialConnection', () => {
+	it('does not expose agent publishing state', () => {
+		const wrapper = mountComponent();
+
+		expect(wrapper.props()).not.toHaveProperty('publishing');
+	});
+
 	it('renders credential selection actions and emits parent events', async () => {
 		const wrapper = mountComponent();
 

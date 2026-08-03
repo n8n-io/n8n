@@ -34,6 +34,16 @@ describe('getMcpInstructions', () => {
 		expect(instructions).not.toContain('n8n credits');
 	});
 
+	test('keeps channel configuration separate from explicit Agent publishing', () => {
+		const instructions = getMcpInstructions({
+			isBuilderEnabled: true,
+			isAgentsEnabled: true,
+		});
+
+		expect(instructions).toContain('Configuring a chat integration never publishes the Agent');
+		expect(instructions).not.toContain('connecting a chat integration also publishes');
+	});
+
 	describe('node groups pointer', () => {
 		describe('when canvasGroupsEnabled is true', () => {
 			test('points the client to the groups reference', () => {

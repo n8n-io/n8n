@@ -196,6 +196,17 @@ describe('McpAgentToolsService', () => {
 			expect(new Set(tools.keys())).toEqual(new Set(AGENT_TOOLS));
 		});
 
+		it('describes integration configuration without claiming it publishes the Agent', async () => {
+			expect(tools.get('update_agent_integration')?.config.description).toContain(
+				'Configuration never publishes the Agent',
+			);
+
+			const result = await callTool('get_agent_builder_reference', {});
+			expect(result.structuredContent.guide).toContain(
+				'A configured channel stays inactive until explicit publication unless the Agent already has an active version.',
+			);
+		});
+
 		const registerFiltered = (allowedToolNames?: Set<string>) => {
 			const filteredTools = new Map<string, RegisteredTool>();
 			const resource = vi.fn();
@@ -1342,29 +1353,22 @@ describe('McpAgentToolsService', () => {
 				displayLabel: 'Slack',
 			} as never);
 			integrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
-				agentEntity({ integrations: [{ type: 'slack', credentialId: 'cred-1' }] }),
+				agentEntity({
+					activeVersionId: 'v1',
+					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+				}),
 			);
-			agentPublishService.publishAgent.mockResolvedValue({
-				agent: agentEntity({ activeVersionId: 'v2' }),
-			});
 		});
 
-		it('persists the integration, publishes the draft, and connects the channel', async () => {
+		it('persists and connects the channel without publishing for a published Agent', async () => {
 			const result = await callTool('update_agent_integration', input);
 
 			expect(integrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'agent-1' }),
 				{ type: 'slack', credentialId: 'cred-1' },
-				{ broadcast: false },
+				{ broadcast: false, user },
 			);
-			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
-				'agent-1',
-				'project-1',
-				user,
-				'channel_connect',
-				undefined,
-				{ syncIntegrations: false, ignoreDraftIntegrations: true },
-			);
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 			expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 				'agent-1',
 				{ type: 'slack', credentialId: 'cred-1' },
@@ -1375,26 +1379,68 @@ describe('McpAgentToolsService', () => {
 				{ type: 'slack', credentialId: 'cred-1' },
 				'connect',
 			);
-			expect(result.structuredContent).toMatchObject({
+			expect(result.structuredContent).toEqual({
 				ok: true,
+				agentId: 'agent-1',
+				integration: { type: 'slack', credentialId: 'cred-1' },
+				configured: true,
 				connected: true,
 				published: true,
-				activeVersionId: 'v2',
+				activeVersionId: 'v1',
+				configHash: getAgentConfigHash({
+					...baseConfig,
+					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+				}),
 			});
 		});
 
-		it('denies connect without the agent:publish scope even when update is allowed', async () => {
+		it('persists without publishing, connecting, or broadcasting for an unpublished Agent', async () => {
+			integrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
+				agentEntity({
+					activeVersionId: null,
+					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+				}),
+			);
+
+			const result = await callTool('update_agent_integration', input);
+
+			expect(integrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'agent-1' }),
+				{ type: 'slack', credentialId: 'cred-1' },
+				{ broadcast: false, user },
+			);
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+			expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				agentId: 'agent-1',
+				integration: { type: 'slack', credentialId: 'cred-1' },
+				configured: true,
+				connected: false,
+				published: false,
+				activeVersionId: null,
+				configHash: getAgentConfigHash({
+					...baseConfig,
+					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+				}),
+			});
+		});
+
+		it('connects with agent:update when agent:publish would be denied', async () => {
 			userHasScopesMock.mockImplementation(
 				async (_user: unknown, scopes: string[]) => !scopes.includes('agent:publish'),
 			);
 
 			const result = await callTool('update_agent_integration', input);
 
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:publish'], false, {
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:update'], false, {
 				projectId: 'project-1',
 			});
-			expect(result.isError).toBe(true);
-			expect(integrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+			expect(userHasScopesMock).not.toHaveBeenCalledWith(user, ['agent:publish'], false, {
+				projectId: 'project-1',
+			});
+			expect(result.structuredContent).toMatchObject({ ok: true, connected: true });
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 

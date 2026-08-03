@@ -524,7 +524,7 @@ function resetViewMocks() {
 	updateConfigMock.mockReset();
 	updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 	getAgentMock.mockResolvedValue(makeAgentResponse());
-	getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
 	listAgentFilesMock.mockReset();

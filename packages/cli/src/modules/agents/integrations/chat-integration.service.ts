@@ -1,8 +1,4 @@
-import {
-	AgentIntegrationConfig,
-	type AgentIntegrationSettings,
-	type AgentIntegrationStatusResponse,
-} from '@n8n/api-types';
+import { AgentIntegrationConfig, type AgentIntegrationSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
@@ -391,9 +387,10 @@ export class ChatIntegrationService {
 	 * Disconnects of removed integrations always run (so unpublishing-then-
 	 * editing works). Connects of newly-added integrations are gated on
 	 * `agent.activeVersionId` — matching the controller's connect endpoint,
-	 * which rejects unpublished agents, and `reconnectAll`, which only restores
-	 * published agents. The integration entry stays persisted on the entity so
-	 * it can be picked up later by `publishAgent` calling this method again.
+	 * which persists configuration but skips runtime connection for unpublished
+	 * agents, and `reconnectAll`, which only restores published agents. The
+	 * integration entry stays persisted on the entity so it can be picked up
+	 * later by `publishAgent` calling this method again.
 	 *
 	 * Connection failures are logged at the call site — this method propagates
 	 * errors from disconnect but swallows connect errors per integration so a
@@ -439,27 +436,6 @@ export class ChatIntegrationService {
 				});
 			}
 		}
-	}
-
-	/**
-	 * Return connection status and count for an agent.
-	 */
-	getStatus(agentId: string): AgentIntegrationStatusResponse & { connections: number } {
-		const integrations: AgentIntegrationStatusResponse['integrations'] = [];
-		for (const k of this.connections.keys()) {
-			if (k.startsWith(`${agentId}:`)) {
-				// Key format: agentId:type:credentialId
-				const parts = k.split(':');
-				if (parts.length >= 3) {
-					integrations.push({ type: parts[1], credentialId: parts.slice(2).join(':') });
-				}
-			}
-		}
-		return {
-			status: integrations.length > 0 ? 'connected' : 'disconnected',
-			connections: integrations.length,
-			integrations,
-		};
 	}
 
 	/**

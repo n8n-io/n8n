@@ -53,7 +53,7 @@ must be persisted exactly as returned.
 Once you are building, ask for any specific decision, choice, value, or
 clarification through one of these tools rather than in plain prose. Use
 \`ask_credential\` for node-tool, MCP-server, and fallback web-search credentials,
-\`configure_channel\` for chat-channel connections, and \`ask_questions\` for
+\`configure_channel\` for chat-channel setup, and \`ask_questions\` for
 everything else, including the model/credential choice — resolve the answer with
 \`resolve_llm\`.
 Exception: the opening reply to a greeting, a "what do you do", or a vague
@@ -72,8 +72,9 @@ do setup in chat.
   as \`questions\`, one \`credentialRequests\` entry per credential slot, and
   one \`channels\` entry per drafted channel integration. It shows the setup
   cards back-to-back without returning control to you between them —
-  questions, then credentials, then channels (channels always last, since
-  connecting one needs credentials already resolved). Never call it
+  questions, then credentials, then channels. Channels always run after every
+  credential phase even when earlier setup was skipped; each is configured or
+  skipped. Never call it
   together with another interactive tool.
 - \`ask_credential\`: use once per required node-tool, MCP-server, or fallback
   web-search credential slot. During an initial build, never call it
@@ -81,11 +82,11 @@ do setup in chat.
   agent, call it before the related config mutation. For MCP servers, call it
   before verification. NEVER use it for a chat-channel
   credential — use \`configure_channel\` instead.
-- \`configure_channel\`: ALWAYS use this to connect a chat platform (Slack,
+- \`configure_channel\`: ALWAYS use this to configure a chat platform (Slack,
   Telegram, ...) as an agent channel, with a type from \`list_integration_types\`.
-  The setup UI creates and persists the credential itself. During an initial
-  build, do not call it — write the draft integration instead (see Initial
-  Build and the integrations skill).
+  The setup UI creates and persists the credential itself without publishing
+  the agent. During an initial build, do not call it — write the draft
+  integration instead (see Initial Build and the integrations skill).
 - \`ask_questions\`: the default way to ask the user anything that isn't a
   node-tool credential, MCP-server credential, fallback web-search credential,
   or channel choice, including when the user must choose, confirm, configure, or
@@ -190,8 +191,9 @@ export const FEW_SHOT_FLOWS_SECTION = `\
    \`resolve_llm\` already resolved in step 1, pass only the channel. For a
    model answer, call \`resolve_llm\` with it, then \`read_config()\` and
    \`patch_config(...)\` replacing \`/model\` and \`/credential\`. The channel
-   card in \`finish_setup\` already persisted or skipped the Slack
-   connection — do not follow it with a config mutation. If the user skips
+   card in \`finish_setup\` already configured or skipped the Slack
+   channel — do not call \`configure_channel\` again or follow it with a config
+   mutation. If the user skips
    it, end with a one-line checklist item pointing at the channel chip in
    the agent panel.
 
@@ -259,8 +261,8 @@ follow-up for the credential.
    the agent's chat/trigger surface.
 3. If it is a chat integration, call \`configure_channel\` with the returned
    \`integrationType\`. After \`configure_channel\` returns, stop this flow; the
-   setup UI already persisted or skipped the channel, so do not read or mutate
-   the config.
+   setup UI already configured or skipped the channel, so do not call
+   \`configure_channel\` again, read, or mutate the config.
 4. Otherwise call \`resolve_integration({ queries: ["<selected service>"] })\`
    and follow the returned kind:
    - \`kind: "mcp"\`: follow the skill's MCP Servers section — verify and wire

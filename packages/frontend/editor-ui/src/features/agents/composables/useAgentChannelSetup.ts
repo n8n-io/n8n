@@ -27,7 +27,7 @@ type UseAgentChannelSetupOptions = {
 	currentIntegration: MaybeRefOrGetter<ChatIntegrationDescriptor | null | undefined>;
 	connectedCredentials: MaybeRefOrGetter<Record<string, string>>;
 	fetchStatus: (integrationTypes: string[]) => Promise<void>;
-	isIntegrationConnected: (type: string) => boolean;
+	isIntegrationConfigured: (type: string) => boolean;
 };
 
 export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
@@ -213,7 +213,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 				activePoll = (async () => {
 					try {
 						await options.fetchStatus(['slack']);
-						if (options.isIntegrationConnected('slack')) settle(true);
+						if (options.isIntegrationConfigured('slack')) settle(true);
 					} finally {
 						activePoll = null;
 					}
@@ -246,7 +246,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 
 	async function setupSlackApp(
 		appConfigurationToken: string,
-		onConnected: () => void | Promise<void>,
+		onConfigured: () => void | Promise<void>,
 	): Promise<boolean> {
 		const { installUrl } = await createSlackAgentApp(
 			rootStore.restApiContext,
@@ -255,13 +255,13 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 			appConfigurationToken,
 		);
 		const popup = openSlackAppAuthorizationPopup(installUrl);
-		const connected = await waitForSlackAppSetupCompletion(popup);
-		if (!connected) {
+		const configured = await waitForSlackAppSetupCompletion(popup);
+		if (!configured) {
 			throw new Error('Slack app installation was not completed');
 		}
 
 		await options.fetchStatus(['slack']);
-		await onConnected();
+		await onConfigured();
 		return true;
 	}
 
