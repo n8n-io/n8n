@@ -1,0 +1,34 @@
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_02bcb0e9f9d95d::t_e36bd9d5060c07 21-22
+  s_02bcb0e9f9d95d::t_ec705a43509f35 74
+  s_02bcb0e9f9d95d::t_b81bc1baa81d57 3
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_02bcb0e9f9d95d::t_ebf12c71ba4cfe 121-126
+  s_02bcb0e9f9d95d::t_8f58ad5cd24bc8 28-39
+  s_02bcb0e9f9d95d::t_d55c50eed250de 94-98
+  s_02bcb0e9f9d95d::t_23b47250fbc531 9,23,80,116-117,129-134
+packages/cli/test/integration/commands/start.cmd.test.ts
+  s_02bcb0e9f9d95d::t_5ee8c36d6eb801 94
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_02bcb0e9f9d95d::t_0296b137a61daf 76,91
+  s_02bcb0e9f9d95d::t_1d0cc846067652 179,277,282,284-298
+  s_02bcb0e9f9d95d::t_96903d68378e93 43
+  s_02bcb0e9f9d95d::t_41da5dad201099 116,120,122,127-128,130,132-133,135,139,141-142,144,147-178
+  s_02bcb0e9f9d95d::t_196628adea4383 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "eb5816c95da624457526f8fb2f264377fb20546b",
+  "prompts": {},
+  "sessions": {
+    "s_02bcb0e9f9d95d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b0c3c1b-ecd2-46d6-b426-20dc6754a1da",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
