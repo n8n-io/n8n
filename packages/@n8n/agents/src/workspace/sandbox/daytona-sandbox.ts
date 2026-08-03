@@ -141,11 +141,6 @@ function toShellCommand(command: string, args: string[]): string {
 	return [command, ...args.map((arg) => shellEscape(arg))].join(' ');
 }
 
-function isDaytonaAuthError(error: unknown): boolean {
-	const { DaytonaError } = loadDaytona();
-	return error instanceof DaytonaError && (error.statusCode === 401 || error.statusCode === 403);
-}
-
 function isSandboxGone(error: unknown): boolean {
 	const { DaytonaNotFoundError } = loadDaytona();
 	return error instanceof DaytonaNotFoundError;
@@ -157,14 +152,6 @@ function isSandboxNameConflictError(error: unknown): boolean {
 	if (error instanceof DaytonaError && error.statusCode === 409) return true;
 	return /sandbox with name .+ already exists/i.test(error.message);
 }
-
-function isTransientCreateError(error: unknown): boolean {
-	const { DaytonaConnectionError, DaytonaError, DaytonaTimeoutError } = loadDaytona();
-	if (error instanceof DaytonaConnectionError || error instanceof DaytonaTimeoutError) return true;
-	if (!(error instanceof DaytonaError) || error.statusCode === undefined) return false;
-	return error.statusCode >= 500 || error.statusCode === 408 || error.statusCode === 429;
-}
-
 export class DaytonaSandbox extends BaseSandbox {
 	readonly id: string;
 	readonly name = 'DaytonaSandbox';
@@ -222,8 +209,8 @@ export class DaytonaSandbox extends BaseSandbox {
 
 	/**
 	 * Create the remote sandbox, reattaching by name on a name conflict — the sandbox
-	 * exists even though the initial lookup missed it (transient lookup failure, or a
-	 * concurrent create from another main). Deterministic names make reattach safe.
+	 * exists even though the initial lookup missed it due to a concurrent create from
+	 * another main. Deterministic names make reattach safe.
 	 */
 	private async createSandboxOrReattach(client: Daytona): Promise<Sandbox> {
 		let conflictDeadline: number | undefined;
@@ -506,8 +493,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		} catch (error) {
 			const { DaytonaNotFoundError } = loadDaytona();
 			if (error instanceof DaytonaNotFoundError) return { status: 'absent' };
-			if (isDaytonaAuthError(error)) throw error;
-			return { status: 'pending' };
+			throw error;
 		}
 	}
 
@@ -530,7 +516,9 @@ export class DaytonaSandbox extends BaseSandbox {
 
 		for (const candidate of candidates) {
 			try {
-				return await this.createWithRetry(client, candidate.params);
+				return this.options.createTimeoutSeconds
+					? await client.create(candidate.params, { timeout: this.options.createTimeoutSeconds })
+					: await client.create(candidate.params);
 			} catch (error) {
 				// A name conflict is strategy-independent; let the caller reattach by name.
 				if (isSandboxNameConflictError(error)) throw error;
@@ -552,37 +540,6 @@ export class DaytonaSandbox extends BaseSandbox {
 		}
 
 		throw lastError instanceof Error ? lastError : new Error('Failed to create Daytona sandbox');
-	}
-
-	/**
-	 * Retry transient (connection/timeout/5xx/408/429) create failures with a short backoff. A create
-	 * that succeeded server-side despite the failed response surfaces as a name
-	 * conflict on retry, which the caller resolves by reattaching.
-	 */
-	private async createWithRetry(
-		client: Daytona,
-		params: CreateSandboxFromImageParams | CreateSandboxFromSnapshotParams,
-	): Promise<Sandbox> {
-		for (let attempt = 0; ; attempt++) {
-			try {
-				return this.options.createTimeoutSeconds
-					? await client.create(params, { timeout: this.options.createTimeoutSeconds })
-					: await client.create(params);
-			} catch (error) {
-				if (attempt >= 2 || !isTransientCreateError(error)) throw error;
-				this.options.logger?.warn('Sandbox create failed transiently; retrying', {
-					sandboxName: this.sandboxName,
-					attempt: attempt + 1,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				await this.waitBeforeRetry(attempt);
-			}
-		}
-	}
-
-	private async waitBeforeRetry(attempt: number): Promise<void> {
-		const baseDelayMs = this.options.createRetryBackoffBaseMs ?? 1_000;
-		await new Promise((resolve) => setTimeout(resolve, baseDelayMs * 2 ** attempt));
 	}
 
 	private async waitBeforeAcquisitionRetry(attempt: number, deadline: number): Promise<void> {

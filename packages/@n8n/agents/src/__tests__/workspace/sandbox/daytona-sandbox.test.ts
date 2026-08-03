@@ -434,6 +434,43 @@ describe('DaytonaSandbox (creation strategies)', () => {
 		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-eventually-visible');
 	});
 
+	it.each([
+		['server error', new DaytonaError('Bad Gateway', 502)],
+		['rate limit', new DaytonaError('Too Many Requests', 429)],
+	])('fails without creating when the initial lookup returns a %s', async (_kind, error) => {
+		queuedGetErrors.push(error);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+		});
+
+		await expect(sandbox.start()).rejects.toThrow(error.message);
+		expect(clientLog[0].get).toHaveBeenCalledTimes(1);
+		expect(clientLog[0].create).not.toHaveBeenCalled();
+	});
+
+	it('fails without polling when the lookup after a name conflict errors', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queuedGetErrors.push(new DaytonaError('Bad Gateway', 502));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+		});
+
+		await expect(sandbox.start()).rejects.toThrow('Bad Gateway');
+		expect(clientLog[0].get).toHaveBeenCalledTimes(2);
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+	});
+
 	it('deletes a dead sandbox before creating a replacement', async () => {
 		const dead = makeMockSandbox('remote-dead', 'error');
 		queuedGetResults.push(dead);
@@ -480,55 +517,40 @@ describe('DaytonaSandbox (creation strategies)', () => {
 		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-replacement');
 	});
 
-	it('retries a transient 5xx create failure and succeeds', async () => {
-		const logger = makeLogger();
+	it.each([
+		['server', new DaytonaError('Bad Gateway', 502)],
+		['rate-limit', new DaytonaError('Too Many Requests', 429)],
+	])('does not retry a %s create failure', async (_kind, error) => {
 		queueNotFound('not found');
-		queuedCreateResults.push(
-			new DaytonaError('Error 502: Bad gateway', 502),
-			makeMockSandbox('remote-after-retry'),
-		);
+		queuedCreateResults.push(error);
 
 		const sandbox = new DaytonaSandbox({
 			id: 'sandbox-id',
 			name: 'sandbox-name',
 			apiKey: 'api-key',
 			snapshot: 'n8n/instance-ai:1.123.0',
-			createRetryBackoffBaseMs: 1,
-			logger,
 		});
 
-		await sandbox.start();
-
-		expect(clientLog[0].create).toHaveBeenCalledTimes(2);
-		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-after-retry');
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Sandbox create failed transiently; retrying',
-			expect.objectContaining({ sandboxName: 'sandbox-name', attempt: 1 }),
-		);
+		await expect(sandbox.start()).rejects.toThrow(error.message);
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
 	});
 
 	it.each([
 		['connection', DaytonaConnectionError],
 		['timeout', DaytonaTimeoutError],
-	])('retries a transient %s create failure', async (_kind, ErrorType) => {
+	])('does not retry a transient %s create failure', async (_kind, ErrorType) => {
 		queueNotFound('not found');
-		queuedCreateResults.push(
-			new ErrorType('transient create failure'),
-			makeMockSandbox('remote-after-retry'),
-		);
+		queuedCreateResults.push(new ErrorType('transient create failure'));
 
 		const sandbox = new DaytonaSandbox({
 			id: 'sandbox-id',
 			name: 'sandbox-name',
 			apiKey: 'api-key',
 			snapshot: 'n8n/instance-ai:1.123.0',
-			createRetryBackoffBaseMs: 1,
 		});
 
-		await sandbox.start();
-
-		expect(clientLog[0].create).toHaveBeenCalledTimes(2);
-		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-after-retry');
+		await expect(sandbox.start()).rejects.toThrow('transient create failure');
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not retry non-transient create failures', async () => {
@@ -572,27 +594,6 @@ describe('DaytonaSandbox (creation strategies)', () => {
 				tags: expect.objectContaining({ strategy: 'snapshot' }),
 			}),
 		);
-	});
-
-	it('reattaches when a retried create collides with the sandbox the failed attempt created', async () => {
-		queueNotFound('not found');
-		queuedCreateResults.push(
-			new DaytonaError('Error 502: Bad gateway', 502),
-			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
-		);
-		queuedGetResults.push(makeMockSandbox('remote-created-despite-502'));
-
-		const sandbox = new DaytonaSandbox({
-			id: 'sandbox-id',
-			name: 'sandbox-name',
-			apiKey: 'api-key',
-			snapshot: 'n8n/instance-ai:1.123.0',
-			createRetryBackoffBaseMs: 1,
-		});
-
-		await sandbox.start();
-
-		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-created-despite-502');
 	});
 
 	it('retries creation when a conflicted sandbox disappears before it becomes visible', async () => {
