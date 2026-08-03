@@ -4,38 +4,33 @@ import type {
 	StepExecutionRequest,
 	StepExecutionResult,
 } from '@n8n/engine';
-import { ExecuteContext } from 'n8n-core';
-import type {
-	IExecuteData,
-	INode,
-	INodeExecutionData,
-	ITaskDataConnections,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
-import {
-	createRunExecutionData,
-	isNodeClassInstance,
-	UnexpectedError,
-	Workflow,
-} from 'n8n-workflow';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
+import type { INodeExecutionData } from 'n8n-workflow';
+import { Expression, isNodeClassInstance, UnexpectedError } from 'n8n-workflow';
 
 import {
 	EngineRequestNotSupportedError,
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
-	UnknownNodeTypeError,
 	UnsupportedStepTypeError,
+	VmExpressionEngineRequiredError,
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
 import type {
-	CreateNodeExecuteContextParams,
 	ExecutableNodeType,
 	NodeRunResult,
 	RunNodeParams,
 	V1NodeStepConfig,
 	V1StepExecutorDeps,
 } from './types';
+import {
+	toV1ExecuteContext,
+	toV1Execution,
+	toV1Node,
+	toV1Sources,
+	toV1Workflow,
+} from './v1-adapters';
 
 /**
  * Runs `v1-node` steps by adapting them to the v1 node runtime.
@@ -48,20 +43,37 @@ export class V1StepExecutor implements IStepExecutor {
 	constructor(private readonly deps: V1StepExecutorDeps) {}
 
 	async execute(request: StepExecutionRequest): Promise<StepExecutionResult> {
+		this.validateExpressionEngine();
 		const stepConfig = this.validateStepConfig(request.node);
 		const nodeType = this.resolveNodeType(stepConfig);
+		const stepData = await this.deps.loadStepData(request.context);
 
-		const nodeExecuteContext = await this.createNodeExecuteContext({
-			nodeId: request.node.id,
-			nodeName: request.node.name,
+		const node = toV1Node(request.node, stepConfig);
+		const execution = toV1Execution(stepData.graph, stepData.outputsByStepId);
+		const workflow = toV1Workflow(request.context.workflowId, node, execution, this.deps.nodeTypes);
+
+		const additionalData = await this.deps.additionalDataFactory(request.context.executionId);
+
+		const context = toV1ExecuteContext({
+			node,
+			workflow,
+			execution,
+			source: toV1Sources(stepData.graph).get(node.id) ?? [],
+			additionalData,
 			stepContext: request.context,
-			stepConfig,
 			itemsByConnection: fromStepInputs(request.inputs),
 		});
 
-		const nodeResult = await this.runNode({ nodeType, nodeExecuteContext });
+		return await workflow.expression.withIsolate(async () => {
+			const nodeResult = await this.runNode({ nodeType, context });
+			return { outputs: toStepOutputs(nodeResult) };
+		});
+	}
 
-		return { outputs: toStepOutputs(nodeResult) };
+	private validateExpressionEngine(): void {
+		if (Expression.getActiveImplementation() !== 'vm') {
+			throw new VmExpressionEngineRequiredError();
+		}
 	}
 
 	private validateStepConfig({ type, name, config }: GraphNode): V1NodeStepConfig {
@@ -76,71 +88,15 @@ export class V1StepExecutor implements IStepExecutor {
 		typeVersion,
 	}: V1NodeStepConfig): ExecutableNodeType {
 		const nodeType = this.deps.nodeTypes.getByNameAndVersion(typeName, typeVersion);
-		if (!nodeType) throw new UnknownNodeTypeError(typeName);
+
+		if (!nodeType) {
+			const [packageName, name = typeName] = typeName.split('.');
+			throw new UnrecognizedNodeTypeError(packageName, name);
+		}
+
 		if (typeof nodeType.execute !== 'function') throw new UnsupportedNodeTypeError(typeName);
 
 		return nodeType as ExecutableNodeType;
-	}
-
-	private async createNodeExecuteContext({
-		nodeId,
-		nodeName,
-		stepConfig,
-		stepContext: stepCtx,
-		itemsByConnection,
-	}: CreateNodeExecuteContextParams) {
-		const node: INode = {
-			id: nodeId,
-			name: nodeName,
-			type: stepConfig.nodeType,
-			typeVersion: stepConfig.typeVersion,
-			position: [0, 0],
-			parameters: stepConfig.parameters,
-			continueOnFail: stepConfig.continueOnFail,
-		};
-
-		const workflow = new Workflow({
-			id: stepCtx.workflowId,
-			nodes: [node],
-			connections: {},
-			active: false,
-			nodeTypes: this.deps.nodeTypes,
-		});
-
-		const firstInput = itemsByConnection[0] ?? [];
-		const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
-		const inputData: ITaskDataConnections = {
-			main: [connectionInputData, ...itemsByConnection.slice(1)],
-		};
-
-		const runExecutionData = createRunExecutionData({
-			startData: {},
-			resultData: { runData: {} },
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: null,
-			},
-		});
-
-		const executeData: IExecuteData = { node, data: inputData, source: null };
-		const mode: WorkflowExecuteMode = stepCtx.mode === 'production' ? 'trigger' : 'manual';
-		const additionalData = await this.deps.additionalDataFactory(stepCtx.executionId);
-
-		return new ExecuteContext(
-			workflow,
-			node,
-			additionalData,
-			mode,
-			runExecutionData,
-			0,
-			connectionInputData,
-			inputData,
-			executeData,
-			[],
-		);
 	}
 
 	/**
@@ -150,21 +106,18 @@ export class V1StepExecutor implements IStepExecutor {
 	 * failure with `continueOnFail` passes the input items through as output.
 	 * A null result yields no output.
 	 */
-	private async runNode({
-		nodeType,
-		nodeExecuteContext,
-	}: RunNodeParams): Promise<INodeExecutionData[][]> {
+	private async runNode({ nodeType, context }: RunNodeParams): Promise<INodeExecutionData[][]> {
 		let result: NodeRunResult;
 		try {
 			const value = isNodeClassInstance(nodeType)
-				? await nodeType.execute(nodeExecuteContext)
-				: await nodeType.execute.call(nodeExecuteContext);
+				? await nodeType.execute(context)
+				: await nodeType.execute.call(context);
 			result = { ok: true, value };
 		} catch (error) {
 			result = { ok: false, error };
 		}
 
-		const { closeFunctions } = nodeExecuteContext;
+		const { closeFunctions } = context;
 		if (closeFunctions.length > 0) {
 			const closeResults = await Promise.allSettled(closeFunctions.map(async (fn) => await fn()));
 			if (result.ok) {
@@ -175,21 +128,21 @@ export class V1StepExecutor implements IStepExecutor {
 					throw rejected.reason instanceof Error
 						? rejected.reason
 						: new UnexpectedError("Error on node's close function", {
-								extra: { nodeName: nodeExecuteContext.getNode().name },
+								extra: { nodeName: context.getNode().name },
 							});
 				}
 			}
 		}
 
 		if (!result.ok) {
-			if (!nodeExecuteContext.continueOnFail()) throw result.error;
-			return [nodeExecuteContext.getInputData()];
+			if (!context.continueOnFail()) throw result.error;
+			return [context.getInputData()];
 		}
 
 		if (result.value === null || result.value === undefined) return [];
 
 		if (Array.isArray(result.value)) return result.value as INodeExecutionData[][];
 
-		throw new EngineRequestNotSupportedError(nodeExecuteContext.getNode().type);
+		throw new EngineRequestNotSupportedError(context.getNode().type);
 	}
 }
