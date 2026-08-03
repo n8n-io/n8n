@@ -1,3 +1,10 @@
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { User, WorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+
+import { isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
 import type {
 	ProtectedResource,
 	ProtectedResourceResolver,
@@ -5,20 +12,15 @@ import type {
 import { UrlService } from '@/services/url.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import {
 	WEBHOOK_TRIGGER_SCOPES,
-	isWebhookOAuth2Enabled,
 	methodQueryString,
 	parseMethodParam,
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookResourcePath,
 } from './utils';
 
 /**
@@ -65,54 +67,37 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 	readonly scopes = WEBHOOK_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		// `preserveQuery`: unlike the sibling resolvers, we need the `?method=` selector.
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl(), {
-			preserveQuery: true,
-		});
+		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl());
 		if (pathname === undefined) {
 			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
 			return undefined;
 		}
-		return await this.resolveByPath(pathname);
+		// Can't throw — `resourceUrlToWebhookPath` already parsed the URL.
+		return await this.resolveByPath(pathname, new URL(resourceUrl).search);
 	}
 
-	async resolveByPath(pathname: string) {
+	async resolveByPath(pathname: string, search?: string) {
 		if (!isWebhookOAuth2Enabled()) {
 			return undefined;
 		}
 
-		// The `?method=` selector rides in the query string (see `methodQueryString`);
-		// split it off before the `/{endpoint}/…` path check and slug extraction.
-		const [rawPath, queryString] = pathname.split('?');
-		const requestedMethod = parseMethodParam(new URLSearchParams(queryString).get('method'));
-
-		if (!rawPath.startsWith(`/${this.config.endpoints.webhook}/`)) {
+		if (!pathname.startsWith(`/${this.config.endpoints.webhook}/`)) {
 			// we can quickly rule out non-webhook paths without doing any DB work, so check that first
 			return undefined;
 		}
 
-		const path = trimSlashes(rawPath.slice(this.config.endpoints.webhook.length + 1));
+		// The method being served selects the trigger (see `methodQueryString`).
+		const requestedMethod = parseMethodParam(new URLSearchParams(search).get('method'));
+
+		const path = trimSlashes(pathname.slice(this.config.endpoints.webhook.length + 1));
 
 		this.logger.debug(`Resolving workflow webhook trigger resource for path: ${path}`);
 
-		// Consider every static webhook registered at this path; if none, fall back to
-		// dynamic webhooks whose templated path matches (e.g. `<uuid>/user/:id`), so
-		// both `/user/:id` and a concrete `/user/42` resolve to the same trigger. A
-		// node listening on several methods registers one row per method.
-		const staticWebhooks = await this.webhookService.findStaticWebhooksByPath(path);
-		const webhooks =
-			staticWebhooks.length > 0
-				? staticWebhooks
-				: await this.webhookService.findDynamicWebhooksByPath(path);
+		// Selected the way the router selects, so the resource names the trigger that fires.
+		const webhooks = await this.webhookService.findTriggerWebhooksByPath(path, requestedMethod);
 
-		if (webhooks.length === 0) {
-			this.logger.debug(`No webhook found for path: ${path}`);
-			return undefined;
-		}
-
-		// `(webhookPath, method)` is the webhook primary key, so the requested method
-		// picks exactly one row — and therefore exactly one trigger. Without a method
-		// (a bare well-known probe) we can only answer when the path hosts a single row.
+		// The canonical URL names one method, so a bare probe only resolves a single-method
+		// trigger.
 		const row = requestedMethod
 			? webhooks.find((webhook) => webhook.method === requestedMethod)
 			: webhooks.length === 1
@@ -126,20 +111,13 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 			return undefined;
 		}
 
-		// Every method of the *same* trigger becomes an accepted audience, so one token
-		// spans a multi-method node. A node listening on several methods registers one
-		// row per method, all sharing the same (workflow, node).
-		const triggerMethods = webhooks
-			.filter((webhook) => webhook.workflowId === row.workflowId && webhook.node === row.node)
-			.map((webhook) => webhook.method);
+		// Every method of the trigger becomes an audience, so one token spans the node.
+		const triggerMethods = webhooks.map((webhook) => webhook.method);
 
-		// The resource path is the templated `uniquePath` for dynamic webhooks
-		// (placeholders intact, concrete values discarded), so every instance of one
-		// trigger shares a single identity.
 		return await this.resolveWebhookNode(
 			row.workflowId,
 			row.node,
-			row.uniquePath,
+			webhookResourcePath(row.webhookPath, row.webhookId),
 			row.method,
 			triggerMethods,
 		);

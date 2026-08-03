@@ -239,8 +239,17 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 function normalizeContentPart(part: unknown): Record<string, unknown> | undefined {
 	if (typeof part === 'string') return { type: 'output_text', text: part, annotations: [] };
 	if (!isPlainRecord(part)) return undefined;
-	const text = part.text;
-	if (typeof text !== 'string') return undefined;
+	// The real API carries text as a STRING even for JSON output (json_object
+	// format returns a JSON-encoded string); a generated part sometimes embeds
+	// the parsed object — serialize it instead of dropping the part (dropping
+	// used to collapse the item and rebuild the envelope around stringified junk).
+	const text =
+		typeof part.text === 'string'
+			? part.text
+			: isPlainRecord(part.text) || Array.isArray(part.text)
+				? JSON.stringify(part.text)
+				: undefined;
+	if (text === undefined) return undefined;
 	return {
 		...part,
 		type: 'output_text',
@@ -382,6 +391,9 @@ function extractResponsesContent(body: unknown): string {
 	const obj = body as Record<string, unknown>;
 
 	if (typeof obj.output_text === 'string') return obj.output_text;
+	if (isPlainRecord(obj.output_text) || Array.isArray(obj.output_text)) {
+		return JSON.stringify(obj.output_text);
+	}
 
 	const output = obj.output;
 	if (Array.isArray(output) && output.length > 0) {
@@ -393,6 +405,8 @@ function extractResponsesContent(body: unknown): string {
 			if (typeof first === 'object' && first !== null) {
 				const text = (first as { text?: unknown }).text;
 				if (typeof text === 'string') return text;
+				// Object-embedded JSON: the real API would carry it JSON-encoded.
+				if (isPlainRecord(text) || Array.isArray(text)) return JSON.stringify(text);
 			}
 		}
 	}

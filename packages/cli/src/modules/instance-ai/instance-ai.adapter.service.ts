@@ -88,6 +88,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { LessThan } from '@n8n/typeorm';
 import {
 	type ICredentialsDecrypted,
@@ -376,7 +377,7 @@ export class InstanceAiAdapterService {
 			...delegate,
 			createAgent: async (name) => {
 				const created = await delegate.createAgent(name);
-				this.telemetry.track('Builder created agent', {
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
 					thread_id: threadId,
 					agent_id: created.agentId,
 					project_id: created.projectId,
