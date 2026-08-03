@@ -174,7 +174,8 @@ N8N_VERSION=${INSTALL_VERSION}
 N8N_ENABLED_MODULES=instance-ai
 
 # Instance AI (optional): fill this in to enable the AI assistant in n8n.
-# n8n works fine without it.
+# n8n works fine without it. Setup guide:
+# https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant
 N8N_INSTANCE_AI_MODEL_API_KEY=
 
 # Web search for the AI assistant runs through the bundled SearXNG service.
@@ -391,7 +392,8 @@ Security notes:
   - Only port ${N8N_PORT} (n8n) should ever be reachable from the internet.
   - The sandbox runner is privileged Docker-in-Docker — never publish its ports.
   - The AI assistant stays disabled until you set N8N_INSTANCE_AI_MODEL_API_KEY
-    in ${N8N_DIR}/.env.
+    in ${N8N_DIR}/.env — see
+    https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant
 
 This setup is meant to try n8n locally. For production (TLS, Postgres, queue
 mode) see ${DOCS_HOSTING_URL}
