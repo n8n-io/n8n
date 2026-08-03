@@ -52,7 +52,7 @@ beforeEach(async () => {
 });
 
 async function exportProjects(user: User, projectIds: string[]) {
-	return await readExport(await service.exportPackage({ user, projectIds }));
+	return await readExport((await service.exportPackage({ user, projectIds })).stream);
 }
 
 async function exportProject(user: User, projectId: string) {
@@ -177,13 +177,12 @@ describe('project package export', () => {
 		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 		try {
-			const { manifest, entries } = await readExport(
-				await service.exportPackage({
-					user: owner,
-					projectIds: [projectA.id],
-					missingWorkflowDependencyPolicy: 'include-in-package',
-				}),
-			);
+			const { stream } = await service.exportPackage({
+				user: owner,
+				projectIds: [projectA.id],
+				missingWorkflowDependencyPolicy: 'include-in-package',
+			});
+			const { manifest, entries } = await readExport(stream);
 
 			const projectBEntry = manifest.projects!.find(({ id }) => id === projectB.id)!;
 			expect(projectBEntry.target).toMatch(/^projects\//);
@@ -220,13 +219,12 @@ describe('project package export', () => {
 			subWorkflowId: dependency.id,
 		});
 
-		const { manifest } = await readExport(
-			await service.exportPackage({
-				user: owner,
-				projectIds: [projectA.id],
-				missingWorkflowDependencyPolicy: 'include-in-package',
-			}),
-		);
+		const { stream } = await service.exportPackage({
+			user: owner,
+			projectIds: [projectA.id],
+			missingWorkflowDependencyPolicy: 'include-in-package',
+		});
+		const { manifest } = await readExport(stream);
 
 		const projectBEntry = manifest.projects!.find(({ id }) => id === projectB.id)!;
 		const dependencyEntry = manifest.workflows!.find(({ id }) => id === dependency.id)!;
@@ -245,13 +243,12 @@ describe('project package export', () => {
 			subWorkflowId: dependency.id,
 		});
 
-		const { manifest } = await readExport(
-			await service.exportPackage({
-				user: owner,
-				projectIds: [projectA.id],
-				missingWorkflowDependencyPolicy: 'include-in-package',
-			}),
-		);
+		const { stream } = await service.exportPackage({
+			user: owner,
+			projectIds: [projectA.id],
+			missingWorkflowDependencyPolicy: 'include-in-package',
+		});
+		const { manifest } = await readExport(stream);
 
 		const projectBEntry = manifest.projects!.find(({ id }) => id === projectB.id)!;
 		const dependencyEntry = manifest.workflows!.find(({ id }) => id === dependency.id)!;

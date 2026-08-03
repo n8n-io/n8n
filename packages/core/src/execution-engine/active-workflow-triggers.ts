@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type {
 	INode,
@@ -11,6 +11,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	isSubMinuteCron,
 	toCronExpression,
 	TriggerCloseError,
 	UserError,
@@ -21,6 +22,8 @@ import {
 import { ErrorReporter } from '@/errors/error-reporter';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
+import { NoOpPollJobManager } from './noop-poll-job-manager';
+import { PollJobManager } from './poll-job-manager';
 import { PollTriggerExecutor } from './poll-trigger-executor';
 import { ScheduledTaskManager, type ScheduledTaskGroup } from './scheduled-task-manager';
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -51,6 +54,24 @@ export class ActiveWorkflowTriggers {
 		private readonly pollTriggerExecutor: PollTriggerExecutor,
 	) {
 		this.logger = logger.scoped('workflow-publication');
+	}
+
+	/**
+	 * Resolved lazily rather than via constructor injection, so this doesn't
+	 * depend on DI construction order. Unbound, or bound to the no-op
+	 * implementation, falls back to the legacy in-memory cron path. The
+	 * `instanceof` check is safe here because this class and
+	 * {@link NoOpPollJobManager} both come from the same in-process `n8n-core`
+	 * module; it would not be safe across a sandboxed/duplicated module copy
+	 * (e.g. isolated-vm task runners).
+	 */
+	private getPollJobManager(): PollJobManager | undefined {
+		if (!Container.has(PollJobManager)) return undefined;
+		const pollJobManager = Container.get(PollJobManager);
+		// Checking the subtype of an abstract dependency is a smell; the in-memory
+		// fallback should become its own PollJobManager implementation instead.
+		// Tracked in CAT-3848 (unify durable-vs-in-memory dispatch across triggers).
+		return pollJobManager instanceof NoOpPollJobManager ? undefined : pollJobManager;
 	}
 
 	private activeTriggersByWorkflowId = new Map<string, WorkflowActiveTriggersState>();
@@ -353,8 +374,14 @@ export class ActiveWorkflowTriggers {
 			item: TriggerTime[];
 		};
 
-		// Get all the trigger times
-		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
+		const triggerTimes = pollTimes.item || [];
+
+		const cronExpressions = triggerTimes.map(toCronExpression);
+
+		// Reject sub-minute polling up front, so both paths are guarded.
+		if (cronExpressions.some(isSubMinuteCron)) {
+			throw new UserError('The polling interval is too short. It has to be at least a minute.');
+		}
 
 		// Capture this node activation's generation; removing or replacing the node
 		// invalidates only this poller, while leaving other workflow triggers intact.
@@ -367,18 +394,43 @@ export class ActiveWorkflowTriggers {
 			isCurrent,
 		);
 
+		const pollJobManager = this.getPollJobManager();
+		if (pollJobManager) {
+			// Provision a scheduler job instead of an in-memory cron; recurring fires
+			// run as the job's occurrences, with no in-memory timer.
+			const { inserted } = await pollJobManager.register(
+				workflowId,
+				node,
+				triggerTimes,
+				workflow.timezone,
+			);
+			// A newly provisioned node polls once inline, to seed the cursor and fail
+			// loudly on a broken source; a pure reconcile (nothing inserted) skips it.
+			// A failure here must deprovision the row just inserted, or the durable
+			// job keeps firing a node whose activation never completed.
+			if (inserted) {
+				try {
+					await executePollTrigger(true);
+				} catch (error) {
+					try {
+						await pollJobManager.remove(workflowId, node.id);
+					} catch (removeError) {
+						const reportedError = ensureError(removeError);
+						this.errorReporter.error(reportedError, { extra: { workflowId, nodeId: node.id } });
+						this.logger.error(
+							`Could not deprovision scheduled job of workflow "${workflowId}" node "${node.id}" after failed activation because of error: "${reportedError.message}"`,
+						);
+					}
+					throw error;
+				}
+			}
+			return;
+		}
+
 		// Execute the poll trigger directly to be able to know if it works.
 		await executePollTrigger(true);
 
 		for (const expression of cronExpressions) {
-			const fields = expression.split(' ');
-			// 6-field expressions include seconds as the first field.
-			// A wildcard there means sub-minute execution, which is too frequent.
-			// 5-field expressions (standard cron) have minute-level granularity at minimum.
-			if (fields.length === 6 && fields[0].includes('*')) {
-				throw new UserError('The polling interval is too short. It has to be at least a minute.');
-			}
-
 			this.scheduledTaskManager.register(
 				{
 					group: workflowScheduleGroup(workflowId),
@@ -394,7 +446,9 @@ export class ActiveWorkflowTriggers {
 	}
 
 	/**
-	 * Makes a workflow inactive in memory.
+	 * Makes a workflow inactive in memory. Returns whether anything was
+	 * removed — tracked trigger registrations or stranded orphan crons alike —
+	 * so callers can tell "found and removed something" from "nothing was there".
 	 */
 	async remove(workflowId: string) {
 		// Ensure crons are deregistered to prevent executions on inactive workflows
@@ -411,12 +465,33 @@ export class ActiveWorkflowTriggers {
 				);
 			}
 
-			return false;
+			return hadRegisteredCrons;
 		}
 
 		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
-		for (const r of triggers?.triggerResponses() ?? []) {
-			await this.closeTrigger(r, workflowId);
+		if (!triggers) return hadRegisteredCrons;
+
+		const errors: Error[] = [];
+
+		// Best-effort: every close is attempted; a failing close keeps its node
+		// tracked (a possibly still-live trigger must stay visible to later
+		// teardown passes) while the rest of the cleanup proceeds.
+		for (const { nodeId, response } of triggers.closableTriggers()) {
+			try {
+				await this.closeTrigger(response, workflowId);
+				triggers.delete(nodeId);
+			} catch (error) {
+				errors.push(ensureError(error));
+			}
+		}
+
+		const toThrow = errors.pop();
+		for (const error of errors) {
+			this.errorReporter.error(error, { shouldBeLogged: true });
+		}
+
+		if (toThrow) {
+			throw toThrow;
 		}
 
 		this.activeTriggersByWorkflowId.delete(workflowId);

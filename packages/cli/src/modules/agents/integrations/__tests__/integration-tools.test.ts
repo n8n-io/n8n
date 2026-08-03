@@ -27,6 +27,11 @@ const linear: AgentIntegrationConfig = {
 	credentialId: 'cred-c',
 };
 
+const telegram: AgentIntegrationConfig = {
+	type: 'telegram',
+	credentialId: 'cred-telegram',
+};
+
 function makeInterruptibleCtx(
 	overrides: Partial<InterruptibleToolContext> = {},
 ): InterruptibleToolContext {
@@ -450,6 +455,168 @@ describe('integration tools', () => {
 		expect(actionExecutor.execute).not.toHaveBeenCalled();
 	});
 
+	it('keeps the reply expectation through same-thread context rebuilds in a batch', async () => {
+		const inboundContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread' as const, threadId: 'slack:C1:1.1', channelId: 'slack:C1' },
+			replyExpectation: 'optional' as const,
+			updatedAt: '2026-07-31T10:00:00.000Z',
+		};
+		const rebuiltContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread' as const, threadId: 'slack:C1:1.1', channelId: 'slack:C1' },
+			messageId: '1.2',
+			updatedAt: '2026-07-31T10:00:01.000Z',
+		};
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.getLatest.mockResolvedValue(inboundContext);
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockImplementation(async ({ action }) =>
+			action === 'respond'
+				? { ok: true, messageContext: rebuiltContext }
+				: { ok: true, silent: true },
+		);
+
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
+				actions: ['respond', 'do_not_respond'],
+			}))[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+
+		await tool.handler!(
+			{
+				actions: [
+					{ action: 'respond', input: { message: { text: 'card summary' } } },
+					{ action: 'do_not_respond' },
+				],
+			},
+			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		);
+
+		expect(actionExecutor.execute).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				action: 'do_not_respond',
+				currentMessageContext: expect.objectContaining({ replyExpectation: 'optional' }),
+			}),
+		);
+		expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+			'thread-1',
+			'resource-1',
+			expect.objectContaining({ replyExpectation: 'optional' }),
+		);
+	});
+
+	it('drops the reply expectation when a rebuilt context targets another thread', async () => {
+		const inboundContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread' as const, threadId: 'slack:C1:1.1', channelId: 'slack:C1' },
+			replyExpectation: 'optional' as const,
+			updatedAt: '2026-07-31T10:00:00.000Z',
+		};
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.getLatest.mockResolvedValue(inboundContext);
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockResolvedValue({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: { type: 'dm' as const, userId: 'U2', threadId: 'slack:D2:2.2' },
+				updatedAt: '2026-07-31T10:00:01.000Z',
+			},
+		});
+
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
+				actions: ['respond', 'send_dm', 'do_not_respond'],
+			}))[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+
+		await tool.handler!(
+			{ action: 'send_dm', input: { userId: 'U2', message: { text: 'hi' } } },
+			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		);
+
+		expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+			'thread-1',
+			'resource-1',
+			expect.not.objectContaining({ replyExpectation: expect.anything() }),
+		);
+	});
+
+	it('validates the opt-in edit_message action shape', () => {
+		const telegramTool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+				actions: ['respond', 'send_dm', 'edit_message'],
+			}))[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const telegramSchema = telegramTool.inputSchema as z.ZodType;
+
+		expect(
+			telegramSchema.safeParse({
+				action: 'edit_message',
+				input: {
+					messageId: '123456:1000',
+					message: { text: 'Updated status' },
+				},
+			}).success,
+		).toBe(true);
+		expect(
+			telegramSchema.safeParse({
+				action: 'edit_message',
+				input: { message: { text: 'Updated status' } },
+			}).success,
+		).toBe(false);
+		expect(
+			telegramSchema.safeParse({
+				action: 'edit_message',
+				input: { messageId: '', message: { text: 'Updated status' } },
+			}).success,
+		).toBe(false);
+		expect(
+			telegramSchema.safeParse({
+				action: 'edit_message',
+				input: { messageId: '123456:1000' },
+			}).success,
+		).toBe(false);
+		expect(
+			telegramSchema.safeParse({
+				action: 'edit_message',
+				input: {
+					threadId: 'telegram:999999',
+					messageId: '123456:1000',
+					message: { text: 'Updated status' },
+				},
+			}).success,
+		).toBe(false);
+		expect(telegramTool.description).toContain(
+			'Uses the latest message context to choose the conversation',
+		);
+
+		const slackTool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1')[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const slackSchema = slackTool.inputSchema as z.ZodType;
+
+		expect(
+			slackSchema.safeParse({
+				action: 'edit_message',
+				input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			}).success,
+		).toBe(false);
+	});
+
 	it('action tool schema requires platform IDs for explicit user and channel targets', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
@@ -727,6 +894,24 @@ describe('integration tools', () => {
 		).toBe(true);
 		expect(schema.safeParse({ action: 'add_reaction', input: {} }).success).toBe(false);
 		expect(tool.description).toContain('add_reaction: input.emoji is required');
+	});
+
+	it('action tool schema accepts no-input actions without an input object', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
+				actions: ['respond', 'do_not_respond'],
+			}))[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(schema.safeParse({ action: 'do_not_respond' }).success).toBe(true);
+		expect(schema.safeParse({ action: 'do_not_respond', input: {} }).success).toBe(true);
+		expect(schema.safeParse({ actions: [{ action: 'do_not_respond' }] }).success).toBe(true);
+		// Actions with required input still fail without it — at their own schema.
+		expect(schema.safeParse({ action: 'respond' }).success).toBe(false);
+		expect(schema.safeParse({}).success).toBe(false);
 	});
 
 	it('action tool schema accepts Linear issue and comment actions', () => {

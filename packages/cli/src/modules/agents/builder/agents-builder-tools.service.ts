@@ -1,4 +1,5 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { isAbortError } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	applyNativeWebSearchDefaultOn,
@@ -26,9 +27,7 @@ import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
 import type { Operation } from 'fast-json-patch';
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
@@ -36,6 +35,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiService } from '@/services/ai.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { FreeAiCreditsService } from '@/services/free-ai-credits.service';
@@ -72,6 +72,7 @@ import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { getAgentConfigHash } from '../utils/agent-config-hash';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -118,27 +119,6 @@ interface AgentConfigSnapshotWithStatus extends AgentConfigSnapshot {
 interface BuilderTelemetryContext {
 	threadId?: string;
 	runId?: string;
-}
-
-function canonicalizeJson(value: unknown): unknown {
-	if (Array.isArray(value)) {
-		return value.map((item) => canonicalizeJson(item));
-	}
-
-	if (!isRecord(value)) return value;
-
-	const sorted: Record<string, unknown> = {};
-	for (const key of Object.keys(value).sort()) {
-		sorted[key] = canonicalizeJson(value[key]);
-	}
-	return sorted;
-}
-
-export function getAgentConfigHash(config: AgentJsonConfig | null): string | null {
-	if (!config) return null;
-	return createHash('sha256')
-		.update(JSON.stringify(canonicalizeJson(config)))
-		.digest('hex');
 }
 
 function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot {
@@ -227,6 +207,7 @@ export class AgentsBuilderToolsService {
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentPublishService: AgentPublishService,
 		private readonly aiService: AiService,
+		private readonly aiGatewayService: AiGatewayService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
@@ -648,6 +629,8 @@ export class AgentsBuilderToolsService {
 			.build();
 
 		const modelLookup: ModelLookup = {
+			// `list` resolves the n8n Connect managed tag to the synthetic gateway
+			// credential internally, so no managed branch is needed here.
 			list: async (credentialId, credentialType, provider) =>
 				await this.builderModelLiveLookupService.list(
 					user,
@@ -669,6 +652,15 @@ export class AgentsBuilderToolsService {
 			buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,
+				isProviderServedByGateway: async (provider) => {
+					try {
+						return (
+							(await this.aiGatewayService.getCredentialTypeForProvider(provider)) !== undefined
+						);
+					} catch {
+						return false;
+					}
+				},
 				freeCredits: {
 					isEligible: () => this.freeAiCreditsService.isEligible(user),
 					claim: async () => {
@@ -796,7 +788,7 @@ export class AgentsBuilderToolsService {
 						.describe('Complete TypeScript source using export default new Tool(...)'),
 				}),
 			)
-			.handler(async ({ code }: { code: string }) => {
+			.handler(async ({ code }: { code: string }, ctx) => {
 				try {
 					const descriptor = await this.secureRuntime.describeToolSecurely(code);
 					const built = await this.agentCustomToolsService.buildCustomTool(
@@ -807,6 +799,12 @@ export class AgentsBuilderToolsService {
 					);
 					return { ok: true, id: built.id, name: descriptor.name };
 				} catch (e) {
+					// Unlike its sibling handlers, this one runs long isolate work, so an
+					// abort can land mid-call and must not be reported as a build error.
+					// When a signal is present it is the authority: the isolate compiles
+					// model-authored code, so a generated tool throwing `Aborted` must not
+					// be mistaken for a cancellation and kill the whole builder run.
+					if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(e)) throw e;
 					return {
 						ok: false,
 						errors: [{ message: e instanceof Error ? e.message : String(e) }],

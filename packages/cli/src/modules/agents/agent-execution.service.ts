@@ -8,6 +8,10 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
+import {
+	AgentChatAttachmentService,
+	type StoredAttachmentRef,
+} from './agent-chat-attachment.service';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord } from './execution-recorder';
@@ -23,6 +27,8 @@ export interface RecordMessageParams {
 	agentName: string;
 	projectId: string;
 	userMessage: string | null;
+	/** Attachments included on the user turn; persisted on the run for the sessions view. */
+	attachments?: StoredAttachmentRef[];
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
 	hitlStatus?: 'suspended' | 'resumed';
@@ -48,6 +54,8 @@ export interface ThreadDetail {
 
 export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' | 'setUpdateDate'> {
 	firstMessage: string | null;
+	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
+	source: string | null;
 }
 
 @Service()
@@ -61,6 +69,7 @@ export class AgentExecutionService {
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
 		private readonly n8nMemory: N8nMemory,
 		private readonly telemetry: Telemetry,
+		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentExecutionLogStore: AgentExecutionLogStore,
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
@@ -138,6 +147,7 @@ export class AgentExecutionService {
 				error: record.error,
 				hitlStatus: hitlStatus ?? null,
 				source: source ?? null,
+				attachments: params.attachments?.length ? params.attachments : null,
 			}),
 		);
 
@@ -276,6 +286,7 @@ export class AgentExecutionService {
 		);
 
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
+		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await Promise.all([
 			this.agentExecutionThreadRepository.delete({ id: threadId }),
 			this.agentExecutionLogStore.delete(
@@ -307,7 +318,8 @@ export class AgentExecutionService {
 
 	/**
 	 * Get paginated execution threads for an agent.
-	 * Each thread is annotated with the first non-empty user message for preview.
+	 * Each thread is annotated with the first non-empty user message for preview
+	 * and the earliest non-null execution source for channel origin.
 	 */
 	async getThreads(
 		projectId: string,
@@ -326,15 +338,18 @@ export class AgentExecutionService {
 			return { threads: [], nextCursor: page.nextCursor };
 		}
 
-		const messageMap = await this.agentExecutionRepository.findFirstUserMessageByThreadIds(
-			page.threads.map((t) => t.id),
-		);
+		const threadIds = page.threads.map((t) => t.id);
+		const [messageMap, sourceMap] = await Promise.all([
+			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
+			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
+		]);
 
 		return {
 			...page,
 			threads: page.threads.map((t) => ({
 				...t,
 				firstMessage: messageMap.get(t.id) ?? null,
+				source: sourceMap.get(t.id) ?? null,
 			})),
 		};
 	}

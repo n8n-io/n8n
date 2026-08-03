@@ -458,6 +458,9 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 	}
 }
 
+/** The built orchestrator agent type returned by `createInstanceAgent`. */
+type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
+
 @Service()
 export class InstanceAiService {
 	private _mcpClientManager?: McpClientManager;
@@ -696,13 +699,10 @@ export class InstanceAiService {
 		this._ssrfProtectionConfig = ssrfProtectionConfig;
 		this._ssrfProtectionService = ssrfProtectionService;
 
-		// When the admin changes MCP settings, tear down existing clients so the
-		// next agent run rebuilds them against the new config. In-flight tool
-		// calls on disconnected clients will fail — that's accepted: the
-		// alternative is leaking clients keyed by stale config until shutdown.
-		// We only listen for the MCP-changed flag so unrelated settings saves
-		// don't churn live MCP connections.
+		// Runtime clients capture provider settings at creation, so rebuild them
+		// after admin settings change. In-flight sandbox users retain their entry.
 		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
+			this.sandboxService.invalidateCachedWorkspaces();
 			if (!mcpSettingsChanged) return;
 			if (!this._mcpClientManager) return;
 			this._mcpClientManager.disconnect().catch((error: unknown) => {
@@ -912,11 +912,7 @@ export class InstanceAiService {
 	 * Sentry via the errored run/stream result, so reporting them here would only
 	 * re-tag the same (deduped) error.
 	 */
-	private subscribeToAgentErrors(
-		agent: Awaited<ReturnType<typeof createInstanceAgent>>,
-		threadId: string,
-		runId: string,
-	): void {
+	private subscribeToAgentErrors(agent: InstanceAgent, threadId: string, runId: string): void {
 		agent.on(AgentEvent.Error, (event: AgentEventData) => {
 			if (event.type !== AgentEvent.Error || !event.source) return;
 			this.instanceAiErrorReporter.report(event.error, {
@@ -968,6 +964,7 @@ export class InstanceAiService {
 		runId: string,
 		agentRunId: string,
 		toolCallId: string,
+		signal: AbortSignal,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
@@ -975,6 +972,7 @@ export class InstanceAiService {
 		return {
 			runId: agentRunId,
 			toolCallId,
+			abortSignal: signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
 			persistence: { resourceId: user.id, threadId, hostRunId: runId },
@@ -1100,7 +1098,7 @@ export class InstanceAiService {
 				payload: {
 					role: task.role,
 					result: '',
-					error: reason === INSTANCE_AI_RUN_TIMEOUT_REASON ? 'Timed out' : 'Cancelled by user',
+					status: 'cancelled',
 				},
 			});
 			void this.terminalOutcome.recordBackgroundTerminalOutcome(task).finally(() => {
@@ -1113,7 +1111,7 @@ export class InstanceAiService {
 				);
 			});
 			if (user) {
-				void this.handlePlannedTaskSettlement(user, task, 'cancelled');
+				void this.handlePlannedTaskSettlement(user, task, 'cancelled', { reschedule: false });
 			}
 		}
 
@@ -1164,7 +1162,7 @@ export class InstanceAiService {
 			type: 'agent-completed',
 			runId: task.runId,
 			agentId: task.agentId,
-			payload: { role: task.role, result: '', error: 'Cancelled by user' },
+			payload: { role: task.role, result: '', status: 'cancelled' },
 		});
 
 		// Persist the updated agent tree so cancelled status survives page reload.
@@ -2599,6 +2597,7 @@ export class InstanceAiService {
 		user: User,
 		task: ManagedBackgroundTask,
 		status: 'succeeded' | 'failed' | 'cancelled',
+		{ reschedule = true }: { reschedule?: boolean } = {},
 	): Promise<void> {
 		if (!task.plannedTaskId) return;
 
@@ -2624,6 +2623,10 @@ export class InstanceAiService {
 			await this.syncPlannedTasksToUi(task.threadId, graph);
 		}
 
+		// Callers that tore the whole thread down (user stop, run timeout,
+		// shutdown) opt out: the scheduler must not start a follow-up run. The
+		// graph stays intact so the next user message can pick it back up.
+		if (!reschedule) return;
 		await this.schedulePlannedTasks(user, task.threadId);
 	}
 
@@ -3365,6 +3368,7 @@ export class InstanceAiService {
 				proxyRunConfig,
 			);
 			activeSnapshotStorage = environment.snapshotStorage;
+
 			const {
 				context,
 				memory,
@@ -4046,24 +4050,36 @@ export class InstanceAiService {
 			//   1. Checkpoint deadlock fallback — if this run was a checkpoint
 			//      follow-up and the orchestrator exited without calling
 			//      complete-checkpoint, mark the task failed so the scheduler
-			//      can transition to awaiting_replan.
-			//   2. Unconditional reschedule — drive the next tick. This covers
-			//      the case where a background task settled during an ordinary
-			//      chat run: its schedulePlannedTasks call may have skipped the
-			//      checkpoint branch because hasLiveRun was true. Ticking again
-			//      now (with no live run) picks it up. schedulerLocks serializes
-			//      this call, and tick() is a no-op when no graph exists.
+			//      can transition to awaiting_replan. Runs even on a stop: the
+			//      cancelled run's context is the only thing that knows about
+			//      this follow-up, so skipping it strands the task at `running`.
+			//   2. Reschedule — drive the next tick, unless the run was stopped
+			//      (a stop must not start another run). This covers the case
+			//      where a background task settled during an ordinary chat run:
+			//      its schedulePlannedTasks call may have skipped the checkpoint
+			//      branch because hasLiveRun was true. Ticking again now (with
+			//      no live run) picks it up. schedulerLocks serializes this
+			//      call, and tick() is a no-op when no graph exists.
+			//   3. UI projection — always, so a stopped run's task states reach
+			//      the client.
 			if (!this.runState.hasSuspendedRun(threadId)) {
+				const reschedule = !signal.aborted;
 				if (checkpoint?.isCheckpointFollowUp) {
-					await this.finalizeCheckpointFollowUp(user, threadId, checkpoint.checkpointTaskId);
+					await this.finalizeCheckpointFollowUp(user, threadId, checkpoint.checkpointTaskId, {
+						reschedule,
+					});
 				} else if (plannedBuild?.isPlannedBuildFollowUp) {
-					await this.finalizePlannedBuildFollowUp(user, threadId, plannedBuild);
-				} else {
+					await this.finalizePlannedBuildFollowUp(user, threadId, plannedBuild, { reschedule });
+				} else if (reschedule) {
 					await this.schedulePlannedTasks(user, threadId);
 				}
-				await this.drainPendingCheckpointReentries(user, threadId);
+				if (reschedule) {
+					await this.drainPendingCheckpointReentries(user, threadId);
+				}
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
-				await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+				if (reschedule) {
+					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+				}
 			}
 			this.instanceAiErrorReporter.endRun(runId);
 		}
@@ -4204,6 +4220,7 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		checkpointTaskId: string,
+		{ reschedule = true }: { reschedule?: boolean } = {},
 	): Promise<void> {
 		try {
 			const { plannedTaskService } = await this.createPlannedTaskState();
@@ -4251,6 +4268,7 @@ export class InstanceAiService {
 			});
 		}
 
+		if (!reschedule) return;
 		await this.schedulePlannedTasks(user, threadId);
 	}
 
@@ -4258,6 +4276,7 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		plannedBuild: PlannedBuildFollowUp,
+		{ reschedule = true }: { reschedule?: boolean } = {},
 	): Promise<void> {
 		try {
 			const { plannedTaskService } = await this.createPlannedTaskState();
@@ -4291,6 +4310,7 @@ export class InstanceAiService {
 			});
 		}
 
+		if (!reschedule) return;
 		await this.schedulePlannedTasks(user, threadId);
 	}
 
@@ -4400,7 +4420,7 @@ export class InstanceAiService {
 		runId: string,
 		user: User,
 		tracing: InstanceAiTraceContext | undefined,
-	): Promise<Awaited<ReturnType<typeof createInstanceAgent>>> {
+	): Promise<InstanceAgent> {
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
@@ -4412,7 +4432,7 @@ export class InstanceAiService {
 			tracing,
 			environment.orchestrationContext.messageGroupId,
 		);
-		const agent = await createInstanceAgent({
+		const { agent, mcpConnectionFailures } = await createInstanceAgent({
 			modelId: environment.modelId,
 			context: environment.context,
 			orchestrationContext: environment.orchestrationContext,
@@ -4424,6 +4444,35 @@ export class InstanceAiService {
 			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 		});
+		// Surface MCP connection failures as a non-fatal status event. Publishing
+		// here (rather than at each call site) covers the foreground run and both
+		// resume paths (auto-setup rebuild + process-restart resume), so the user
+		// is informed whenever a server is skipped — including after a resume.
+		// Failures come from createInstanceAgent's result (threaded from the MCP
+		// manager's getRegularTools call), not a shared manager field, so they
+		// reflect this run's config and can't leak another run's server names.
+		if (mcpConnectionFailures.length > 0) {
+			const names = mcpConnectionFailures.map((f) => f.server).join(', ');
+			for (const failure of mcpConnectionFailures) {
+				this.errorReporter.error(
+					new Error(`MCP server "${failure.server}" failed to connect: ${failure.error}`),
+					{
+						level: 'warning',
+						tags: { component: 'instance-ai-mcp', server: failure.server },
+						extra: { runId, threadId, server: failure.server, error: failure.error },
+						shouldIsolate: true,
+					},
+				);
+			}
+			this.eventBus.publish(threadId, {
+				type: 'status',
+				runId,
+				agentId: orchestratorAgentId(runId),
+				payload: {
+					message: `Couldn't reach MCP server${mcpConnectionFailures.length > 1 ? 's' : ''} ${names}; continuing without their tools.`,
+				},
+			});
+		}
 		this.subscribeToAgentErrors(agent, threadId, runId);
 		return agent;
 	}
@@ -4437,7 +4486,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	): Promise<{
-		agent: Awaited<ReturnType<typeof createInstanceAgent>>;
+		agent: InstanceAgent;
 		modelId: ModelConfig;
 		orchestrationContext: OrchestrationContext;
 	}> {
@@ -4587,7 +4636,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 	): Promise<
 		| {
-				agent: Awaited<ReturnType<typeof createInstanceAgent>>;
+				agent: InstanceAgent;
 				modelId: ModelConfig;
 				orchestrationContext: OrchestrationContext;
 		  }
@@ -4832,6 +4881,7 @@ export class InstanceAiService {
 				opts.runId,
 				opts.agentRunId,
 				opts.toolCallId,
+				opts.signal,
 			);
 			const runControl = createOrchestratorRunControlForState(opts.runHandoff);
 			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
@@ -5232,23 +5282,33 @@ export class InstanceAiService {
 			// a background task settled while they were active or suspended and
 			// the orchestrate-checkpoint branch was skipped because of hasLiveRun.
 			if (!this.runState.hasSuspendedRun(opts.threadId)) {
+				const reschedule = !opts.signal.aborted;
 				if (opts.checkpoint?.isCheckpointFollowUp) {
 					await this.finalizeCheckpointFollowUp(
 						opts.user,
 						opts.threadId,
 						opts.checkpoint.checkpointTaskId,
+						{ reschedule },
 					);
 				} else if (opts.plannedBuild?.isPlannedBuildFollowUp) {
-					await this.finalizePlannedBuildFollowUp(opts.user, opts.threadId, opts.plannedBuild);
-				} else {
+					await this.finalizePlannedBuildFollowUp(opts.user, opts.threadId, opts.plannedBuild, {
+						reschedule,
+					});
+				} else if (reschedule) {
 					await this.schedulePlannedTasks(opts.user, opts.threadId);
 				}
-				await this.drainPendingCheckpointReentries(opts.user, opts.threadId);
+				if (reschedule) {
+					await this.drainPendingCheckpointReentries(opts.user, opts.threadId);
+				}
+				// The setup claim must land even on a stop: it is what stops a later
+				// run from re-routing setup for a workflow the user already set up.
 				if (completedSetupWorkflowId) {
 					await this.markWorkflowSetupHandled(opts.threadId, completedSetupWorkflowId, opts.runId);
 				}
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
-				await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				if (reschedule) {
+					await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				}
 			}
 			this.instanceAiErrorReporter.endRun(opts.runId);
 		}

@@ -9,6 +9,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | grantTypes | json |  | false |  |  |  |
 | id | varchar |  | false | [public.oauth_access_tokens](public.oauth_access_tokens.md) [public.oauth_authorization_codes](public.oauth_authorization_codes.md) [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) [public.oauth_user_consents](public.oauth_user_consents.md) |  |  |
+| isFirstParty | boolean | false | false |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | redirectUris | json |  | false |  |  |  |
 | tokenEndpointAuthMethod | varchar(255) | 'none'::character varying | false |  |  | Possible values: none, client_secret_basic or client_secret_post |
@@ -22,6 +23,7 @@
 | oauth_clients_createdAt_not_null | n | NOT NULL "createdAt" |
 | oauth_clients_grantTypes_not_null | n | NOT NULL "grantTypes" |
 | oauth_clients_id_not_null | n | NOT NULL id |
+| oauth_clients_isFirstParty_not_null | n | NOT NULL "isFirstParty" |
 | oauth_clients_name_not_null | n | NOT NULL name |
 | oauth_clients_redirectUris_not_null | n | NOT NULL "redirectUris" |
 | oauth_clients_tokenEndpointAuthMethod_not_null | n | NOT NULL "tokenEndpointAuthMethod" |
@@ -49,6 +51,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   json grantTypes
   varchar id
+  boolean isFirstParty
   varchar_255_ name
   json redirectUris
   varchar_255_ tokenEndpointAuthMethod

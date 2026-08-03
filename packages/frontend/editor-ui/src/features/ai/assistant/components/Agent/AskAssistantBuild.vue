@@ -8,7 +8,7 @@ import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots, provide } from 'vue';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
@@ -38,7 +38,7 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';

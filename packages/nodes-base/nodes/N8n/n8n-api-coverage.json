@@ -125,6 +125,9 @@
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},
+		"GET /workflows/{id}/history": {
+			"status": "gap"
+		},
 		"POST /workflows/{id}/activate": {
 			"status": "covered",
 			"nodeOperation": "workflow:activate"
@@ -218,6 +221,12 @@
 			"status": "gap"
 		},
 		"POST /settings/log-streaming/destinations/{id}/test": {
+			"status": "gap"
+		},
+		"GET /settings/sso/oidc": {
+			"status": "gap"
+		},
+		"PUT /settings/sso/oidc": {
 			"status": "gap"
 		},
 		"POST /variables": {

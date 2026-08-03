@@ -1,62 +1,73 @@
 import type {
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
+	WorkflowReviewApprovedPublicationState,
+	WorkflowReviewEligibleReviewer,
 	WorkflowReviewEligibleReviewersList,
+	WorkflowReviewRequestForWorkflow,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestSummary,
-	ListWorkflowReviewInboxQueryDto,
-	ListWorkflowReviewInboxResponse,
-	GetWorkflowReviewInboxSummaryResponse,
-	WorkflowReviewInboxItem,
 } from '@n8n/api-types';
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import {
 	DbLock,
 	DbLockService,
+	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
-	type InboxCursor,
 	type User,
 	type WorkflowReviewRequest,
-	type WorkflowReviewRequestLinkedWorkflow,
+	type WorkflowReviewRequestForWorkflowRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import {
+	GLOBAL_ADMIN_ROLE_SLUG,
+	GLOBAL_OWNER_ROLE_SLUG,
+	PROJECT_ADMIN_ROLE_SLUG,
+} from '@n8n/permissions';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
+import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
+import { toEligibleReviewer } from './workflow-review.mapper';
+
+/**
+ * The workflow-scoped review request lifecycle: listing a workflow's reviews,
+ * resolving its eligible reviewers, opening a review, re-pinning it to a new
+ * version, and deciding it. The reviewer-facing read side lives in
+ * `WorkflowReviewInboxService`.
+ */
 @Service()
 export class WorkflowReviewRequestService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
+		private readonly featureGate: WorkflowReviewFeatureGate,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly userRepository: UserRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
-		private readonly projectService: ProjectService,
-		private readonly licenseState: LicenseState,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
 	) {}
@@ -82,10 +93,7 @@ export class WorkflowReviewRequestService {
 		user: User,
 		query: ListWorkflowReviewRequestsQueryDto,
 	): Promise<WorkflowReviewRequestList> {
-		const policy = await this.workflowReviewPolicyService.get();
-		if (!policy.enabled) {
-			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
-		}
+		await this.featureGate.assertAvailable();
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(query.workflowId, user, [
 			'workflow:read',
@@ -101,25 +109,115 @@ export class WorkflowReviewRequestService {
 
 		return {
 			count,
-			data: requests.map((request) => ({
-				id: request.id,
-				state: request.state,
-				decision: request.decision,
-				workflowVersionId: request.workflowVersionId,
-				createdAt: request.createdAt.toISOString(),
-				updatedAt: request.updatedAt.toISOString(),
-			})),
+			data: await this.toWorkflowScopedItems(query.workflowId, requests),
 		};
+	}
+
+	private async toWorkflowScopedItems(
+		workflowId: string,
+		requests: WorkflowReviewRequestForWorkflowRow[],
+	): Promise<WorkflowReviewRequestForWorkflow[]> {
+		const [decisionActors, publicationStates] = await Promise.all([
+			this.resolveDecisionActors(requests),
+			this.resolveApprovedPublicationStates(workflowId, requests),
+		]);
+
+		return requests.map((request) => ({
+			id: request.id,
+			state: request.state,
+			decision: request.decision,
+			workflowVersionId: request.workflowVersionId,
+			createdAt: request.createdAt.toISOString(),
+			updatedAt: request.updatedAt.toISOString(),
+			decisionBy: this.pickDecisionActor(request, decisionActors),
+			approvedVersionPublicationState: this.pickApprovedPublicationState(
+				request,
+				publicationStates,
+			),
+		}));
+	}
+
+	/**
+	 * `updatedById` is whoever last wrote the request, which for a
+	 * `changes_requested` review is the reviewer who made that decision. Any other
+	 * decision has no actor to name: `pending` may just be a version re-pin, and
+	 * approval is not surfaced with an actor.
+	 */
+	private async resolveDecisionActors(
+		requests: WorkflowReviewRequestForWorkflowRow[],
+	): Promise<Map<string, WorkflowReviewEligibleReviewer>> {
+		const actorIds = [
+			...new Set(
+				requests.flatMap((request) =>
+					request.decision === 'changes_requested' && request.updatedById
+						? [request.updatedById]
+						: [],
+				),
+			),
+		];
+		if (actorIds.length === 0) {
+			return new Map();
+		}
+
+		const actors = await this.userRepository.findManyByIds(actorIds);
+		return new Map(actors.map((actor) => [actor.id, toEligibleReviewer(actor)]));
+	}
+
+	private pickDecisionActor(
+		request: WorkflowReviewRequestForWorkflowRow,
+		actors: Map<string, WorkflowReviewEligibleReviewer>,
+	): WorkflowReviewEligibleReviewer | null {
+		if (request.decision !== 'changes_requested' || !request.updatedById) {
+			return null;
+		}
+
+		return actors.get(request.updatedById) ?? null;
+	}
+
+	private async resolveApprovedPublicationStates(
+		workflowId: string,
+		requests: WorkflowReviewRequestForWorkflowRow[],
+	): Promise<Map<string, WorkflowReviewApprovedPublicationState>> {
+		const versionIds = [
+			...new Set(
+				requests.flatMap((request) =>
+					request.decision === 'approved' && request.workflowVersionId
+						? [request.workflowVersionId]
+						: [],
+				),
+			),
+		];
+		if (versionIds.length === 0) {
+			return new Map();
+		}
+
+		return await this.workflowPublishHistoryRepository.getVersionPublicationStates(
+			workflowId,
+			versionIds,
+		);
+	}
+
+	private pickApprovedPublicationState(
+		request: WorkflowReviewRequestForWorkflowRow,
+		states: Map<string, WorkflowReviewApprovedPublicationState>,
+	): WorkflowReviewApprovedPublicationState | null {
+		if (request.decision !== 'approved') {
+			return null;
+		}
+
+		// A pruned pin has no version to reason about, so it stays 'unknown'
+		if (!request.workflowVersionId) {
+			return 'unknown';
+		}
+
+		return states.get(request.workflowVersionId) ?? 'unknown';
 	}
 
 	async getEligibleReviewers(
 		user: User,
 		query: GetWorkflowReviewEligibleReviewersQueryDto,
 	): Promise<WorkflowReviewEligibleReviewersList> {
-		const policy = await this.workflowReviewPolicyService.get();
-		if (!policy.enabled) {
-			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
-		}
+		await this.featureGate.assertAvailable();
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(query.workflowId, user, [
 			'workflow:publish',
@@ -138,12 +236,7 @@ export class WorkflowReviewRequestService {
 		// No pagination: the set is bounded by the project's members plus instance admins
 		return {
 			count: reviewers.length,
-			data: reviewers.map((reviewer) => ({
-				id: reviewer.id,
-				email: reviewer.email,
-				firstName: reviewer.firstName ?? null,
-				lastName: reviewer.lastName ?? null,
-			})),
+			data: reviewers.map(toEligibleReviewer),
 		};
 	}
 
@@ -153,10 +246,7 @@ export class WorkflowReviewRequestService {
 	): Promise<WorkflowReviewRequestSummary> {
 		const { workflowId, workflowVersionId } = dto.workflows[0];
 
-		const policy = await this.workflowReviewPolicyService.get();
-		if (!policy.enabled) {
-			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
-		}
+		await this.featureGate.assertAvailable();
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
@@ -265,10 +355,7 @@ export class WorkflowReviewRequestService {
 		workflowReviewRequestId: string,
 		dto: UpdateWorkflowReviewRequestVersionDto,
 	): Promise<WorkflowReviewRequestSummary> {
-		const policy = await this.workflowReviewPolicyService.get();
-		if (!policy.enabled) {
-			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
-		}
+		await this.featureGate.assertAvailable();
 
 		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
 		if (!request) {
@@ -373,6 +460,135 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
+	 * Decide an open review request: approve (terminal, closes the request) or
+	 * request changes (the request stays open awaiting a new version).
+	 */
+	async decide(
+		user: User,
+		workflowReviewRequestId: string,
+		dto: DecideWorkflowReviewRequestDto,
+	): Promise<WorkflowReviewRequestSummary> {
+		await this.featureGate.assertAvailable();
+
+		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		if (!request) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const workflowRows =
+			await this.workflowReviewRequestWorkflowRepository.findByRequestId(workflowReviewRequestId);
+		const workflowRow = workflowRows[0];
+		if (!workflowRow) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		// 404 (not 403) so callers without access can't probe which requests exist
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowRow.workflowId,
+			user,
+			['workflow:publish'],
+		);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		this.assertRequestUpdatable(request);
+
+		// Resolved before the lock: this query must not run inside the lock
+		// transaction, where it would need a second pooled connection while the
+		// transaction holds one — a deadlock on a single-connection pool.
+		const hasAdminOverride = await this.hasDecisionAdminOverride(user, request.projectId);
+
+		// Fast path: reject a known author before queueing on the lock.
+		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor({
+			workflowReviewRequestId,
+			userId: user.id,
+		});
+		this.assertDecisionAllowed(isAuthor, hasAdminOverride);
+
+		const { request: saved, pinnedVersionId } = await this.dbLockService.withLock(
+			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			async (tx) => {
+				// Re-check under the lock so a decision can't race a concurrent
+				// version sync (which resets the decision to pending) or another decision.
+				const current = await this.workflowReviewRequestRepository.findById(
+					workflowReviewRequestId,
+					tx,
+				);
+				if (!current) {
+					throw new NotFoundError('Could not find review request');
+				}
+				this.assertRequestUpdatable(current);
+
+				// Re-check authorship here — a sync that won the lock first has
+				// added its syncer to the author set since the pre-lock check, and that
+				// syncer must not be able to decide.
+				const isAuthorNow = await this.workflowReviewRequestAuthorRepository.isAuthor(
+					{ workflowReviewRequestId, userId: user.id },
+					tx,
+				);
+				this.assertDecisionAllowed(isAuthorNow, hasAdminOverride);
+
+				// Re-read the pinned row too: a concurrent sync that won the lock may
+				// have re-pinned, and the summary must reflect the version being decided on.
+				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+					workflowReviewRequestId,
+					tx,
+				);
+				const currentRow = currentRows.find((row) => row.workflowId === workflowRow.workflowId);
+				if (!currentRow) {
+					throw new NotFoundError('Could not find review request');
+				}
+
+				current.decision = dto.decision;
+				current.updatedById = user.id;
+				if (dto.decision === 'approved') {
+					current.state = 'closed';
+					current.closedById = user.id;
+					current.approvedAt = new Date();
+				}
+
+				// save (not update) so @BeforeUpdate bumps updatedAt
+				const savedRequest = await tx.save(current);
+				return { request: savedRequest, pinnedVersionId: currentRow.workflowVersionId };
+			},
+		);
+
+		this.broadcastReviewStateChanged(workflowRow.workflowId);
+
+		return this.toSummary(saved, pinnedVersionId);
+	}
+
+	/**
+	 * Authors cannot decide their own review request, unless an admin override
+	 * applies. Called before and again inside the decision lock, since the author
+	 * set can change while the caller waits for the lock. The override is resolved
+	 * once, pre-lock: the lock guards the author set, not role membership — like
+	 * every other authorization check in `decide`, roles are evaluated up front.
+	 */
+	private assertDecisionAllowed(isAuthor: boolean, hasAdminOverride: boolean): void {
+		if (isAuthor && !hasAdminOverride) {
+			throw new ForbiddenError('Authors cannot decide on their own review request');
+		}
+	}
+
+	/**
+	 * Admins may decide reviews they authored. Limitation: only the built-in
+	 * global/project admin roles qualify — custom roles never grant the override.
+	 */
+	private async hasDecisionAdminOverride(user: User, projectId: string): Promise<boolean> {
+		if (user.role.slug === GLOBAL_ADMIN_ROLE_SLUG || user.role.slug === GLOBAL_OWNER_ROLE_SLUG) {
+			return true;
+		}
+
+		const adminProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
+			user.id,
+			[PROJECT_ADMIN_ROLE_SLUG],
+		);
+		return adminProjectIds.includes(projectId);
+	}
+
+	/**
 	 * Fire-and-forget: the transaction has committed, a failed broadcast
 	 * must not fail the request. Viewers heal via focus/reconnect refetch.
 	 */
@@ -384,7 +600,11 @@ export class WorkflowReviewRequestService {
 			);
 	}
 
-	/** A closed or already-approved request can no longer be re-pinned to a new version. */
+	/**
+	 * A closed or already-approved request can no longer be re-pinned to a new
+	 * version, nor decided again — this is what makes approval terminal, so don't
+	 * relax it for the re-pin case alone.
+	 */
 	private assertRequestUpdatable(request: WorkflowReviewRequest): void {
 		if (request.state === 'closed' || request.decision === 'approved') {
 			throw new ConflictError('The review request is no longer open');
@@ -402,121 +622,6 @@ export class WorkflowReviewRequestService {
 			workflowVersionId,
 			createdAt: request.createdAt.toISOString(),
 			updatedAt: request.updatedAt.toISOString(),
-		};
-	}
-
-	/**
-	 * Cross-project inbox.
-	 *
-	 * Defaults to open requests when `state` is omitted. Deferred (LIGO-594):
-	 * `projectId`, `reviewer`, and `author` filters.
-	 */
-	async listForInbox(
-		user: User,
-		query: ListWorkflowReviewInboxQueryDto,
-	): Promise<ListWorkflowReviewInboxResponse> {
-		await this.assertFeatureAvailable();
-
-		const projectIds = await this.resolveAccessibleProjectIds(user);
-		const { limit } = query;
-		const rows = await this.workflowReviewRequestRepository.findManyForInbox({
-			projectIds,
-			requesterId: user.id,
-			state: query.state ?? 'open',
-			limit: limit + 1,
-			cursor: query.cursor ? this.decodeInboxCursor(query.cursor) : undefined,
-		});
-
-		const hasMore = rows.length > limit;
-		const data = rows.slice(0, limit);
-		const lastRow = data.at(-1);
-		const nextCursor = hasMore && lastRow ? this.encodeInboxCursor(lastRow) : null;
-		const linkedWorkflowByRequestId =
-			await this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(
-				data.map((row) => row.id),
-			);
-
-		return {
-			data: data.map((row) => this.toInboxItem(row, linkedWorkflowByRequestId.get(row.id) ?? null)),
-			nextCursor,
-			hasMore,
-		};
-	}
-
-	async getInboxSummaryForUser(user: User): Promise<GetWorkflowReviewInboxSummaryResponse> {
-		await this.assertFeatureAvailable();
-
-		const projectIds = await this.resolveAccessibleProjectIds(user);
-		return await this.workflowReviewRequestRepository.countByStateForInbox({
-			projectIds,
-			requesterId: user.id,
-		});
-	}
-
-	private async assertFeatureAvailable(): Promise<void> {
-		if (!isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed())) {
-			throw new ForbiddenError('Workflow reviews are not available on this instance');
-		}
-
-		const policy = await this.workflowReviewPolicyService.get();
-		if (!policy.enabled) {
-			throw new ForbiddenError('Workflow reviews are disabled on this instance');
-		}
-	}
-
-	/**
-	 * Project IDs for inbox queries. `null` means "all projects, unfiltered" —
-	 * correct for users with `workflow:publish` scoped globally. Requesters always
-	 * see their own reviews regardless (repository OR-matches `requesterId`), so no
-	 * personal-project fallback is needed.
-	 */
-	async resolveAccessibleProjectIds(user: User): Promise<string[] | null> {
-		if (hasGlobalScope(user, 'workflow:publish')) {
-			return null;
-		}
-
-		return await this.projectService.getProjectIdsWithScope(user, ['workflow:publish']);
-	}
-
-	/**
-	 * Encode the keyset boundary (createdAt + id) into an opaque cursor so the
-	 * next page is resolved without re-reading the anchor row — a review deleted
-	 * between requests no longer truncates the rest of the inbox.
-	 */
-	private encodeInboxCursor(row: WorkflowReviewRequest): string {
-		return Buffer.from(`${row.createdAt.toISOString()}|${row.id}`, 'utf8').toString('base64url');
-	}
-
-	private decodeInboxCursor(cursor: string): InboxCursor {
-		const decoded = Buffer.from(cursor, 'base64url').toString('utf8');
-		const separatorIndex = decoded.indexOf('|');
-		if (separatorIndex === -1) {
-			throw new BadRequestError('Invalid pagination cursor');
-		}
-
-		const createdAt = new Date(decoded.slice(0, separatorIndex));
-		const id = decoded.slice(separatorIndex + 1);
-		if (id.length === 0 || Number.isNaN(createdAt.getTime())) {
-			throw new BadRequestError('Invalid pagination cursor');
-		}
-
-		return { createdAt, id };
-	}
-
-	private toInboxItem(
-		entity: WorkflowReviewRequest,
-		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
-	): WorkflowReviewInboxItem {
-		return {
-			id: entity.id,
-			projectId: entity.projectId,
-			title: entity.title,
-			workflowName: linkedWorkflow?.workflowName ?? null,
-			workflowVersionId: linkedWorkflow?.workflowVersionId ?? null,
-			decision: entity.decision,
-			state: entity.state,
-			createdAt: entity.createdAt.toISOString(),
-			updatedAt: entity.updatedAt.toISOString(),
 		};
 	}
 }
