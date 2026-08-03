@@ -1,0 +1,20 @@
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_02bcb0e9f9d95d::t_1e50c1691e15e7 33-39
+  s_02bcb0e9f9d95d::t_ff86772101ff5f 49-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "60a3629f98779d7df410c0dbaac5ea788d667491",
+  "prompts": {},
+  "sessions": {
+    "s_02bcb0e9f9d95d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b0c3c1b-ecd2-46d6-b426-20dc6754a1da",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
