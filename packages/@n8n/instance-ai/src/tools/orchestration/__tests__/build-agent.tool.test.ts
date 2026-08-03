@@ -21,6 +21,7 @@ import type {
 import type * as AgentTargetBindingModule from '../agent-target-binding';
 import {
 	getSessionAgentByRef,
+	readPendingAgentTarget,
 	saveAgentBuilderTarget,
 	type AgentBuilderTarget,
 } from '../agent-target-binding';
@@ -35,6 +36,7 @@ vi.mock('../agent-target-binding', async () => {
 		),
 		saveAgentBuilderTarget: vi.fn(),
 		getSessionAgentByRef: vi.fn(async () => await Promise.resolve(undefined)),
+		readPendingAgentTarget: vi.fn(async () => await Promise.resolve(undefined)),
 	};
 });
 
@@ -286,7 +288,7 @@ describe('build-agent tool', () => {
 
 		await runTool(context, { message: 'Build me a support agent', name: 'Support Agent' });
 
-		expect(delegate.createAgent).toHaveBeenCalledWith('Support Agent');
+		expect(delegate.createAgent).toHaveBeenCalledWith('Support Agent', undefined);
 		expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Build me a support agent', {
 			threadId: 'ia-builder:thread-1:agent-1',
 			hostThreadId: 'thread-1',
@@ -693,7 +695,7 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build me a new one', name: 'Fresh Agent' });
 
-			expect(delegate.createAgent).toHaveBeenCalledWith('Fresh Agent');
+			expect(delegate.createAgent).toHaveBeenCalledWith('Fresh Agent', undefined);
 		});
 
 		it('persists the deferred agentId-path bind when the first turn suspends', async () => {
@@ -893,7 +895,7 @@ describe('build-agent tool', () => {
 				agentRef: 'support-triage',
 			});
 
-			expect(delegate.createAgent).toHaveBeenCalledWith('Support Triage');
+			expect(delegate.createAgent).toHaveBeenCalledWith('Support Triage', undefined);
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, {
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -995,7 +997,7 @@ describe('build-agent tool', () => {
 			expect(delegate.createAgent).not.toHaveBeenCalled();
 		});
 
-		it('creates a second agent under a different key while a target is bound', async () => {
+		it('creates a second agent under a different key when createNew is passed', async () => {
 			const { context, delegate } = makeContext();
 			context.domainContext!.agentBuilderTarget = {
 				agentId: 'agent-1',
@@ -1009,16 +1011,81 @@ describe('build-agent tool', () => {
 			});
 			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
 
-			await runTool(context, { message: 'Build me another agent', name: 'Second' });
+			await runTool(context, {
+				message: 'Build me another agent',
+				name: 'Second',
+				createNew: true,
+			});
 
 			expect(getSessionAgentByRef).toHaveBeenCalledWith(context.domainContext, 'second');
-			expect(delegate.createAgent).toHaveBeenCalledWith('Second');
+			expect(delegate.createAgent).toHaveBeenCalledWith('Second', undefined);
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, {
 				agentId: 'agent-2',
 				projectId: 'proj-1',
 				name: 'Second',
 				ref: 'second',
 			});
+		});
+
+		it('creates under the id the frontend minted for its unsaved artifact', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(readPendingAgentTarget).mockResolvedValue({
+				projectId: 'proj-1',
+				agentId: 'aBcDeFgHiJkLmNoP',
+			});
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'aBcDeFgHiJkLmNoP',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+			await runTool(context, { message: 'Build it', name: 'Support Triage' });
+
+			expect(delegate.createAgent).toHaveBeenCalledWith('Support Triage', 'aBcDeFgHiJkLmNoP');
+		});
+
+		it('ignores a pending artifact belonging to another project', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(readPendingAgentTarget).mockResolvedValue({
+				projectId: 'other-project',
+				agentId: 'aBcDeFgHiJkLmNoP',
+			});
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+			await runTool(context, { message: 'Build it', name: 'Support Triage' });
+
+			expect(delegate.createAgent).toHaveBeenCalledWith('Support Triage', undefined);
+		});
+
+		it('continues the bound target when a fresh key arrives without createNew', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'New agent',
+			};
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Built it.'));
+
+			await runTool(context, {
+				message: 'Build a support triage agent',
+				name: 'Support Triage',
+			});
+
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'agent-1',
+				'Build a support triage agent',
+				expect.objectContaining({ threadId: 'ia-builder:thread-1:agent-1' }),
+			);
+			// The reported agentRef has to resolve on later calls.
+			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(
+				context.domainContext,
+				expect.objectContaining({ agentId: 'agent-1', ref: 'support-triage' }),
+			);
 		});
 
 		it('switches back via registry ref instead of creating a duplicate', async () => {

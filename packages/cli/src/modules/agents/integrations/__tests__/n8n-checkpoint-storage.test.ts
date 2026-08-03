@@ -37,31 +37,94 @@ function makeService() {
 }
 
 describe('N8NCheckpointStorage', () => {
-	it('loads a suspended checkpoint without claiming it', async () => {
+	it('creates new checkpoints with the storage agent as owner', async () => {
+		const { service, repository } = makeService();
+		const checkpoint = {
+			runId: 'run-1',
+			agentId: 'agent-1',
+			expired: false,
+			state: JSON.stringify(suspendedState),
+		} as AgentCheckpoint;
+		repository.findByRunId.mockResolvedValue(null);
+		repository.create.mockReturnValue(checkpoint);
+
+		await service.getStorage('agent-1').save('run-1', suspendedState);
+
+		expect(repository.create).toHaveBeenCalledWith({
+			runId: 'run-1',
+			agentId: 'agent-1',
+			expired: false,
+			state: JSON.stringify(suspendedState),
+		});
+		expect(repository.save).toHaveBeenCalledWith(checkpoint);
+	});
+
+	it('updates a checkpoint only when the owner matches', async () => {
+		const { service, repository } = makeService();
+		const checkpoint = {
+			runId: 'run-1',
+			agentId: 'agent-1',
+			expired: true,
+			state: null,
+		} as AgentCheckpoint;
+		repository.findByRunId.mockResolvedValue(checkpoint);
+
+		await service.getStorage('agent-1').save('run-1', suspendedState);
+
+		expect(checkpoint).toMatchObject({
+			agentId: 'agent-1',
+			expired: false,
+			state: JSON.stringify(suspendedState),
+		});
+		expect(repository.save).toHaveBeenCalledWith(checkpoint);
+	});
+
+	it.each(['agent-2', null])(
+		'rejects overwriting a checkpoint owned by %s',
+		async (existingAgentId) => {
+			const { service, repository } = makeService();
+			repository.findByRunId.mockResolvedValue({
+				runId: 'run-1',
+				agentId: existingAgentId,
+				expired: false,
+				state: JSON.stringify(suspendedState),
+			} as AgentCheckpoint);
+
+			await expect(service.getStorage('agent-1').save('run-1', suspendedState)).rejects.toThrow(
+				'owned by a different agent',
+			);
+			expect(repository.save).not.toHaveBeenCalled();
+		},
+	);
+
+	it('loads only a checkpoint owned by the storage agent', async () => {
 		const { service, repository } = makeService();
 		const storedState = JSON.stringify(suspendedState);
-		repository.findOneBy.mockResolvedValue({
+		repository.findByRunIdAndAgentId.mockResolvedValue({
 			runId: 'run-1',
 			expired: false,
 			state: storedState,
 		} as AgentCheckpoint);
 
-		await expect(service.load('run-1')).resolves.toEqual(suspendedState);
+		await expect(service.getStorage('agent-1').load('run-1')).resolves.toEqual(suspendedState);
 
+		expect(repository.findByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1');
 		expect(repository.claimForResume).not.toHaveBeenCalled();
 	});
 
-	it('claims a checkpoint for resume with the original suspended state', async () => {
+	it('claims only a checkpoint owned by the storage agent', async () => {
 		const { service, repository } = makeService();
 		repository.claimForResume.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+		const storage = service.getStorage('agent-1');
 
-		await expect(service.claimForResume('run-1', suspendedState)).resolves.toBe(true);
+		await expect(storage.claimForResume?.('run-1', suspendedState)).resolves.toBe(true);
 		expect(repository.claimForResume).toHaveBeenCalledWith(
 			'run-1',
+			'agent-1',
 			JSON.stringify(suspendedState),
 			JSON.stringify({ ...suspendedState, status: 'running' }),
 		);
-		await expect(service.claimForResume('run-1', suspendedState)).resolves.toBe(false);
+		await expect(storage.claimForResume?.('run-1', suspendedState)).resolves.toBe(false);
 	});
 
 	it('atomically expires a suspended checkpoint for an agent', async () => {
@@ -77,25 +140,41 @@ describe('N8NCheckpointStorage', () => {
 		);
 	});
 
-	it('expires a checkpoint by runId when no agentId is given', async () => {
+	it('returns status only for a checkpoint owned by the agent', async () => {
 		const { service, repository } = makeService();
+		repository.findByRunIdAndAgentId.mockResolvedValue({
+			runId: 'run-1',
+			expired: false,
+			state: JSON.stringify(suspendedState),
+		} as AgentCheckpoint);
 
-		await service.delete('run-1');
+		await expect(service.getStatus('run-1', 'agent-1')).resolves.toEqual({
+			status: 'active',
+			checkpoint: suspendedState,
+		});
 
-		expect(repository.update).toHaveBeenCalledWith(
-			{ runId: 'run-1' },
-			{ expired: true, state: null },
-		);
+		expect(repository.findByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1');
 	});
 
-	it('scopes the expiry to the given agentId', async () => {
+	it('retains an expired checkpoint state while cancellation cleanup is pending', async () => {
+		const { service, repository } = makeService();
+		repository.findByRunIdAndAgentId.mockResolvedValue({
+			runId: 'run-1',
+			expired: true,
+			state: JSON.stringify(suspendedState),
+		} as AgentCheckpoint);
+
+		await expect(service.getStatus('run-1', 'agent-1')).resolves.toEqual({
+			status: 'expired',
+			checkpoint: suspendedState,
+		});
+	});
+
+	it('expires only a checkpoint owned by the storage agent', async () => {
 		const { service, repository } = makeService();
 
-		await service.delete('run-1', 'agent-1');
+		await service.getStorage('agent-1').delete('run-1');
 
-		expect(repository.update).toHaveBeenCalledWith(
-			{ runId: 'run-1', agentId: 'agent-1' },
-			{ expired: true, state: null },
-		);
+		expect(repository.expireByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1');
 	});
 });

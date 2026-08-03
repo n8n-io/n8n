@@ -32,6 +32,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
+	createAgent,
 	deleteAgent,
 	listAgentFiles,
 	uploadAgentFiles,
@@ -57,9 +58,12 @@ import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
-import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import {
+	removeProjectAgentFromListCache,
+	upsertProjectAgentsListCache,
+} from '../composables/useProjectAgentsList';
 import { useInstanceAiAgentPreviewHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
-import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
+import { addMissingAgentPersonalisation } from '@n8n/api-types';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -88,14 +92,23 @@ const props = withDefaults(
 		artifactAgentId?: string;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
+		/** True when no agent row exists behind `artifactAgentId` yet — the builder
+		 *  renders a local default config and creates the agent on the first edit. */
+		artifactAgentPending?: boolean;
 	}>(),
 	{
 		artifactMode: false,
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
 		artifactEditingLocked: false,
+		artifactAgentPending: false,
 	},
 );
+
+const emit = defineEmits<{
+	/** The agent behind an unsaved artifact now exists. */
+	persisted: [agent: AgentResource];
+}>();
 
 const route = useRoute();
 const router = useRouter();
@@ -179,6 +192,13 @@ async function onSendPreviewToAssistant(executionId?: string) {
  *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
+/**
+ * No agent row exists behind `agentId` yet. The id was minted by whoever opened
+ * this artifact, so the config edits below can create the agent under it at the
+ * moment the user first configures something — and until then nothing is
+ * persisted. Cleared by `ensureAgentPersisted`.
+ */
+const isUnsaved = ref(false);
 /** Queues `agentUpdated` bus events that land mid-initialize for replay (see `onExternalAgentUpdated`). */
 const pendingExternalRefresh = ref(false);
 const agentName = ref('');
@@ -231,6 +251,15 @@ const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilder
 	executionsCount,
 	routeBacked: computed(() => !isArtifactMode.value),
 });
+
+// Knowledge, Executions and Settings all read agent-scoped endpoints, so they
+// have nothing to show until the agent exists. Configuring the agent is what
+// creates it, so that is the only tab worth offering first.
+const visibleMainTabOptions = computed(() =>
+	isUnsaved.value
+		? mainTabOptions.value.filter((tab) => tab.value === 'agent')
+		: mainTabOptions.value,
+);
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -392,6 +421,7 @@ async function onUploadAgentFiles(files: File[]) {
 	const targetAgentId = agentId.value;
 	agentFilesUploading.value = true;
 	try {
+		await ensureAgentPersisted();
 		const uploadedFiles = await uploadAgentFiles(
 			rootStore.restApiContext,
 			targetProjectId,
@@ -570,6 +600,8 @@ function bindPreviewSession() {
 
 function warmAgentKnowledgeSandboxForPage() {
 	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value) return;
+	// No agent row to warm a sandbox for yet.
+	if (isUnsaved.value) return;
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
@@ -608,10 +640,50 @@ interface McpAvailabilitySnapshot {
 	enabled: boolean;
 }
 
+/**
+ * Create the agent the first time the user actually configures something, so an
+ * artifact that is only looked at never reaches the database. Every mutating
+ * path funnels through here; the cached promise keeps the independent autosave
+ * chains (config, skill, MCP) from racing into two agents.
+ *
+ * The agent is created under the already-minted `agentId`, so an agent-building
+ * chat request on the same thread converges on this agent rather than a second
+ * one (the backend adopts the existing row on an id collision).
+ */
+let persistPromise: Promise<void> | null = null;
+async function ensureAgentPersisted(): Promise<void> {
+	if (!isUnsaved.value) return;
+	persistPromise ??= (async () => {
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		const created = await createAgent(
+			rootStore.restApiContext,
+			targetProjectId,
+			localConfig.value?.name ?? locale.baseText('agents.new.defaultName'),
+			{ id: targetAgentId },
+		);
+		isUnsaved.value = false;
+		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+			agent.value = created;
+		}
+		upsertProjectAgentsListCache(targetProjectId, created);
+		// Lets the artifact host record that this agent is real now. Without it a
+		// reload would re-enter draft mode and overwrite the saved config with an
+		// empty one, since the pending marker itself cannot be deleted.
+		emit('persisted', created);
+	})().catch((error) => {
+		// Let the next edit retry rather than stranding the agent unsaved.
+		persistPromise = null;
+		throw error;
+	});
+	await persistPromise;
+}
+
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' | undefined> {
 	// The AI may be mutating this agent right now — a save queued just before
 	// the lock engaged must not persist its now-stale full config over it.
 	if (props.artifactEditingLocked) return 'skipped';
+	await ensureAgentPersisted();
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).
@@ -633,6 +705,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 
 async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<'skipped' | undefined> {
 	if (props.artifactEditingLocked) return 'skipped';
+	await ensureAgentPersisted();
 	const result = await updateAgentSkill(
 		rootStore.restApiContext,
 		snapshot.projectId,
@@ -699,6 +772,7 @@ const agentAvailableInMcp = computed(
 async function saveMcpAvailability(
 	snapshot: McpAvailabilitySnapshot,
 ): Promise<'skipped' | undefined> {
+	await ensureAgentPersisted();
 	await mcpStore.toggleAgentMcpAccess(snapshot.agentId, snapshot.enabled);
 	if (snapshot.enabled) {
 		mcp.trackMcpAccessEnabledForAgent(snapshot.agentId);
@@ -872,6 +946,7 @@ const caps = useAgentCapabilitiesActions({
 	projectId,
 	agentId,
 	connectedTriggers,
+	ensureAgentPersisted,
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
 		// The persisted validation result no longer reflects the working copy —
@@ -1140,6 +1215,33 @@ async function onHeaderAction(action: string) {
 	}
 }
 
+/**
+ * Stand-in for the resource the create endpoint would have returned, so the
+ * editor and its children can treat an unsaved agent like any other freshly
+ * created one instead of every consumer having to handle a null agent.
+ */
+function draftAgentResource(personalisation: AgentJsonConfig['personalisation']): AgentResource {
+	const now = new Date().toISOString();
+	return {
+		resourceType: 'agent',
+		id: agentId.value,
+		name: locale.baseText('agents.new.defaultName'),
+		projectId: projectId.value,
+		schema: personalisation ? { personalisation } : null,
+		availableInMCP: false,
+		isCompiled: false,
+		isRunnable: false,
+		hasPublishHistory: false,
+		createdAt: now,
+		updatedAt: now,
+		versionId: null,
+		activeVersionId: null,
+		tools: {},
+		skills: {},
+		activeVersion: null,
+	};
+}
+
 async function initialize() {
 	clearTimeout(externalRefreshTimer);
 	// A refresh queued for the previous agent must not fire against this one.
@@ -1175,13 +1277,35 @@ async function initialize() {
 		deletingAgentFileId.value = null;
 		repointConfigValidation(projectId.value, agentId.value);
 
-		await Promise.all([
-			fetchAgent(),
-			fetchConfig(projectId.value, agentId.value),
-			fetchAgentFiles(),
-			refreshConfigValidation(projectId.value, agentId.value),
-		]);
-		persistMissingPersonalisationGradient();
+		// An agent that does not exist yet has nothing to fetch: stand up the same
+		// blank config the backend would have written, and let the first edit
+		// create it (see `ensureAgentPersisted`). The personalisation backfill is
+		// skipped too — it schedules a save, which would persist on mount alone.
+		isUnsaved.value = props.artifactAgentPending;
+		if (isUnsaved.value) {
+			const draftConfig: AgentJsonConfig = {
+				name: locale.baseText('agents.new.defaultName'),
+				model: '',
+				instructions: '',
+				tools: [],
+				skills: [],
+			};
+			// Seed the icon and gradient the backfill would normally add, so the
+			// draft looks like any other new agent and the first save carries them.
+			// Seeded rather than backfilled because the backfill schedules a save,
+			// which would persist the agent on mount.
+			localConfig.value = addMissingAgentPersonalisation(draftConfig) ?? draftConfig;
+			agent.value = draftAgentResource(localConfig.value.personalisation);
+			agentName.value = agent.value.name;
+		} else {
+			await Promise.all([
+				fetchAgent(),
+				fetchConfig(projectId.value, agentId.value),
+				fetchAgentFiles(),
+				refreshConfigValidation(projectId.value, agentId.value),
+			]);
+			persistMissingPersonalisationGradient();
+		}
 		builderTelemetry.captureToolsBaseline();
 		builderTelemetry.captureSkillsBaseline();
 		builderTelemetry.captureTasksBaseline();
@@ -1195,9 +1319,11 @@ async function initialize() {
 		// Stop any in-flight auto-refresh from the previous agent before kicking
 		// off a new fetch — keeps the store tied to the current project/agent.
 		sessionsStore.stopAutoRefresh();
-		void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
-			sessionsStore.startAutoRefresh();
-		});
+		if (!isUnsaved.value) {
+			void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
+				sessionsStore.startAutoRefresh();
+			});
+		}
 		void (async () => {
 			// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 			// will correct it once the user expands the Triggers section.
@@ -1223,7 +1349,11 @@ async function initialize() {
 	}
 }
 
-watch(agentId, initialize, { immediate: true });
+// Also re-initialize when the artifact stops being pending: the chat path
+// creates the agent under this same id, so the id never changes, but the view
+// must leave draft mode — otherwise it keeps skipping the agent-scoped fetches
+// and hiding the tabs for an agent that now exists.
+watch([agentId, () => props.artifactAgentPending], initialize, { immediate: true });
 
 onBeforeUnmount(() => {
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
@@ -1483,7 +1613,8 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:can-edit-agent="effectiveCanEditAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
-					:main-tab-options="mainTabOptions"
+					:main-tab-options="visibleMainTabOptions"
+					:agent-unsaved="isUnsaved"
 					:executions-description="executionsDescription"
 					:artifact-mode="isArtifactMode"
 					:config-validation-issues="configValidation?.issues ?? []"

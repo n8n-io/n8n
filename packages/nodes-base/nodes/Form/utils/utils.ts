@@ -769,7 +769,7 @@ async function authenticateFormUserOrRespond(
 
 	if (oauth2Enabled) {
 		const res = context.getResponseObject();
-		const url = context.getNodeWebhookUrl('default');
+		const url = context.getWebhookResourceUrl('default');
 		if (!url) {
 			throw new UnexpectedError('Webhook URL not found for the node');
 		}

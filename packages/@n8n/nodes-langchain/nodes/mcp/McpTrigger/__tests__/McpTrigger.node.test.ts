@@ -399,7 +399,7 @@ describe('McpTrigger', () => {
 			const node = mock<INode>({ typeVersion: opts.typeVersion, name: 'MCP Server Trigger' });
 
 			mockContext.getNodeParameter.mockReturnValue('n8nOAuth2');
-			mockContext.getNodeWebhookUrl.mockReturnValue(resourceUrl);
+			mockContext.getWebhookResourceUrl.mockReturnValue(resourceUrl);
 			mockContext.getWebhookName.mockReturnValue('setup');
 			mockContext.getRequestObject.mockReturnValue(req as never);
 			mockContext.getResponseObject.mockReturnValue(resp as never);

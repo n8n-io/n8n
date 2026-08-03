@@ -573,6 +573,14 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.findAll('[data-testid="agent-capabilities-task-row"]').length).toBe(1);
 	});
 
+	it('does not load tasks for an agent that has not been saved yet', async () => {
+		const wrapper = mountSection([], {}, null, [], [], { agentUnsaved: true });
+		await flushPromises();
+
+		expect(getAgentTasksSpy).not.toHaveBeenCalled();
+		expect(wrapper.text()).not.toContain('not found');
+	});
+
 	it('reloads task bodies when switching agents', async () => {
 		getAgentTasksSpy.mockImplementation(
 			async (_context: unknown, _projectId: string, agentId: string) =>

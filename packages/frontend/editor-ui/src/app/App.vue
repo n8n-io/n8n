@@ -11,6 +11,7 @@ import { useBackendStatus } from '@/app/composables/useBackendStatus';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
+import { useTrialIntroModalAutoOpen } from '@/experiments/trialIntroModal/useTrialIntroModalAutoOpen';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -64,6 +65,8 @@ useTelemetryInitializer();
 
 // Initialize global backend status tracking
 useBackendStatus();
+
+useTrialIntroModalAutoOpen();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);

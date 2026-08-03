@@ -18,7 +18,9 @@ const buildContext = (opts: {
 	response.send.mockReturnValue(response);
 
 	const context = mock<IWebhookFunctions>();
-	context.getNodeWebhookUrl.mockReturnValue('webhookUrl' in opts ? opts.webhookUrl : WEBHOOK_URL);
+	context.getWebhookResourceUrl.mockReturnValue(
+		'webhookUrl' in opts ? opts.webhookUrl : WEBHOOK_URL,
+	);
 	context.getResponseObject.mockReturnValue(response);
 	context.getRequestObject.mockReturnValue({
 		headers: opts.authorization ? { authorization: opts.authorization } : {},

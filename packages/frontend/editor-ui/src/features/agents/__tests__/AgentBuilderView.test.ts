@@ -10,7 +10,7 @@ import type {
 	AgentJsonToolRef,
 	CustomToolEntry,
 } from '../types';
-import { getRandomAgentPersonalisationGradient } from '../utils/agentPersonalisation';
+import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus } from '../agents.eventBus';
 
 const routerPush = vi.fn();
@@ -117,6 +117,7 @@ const createAgentSkillMock = vi.fn();
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
+const createAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const deleteAgentMock = vi.fn().mockResolvedValue(undefined);
@@ -128,6 +129,7 @@ const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
+	createAgent: createAgentMock,
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
@@ -278,6 +280,8 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 		ensureLoaded: vi.fn().mockResolvedValue([]),
 		refresh: vi.fn(),
 	}),
+	upsertProjectAgentsListCache: vi.fn(),
+	removeProjectAgentFromListCache: vi.fn(),
 }));
 
 const instanceAiAvailableRef = ref(true);
@@ -524,6 +528,8 @@ function resetViewMocks() {
 	updateConfigMock.mockReset();
 	updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 	getAgentMock.mockResolvedValue(makeAgentResponse());
+	createAgentMock.mockReset();
+	createAgentMock.mockResolvedValue(makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' }));
 	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
@@ -1593,6 +1599,73 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		expect(favoritesStoreMock.toggleFavorite).toHaveBeenCalledWith('a1', 'agent');
+	});
+
+	describe('unsaved (pending) artifact', () => {
+		const pendingProps = {
+			artifactMode: true,
+			artifactProjectId: 'p1',
+			artifactAgentId: 'aBcDeFgHiJkLmNoP',
+			artifactAgentPending: true,
+		};
+
+		it('renders without reading anything for an agent that does not exist yet', async () => {
+			await renderView({ props: pendingProps });
+
+			expect(getAgentMock).not.toHaveBeenCalled();
+			expect(fetchConfigMock).not.toHaveBeenCalled();
+			expect(createAgentMock).not.toHaveBeenCalled();
+		});
+
+		it('creates the agent once on the first edits, under the minted id', async () => {
+			const wrapper = await renderView({ props: pendingProps });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+			editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			editor.vm.$emit('update:config', { model: 'anthropic/claude-sonnet-4-5' });
+			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+			expect(createAgentMock).toHaveBeenCalledTimes(1);
+			expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+				id: 'aBcDeFgHiJkLmNoP',
+			});
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'aBcDeFgHiJkLmNoP',
+				expect.objectContaining({ instructions: 'Answer support mail' }),
+			);
+		});
+
+		it('persists the icon and gradient with the first save, so a new agent keeps them', async () => {
+			const wrapper = await renderView({ props: pendingProps });
+
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'aBcDeFgHiJkLmNoP',
+				expect.objectContaining({
+					personalisation: expect.objectContaining({
+						icon: expect.any(String),
+						gradient: expect.objectContaining({ angle: expect.any(Number) }),
+					}),
+				}),
+			);
+		});
+
+		it('reports the agent so the host can stop treating the artifact as pending', async () => {
+			const wrapper = await renderView({ props: pendingProps });
+
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+			expect(wrapper.emitted('persisted')).toHaveLength(1);
+		});
 	});
 
 	it('updates the favorite name in the sidebar when the agent is renamed', async () => {
