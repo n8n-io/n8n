@@ -107,7 +107,9 @@ it has you fetch, never from memory:
 - `suggestedName` — display name for the created credential.
 
 Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
-`GET /v1/models` is a documented side-effect-free endpoint:
+`GET https://api.fal.ai/v1/models/usage` is a documented side-effect-free
+endpoint that rejects a bad key (the model-serving host `fal.run` is not a
+key-check endpoint):
 
 ```json
 {
@@ -128,7 +130,7 @@ Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
         }
       ],
       "docsUrl": "https://fal.ai/dashboard/keys",
-      "testUrl": "https://fal.run/v1/models"
+      "testUrl": "https://api.fal.ai/v1/models/usage"
     }
   ]
 }

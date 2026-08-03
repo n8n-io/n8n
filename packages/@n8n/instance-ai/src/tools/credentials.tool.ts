@@ -187,7 +187,18 @@ export function findSetupHintProblems(
 			'every placeholder is plain — at least one must be a password (masked) input; omit type or use "password" for the secret',
 		);
 	}
-	const defined = new Set(hint.placeholders.map((placeholder) => placeholder.name));
+	// A duplicate name silently collapses in the defined-Set below, and the form
+	// keeps the last def — so a masked def followed by a plain one would render
+	// the secret in cleartext. Require exactly one def per marker.
+	const defined = new Set<string>();
+	for (const placeholder of hint.placeholders) {
+		if (defined.has(placeholder.name)) {
+			problems.push(
+				`placeholder "${placeholder.name}" is defined more than once — each {{marker}} needs exactly one definition`,
+			);
+		}
+		defined.add(placeholder.name);
+	}
 	for (const marker of markers) {
 		if (!defined.has(marker)) problems.push(`marker {{${marker}}} has no placeholders entry`);
 	}

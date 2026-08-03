@@ -36,18 +36,27 @@ function isSecretKey(key: string): boolean {
 // model, while markers and statics stay readable.
 const HINT_KEYS = new Set(['credentialHints', 'setupHint']);
 
-function redactHintValue(value: unknown, depth: number): unknown {
+const TEMPLATE_MARKER = /\{\{\s*[\w.-]+\s*\}\}/;
+
+function redactHintValue(value: unknown, depth: number, key?: string): unknown {
 	if (depth > 10 || value === null || value === undefined) return value;
 	if (typeof value === 'string') {
+		// A secret-shaped key (a template's `Authorization`/`X-Api-Key` header)
+		// should only ever hold a `{{marker}}`. A marker-less value there is a
+		// literal secret a malformed recipe leaked; content masking can't spot an
+		// arbitrary token, so redact wholesale.
+		if (key !== undefined && isSecretKey(key) && !TEMPLATE_MARKER.test(value)) {
+			return '[REDACTED]';
+		}
 		return redactSecretsInText(value);
 	}
 	if (Array.isArray(value)) {
-		return value.map((entry) => redactHintValue(entry, depth + 1));
+		return value.map((entry) => redactHintValue(entry, depth + 1, key));
 	}
 	if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
 		const out: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-			out[k] = redactHintValue(v, depth + 1);
+			out[k] = redactHintValue(v, depth + 1, k);
 		}
 		return out;
 	}

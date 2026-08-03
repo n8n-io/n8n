@@ -293,4 +293,29 @@ describe('redactSecrets — credential setup hints', () => {
 		};
 		expect(result.setupHint.template.headers.Authorization).not.toContain('sk-live-abcdef123456');
 	});
+
+	it('redacts a bare literal under a secret-shaped header key', () => {
+		const input = {
+			setupHint: {
+				// malformed recipe: a literal key where a {{marker}} belongs. The bare
+				// token has no format the content masker can recognize, so key context
+				// must catch it.
+				template: { headers: { 'X-Api-Key': 'sk-live-abcdef123456' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+			},
+		};
+
+		const result = redactSecrets(input) as {
+			setupHint: { template: { headers: Record<string, string> } };
+		};
+		expect(result.setupHint.template.headers['X-Api-Key']).toBe('[REDACTED]');
+	});
+
+	it('keeps a marker under a secret-shaped header key readable', () => {
+		const input = {
+			setupHint: { template: { headers: { 'X-Api-Key': '{{access_key}}' } } },
+		};
+
+		expect(redactSecrets(input)).toEqual(input);
+	});
 });

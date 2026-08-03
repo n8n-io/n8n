@@ -125,7 +125,7 @@ Expected Output:
   "method": "POST",
   "url": "https://api.example.com/data",
   "authentication": "genericCredentialType",
-  "genericAuthType": "httpHeaderAuth",
+  "genericAuthType": "httpTemplatedCustomAuth",
   "sendHeaders": true,
   "headerParameters": {
     "parameters": [
@@ -152,6 +152,6 @@ Expected Output:
   "options": {}
 }
 
-Note: The API key is handled by the httpHeaderAuth credential, NOT hardcoded in the header parameters.
+Note: The API key is handled by the httpTemplatedCustomAuth credential, NOT hardcoded in the header parameters.
 The user will configure their API key securely in n8n's credential manager.`,
 };

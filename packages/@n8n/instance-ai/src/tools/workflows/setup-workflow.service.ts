@@ -47,10 +47,14 @@ export interface CredentialCache {
 	testability: Map<string, Promise<boolean>>;
 	/** Credential test result promises, keyed by credential ID (workflow-independent). */
 	tests: Map<string, Promise<{ success: boolean; message?: string }>>;
+	/** Templated credential host lookups, keyed by the sorted candidate-id set.
+	 *  Every HTTP node resolving the shared type sees the same candidates, so the
+	 *  host decrypt runs once per workflow rather than once per node. */
+	templatedHosts: Map<string, Promise<Record<string, string | null>>>;
 }
 
 export function createCredentialCache(): CredentialCache {
-	return { lists: new Map(), testability: new Map(), tests: new Map() };
+	return { lists: new Map(), testability: new Map(), tests: new Map(), templatedHosts: new Map() };
 }
 
 function listCacheKey(workflowId: string | undefined, credentialType: string): string {
@@ -394,14 +398,23 @@ async function filterTemplatedCredentialsByServiceHost(
 	context: InstanceAiContext,
 	node: NodeJSON,
 	candidates: Array<{ id: string; name: string }>,
+	cache: CredentialCache | undefined,
 ): Promise<Array<{ id: string; name: string }>> {
 	if (candidates.length === 0) return candidates;
 	const parameters = node.parameters as Record<string, unknown> | undefined;
 	const nodeHost = extractServiceHost(parameters?.url);
-	if (!nodeHost || !context.credentialService.getTemplatedCredentialHosts) return [];
-	const hosts = await context.credentialService
-		.getTemplatedCredentialHosts(candidates.map((c) => c.id))
-		.catch((): Record<string, string | null> => ({}));
+	const getHosts = context.credentialService.getTemplatedCredentialHosts?.bind(
+		context.credentialService,
+	);
+	if (!nodeHost || !getHosts) return [];
+	const ids = candidates.map((c) => c.id);
+	const cacheKey = [...ids].sort().join(',');
+	let hostsPromise = cache?.templatedHosts.get(cacheKey);
+	if (!hostsPromise) {
+		hostsPromise = getHosts(ids).catch((): Record<string, string | null> => ({}));
+		cache?.templatedHosts.set(cacheKey, hostsPromise);
+	}
+	const hosts = await hostsPromise;
 	return candidates.filter((candidate) => {
 		const host = hosts[candidate.id];
 		return typeof host === 'string' && host !== '' && serviceHostsMatch(host, nodeHost);
@@ -438,6 +451,7 @@ async function resolveCredentialState(
 			context,
 			node,
 			existingCredentials,
+			cache,
 		);
 	}
 
