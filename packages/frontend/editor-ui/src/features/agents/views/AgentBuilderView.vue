@@ -37,6 +37,7 @@ import {
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type {
 	AgentResource,
+	AgentContinueLoadedEvent,
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -220,6 +221,7 @@ const {
 	effectiveSessionId,
 	currentSessionHasMessages,
 	currentSessionTitle,
+	currentSessionIsEphemeral,
 	setSessionInUrl,
 	clearContinueSessionParam,
 	onSessionPick,
@@ -639,7 +641,7 @@ function bindPreviewSession() {
 	// threads arrive, falling back to a fresh ephemeral session if the list
 	// comes back empty.
 	if (sessionsStore.loading) return;
-	setSessionInUrl(crypto.randomUUID());
+	onNewChat();
 }
 
 function warmAgentKnowledgeSandboxForPage() {
@@ -1422,6 +1424,22 @@ async function initialize() {
 	}
 }
 
+watch(
+	[projectId, agentId],
+	([nextProjectId, nextAgentId], [previousProjectId, previousAgentId]) => {
+		if (
+			!isArtifactMode.value ||
+			(nextProjectId === previousProjectId && nextAgentId === previousAgentId)
+		) {
+			return;
+		}
+
+		isArtifactPreviewDockOpen.value = false;
+		sessionDetailId.value = undefined;
+		activeChatSessionId.value = null;
+	},
+);
+
 watch([projectId, agentId], initialize, { immediate: true });
 
 // If another surface creates the pending artifact, reload the now-persisted
@@ -1532,7 +1550,9 @@ async function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
 	});
 }
 
-function onContinueLoaded(count: number) {
+function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
+	if (sessionId !== effectiveSessionId.value) return;
+
 	// Only kick away from a URL-supplied session when the URL points at a
 	// missing/stale thread. A real thread can legitimately have zero persisted
 	// chat messages if its execution failed before history was saved.
@@ -1542,9 +1562,12 @@ function onContinueLoaded(count: number) {
 		: false;
 
 	if (count === 0 && requestedSessionId && !knownThread) {
+		// A session switch re-keys the chat immediately, before its route replace
+		// necessarily lands. Ignore a load event until the route catches up.
+		if (requestedSessionId !== sessionId) return;
 		// Same-tab "New chat" already owns this ephemeral id via
 		// `activeChatSessionId` — drop the shareable URL param only.
-		if (activeChatSessionId.value === requestedSessionId) {
+		if (currentSessionIsEphemeral.value) {
 			exitContinueMode();
 			return;
 		}
@@ -1553,7 +1576,11 @@ function onContinueLoaded(count: number) {
 		// `router.replace` + `nextTick` that can leave the chat blank.
 		if (!isPreviewDockOpen.value) return;
 		const latest = sessionsStore.threads?.[0];
-		setSessionInUrl(latest?.id ?? crypto.randomUUID());
+		if (latest) {
+			setSessionInUrl(latest.id);
+		} else {
+			onNewChat();
+		}
 	}
 }
 

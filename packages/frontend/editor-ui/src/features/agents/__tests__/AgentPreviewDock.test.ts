@@ -68,8 +68,10 @@ function mountDock(
 		closeShortcutDisabled: boolean;
 		beforeSend: () => Promise<void> | void;
 	}> = {},
+	attachTo?: HTMLElement,
 ) {
 	return mount(AgentPreviewDock, {
+		...(attachTo ? { attachTo } : {}),
 		props: {
 			sessionTitle: 'Order help',
 			hasSession: true,
@@ -155,11 +157,11 @@ describe('AgentPreviewDock', () => {
 
 		expect(chatPage.props('layout')).toBe('dock');
 		expect(chatPage.props('beforeSend')).toBe(beforeSend);
-		chatPage.vm.$emit('continue-loaded', 3);
+		chatPage.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
 		chatPage.vm.$emit('open-build');
 		chatPage.vm.$emit('send-to-assistant', 'execution-1');
 
-		expect(wrapper.emitted('continue-loaded')).toEqual([[3]]);
+		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'thread-1', count: 3 }]]);
 		expect(wrapper.emitted('open-build')).toEqual([[]]);
 		expect(wrapper.emitted('send-to-assistant')).toEqual([['execution-1']]);
 	});
@@ -185,10 +187,33 @@ describe('AgentPreviewDock', () => {
 		const escapeBinding = useKeybindingsMock.mock.calls[0]?.[0]?.Escape as {
 			disabled: () => boolean;
 		};
-		expect(escapeBinding.disabled()).toBe(false);
+		expect(escapeBinding.disabled).toEqual(expect.any(Function));
 		expect(
 			wrapper.findAllComponents({ name: 'KeyboardShortcutTooltip' }).at(-1)?.props('shortcut'),
 		).toEqual({ keys: ['Esc'] });
+	});
+
+	it('only enables Escape while focus is within the dock', () => {
+		const host = document.createElement('div');
+		const outsideButton = document.createElement('button');
+		document.body.append(host, outsideButton);
+		const wrapper = mountDock({}, host);
+		const escapeBinding = useKeybindingsMock.mock.calls[0]?.[0]?.Escape as {
+			disabled: () => boolean;
+			run: () => void;
+		};
+
+		outsideButton.focus();
+		expect(escapeBinding.disabled()).toBe(true);
+
+		(wrapper.get('[data-testid="agent-preview-close-btn"]').element as HTMLButtonElement).focus();
+		expect(escapeBinding.disabled()).toBe(false);
+		escapeBinding.run();
+		expect(wrapper.emitted('close')).toEqual([[]]);
+
+		wrapper.unmount();
+		host.remove();
+		outsideButton.remove();
 	});
 
 	it('can yield the Escape shortcut to an open session trace', () => {
@@ -234,5 +259,15 @@ describe('AgentPreviewChatPage', () => {
 		const wrapper = mountChatPage('dock', beforeSend);
 
 		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('beforeSend')).toBe(beforeSend);
+	});
+
+	it('forwards the session-aware history event from the chat panel', () => {
+		const wrapper = mountChatPage('dock');
+
+		wrapper
+			.findComponent({ name: 'AgentChatPanel' })
+			.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
+
+		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'thread-1', count: 3 }]]);
 	});
 });

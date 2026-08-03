@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
-import type { AgentJsonConfig, AgentResource } from '../types';
+import type { AgentContinueLoadedEvent, AgentJsonConfig, AgentResource } from '../types';
 import AgentChatPanel from './AgentChatPanel.vue';
 
 withDefaults(
@@ -23,7 +23,7 @@ withDefaults(
 );
 
 const emit = defineEmits<{
-	'continue-loaded': [count: number];
+	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
 	'send-to-assistant': [executionId?: string];
 }>();

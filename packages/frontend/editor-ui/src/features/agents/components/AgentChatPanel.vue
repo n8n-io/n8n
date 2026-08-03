@@ -16,7 +16,7 @@ import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
-import type { AgentJsonConfig } from '../types';
+import type { AgentContinueLoadedEvent, AgentJsonConfig } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { TOOL_CALL_STATE } from '../constants';
@@ -50,7 +50,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
-	'continue-loaded': [count: number];
+	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
@@ -146,7 +146,9 @@ const {
 	agentId: toRef(props, 'agentId'),
 	continueSessionId: toRef(props, 'continueSessionId'),
 	onHistoryLoaded: (count) => {
-		if (props.continueSessionId) emit('continue-loaded', count);
+		if (props.continueSessionId) {
+			emit('continue-loaded', { sessionId: props.continueSessionId, count });
+		}
 	},
 });
 

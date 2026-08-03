@@ -22,7 +22,6 @@ vi.mock('@/features/agents/composables/useSubAgentNames', () => ({
 
 const stubs = {
 	SessionTimelineChart: { template: '<div data-test-id="chart-stub" />' },
-	SessionTimelineTable: { template: '<div data-test-id="table-stub" />' },
 	SessionEventFilter: { template: '<div data-test-id="filter-stub" />' },
 	SessionDetailPanel: { template: '<div data-test-id="detail-stub" />' },
 	N8nInput: { template: '<input data-test-id="search-stub" />' },
@@ -34,8 +33,12 @@ const detail: ThreadDetail = {
 	executions: [],
 };
 
-function mountPanel(props: Partial<{ projectId: string; agentId: string; threadId: string }> = {}) {
+function mountPanel(
+	props: Partial<{ projectId: string; agentId: string; threadId: string }> = {},
+	attachTo?: HTMLElement,
+) {
 	return mount(AgentSessionTimelinePanel, {
+		...(attachTo ? { attachTo } : {}),
 		props: { projectId: 'p1', agentId: 'a1', threadId: 't1', ...props },
 		global: { stubs },
 	});
@@ -70,7 +73,7 @@ describe('AgentSessionTimelinePanel', () => {
 		const wrapper = mountPanel();
 		await flushPromises();
 
-		expect(wrapper.find('[data-test-id="table-stub"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="timeline-empty"]').exists()).toBe(true);
 	});
 
 	it('reloads when the threadId prop changes', async () => {
@@ -90,5 +93,107 @@ describe('AgentSessionTimelinePanel', () => {
 		await flushPromises();
 
 		expect(showError).toHaveBeenCalled();
+	});
+
+	it('handles timeline shortcuts only while focus is within the panel', async () => {
+		getThreadDetail.mockResolvedValueOnce({
+			...detail,
+			executions: [
+				{
+					id: 'execution-1',
+					threadId: 't1',
+					agentId: 'a1',
+					status: 'success',
+					createdAt: '2026-08-03T12:00:00.000Z',
+					startedAt: '2026-08-03T12:00:00.000Z',
+					stoppedAt: null,
+					duration: 0,
+					userMessage: 'Hello',
+					attachments: null,
+					model: null,
+					promptTokens: null,
+					completionTokens: null,
+					totalTokens: null,
+					cost: null,
+					timeline: null,
+					error: null,
+					hitlStatus: null,
+					source: null,
+				},
+			],
+		});
+		const host = document.createElement('div');
+		const outsideButton = document.createElement('button');
+		document.body.append(host, outsideButton);
+		const wrapper = mountPanel({}, host);
+
+		try {
+			await flushPromises();
+			outsideButton.focus();
+			const outsideKeydown = new KeyboardEvent('keydown', {
+				key: 'ArrowDown',
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(outsideKeydown);
+			expect(outsideKeydown.defaultPrevented).toBe(false);
+
+			const timelineRow = wrapper.get('[data-test-id="timeline-row"]');
+			(timelineRow.element as HTMLElement).focus();
+			expect(document.activeElement).toBe(timelineRow.element);
+			const insideKeydown = new KeyboardEvent('keydown', {
+				key: 'ArrowDown',
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(insideKeydown);
+			expect(insideKeydown.defaultPrevented).toBe(true);
+			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
+
+			outsideButton.focus();
+			const outsideKeyup = new KeyboardEvent('keyup', {
+				key: 'ArrowDown',
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(outsideKeyup);
+			expect(outsideKeyup.defaultPrevented).toBe(false);
+			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
+
+			(timelineRow.element as HTMLElement).focus();
+			const insideKeyup = new KeyboardEvent('keyup', {
+				key: 'ArrowDown',
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(insideKeyup);
+			expect(insideKeyup.defaultPrevented).toBe(true);
+			await flushPromises();
+			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
+
+			(wrapper.get('[data-test-id="search-stub"]').element as HTMLInputElement).focus();
+			const inputEscape = new KeyboardEvent('keydown', {
+				key: 'Escape',
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(inputEscape);
+			expect(inputEscape.defaultPrevented).toBe(false);
+			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
+
+			outsideButton.focus();
+			const outsideEscape = new KeyboardEvent('keydown', {
+				key: 'Escape',
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(outsideEscape);
+			expect(outsideEscape.defaultPrevented).toBe(false);
+			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
+		} finally {
+			wrapper.unmount();
+			host.remove();
+			outsideButton.remove();
+		}
 	});
 });

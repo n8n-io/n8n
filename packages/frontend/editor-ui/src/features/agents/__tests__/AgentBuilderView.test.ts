@@ -1,7 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick, ref, computed } from 'vue';
+import { nextTick, ref, computed, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type {
@@ -18,7 +18,7 @@ const routerReplace = vi.fn();
 const routerResolve = vi.fn((to: { name?: string; params?: Record<string, string> }) => ({
 	href: `/${to.name ?? ''}/${Object.values(to.params ?? {}).join('/')}`,
 }));
-const routeQuery: Record<string, string | undefined> = {};
+const routeQuery = reactive<Record<string, string | undefined>>({});
 let routeName = 'AgentBuilderView';
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
@@ -1375,32 +1375,51 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(resetSessionStoreMock).toHaveBeenCalledTimes(resetCount);
 	});
 
-	it('clears stale singleton sessions before binding an unsaved artifact Preview', async () => {
-		fetchedSessionThreads.push({
-			id: 'previous-agent-thread',
-			updatedAt: '2026-01-01T00:00:00Z',
-		});
-		const wrapper = await renderView({
-			props: {
-				artifactMode: true,
-				artifactProjectId: 'p2',
-				artifactAgentId: 'a2',
-			},
-		});
-		wrapper
-			.findComponent({ name: 'AgentBuilderEditorColumn' })
-			.vm.$emit('open-session', 'previous-agent-thread');
-		await flushPromises();
+	it.each([
+		{
+			label: 'agent',
+			nextProps: { artifactAgentId: 'a3', artifactAgentPending: true },
+		},
+		{
+			label: 'project',
+			nextProps: { artifactProjectId: 'p3', artifactAgentPending: true },
+		},
+	])(
+		'closes Preview and clears local session state when the artifact $label target changes',
+		async ({ nextProps }) => {
+			fetchedSessionThreads.push({
+				id: 'previous-agent-thread',
+				updatedAt: '2026-01-01T00:00:00Z',
+			});
+			const wrapper = await renderView({
+				props: {
+					artifactMode: true,
+					artifactProjectId: 'p2',
+					artifactAgentId: 'a2',
+				},
+			});
+			let editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			editor.vm.$emit('open-session', 'previous-agent-thread');
+			await flushPromises();
+			wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('view-trace');
+			await flushPromises();
+			expect(editor.props('sessionDetailId')).toBe('previous-agent-thread');
 
-		await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
-		await flushPromises();
+			routerPush.mockClear();
+			routerReplace.mockClear();
+			await wrapper.setProps(nextProps);
+			await flushPromises();
 
-		expect(resetSessionStoreMock).toHaveBeenCalled();
-		expect(fetchSessionThreadsMock).toHaveBeenCalledTimes(1);
-		expect(
-			wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId'),
-		).not.toBe('previous-agent-thread');
-	});
+			editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).exists()).toBe(false);
+			expect(editor.props('sessionDetailId')).toBeUndefined();
+			expect(wrapper.emitted('preview-open-change')).toEqual([[false], [true], [false]]);
+			expect(routerPush).not.toHaveBeenCalled();
+			expect(routerReplace).not.toHaveBeenCalled();
+			expect(resetSessionStoreMock).toHaveBeenCalled();
+			expect(fetchSessionThreadsMock).toHaveBeenCalledTimes(1);
+		},
+	);
 
 	it('clears center detail when the artifact agent target changes', async () => {
 		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
@@ -1600,7 +1619,11 @@ describe('AgentBuilderView — preview routing', () => {
 		const wrapper = await renderView();
 		routerReplace.mockClear();
 
-		(wrapper.vm as unknown as { onContinueLoaded: (count: number) => void }).onContinueLoaded(0);
+		(
+			wrapper.vm as unknown as {
+				onContinueLoaded: (event: { sessionId: string; count: number }) => void;
+			}
+		).onContinueLoaded({ sessionId: 'faulty-thread', count: 0 });
 		await nextTick();
 		await flushPromises();
 
@@ -1617,7 +1640,11 @@ describe('AgentBuilderView — preview routing', () => {
 		const wrapper = await renderView();
 		routerReplace.mockClear();
 
-		(wrapper.vm as unknown as { onContinueLoaded: (count: number) => void }).onContinueLoaded(0);
+		(
+			wrapper.vm as unknown as {
+				onContinueLoaded: (event: { sessionId: string; count: number }) => void;
+			}
+		).onContinueLoaded({ sessionId: 'stale-missing-thread', count: 0 });
 		await flushPromises();
 
 		expect(routerReplace).toHaveBeenCalledWith(
@@ -1629,6 +1656,78 @@ describe('AgentBuilderView — preview routing', () => {
 			continueSessionId: string;
 		};
 		expect(replaceQuery.continueSessionId).not.toBe('stale-missing-thread');
+	});
+
+	it('rebinds an unknown session introduced by an in-place route change', async () => {
+		routeName = 'AgentPreviewView';
+		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-01T00:00:00Z' });
+		const wrapper = await renderView();
+		routerReplace.mockClear();
+
+		routeQuery.continueSessionId = 'stale-route-thread';
+		await nextTick();
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			'stale-route-thread',
+		);
+
+		(
+			wrapper.vm as unknown as {
+				onContinueLoaded: (event: { sessionId: string; count: number }) => void;
+			}
+		).onContinueLoaded({ sessionId: 'stale-route-thread', count: 0 });
+		await flushPromises();
+
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: expect.objectContaining({ continueSessionId: 'thread-latest' }),
+		});
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			'thread-latest',
+		);
+	});
+
+	it('ignores stale continue-loaded events after New session takes ownership', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'stale-route-thread';
+		const wrapper = await renderView();
+		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		routerReplace.mockClear();
+
+		dock.vm.$emit('new-session');
+		await nextTick();
+		const newSessionId = dock.props('effectiveSessionId') as string;
+		expect(newSessionId).not.toBe('stale-route-thread');
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: expect.objectContaining({ continueSessionId: newSessionId }),
+		});
+		routerReplace.mockClear();
+
+		(
+			wrapper.vm as unknown as {
+				onContinueLoaded: (event: { sessionId: string; count: number }) => void;
+			}
+		).onContinueLoaded({ sessionId: 'stale-route-thread', count: 0 });
+		await flushPromises();
+
+		expect(routerReplace).not.toHaveBeenCalled();
+		expect(dock.props('effectiveSessionId')).toBe(newSessionId);
+	});
+
+	it('ignores a late history event after the route confirms a different session', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'previous-thread';
+		const wrapper = await renderView();
+		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+
+		routeQuery.continueSessionId = 'current-thread';
+		await nextTick();
+		expect(dock.props('effectiveSessionId')).toBe('current-thread');
+		routerReplace.mockClear();
+
+		dock.vm.$emit('continue-loaded', { sessionId: 'previous-thread', count: 0 });
+		await flushPromises();
+
+		expect(routerReplace).not.toHaveBeenCalled();
+		expect(dock.props('effectiveSessionId')).toBe('current-thread');
 	});
 
 	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { N8nButton, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useTemplateRef } from 'vue';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
-import type { AgentJsonConfig, AgentResource } from '../types';
+import type { AgentContinueLoadedEvent, AgentJsonConfig, AgentResource } from '../types';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 
 const props = withDefaults(
@@ -31,12 +32,13 @@ const emit = defineEmits<{
 	'view-trace': [];
 	'new-session': [];
 	close: [];
-	'continue-loaded': [count: number];
+	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
 	'send-to-assistant': [executionId?: string];
 }>();
 
 const i18n = useI18n();
+const dock = useTemplateRef<HTMLElement>('dock');
 
 function viewTrace() {
 	if (!props.hasSession || !props.effectiveSessionId) return;
@@ -51,10 +53,14 @@ function close() {
 	emit('close');
 }
 
+function isFocusWithinDock() {
+	return dock.value?.contains(document.activeElement) === true;
+}
+
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
 	Escape: {
-		disabled: () => props.closeShortcutDisabled,
+		disabled: () => props.closeShortcutDisabled || !isFocusWithinDock(),
 		run: close,
 	},
 });
@@ -62,6 +68,7 @@ useKeybindings({
 
 <template>
 	<aside
+		ref="dock"
 		:class="$style.dock"
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		data-testid="agent-preview-dock"

@@ -150,6 +150,26 @@ describe('useAgentBuilderSession', () => {
 		expect(session.activeChatSessionId.value).toBe('history-session');
 	});
 
+	it('distinguishes a locally minted session from route-provided sessions', async () => {
+		route.query = reactive({ continueSessionId: 'route-session' });
+		const session = useAgentBuilderSession({ routeBacked: ref(true) });
+
+		expect(session.currentSessionIsEphemeral.value).toBe(false);
+
+		session.onNewChat();
+		const newSessionId = session.effectiveSessionId.value;
+		expect(session.currentSessionIsEphemeral.value).toBe(true);
+
+		route.query.continueSessionId = newSessionId;
+		await nextTick();
+		expect(session.currentSessionIsEphemeral.value).toBe(true);
+
+		route.query.continueSessionId = 'history-session';
+		await nextTick();
+		expect(session.effectiveSessionId.value).toBe('history-session');
+		expect(session.currentSessionIsEphemeral.value).toBe(false);
+	});
+
 	it('only clears the route session when route backing is enabled', () => {
 		route.query = { continueSessionId: 'route-session', keep: 'value' };
 		const routeBacked = ref(false);

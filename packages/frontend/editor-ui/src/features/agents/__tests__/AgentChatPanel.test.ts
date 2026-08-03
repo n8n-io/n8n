@@ -12,6 +12,7 @@ const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
 const isCancellingMock = ref(false);
+let onHistoryLoaded: ((count: number) => void) | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
@@ -65,19 +66,22 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 }));
 
 vi.mock('../composables/useAgentChatStream', () => ({
-	useAgentChatStream: () => ({
-		messages: messagesMock,
-		isStreaming: isStreamingMock,
-		isCancelling: isCancellingMock,
-		messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
-		fatalError: fatalErrorMock,
-		loadHistory: loadHistoryMock,
-		sendMessage: sendMessageMock,
-		stopGenerating: stopGeneratingMock,
-		resume: vi.fn(),
-		cancelAndSteer: cancelAndSteerMock,
-		dismissFatalError: vi.fn(),
-	}),
+	useAgentChatStream: (options: { onHistoryLoaded: (count: number) => void }) => {
+		onHistoryLoaded = options.onHistoryLoaded;
+		return {
+			messages: messagesMock,
+			isStreaming: isStreamingMock,
+			isCancelling: isCancellingMock,
+			messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
+			fatalError: fatalErrorMock,
+			loadHistory: loadHistoryMock,
+			sendMessage: sendMessageMock,
+			stopGenerating: stopGeneratingMock,
+			resume: vi.fn(),
+			cancelAndSteer: cancelAndSteerMock,
+			dismissFatalError: vi.fn(),
+		};
+	},
 }));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
@@ -103,6 +107,7 @@ describe('AgentChatPanel', () => {
 		isStreamingMock.value = false;
 		isCancellingMock.value = false;
 		fatalErrorMock.value = null;
+		onHistoryLoaded = undefined;
 	});
 
 	function mountPanel() {
@@ -120,6 +125,24 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('emits the loaded history count with the session that produced it', () => {
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				continueSessionId: 'session-1',
+				agentConfig: null,
+				agentStatus: 'draft',
+				connectedTriggers: [],
+			},
+		});
+
+		expect(onHistoryLoaded).toBeDefined();
+		onHistoryLoaded?.(3);
+
+		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'session-1', count: 3 }]]);
+	});
 
 	/**
 	 * A non-approval interactive card (`chat_action`) — these put the chat

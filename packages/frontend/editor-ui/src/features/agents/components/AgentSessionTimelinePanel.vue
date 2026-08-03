@@ -24,7 +24,7 @@ import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.u
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useActiveElement, useEventListener } from '@vueuse/core';
 
 const props = defineProps<{
@@ -44,6 +44,7 @@ const i18n = useI18n();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
 const activeElement = useActiveElement();
+const panel = useTemplateRef<HTMLElement>('panel');
 
 const projectId = computed(() => props.projectId);
 
@@ -149,8 +150,15 @@ function selectTimelineItem(index: number | null) {
 	highlightedIndex.value = index;
 }
 
+function shouldHandleShortcut() {
+	const element = activeElement.value;
+	if (!(element instanceof Element)) return false;
+
+	return panel.value?.contains(element) === true && !shouldIgnoreCanvasShortcut(element);
+}
+
 function onKeyDown(event: KeyboardEvent) {
-	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
+	if (!shouldHandleShortcut()) return;
 
 	if (event.key === 'Escape') {
 		if (selectedIndex.value !== null || highlightedIndex.value !== null) {
@@ -180,7 +188,7 @@ function onKeyDown(event: KeyboardEvent) {
 useEventListener(document, 'keydown', onKeyDown);
 
 function onKeyUp(event: KeyboardEvent) {
-	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
+	if (!shouldHandleShortcut()) return;
 	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
 	if (highlightedIndex.value === selectedIndex.value) return;
 	event.preventDefault();
@@ -227,7 +235,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 </script>
 
 <template>
-	<div :class="$style.panel">
+	<div ref="panel" :class="$style.panel">
 		<div v-if="!loading" :class="$style.subHeader">
 			<div :class="$style.search">
 				<N8nInput

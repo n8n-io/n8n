@@ -55,6 +55,7 @@ export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptio
 
 	const activeChatSessionId = ref<string | null>(null);
 	const pendingRouteSessionId = ref<string | null>(null);
+	const ephemeralSessionId = ref<string | null>(null);
 	const continueSessionId = computed(() => {
 		// Vue Router types this as `LocationQuery[key]: string | string[] | null`.
 		// Picking the first string defends against duplicate query params
@@ -77,6 +78,9 @@ export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptio
 				pendingRouteSessionId.value = null;
 				return;
 			}
+			if (routeSessionId && routeSessionId !== ephemeralSessionId.value) {
+				ephemeralSessionId.value = null;
+			}
 			if (pendingRouteSessionId.value !== null) {
 				// Setting the pending id does not trigger this watcher. Any later
 				// route change is authoritative, whether it confirms the replace or
@@ -91,10 +95,20 @@ export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptio
 	watch(activeChatSessionId, (sessionId) => {
 		if (sessionId === null) {
 			pendingRouteSessionId.value = null;
-		} else if (routeBacked.value && sessionId !== continueSessionId.value) {
-			pendingRouteSessionId.value = sessionId;
+			ephemeralSessionId.value = null;
+		} else {
+			if (ephemeralSessionId.value !== null && sessionId !== ephemeralSessionId.value) {
+				ephemeralSessionId.value = null;
+			}
+			if (routeBacked.value && sessionId !== continueSessionId.value) {
+				pendingRouteSessionId.value = sessionId;
+			}
 		}
 	});
+	const currentSessionIsEphemeral = computed(
+		() =>
+			ephemeralSessionId.value !== null && ephemeralSessionId.value === effectiveSessionId.value,
+	);
 
 	/**
 	 * The current session is "empty" until it's been persisted as a thread —
@@ -134,8 +148,9 @@ export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptio
 		}));
 	});
 
-	function selectSession(id: string) {
+	function selectSession(id: string, ephemeral = false) {
 		activeChatSessionId.value = id;
+		ephemeralSessionId.value = ephemeral ? id : null;
 		if (!routeBacked.value) return;
 		pendingRouteSessionId.value = id;
 		void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
@@ -157,7 +172,7 @@ export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptio
 	}
 
 	function onNewChat() {
-		selectSession(crypto.randomUUID());
+		selectSession(crypto.randomUUID(), true);
 	}
 
 	return {
@@ -166,6 +181,7 @@ export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptio
 		effectiveSessionId,
 		currentSessionHasMessages,
 		currentSessionTitle,
+		currentSessionIsEphemeral,
 		sessionMenu,
 		setSessionInUrl,
 		clearContinueSessionParam,
