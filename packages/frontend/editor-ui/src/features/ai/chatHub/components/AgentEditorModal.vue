@@ -3,7 +3,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { fetchChatModelsApi, fetchAgentApi } from '@/features/ai/chatHub/chat.api';

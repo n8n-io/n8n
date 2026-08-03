@@ -12,7 +12,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';

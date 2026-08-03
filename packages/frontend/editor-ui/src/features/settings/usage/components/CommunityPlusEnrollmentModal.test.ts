@@ -7,7 +7,7 @@ import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsageStore } from '../usage.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();

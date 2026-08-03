@@ -6,7 +6,7 @@ import { useToast } from '@n8n/composables/useToast';
 import SignupView from './SignupView.vue';
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { mockedStore } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => {

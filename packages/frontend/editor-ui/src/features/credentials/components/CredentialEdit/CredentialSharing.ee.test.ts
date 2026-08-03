@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CredentialSharing from './CredentialSharing.ee.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
