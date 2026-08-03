@@ -61,7 +61,7 @@ const emit = defineEmits<{
 
 	display: flex;
 	align-items: center;
-	height: var(--ndv--header-height);
+	height: var(--ndv--header--height);
 	flex-shrink: 0;
 	border-bottom: var(--border);
 	padding-right: var(--spacing--2xs);

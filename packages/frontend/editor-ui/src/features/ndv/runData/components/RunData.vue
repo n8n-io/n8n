@@ -2267,13 +2267,13 @@ defineExpose({ enterEditMode });
 	border-top: 0;
 	border-left: 0;
 	border-right: 0;
-	height: var(--ndv--header-height);
+	height: var(--ndv--header--height);
 }
 
 .header {
 	display: flex;
 	align-items: center;
-	height: var(--ndv--header-height);
+	height: var(--ndv--header--height);
 	margin-bottom: var(--ndv--spacing);
 	padding: 0 var(--spacing--4xs) 0 var(--spacing--sm);
 	position: relative;
