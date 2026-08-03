@@ -13,7 +13,9 @@
 set -eu
 
 SCRIPT_VERSION="1.0.0"
-DEFAULT_N8N_VERSION="2.32.0"
+# The version to install is derived from the latest stable GitHub release in
+# resolve_n8n_version(); this fallback only applies when that lookup fails.
+FALLBACK_N8N_VERSION="2.32.0"
 N8N_DIR="${N8N_DIR:-./n8n}"
 N8N_PORT=5678
 SOURCE_URL="https://github.com/n8n-io/n8n/blob/master/docker/get-n8n.sh"
@@ -141,9 +143,9 @@ gen_secret() {
 	fi
 }
 
-# Latest stable n8n version from GitHub releases, so the baked default only
-# matters offline. Installs stay pinned in .env — never a floating tag, which
-# would silently upgrade (and run DB migrations) on any container recreate.
+# Latest stable n8n version from GitHub releases; FALLBACK_N8N_VERSION covers
+# offline/API failures. Installs stay pinned in .env — never a floating tag,
+# which would silently upgrade (and run DB migrations) on any container recreate.
 resolve_n8n_version() {
 	releases_url="https://api.github.com/repos/n8n-io/n8n/releases/latest"
 	if command -v curl >/dev/null 2>&1; then
@@ -157,7 +159,7 @@ resolve_n8n_version() {
 	fi
 	case "$v" in
 	[0-9]*.[0-9]*) printf '%s\n' "$v" ;;
-	*) printf '%s\n' "$DEFAULT_N8N_VERSION" ;;
+	*) printf '%s\n' "$FALLBACK_N8N_VERSION" ;;
 	esac
 }
 

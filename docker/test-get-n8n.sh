@@ -181,7 +181,7 @@ if [ "$E2E" -eq 1 ]; then
 	# upgrade: only the N8N_VERSION line may change, and the new image must run.
 	# Pin the target explicitly so the assertion is deterministic (a bare
 	# --upgrade resolves the latest stable release at run time).
-	target="$(sed -n 's/^DEFAULT_N8N_VERSION="\(.*\)"$/\1/p' "$SCRIPT")"
+	target="$(sed -n 's/^FALLBACK_N8N_VERSION="\(.*\)"$/\1/p' "$SCRIPT")"
 	cp "$E2E_DIR/.env" "$WORK/env-before"
 	check "--upgrade succeeds" env N8N_DIR="$E2E_DIR" sh "$SCRIPT" --upgrade --version "$target"
 	diff "$WORK/env-before" "$E2E_DIR/.env" >"$WORK/env.diff" 2>&1 || true
