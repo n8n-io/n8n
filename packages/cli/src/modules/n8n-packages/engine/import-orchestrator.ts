@@ -20,7 +20,10 @@ import type {
 	FolderImportPlan,
 	PreparedFolder,
 } from '../entities/folder/folder-import.types';
+import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import { FolderImporter } from '../entities/folder/folder-importer';
+import type { FolderRemovalPlan } from '../entities/folder/folder-removal.types';
+import { FolderRemover } from '../entities/folder/folder-remover';
 import { TagImporter } from '../entities/tag/tag-importer';
 import { droppedTagIds } from '../entities/tag/tag.types';
 import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
@@ -55,6 +58,7 @@ import type {
 	ImportWorkflowProperties,
 	MissingNodeTypeMode,
 	PackageImportBindings,
+	RemovedFolderSummary,
 	RemovedWorkflowSummary,
 	ResolvedImportFolderProperties,
 } from '../n8n-packages.types';
@@ -83,6 +87,7 @@ export interface ImportOrchestrationInput {
 export interface ImportContentResult {
 	workflowOutcomes: PersistedWorkflowOutcome[];
 	removedWorkflows: RemovedWorkflowSummary[];
+	removedFolders: RemovedFolderSummary[];
 	folderSummaries: ImportedFolderSummary[];
 	bindings: PackageImportBindings;
 	credentialResult: CredentialApplyResult;
@@ -102,6 +107,7 @@ export interface ImportPlan {
 	variablePlan: VariableImportPlan;
 	tagPlan: TagImportPlan;
 	removalPlan: WorkflowRemovalPlan;
+	folderRemovalPlan: FolderRemovalPlan;
 	missingNodeTypes: MissingNodeTypeRequirement[];
 	blockingIssues: BlockingIssue[];
 }
@@ -118,6 +124,7 @@ export class ImportOrchestrator {
 		private readonly variableImporter: VariableImporter,
 		private readonly tagImporter: TagImporter,
 		private readonly folderImporter: FolderImporter,
+		private readonly folderRemover: FolderRemover,
 		private readonly workflowImporter: WorkflowImporter,
 		private readonly workflowRemover: WorkflowRemover,
 		private readonly workflowPublisher: WorkflowPublisher,
@@ -178,6 +185,16 @@ export class ImportOrchestrator {
 			projectPendingCreation: input.projectPendingCreation,
 		});
 
+		// Which folders end up empty depends on which workflows survive, so this follows the plan above
+		// and reads the surviving placements off it.
+		const folderRemovalPlan =
+			removesUnpackagedWorkflows(options.folderConflictPolicy) && !input.projectPendingCreation
+				? await this.folderRemover.plan(context, {
+						packageFolderIds: folders.map(({ sourceFolderId }) => sourceFolderId),
+						occupiedFolderIds: removalPlan.occupiedFolderIds,
+					})
+				: { removals: [] };
+
 		// Skipped workflows are never written, so their node types don't gate the import.
 		const missingNodeTypes = collectMissingNodeTypes(
 			workflowPlan.items.filter((item) => item.action !== 'skip'),
@@ -208,6 +225,7 @@ export class ImportOrchestrator {
 			variablePlan,
 			tagPlan,
 			removalPlan,
+			folderRemovalPlan,
 			missingNodeTypes,
 			blockingIssues,
 		};
@@ -279,12 +297,15 @@ export class ImportOrchestrator {
 		// Removal goes last: the package's own workflows are in place first, so a failure earlier
 		// in the apply leaves the target with more than the package asked for rather than less.
 		const removedWorkflows = await this.workflowRemover.apply(context, plan.removalPlan);
+		// After the workflows: a folder is only removed once nothing is left inside it.
+		const removedFolders = await this.folderRemover.apply(context, plan.folderRemovalPlan);
 
 		return {
 			workflowOutcomes: outcomes.map((outcome) =>
 				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
 			),
 			removedWorkflows,
+			removedFolders,
 			folderSummaries,
 			bindings,
 			credentialResult,

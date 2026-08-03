@@ -224,6 +224,7 @@ describe('POST /n8n-packages/import', () => {
 				},
 			],
 			removedWorkflows: [],
+			removedFolders: [],
 			folders: [],
 			projects: [],
 			bindings: {

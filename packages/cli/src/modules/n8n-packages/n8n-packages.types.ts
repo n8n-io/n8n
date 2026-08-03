@@ -388,6 +388,17 @@ export interface RemovedWorkflowSummary {
 	deletion: 'archived' | 'deleted';
 }
 
+/**
+ * A folder the target had that the package does not define, removed under
+ * `folderConflictPolicy=overwrite` once nothing was left inside it.
+ */
+export interface RemovedFolderSummary {
+	folderId: string;
+	name: string;
+	projectId: string;
+	parentFolderId: string | null;
+}
+
 export interface ImportedProjectSummary {
 	sourceProjectId: string;
 	localId: string;
@@ -524,8 +535,10 @@ export interface ImportTagSummary {
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
-	/** Workflows the package did not contain, archived under `folderConflictPolicy=overwrite`. */
+	/** Workflows the package did not contain, removed under `folderConflictPolicy=overwrite`. */
 	removedWorkflows: RemovedWorkflowSummary[];
+	/** Folders the package did not define that were left empty by the removals above. */
+	removedFolders: RemovedFolderSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;

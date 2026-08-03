@@ -73,6 +73,7 @@ const scope = (input: {
 	const imported: ImportContentResult = {
 		workflowOutcomes: input.outcomes,
 		removedWorkflows: [],
+		removedFolders: [],
 		folderSummaries: [],
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,

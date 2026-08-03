@@ -184,7 +184,12 @@ describe('WorkflowRemover.plan', () => {
 			deletionPolicy: 'archive',
 		});
 
-		expect(plan).toEqual({ removals: [], failures: [], deletionPolicy: 'archive' });
+		expect(plan).toEqual({
+			removals: [],
+			failures: [],
+			deletionPolicy: 'archive',
+			occupiedFolderIds: [],
+		});
 		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 	});
 });
@@ -194,6 +199,7 @@ describe('WorkflowRemover.apply', () => {
 		removals: [{ id: 'stale', name: 'Stale', parentFolderId: 'F1' }],
 		failures: [],
 		deletionPolicy,
+		occupiedFolderIds: [],
 	});
 	const summaryOf = (deletion: 'archived' | 'deleted') => [
 		{ workflowId: 'stale', name: 'Stale', projectId: 'proj-1', parentFolderId: 'F1', deletion },
@@ -247,6 +253,7 @@ describe('WorkflowRemover.apply', () => {
 			removals: [],
 			failures: [],
 			deletionPolicy: 'hard-delete',
+			occupiedFolderIds: [],
 		});
 
 		expect(summaries).toEqual([]);

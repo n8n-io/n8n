@@ -35,6 +35,7 @@ export class WorkflowRemover {
 			removals: [],
 			failures: [],
 			deletionPolicy: request.deletionPolicy,
+			occupiedFolderIds: [],
 		};
 
 		// Owned here rather than by the caller: the policy that turns reconciliation on is this
@@ -52,7 +53,9 @@ export class WorkflowRemover {
 		if (placements.length === 0) return nothingToRemove;
 
 		const candidates = candidatesFor(placements, request);
-		if (candidates.length === 0) return nothingToRemove;
+		if (candidates.length === 0) {
+			return { ...nothingToRemove, occupiedFolderIds: occupiedBy(placements) };
+		}
 
 		const removable = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
 			candidates.map(({ id }) => id),
@@ -60,12 +63,16 @@ export class WorkflowRemover {
 			['workflow:delete'],
 		);
 
+		const removals = candidates.filter(({ id }) => removable.has(id));
+		const removedIds = new Set(removals.map(({ id }) => id));
+
 		return {
-			removals: candidates.filter(({ id }) => removable.has(id)),
+			removals,
 			failures: candidates
 				.filter(({ id }) => !removable.has(id))
 				.map(({ id, name }) => ({ workflowId: id, name, projectId: context.projectId })),
 			deletionPolicy: request.deletionPolicy,
+			occupiedFolderIds: occupiedBy(placements.filter(({ id }) => !removedIds.has(id))),
 		};
 	}
 
@@ -116,6 +123,17 @@ export class WorkflowRemover {
 			throw error;
 		}
 	}
+}
+
+/** Folders holding at least one of the given workflows. */
+function occupiedBy(placements: RemovableWorkflow[]): string[] {
+	return [
+		...new Set(
+			placements
+				.map(({ parentFolderId }) => parentFolderId)
+				.filter((id): id is string => id !== null),
+		),
+	];
 }
 
 function candidatesFor(

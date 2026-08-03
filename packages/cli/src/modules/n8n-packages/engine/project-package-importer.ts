@@ -14,6 +14,7 @@ import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-im
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import type {
+	RemovedFolderSummary,
 	RemovedWorkflowSummary,
 	BlockingIssue,
 	ImportBindingMap,
@@ -150,6 +151,7 @@ export class ProjectPackageImporter {
 
 		const workflows: ImportedWorkflowSummary[] = [];
 		const removedWorkflows: RemovedWorkflowSummary[] = [];
+		const removedFolders: RemovedFolderSummary[] = [];
 		const folders: ImportedFolderSummary[] = [];
 		const scopedBindings: PackageImportBindings[] = [];
 		const matched: string[] = [];
@@ -166,6 +168,7 @@ export class ProjectPackageImporter {
 				...toImportedWorkflowSummaries(content.workflowOutcomes, project.id, published),
 			);
 			removedWorkflows.push(...content.removedWorkflows);
+			removedFolders.push(...content.removedFolders);
 			folders.push(...content.folderSummaries);
 			scopedBindings.push(content.bindings);
 			matched.push(...content.credentialResult.matched);
@@ -191,6 +194,7 @@ export class ProjectPackageImporter {
 			package: toPackageSummary(manifest),
 			workflows,
 			removedWorkflows,
+			removedFolders,
 			folders,
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
@@ -297,7 +301,8 @@ export class ProjectPackageImporter {
 		// `overwrite` archives workflows the package omits, so require the scope up front rather than
 		// discovering mid-import that the caller may not remove what reconciliation demands.
 		if (removesUnpackagedWorkflows(request.folderConflictPolicy)) {
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete']);
+			// Folders it empties go too, so it needs both removal scopes up front.
+			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete', 'folder:delete']);
 		}
 
 		assertVariableCreationAllowed({

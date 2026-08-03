@@ -169,6 +169,7 @@ export class WorkflowPackageImporter {
 			),
 			// Always empty: `folderConflictPolicy=overwrite` is rejected for workflow packages.
 			removedWorkflows: content.removedWorkflows,
+			removedFolders: content.removedFolders,
 			folders: content.folderSummaries,
 			projects: [],
 			bindings: content.bindings,

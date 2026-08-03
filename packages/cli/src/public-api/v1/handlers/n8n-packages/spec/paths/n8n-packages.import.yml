@@ -176,12 +176,14 @@ post:
                 reuses folders as `merge` does and additionally removes workflows the
                 package does not contain — at a project's root and in folders the
                 package defines, leaving target-only folders and their contents alone.
-                Removals are listed under `removedWorkflows`; see
-                `overwriteDeletionPolicy`. A folder whose id sits under a different
+                Folders it does not define are then removed too, but only once nothing is
+                left inside them. Removals are listed under `removedWorkflows` and
+                `removedFolders`; see `overwriteDeletionPolicy`. A folder whose id sits under a different
                 parent, or belongs to another project, always blocks the import.
 
 
-                `overwrite` is project-packages-only, needs the `workflow:delete` scope,
+                `overwrite` is project-packages-only, needs the `workflow:delete` and
+                `folder:delete` scopes,
                 is rejected against a `projectConflictPolicy` other than `overwrite`,
                 and blocks up front if the caller cannot delete something it would
                 remove. Folders need the `folder:create` scope and a folders-enabled
@@ -472,6 +474,30 @@ post:
                         What actually happened, not what `overwriteDeletionPolicy` asked
                         for: a `hard-delete` whose row could not be dropped yet is
                         reported as `archived`.
+              removedFolders:
+                type: array
+                description: >
+                  Folders the package does not define that reconciliation left empty, removed by
+                  `folderConflictPolicy=overwrite`. A folder still holding anything survives, so
+                  target-only content is never swept up. Empty under every other policy.
+                items:
+                  type: object
+                  required:
+                    - folderId
+                    - name
+                    - projectId
+                    - parentFolderId
+                  properties:
+                    folderId:
+                      type: string
+                    name:
+                      type: string
+                    projectId:
+                      type: string
+                    parentFolderId:
+                      type: string
+                      nullable: true
+                      description: Folder that held it, or null at the project root.
               folders:
                 type: array
                 description: Folder shells created or skipped in the target project.

@@ -409,6 +409,38 @@ describe('project shell import', () => {
 			expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
 		});
 
+		it('removes an empty folder the package does not define, sheltering an occupied one', async () => {
+			const empty = await createFolder(project, { name: 'empty' });
+			const occupied = await createFolder(project, { name: 'occupied' });
+			const kept = await createWorkflow({ name: 'Kept', parentFolder: occupied }, project);
+
+			const result = await reconcile('overwrite');
+
+			expect(result.removedFolders).toEqual([
+				{ folderId: empty.id, name: 'empty', projectId: 'P1', parentFolderId: null },
+			]);
+			expect(await findFolder(empty.id)).toBeNull();
+			// Its workflow was sheltered by the workflow pass, so the folder holding it stays too.
+			expect(await findFolder(occupied.id)).not.toBeNull();
+			expect((await findWorkflow(kept.id))?.isArchived).toBe(false);
+		});
+
+		it('keeps the folders the package defines, even when reconciliation empties them', async () => {
+			const result = await reconcile('overwrite');
+
+			expect(result.removedFolders).toEqual([]);
+			expect(await findFolder('FA')).not.toBeNull();
+		});
+
+		it('removes no folders under merge', async () => {
+			const empty = await createFolder(project, { name: 'empty' });
+
+			const result = await reconcile('merge');
+
+			expect(result.removedFolders).toEqual([]);
+			expect(await findFolder(empty.id)).not.toBeNull();
+		});
+
 		it('archives nothing under merge', async () => {
 			const stale = await createWorkflow({ name: 'Stale' }, project);
 

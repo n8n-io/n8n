@@ -31,4 +31,9 @@ export interface WorkflowRemovalPlan {
 	removals: RemovableWorkflow[];
 	failures: WorkflowRemovalFailure[];
 	deletionPolicy: OverwriteDeletionPolicy;
+	/**
+	 * Folders still holding a workflow once the removals above are done, so folder reconciliation
+	 * knows which ones are not empty. Only populated when reconciliation is on.
+	 */
+	occupiedFolderIds: string[];
 }
