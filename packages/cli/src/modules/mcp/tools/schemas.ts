@@ -9,7 +9,9 @@ import z from 'zod';
 
 export const nodeCredentialSummarySchema = z
 	.object({
-		id: z.string().nullable().describe('The credential ID; null for n8n-managed credentials'),
+		id: z
+			.string()
+			.describe('The credential ID, used to reference this credential in write operations'),
 		name: z.string().describe('The credential name'),
 	})
 	.describe('The credential assigned to this slot (id and name only, never secret data)');
@@ -29,17 +31,21 @@ export const nodeSchema = z
 
 /**
  * Reduces a node's credentials to `{ id, name }` per slot for the read path,
- * dropping internal fields (e.g. n8n Connect markers) while keeping enough for
- * clients to reuse the workflow's existing credentials in write operations.
+ * keeping only slots a client can reference by id when reusing them. Any slot
+ * with no id is dropped; in practice those are AI Gateway synthetic sentinels
+ * (`__aiGatewayManaged`, always `id: null`), which have no id to reference and
+ * whose marker is stripped here, leaving them indistinguishable from a real
+ * credential. DB-backed managed credentials (`isManaged`) keep a real id and
+ * are retained.
  */
 export const sanitizeNodeCredentials = ({ credentials, ...node }: INode) => {
-	if (!credentials || Object.keys(credentials).length === 0) return node;
-	return {
-		...node,
-		credentials: Object.fromEntries(
-			Object.entries(credentials).map(([type, { id, name }]) => [type, { id, name }]),
-		),
-	};
+	const referenceable: Array<[string, { id: string; name: string }]> = [];
+	for (const [type, cred] of Object.entries(credentials ?? {})) {
+		if (!cred || cred.id == null) continue;
+		referenceable.push([type, { id: cred.id, name: cred.name }]);
+	}
+	if (referenceable.length === 0) return node;
+	return { ...node, credentials: Object.fromEntries(referenceable) };
 };
 
 export const connectionsSchema = z

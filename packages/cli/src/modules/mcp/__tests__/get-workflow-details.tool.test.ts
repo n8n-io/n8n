@@ -110,7 +110,7 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.canExecute).toBe(true);
 		});
 
-		test('drops internal credential fields, keeping only id and name', async () => {
+		test('keeps only id and name for real credentials and drops AI Gateway (null-id) slots', async () => {
 			const workflow = createWorkflow({
 				nodes: [
 					{
@@ -123,6 +123,18 @@ describe('get-workflow-details MCP tool', () => {
 						parameters: {},
 						credentials: {
 							openAiApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+						},
+					},
+					{
+						id: 'node-2',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+						credentials: {
+							httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth', extra: 'internal' },
 						},
 					},
 				] as INode[],
@@ -145,8 +157,11 @@ describe('get-workflow-details MCP tool', () => {
 				{ workflowId: 'wf-1' },
 			);
 
-			expect(payload.workflow.nodes[0].credentials).toEqual({
-				openAiApi: { id: null, name: 'n8n credits' },
+			// Null-id managed slot is dropped entirely (nothing to reference)
+			expect(payload.workflow.nodes[0]).not.toHaveProperty('credentials');
+			// Real credential is reduced to id and name, internal fields removed
+			expect(payload.workflow.nodes[1].credentials).toEqual({
+				httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' },
 			});
 		});
 
