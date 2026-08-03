@@ -3305,6 +3305,20 @@ export class InstanceAiService {
 							})),
 						}
 					: {}),
+				// Kind + id only: `message` here is the user's raw text, so without this the
+				// trace has no record that the editor handed the agent a resource to work on.
+				...(contextAttachments.length
+					? {
+							resourceAttachments: contextAttachments.map((attachment) => ({
+								type: attachment.type,
+								id: attachment.id,
+								...(attachment.type === 'agent' ? { projectId: attachment.projectId } : {}),
+								...(attachment.type === 'workflow' && attachment.executionId
+									? { executionId: attachment.executionId }
+									: {}),
+							})),
+						}
+					: {}),
 				...(messageGroupId ? { messageGroupId } : {}),
 			};
 

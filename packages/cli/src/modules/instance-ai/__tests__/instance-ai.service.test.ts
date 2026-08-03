@@ -3914,6 +3914,15 @@ describe('InstanceAiService — editor handoff context resources', () => {
 		expect(source).toContain('buildContextResourcesBlock(contextAttachments)');
 		expect(source).not.toContain('buildContextResourcesBlock(workflowAttachments)');
 	});
+
+	it('traces the attached resources, which the raw message no longer shows', () => {
+		const source = InstanceAiService.toString();
+
+		// `traceInput.message` is the user's text before enrichment, so the
+		// context block never reaches the trace — this is the only record that
+		// the editor handed over a resource.
+		expect(source).toContain('resourceAttachments: contextAttachments.map');
+	});
 });
 
 describe('InstanceAiService — workflow verification follow-up gate', () => {
