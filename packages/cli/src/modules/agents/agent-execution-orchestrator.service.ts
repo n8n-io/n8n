@@ -137,7 +137,7 @@ export interface StreamChatResponseConfig {
 	source?: string;
 	taskId?: string;
 	taskVersionId?: string;
-	telemetry?: {
+	telemetry: {
 		runType: AgentRunTelemetryType;
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
@@ -306,6 +306,7 @@ export class AgentExecutionOrchestratorService {
 				executionCounter: createAgentExecutionCounter(this.telemetry, {
 					agentId,
 					userId: user?.id,
+					runType,
 				}),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
@@ -538,7 +539,11 @@ export class AgentExecutionOrchestratorService {
 			const input = attachments?.length ? buildInboundUserMessage(message, attachments) : message;
 			const resultStream = await agentInstance.stream(input, {
 				persistence: { threadId, resourceId },
-				executionCounter: createAgentExecutionCounter(this.telemetry, { agentId, userId }),
+				executionCounter: createAgentExecutionCounter(this.telemetry, {
+					agentId,
+					userId,
+					runType: telemetry.runType,
+				}),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
 			});
