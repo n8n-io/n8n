@@ -280,6 +280,10 @@ write a message as `{role, text}` and the schema expands it to a full envelope:
 `text` also takes an array of lines (newline-joined), like a `conversation` turn.
 The expansion stamps `createdAt` itself — ascending, in the past — so a shorthand
 message can't order *after* the live turn. Shorthand and full envelopes mix freely
-in one array; a full envelope keeps its authored `createdAt`. A near-miss (say
+in one array; a full envelope keeps its authored `createdAt` — **unless any message
+in the array is in the FUTURE**, in which case the whole sequence is restamped onto
+ascending pre-live slots (a future stamp would sort a seeded turn after the live
+turn, and moving only that one entry would reorder it against the array the
+transcript is graded from). A near-miss (say
 `text: 123`) is deliberately **not** expanded — it fails at load instead of
 becoming a message the transcript builder would silently drop.

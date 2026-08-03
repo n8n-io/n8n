@@ -167,6 +167,34 @@ describe('EvalTestCaseSchema', () => {
 		expect(Date.parse(String(seed.messages[0].createdAt))).toBeLessThan(Date.now());
 	});
 
+	// A per-message clamp is not enough: with [future A, past B] only A moves, so
+	// the DB orders B then A while `transcriptPrefixFromSeed` still grades array
+	// order (A then B). The sequence has to stay coherent as a whole.
+	it('restamps the whole sequence in array order when any timestamp is future', () => {
+		const msg = (id: string, createdAt: string) => ({
+			id,
+			type: 'llm',
+			role: 'user' as const,
+			createdAt,
+			content: [{ type: 'text', text: id }],
+		});
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: {
+				mode: 'inline',
+				messages: [
+					msg('a', new Date(Date.now() + 60 * 60 * 1000).toISOString()),
+					msg('b', '2026-06-29T09:00:00.000Z'),
+				],
+			},
+		});
+
+		const at = inlineSeedOf(parsed).messages.map((m) => Date.parse(String(m.createdAt)));
+		// Ascending in ARRAY order, and entirely before the live turn.
+		expect(at[0]).toBeLessThan(at[1]);
+		expect(at[1]).toBeLessThan(Date.now());
+	});
+
 	it('leaves an authored past createdAt exactly as written', () => {
 		const authored = '2026-06-29T09:00:00.000Z';
 		const parsed = EvalTestCaseSchema.parse({

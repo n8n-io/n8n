@@ -184,27 +184,42 @@ export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
 }
 
 /**
- * Pull a full envelope's `createdAt` back into the past when the author put it in
- * the future.
+ * Pull an inline seed's timestamps back into the past when the author put any of
+ * them in the future.
  *
- * The shorthand stamps its own ascending pre-live timestamps, so it can't get this
- * wrong; a full envelope keeps what it was authored with, and a future stamp sorts
- * the seeded turn AFTER the live turn — the agent then sees its own history out of
- * order, and the judge grades a transcript that never happened. Clamped into the
- * same ascending slot the shorthand uses, so relative order is preserved.
+ * The shorthand stamps its own ascending pre-live timestamps, so it can't get
+ * this wrong; a full envelope keeps what it was authored with, and a future
+ * stamp sorts the seeded turn AFTER the live turn — the agent then sees its own
+ * history out of order, and the judge grades a transcript that never happened.
  *
- * Inline (hand-authored) seeds only — a `replay` seed is reconstructed from a real
- * trace and never reaches this schema, so nothing here can reject a real timestamp.
+ * Restamps the WHOLE sequence, not just the offending entry. A per-message clamp
+ * reorders relative to the array: `[future A, past B]` leaves B alone and moves A
+ * to ~now, so the store presents B then A while `transcriptPrefixFromSeed` still
+ * grades array order. Array order is the authority, so the rewrite reproduces it
+ * on the same ascending slots the shorthand uses. Authored timestamps are
+ * therefore only preserved when every one of them is already in the past.
+ *
+ * Inline (hand-authored) seeds only — a `replay` seed is reconstructed from a
+ * real trace and never reaches this schema, so no real timestamp can be moved.
  */
 export function clampFutureSeedTimestamps(messages: unknown[]): unknown[] {
 	const now = Date.now();
-	const base = now - (messages.length + 1) * 1000;
-	return messages.map((message, index) => {
-		if (!isRecord(message) || typeof message.createdAt !== 'string') return message;
+	const stampOf = (message: unknown): number | undefined => {
+		if (!isRecord(message) || typeof message.createdAt !== 'string') return undefined;
 		const at = Date.parse(message.createdAt);
 		// Unparseable is the envelope schema's error to report, not ours to paper over.
-		if (Number.isNaN(at) || at < now) return message;
-		return { ...message, createdAt: new Date(base + index * 1000).toISOString() };
+		return Number.isNaN(at) ? undefined : at;
+	};
+	const anyFuture = messages.some((message) => (stampOf(message) ?? -Infinity) >= now);
+	if (!anyFuture) return messages;
+
+	const base = now - (messages.length + 1) * 1000;
+	return messages.map((message, index) => {
+		if (stampOf(message) === undefined) return message;
+		return {
+			...(message as Record<string, unknown>),
+			createdAt: new Date(base + index * 1000).toISOString(),
+		};
 	});
 }
 
