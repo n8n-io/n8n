@@ -71,6 +71,17 @@ opens the PR automatically once the review loop is clean, watches CI and review
 comments, and never merges. Security fixes get neutral branch/commit/test
 naming per AGENTS.md.
 
+## Change stories
+
+The `n8n:change-story` skill turns a branch or PR diff into an evidence-backed,
+product-perspective interactive HTML page (why, what changed for the user, how
+it works now, screenshots/test evidence, risk flags, PR deep links), saved
+under `~/.claude/change-stories/` and opened in the browser. With `--review`
+it also embeds a "Review findings" section (verdict plus severity-tagged
+findings) by fanning out the same autodev reviewer agents listed above.
+Invoke: `/n8n:change-story 12345 --review` (or a branch name, or nothing for
+the current branch).
+
 ## Design Decisions
 
 ### Why a plugin instead of standalone skills?
