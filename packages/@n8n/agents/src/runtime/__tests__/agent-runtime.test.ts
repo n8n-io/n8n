@@ -1579,6 +1579,17 @@ describe('AgentRuntime — state transitions on error', () => {
 
 		expect(runtime.getState().status).toBe('success');
 	});
+
+	it("stream()'s own result.getState() mirrors runtime.getState() after the run completes", async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const { runtime } = createRuntime();
+		const { stream, getState } = await runtime.stream('hi');
+		await collectChunks(stream);
+
+		expect(getState().status).toBe('success');
+		expect(getState()).toEqual(runtime.getState());
+	});
 });
 
 // ---------------------------------------------------------------------------
