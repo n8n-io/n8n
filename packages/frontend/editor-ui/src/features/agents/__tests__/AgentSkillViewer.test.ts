@@ -9,6 +9,15 @@ import {
 
 import AgentSkillViewer from '../components/AgentSkillViewer.vue';
 
+vi.mock('../components/AgentExpressionAwareMarkdownEditor.vue', () => ({
+	default: {
+		name: 'AgentExpressionAwareMarkdownEditor',
+		props: ['modelValue', 'readonly', 'path', 'showToolbar'],
+		emits: ['update:modelValue'],
+		template: '<div data-testid="expression-aware-skill-editor" />',
+	},
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
@@ -44,6 +53,37 @@ const N8nFormInputStub = defineComponent({
 });
 
 describe('AgentSkillViewer', () => {
+	it('uses expression-aware editing only for the SKILL.md instructions', () => {
+		const skill = {
+			name: 'Research',
+			description: 'Use for research',
+			instructions: 'Main body',
+			references: [{ path: 'references/guide.md', content: '# Guide' }],
+		};
+		const instructions = mountViewer({ skill, disabled: true });
+		const editor = instructions.findComponent({ name: 'AgentExpressionAwareMarkdownEditor' });
+		expect(editor.props()).toMatchObject({
+			readonly: true,
+			path: 'agent.skill.instructions',
+			showToolbar: 'always',
+		});
+		editor.vm.$emit('update:modelValue', '={{ $vars.skill }}');
+
+		expect(instructions.emitted('update:skill')?.at(-1)).toEqual([
+			{ instructions: '={{ $vars.skill }}' },
+		]);
+
+		const reference = mountViewer({
+			skill,
+			selectedPath: 'references/guide.md',
+		});
+
+		expect(reference.findComponent({ name: 'AgentExpressionAwareMarkdownEditor' }).exists()).toBe(
+			false,
+		);
+		expect(reference.find<HTMLTextAreaElement>('textarea').element.value).toBe('# Guide');
+	});
+
 	it('imports SKILL.md frontmatter and instructions', async () => {
 		const wrapper = mount(AgentSkillViewer, {
 			props: {

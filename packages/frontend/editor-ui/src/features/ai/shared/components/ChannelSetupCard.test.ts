@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
+	i18n: { baseText: (k: string) => k },
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({

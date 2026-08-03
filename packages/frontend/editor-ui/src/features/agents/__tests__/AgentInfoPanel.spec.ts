@@ -57,14 +57,16 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
-	N8nMarkdownEditor: {
-		name: 'N8nMarkdownEditor',
-		props: ['modelValue', 'variant', 'showToolbar', 'placeholder', 'readonly', 'maxHeight'],
-		emits: ['update:modelValue'],
-		template:
-			'<div v-bind="$attrs" data-testid="markdown-editor">{{ modelValue }} {{ placeholder }}</div>',
-	},
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
+}));
+
+vi.mock('../components/AgentExpressionAwareMarkdownEditor.vue', () => ({
+	default: {
+		name: 'AgentExpressionAwareMarkdownEditor',
+		props: ['modelValue', 'variant', 'showToolbar', 'maxHeight', 'disabled'],
+		emits: ['update:modelValue'],
+		template: '<div v-bind="$attrs" data-testid="expression-aware-editor">{{ modelValue }}</div>',
+	},
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -176,7 +178,7 @@ describe('AgentInfoPanel', () => {
 	it('renders instructions as a contained markdown editor', () => {
 		const wrapper = mountPanel();
 
-		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
+		const editor = wrapper.findComponent({ name: 'AgentExpressionAwareMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
 			modelValue: '# Role\nHelp users.',
 			variant: 'contained',
@@ -192,7 +194,7 @@ describe('AgentInfoPanel', () => {
 	it('can show the markdown toolbar above instructions', () => {
 		const wrapper = mountPanel('# Role\nHelp users.', { showInstructionsToolbar: true });
 
-		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
+		const editor = wrapper.findComponent({ name: 'AgentExpressionAwareMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
 			showToolbar: 'always',
 			variant: 'contained',
@@ -202,7 +204,7 @@ describe('AgentInfoPanel', () => {
 	it('does not pass placeholder text to the instructions editor', () => {
 		const wrapper = mountPanel('');
 
-		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
+		const editor = wrapper.findComponent({ name: 'AgentExpressionAwareMarkdownEditor' });
 		expect(editor.props('modelValue')).toBe('');
 		expect(editor.props('placeholder')).toBeUndefined();
 		expect(wrapper.text()).not.toContain('Enter instructions here');

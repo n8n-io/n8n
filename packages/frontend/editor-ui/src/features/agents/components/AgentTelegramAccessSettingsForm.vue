@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { N8nCallout, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
+import {
+	AgentTelegramAllowedUserSchema,
+	type AgentTelegramIntegrationSettings,
+} from '@n8n/api-types';
+import { isExpression } from 'n8n-workflow';
 
+import AgentExpressionInput from './AgentExpressionInput.vue';
 import {
 	DEFAULT_TELEGRAM_PUBLIC_SETTINGS,
-	VALID_TELEGRAM_ENTRY_RE,
+	normalizeTelegramUsers,
 	type TelegramSettingsValidationError,
 } from '../utils/telegramAccessSettings';
 
@@ -31,6 +36,7 @@ const accessMode = ref<AgentTelegramIntegrationSettings['accessMode']>(
 const entries = ref<string[]>(props.savedSettings?.allowedUsers.slice() ?? []);
 const inputText = ref('');
 const inputRef = ref<HTMLInputElement>();
+const expressionInputRef = ref<InstanceType<typeof AgentExpressionInput>>();
 
 watch(
 	() => props.savedSettings,
@@ -42,43 +48,54 @@ watch(
 	},
 );
 
-function finalizeInput() {
-	const raw = inputText.value.trim();
-	if (!raw) return;
+function focusInput() {
+	if (isExpression(inputText.value)) expressionInputRef.value?.focus();
+	else inputRef.value?.focus();
+}
 
-	const tokens = raw.split(/[\s,]+/).filter(Boolean);
-	const unique = new Set(entries.value);
-	for (const token of tokens) {
-		unique.add(token);
-	}
-	entries.value = [...unique];
+function updateInputText(value: string) {
+	const expressionModeChanged = isExpression(value) !== isExpression(inputText.value);
+	inputText.value = value;
+	if (expressionModeChanged) void nextTick(focusInput);
+}
+
+function onInput(event: Event) {
+	if (event.target instanceof HTMLInputElement) updateInputText(event.target.value);
+}
+
+function finalizeInput(value = inputText.value) {
+	const tokens = normalizeTelegramUsers([value]);
+	if (tokens.length === 0) return;
+
+	entries.value = [...new Set([...entries.value, ...tokens])];
 	inputText.value = '';
 }
 
 function removeEntry(index: number) {
 	entries.value = entries.value.filter((_, i) => i !== index);
-	void nextTick(() => inputRef.value?.focus());
+	void nextTick(focusInput);
 }
 
-function onKeydown(e: KeyboardEvent) {
-	if (e.key === ',' || e.key === ' ' || e.key === 'Enter') {
-		e.preventDefault();
+function onKeydown(event: KeyboardEvent) {
+	if (event.defaultPrevented) return;
+	const separator = event.key === ',' || event.key === ' ' || event.key === 'Enter';
+	if (separator && (!isExpression(inputText.value) || event.key === 'Enter')) {
+		event.preventDefault();
 		finalizeInput();
 	}
-	if (e.key === 'Backspace' && inputText.value === '' && entries.value.length > 0) {
+	if (event.key === 'Backspace' && inputText.value === '' && entries.value.length > 0) {
 		entries.value = entries.value.slice(0, -1);
 	}
 }
 
-function onPaste(e: ClipboardEvent) {
-	e.preventDefault();
-	const pasted = e.clipboardData?.getData('text') ?? '';
-	inputText.value += pasted;
+function onPaste(event: ClipboardEvent) {
+	event.preventDefault();
+	updateInputText(inputText.value + (event.clipboardData?.getData('text') ?? ''));
 	finalizeInput();
 }
 
-function onContainerClick() {
-	inputRef.value?.focus();
+function isValidEntry(entry: string) {
+	return AgentTelegramAllowedUserSchema.safeParse(entry).success;
 }
 
 const currentSettings = computed<AgentTelegramIntegrationSettings>(() => ({
@@ -87,7 +104,7 @@ const currentSettings = computed<AgentTelegramIntegrationSettings>(() => ({
 }));
 
 const invalidEntries = computed<string[]>(() =>
-	entries.value.filter((entry) => !VALID_TELEGRAM_ENTRY_RE.test(entry)),
+	entries.value.filter((entry) => !isValidEntry(entry)),
 );
 
 const validationError = computed<TelegramSettingsValidationError | null>(() => {
@@ -148,12 +165,12 @@ defineExpose({ currentSettings, validationError, isDirty });
 			<div
 				:class="[$style.tagInput, { [$style.tagInputDisabled]: disabled }]"
 				data-testid="telegram-user-ids"
-				@click="onContainerClick"
+				@click="focusInput"
 			>
 				<span
 					v-for="(entry, idx) in entries"
 					:key="entry + idx"
-					:class="[$style.badge, { [$style.badgeInvalid]: !VALID_TELEGRAM_ENTRY_RE.test(entry) }]"
+					:class="[$style.badge, { [$style.badgeInvalid]: !isValidEntry(entry) }]"
 				>
 					{{ entry }}
 					<button
@@ -166,9 +183,26 @@ defineExpose({ currentSettings, validationError, isDirty });
 						<N8nIcon icon="x" size="small" />
 					</button>
 				</span>
+				<AgentExpressionInput
+					v-if="isExpression(inputText)"
+					ref="expressionInputRef"
+					:model-value="inputText"
+					:disabled="disabled"
+					:rows="1"
+					:class="$style.tagExpressionInput"
+					path="agent.telegram.allowedUsers"
+					embedded
+					submit-on-enter
+					@update:model-value="updateInputText"
+					@keydown="onKeydown"
+					@blur="finalizeInput()"
+					@submit="finalizeInput"
+				/>
 				<input
+					v-else
+					id="telegram-user-ids-input"
 					ref="inputRef"
-					v-model="inputText"
+					:value="inputText"
 					:class="$style.tagInputField"
 					:disabled="disabled"
 					:placeholder="
@@ -176,9 +210,10 @@ defineExpose({ currentSettings, validationError, isDirty });
 							? i18n.baseText('agents.builder.addTrigger.telegram.users.placeholder')
 							: ''
 					"
+					@input="onInput"
 					@keydown="onKeydown"
 					@paste="onPaste"
-					@blur="finalizeInput"
+					@blur="finalizeInput()"
 				/>
 			</div>
 			<N8nText
@@ -221,7 +256,7 @@ defineExpose({ currentSettings, validationError, isDirty });
 }
 
 .error {
-	color: var(--color--danger);
+	color: var(--text-color--danger);
 }
 
 .tagInput {
@@ -246,9 +281,13 @@ defineExpose({ currentSettings, validationError, isDirty });
 	cursor: not-allowed;
 }
 
-.tagInputField {
+.tagInputField,
+.tagExpressionInput {
 	flex: 1;
 	min-width: 80px;
+}
+
+.tagInputField {
 	border: none;
 	outline: none;
 	background: transparent;

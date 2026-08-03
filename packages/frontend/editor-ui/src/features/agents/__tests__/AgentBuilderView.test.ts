@@ -30,12 +30,14 @@ const {
 	fetchAllCredentialsMock,
 	fetchCredentialTypesMock,
 	setCredentialsMock,
+	fetchAllVariablesMock,
 	agentPermissionsMock,
 } = vi.hoisted(() => ({
 	fetchAllCredentialsForWorkflowMock: vi.fn().mockResolvedValue(undefined),
 	fetchAllCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchCredentialTypesMock: vi.fn().mockResolvedValue(undefined),
 	setCredentialsMock: vi.fn(),
+	fetchAllVariablesMock: vi.fn().mockResolvedValue(undefined),
 	agentPermissionsMock: {
 		canCreate: { value: true },
 		canUpdate: { value: true },
@@ -83,6 +85,14 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 		fetchCredentialTypes: fetchCredentialTypesMock,
 		setCredentials: setCredentialsMock,
 	}),
+}));
+
+vi.mock('@/features/settings/environments.ee/environments.store', () => ({
+	default: () => ({ fetchAllVariables: fetchAllVariablesMock }),
+}));
+
+vi.mock('../components/AgentExpressionAwareMarkdownEditor.vue', () => ({
+	default: { template: '<div />' },
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -329,7 +339,10 @@ async function renderView({
 	setActivePinia(pinia);
 	const { useSettingsStore } = await import('@/app/stores/settings.store');
 	const settingsStore = useSettingsStore();
-	settingsStore.settings = { activeModules: knowledgeBaseEnabled ? ['agents'] : [] } as never;
+	settingsStore.settings = {
+		activeModules: knowledgeBaseEnabled ? ['agents'] : [],
+		enterprise: { variables: true },
+	} as never;
 	settingsStore.moduleSettings = {
 		agents: {
 			modules: [],
@@ -532,6 +545,7 @@ function resetViewMocks() {
 	uploadAgentFilesMock.mockReset();
 	uploadAgentFilesMock.mockResolvedValue([]);
 	showErrorMock.mockReset();
+	fetchAllVariablesMock.mockClear();
 	fetchConfigMock.mockClear();
 	builderTelemetryMock.fetchInitialTriggersBaseline.mockResolvedValue(null);
 	favoritesStoreMock.isFavorite.mockReturnValue(false);
@@ -545,7 +559,7 @@ describe('AgentBuilderView — preview routing', () => {
 	// 5s test timeout; warm the module once so each case measures mount behavior.
 	beforeAll(async () => {
 		await import('../views/AgentBuilderView.vue');
-	}, 30_000);
+	}, 60_000);
 
 	beforeEach(() => {
 		resetViewMocks();
@@ -578,12 +592,13 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
 	});
 
-	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {
+	it('loads credentials and variables for the agent project', async () => {
 		await renderView();
 
 		expect(setCredentialsMock).toHaveBeenCalledWith([]);
 		expect(fetchAllCredentialsForWorkflowMock).toHaveBeenCalledWith({ projectId: 'p1' });
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
+		expect(fetchAllVariablesMock).toHaveBeenCalledOnce();
 	});
 
 	it('persists a generated personalisation gradient when an existing agent is missing one', async () => {

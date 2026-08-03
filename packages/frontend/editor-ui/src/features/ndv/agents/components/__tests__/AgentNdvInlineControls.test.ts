@@ -51,7 +51,7 @@ const InfoPanelStub = {
 };
 
 const MarkdownEditorStub = {
-	name: 'N8nMarkdownEditor',
+	name: 'AgentExpressionAwareMarkdownEditor',
 	props: ['modelValue', 'disabled'],
 	emits: ['update:modelValue'],
 	template: '<div data-testid="markdown-editor-stub" />',
@@ -109,7 +109,7 @@ function mountControls(ndv: UseNdvAgentConfigReturn, props: { isReadOnly?: boole
 			stubs: {
 				AgentCapabilitiesSection: CapabilitiesStub,
 				AgentInfoPanel: InfoPanelStub,
-				MarkdownEditor: MarkdownEditorStub,
+				AgentExpressionAwareMarkdownEditor: MarkdownEditorStub,
 			},
 		},
 	});

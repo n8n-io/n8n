@@ -1,4 +1,8 @@
-import type { AgentIntegrationSettings, AgentTelegramIntegrationSettings } from '@n8n/api-types';
+import {
+	AgentTelegramAllowedUserSchema,
+	type AgentIntegrationSettings,
+	type AgentTelegramIntegrationSettings,
+} from '@n8n/api-types';
 
 export const DEFAULT_TELEGRAM_PUBLIC_SETTINGS = {
 	accessMode: 'public',
@@ -21,25 +25,30 @@ export function resolveSavedTelegramSettings(
 
 export type TelegramSettingsValidationError = 'required' | 'invalid';
 
-// Matches a Telegram user ID (numeric) or username (letters, numbers, underscores),
-// optionally prefixed with "@".
-export const VALID_TELEGRAM_ENTRY_RE = /^@?[a-zA-Z0-9_]+$/;
+function splitTelegramUsersInput(input: string): string[] {
+	const value = input.trim();
+	if (!value) return [];
+	if (value.startsWith('=')) return [value];
+	return value.split(/[\s,]+/).filter(Boolean);
+}
+
+export function normalizeTelegramUsers(entries: string[]): string[] {
+	return [...new Set(entries.flatMap(splitTelegramUsersInput))];
+}
 
 export function parseTelegramUsersInput(input: string): {
 	allowedUsers: string[];
 	invalidUsers: string[];
 } {
-	const rawEntries = input
-		.split(',')
-		.map((entry) => entry.trim())
-		.filter(Boolean);
+	const rawEntries = splitTelegramUsersInput(input);
 
 	const validEntries: string[] = [];
 	const invalidEntries: string[] = [];
 
 	for (const entry of rawEntries) {
-		if (VALID_TELEGRAM_ENTRY_RE.test(entry)) {
-			validEntries.push(entry);
+		const result = AgentTelegramAllowedUserSchema.safeParse(entry);
+		if (result.success) {
+			validEntries.push(result.data);
 		} else {
 			invalidEntries.push(entry);
 		}

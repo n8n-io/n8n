@@ -11,11 +11,12 @@
  * features — the builder banner above nudges users there.
  */
 import { computed, inject } from 'vue';
-import { N8nMarkdownEditor, N8nSectionHeader, N8nText } from '@n8n/design-system';
+import { N8nSectionHeader, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import AgentInfoPanel from '@/features/agents/components/AgentInfoPanel.vue';
 import AgentCapabilitiesSection from '@/features/agents/components/AgentCapabilitiesSection.vue';
+import AgentExpressionAwareMarkdownEditor from '@/features/agents/components/AgentExpressionAwareMarkdownEditor.vue';
 
 import { NdvAgentConfigKey } from '../composables/useNdvAgentConfig';
 
@@ -70,9 +71,10 @@ function onInstructionsUpdate(instructions: string) {
 			<N8nText tag="label" step="sm" bold>
 				{{ i18n.baseText('agents.builder.agent.instructions.label') }}
 			</N8nText>
-			<N8nMarkdownEditor
+			<AgentExpressionAwareMarkdownEditor
 				:model-value="localConfig?.instructions ?? ''"
 				:disabled="!canUpdate"
+				path="agent.ndv.instructions"
 				show-toolbar="always"
 				max-height="480px"
 				variant="contained"

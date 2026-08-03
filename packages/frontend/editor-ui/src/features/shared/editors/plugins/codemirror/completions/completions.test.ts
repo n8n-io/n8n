@@ -106,6 +106,12 @@ describe('No completions', () => {
 });
 
 describe('Top-level completions', () => {
+	test('should only offer variables without an active node', async () => {
+		vi.spyOn(utils, 'hasActiveNode').mockReturnValue(false);
+
+		expect(await completions('{{ $| }}')).toEqual([expect.objectContaining({ label: '$vars' })]);
+	});
+
 	test('should return dollar completions for blank position: {{ | }}', async () => {
 		const result = await completions('{{ | }}');
 		expect(result).toHaveLength(19);

@@ -126,7 +126,7 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 	}
 
 	if (!hasActiveNode(workflowDocumentId, targetNodeParameterContext)) {
-		return [];
+		return ROOT_DOLLAR_COMPLETIONS.filter(({ label }) => label === '$vars');
 	}
 
 	if (await receivesNoBinaryData(workflowDocumentId, targetNodeParameterContext?.nodeName))
