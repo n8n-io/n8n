@@ -53,7 +53,7 @@ export interface ChatInstance {
 
 interface ChatAgentConnection {
 	chat: ChatInstance;
-	bridge: AgentChatBridge;
+	bridge?: AgentChatBridge;
 	/**
 	 * Context captured at connect time. Used by `disconnectOne` to invoke
 	 * `onBeforeDisconnect` hooks with the same decrypted credential the connect
@@ -64,6 +64,7 @@ interface ChatAgentConnection {
 }
 
 interface ConnectOptions {
+	ingressEnabled?: boolean;
 	skipExternalHooks?: boolean;
 	settings?: AgentIntegrationSettings;
 }
@@ -100,6 +101,11 @@ async function getAgentExecutionOrchestratorService() {
 @Service()
 export class ChatIntegrationService {
 	private readonly connections = new Map<string, ChatAgentConnection>();
+	private readonly outboundConnections = new Map<string, ChatAgentConnection>();
+	private readonly outboundConnectionInitializations = new Map<
+		string,
+		Promise<ChatInstance | undefined>
+	>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -169,10 +175,14 @@ export class ChatIntegrationService {
 		options: ConnectOptions = {},
 	): Promise<void> {
 		const key = this.connectionKey(agentId, integration.type, integration.credentialId);
+		const ingressEnabled = options.ingressEnabled ?? true;
 
-		// Tear down existing connection if reconnecting
-		if (this.connections.has(key)) {
-			await this.disconnectOne(key);
+		if (ingressEnabled) {
+			await this.disconnectOutboundOne(key);
+			// Tear down existing connection if reconnecting
+			if (this.connections.has(key)) {
+				await this.disconnectOne(key);
+			}
 		}
 
 		const integrationImpl = this.integrationRegistry.require(integration.type);
@@ -188,13 +198,14 @@ export class ChatIntegrationService {
 			projectId,
 			credentialId: integration.credentialId,
 			credential: decryptedData,
+			ingressEnabled,
 			webhookUrlFor: (platform) => this.buildWebhookUrl(agentId, projectId, platform),
 		};
 
 		// Pre-connect hook — webhook-based platforms use this to detect
 		// credential conflicts (e.g. a Telegram bot token already in use) and
 		// abort the connect before we touch any external API.
-		if (integrationImpl.onBeforeConnect && !options.skipExternalHooks) {
+		if (ingressEnabled && integrationImpl.onBeforeConnect && !options.skipExternalHooks) {
 			await integrationImpl.onBeforeConnect(ctx);
 		}
 
@@ -208,7 +219,7 @@ export class ChatIntegrationService {
 
 		let state: StateAdapter | undefined;
 		let chat!: ChatSdk;
-		let bridge!: AgentChatBridge;
+		let bridge: AgentChatBridge | undefined;
 		let initializeStarted = false;
 
 		// Initialize the Chat instance (connects adapters, state adapter, etc.) and
@@ -217,11 +228,14 @@ export class ChatIntegrationService {
 		// initialization starts, disconnect the state directly. Once initialize()
 		// starts, chat.shutdown() owns cleanup for adapters, timers, and state.
 		try {
-			state = this.chatSubscriptionStateService.createStateAdapter({
-				agentId,
-				integration,
-				delegate: createMemoryState(),
-			});
+			const memoryState = createMemoryState();
+			state = ingressEnabled
+				? this.chatSubscriptionStateService.createStateAdapter({
+						agentId,
+						integration,
+						delegate: memoryState,
+					})
+				: memoryState;
 
 			chat = new Chat({
 				userName: `n8n-agent-${agentId}`,
@@ -231,25 +245,25 @@ export class ChatIntegrationService {
 				state,
 			});
 
-			// Create supporting infrastructure
-			const componentMapper = new ComponentMapper();
+			if (ingressEnabled) {
+				const componentMapper = new ComponentMapper();
+				const agentExecutionOrchestratorService = await getAgentExecutionOrchestratorService();
 
-			const agentExecutionOrchestratorService = await getAgentExecutionOrchestratorService();
-
-			bridge = AgentChatBridge.create(
-				chat,
-				agentId,
-				agentExecutionOrchestratorService,
-				componentMapper,
-				this.logger,
-				projectId,
-				integration,
-			);
+				bridge = AgentChatBridge.create(
+					chat,
+					agentId,
+					agentExecutionOrchestratorService,
+					componentMapper,
+					this.logger,
+					projectId,
+					integration,
+				);
+			}
 
 			initializeStarted = true;
 			await chat.initialize();
 
-			if (integrationImpl.onAfterConnect && !options.skipExternalHooks) {
+			if (ingressEnabled && integrationImpl.onAfterConnect && !options.skipExternalHooks) {
 				await integrationImpl.onAfterConnect(ctx);
 			}
 		} catch (error) {
@@ -275,12 +289,15 @@ export class ChatIntegrationService {
 		// We validate the required methods exist before storing.
 		const chatInstance = chat as ChatInstance;
 
-		this.connections.set(key, {
+		const targetConnections = ingressEnabled ? this.connections : this.outboundConnections;
+		targetConnections.set(key, {
 			chat: chatInstance,
 			bridge,
 			context: ctx,
 		});
-		this.logger.info(`[ChatIntegrationService] Connected: ${key}`);
+		this.logger.info(
+			`[ChatIntegrationService] ${ingressEnabled ? 'Connected' : 'Outbound connected'}: ${key}`,
+		);
 	}
 
 	/**
@@ -298,14 +315,20 @@ export class ChatIntegrationService {
 		options: DisconnectOptions = {},
 	): Promise<void> {
 		if (integration) {
-			await this.disconnectOne(
-				this.connectionKey(agentId, integration.type, integration.credentialId),
-				options,
-			);
+			const key = this.connectionKey(agentId, integration.type, integration.credentialId);
+			await this.disconnectOne(key, options);
+			await this.disconnectOutboundOne(key);
 		} else {
-			const keysToRemove = [...this.connections.keys()].filter((k) => k.startsWith(`${agentId}:`));
+			const keysToRemove = new Set(
+				[
+					...this.connections.keys(),
+					...this.outboundConnections.keys(),
+					...this.outboundConnectionInitializations.keys(),
+				].filter((key) => key.startsWith(`${agentId}:`)),
+			);
 			for (const k of keysToRemove) {
 				await this.disconnectOne(k, options);
+				await this.disconnectOutboundOne(k);
 			}
 		}
 	}
@@ -351,11 +374,16 @@ export class ChatIntegrationService {
 	 * answering on the demoted main (now a follower).
 	 */
 	async disconnectAll(): Promise<void> {
-		const keys = [...this.connections.keys()];
+		const keys = new Set([
+			...this.connections.keys(),
+			...this.outboundConnections.keys(),
+			...this.outboundConnectionInitializations.keys(),
+		]);
 		for (const key of keys) {
 			// Graceful shutdown should only clear local runtime state. Cluster-wide
 			// remote state must survive so another main can keep receiving events.
 			await this.disconnectOne(key, { skipExternalHooks: true });
+			await this.disconnectOutboundOne(key);
 		}
 	}
 
@@ -446,14 +474,56 @@ export class ChatIntegrationService {
 		integration?: { type: string; credentialId: string },
 	): ChatInstance | undefined {
 		if (integration) {
-			return this.connections.get(
-				this.connectionKey(agentId, integration.type, integration.credentialId),
-			)?.chat;
+			const key = this.connectionKey(agentId, integration.type, integration.credentialId);
+			return this.connections.get(key)?.chat ?? this.outboundConnections.get(key)?.chat;
 		}
 		for (const [k, conn] of this.connections) {
 			if (k.startsWith(`${agentId}:`)) return conn.chat;
 		}
+		for (const [k, conn] of this.outboundConnections) {
+			if (k.startsWith(`${agentId}:`)) return conn.chat;
+		}
 		return undefined;
+	}
+
+	/**
+	 * Return a Chat instance for integration tools, creating a no-ingress
+	 * outbound connection on demand for a persisted draft integration.
+	 */
+	async getChatInstanceForTools(
+		agentId: string,
+		integration: { type: string; credentialId: string },
+	): Promise<ChatInstance | undefined> {
+		const existing = this.getChatInstance(agentId, integration);
+		if (existing) return existing;
+
+		const key = this.connectionKey(agentId, integration.type, integration.credentialId);
+		const pending = this.outboundConnectionInitializations.get(key);
+		if (pending) return await pending;
+
+		const initialization = this.initializeOutboundConnectionForTools(agentId, integration).catch(
+			(error: unknown) => {
+				this.logger.warn(
+					'[ChatIntegrationService] Could not initialize outbound integration for Preview',
+					{
+						agentId,
+						type: integration.type,
+						credentialId: integration.credentialId,
+						error,
+					},
+				);
+				return undefined;
+			},
+		);
+		this.outboundConnectionInitializations.set(key, initialization);
+
+		try {
+			return await initialization;
+		} finally {
+			if (this.outboundConnectionInitializations.get(key) === initialization) {
+				this.outboundConnectionInitializations.delete(key);
+			}
+		}
 	}
 
 	getShortenCallback(
@@ -462,7 +532,7 @@ export class ChatIntegrationService {
 	): ShortenCallback | undefined {
 		return this.connections
 			.get(this.connectionKey(agentId, integration.type, integration.credentialId))
-			?.bridge.getShortenCallback();
+			?.bridge?.getShortenCallback();
 	}
 
 	/**
@@ -591,6 +661,47 @@ export class ChatIntegrationService {
 	// Private helpers
 	// ---------------------------------------------------------------------------
 
+	private async initializeOutboundConnectionForTools(
+		agentId: string,
+		integration: { type: string; credentialId: string },
+	): Promise<ChatInstance | undefined> {
+		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		if (!agent || agent.activeVersionId !== null) return undefined;
+
+		const persistedIntegration = agent.integrations?.find(
+			(candidate) =>
+				candidate.type === integration.type && candidate.credentialId === integration.credentialId,
+		);
+		if (!persistedIntegration) return undefined;
+
+		const existing = this.getChatInstance(agentId, integration);
+		if (existing) return existing;
+
+		await this.connect(agentId, persistedIntegration, agent.projectId, { ingressEnabled: false });
+		return this.outboundConnections.get(
+			this.connectionKey(agentId, integration.type, integration.credentialId),
+		)?.chat;
+	}
+
+	private async disconnectOutboundOne(key: string): Promise<void> {
+		await this.outboundConnectionInitializations.get(key);
+
+		const conn = this.outboundConnections.get(key);
+		if (!conn) return;
+
+		try {
+			await conn.chat.shutdown();
+		} catch (error) {
+			this.logger.warn(
+				`[ChatIntegrationService] Error during outbound shutdown for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+
+		conn.bridge?.dispose();
+		this.outboundConnections.delete(key);
+		this.logger.info(`[ChatIntegrationService] Outbound disconnected: ${key}`);
+	}
+
 	private async disconnectOne(key: string, options: DisconnectOptions = {}): Promise<void> {
 		const conn = this.connections.get(key);
 		if (!conn) return;
@@ -621,7 +732,7 @@ export class ChatIntegrationService {
 			);
 		}
 
-		conn.bridge.dispose();
+		conn.bridge?.dispose();
 
 		this.connections.delete(key);
 		this.logger.info(`[ChatIntegrationService] Disconnected: ${key}`);
