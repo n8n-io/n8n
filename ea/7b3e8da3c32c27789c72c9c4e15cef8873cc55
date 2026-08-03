@@ -1,0 +1,55 @@
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_0853a3eb029ed7::t_5564c61290357b 103-104
+  s_0853a3eb029ed7::t_ae6ef375ce36ee 115-116
+packages/@n8n/telemetry/src/events/agents.ts
+  s_0853a3eb029ed7::t_31b4b3ae0d87d5 97,100
+  s_0853a3eb029ed7::t_4ce317a6d8ae5c 121-125
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_0853a3eb029ed7::t_8a6eb6ea7ff474 984-985
+  s_0853a3eb029ed7::t_0e56a3c0117657 1009-1010
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_0853a3eb029ed7::t_369cd9e63a1176 22,25,38,41,54-56,60,67
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_0853a3eb029ed7::t_11044722812bd3 729-741
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_0853a3eb029ed7::t_c4a2edce84d220 303
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_0853a3eb029ed7::t_0dddaaa205b59c 107-113
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_0853a3eb029ed7::t_b3ba36e61b8194 888-922
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_0853a3eb029ed7::t_a9d7e472770b3a 509-511
+  s_0853a3eb029ed7::t_5ee62bad7ddb77 153
+  s_0853a3eb029ed7::t_e77f739df33552 562-588
+  s_0853a3eb029ed7::t_c2b4eb71a0a50f 14
+  s_0853a3eb029ed7::t_81588c215a8228 549
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_0853a3eb029ed7::t_f1e600d2d4d6e3 398,408-427
+  s_0853a3eb029ed7::t_26372941577a13 97
+  s_0853a3eb029ed7::t_d8a857b74799d4 321-326,337
+  s_0853a3eb029ed7::t_1f28aa7704d3d7 354
+  s_0853a3eb029ed7::t_6dd2757def9e3a 24-28
+  s_0853a3eb029ed7::t_7dffdb37cb7dd8 360-366,372
+  s_0853a3eb029ed7::t_c854e0f1692f0d 338
+  s_0853a3eb029ed7::t_f9aeb302ac0de4 373
+  s_0853a3eb029ed7::t_0e4b50aae9eafd 428-429
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_0853a3eb029ed7::t_5da75b30197060 96-97
+  s_0853a3eb029ed7::t_c5927767aaa930 74-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ea7b3e8da3c32c27789c72c9c4e15cef8873cc55",
+  "prompts": {},
+  "sessions": {
+    "s_0853a3eb029ed7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0a75f873-f071-48f0-9c39-57ac1c149353",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
