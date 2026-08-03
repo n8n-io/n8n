@@ -1176,14 +1176,18 @@ export class McpAgentToolsService {
 				return { resource: { type: 'task', id: operation.taskId } };
 			case 'customTool.upsert': {
 				const descriptor = await this.agentSecureRuntime.describeToolSecurely(operation.code);
+				const isAttached = (config.tools ?? []).some(
+					(tool) => tool.type === 'custom' && tool.id === descriptor.name,
+				);
 				const built = await this.agentCustomToolsService.buildCustomTool(
 					agentId,
 					projectId,
 					operation.code,
 					descriptor,
 					telemetryContext,
+					{ recordTelemetry: isAttached },
 				);
-				if ((config.tools ?? []).some((tool) => tool.type === 'custom' && tool.id === built.id)) {
+				if (isAttached) {
 					return { resource: { type: 'customTool', id: built.id }, config };
 				}
 				const next = {

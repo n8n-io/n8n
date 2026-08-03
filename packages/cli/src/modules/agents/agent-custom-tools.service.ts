@@ -44,6 +44,7 @@ export class AgentCustomToolsService {
 		code: string,
 		descriptor: ToolDescriptor,
 		context: AgentMutationTelemetryContext,
+		options: { recordTelemetry?: boolean } = {},
 	): Promise<{ ok: boolean; id: string; descriptor: ToolDescriptor }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
@@ -72,20 +73,22 @@ export class AgentCustomToolsService {
 		markAgentDraftDirty(entity);
 		this.runtimeCacheService.clearRuntimes(agentId);
 		const saved = await this.agentRepository.save(entity);
-		this.modificationTelemetry.record({
-			agent: saved,
-			projectId,
-			user: context.user,
-			by: context.modifiedBy,
-			changedParts: diffAgentConfigParts(
-				previousSchema,
-				saved.schema,
-				previousIntegrations,
-				saved.integrations ?? [],
-				{ tools: true },
-			),
-			wasUnconfigured,
-		});
+		if (options.recordTelemetry !== false) {
+			this.modificationTelemetry.record({
+				agent: saved,
+				projectId,
+				user: context.user,
+				by: context.modifiedBy,
+				changedParts: diffAgentConfigParts(
+					previousSchema,
+					saved.schema,
+					previousIntegrations,
+					saved.integrations ?? [],
+					{ tools: true },
+				),
+				wasUnconfigured,
+			});
+		}
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
