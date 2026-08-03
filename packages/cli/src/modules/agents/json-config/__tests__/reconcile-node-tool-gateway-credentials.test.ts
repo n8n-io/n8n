@@ -2,7 +2,7 @@ import type { AgentJsonToolConfig, AiGatewayConfigDto } from '@n8n/api-types';
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { NodeTypes } from '@/node-types';
+import type { NodeTypes } from '@/node-types';
 
 import { reconcileNodeToolGatewayCredentials } from '../reconcile-node-tool-gateway-credentials';
 
@@ -12,26 +12,61 @@ const GATEWAY_CONFIG = {
 	providerConfig: {},
 } as unknown as AiGatewayConfigDto;
 
-const SENTINEL = { id: null, name: 'n8n credits', __aiGatewayManaged: true };
+const SERVICE_GATEWAY_CONFIG = {
+	nodes: ['n8n-nodes-base.service'],
+	credentialTypes: ['serviceApiKey'],
+	providerConfig: {},
+} as unknown as AiGatewayConfigDto;
 
-function nodeTypesWithCredentials(credentialNames: string[]): NodeTypes {
+const SENTINEL = { id: null, name: 'n8n credits', __aiGatewayManaged: true } as const;
+
+function nodeTypesWithDescription(description: INodeTypeDescription): NodeTypes {
 	const nodeTypes = mock<NodeTypes>();
-	nodeTypes.getByNameAndVersion.mockReturnValue({
-		description: {
-			displayName: 'x',
-			name: 'x',
-			group: [],
-			version: 1,
-			description: '',
-			defaults: {},
-			inputs: [],
-			outputs: [],
-			properties: [],
-			credentials: credentialNames.map((name) => ({ name })),
-		} as INodeTypeDescription,
-	} as INodeType);
+	nodeTypes.getByNameAndVersion.mockReturnValue({ description } as INodeType);
 	return nodeTypes;
 }
+
+function nodeTypesWithCredentials(credentialNames: string[]): NodeTypes {
+	return nodeTypesWithDescription({
+		displayName: 'x',
+		name: 'x',
+		group: [],
+		version: 1,
+		description: '',
+		defaults: {},
+		inputs: [],
+		outputs: [],
+		properties: [],
+		credentials: credentialNames.map((name) => ({ name })),
+	} as INodeTypeDescription);
+}
+
+const multiAuthNodeDescription = {
+	displayName: 'Service',
+	name: 'n8n-nodes-base.service',
+	group: [],
+	version: 1,
+	description: '',
+	defaults: {},
+	inputs: [],
+	outputs: [],
+	credentials: [
+		{ name: 'serviceOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+		{ name: 'serviceApiKey', displayOptions: { show: { authentication: ['apiKey'] } } },
+	],
+	properties: [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{ name: 'OAuth2', value: 'oAuth2' },
+				{ name: 'API Key', value: 'apiKey' },
+			],
+			default: 'oAuth2',
+		},
+	],
+} as INodeTypeDescription;
 
 function nodeTool(
 	nodeType: string,
@@ -75,6 +110,70 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 			GATEWAY_CONFIG,
 		);
 		expect(tools[0].node.credentials).toBeUndefined();
+	});
+
+	it('switches auth to a supported sibling credential type when the displayed type is unsupported', () => {
+		const tools = [nodeTool('n8n-nodes-base.serviceTool')];
+
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithDescription(multiAuthNodeDescription),
+			SERVICE_GATEWAY_CONFIG,
+		);
+
+		expect(tools[0].node.credentials).toEqual({ serviceApiKey: SENTINEL });
+		expect(tools[0].node.nodeParameters).toEqual({ authentication: 'apiKey' });
+	});
+
+	it('switches auth while preserving unrelated parameters when the auth selector relies on its default', () => {
+		const tools = [nodeTool('n8n-nodes-base.serviceTool')];
+		tools[0].node.nodeParameters = { operation: 'split' };
+
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithDescription({
+				...multiAuthNodeDescription,
+				properties: [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						options: [{ name: 'Split', value: 'split' }],
+						default: 'split',
+					},
+					...multiAuthNodeDescription.properties,
+				],
+			}),
+			SERVICE_GATEWAY_CONFIG,
+		);
+
+		expect(tools[0].node.credentials).toEqual({ serviceApiKey: SENTINEL });
+		expect(tools[0].node.nodeParameters).toEqual({
+			operation: 'split',
+			authentication: 'apiKey',
+		});
+	});
+
+	it('does not rewrite an auth parameter that already activates the supported credential', () => {
+		const tools = [nodeTool('n8n-nodes-base.serviceTool')];
+		tools[0].node.nodeParameters = { authentication: 'apiKeyLegacy' };
+
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithDescription({
+				...multiAuthNodeDescription,
+				credentials: [
+					{
+						name: 'serviceApiKey',
+						displayOptions: { show: { authentication: ['apiKey', 'apiKeyLegacy'] } },
+					},
+				],
+			}),
+			SERVICE_GATEWAY_CONFIG,
+		);
+
+		expect(tools[0].node.credentials).toEqual({ serviceApiKey: SENTINEL });
+		expect(tools[0].node.nodeParameters).toEqual({ authentication: 'apiKeyLegacy' });
 	});
 
 	it('deletes an inbound managed marker on an uncovered slot (trust gate)', () => {
