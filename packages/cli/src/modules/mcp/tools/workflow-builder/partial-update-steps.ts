@@ -12,10 +12,14 @@ import { dropInvalidNodeGroups, makeGetNodeTypeForGrouping } from '@/workflow-he
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import {
 	autoPopulateNodeCredentials,
+	type AutoAssignResult,
 	type CredentialAssignment,
-	type SlotOutcome,
 } from './credentials-auto-assign';
-import { GATED_GROUP_OP_TYPES, type OperationInput } from './partial-update-schemas';
+import {
+	GATED_GROUP_OP_TYPES,
+	type OperationInput,
+	type UpdateWorkflowOutput,
+} from './partial-update-schemas';
 import type {
 	ApplyOperationsSuccess,
 	PartialUpdateOperation,
@@ -133,27 +137,47 @@ export const isSettingsOperation = (op: PartialUpdateOperation) =>
  */
 export function assertOperationsSupported({
 	strictOperations,
+	hasTagOperations,
 	canvasGroupsEnabled,
 	tagsDisabled,
 }: {
 	strictOperations: PartialUpdateOperation[];
+	hasTagOperations: boolean;
 	canvasGroupsEnabled: boolean;
 	tagsDisabled: boolean;
 }): void {
 	// Defense in depth: with the flag off, the published schema already
 	// rejects these op types at the enum level; this guards against the
-	// loose and strict schemas drifting apart.
-	const hasGatedGroupOperations = strictOperations.some((op) => GATED_GROUP_OP_TYPES.has(op.type));
-
-	if (hasGatedGroupOperations && !canvasGroupsEnabled) {
+	// loose and strict schemas drifting apart. Flag first so the scan only
+	// runs on instances where it can actually reject something.
+	if (!canvasGroupsEnabled && strictOperations.some((op) => GATED_GROUP_OP_TYPES.has(op.type))) {
 		throw new Error(
 			'Node group operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are not available on this instance.',
 		);
 	}
 
-	if (strictOperations.some(isTagOperation) && tagsDisabled) {
+	if (tagsDisabled && hasTagOperations) {
 		throw new Error('Tag operations are not supported on this instance because tags are disabled.');
 	}
+}
+
+/**
+ * Two passes, ordered by blame: an overlap between a new and an existing group
+ * makes the validator flag both, so the batch's own groups go first and the
+ * innocent existing one survives the re-check. `groupOperations` records which
+ * groups this batch touched, not which one caused a given violation — two group
+ * ops that collide take each other down.
+ */
+function collectNodeGroupViolations(result: ApplyOperationsSuccess, nodeTypes: NodeTypes) {
+	const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
+
+	const ownGroups = dropInvalidNodeGroups(
+		result.workflow,
+		getNodeType,
+		(violation) => result.groupOperations[violation.groupId] !== undefined,
+	);
+
+	return [...ownGroups, ...dropInvalidNodeGroups(result.workflow, getNodeType)];
 }
 
 /**
@@ -172,7 +196,7 @@ export function resolveNodeGroupViolations(
 		canvasGroupsEnabled,
 	}: {
 		result: ApplyOperationsSuccess;
-		canvasGroupsEnabled: boolean | undefined;
+		canvasGroupsEnabled: boolean;
 	},
 	{ nodeTypes }: { nodeTypes: NodeTypes },
 ): {
@@ -186,36 +210,7 @@ export function resolveNodeGroupViolations(
 	// operation failed here, an existing group was destroyed as a side effect.
 	const removedGroups: Array<{ groupName: string; reason: string }> = [];
 
-	if (!canvasGroupsEnabled) {
-		return {
-			skippedOperations,
-			removedGroups,
-			nodeGroupsNeedPersisting: result.nodeGroupsChanged,
-		};
-	}
-
-	const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
-
-	// Two passes, ordered by blame: an overlap between a new and an existing
-	// group makes the validator flag both, so the batch's own groups go first
-	// and the innocent existing one survives the re-check. `groupOperations`
-	// records which groups this batch touched, not which one caused a given
-	// violation — two group ops that collide take each other down.
-	const ownGroups = dropInvalidNodeGroups(
-		result.workflow,
-		getNodeType,
-		(violation) => result.groupOperations[violation.groupId] !== undefined,
-	);
-
-	const violations = [...ownGroups, ...dropInvalidNodeGroups(result.workflow, getNodeType)];
-
-	if (violations.length === 0) {
-		return {
-			skippedOperations,
-			removedGroups,
-			nodeGroupsNeedPersisting: result.nodeGroupsChanged,
-		};
-	}
+	const violations = canvasGroupsEnabled ? collectNodeGroupViolations(result, nodeTypes) : [];
 
 	for (const violation of violations) {
 		const requestedBy = result.groupOperations[violation.groupId];
@@ -237,7 +232,7 @@ export function resolveNodeGroupViolations(
 		// no group op ran this batch — otherwise the omitted `nodeGroups` key
 		// falls back to preserve-on-omit and the still-invalid stored groups get
 		// re-validated (and rejected) by WorkflowService.update right after.
-		nodeGroupsNeedPersisting: true,
+		nodeGroupsNeedPersisting: violations.length > 0 || result.nodeGroupsChanged,
 	};
 }
 
@@ -250,17 +245,16 @@ export function resolveNodeGroupViolations(
 export function buildWorkflowUpdateEntity({
 	workflow,
 	existingMeta,
-	strictOperations,
+	hasSettingsOperations,
+	hasNonTagOperations,
 	nodeGroupsNeedPersisting,
 }: {
 	workflow: ApplyOperationsSuccess['workflow'];
 	existingMeta: WorkflowEntity['meta'];
-	strictOperations: PartialUpdateOperation[];
+	hasSettingsOperations: boolean;
+	hasNonTagOperations: boolean;
 	nodeGroupsNeedPersisting: boolean;
 }): WorkflowEntity {
-	const hasSettingsOperations = strictOperations.some(isSettingsOperation);
-	const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
-
 	const workflowUpdateData = new WorkflowEntity();
 	Object.assign(workflowUpdateData, {
 		name: workflow.name,
@@ -356,11 +350,7 @@ export async function autoAssignCredentialsForAddedNodes(
 		credentialsService: CredentialsService;
 		aiGatewayService: AiGatewayService;
 	},
-): Promise<{
-	assignments: CredentialAssignment[];
-	skippedHttpNodes: string[];
-	outcomes: SlotOutcome[];
-}> {
+): Promise<AutoAssignResult> {
 	if (addedNodeNames.length === 0) {
 		return { assignments: [], skippedHttpNodes: [], outcomes: [] };
 	}
@@ -368,7 +358,7 @@ export async function autoAssignCredentialsForAddedNodes(
 	const addedNodeSet = new Set(addedNodeNames);
 	const addedNodes = workflowUpdateData.nodes.filter((n) => addedNodeSet.has(n.name));
 
-	const autoAssign = await autoPopulateNodeCredentials(
+	return await autoPopulateNodeCredentials(
 		{ ...workflowUpdateData, nodes: addedNodes },
 		user,
 		nodeTypes,
@@ -376,12 +366,6 @@ export async function autoAssignCredentialsForAddedNodes(
 		projectId,
 		aiGatewayService,
 	);
-
-	return {
-		assignments: autoAssign.assignments,
-		skippedHttpNodes: autoAssign.skippedHttpNodes,
-		outcomes: autoAssign.outcomes,
-	};
 }
 
 /**
@@ -415,12 +399,14 @@ export async function collectValidationWarnings(
 		generatePinData: false,
 		nodeTypesProvider: nodeTypes,
 	});
+	const validate = (workflow: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>) =>
+		validator.validateJSON({
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+		} as unknown as WorkflowJSON);
 
-	const postUpdateWarnings = validator.validateJSON({
-		name: updated.name,
-		nodes: updated.nodes,
-		connections: updated.connections,
-	} as unknown as WorkflowJSON);
+	const postUpdateWarnings = validate(updated);
 
 	if (postUpdateWarnings.length === 0) {
 		return postUpdateWarnings;
@@ -429,11 +415,7 @@ export async function collectValidationWarnings(
 	let preUpdateWarnings: ValidationWarning[] = [];
 
 	try {
-		preUpdateWarnings = validator.validateJSON({
-			name: existing.name,
-			nodes: existing.nodes,
-			connections: existing.connections,
-		} as unknown as WorkflowJSON);
+		preUpdateWarnings = validate(existing);
 	} catch {
 		/*
 		 * deliberate: A pre-update state too broken to validate (which this batch may be
@@ -511,7 +493,7 @@ export function buildUpdateOutput({
 	validationWarnings: Array<ValidationWarning & { preExisting?: boolean }>;
 	skippedHttpNodes: string[];
 	hasSettingsOperations: boolean;
-}) {
+}): UpdateWorkflowOutput {
 	const notAppliedCount = countOperationsWithNoEffect(skippedOperations, groupOperations);
 
 	return {
@@ -527,6 +509,11 @@ export function buildUpdateOutput({
 			: undefined,
 		skippedOperations: skippedOperations.length > 0 ? skippedOperations : undefined,
 		removedGroups: removedGroups.length > 0 ? removedGroups : undefined,
-		settings: hasSettingsOperations ? (updatedWorkflow.settings ?? {}) : undefined,
+		// `IWorkflowSettings` is a closed interface while the published schema is an
+		// open record — server-side cleanup decides which keys survive, so the tool
+		// reports whatever came back rather than a fixed set.
+		settings: hasSettingsOperations
+			? ((updatedWorkflow.settings ?? {}) as Record<string, unknown>)
+			: undefined,
 	};
 }

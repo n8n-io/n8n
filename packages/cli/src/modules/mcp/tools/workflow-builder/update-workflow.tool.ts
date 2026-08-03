@@ -88,6 +88,8 @@ export const createUpdateWorkflowTool = (
 		canvasGroupsEnabled?: boolean;
 	} = {},
 ): ToolDefinition<ReturnType<typeof buildInputSchema>> => {
+	const canvasGroupsEnabled = options.canvasGroupsEnabled === true;
+
 	// Bound once: these never vary per call, so the call sites below show only
 	// what is being validated.
 	const settingsGuardDependencies: WorkflowSettingsGuardDependencies = {
@@ -102,8 +104,8 @@ export const createUpdateWorkflowTool = (
 	return {
 		name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 		config: {
-			description: buildToolDescription(options.canvasGroupsEnabled === true),
-			inputSchema: buildInputSchema(options.canvasGroupsEnabled === true),
+			description: buildToolDescription(canvasGroupsEnabled),
+			inputSchema: buildInputSchema(canvasGroupsEnabled),
 			outputSchema,
 			annotations: {
 				title: MCP_UPDATE_WORKFLOW_TOOL.displayTitle,
@@ -141,10 +143,10 @@ export const createUpdateWorkflowTool = (
 				const hasTagOperations = strictOperations.some(isTagOperation);
 				const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
 				const hasSettingsOperations = strictOperations.some(isSettingsOperation);
-				const canvasGroupsEnabled = options.canvasGroupsEnabled === true;
 
 				assertOperationsSupported({
 					strictOperations,
+					hasTagOperations,
 					canvasGroupsEnabled,
 					tagsDisabled: globalConfig.tags.disabled,
 				});
@@ -230,7 +232,8 @@ export const createUpdateWorkflowTool = (
 				const workflowUpdateData = buildWorkflowUpdateEntity({
 					workflow: result.workflow,
 					existingMeta: existingWorkflow.meta,
-					strictOperations,
+					hasSettingsOperations,
+					hasNonTagOperations,
 					nodeGroupsNeedPersisting,
 				});
 

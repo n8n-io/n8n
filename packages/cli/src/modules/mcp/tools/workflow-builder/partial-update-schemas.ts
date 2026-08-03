@@ -28,13 +28,22 @@ const baseOperationTypes = [
 	'addTags',
 	'removeTags',
 	'setNodeGroups',
-] as const;
+] as const satisfies ReadonlyArray<PartialUpdateOperation['type']>;
 
 // Granular group ops roll out behind the `102_mcp_canvas_groups` flag;
 // `setNodeGroups` predates the flag and stays ungated.
-const gatedGroupOperationTypes = ['addNodeGroup', 'removeNodeGroup', 'updateNodeGroup'] as const;
+const gatedGroupOperationTypes = [
+	'addNodeGroup',
+	'removeNodeGroup',
+	'updateNodeGroup',
+] as const satisfies ReadonlyArray<PartialUpdateOperation['type']>;
 
-export const GATED_GROUP_OP_TYPES: ReadonlySet<string> = new Set(gatedGroupOperationTypes);
+// Typed against the strict union rather than `string`, so renaming an operation
+// type in workflow-operations.ts fails to compile here instead of silently
+// leaving the gate unmatched.
+export const GATED_GROUP_OP_TYPES: ReadonlySet<PartialUpdateOperation['type']> = new Set(
+	gatedGroupOperationTypes,
+);
 
 const buildOperationTypeSchema = (canvasGroupsEnabled: boolean) =>
 	canvasGroupsEnabled
@@ -314,3 +323,11 @@ export const outputSchema = {
 		.optional()
 		.describe('Error message explaining why the update failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
+
+/**
+ * The success payload, derived from `outputSchema` so the builder cannot add a
+ * field the published schema does not declare. That matters because the MCP SDK
+ * validates `structuredContent` against the schema on every response, so an
+ * undeclared field turns a successful update into an opaque `-32602`.
+ */
+export type UpdateWorkflowOutput = z.infer<z.ZodObject<typeof outputSchema>>;
