@@ -100,8 +100,8 @@ export function dedupeCreationsByDestination(creations: VariableCreation[]): Var
 }
 
 /**
- * Reports rows two scopes would overwrite with different values. Scopes resolve independently, so
- * both can land on one row — a global neither shadows — where the last write would silently win.
+ * Scopes resolve independently, so two can land on one row — a global neither shadows — and disagree
+ * about its value, where the last write would silently win.
  */
 export function divergentOverwrites(overwrites: VariableOverwrite[]): VariableConflict[] {
 	const firstValueByRow = new Map<string, string>();

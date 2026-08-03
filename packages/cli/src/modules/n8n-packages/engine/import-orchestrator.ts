@@ -123,9 +123,8 @@ export class ImportOrchestrator {
 	) {}
 
 	/**
-	 * Gates variable writes in instance-to-project order so the broadest cause wins: licence and API
-	 * key scope, then each scope's write permission, then the quota. An unlicensed instance also reports
-	 * a zero quota, which would otherwise surface as a limit issue instead of the real cause.
+	 * Licence and scope before quota: an unlicensed instance also reports a zero quota, which would
+	 * otherwise surface as a limit issue instead of the real cause.
 	 */
 	async assertNotBlocked(
 		plans: ImportPlan[],

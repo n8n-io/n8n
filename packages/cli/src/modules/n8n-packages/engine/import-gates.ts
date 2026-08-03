@@ -19,7 +19,6 @@ export function assertPackageImportApiKeyScopes(
 /**
  * Gated on what the import will write, not on what the package requires: a package whose variables
  * all resolve writes nothing, so it needs neither the licence nor a scope. Mirrors the variables UI.
- * One licence covers both writes; the API key scopes are per write.
  */
 export function assertVariableWritesAllowed(options: {
 	licenseState: LicenseState;

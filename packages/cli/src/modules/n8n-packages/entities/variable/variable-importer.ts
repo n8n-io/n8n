@@ -171,8 +171,7 @@ export class VariableImporter {
 		const updated: string[] = [];
 		for (const overwrite of plan.overwrites) {
 			const current = await this.variablesService.getCached(overwrite.variableId);
-			// Two ways this row needs no write: another writer deleted it since the plan, or an earlier
-			// scope of this import already applied the value several scopes agreed on.
+			// Nothing to write if another writer deleted the row, or an earlier scope already applied it.
 			if (!current || current.value === overwrite.value) continue;
 
 			await this.variablesService.update(context.user, overwrite.variableId, {

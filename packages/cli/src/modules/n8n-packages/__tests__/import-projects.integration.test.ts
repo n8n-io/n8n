@@ -1366,7 +1366,6 @@ describe('project shell import', () => {
 					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
 				});
 
-			/** What a real export of two projects that each hold their own `API_URL` looks like. */
 			const perProjectPackage = async (brie: string, stilton: string) =>
 				await twoProjectPackage({
 					variables: [
@@ -1440,8 +1439,7 @@ describe('project shell import', () => {
 			});
 
 			it('blocks when the projects disagree about the value one row would hold', async () => {
-				// Neither project has its own row yet, so both resolve to the global and would write it
-				// in turn. No single value satisfies both, so the import stops instead of picking one.
+				// Neither project has its own row yet, so both resolve to the global and would write it.
 				await createVariable('API_URL', 'https://existing.example.com');
 				const packageBuffer = await perProjectPackage(
 					'https://brie.example.com',
@@ -1483,7 +1481,6 @@ describe('project shell import', () => {
 					variableConflictPolicy: 'overwrite',
 				});
 
-				// Each scope resolves to its own row, so the differing values never meet and nothing blocks.
 				expect(result.variables).toMatchObject({ updated: ['API_URL'] });
 				const rows = await Container.get(VariablesRepository).find({
 					relations: { project: true },
@@ -1522,7 +1519,6 @@ describe('project shell import', () => {
 					expect(rows.map(({ key, value, project }) => ({ key, value, project }))).toEqual([
 						{ key: 'API_URL', value: 'https://agreed.example.com', project: null },
 					]);
-					// Telemetry counts rows, so the row both projects asked for counts once, not twice.
 					const importedEvents = emitSpy.mock.calls.filter(
 						([name]) => name === 'n8n-package-imported',
 					);
@@ -1535,8 +1531,7 @@ describe('project shell import', () => {
 			});
 
 			it('reuses a global the target already configured rather than shadowing it', async () => {
-				// The package carries its source values, but the target's global is the operator's own
-				// setting. Where the variable sat in the source says nothing about where it must land.
+				// Where a variable sat in the source says nothing about where it must land in the target.
 				await createVariable('API_URL', 'https://prod.example.com');
 				const packageBuffer = await perProjectPackage(
 					'https://staging-brie.example.com',
@@ -1554,7 +1549,6 @@ describe('project shell import', () => {
 				expect(rows.map(({ key, value, project }) => ({ key, value, project }))).toEqual([
 					{ key: 'API_URL', value: 'https://prod.example.com', project: null },
 				]);
-				// Both workflows keep reading the value the operator configured.
 				for (const projectId of ['P1', 'P2']) {
 					expect(pickVariableForProject(rows, 'API_URL', projectId)?.value).toBe(
 						'https://prod.example.com',

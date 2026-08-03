@@ -750,8 +750,7 @@ describe('workflow package import — with variables', () => {
 
 			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
 			const workflowsBefore = await workflowRepository.count();
-			// Stands in for a concurrent writer taking the last slot after the preflight passed. The
-			// workflow survives the failure: an accepted trade for applying variables after it.
+			// The workflow survives the failure: an accepted trade for applying variables after it.
 			vi.spyOn(variablesService, 'create').mockRejectedValueOnce(
 				new VariableCountLimitReachedError('Variables limit reached'),
 			);
@@ -1202,7 +1201,6 @@ describe('workflow package import — with variables', () => {
 					stubbed: [],
 					updated: ['API_URL'],
 				});
-				// Only the target row moves; no row is added and the source keeps its own value.
 				const layout = await variableLayout();
 				expect(layout).toEqual(
 					expect.arrayContaining([
@@ -1328,8 +1326,7 @@ describe('workflow package import — with variables', () => {
 					variableConflictPolicy: 'overwrite',
 				});
 
-				// Nothing left to overwrite, so the import finishes rather than failing on a missing row
-				// with every other entity already written.
+				// Nothing left to overwrite, so the import finishes rather than failing on a missing row.
 				expect(result.workflows[0].status).toBe('created');
 				expect(result.variables).toMatchObject({ matched: ['API_URL'], updated: [] });
 				expect(await variablesInProject(targetProject.id)).toEqual([]);
@@ -1425,8 +1422,7 @@ describe('workflow package import — with variables', () => {
 
 		/**
 		 * A target row holding an empty value still holds a value, unlike an empty *package* value,
-		 * which is nothing to write. So `overwrite` fills such a row and `fail` rejects it, and a stub
-		 * an earlier import created is only filled by asking for it.
+		 * which is nothing to write. So `overwrite` fills such a row and `fail` rejects it.
 		 */
 		describe('empty target value', () => {
 			async function importAgainst(variableConflictPolicy: 'keep-existing' | 'overwrite' | 'fail') {

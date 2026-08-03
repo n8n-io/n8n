@@ -100,11 +100,11 @@ export const VariableMissingMode = {
 } as const;
 
 export const VariableConflictPolicy = {
-	/** Leaves a matched variable's value as it is on the target, even when the package bundles a different one. */
+	/** Leaves the target value alone, even when the package bundles a different one. */
 	KeepExisting: 'keep-existing',
-	/** Replaces a matched variable's value with the package value, at whichever scope the variable was found. */
+	/** Replaces the target value with the package's, at whichever scope the variable was found. */
 	Overwrite: 'overwrite',
-	/** Fails the import when the package bundles a value that differs from the matched variable's. */
+	/** Rejects the import when the package bundles a value that differs from the target's. */
 	Fail: 'fail',
 } as const;
 
