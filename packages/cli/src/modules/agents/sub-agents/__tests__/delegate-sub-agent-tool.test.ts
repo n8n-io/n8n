@@ -1,4 +1,5 @@
 import {
+	AgentEvent,
 	getInlineDelegateSubAgentToolOptions,
 	INLINE_SUB_AGENT_ID,
 	type CredentialProvider,
@@ -8,6 +9,9 @@ import {
 import type { SubAgentSource } from '@n8n/api-types';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { OperationalError, UserError } from 'n8n-workflow';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	createN8nDelegateSubAgentTool,
@@ -66,7 +70,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		credentialProvider = mock<CredentialProvider>();
 	});
 
-	it('forwards resolveInlineSubAgentProviderTools into delegate tool metadata', () => {
+	it('forwards inline sub-agent runtime options into delegate tool metadata', () => {
 		const resolveInlineSubAgentProviderTools = vi.fn().mockReturnValue([]);
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
@@ -77,9 +81,14 @@ describe('createN8nDelegateSubAgentTool', () => {
 			resolveInlineSubAgentProviderTools,
 		});
 
-		expect(getInlineDelegateSubAgentToolOptions(tool)?.resolveInlineSubAgentProviderTools).toBe(
+		const inlineOptions = getInlineDelegateSubAgentToolOptions(tool);
+		expect(inlineOptions?.resolveInlineSubAgentProviderTools).toBe(
 			resolveInlineSubAgentProviderTools,
 		);
+		expect(inlineOptions?.shouldRetrySubAgentResumeError?.(new OperationalError('temporary'))).toBe(
+			true,
+		);
+		expect(inlineOptions?.shouldRetrySubAgentResumeError?.(new UserError('terminal'))).toBe(false);
 	});
 
 	it('forwards inlineSubAgentModelsByDifficulty into delegate tool metadata', () => {
@@ -392,6 +401,65 @@ describe('createN8nDelegateSubAgentTool', () => {
 		expect(runner.resumeForeground).toHaveBeenCalledWith(
 			request,
 			expect.objectContaining({ executionCounter: parentExecutionCounter }),
+		);
+	});
+
+	it.each([
+		{
+			name: 'expired checkpoint',
+			error: new UserError('This action has expired and cannot be resumed'),
+		},
+		{
+			name: 'missing pinned version',
+			error: new NotFoundError('Version "version-7" not found for agent "agent-2"'),
+		},
+	])('finishes a configured child resume when the $name error is terminal', async ({ error }) => {
+		runner.resumeForeground.mockRejectedValue(error);
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		const emitEvent = vi.fn();
+
+		const result = await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				resumeData: { approved: true },
+				suspendPayload: { type: 'approval', toolName: 'http_request', args: {} },
+				continuation: {
+					runId: 'child-run-1',
+					toolCallId: 'child-tool-call-1',
+					taskPath: '/root/research_api_0',
+					subAgentId: 'agent-2',
+					childCount: 0,
+					threadId: 'child-thread-1',
+					resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+				},
+				suspend,
+				emitEvent,
+			},
+		);
+
+		expect(result).toMatchObject({
+			status: 'failed',
+			taskPath: '/root/research_api_0',
+			answer: '',
+			error: error.message,
+		});
+		expect(suspend).not.toHaveBeenCalled();
+		expect(emitEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: AgentEvent.SubAgentCompleted,
+				status: 'failed',
+				taskPath: '/root/research_api_0',
+				error: error.message,
+			}),
 		);
 	});
 

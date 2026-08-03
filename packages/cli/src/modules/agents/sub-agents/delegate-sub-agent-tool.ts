@@ -8,6 +8,9 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/agents';
 import type { SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
+import { OperationalError } from 'n8n-workflow';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 import type {
 	SubAgentForegroundRunContext,
@@ -42,6 +45,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 		...(resolveInlineSubAgentProviderTools !== undefined
 			? { resolveInlineSubAgentProviderTools }
 			: {}),
+		shouldRetrySubAgentResumeError,
 		runSubAgent: async (request, helpers) => {
 			if (request.subAgentId === INLINE_SUB_AGENT_ID) {
 				return await helpers.runInlineSubAgent(request);
@@ -137,6 +141,12 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			await runner.cancelForeground(request);
 		},
 	});
+}
+
+function shouldRetrySubAgentResumeError(error: unknown): boolean {
+	if (error instanceof OperationalError) return true;
+	if (!(error instanceof ResponseError)) return false;
+	return [408, 425, 429, 502, 503, 504].includes(error.httpStatusCode);
 }
 
 function selectSubAgentSource(options: {

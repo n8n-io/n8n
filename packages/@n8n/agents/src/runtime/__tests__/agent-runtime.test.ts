@@ -2114,6 +2114,29 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(state.pendingToolCalls['tc-3'].suspended).toBe(false);
 	});
 
+	it('validates resume data when targeting an unexecuted pending tool', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const suspendTool = makeSuspendingTool('suspend_tool', handler);
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools');
+		expect(runtime.getState().pendingToolCalls['tc-2']).toMatchObject({ suspended: false });
+
+		await expect(
+			runtime.resume('generate', { approved: 'yes' }, { runId: first.runId, toolCallId: 'tc-2' }),
+		).rejects.toThrow('Invalid resume payload');
+		expect(handler).toHaveBeenCalledOnce();
+	});
+
 	it('pendingSuspend is an array of all suspended tools with preserved payloads', async () => {
 		const suspendTool = makeSuspendingTool('suspend_tool', async (_input, ctx) => {
 			return await ctx.suspend({ reason: 'needs approval' });

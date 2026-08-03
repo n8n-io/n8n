@@ -349,6 +349,8 @@ export interface CreateDelegateSubAgentToolOptions {
 	runSubAgent?: DelegateSubAgentRunner;
 	/** Resume a child checkpoint previously cascaded through this delegate tool. */
 	resumeSubAgent?: DelegateSubAgentResumeRunner;
+	/** Return true only when a thrown child-resume error is safe to retry. */
+	shouldRetrySubAgentResumeError?: (error: unknown) => boolean;
 	/** Clean up a child checkpoint when the parent cancels the suspended delegation. */
 	cancelSubAgent?: DelegateSubAgentCancelRunner;
 
@@ -528,6 +530,9 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 				...(resolvedOptions.resumeSubAgent !== undefined
 					? { resumeSubAgent: resolvedOptions.resumeSubAgent }
 					: {}),
+				...(resolvedOptions.shouldRetrySubAgentResumeError !== undefined
+					? { shouldRetrySubAgentResumeError: resolvedOptions.shouldRetrySubAgentResumeError }
+					: {}),
 				...(resolvedOptions.cancelSubAgent !== undefined
 					? { cancelSubAgent: resolvedOptions.cancelSubAgent }
 					: {}),
@@ -637,6 +642,7 @@ async function handleDelegateSubAgent(
 				);
 			} catch (error) {
 				if (ctx.abortSignal?.aborted || isAbortError(error)) throw error;
+				if (options.shouldRetrySubAgentResumeError?.(error) === false) throw error;
 				return await ctx.suspend(ctx.suspendPayload);
 			}
 			emitSubAgentCompleted(ctx, request, output, startedAt);

@@ -357,15 +357,15 @@ export class AgentRuntime {
 			threadId: state.persistence?.threadId,
 		});
 
-		const toolForValidation = this.context
+		const tool = this.context
 			.getCurrentTools(state.persistence)
 			.find((t) => t.name === toolCall.toolName);
-		if (!toolForValidation) throw new Error(`Tool ${toolCall.toolName} not found`);
+		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		let resumeData: unknown = data;
 		let abortScope: AgentAbortScope | undefined;
 
-		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : undefined;
+		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
 		if (!isCancellation(resumeData) && resumeSchema) {
 			const parseResult = await parseWithSchema(resumeSchema, data);
 			if (!parseResult.success) {
@@ -396,11 +396,6 @@ export class AgentRuntime {
 				...(mergedMaxIterations !== undefined ? { maxIterations: mergedMaxIterations } : {}),
 				...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
 			};
-
-			const tool = this.context
-				.getCurrentTools(state.persistence, mergedExecOptions.executionCounter)
-				.find((t) => t.name === toolCall.toolName);
-			if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 			const resumeOptions: RuntimeExecutionOptions = {
 				persistence: state.persistence,
