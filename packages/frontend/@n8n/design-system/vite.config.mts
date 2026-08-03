@@ -1,12 +1,79 @@
 import vue from '@vitejs/plugin-vue';
+import { cpSync } from 'node:fs';
 import { resolve } from 'path';
-import { defineConfig, mergeConfig } from 'vite';
+import { build, defineConfig, mergeConfig, type InlineConfig, type Plugin } from 'vite';
 import icons from 'unplugin-icons/vite';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import svgLoader from 'vite-svg-loader';
 import { lucideIconsPlugin } from './src/icons/lucide/vite';
 
 const packagesDir = resolve(__dirname, '..', '..', '..');
+const srcDir = resolve(__dirname, 'src');
+const distDir = resolve(__dirname, 'dist');
+
+/** Emit stylesheets at the dist root, everything else under `assets/`. */
+const assetFileNames = (name: string) => (asset: { names?: string[] }) =>
+	asset.names?.[0]?.endsWith('.css') ? name : 'assets/[name][extname]';
+
+/**
+ * Ship the SCSS sources alongside the compiled CSS so consumers with a sass
+ * toolchain can `@use` our mixins and token maps from their own stylesheets.
+ *
+ * The copy keeps the `css/` folder name on purpose: internal code already writes
+ * `@n8n/design-system/css/mixins/motion` (49 call sites, resolved through an
+ * alias to `src/css/`), so `dist/css` is the target that lets those specifiers
+ * read identically inside and outside the monorepo.
+ *
+ * `dist/css/` sits two levels below the package root, exactly like `src/css/`,
+ * so the `url('../../assets/fonts/…')` in `fonts.scss` and `icon.scss` keeps
+ * resolving without rewriting a single path.
+ */
+function copyScssSources(): Plugin {
+	return {
+		name: 'n8n:copy-scss-sources',
+		closeBundle() {
+			cpSync(resolve(srcDir, 'css'), resolve(distDir, 'css'), {
+				recursive: true,
+				// The stylesheets ship; the test that asserts on their selector order does not.
+				filter: (source) => !source.endsWith('.test.ts'),
+			});
+			cpSync(resolve(srcDir, 'utils.scss'), resolve(distDir, 'css', 'utils.scss'));
+		},
+	};
+}
+
+/**
+ * Second pass over `dist`, run from `builder.buildApp` below.
+ *
+ * `src/css/index.scss` is the theme every consumer needs — design tokens,
+ * `@font-face` rules, the reset and the element-plus overrides — and no Vue SFC
+ * imports it, so the library pass never emits it. Without it the shipped
+ * component CSS references `var(--…)` tokens that are never defined.
+ *
+ * It cannot ride the library pass: `build.lib.entry` takes JS modules, and a
+ * second entry would force code splitting, which the UMD output cannot do. So it
+ * gets its own pass — in this file, off the same `vite build`.
+ */
+const themeBuild: InlineConfig = {
+	// This file is the config; loading it again here would recurse.
+	configFile: false,
+	root: __dirname,
+	plugins: [copyScssSources()],
+	// Font `url()`s emit relative to the stylesheet rather than Vite's default
+	// absolute `/assets/…`, which 404s wherever the app is not served from the web
+	// root. Scoped to this pass — the library pass emits no assets at all.
+	base: './',
+	build: {
+		// The library pass owns dist; this one only adds to it.
+		emptyOutDir: false,
+		outDir: 'dist',
+		cssCodeSplit: true,
+		rollupOptions: {
+			input: { theme: resolve(srcDir, 'css', 'index.scss') },
+			output: { assetFileNames: assetFileNames('[name][extname]') },
+		},
+	},
+};
 
 export default mergeConfig(
 	defineConfig({
@@ -67,7 +134,15 @@ export default mergeConfig(
 					globals: {
 						vue: 'Vue',
 					},
+					assetFileNames: assetFileNames('style.css'),
 				},
+			},
+		},
+		builder: {
+			// Library first — it owns dist and empties it. Theme second, additive.
+			buildApp: async (builder) => {
+				await builder.build(builder.environments.client);
+				await build(themeBuild);
 			},
 		},
 	}),
