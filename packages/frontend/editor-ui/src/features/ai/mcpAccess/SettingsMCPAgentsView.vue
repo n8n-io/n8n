@@ -12,7 +12,7 @@ import type { TableOptions } from '@n8n/design-system/components/N8nDataTableSer
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { Agent } from '@/features/agents/agent.types';

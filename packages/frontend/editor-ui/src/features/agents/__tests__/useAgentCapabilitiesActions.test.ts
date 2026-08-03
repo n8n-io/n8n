@@ -23,7 +23,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const { showMessageSpy } = vi.hoisted(() => ({ showMessageSpy: vi.fn() }));
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: showMessageSpy }),
 }));
 

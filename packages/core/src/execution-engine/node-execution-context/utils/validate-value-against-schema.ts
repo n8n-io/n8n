@@ -6,6 +6,7 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	INodeType,
+	ResourceMapperField,
 	ResourceMapperTypeOptions,
 } from 'n8n-workflow';
 import {
@@ -16,6 +17,31 @@ import {
 } from 'n8n-workflow';
 
 import type { ExtendedValidationResult } from '@/interfaces';
+
+const schemaIndexCache = new WeakMap<ResourceMapperField[], Map<string, ResourceMapperField>>();
+
+const EMPTY_SCHEMA_INDEX: ReadonlyMap<string, ResourceMapperField> = new Map();
+
+const indexSchemaById = (
+	schema: ResourceMapperField[] | undefined,
+): ReadonlyMap<string, ResourceMapperField> => {
+	// `isResourceMapperValue` only checks that `schema` is present, so a persisted
+	// `schema: null` reaches this. Indexing runs before the loop now, where the previous
+	// `schema.find` only ran inside it, so bail out here instead of throwing on iteration.
+	if (!schema?.length) {
+		return EMPTY_SCHEMA_INDEX;
+	}
+	let index = schemaIndexCache.get(schema);
+	if (!index) {
+		index = new Map<string, ResourceMapperField>();
+		for (const entry of schema) {
+			// First occurrence wins, matching the `schema.find` this index replaces
+			if (!index.has(entry.id)) index.set(entry.id, entry);
+		}
+		schemaIndexCache.set(schema, index);
+	}
+	return index;
+};
 
 const validateResourceMapperValue = (
 	parameterName: string,
@@ -35,13 +61,13 @@ const validateResourceMapperValue = (
 	if (!resourceMapperField || !isResourceMapperValue(resourceMapperField)) {
 		return result;
 	}
-	const schema = resourceMapperField.schema;
+	const schemaById = indexSchemaById(resourceMapperField.schema);
 	const paramValueNames = Object.keys(paramValues);
 	for (let i = 0; i < paramValueNames.length; i++) {
 		const key = paramValueNames[i];
 		const resolvedValue = paramValues[key];
 
-		const schemaEntry = schema.find((s) => s.id === key);
+		const schemaEntry = schemaById.get(key);
 
 		if (
 			!skipRequiredCheck &&

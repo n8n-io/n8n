@@ -6,8 +6,8 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import {
-	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	AGENT_MODEL_PROVIDERS,
+	getProviderCredentialTypes,
 	type AgentCredentialsByProvider,
 	type AgentModelProvider,
 	isAgentModelProvider,
@@ -41,8 +41,8 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 	// so building works with zero configuration.
 	function supportsManagedCredits(provider: AgentModelProvider): boolean {
 		if (!settingsStore.isAiGatewayEnabled) return false;
-		return AGENT_MODEL_PROVIDER_DEFINITIONS[provider].credentialTypes.some((credentialType) =>
-			aiGatewayStore.isCredentialTypeSupported(credentialType),
+		return getProviderCredentialTypes(provider).some((credentialType) =>
+			aiGatewayStore.canServeCredentialType(credentialType),
 		);
 	}
 
@@ -69,7 +69,7 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 			ReturnType<typeof credentialsStore.getCredentialsByType>[number]
 		>();
 
-		for (const credentialType of AGENT_MODEL_PROVIDER_DEFINITIONS[provider].credentialTypes) {
+		for (const credentialType of getProviderCredentialTypes(provider)) {
 			for (const credential of credentialsStore.getCredentialsByType(credentialType)) {
 				if (!credentialsById.has(credential.id)) {
 					credentialsById.set(credential.id, credential);
