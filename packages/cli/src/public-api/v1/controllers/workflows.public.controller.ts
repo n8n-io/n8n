@@ -68,7 +68,11 @@ export class WorkflowsPublicController {
 			const data = hasMore ? versions.slice(0, limit) : versions;
 
 			return {
-				data,
+				data: data.map((version) => ({
+					...version,
+					createdAt: version.createdAt.toISOString(),
+					updatedAt: version.updatedAt.toISOString(),
+				})),
 				nextCursor: encodeNextCursor({
 					offset,
 					limit,

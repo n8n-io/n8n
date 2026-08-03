@@ -43,8 +43,12 @@ responses:
                     nullable: true
                   createdAt:
                     type: string
+                    format: date-time
+                    description: When this version was created
                   updatedAt:
                     type: string
+                    format: date-time
+                    description: When this version was last updated
                 required:
                   - versionId
                   - workflowId

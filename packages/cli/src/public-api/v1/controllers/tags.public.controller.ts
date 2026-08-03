@@ -51,7 +51,11 @@ export class TagsPublicController {
 		const { data, count } = await this.tagService.getPaginated({ offset, limit });
 
 		return {
-			data,
+			data: data.map((tag) => ({
+				...tag,
+				createdAt: tag.createdAt.toISOString(),
+				updatedAt: tag.updatedAt.toISOString(),
+			})),
 			nextCursor: encodeNextCursor({
 				offset,
 				limit,
