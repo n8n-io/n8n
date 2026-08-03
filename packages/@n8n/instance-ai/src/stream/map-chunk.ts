@@ -159,6 +159,14 @@ function readErrorCode(error: unknown): string | undefined {
 	return undefined;
 }
 
+/** Find an ai-sdk `statusCode` on the error or its `cause` chain, alongside the response body. */
+function readStatusCode(error: unknown): number | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+	if ('statusCode' in error && typeof error.statusCode === 'number') return error.statusCode;
+	if ('cause' in error && error.cause !== error) return readStatusCode(error.cause);
+	return undefined;
+}
+
 /** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */
 function readResponseBody(error: unknown): string | undefined {
 	if (typeof error !== 'object' || error === null) return undefined;
@@ -191,8 +199,9 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 		const info: ErrorInfo = { content: error.message };
 
 		// APICallError from ai-sdk carries statusCode and responseBody
-		if ('statusCode' in error && typeof error.statusCode === 'number') {
-			info.statusCode = error.statusCode;
+		const statusCode = readStatusCode(error);
+		if (statusCode !== undefined) {
+			info.statusCode = statusCode;
 		}
 
 		if ('responseBody' in error && typeof error.responseBody === 'string') {

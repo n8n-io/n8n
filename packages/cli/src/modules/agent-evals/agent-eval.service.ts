@@ -9,6 +9,7 @@ import type {
 	GenerateDraftCasesResult,
 	UpdateAgentEvalDatasetPayload,
 } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { AgentEvalDataset, AgentEvalRun, User } from '@n8n/db';
 import {
 	AgentEvalDatasetRepository,
@@ -24,6 +25,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { AgentEvalCaseGenerationService } from './agent-eval-case-generation.service';
 import { toDatasetRecord, toResultRecord, toRunRecord } from './agent-eval-record-mappers';
 import { AgentEvalRunnerService } from './agent-eval-runner.service';
+import { assertRequiredModulesActive } from './agent-evals-required-modules';
 
 /** Statuses a run can still be asked to stop from. */
 const CANCELLABLE_STATUSES = new Set(['new', 'running']);
@@ -39,6 +41,7 @@ const CANCELLABLE_STATUSES = new Set(['new', 'running']);
 @Service()
 export class AgentEvalService {
 	constructor(
+		private readonly moduleRegistry: ModuleRegistry,
 		private readonly agentRepository: AgentRepository,
 		private readonly datasetRepository: AgentEvalDatasetRepository,
 		private readonly runRepository: AgentEvalRunRepository,
@@ -205,7 +208,12 @@ export class AgentEvalService {
 
 	// `@ProjectScope` only checks the project in the URL, so this is what stops a
 	// caller with access to one project from addressing an agent in another.
+	//
+	// Every public method starts here, which makes it the one place to assert the
+	// modules this one depends on — before the agent lookup that would otherwise
+	// fail as a TypeORM missing-metadata error.
 	private async assertAgentInProject(agentId: string, projectId: string): Promise<void> {
+		assertRequiredModulesActive(this.moduleRegistry);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent ${agentId} not found.`);
 	}

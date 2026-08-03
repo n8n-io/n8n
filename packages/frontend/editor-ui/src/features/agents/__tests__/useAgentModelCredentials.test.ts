@@ -32,7 +32,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('@/app/stores/aiGateway.store', () => ({
 	useAiGatewayStore: () => ({
-		isCredentialTypeSupported: (type: string) => aiGatewayState.supportedTypes.has(type),
+		canServeCredentialType: (type: string) => aiGatewayState.supportedTypes.has(type),
 	}),
 }));
 

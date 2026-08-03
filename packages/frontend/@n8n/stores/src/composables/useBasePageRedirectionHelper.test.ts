@@ -28,10 +28,9 @@ vi.mock('@n8n/composables/useTelemetry', () => {
 });
 
 /** Only `deployment.type` steers this composable; the rest of the settings object is stubbed. */
-const settingsFor = (type: string, environment = 'production') =>
+const settingsFor = (type: string) =>
 	mock<FrontendSettings>({
 		deployment: { type },
-		license: { environment } as FrontendSettings['license'],
 	});
 
 describe('useBasePageRedirectionHelper', () => {
@@ -75,19 +74,11 @@ describe('useBasePageRedirectionHelper', () => {
 	test.each([
 		[
 			'default',
-			'production',
-			ROLE.Owner,
-			'https://n8n.io/pricing?utm_campaign=upgrade-api&source=advanced-permissions',
-		],
-		[
-			'default',
-			'development',
 			ROLE.Owner,
 			'https://n8n.io/pricing?utm_campaign=upgrade-api&source=advanced-permissions',
 		],
 		[
 			'cloud',
-			'production',
 			ROLE.Owner,
 			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
 				'/account/change-plan',
@@ -95,13 +86,12 @@ describe('useBasePageRedirectionHelper', () => {
 		],
 		[
 			'cloud',
-			'production',
 			ROLE.Member,
 			'https://n8n.io/pricing?utm_campaign=upgrade-api&source=advanced-permissions',
 		],
 	])(
-		'"goToUpgrade" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
-		async (type, environment, role, expectation) => {
+		'"goToUpgrade" should generate the correct URL for "%s" deployment and user role "%s"',
+		async (type, role, expectation) => {
 			// Arrange
 
 			usersStore.addUsers([
@@ -116,7 +106,7 @@ describe('useBasePageRedirectionHelper', () => {
 
 			const telemetry = useTelemetry();
 
-			settingsStore.setSettings(settingsFor(type, environment));
+			settingsStore.setSettings(settingsFor(type));
 
 			// Act
 
@@ -145,7 +135,7 @@ describe('useBasePageRedirectionHelper', () => {
 			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
 			usersStore.currentUserId = '1';
 
-			settingsStore.setSettings(settingsFor('cloud', 'production'));
+			settingsStore.setSettings(settingsFor('cloud'));
 
 			const windowOpenSpy = vi.spyOn(window, 'open').mockReturnValue(null);
 
@@ -165,7 +155,7 @@ describe('useBasePageRedirectionHelper', () => {
 			usersStore.addUsers([{ id: '1', isPending: false, role }]);
 			usersStore.currentUserId = '1';
 
-			settingsStore.setSettings(settingsFor(type, 'production'));
+			settingsStore.setSettings(settingsFor(type));
 
 			const initialHref = location.href;
 			const windowOpenSpy = vi.spyOn(window, 'open').mockReturnValue(null);
@@ -184,14 +174,13 @@ describe('useBasePageRedirectionHelper', () => {
 	test.each([
 		[
 			'cloud',
-			'production',
 			ROLE.Owner,
 			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent('/dashboard')}`,
 		],
-		['cloud', 'production', ROLE.Member, 'https://test.app.n8n.cloud'],
+		['cloud', ROLE.Member, 'https://test.app.n8n.cloud'],
 	])(
-		'"goToDashboard" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
-		async (type, environment, role, expectation) => {
+		'"goToDashboard" should generate the correct URL for "%s" deployment and user role "%s"',
+		async (type, role, expectation) => {
 			// Arrange
 
 			usersStore.addUsers([
@@ -204,7 +193,7 @@ describe('useBasePageRedirectionHelper', () => {
 
 			usersStore.currentUserId = '1';
 
-			settingsStore.setSettings(settingsFor(type, environment));
+			settingsStore.setSettings(settingsFor(type));
 
 			// Act
 
@@ -221,7 +210,7 @@ describe('useBasePageRedirectionHelper', () => {
 			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
 			usersStore.currentUserId = '1';
 
-			settingsStore.setSettings(settingsFor('cloud', 'production'));
+			settingsStore.setSettings(settingsFor('cloud'));
 		});
 
 		test('aborts the redirect and skips telemetry when the guard resolves false', async () => {

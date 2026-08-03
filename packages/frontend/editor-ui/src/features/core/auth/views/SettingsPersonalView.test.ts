@@ -8,7 +8,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { AuthenticationMethod, ROLE } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 let pinia: ReturnType<typeof createPinia>;
