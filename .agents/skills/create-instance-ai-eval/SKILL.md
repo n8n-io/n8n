@@ -263,6 +263,13 @@ switch. Two shapes to know:
   rewrites `@/` path aliases to relative requires) didn't complete, so the dist is
   internally inconsistent.
 
+- **Out-of-sync `node_modules`** — `pnpm build` itself dies early with `Cannot find
+  module '@n8n/<pkg>'` even though that package is a declared `workspace:*`
+  dependency *and* has a `dist/`. The workspace symlink is missing from the
+  consumer's `node_modules` (typical after a branch or worktree switch). Confirm
+  with `ls -d packages/<consumer>/node_modules/@n8n/<pkg>`; fix with a plain
+  `pnpm install` — no need for the heavier `pnpm reset --full`.
+
 Fix it, don't calibrate around it: run a full ordered `pnpm build` (a targeted
 `--filter` build can fail on unrelated stale-dep type errors; for the instance-ai
 shape, `cd packages/@n8n/instance-ai && pnpm build` runs `tsc && tsc-alias`), then
