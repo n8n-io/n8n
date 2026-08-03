@@ -1307,6 +1307,33 @@ describe('workflow package import — with variables', () => {
 				expect(await workflowRepository.count()).toBe(workflowsBefore);
 				expect((await variablesInProject(targetProject.id))[0].value).toBe('from-target');
 			});
+
+			it('skips an overwrite whose variable another writer deleted after the plan', async () => {
+				const owner = await createOwner();
+				const targetProject = await createTeamProject('Target', owner);
+				const { packageBuffer } = await packageReferencing(owner, 'from-source');
+				const target = await createProjectVariable('API_URL', 'from-target', targetProject);
+				// Deletes the row once the plan has read it, which is the window the write reopens.
+				vi.spyOn(variablesService, 'getAllCached').mockImplementationOnce(async () => {
+					const planned = await variablesRepository.find({ relations: { project: true } });
+					await variablesRepository.delete(target.id);
+					await variablesService.updateCache();
+					return planned;
+				});
+
+				const result = await importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer,
+					variableConflictPolicy: 'overwrite',
+				});
+
+				// Nothing left to overwrite, so the import finishes rather than failing on a missing row
+				// with every other entity already written.
+				expect(result.workflows[0].status).toBe('created');
+				expect(result.variables).toMatchObject({ matched: ['API_URL'], updated: [] });
+				expect(await variablesInProject(targetProject.id)).toEqual([]);
+			});
 		});
 
 		describe('fail', () => {

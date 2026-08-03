@@ -170,14 +170,15 @@ export class VariableImporter {
 
 		const updated: string[] = [];
 		for (const overwrite of plan.overwrites) {
-			// Several scopes can agree on one row, and the first write already settled it. Re-checking
-			// the fresh cache keeps that to a single write, and one reported row.
-			if (!(await this.variableHoldsValue(overwrite))) {
-				await this.variablesService.update(context.user, overwrite.variableId, {
-					value: overwrite.value,
-				});
-				updated.push(overwrite.name);
-			}
+			const current = await this.variablesService.getCached(overwrite.variableId);
+			// Two ways this row needs no write: another writer deleted it since the plan, or an earlier
+			// scope of this import already applied the value several scopes agreed on.
+			if (!current || current.value === overwrite.value) continue;
+
+			await this.variablesService.update(context.user, overwrite.variableId, {
+				value: overwrite.value,
+			});
+			updated.push(overwrite.name);
 		}
 
 		return {
@@ -195,10 +196,6 @@ export class VariableImporter {
 			(variable) =>
 				destinationKey({ name: variable.key, projectId: variable.project?.id }) === destination,
 		);
-	}
-
-	private async variableHoldsValue({ variableId, value }: VariableOverwrite): Promise<boolean> {
-		return (await this.variablesService.getCached(variableId))?.value === value;
 	}
 
 	private targetScopes(targets: Array<{ projectId?: string }>, skipProjectId?: string) {
