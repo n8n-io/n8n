@@ -212,6 +212,14 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 	.refine((c) => (c.conversation ?? []).slice(1).every((turn) => turn.attach === undefined), {
 		message: 'only the first conversation turn may carry `attach` — an attachment is a hand-off',
 	})
+	// The hand-off IS the user's opening turn — it models someone opening the
+	// assistant with a workflow already in front of them. An assistant turn
+	// carrying one is malformed, and grading it would score a transcript that
+	// could not have happened.
+	.refine((c) => c.conversation?.[0]?.attach === undefined || c.conversation[0].role === 'user', {
+		message:
+			'only a `user` turn may carry `attach` — the attachment is the hand-off that opens the conversation',
+	})
 	// A dangling attachment would hand the agent a reference to nothing, which reads
 	// as a builder failure. Only an inline seed declares workflows to point at.
 	.refine(

@@ -340,6 +340,26 @@ describe('EvalTestCaseSchema', () => {
 		expect(parsed.conversation?.[0].attach).toEqual({ workflow: 'wf12345678' });
 	});
 
+	// An attachment models the user opening the assistant with a workflow already in
+	// front of them, so the turn it rides has to BE the user's. An assistant-first
+	// opener carrying one would be graded against a transcript that never happened.
+	it('rejects an attach on an assistant opening turn', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [
+					{ role: 'assistant', text: 'here is what I built', attach: { workflow: 'wf12345678' } },
+					{ role: 'user', text: 'why is this failing?' },
+				],
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					workflows: [{ id: 'wf12345678', name: 'Batch loop', nodes: [], connections: {} }],
+				},
+			}),
+		).toThrow(/attach.*user|user.*attach/i);
+	});
+
 	it('rejects an attach on a later turn — an attachment is a hand-off', () => {
 		expect(() =>
 			EvalTestCaseSchema.parse({
