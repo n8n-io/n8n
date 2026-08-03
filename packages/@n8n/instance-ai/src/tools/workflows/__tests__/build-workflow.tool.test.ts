@@ -531,7 +531,7 @@ describe('createBuildWorkflowTool', () => {
 
 		expect(suspend).toHaveBeenCalledWith(
 			expect.objectContaining({
-				message: 'Target workflow (ID: wf-existing)',
+				message: 'Edit Target workflow (ID: wf-existing)?',
 				severity: 'warning',
 			}),
 		);

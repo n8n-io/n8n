@@ -453,7 +453,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 					return await ctx.suspend({
 						requestId: nanoid(),
-						message: `${workflowName} (ID: ${targetWorkflowId})`,
+						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
 						severity: 'warning',
 					});
 				}
