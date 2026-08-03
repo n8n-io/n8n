@@ -3,7 +3,13 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { buildAiSdkTelemetry } from './telemetry-options';
 import { Telemetry } from '../../sdk/telemetry';
-import type { AttributeValue, BuiltProviderTool, BuiltTelemetry, BuiltTool } from '../../types';
+import type {
+	AttributeValue,
+	BuiltMemory,
+	BuiltProviderTool,
+	BuiltTelemetry,
+	BuiltTool,
+} from '../../types';
 import type { ExecutionOptions } from '../../types/sdk/agent';
 import type { OpaqueSpanLink } from '../../types/telemetry';
 import type { JSONValue } from '../../types/utils/json';
@@ -121,6 +127,116 @@ function buildGenAiRootAttributes(
 		...(typeof modelId === 'string' ? { 'gen_ai.request.model': modelId } : {}),
 		...(typeof threadId === 'string' ? { 'gen_ai.conversation.id': threadId } : {}),
 	};
+}
+
+export type MemoryOperation = 'created' | 'deleted' | 'pruned' | 'query_memory';
+export type MemoryScopeType =
+	| 'session'
+	| 'task'
+	| 'action'
+	| 'agent'
+	| 'team'
+	| 'organization'
+	| 'external';
+export type MemoryStoreType =
+	| 'vector_db'
+	| 'kv_store'
+	| 'document_db'
+	| 'graph_db'
+	| 'file_system'
+	| 'in_memory'
+	| 'rdbms';
+
+/**
+ * gen_ai.memory.* attribute bag for withMemorySpan(). All fields are
+ * index-aligned arrays per the draft OTel GenAI memory semantic conventions
+ * (open-telemetry/semantic-conventions-genai#35): position i across every
+ * array describes the same memory item. 'query_memory' in `operations` is a
+ * local extension — the draft only defines write-lifecycle values
+ * (created/deleted/pruned), with no value for a pure read.
+ */
+export interface MemorySpanAttributes {
+	ids?: string[];
+	descriptions?: string[];
+	operations?: MemoryOperation[];
+	types?: MemoryScopeType[];
+	owners?: string[];
+	storeTypes?: MemoryStoreType[];
+	storeNames?: string[];
+}
+
+/**
+ * Best-effort gen_ai.memory.store.* attributes from a BuiltMemory's
+ * descriptor. Only positively identifies `InMemoryMemory`; any other backend
+ * gets `storeNames` from its declared name but no `storeTypes` guess.
+ */
+export function inferMemoryStoreAttributes(
+	memory: BuiltMemory,
+): Pick<MemorySpanAttributes, 'storeTypes' | 'storeNames'> {
+	const descriptor = memory.describe();
+	return {
+		...(descriptor.name ? { storeNames: [descriptor.name] } : {}),
+		...(descriptor.constructorName === 'InMemoryMemory' ? { storeTypes: ['in_memory'] } : {}),
+	};
+}
+
+function buildMemorySpanAttributes(
+	kind: 'query_memory' | 'save_memory',
+	agentName: string,
+	attrs: MemorySpanAttributes,
+): Record<string, AttributeValue> {
+	return {
+		'gen_ai.operation.name': kind,
+		'gen_ai.agent.name': agentName,
+		...(attrs.ids?.length ? { 'gen_ai.memory.ids': attrs.ids } : {}),
+		...(attrs.descriptions?.length ? { 'gen_ai.memory.descriptions': attrs.descriptions } : {}),
+		...(attrs.operations?.length ? { 'gen_ai.memory.operations': attrs.operations } : {}),
+		...(attrs.types?.length ? { 'gen_ai.memory.types': attrs.types } : {}),
+		...(attrs.owners?.length ? { 'gen_ai.memory.owners': attrs.owners } : {}),
+		...(attrs.storeTypes?.length ? { 'gen_ai.memory.store.types': attrs.storeTypes } : {}),
+		...(attrs.storeNames?.length ? { 'gen_ai.memory.store.names': attrs.storeNames } : {}),
+	};
+}
+
+/**
+ * Wrap a memory query/save with a `query_memory`/`save_memory` span, mirroring
+ * `withRootSpan`/`withToolSpan`'s no-op-when-disabled shape. `fn` returns both
+ * the caller's result and, optionally, attributes only knowable after the
+ * underlying call completes (e.g. which ids were actually fetched/saved) —
+ * those get merged onto the span via `setAttributes`. Because callers pass the
+ * same `telemetry.tracer` already active for the enclosing root/tool span, the
+ * new span nests under it automatically.
+ */
+export async function withMemorySpan<T>(
+	kind: 'query_memory' | 'save_memory',
+	agentName: string,
+	telemetry: BuiltTelemetry | undefined,
+	initialAttributes: MemorySpanAttributes,
+	fn: () => Promise<{ result: T; attributes?: MemorySpanAttributes }>,
+): Promise<T> {
+	if (!telemetry?.enabled || !isActiveSpanTracer(telemetry.tracer)) {
+		return (await fn()).result;
+	}
+
+	return await telemetry.tracer.startActiveSpan(
+		kind,
+		{ attributes: buildMemorySpanAttributes(kind, agentName, initialAttributes) },
+		async (span) => {
+			try {
+				const { result, attributes } = await fn();
+				if (attributes) {
+					span.setAttributes?.(buildMemorySpanAttributes(kind, agentName, attributes));
+				}
+				return result;
+			} catch (error) {
+				span.recordException?.(error);
+				span.setStatus?.({ code: 2, message: String(error) });
+				throw error;
+			} finally {
+				span.end();
+			}
+		},
+	);
 }
 
 /**
