@@ -90,21 +90,18 @@ export class WorkflowDependencyQueryService {
 		const { accessibleInputIds, maps } = loaded;
 
 		// Check user access for each dependency type
-		const [accessibleWfIds, accessibleCredIds, accessibleDtIds, agents, accessibleAgentProjectIds] =
+		const [accessibleWfIds, accessibleCredIds, accessibleDtIds, accessibleAgentProjectIds] =
 			await Promise.all([
 				this.filterByAccess([...maps.allWfIds], 'workflow', user),
 				this.filterByAccess([...maps.allCredIds], 'credential', user),
 				this.filterByAccess([...maps.allDtIds], 'dataTable', user),
-				maps.allAgentIds.size > 0
-					? this.agentRepository.findSummariesByIds([...maps.allAgentIds])
-					: [],
 				maps.allAgentIds.size > 0 ? this.getAccessibleAgentProjectIds(user) : new Set<string>(),
 			]);
 
 		// Load all referenced resources (not just accessible ones) so that ids whose
 		// resource has been deleted — the index may still reference them — can be
 		// dropped instead of being reported as inaccessible.
-		const [credentials, workflows, dataTables] = await Promise.all([
+		const [credentials, workflows, dataTables, agents] = await Promise.all([
 			maps.allCredIds.size > 0
 				? this.credentialsRepository.find({
 						where: { id: In([...maps.allCredIds]), usageScope: 'project' },
@@ -123,6 +120,9 @@ export class WorkflowDependencyQueryService {
 						select: ['id', 'name', 'projectId'],
 					})
 				: [],
+			maps.allAgentIds.size > 0
+				? this.agentRepository.findSummariesByIds([...maps.allAgentIds])
+				: [],
 		]);
 
 		const accessibleWfIdSet = new Set(accessibleWfIds);
@@ -140,6 +140,7 @@ export class WorkflowDependencyQueryService {
 
 		for (const agent of agents) {
 			existingAgentIds.add(agent.id);
+			// `null` means global `agent:read`; otherwise access is limited to the listed projects.
 			if (accessibleAgentProjectIds === null || accessibleAgentProjectIds.has(agent.projectId)) {
 				agentNames.set(agent.id, {
 					name: agent.name ?? agent.id,
