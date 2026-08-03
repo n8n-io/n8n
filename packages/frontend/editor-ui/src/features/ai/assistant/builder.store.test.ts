@@ -68,7 +68,7 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', async (importOriginal) => {
 });
 
 // Mock useToast
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 	}),

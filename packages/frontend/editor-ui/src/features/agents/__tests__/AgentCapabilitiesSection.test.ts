@@ -44,7 +44,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 }));
 
 const showErrorSpy = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy }),
 }));
 

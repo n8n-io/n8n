@@ -90,6 +90,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			modelConfig: session.modelConfig,
 			...(session.telemetry ? { telemetry: session.telemetry } : {}),
 			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
+			abortSignal: session.abortSignal,
 		};
 	}
 

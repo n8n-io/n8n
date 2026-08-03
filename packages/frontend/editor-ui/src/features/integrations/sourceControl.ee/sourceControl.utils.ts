@@ -6,7 +6,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import groupBy from 'lodash/groupBy';
 import dateformat from 'dateformat';
-import type { useToast } from '@/app/composables/useToast';
+import type { useToast } from '@n8n/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
 import type { SourceControlTreeRow } from './sourceControl.types';
 

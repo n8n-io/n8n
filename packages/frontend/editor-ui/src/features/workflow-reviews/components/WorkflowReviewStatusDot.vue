@@ -45,11 +45,11 @@ const status = computed(() => {
 }
 
 .pending {
-	background-color: var(--color--yellow-500);
+	background-color: var(--color--blue-500);
 }
 
 .changesRequested {
-	background-color: var(--color--red-500);
+	background-color: var(--color--yellow-500);
 }
 
 .approved {

@@ -9,7 +9,7 @@ import {
 import { ref, onMounted } from 'vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { mfaEventBus } from '../auth.eventBus';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import QrcodeVue from 'qrcode.vue';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';

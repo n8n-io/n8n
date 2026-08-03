@@ -1,3 +1,5 @@
+import { isWorkflowPublishBlockedDetails } from '@n8n/api-types';
+
 import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-classifier';
 
 const GENERIC_PUBLIC_MESSAGE = 'Internal server error';
@@ -24,9 +26,17 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 			if (descriptor.meta?.issues !== undefined) {
 				body.issues = descriptor.meta.issues;
 			}
+			const workflowPublishBlockedDetails = {
+				reason: descriptor.meta?.reason,
+				workflowReviewRequestId: descriptor.meta?.workflowReviewRequestId,
+			};
 			return {
 				status: descriptor.status,
-				body,
+				body: {
+					...body,
+					...(isWorkflowPublishBlockedDetails(workflowPublishBlockedDetails) &&
+						workflowPublishBlockedDetails),
+				},
 			};
 		}
 		case HttpErrorKind.userError:

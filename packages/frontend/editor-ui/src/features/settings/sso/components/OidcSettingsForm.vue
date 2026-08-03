@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 
 import { N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -72,6 +72,7 @@ const promptDescriptions: PromptDescription[] = [
 
 const authenticationContextClassReference = ref('');
 const additionalScopes = ref('');
+const rpInitiatedLogoutEnabled = ref(false);
 const isAdditionalScopesInvalid = computed(() =>
 	[',', ';'].some((c) => additionalScopes.value.includes(c)),
 );
@@ -86,6 +87,7 @@ const getOidcConfig = async () => {
 	authenticationContextClassReference.value =
 		config.authenticationContextClassReference?.join(',') || '';
 	additionalScopes.value = config.additionalScopes ?? '';
+	rpInitiatedLogoutEnabled.value = config.rpInitiatedLogoutEnabled ?? false;
 };
 
 const loadOidcConfig = async () => {
@@ -118,6 +120,7 @@ const cannotSaveOidcSettings = computed(() => {
 			ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
 			ssoStore.oidcConfig?.prompt === prompt.value &&
 			ssoStore.oidcConfig?.additionalScopes === additionalScopes.value &&
+			ssoStore.oidcConfig?.rpInitiatedLogoutEnabled === rpInitiatedLogoutEnabled.value &&
 			!isUserRoleProvisioningChanged.value &&
 			!isRuleMappingDirty &&
 			storedAcrString === authenticationContextClassReference.value &&
@@ -186,6 +189,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 			authenticationContextClassReference: acrArray,
 			additionalScopes: additionalScopes.value,
+			rpInitiatedLogoutEnabled: rpInitiatedLogoutEnabled.value,
 		});
 		const provisioningResult = await saveProvisioningConfig(isDisablingOidcLogin);
 
@@ -405,7 +409,7 @@ onMounted(async () => {
 			</div>
 		</div>
 		<div :class="$style.card">
-			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
+			<div :class="$style.settingsItem">
 				<div :class="$style.settingsItemLabel">
 					<label>Single sign-on (SSO)</label>
 					<small>Allow users to sign in through your identity provider</small>
@@ -420,6 +424,27 @@ onMounted(async () => {
 					>
 						<template #prefix>
 							<span v-if="ssoStore.isOidcLoginEnabled" :class="$style.greenDot" />
+						</template>
+						<N8nOption value="enabled" label="Enabled" data-test-id="sso-oidc-toggle-option" />
+						<N8nOption value="disabled" label="Disabled" data-test-id="sso-oidc-toggle-option" />
+					</N8nSelect>
+				</div>
+			</div>
+			<div :class="$style.settingsItem">
+				<div :class="$style.settingsItemLabel">
+					<label>Log out from identity provider</label>
+					<small>Also end your session at the identity provider when signing out of n8n</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<N8nSelect
+						:model-value="rpInitiatedLogoutEnabled ? 'enabled' : 'disabled'"
+						size="medium"
+						data-test-id="sso-oidc-logout-toggle"
+						:disabled="isSsoManagedByEnv"
+						@update:model-value="rpInitiatedLogoutEnabled = $event === 'enabled'"
+					>
+						<template #prefix>
+							<span v-if="rpInitiatedLogoutEnabled" :class="$style.greenDot" />
 						</template>
 						<N8nOption value="enabled" label="Enabled" />
 						<N8nOption value="disabled" label="Disabled" />

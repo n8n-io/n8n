@@ -26,6 +26,7 @@ export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';
  * Tool name constants
  */
 export const LIST_N8N_CONNECT_SERVICES_TOOL_NAME = 'list_n8n_connect_services';
+export const MCP_CREATE_AGENT_TOOL_NAME = 'create_agent';
 
 /**
  * Triggers supported in production mode for MCP execution
