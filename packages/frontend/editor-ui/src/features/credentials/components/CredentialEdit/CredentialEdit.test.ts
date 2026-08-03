@@ -66,6 +66,35 @@ vi.mock('./TypeToConfirmDialog.vue', () => ({
 	},
 }));
 
+// N8nDropdownMenu (reka-ui) doesn't render its portalled menu items in jsdom, so stub the
+// auth-mode selector with plain buttons that emit the same event.
+vi.mock('./CredentialModeSelector.vue', () => ({
+	default: {
+		name: 'CredentialModeSelector',
+		props: [
+			'credentialType',
+			'useCustomOauth',
+			'showManagedOauthOptions',
+			'quickConnectAvailable',
+			'isQuickConnectMode',
+			'contextNode',
+		],
+		emits: ['update:authType'],
+		template: `
+			<div data-test-id="credential-mode-selector-stub">
+				<button
+					data-test-id="select-service-account-auth"
+					@click="$emit('update:authType', { type: 'serviceAccount' })"
+				>Service Account</button>
+				<button
+					data-test-id="select-managed-oauth-auth"
+					@click="$emit('update:authType', { type: 'oAuth2' })"
+				>Managed OAuth</button>
+			</div>
+		`,
+	},
+}));
+
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
 	displayName: 'OAuth2 API',
@@ -1003,6 +1032,168 @@ describe('CredentialEdit', () => {
 				credentialTypeName: 'betaApi',
 			}),
 		);
+	});
+
+	describe('switching auth type on an existing credential', () => {
+		const serviceAccountApi: ICredentialType = {
+			name: 'serviceAccountApi',
+			displayName: 'Service Account',
+			properties: [{ displayName: 'Private Key', name: 'privateKey', type: 'string', default: '' }],
+		};
+
+		const managedOAuthApi: ICredentialType = {
+			name: 'managedOAuthApi',
+			extends: ['oAuth2Api'],
+			displayName: 'Managed OAuth2 API',
+			__overwrittenProperties: ['clientId', 'clientSecret'],
+			properties: [
+				{
+					displayName: 'Grant Type',
+					name: 'grantType',
+					type: 'hidden',
+					default: 'authorizationCode',
+				},
+				{
+					displayName: 'Authorization URL',
+					name: 'authUrl',
+					type: 'hidden',
+					default: 'https://example.com/auth',
+				},
+				{
+					displayName: 'Access Token URL',
+					name: 'accessTokenUrl',
+					type: 'hidden',
+					default: 'https://example.com/token',
+				},
+			],
+			iconUrl: '',
+			supportedNodes: [],
+		};
+
+		const dualAuthNodeType = {
+			displayName: 'Dual Auth Switch Test',
+			name: 'n8n-nodes-base.dualAuthSwitchTest',
+			group: ['transform'],
+			version: 1,
+			description: 'Test node',
+			defaults: { name: 'Dual Auth Switch Test' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: 'serviceAccountApi',
+					required: true,
+					displayOptions: { show: { authentication: ['serviceAccount'] } },
+				},
+				{
+					name: 'managedOAuthApi',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{ name: 'Service Account', value: 'serviceAccount' },
+						{ name: 'OAuth2', value: 'oAuth2' },
+					],
+					default: 'serviceAccount',
+				},
+			],
+		} as unknown as INodeTypeDescription;
+
+		// The credential was saved as a Service Account; its data carries no OAuth
+		// token of its own, but a prior connection under a different auth method
+		// can still leak into `oauthTokenData` (see credentials.service.ts unredact).
+		const setupStores = () => {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalsById: {
+							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+						},
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+				},
+			});
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				// @ts-expect-error data is decrypted
+				data: { privateKey: 'secret-key', oauthTokenData: { access_token: 'stale-token' } },
+				createdAt: '2026-06-01T10:00:00.000Z',
+				updatedAt: '2026-06-01T10:00:00.000Z',
+				id: 'cred-switch',
+				name: 'Dual Auth account',
+				type: 'serviceAccountApi',
+				isManaged: false,
+				sharedWithProjects: [],
+				scopes: ['credential:update'],
+				oauthTokenData: false,
+			});
+
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[serviceAccountApi.name]: serviceAccountApi,
+				[managedOAuthApi.name]: managedOAuthApi,
+			};
+			credentialsStore.getNewCredentialName.mockResolvedValue('Dual Auth account');
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflowId = 'test-workflow-id';
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
+			ndvStore.activeNode = {
+				id: 'dual-auth-switch-test-node',
+				name: 'DualAuthSwitchTest',
+				type: 'n8n-nodes-base.dualAuthSwitchTest',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { authentication: 'serviceAccount' },
+			} as INode;
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getNodeType = () => dualAuthNodeType;
+
+			return { credentialsStore, pinia };
+		};
+
+		test('enables Save and clears the stale connection banner after switching auth method', async () => {
+			const { credentialsStore, pinia } = setupStores();
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-switch',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(getByTestId('select-managed-oauth-auth')).toBeInTheDocument());
+
+			// Nothing has been edited on the loaded credential yet: Save stays disabled.
+			await retry(() =>
+				expect(within(getByTestId('credential-save-button')).getByRole('button')).toBeDisabled(),
+			);
+
+			await userEvent.click(getByTestId('select-managed-oauth-auth'));
+
+			await retry(() =>
+				expect(
+					within(getByTestId('credential-save-button')).getByRole('button'),
+				).not.toBeDisabled(),
+			);
+			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible());
+		});
 	});
 
 	describe('saving credentials', () => {

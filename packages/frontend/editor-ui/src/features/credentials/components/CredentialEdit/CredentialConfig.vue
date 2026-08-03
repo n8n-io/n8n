@@ -27,10 +27,12 @@ import { useCredentialsStore } from '../../credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
+import TemplatedAuthSimpleView from './TemplatedAuthSimpleView.vue';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@/features/credentials/templatedAuth.utils';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -325,6 +327,22 @@ function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
 
+// Templated Custom Auth replaces the raw field set with its own pane: a
+// guided form (one input per template {{marker}}) with an in-place
+// "Edit setup" state for the machinery behind it.
+const isTemplatedAuthType = computed(
+	() => props.credentialType?.name === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+);
+
+// The templated auth probe only proves the service accepted the request —
+// some services answer 2xx regardless of the key — so the green banner
+// states that instead of claiming the connection was verified.
+const testSuccessMessage = computed(() =>
+	isTemplatedAuthType.value
+		? i18n.baseText('credentialEdit.credentialConfig.authProbeAccepted')
+		: i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully'),
+);
+
 function onDocumentationUrlClick(): void {
 	telemetry.track('User clicked credential modal docs link', {
 		docs_link: documentationUrl.value,
@@ -462,7 +480,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							>
 								{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.orReadThe') }}
 								<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
-									[{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}]
+									{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}
 								</N8nLink>
 							</template>
 						</span>
@@ -596,7 +614,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				<Banner
 					v-show="testedSuccessfully && !showValidationWarning"
 					theme="success"
-					:message="i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
+					:message="testSuccessMessage"
 					:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
 					:button-loading-label="i18n.baseText('credentialEdit.credentialConfig.retrying')"
 					:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
@@ -679,8 +697,13 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</div>
 				</EnterpriseEdition>
 
+				<TemplatedAuthSimpleView
+					v-if="credentialType && canWrite && isTemplatedAuthType"
+					:credential-data="credentialData"
+					@update="onDataChange"
+				/>
 				<CredentialInputs
-					v-if="credentialType && canWrite"
+					v-else-if="credentialType && canWrite"
 					:credential-data="credentialData"
 					:credential-properties="credentialProperties"
 					:documentation-url="documentationUrl"

@@ -11,7 +11,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';

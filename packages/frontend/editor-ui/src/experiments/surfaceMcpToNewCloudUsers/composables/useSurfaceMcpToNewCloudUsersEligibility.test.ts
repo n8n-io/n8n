@@ -20,7 +20,7 @@ vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	}),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
 		get isAdminOrOwner() {
 			return mockIsAdminOrOwner;

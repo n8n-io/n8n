@@ -88,6 +88,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { LessThan } from '@n8n/typeorm';
 import {
 	type ICredentialsDecrypted,
@@ -291,6 +292,10 @@ export class InstanceAiAdapterService {
 			projectId?: string;
 			/** Eval-only: restrict the credential `list()` view to these IDs. */
 			credentialIdAllowlist?: string[];
+			/** Eval-only: resolve a credential's connection test as successful without
+			 *  contacting the provider. A predicate rather than a list because the
+			 *  harness registers bypasses mid-run, after this context is built. */
+			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
@@ -308,6 +313,7 @@ export class InstanceAiAdapterService {
 			threadId,
 			projectId,
 			credentialIdAllowlist,
+			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
 			modelId,
@@ -325,7 +331,12 @@ export class InstanceAiAdapterService {
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
+			credentialService: this.createCredentialAdapter(
+				user,
+				projectId,
+				credentialIdAllowlist,
+				shouldBypassCredentialTest,
+			),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			...(configEvalsEnabled && this.evaluationConfigService
@@ -376,7 +387,7 @@ export class InstanceAiAdapterService {
 			...delegate,
 			createAgent: async (name) => {
 				const created = await delegate.createAgent(name);
-				this.telemetry.track('Builder created agent', {
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
 					thread_id: threadId,
 					agent_id: created.agentId,
 					project_id: created.projectId,
@@ -1467,6 +1478,7 @@ export class InstanceAiAdapterService {
 		user: User,
 		boundProjectId?: string,
 		credentialIdAllowlist?: string[],
+		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
@@ -1548,6 +1560,17 @@ export class InstanceAiAdapterService {
 
 				if (!credential) {
 					throw new Error(`Credential ${credentialId} not found or not accessible`);
+				}
+
+				// Eval-only, and deliberately AFTER the access check above so a bypass can
+				// never turn "not accessible" into a synthetic success: an eval seeds
+				// placeholder tokens, so a real test would always fail and the setup card
+				// refuses to apply a credential that fails one. The message stays
+				// indistinguishable from a genuine pass on purpose — a hint that it was
+				// bypassed would make the agent hedge, which is the very behaviour such a
+				// case exists to rule out. The harness records the bypass on its own side.
+				if (shouldBypassCredentialTest?.(credentialId) === true) {
+					return { success: true, message: 'Connection tested successfully' };
 				}
 
 				const credentialsToTest: ICredentialsDecrypted = {
