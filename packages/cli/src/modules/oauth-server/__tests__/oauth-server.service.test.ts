@@ -1,7 +1,4 @@
-import {
-	InvalidGrantError,
-	InvalidTargetError,
-} from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import { InvalidGrantError, InvalidTargetError } from '@modelcontextprotocol/server-legacy/auth';
 import { Logger, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';

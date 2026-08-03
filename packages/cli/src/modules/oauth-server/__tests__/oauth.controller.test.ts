@@ -1,4 +1,4 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/server-legacy/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -108,7 +108,8 @@ describe('OAuthController', () => {
 			expect(res.json).toHaveBeenCalledWith({
 				resource: 'https://n8n.test/mcp-server/http',
 				bearer_methods_supported: ['header'],
-				authorization_servers: ['https://n8n.test'],
+				// Canonical issuer form (trailing slash for an origin-only base URL).
+				authorization_servers: ['https://n8n.test/'],
 				scopes_supported: scopes,
 			});
 		});

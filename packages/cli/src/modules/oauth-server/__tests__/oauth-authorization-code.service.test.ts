@@ -1,5 +1,5 @@
 import type { Mocked } from 'vitest';
-import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import { InvalidGrantError } from '@modelcontextprotocol/server-legacy/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 

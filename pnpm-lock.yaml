@@ -150,6 +150,9 @@ catalogs:
     '@modelcontextprotocol/server':
       specifier: 2.0.0
       version: 2.0.0
+    '@modelcontextprotocol/server-legacy':
+      specifier: 2.0.0
+      version: 2.0.0
     '@mozilla/readability':
       specifier: ^0.6.0
       version: 0.6.0
@@ -4084,12 +4087,12 @@ importers:
       '@modelcontextprotocol/node':
         specifier: 'catalog:'
         version: 2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.12.27)
-      '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
-        version: 1.26.0(zod@3.25.76)
       '@modelcontextprotocol/server':
         specifier: 'catalog:'
         version: 2.0.0
+      '@modelcontextprotocol/server-legacy':
+        specifier: 'catalog:'
+        version: 2.0.0(express@5.1.0)
       '@mozilla/readability':
         specifier: 'catalog:'
         version: 0.6.0
@@ -9997,6 +10000,16 @@ packages:
       zod: 3.25.76
     peerDependenciesMeta:
       '@cfworker/json-schema':
+        optional: true
+
+  '@modelcontextprotocol/server-legacy@2.0.0':
+    resolution: {integrity: sha512-LnffC1BSqFMHtMQxEz92lqDpHWma+ErV3ghdHDgdkCyYzVcCYKcUT5loq4kflty+Bf9C9qjJqbnphyBWyCqo8Q==}
+    engines: {node: '>=20'}
+    deprecated: This package is a frozen copy of v1's SSE transport and OAuth Authorization Server helpers for migration purposes only. Use StreamableHTTP from @modelcontextprotocol/server and a dedicated OAuth server in production. Will not receive new features.
+    peerDependencies:
+      express: ^4.18.0 || ^5.0.0
+    peerDependenciesMeta:
+      express:
         optional: true
 
   '@modelcontextprotocol/server@2.0.0':
@@ -27342,6 +27355,18 @@ snapshots:
       zod-to-json-schema: 3.25.2(zod@3.25.76)
     transitivePeerDependencies:
       - supports-color
+
+  '@modelcontextprotocol/server-legacy@2.0.0(express@5.1.0)':
+    dependencies:
+      '@modelcontextprotocol/core': 2.0.0
+      content-type: 1.0.5
+      cors: 2.8.5
+      express-rate-limit: 8.2.2(express@5.1.0)
+      pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
+      raw-body: 3.0.0
+      zod: 3.25.76
+    optionalDependencies:
+      express: 5.1.0
 
   '@modelcontextprotocol/server@2.0.0':
     dependencies:

@@ -1,4 +1,4 @@
-import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import { InvalidGrantError } from '@modelcontextprotocol/server-legacy/auth';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
