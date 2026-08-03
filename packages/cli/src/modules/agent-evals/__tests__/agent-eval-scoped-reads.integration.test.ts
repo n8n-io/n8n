@@ -103,8 +103,8 @@ describe('agent-eval scoped repository reads (integration)', () => {
 		});
 
 		// TypeORM pages a relation-filtered query with a distinct sub-query, so only
-		// a real database proves it. Runs share one `createdAt` deliberately: drop
-		// the `id` tiebreak and insertion order breaks the sorted-walk assertion.
+		// a real database proves it. Every run shares one `createdAt`, which is the
+		// case the `id` tiebreak exists for.
 		it('walks a dataset’s runs page by page without repeating or dropping one', async () => {
 			const { own, dataset } = await seedTwoAgents();
 			// One run exists from the seed; five more leave a partial second page.
@@ -123,6 +123,8 @@ describe('agent-eval scoped repository reads (integration)', () => {
 				own.id,
 				{ take: 4, skip: 4 },
 			);
+			// The same rows read in one go, as the yardstick for the paged walk.
+			const [whole] = await runRepository.findAndCountByDatasetIdAndAgentId(dataset.id, own.id);
 
 			// The count is the whole set, not the page.
 			expect(total).toBe(6);
@@ -132,8 +134,9 @@ describe('agent-eval scoped repository reads (integration)', () => {
 			const walked = [...firstPage, ...secondPage].map((r) => r.id);
 			// No run repeated across pages, and none lost between them.
 			expect(new Set(walked).size).toBe(6);
-			// The tiebreak is what makes that guarantee hold rather than be luck.
-			expect(walked).toEqual([...walked].sort().reverse());
+			// Paging agrees with reading everything at once — compared against the
+			// database's own ordering, since its collation is not JS's sort order.
+			expect(walked).toEqual(whole.map((r) => r.id));
 		});
 
 		it('pages a run’s cases in seed order and counts them all', async () => {
