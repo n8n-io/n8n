@@ -193,10 +193,15 @@ export class AgentEvalsController {
 		return await this.ratingService.listRatingsForResult(agentId, projectId, resultId);
 	}
 
-	/** Newest rating per rated case — what reopening a run renders. */
+	/**
+	 * Newest rating per rated case — what reopening a run renders. Not every rating
+	 * in the run: superseded votes stay on record but are the per-case route's job.
+	 */
 	@Get('/:agentId/evals/runs/:runId/ratings')
 	@ProjectScope('agent:read')
-	async listRatingsForRun(req: AuthenticatedRequest<RunParam>): Promise<AgentEvalRatingRecord[]> {
+	async listLatestRatingsForRun(
+		req: AuthenticatedRequest<RunParam>,
+	): Promise<AgentEvalRatingRecord[]> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;
 		return await this.ratingService.listLatestRatingsForRun(agentId, projectId, runId);

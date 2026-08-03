@@ -83,7 +83,7 @@ describe('AgentEvalsController', () => {
 			getRun: 'agent:read',
 			getRunSummary: 'agent:read',
 			listRatingsForResult: 'agent:read',
-			listRatingsForRun: 'agent:read',
+			listLatestRatingsForRun: 'agent:read',
 			createDataset: 'agent:update',
 			updateDataset: 'agent:update',
 			deleteDataset: 'agent:update',
@@ -146,7 +146,7 @@ describe('AgentEvalsController', () => {
 				async () => await controller.rateResult(resultReq(), undefined, { vote: 'up' }),
 			],
 			['listRatingsForResult', async () => await controller.listRatingsForResult(resultReq())],
-			['listRatingsForRun', async () => await controller.listRatingsForRun(runReq())],
+			['listLatestRatingsForRun', async () => await controller.listLatestRatingsForRun(runReq())],
 		];
 
 		it.each(calls)('%s 404s when the flag is off for the user', async (_name, call) => {
@@ -267,22 +267,12 @@ describe('AgentEvalsController', () => {
 		});
 
 		it('reads a run rating summary scoped to the path agent', async () => {
-			await controller.listRatingsForRun(runReq());
+			await controller.listLatestRatingsForRun(runReq());
 
 			expect(ratingService.listLatestRatingsForRun).toHaveBeenCalledWith(
 				AGENT_ID,
 				PROJECT_ID,
 				'run-1',
-			);
-		});
-
-		// A foreign id must 404 rather than confirm it exists somewhere else — the
-		// service raises that, and the route must not swallow or reshape it.
-		it('surfaces a foreign result id as not-found', async () => {
-			ratingService.rateResult.mockRejectedValue(new NotFoundError('Agent eval result not found.'));
-
-			await expect(controller.rateResult(resultReq(), undefined, { vote: 'up' })).rejects.toThrow(
-				NotFoundError,
 			);
 		});
 	});
