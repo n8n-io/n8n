@@ -21,7 +21,7 @@ export function useInlineAgentsExperiment() {
  * stays the fail-safe default. Returns undefined when the override does not
  * apply (different node type, or the experiment is off).
  */
-export function getInlineAgentsNodeName(nodeTypeName: string): string | undefined {
+export function getN8nAgentsNodeName(nodeTypeName: string): string | undefined {
 	if (nodeTypeName !== MESSAGE_AN_AGENT_NODE_TYPE) return undefined;
 	return usePostHog().isFeatureEnabled(INLINE_AGENTS_EXPERIMENT.name) ? 'AI Agent V2' : undefined;
 }

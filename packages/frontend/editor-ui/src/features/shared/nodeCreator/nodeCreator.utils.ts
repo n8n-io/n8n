@@ -44,7 +44,7 @@ import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
-import { getInlineAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
+import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
@@ -443,9 +443,9 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 
 	// Every creator list flows through here, so this also renames the item
 	// (and the panel title derived from it) for the inline agents experiment.
-	const inlineAgentsName = getInlineAgentsNodeName(element.properties.name);
-	if (inlineAgentsName) {
-		element.properties.displayName = inlineAgentsName;
+	const agentsNodeName = getN8nAgentsNodeName(element.properties.name);
+	if (agentsNodeName) {
+		element.properties.displayName = agentsNodeName;
 	}
 
 	const aiSubcategories = element.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
