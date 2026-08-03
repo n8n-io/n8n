@@ -113,12 +113,6 @@ export class DateTimeV2 implements INodeType {
 					};
 
 					const newLocal = timezone ? timezone : workflowTimezone;
-					if (DateTime.now().setZone(newLocal).invalidReason === 'unsupported zone') {
-						throw new NodeOperationError(
-							this.getNode(),
-							`The timezone ${newLocal} is not valid. Please check the timezone.`,
-						);
-					}
 
 					if (includeTime) {
 						item.json[outputFieldName] = DateTime.now().setZone(newLocal).toString();
