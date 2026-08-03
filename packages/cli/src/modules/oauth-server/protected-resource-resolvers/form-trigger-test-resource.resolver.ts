@@ -1,20 +1,21 @@
-import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { isFormOAuth2Enabled } from '@/constants/oauth2-triggers';
+import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
+import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
 import {
 	FORM_TRIGGER_SCOPES,
-	isFormOAuth2Enabled,
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
 } from './utils';
-import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 @Service()
 export class FormTriggerTestResourceResolver implements ProtectedResourceResolver {
@@ -79,7 +80,10 @@ export class FormTriggerTestResourceResolver implements ProtectedResourceResolve
 			node.parameters.authentication === 'n8nUserAuth'
 		) {
 			const resourceUrl = `${trimTrailingSlash(this.urlService.getTestWebhookBaseUrl())}/${this.config.endpoints.formTest}/${path}`;
-			const requireExecute = node.parameters.requireExecuteAccess !== false;
+			// Opt-in, unlike the MCP resolvers' `!== false`: defaulting off preserves the
+			// existing any-authenticated-user behaviour, so turning the feature flag on does
+			// not change who may submit an already-published form. Don't "align" these.
+			const requireExecute = node.parameters.requireExecuteAccess === true;
 			return {
 				id: 'workflow-form:' + workflowEntity.id,
 				isFirstParty: true,

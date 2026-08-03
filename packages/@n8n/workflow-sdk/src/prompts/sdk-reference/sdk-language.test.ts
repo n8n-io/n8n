@@ -1,3 +1,5 @@
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
+
 import { NODE_GROUPS_REFERENCE, SDK_LANGUAGE_REFERENCE } from './sdk-language';
 import {
 	SDK_METHODS,
@@ -78,8 +80,17 @@ describe('NODE_GROUPS_REFERENCE', () => {
 	});
 
 	it('explains how to declare a group', () => {
-		// The worked example: .group(name, [members]) declared on the workflow.
+		// The worked example: .group(name, [members], options?) declared on the workflow.
 		expect(NODE_GROUPS_REFERENCE).toMatch(/\.group\('[^']+', \[/);
+	});
+
+	it('documents the optional description and its length limit', () => {
+		expect(NODE_GROUPS_REFERENCE).toContain('description:');
+		expect(NODE_GROUPS_REFERENCE).toContain(`${GROUP_DESCRIPTION_MAX_LENGTH} characters`);
+	});
+
+	it('tells an editing agent to keep existing descriptions', () => {
+		expect(NODE_GROUPS_REFERENCE).toMatch(/keep the .+ and their descriptions\s+intact/is);
 	});
 
 	it('states the single entry/exit boundary rule that grouping enforces', () => {

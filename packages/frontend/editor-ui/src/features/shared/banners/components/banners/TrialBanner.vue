@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import BaseBanner from './BaseBanner.vue';
 import { i18n as locale } from '@n8n/i18n';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { CloudPlanAndUsageData } from '@/Interface';

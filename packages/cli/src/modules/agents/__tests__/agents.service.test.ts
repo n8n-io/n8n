@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -66,6 +67,7 @@ function makeService() {
 		mockLogger(),
 		agentRepository,
 		projectRelationRepository,
+		mock<AgentChatAttachmentService>(),
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
@@ -120,6 +122,7 @@ describe('AgentsService', () => {
 				skills: [],
 			},
 			versionId: expect.any(String),
+			availableInMCP: false,
 		});
 	});
 

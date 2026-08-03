@@ -3,7 +3,7 @@ import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';

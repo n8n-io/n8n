@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { N8nDialog, N8nIconButton, N8nLoading, N8nText, N8nUserInfo } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ref, watch } from 'vue';

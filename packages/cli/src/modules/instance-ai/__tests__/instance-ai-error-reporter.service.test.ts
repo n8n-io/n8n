@@ -158,13 +158,13 @@ describe('InstanceAiErrorReporterService', () => {
 		const { service, errorReporter } = createService();
 		const error = new Error('boom');
 
-		service.beginRun('r');
+		const executionToken = service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-run',
 			threadId: 't',
 			runId: 'r',
 		});
-		service.endRun('r');
+		service.endRun('r', executionToken);
 		service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-run',
@@ -173,6 +173,19 @@ describe('InstanceAiErrorReporterService', () => {
 		});
 
 		expect(errorReporter.error).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not let an older segment end a newer run scope with the same run ID', () => {
+		const { service, errorReporter } = createService();
+		const firstExecution = service.beginRun('r');
+		service.beginRun('r');
+		service.endRun('r', firstExecution);
+		const error = new Error('boom');
+
+		service.report(error, { component: 'instance-ai-run', threadId: 't', runId: 'r' });
+		service.report(error, { component: 'instance-ai-stream', threadId: 't', runId: 'r' });
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not dedup run-scoped errors when beginRun was not called', () => {

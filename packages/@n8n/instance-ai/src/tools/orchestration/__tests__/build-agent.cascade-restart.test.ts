@@ -438,6 +438,8 @@ describe('build-agent cascade restart (real SDK)', () => {
 		expect(persistedThread?.metadata?.instanceAiAgentBuilderTarget).toMatchObject({
 			agentId: 'agent-1',
 			projectId: 'proj-1',
+			name: 'Support Agent',
+			ref: 'support-agent',
 		});
 
 		// ── Phase 2: drop everything, resume purely from checkpoint storage ─

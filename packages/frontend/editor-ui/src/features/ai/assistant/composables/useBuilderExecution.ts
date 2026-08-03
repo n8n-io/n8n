@@ -6,7 +6,7 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
