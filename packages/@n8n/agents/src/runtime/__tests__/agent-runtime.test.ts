@@ -5949,6 +5949,11 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(telemetry.functionId).toBe('test-agent');
 	});
 
+	// Real parent/child span nesting (via a genuine OTel context manager, not
+	// mock-call-order heuristics) is covered by
+	// agent-runtime-memory.otel.test.ts's "memory span nesting under the root
+	// span" suite, for both generate() and stream().
+
 	it('enables smoothStream by default on streamText', async () => {
 		streamText.mockReturnValue(makeStreamSuccess());
 		const smoothStreamSpy = vi.spyOn(aiModule, 'smoothStream');
