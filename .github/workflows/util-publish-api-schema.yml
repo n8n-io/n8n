@@ -6,7 +6,10 @@ on:
     branches:
       - master
     paths:
-      - 'packages/cli/src/public-api/**/*.{css,yaml,yml}'    # changes to any of the Public API specs
+      # One pattern per extension — GitHub Actions path filters don't support {a,b} brace expansion.
+      - 'packages/cli/src/public-api/**/*.yml'               # Public API specs, incl. generated fragments
+      - 'packages/cli/src/public-api/**/*.yaml'
+      - 'packages/cli/src/public-api/**/*.css'
       - 'packages/cli/src/public-api/v1/openapi-gen/**/*.ts' # changes to the OpenAPI generator
       - 'packages/@n8n/api-types/src/dto/**/*.ts'            # changes to Zod DTO/schema the OpenAPI doc generator reads
       - 'packages/@n8n/api-types/src/schemas/**/*.ts'
