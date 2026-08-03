@@ -24,7 +24,7 @@ export type McpRegistryServerData = {
 		annotations?: { readOnlyHint?: boolean };
 	}>;
 	websiteUrl?: string;
-	tags?: string[];
+	tags?: string[] | { data?: string[] };
 };
 
 @Entity('mcp_registry_server')

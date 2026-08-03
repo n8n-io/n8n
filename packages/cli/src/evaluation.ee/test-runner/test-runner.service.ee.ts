@@ -1173,8 +1173,8 @@ export class TestRunnerService {
 		}
 	}
 
-	/** Whether the test run is in a cancellable state. */
-	canBeCancelled(testRun: TestRun) {
+	/** Returns true when the test run is in a terminal state and cannot be cancelled. */
+	isInNonCancellableState(testRun: TestRun) {
 		return testRun.status !== 'running' && testRun.status !== 'new';
 	}
 
