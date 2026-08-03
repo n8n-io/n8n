@@ -1,4 +1,5 @@
-import { jsonParse } from 'n8n-workflow';
+import escapeRegExp from 'lodash/escapeRegExp';
+import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
 
 /**
  * Helpers for Templated Custom Auth (`httpTemplatedCustomAuth`) credentials:
@@ -70,12 +71,27 @@ export function extractTemplateMarkers(template: unknown): string[] {
  * that prefix (some dashboards copy `Key abc…` including the scheme word).
  */
 function markerPrefix(template: unknown, name: string): string {
-	const marker = new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`);
+	// Marker names may contain dots — escaped so they can't match as wildcards
+	// and pick up another marker's prefix.
+	const marker = new RegExp(`\\{\\{\\s*${escapeRegExp(name)}\\s*\\}\\}`);
 	for (const leaf of stringLeaves(template)) {
 		const match = marker.exec(leaf);
 		if (match && match.index > 0) return leaf.slice(0, match.index);
 	}
 	return '';
+}
+
+/**
+ * Normalize a value emitted by a guided-form input back to what should be
+ * stored: the displayed blanking mask (bare, or '='-prefixed by the expression
+ * toggle, which re-emits the displayed value) maps back to the `***` sentinel,
+ * so the mask itself can never be saved over the real secret.
+ */
+export function storedPlaceholderValue(displayed: string): string {
+	const bare = displayed.startsWith('=') ? displayed.slice(1) : displayed;
+	return bare === CREDENTIAL_BLANKING_VALUE || bare === TEMPLATED_AUTH_REDACTED_VALUE
+		? TEMPLATED_AUTH_REDACTED_VALUE
+		: displayed;
 }
 
 /** Trim a pasted value and strip a duplicated template prefix. Expressions

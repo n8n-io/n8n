@@ -1,9 +1,12 @@
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+
 import {
 	cleanPlaceholderValue,
 	extractTemplateMarkers,
 	parsePlaceholderDefs,
 	parsePlaceholderValues,
 	parseTemplatedAuthField,
+	storedPlaceholderValue,
 } from './templatedAuth.utils';
 
 describe('templatedAuth.utils', () => {
@@ -37,6 +40,29 @@ describe('templatedAuth.utils', () => {
 			expect(cleanPlaceholderValue(template, 'api_key', '={{ $secrets.vault.key }}')).toBe(
 				'={{ $secrets.vault.key }}',
 			);
+		});
+
+		it('does not treat dots in marker names as regex wildcards', () => {
+			// an unescaped 'api.key' would match the '{{api_key}}' leaf and steal
+			// its 'Key ' prefix
+			const dotted = {
+				headers: { Authorization: 'Key {{api_key}}', 'X-Key': '{{api.key}}' },
+			};
+			expect(cleanPlaceholderValue(dotted, 'api.key', 'Key abc')).toBe('Key abc');
+		});
+	});
+
+	describe('storedPlaceholderValue', () => {
+		it('maps the display mask back to the sentinel, also when the expression toggle prefixes it', () => {
+			expect(storedPlaceholderValue(CREDENTIAL_BLANKING_VALUE)).toBe('***');
+			expect(storedPlaceholderValue(`=${CREDENTIAL_BLANKING_VALUE}`)).toBe('***');
+			expect(storedPlaceholderValue('=***')).toBe('***');
+			expect(storedPlaceholderValue('***')).toBe('***');
+		});
+
+		it('leaves real values and expressions alone', () => {
+			expect(storedPlaceholderValue('abc')).toBe('abc');
+			expect(storedPlaceholderValue('={{ $secrets.vault.key }}')).toBe('={{ $secrets.vault.key }}');
 		});
 	});
 

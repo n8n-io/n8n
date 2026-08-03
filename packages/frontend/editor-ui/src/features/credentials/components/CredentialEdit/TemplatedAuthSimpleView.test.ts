@@ -156,6 +156,30 @@ describe('TemplatedAuthSimpleView', () => {
 		});
 	});
 
+	it('fills markers whose names contain dots', async () => {
+		// ParameterInputExpanded truncates dotted parameter names to the last
+		// path segment — the inputs' index-based names must survive that and map
+		// back to the real marker
+		const { getAllByTestId, emitted } = renderComponent({
+			props: {
+				credentialData: {
+					template: JSON.stringify({ headers: { 'X-Key': '{{api.key}}' } }),
+					placeholderValues: JSON.stringify({}),
+				},
+			},
+		});
+
+		const el = getAllByTestId('templated-auth-value-input')[0];
+		await userEvent.type(el.querySelector('input') ?? el, 'secret');
+
+		await waitFor(() => {
+			const updates = emitted<[{ name: string; value: string }]>('update');
+			expect(updates).toBeTruthy();
+			const last = updates[updates.length - 1][0];
+			expect(JSON.parse(last.value)).toEqual({ 'api.key': 'secret' });
+		});
+	});
+
 	it('leaves empty optional placeholders out of the composed values', async () => {
 		const { getAllByTestId, emitted } = renderComponent({
 			props: {
