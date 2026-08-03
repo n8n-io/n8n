@@ -585,6 +585,8 @@ export {
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalRunSchema,
 	CreateAgentEvalRunDto,
+	AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+	AgentEvalRunDetailQueryDto,
 	agentEvalCorrectionSchema,
 	createAgentEvalRatingSchema,
 	CreateAgentEvalRatingDto,

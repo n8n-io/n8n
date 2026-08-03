@@ -1,4 +1,5 @@
 import {
+	AgentEvalRunDetailQueryDto,
 	CreateAgentEvalRunDto,
 	GenerateDraftCasesOptionsDto,
 	PaginationDto,
@@ -155,7 +156,7 @@ export class AgentEvalsController {
 	async getRun(
 		req: AuthenticatedRequest<RunParam>,
 		_res: unknown,
-		@Query query: PaginationDto,
+		@Query query: AgentEvalRunDetailQueryDto,
 	): Promise<AgentEvalRunDetail> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;

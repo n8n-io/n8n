@@ -2,6 +2,11 @@ import type { IDataObject, JsonObject, JsonValue } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { datasetRefSchema, type DatasetRef } from '../dto/evaluations/evaluation-config.dto';
+import {
+	MAX_ITEMS_PER_PAGE,
+	createTakeValidator,
+	paginationSchema,
+} from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
 // A JSON blob that flows from a request into persistence must infer to the
@@ -106,6 +111,16 @@ const createAgentEvalRunShape = {
 export const createAgentEvalRunSchema = z.object(createAgentEvalRunShape);
 export type CreateAgentEvalRunPayload = z.infer<typeof createAgentEvalRunSchema>;
 export class CreateAgentEvalRunDto extends Z.class(createAgentEvalRunShape) {}
+
+// Query window for the run-detail route. Same ceiling as every other list route,
+// but a larger default than the shared `PaginationDto`: opening a run means
+// reading its cases, and a run holds up to the runner's per-run limit of them,
+// so defaulting to 10 would make the common case page immediately for no reason.
+export const AGENT_EVAL_RESULTS_DEFAULT_TAKE = 50;
+export class AgentEvalRunDetailQueryDto extends Z.class({
+	...paginationSchema,
+	take: createTakeValidator(MAX_ITEMS_PER_PAGE, false, AGENT_EVAL_RESULTS_DEFAULT_TAKE),
+}) {}
 
 // A correction carries the edited answer under `finalText`, mirroring the key the
 // runner writes into a result's `output` so calibration can diff the two directly.

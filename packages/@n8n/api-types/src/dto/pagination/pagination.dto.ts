@@ -15,11 +15,20 @@ const skipValidator = z
 		message: 'Param `skip` must be a non-negative integer',
 	});
 
-export const createTakeValidator = (maxItems: number, allowInfinity: boolean = false) =>
+/**
+ * `defaultTake` is what a request that omits `take` gets. Routes whose rows are
+ * cheap, or whose caller almost always wants more than a handful, can raise it
+ * rather than making every client pass the parameter to avoid over-paging.
+ */
+export const createTakeValidator = (
+	maxItems: number,
+	allowInfinity: boolean = false,
+	defaultTake: number = 10,
+) =>
 	z
 		.string()
 		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : 10))
+		.transform((val) => (val ? parseInt(val, 10) : defaultTake))
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
 			message: 'Param `take` must be a valid integer',
 		})

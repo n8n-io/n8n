@@ -1,4 +1,9 @@
-import { PaginationDto } from '@n8n/api-types';
+import {
+	AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+	AgentEvalRunDetailQueryDto,
+	MAX_ITEMS_PER_PAGE,
+	PaginationDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -16,9 +21,11 @@ vi.mock('../agent-evals-flag-gate', () => ({ AgentEvalsFlagGate: class AgentEval
 
 const PROJECT_ID = 'proj-1';
 const AGENT_ID = 'agent-1';
-// What the route binds when the client sends no window: `PaginationDto` parses
-// query strings, so go through it rather than hand-rolling the defaults.
+// What each route binds when the client sends no window. Both DTOs parse query
+// strings, so go through them rather than hand-rolling the defaults — and the
+// two differ: run detail pages cases, so it defaults to a larger window.
 const PAGE = PaginationDto.parse({});
+const RUN_PAGE = AgentEvalRunDetailQueryDto.parse({});
 
 describe('AgentEvalsController', () => {
 	const user = mock<User>({ id: 'user-1' });
@@ -130,7 +137,7 @@ describe('AgentEvalsController', () => {
 			],
 			['startRun', async () => await controller.startRun(datasetReq(), undefined, {})],
 			['listRuns', async () => await controller.listRuns(datasetReq(), undefined, PAGE)],
-			['getRun', async () => await controller.getRun(runReq(), undefined, PAGE)],
+			['getRun', async () => await controller.getRun(runReq(), undefined, RUN_PAGE)],
 			['getRunSummary', async () => await controller.getRunSummary(runReq())],
 			['cancelRun', async () => await controller.cancelRun(runReq())],
 		];
@@ -242,7 +249,7 @@ describe('AgentEvalsController', () => {
 		});
 
 		it('forwards the run-detail window to the service', async () => {
-			const query = PaginationDto.parse({ take: '25', skip: '50' });
+			const query = AgentEvalRunDetailQueryDto.parse({ take: '25', skip: '50' });
 
 			await controller.getRun(runReq(), undefined, query);
 
@@ -256,13 +263,34 @@ describe('AgentEvalsController', () => {
 		// route can fall back to reading the whole table.
 		it('bounds both list reads even when the client sends no window', async () => {
 			await controller.listRuns(datasetReq(), undefined, PaginationDto.parse({}));
-			await controller.getRun(runReq(), undefined, PaginationDto.parse({}));
+			await controller.getRun(runReq(), undefined, AgentEvalRunDetailQueryDto.parse({}));
 
 			for (const call of [service.listRuns, service.getRunDetail]) {
 				const page = call.mock.calls[0]?.at(-1) as { take: number; skip: number };
 				expect(page.take).toBeGreaterThan(0);
 				expect(page.skip).toBe(0);
 			}
+		});
+
+		// Opening a run reads its cases, of which there can be many, so this route
+		// deliberately defaults to a wider window than the shared `PaginationDto`.
+		it('defaults the run-detail window wider than the shared list default', async () => {
+			await controller.getRun(runReq(), undefined, AgentEvalRunDetailQueryDto.parse({}));
+
+			expect(service.getRunDetail).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'run-1', {
+				take: AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+				skip: 0,
+			});
+			expect(AGENT_EVAL_RESULTS_DEFAULT_TAKE).toBeGreaterThan(PaginationDto.parse({}).take);
+		});
+
+		// A client that does ask for a bigger page is still held to the shared cap.
+		it('clamps an oversized run-detail window to the shared maximum', async () => {
+			const query = AgentEvalRunDetailQueryDto.parse({ take: '9999' });
+
+			await controller.getRun(runReq(), undefined, query);
+
+			expect(query.take).toBe(MAX_ITEMS_PER_PAGE);
 		});
 	});
 });
