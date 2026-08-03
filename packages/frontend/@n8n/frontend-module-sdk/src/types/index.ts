@@ -1,6 +1,7 @@
 export type * from './descriptor';
 export type * from './modal';
 export type * from './resource';
+export type * from './settingsPage';
 export type * from './tabs';
 export type * from './push';
 export type * from './command';

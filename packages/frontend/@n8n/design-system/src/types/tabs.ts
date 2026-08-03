@@ -5,7 +5,12 @@ import type { IconName } from '../components/N8nIcon/icons';
 export interface TabOptions<Value extends string | number> {
 	value: Value;
 	label?: string;
-	icon?: IconName;
+	/**
+	 * `(string & {})` keeps autocomplete for known names while accepting one
+	 * supplied by a caller outside this package — same widening `IMenuItem.icon`
+	 * already uses. An unknown name degrades at render time.
+	 */
+	icon?: IconName | (string & {});
 	iconPosition?: 'left' | 'right';
 	variant?: 'default' | 'danger';
 	href?: string;
