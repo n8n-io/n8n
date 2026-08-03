@@ -171,7 +171,7 @@ describe('POST /workflow-dependencies/counts', () => {
 			.send({ resourceIds: [credential.id], resourceType: 'credential' });
 
 		expect(resp.statusCode).toBe(200);
-		expect(resp.body.data[credential.id].agentParent).toBe(1);
+		expect(resp.body.data[credential.id].agentUsage).toBe(1);
 	});
 
 	it('should include counts for dependencies the user cannot access', async () => {
@@ -397,7 +397,7 @@ describe('POST /workflow-dependencies/details', () => {
 				{
 					id: agent.id,
 					name: 'Support Agent',
-					type: 'agentParent',
+					type: 'agentUsage',
 					projectId: agent.projectId,
 				},
 			],

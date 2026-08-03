@@ -24,7 +24,7 @@ import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 interface RawDepMaps {
-	agentParentMap: Map<string, Set<string>>;
+	agentUsageMap: Map<string, Set<string>>;
 	credMap: Map<string, Set<string>>;
 	dtMap: Map<string, Set<string>>;
 	subMap: Map<string, Set<string>>;
@@ -66,7 +66,7 @@ export class WorkflowDependencyQueryService {
 		const result: DependencyCountsBatchResponse = {};
 		for (const id of accessibleInputIds) {
 			result[id] = {
-				agentParent: maps.agentParentMap.get(id)?.size ?? 0,
+				agentUsage: maps.agentUsageMap.get(id)?.size ?? 0,
 				credentialId: maps.credMap.get(id)?.size ?? 0,
 				dataTableId: maps.dtMap.get(id)?.size ?? 0,
 				errorWorkflow: maps.errorWfMap.get(id)?.size ?? 0,
@@ -207,7 +207,7 @@ export class WorkflowDependencyQueryService {
 		rawDeps: Array<{ workflowId: string; dependencyType: string; dependencyKey: string }>,
 		agentDeps: Array<{ agentId: string; credentialId: string }>,
 	): RawDepMaps {
-		const agentParentMap = new Map<string, Set<string>>();
+		const agentUsageMap = new Map<string, Set<string>>();
 		const credMap = new Map<string, Set<string>>();
 		const dtMap = new Map<string, Set<string>>();
 		const subMap = new Map<string, Set<string>>();
@@ -246,12 +246,12 @@ export class WorkflowDependencyQueryService {
 		}
 
 		for (const dep of agentDeps) {
-			addToSet(agentParentMap, dep.credentialId, dep.agentId);
+			addToSet(agentUsageMap, dep.credentialId, dep.agentId);
 			allAgentIds.add(dep.agentId);
 		}
 
 		return {
-			agentParentMap,
+			agentUsageMap,
 			credMap,
 			dtMap,
 			subMap,
@@ -291,14 +291,14 @@ export class WorkflowDependencyQueryService {
 			const dependencies: ResolvedDependency[] = [];
 			let inaccessibleCount = 0;
 
-			for (const id of maps.agentParentMap.get(resourceId) ?? []) {
+			for (const id of maps.agentUsageMap.get(resourceId) ?? []) {
 				if (!existing.existingAgentIds.has(id)) continue;
 				const agent = accessMaps.agentNames.get(id);
 				if (agent) {
 					dependencies.push({
 						id,
 						name: agent.name,
-						type: 'agentParent',
+						type: 'agentUsage',
 						projectId: agent.projectId,
 					});
 				} else {

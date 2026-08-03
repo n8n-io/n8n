@@ -158,11 +158,11 @@ describe('DependencyPill', () => {
 		expect(items[7].id).toBe('workflowParent:wf-2');
 	});
 
-	it('should group parent agents under the agents i18n label', () => {
+	it('should group agent usages under the agents i18n label', () => {
 		const baseTextSpy = vi.spyOn(useI18n(), 'baseText');
 		mockDepsResult = {
 			dependencies: [
-				{ type: 'agentParent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+				{ type: 'agentUsage', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
 			],
 			inaccessibleCount: 0,
 		};
@@ -171,9 +171,9 @@ describe('DependencyPill', () => {
 		const items = capturedItems as Array<{ id: string; label: string; disabled?: boolean }>;
 
 		expect(items).toHaveLength(2);
-		expect(items[0]).toMatchObject({ id: 'header-agentParent', disabled: true });
+		expect(items[0]).toMatchObject({ id: 'header-agentUsage', disabled: true });
 		expect(baseTextSpy).toHaveBeenCalledWith('workflows.dependencies.type.agents');
-		expect(items[1].id).toBe('agentParent:agent-1');
+		expect(items[1].id).toBe('agentUsage:agent-1');
 
 		baseTextSpy.mockRestore();
 	});
@@ -251,16 +251,16 @@ describe('DependencyPill', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should open parent agent in a new tab on select', () => {
+	it('should open an agent using the credential in a new tab on select', () => {
 		mockDepsResult = {
 			dependencies: [
-				{ type: 'agentParent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+				{ type: 'agentUsage', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
 			],
 			inaccessibleCount: 0,
 		};
 		renderComponent({ props: defaultProps });
 
-		capturedSelectHandler?.('agentParent:agent-1');
+		capturedSelectHandler?.('agentUsage:agent-1');
 
 		expect(router.resolve).toHaveBeenCalledWith({
 			name: AGENT_BUILDER_VIEW,

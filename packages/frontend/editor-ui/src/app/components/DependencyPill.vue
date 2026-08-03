@@ -64,7 +64,7 @@ const typeConfig: Record<DependencyType, { icon: IconName; labelKey: BaseTextKey
 		icon: 'table',
 		labelKey: 'workflows.dependencies.type.dataTables' as BaseTextKey,
 	},
-	agentParent: {
+	agentUsage: {
 		icon: 'bot',
 		labelKey: 'workflows.dependencies.type.agents' as BaseTextKey,
 	},
@@ -91,7 +91,7 @@ const displayOrder: DependencyType[] = [
 	'dataTableId',
 	'workflowCall',
 	'workflowParent',
-	'agentParent',
+	'agentUsage',
 	'errorWorkflow',
 	'errorWorkflowParent',
 ];
@@ -106,7 +106,7 @@ const menuItems = computed(() => {
 	const groups: Record<DependencyType, ResolvedDependency[]> = {
 		credentialId: [],
 		dataTableId: [],
-		agentParent: [],
+		agentUsage: [],
 		errorWorkflow: [],
 		errorWorkflowParent: [],
 		workflowCall: [],
@@ -178,7 +178,7 @@ function onSelect(value: string) {
 				window.open(href, '_blank');
 			}
 			break;
-		case 'agentParent':
+		case 'agentUsage':
 			if (dep.projectId) {
 				const href = router.resolve({
 					name: AGENT_BUILDER_VIEW,

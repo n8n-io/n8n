@@ -1,5 +1,5 @@
 export type DependencyType =
-	| 'agentParent'
+	| 'agentUsage'
 	| 'credentialId'
 	| 'dataTableId'
 	| 'errorWorkflow'
