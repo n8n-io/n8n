@@ -23,6 +23,7 @@ import {
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -42,7 +43,10 @@ import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
-import { INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY } from './constants';
+import {
+	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+} from './constants';
 import {
 	findToolCallInTree,
 	isOrchestratorLive,
@@ -113,6 +117,16 @@ export function getAgentBuilderTargetFromThreadMetadata(
 		projectId: target.projectId,
 		...(typeof target.name === 'string' ? { name: target.name } : {}),
 	};
+}
+
+export function getPendingAgentTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const raw = metadata?.[INSTANCE_AI_PENDING_AGENT_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return { agentId: target.agentId, projectId: target.projectId };
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -304,6 +318,7 @@ export function createThreadRuntime(
 	const workflowsListStore = useWorkflowsListStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
+	const i18n = useI18n();
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
@@ -388,6 +403,10 @@ export function createThreadRuntime(
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
 		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		() => {
+			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
+			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
+		},
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =

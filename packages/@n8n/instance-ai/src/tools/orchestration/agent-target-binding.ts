@@ -17,6 +17,14 @@ import type { InstanceAiContext } from '../../types';
 
 const METADATA_KEY = 'instanceAiAgentBuilderTarget';
 const REGISTRY_METADATA_KEY = 'instanceAiAgentBuilderTargets';
+/**
+ * Set by the frontend when the user opens a new-agent artifact that has no
+ * agent row behind it yet, so the artifact survives a reload before anything
+ * is persisted. Cleared here the moment a real agent binds to the thread —
+ * whether the chat created it or the user configured it by hand — so a reload
+ * doesn't show a phantom blank artifact beside the real one.
+ */
+export const PENDING_AGENT_METADATA_KEY = 'instanceAiPendingAgentTarget';
 
 const agentBuilderTargetSchema = z.object({
 	agentId: z.string(),
@@ -34,6 +42,33 @@ const agentBuilderTargetSchema = z.object({
 export type AgentBuilderTarget = z.infer<typeof agentBuilderTargetSchema>;
 
 const agentBuilderTargetRegistrySchema = z.record(z.string(), agentBuilderTargetSchema);
+
+const pendingAgentTargetSchema = z.object({ projectId: z.string(), agentId: z.string() });
+
+export type PendingAgentTarget = z.infer<typeof pendingAgentTargetSchema>;
+
+/**
+ * The id the frontend minted for an unsaved new-agent artifact, so a build
+ * creates the agent the user already has open instead of a second one.
+ * Best-effort: without a marker (or on a storage failure) the caller falls back
+ * to letting the backend mint an id, which is a worse artifact experience but
+ * never a failed build.
+ */
+export async function readPendingAgentTarget(
+	context: InstanceAiContext,
+): Promise<PendingAgentTarget | undefined> {
+	if (!context.threadMemory || !context.threadId) return undefined;
+
+	try {
+		const thread = await getThread(context.threadMemory, context.threadId);
+		const parsed = pendingAgentTargetSchema.safeParse(
+			thread?.metadata?.[PENDING_AGENT_METADATA_KEY],
+		);
+		return parsed.success ? parsed.data : undefined;
+	} catch {
+		return undefined;
+	}
+}
 
 /** Normalize an addressing key so "Support Triage", "support_triage" and
  *  "Support-Triage" all address the same agent. Unicode letters/digits are kept
@@ -107,6 +142,9 @@ export async function saveAgentBuilderTarget(
 	await patchThread(context.threadMemory, {
 		threadId: context.threadId,
 		update: ({ metadata = {} }) => {
+			// Omitted from the returned metadata, which `patchThread` writes
+			// wholesale — that is what deletes the pending marker.
+			const { [PENDING_AGENT_METADATA_KEY]: _pendingAgent, ...carriedMetadata } = metadata;
 			const existingRegistry = parseRegistry(metadata[REGISTRY_METADATA_KEY]);
 			const previousByAgentId = Object.values(existingRegistry).find(
 				(entry) => entry.agentId === target.agentId,
@@ -135,7 +173,7 @@ export async function saveAgentBuilderTarget(
 			}
 			return {
 				metadata: {
-					...metadata,
+					...carriedMetadata,
 					[METADATA_KEY]: entry,
 					[REGISTRY_METADATA_KEY]: registry,
 					...(options?.previewSession

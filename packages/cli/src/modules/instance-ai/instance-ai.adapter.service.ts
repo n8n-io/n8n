@@ -385,8 +385,11 @@ export class InstanceAiAdapterService {
 		if (!threadId) return delegate;
 		return {
 			...delegate,
-			createAgent: async (name) => {
-				const created = await delegate.createAgent(name);
+			// `id` must be forwarded: it carries the id the frontend minted for an
+			// unsaved new-agent artifact, and dropping it here silently creates a
+			// second agent beside the one the user already has open.
+			createAgent: async (name, id) => {
+				const created = await delegate.createAgent(name, id);
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
 					thread_id: threadId,
 					agent_id: created.agentId,

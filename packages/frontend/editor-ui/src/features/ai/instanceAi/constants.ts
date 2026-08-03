@@ -16,6 +16,13 @@ export const SANDBOX_PROVIDER_LABELS = {
 export type InstanceAiConnectionKind = 'model' | 'sandbox' | 'search';
 export const INSTANCE_AI_NEW_VIEW = 'InstanceAiNew';
 export const INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
+/**
+ * A new-agent artifact the user opened but has not configured yet, so no agent
+ * row exists. Carries the id minted for it, which whichever path persists the
+ * agent first creates it under. Mirrors `PENDING_AGENT_METADATA_KEY` in
+ * `@n8n/instance-ai`.
+ */
+export const INSTANCE_AI_PENDING_AGENT_METADATA_KEY = 'instanceAiPendingAgentTarget';
 export const NEW_CONVERSATION_TITLE = 'New conversation';
 export { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';
