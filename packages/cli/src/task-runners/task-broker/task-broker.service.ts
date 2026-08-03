@@ -154,6 +154,9 @@ export class TaskBroker {
 		if (requestIndex === -1) return;
 
 		const request = this.pendingTaskRequests[requestIndex];
+
+		this.flagSilentRunners(request.taskType);
+
 		this.pendingTaskRequests.splice(requestIndex, 1);
 		this.mismatchWarned.delete(requestId);
 
@@ -779,6 +782,41 @@ export class TaskBroker {
 			);
 			this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId });
 		}
+	}
+
+	/**
+	 * Reports as unresponsive every reachable runner for `taskType` with no sign of life:
+	 * no pending offer, no in-flight task, no acceptance in progress.
+	 *
+	 * A healthy runner with spare capacity keeps offers pending,
+	 * so a request expiring next to a silent runner means the runner's offer loop has stalled
+	 * and its transport should be torn down so the runner can be restarted.
+	 *
+	 * A no-op when no runner is registered, which is normal while a runner is still starting up.
+	 */
+	private flagSilentRunners(taskType: string) {
+		this.expireTasks();
+
+		[...this.knownRunners.values()]
+			.filter(({ runner }) => runner.taskTypes.includes(taskType))
+			.filter(({ isRunnerReachable }) => isRunnerReachable())
+			.filter(({ runner }) => this.isSilent(runner.id))
+			.forEach(({ runner }) => {
+				this.logger.warn(
+					`Runner (${runner.id}) sent no task offers while a task request expired, reporting it as unresponsive`,
+				);
+				this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId: runner.id });
+			});
+	}
+
+	private isSilent(runnerId: TaskRunner['id']) {
+		const hasPendingOffer = this.pendingTaskOffers.some((offer) => offer.runnerId === runnerId);
+		const hasInFlightTask = this.getInFlightTaskIds(runnerId).length > 0;
+		const hasAcceptanceInProgress = [...this.runnerAcceptRejects.values()].some(
+			(acceptReject) => acceptReject.runnerId === runnerId,
+		);
+
+		return !hasPendingOffer && !hasInFlightTask && !hasAcceptanceInProgress;
 	}
 
 	// Find matching task offers and requests, then let the runner

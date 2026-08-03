@@ -12,7 +12,12 @@ import { TaskRequesterAcceptTimeoutError } from '../errors/task-requester-accept
 import { TaskRunnerExecutionTimeoutError } from '../errors/task-runner-execution-timeout.error';
 import { TaskRunnerUnreachableError } from '../errors/task-runner-unreachable.error';
 import { TaskBroker } from '../task-broker.service';
-import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
+import type {
+	RequesterMessageCallback,
+	TaskOffer,
+	TaskRequest,
+	TaskRunner,
+} from '../task-broker.service';
 
 const createValidUntil = (ms: number) => process.hrtime.bigint() + BigInt(ms * 1_000_000);
 
@@ -1397,7 +1402,7 @@ describe('TaskBroker', () => {
 
 			const config = mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskAcceptTimeout: 2 });
 			taskBroker = new TaskBroker(mock(), config, mock(), mock());
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), vi.fn());
 
 			const requesterCallback = vi.fn();
 			taskBroker.registerRequester('requester1', requesterCallback);
@@ -1612,6 +1617,152 @@ describe('TaskBroker', () => {
 			expect(lifecycleEvents.emit).toHaveBeenCalledTimes(1);
 			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
 				runnerId: 'runner2',
+			});
+		});
+	});
+
+	describe('silent runner detection', () => {
+		const REQUEST_TIMEOUT_MS = 60_000;
+
+		let lifecycleEvents: MockProxy<TaskRunnerLifecycleEvents>;
+		let requesterCallback: ReturnType<typeof vi.fn<RequesterMessageCallback>>;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			lifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+			taskBroker = new TaskBroker(
+				mock(),
+				mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskTimeout: 60, taskAcceptTimeout: 2 }),
+				lifecycleEvents,
+				mock(),
+			);
+			requesterCallback = vi.fn<RequesterMessageCallback>();
+			taskBroker.registerRequester('requester1', requesterCallback);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const registerRunner = (isRunnerReachable?: () => boolean) => {
+			taskBroker.registerRunner(
+				mock<TaskRunner>({ id: 'runner1', taskTypes: ['taskType1', 'taskType2'] }),
+				vi.fn(),
+				isRunnerReachable,
+			);
+		};
+
+		const letRequestExpire = () => {
+			taskBroker.taskRequested({
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				timeout: taskBroker['createRequestTimeout']('request1'),
+			});
+			vi.advanceTimersByTime(REQUEST_TIMEOUT_MS);
+		};
+
+		it('should report a reachable runner that sent no offers while a request expired', () => {
+			registerRunner();
+
+			letRequestExpire();
+
+			expect(lifecycleEvents.emit).toHaveBeenCalledTimes(1);
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner1',
+			});
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:requestexpired',
+				requestId: 'request1',
+				reason: 'timeout',
+			});
+		});
+
+		it('should not report a runner with an in-flight task', () => {
+			registerRunner();
+			taskBroker.setTasks({
+				task1: {
+					id: 'task1',
+					runnerId: 'runner1',
+					requesterId: 'requester1',
+					taskType: 'taskType1',
+				},
+			});
+
+			letRequestExpire();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should not report a runner with a pending task offer', () => {
+			registerRunner();
+			taskBroker.setPendingTaskOffers([
+				{
+					offerId: 'offer1',
+					runnerId: 'runner1',
+					taskType: 'taskType2',
+					validFor: 300_000,
+					validUntil: createValidUntil(300_000),
+				},
+			]);
+
+			letRequestExpire();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should not report a runner with a non-expiring launcher offer', () => {
+			registerRunner();
+			taskBroker.setPendingTaskOffers([
+				{
+					offerId: 'offer1',
+					runnerId: 'runner1',
+					taskType: 'taskType2',
+					validFor: -1,
+					validUntil: 0n,
+				},
+			]);
+
+			letRequestExpire();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should not report a runner with an acceptance in progress', () => {
+			registerRunner();
+			taskBroker.setRunnerAcceptRejects({
+				task1: { accept: vi.fn(), reject: vi.fn(), runnerId: 'runner1' },
+			});
+
+			letRequestExpire();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should not report an unreachable runner', () => {
+			registerRunner(() => false);
+
+			letRequestExpire();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should not report a runner that does not support the task type', () => {
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: ['other'] }), vi.fn());
+
+			letRequestExpire();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should expire the request without reporting when no runner is registered', () => {
+			letRequestExpire();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:requestexpired',
+				requestId: 'request1',
+				reason: 'timeout',
 			});
 		});
 	});
