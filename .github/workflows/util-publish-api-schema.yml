@@ -35,7 +35,7 @@ jobs:
       - name: Setup Node.js and Build
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: 'pnpm --filter n8n... build'
+          build-command: 'pnpm build --filter=n8n'
 
       - name: Build Public API Schema
         run: pnpm run build:data
