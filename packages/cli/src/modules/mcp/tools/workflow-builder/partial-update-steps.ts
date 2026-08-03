@@ -42,6 +42,7 @@ function dedupeNamesPreservingCase(names: string[]): string[] {
 		if (seen.has(key)) {
 			continue;
 		}
+
 		seen.add(key);
 		result.push(trimmed);
 	}
@@ -400,10 +401,12 @@ export async function collectValidationWarnings({
 	existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>;
 }): Promise<Array<ValidationWarning & { preExisting?: boolean }>> {
 	const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
+
 	const validator = new ParseValidateHandler({
 		generatePinData: false,
 		nodeTypesProvider: nodeTypes,
 	});
+
 	const postUpdateWarnings = validator.validateJSON({
 		name: updated.name,
 		nodes: updated.nodes,
