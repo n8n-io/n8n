@@ -417,9 +417,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// Start to get active workflows and run their triggers
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			const { PublishedWorkflowEnqueuer } = await import(
-				'@/workflows/publication/published-workflow-enqueuer.js'
-			);
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer.js'
 			);
@@ -438,12 +435,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			// wake-up) after the earlier PubSubRegistry.init() calls already wired
 			// listeners, so rewire to pick them up.
 			Container.get(PubSubRegistry).init();
-
-			// Enqueue needs to happen before outbox consumer init, so it can activate
-			// everything on the first drain
-			if (this.instanceSettings.isLeader) {
-				await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
-			}
 
 			// Don't await: the immediate drain activates every trigger and can take a
 			// while, so let it run in the background instead of blocking startup.

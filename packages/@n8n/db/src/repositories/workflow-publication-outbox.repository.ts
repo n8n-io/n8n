@@ -11,6 +11,9 @@ import {
 } from '../entities/workflow-publication-outbox';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
+/** Sqlite bound-variable budget per statement; safely under every build's cap. */
+const SQLITE_ENQUEUE_CHUNK_SIZE = 999;
+
 @Service()
 export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPublicationOutbox> {
 	constructor(
@@ -93,75 +96,6 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
-	 * Enqueue a pending publication record for the current version of each active workflow
-	 * with at least one in-memory trigger.
-	 *
-	 * These must be re-published on startup or leader handoff to ensure that all
-	 * of the in-memory state is correctly initialized. For workflows with no in-memory triggers,
-	 * we can skip re-publishing because their triggers are already persisted.
-	 *
-	 * NOTE: we only exclude workflows where we KNOW that there are no in-memory triggers.
-	 * If the per-trigger data is missing (e.g. due to a crash), we will still enqueue the
-	 * workflow for publication, which is safe because the publication process is idempotent.
-	 */
-	async enqueueForLeaderHandoff(): Promise<void> {
-		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueForLeaderHandoffWithPostgresUpsert();
-			return;
-		}
-
-		await this.enqueueForLeaderHandoffWithSqliteUpsert();
-	}
-
-	private async enqueueForLeaderHandoffWithPostgresUpsert(): Promise<void> {
-		const outboxTableName = this.getTableName('workflow_publication_outbox');
-		const workflowTableName = this.getTableName('workflow_entity');
-		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
-
-		await this.query(
-			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
-			 FROM ${workflowTableName} w
-			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = false
-			 AND (
-			   -- Enqueue workflows with at least one in-memory trigger
-				 EXISTS (
-					 SELECT 1 FROM ${triggerStatusTableName} ts
-					 WHERE ts."workflowId" = w."id" AND ts."triggerKind" = 'in-memory'
-				 )
-				 -- Enqueue workflows where we have no trigger status data
-				 OR NOT EXISTS (SELECT 1 FROM ${triggerStatusTableName} ts WHERE ts."workflowId" = w."id")
-			 )
-			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
-		);
-	}
-
-	private async enqueueForLeaderHandoffWithSqliteUpsert(): Promise<void> {
-		const outboxTableName = this.getTableName('workflow_publication_outbox');
-		const workflowTableName = this.getTableName('workflow_entity');
-		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
-
-		await this.query(
-			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
-			 FROM ${workflowTableName} w
-			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
-			 AND (
-			   -- Enqueue workflows with at least one in-memory trigger
-				 EXISTS (
-					 SELECT 1 FROM ${triggerStatusTableName} ts
-					 WHERE ts."workflowId" = w."id" AND ts."triggerKind" = 'in-memory'
-				 )
-				 -- Enqueue workflows where we have no trigger status data
-				 OR NOT EXISTS (SELECT 1 FROM ${triggerStatusTableName} ts WHERE ts."workflowId" = w."id")
-			 )
-			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
-		);
-	}
-
-	/**
 	 * Enqueue a pending publication record for each given workflow that still
 	 * exists, in a single statement. Used by reconciliation, which must be able to
 	 * enqueue whatever its detection returns — refusing a workflow here would
@@ -210,17 +144,25 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	private async enqueueByWorkflowIdsWithSqliteUpsert(workflowIds: string[]): Promise<void> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
-		const placeholders = workflowIds.map(() => '?').join(', ');
 
-		await this.query(
-			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
-			 FROM ${workflowTableName} w
-			 WHERE w."id" IN (${placeholders})
-			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO NOTHING`,
-			workflowIds,
-		);
+		// One placeholder is bound per id and sqlite caps bound variables per
+		// statement, while a fresh leader can pass every active workflow at once.
+		// Chunked upserts stay idempotent, so a failure mid-batch just leaves the
+		// remainder for the next reconciliation pass.
+		for (let i = 0; i < workflowIds.length; i += SQLITE_ENQUEUE_CHUNK_SIZE) {
+			const chunk = workflowIds.slice(i, i + SQLITE_ENQUEUE_CHUNK_SIZE);
+			const placeholders = chunk.map(() => '?').join(', ');
+
+			await this.query(
+				`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
+				 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
+				 FROM ${workflowTableName} w
+				 WHERE w."id" IN (${placeholders})
+				 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+				 DO NOTHING`,
+				chunk,
+			);
+		}
 	}
 
 	/**

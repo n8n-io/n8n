@@ -6,7 +6,7 @@ import {
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	ActiveWorkflowTriggers,
@@ -91,11 +91,9 @@ export class WorkflowPublicationReconciler {
 	}
 
 	/**
-	 * Starts the process-lifetime tick interval, on any role. Deliberately no
-	 * immediate pass on takeover: `PublishedWorkflowEnqueuer` already re-enqueues
-	 * every active workflow at that moment, and the consumed-record race this
-	 * loop recovers can only materialize after that enqueue — the first interval
-	 * pass catches it.
+	 * Starts the process-lifetime tick interval, on any role. Takeover never
+	 * starts or stops anything here — the loop is already ticking — but it does
+	 * kick an immediate pass (see {@link reconcileOnLeaderTakeover}).
 	 */
 	startReconciler() {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
@@ -191,6 +189,21 @@ export class WorkflowPublicationReconciler {
 				}
 			},
 		);
+	}
+
+	/**
+	 * A fresh leader must converge now, not an interval later: with an empty
+	 * registry, this pass re-detects every workflow that needs its triggers
+	 * back. Pending records left by the previous leader are excluded from the
+	 * detections and drained by the consumer's own takeover hook instead. Gated
+	 * on the loop running, so a disabled service or shutdown keeps takeover
+	 * inert.
+	 */
+	@OnLeaderTakeover()
+	async reconcileOnLeaderTakeover(): Promise<void> {
+		if (!this.reconcileInterval) return;
+
+		await this.reconcile();
 	}
 
 	private async findSurplusWorkflowIds(): Promise<WorkflowId[]> {

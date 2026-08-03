@@ -179,6 +179,26 @@ describe('WorkflowPublicationReconciler', () => {
 		});
 	});
 
+	describe('leader takeover', () => {
+		it('kicks an immediate pass without waiting for the interval', async () => {
+			service.startReconciler();
+
+			await service.reconcileOnLeaderTakeover();
+
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalledTimes(1);
+		});
+
+		it('does nothing while the loop is not running', async () => {
+			// The loop only runs when the publication service is enabled and the
+			// instance is not shutting down; the takeover kick must not open a
+			// side door around those gates.
+			await service.reconcileOnLeaderTakeover();
+
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
+			expect(triggerDeactivator.sweepGhostTriggers).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('reconcile', () => {
 		it('re-publishes a workflow whose in-memory trigger is missing', async () => {
 			triggerStatusRepository.findActivatedInMemoryTriggers.mockResolvedValue([
