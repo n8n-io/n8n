@@ -7,6 +7,7 @@ import type {
 	ITaskStartedData,
 	IWorkflowBase,
 	Workflow,
+	WorkflowExecuteMode,
 	WorkflowExecutionSource,
 } from 'n8n-workflow';
 
@@ -19,6 +20,7 @@ export type LifecycleHandlerClass = Class<
 export type NodeExecuteBeforeContext = {
 	type: 'nodeExecuteBefore';
 	workflow: IWorkflowBase;
+	mode: WorkflowExecuteMode;
 	nodeName: string;
 	taskData: ITaskStartedData;
 	executionId: string;
@@ -27,6 +29,7 @@ export type NodeExecuteBeforeContext = {
 export type NodeExecuteAfterContext = {
 	type: 'nodeExecuteAfter';
 	workflow: IWorkflowBase;
+	mode: WorkflowExecuteMode;
 	nodeName: string;
 	taskData: ITaskData;
 	executionData: IRunExecutionData;
@@ -36,6 +39,7 @@ export type NodeExecuteAfterContext = {
 export type WorkflowExecuteBeforeContext = {
 	type: 'workflowExecuteBefore';
 	workflow: IWorkflowBase;
+	mode: WorkflowExecuteMode;
 	workflowInstance: Workflow;
 	executionData?: IRunExecutionData;
 	executionId: string;
@@ -44,6 +48,7 @@ export type WorkflowExecuteBeforeContext = {
 export type WorkflowExecuteAfterContext = {
 	type: 'workflowExecuteAfter';
 	workflow: IWorkflowBase;
+	mode: WorkflowExecuteMode;
 	runData: IRun;
 	newStaticData: IDataObject;
 	executionId: string;
@@ -55,6 +60,7 @@ export type WorkflowExecuteAfterContext = {
 export type WorkflowExecuteResumeContext = {
 	type: 'workflowExecuteResume';
 	workflow: IWorkflowBase;
+	mode: WorkflowExecuteMode;
 	workflowInstance: Workflow;
 	executionData: IRunExecutionData;
 	executionId: string;

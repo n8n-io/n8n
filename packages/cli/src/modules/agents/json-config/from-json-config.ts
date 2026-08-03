@@ -614,6 +614,10 @@ async function resolveMemoryWorkerModelConfig(
 	config: MemoryWorkerModelConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
+	// Mirrors `resolveModelConfig`: an empty credential means "not configured",
+	// which must not reach `resolve('')` and surface as a credential-not-found error.
+	if (!config.credential) return config.model;
+
 	return await resolveCredentialAwareModelConfig(
 		config.model,
 		config.credential,

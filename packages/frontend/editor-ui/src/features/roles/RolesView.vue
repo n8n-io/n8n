@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants/urls';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { TabOptions } from '@n8n/design-system';
 import { N8nButton, N8nHeading, N8nLink, N8nTabs, N8nTag, N8nText } from '@n8n/design-system';

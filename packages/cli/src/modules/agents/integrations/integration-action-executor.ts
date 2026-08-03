@@ -74,6 +74,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	}): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
+		if (params.action === 'do_not_respond') {
+			return this.doNotRespond(params);
+		}
+
 		const unsupportedAction = () =>
 			integrationError(
 				INTEGRATION_ERROR_CODES.UNSUPPORTED_ACTION,
@@ -147,6 +151,25 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		}
 	}
 
+	/**
+	 * End the turn without posting anything. Allowed only when the latest
+	 * inbound message marked the reply as optional.
+	 */
+	private doNotRespond(params: ExecuteParams): IntegrationActionResult {
+		if (params.currentMessageContext?.replyExpectation !== 'optional') {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.REPLY_REQUIRED,
+				'A reply is expected here — this is a direct message, a direct mention, or a conversation you were asked to join. Respond normally instead of staying silent.',
+			);
+		}
+
+		return {
+			ok: true,
+			silent: true,
+			note: 'No reply will be sent. End your turn now without writing any text.',
+		};
+	}
+
 	private async respondInCurrentThread(
 		chat: ChatInstance,
 		params: ExecuteParams,
@@ -157,6 +180,16 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			return integrationError(
 				INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
 				'There is no current message context. Use an explicit send action.',
+			);
+		}
+
+		// `replyExpectation` marks a turn triggered by an inbound chat message,
+		// where the bridge already posts the assistant's reply text to this
+		// thread — a text-only respond would deliver the same content twice.
+		if (!input.message.card && params.currentMessageContext?.replyExpectation) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.ACTION_FAILED,
+				'Plain text is already delivered to this conversation as your normal reply — write the text directly in your reply instead of calling respond. Call respond only with message.card, or use an explicit send action for a different target.',
 			);
 		}
 
