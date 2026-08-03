@@ -80,6 +80,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				},
 				{
 					...runContext,
+					...(request.parentExecutionCounter !== undefined
+						? { executionCounter: request.parentExecutionCounter }
+						: {}),
 					...(request.parentAbortSignal !== undefined
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
@@ -110,6 +113,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 
 			const result = await runner.resumeForeground(request, {
 				...runContext,
+				...(request.parentExecutionCounter !== undefined
+					? { executionCounter: request.parentExecutionCounter }
+					: {}),
 				...(request.parentAbortSignal !== undefined
 					? { abortSignal: request.parentAbortSignal }
 					: {}),

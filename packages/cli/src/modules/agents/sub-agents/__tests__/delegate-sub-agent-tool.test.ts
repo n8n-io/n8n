@@ -73,6 +73,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			resolveInlineSubAgentProviderTools,
 		});
 
@@ -93,6 +94,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			inlineSubAgentModelsByDifficulty,
 		});
 
@@ -102,11 +104,17 @@ describe('createN8nDelegateSubAgentTool', () => {
 	});
 
 	it('builds a delegate tool that calls the foreground runner with a configured source', async () => {
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			policy: { maxChildren: 2 },
 		});
 
@@ -122,6 +130,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 				{
 					runId: 'parent-run-1',
 					toolCallId: 'tool-call-1',
+					executionCounter,
 				},
 			),
 		).resolves.toMatchObject({
@@ -145,6 +154,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			expect.objectContaining({
 				projectId,
 				credentialProvider,
+				executionCounter: expect.any(Object),
 			}),
 		);
 	});
@@ -155,6 +165,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await tool.handler?.(
@@ -180,6 +191,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 		const parentTelemetry = {
 			enabled: true,
@@ -206,6 +218,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await tool.handler?.(
@@ -232,6 +245,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			],
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await tool.handler?.(
@@ -254,6 +268,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await expect(
@@ -281,6 +296,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 		const runSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.runSubAgent;
 		expect(runSubAgent).toBeDefined();
@@ -317,6 +333,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await expect(
@@ -336,11 +353,17 @@ describe('createN8nDelegateSubAgentTool', () => {
 
 	it('routes a configured child resume to the exact persisted checkpoint', async () => {
 		runner.resumeForeground.mockResolvedValue(foregroundResult);
+		const parentExecutionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 		const resumeSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.resumeSubAgent;
 		expect(resumeSubAgent).toBeDefined();
@@ -356,6 +379,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			resumeData: { approved: true },
 			resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
 			parentThreadId: 'parent-thread-1',
+			parentExecutionCounter,
 		};
 
 		await expect(
@@ -365,7 +389,10 @@ describe('createN8nDelegateSubAgentTool', () => {
 			taskPath: '/root/research_api_0',
 			runId: 'child-run-1',
 		});
-		expect(runner.resumeForeground).toHaveBeenCalledWith(request, expect.any(Object));
+		expect(runner.resumeForeground).toHaveBeenCalledWith(
+			request,
+			expect.objectContaining({ executionCounter: parentExecutionCounter }),
+		);
 	});
 
 	it('routes configured child cancellation without resuming the child', async () => {
@@ -374,6 +401,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 		const cancelSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.cancelSubAgent;
 		expect(cancelSubAgent).toBeDefined();

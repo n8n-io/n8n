@@ -146,6 +146,7 @@ describe('SubAgentForegroundRunner', () => {
 		await runner.runForeground(spawnRequest, {
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
@@ -155,6 +156,7 @@ describe('SubAgentForegroundRunner', () => {
 		const result = await runner.runForeground(spawnRequest, {
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		expect(result).toMatchObject({
@@ -172,6 +174,7 @@ describe('SubAgentForegroundRunner', () => {
 			memoryOwnerAgentId: 'agent-1',
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			toolDescriptors: runtimeSource.toolDescriptors,
 			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
@@ -208,12 +211,29 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
+	it('records the child turn with the parent run type, not its own published state', async () => {
+		const result = await runner.runForeground(spawnRequest, {
+			projectId,
+			credentialProvider,
+			runType: 'test',
+		});
+
+		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				threadId: result.threadId,
+				agentId: 'agent-1',
+				telemetry: expect.objectContaining({ runType: 'test' }),
+			}),
+		);
+	});
+
 	it('filters sub-agent tools by the delegating user access when the parent run has a user', async () => {
 		const user = mock<User>({ id: 'user-1' });
 
 		await runner.runForeground(spawnRequest, {
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			user,
 		});
 
@@ -228,6 +248,7 @@ describe('SubAgentForegroundRunner', () => {
 			{
 				projectId,
 				credentialProvider,
+				runType: 'production',
 			},
 		);
 
@@ -266,6 +287,7 @@ describe('SubAgentForegroundRunner', () => {
 				projectId,
 				parentAgentId,
 				credentialProvider,
+				runType: 'production',
 			},
 		);
 
@@ -329,6 +351,7 @@ describe('SubAgentForegroundRunner', () => {
 			runner.runForeground(spawnRequest, {
 				projectId,
 				credentialProvider,
+				runType: 'production',
 			}),
 		).resolves.toMatchObject({
 			status: 'suspended',
@@ -374,6 +397,7 @@ describe('SubAgentForegroundRunner', () => {
 				projectId,
 				parentAgentId,
 				credentialProvider,
+				runType: 'production',
 			},
 		);
 
@@ -430,6 +454,7 @@ describe('SubAgentForegroundRunner', () => {
 			runner.runForeground(spawnRequest, {
 				projectId,
 				credentialProvider,
+				runType: 'production',
 			}),
 		).resolves.toMatchObject({
 			status: 'failed',
@@ -457,6 +482,7 @@ describe('SubAgentForegroundRunner', () => {
 		const run = runner.runForeground(spawnRequest, {
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			abortSignal: parentAbort.signal,
 		});
 
@@ -482,6 +508,7 @@ describe('SubAgentForegroundRunner', () => {
 		await runner.runForeground(spawnRequest, {
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			telemetry: parentTelemetry,
 		});
 
@@ -502,6 +529,7 @@ describe('SubAgentForegroundRunner', () => {
 		await runner.runForeground(spawnRequest, {
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		const options = childAgent.stream.mock.calls[0]?.[1];

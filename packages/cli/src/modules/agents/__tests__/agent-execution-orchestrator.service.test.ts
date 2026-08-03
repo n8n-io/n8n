@@ -33,6 +33,18 @@ const schema: AgentJsonConfig = {
 	instructions: 'Help users',
 };
 
+const telemetryContext = {
+	runType: 'test' as const,
+	configuration: {
+		model: schema.model,
+		channels: [],
+		tool_types: [],
+		tool_count: 0,
+		num_skills: 0,
+		memory_type: 'none' as const,
+	},
+};
+
 function makeReadableStream(chunks: StreamChunk[]): ReadableStream<StreamChunk> {
 	return new ReadableStream<StreamChunk>({
 		start(controller) {
@@ -79,14 +91,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 		toolRegistry: mock<ToolRegistry>(),
 		projectId,
 		agentId,
-		telemetryConfiguration: {
-			model: schema.model,
-			channels: [],
-			tool_types: [],
-			tool_count: 0,
-			num_skills: 0,
-			memory_type: 'none' as const,
-		},
+		telemetryConfiguration: telemetryContext.configuration,
 	};
 }
 
@@ -190,6 +195,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
+				telemetry: telemetryContext,
 				abortSignal: abortController.signal,
 			}),
 		);
@@ -227,6 +233,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
+				telemetry: telemetryContext,
 				onExecutionRecorded,
 			}),
 		);
@@ -248,6 +255,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
+				telemetry: telemetryContext,
 			}),
 		);
 
@@ -471,6 +479,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
+				telemetry: telemetryContext,
 			}),
 		);
 
@@ -506,6 +515,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					message: 'hello',
 					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 					projectId,
+					telemetry: telemetryContext,
 				}),
 			),
 		).rejects.toThrow('reader failed while consuming stream');
@@ -540,6 +550,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			message: 'hello',
 			memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 			projectId,
+			telemetry: telemetryContext,
 			abortSignal: abortController.signal,
 			onExecutionRecorded: vi.fn(),
 		});
@@ -858,6 +869,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
+				telemetry: telemetryContext,
 			}),
 		);
 		expect(runtime.agent.stream).toHaveBeenCalledWith(

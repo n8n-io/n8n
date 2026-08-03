@@ -23,6 +23,8 @@ import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import type { AgentRunTelemetryType } from '@/interfaces';
+
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
@@ -37,6 +39,13 @@ export interface SubAgentForegroundRunContext {
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId?: string;
 	credentialProvider: CredentialProvider;
+	/**
+	 * Telemetry classification inherited from the delegating parent run. A
+	 * sub-agent always runs its own published snapshot, so classifying by that
+	 * alone would report `production` for every delegation — including ones made
+	 * while the parent is being tested in the builder preview.
+	 */
+	runType: AgentRunTelemetryType;
 	executionCounter?: AgentExecutionCounter;
 	/** Parent run's abort signal — cancelling the parent cancels this child. */
 	abortSignal?: AbortSignal;
@@ -169,6 +178,7 @@ export class SubAgentForegroundRunner {
 			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
 			runtimeProfile: 'sub-agent',
+			runType: context.runType,
 			parentAgentIdForDelegation: context.parentAgentId,
 			user: context.user,
 			instrumentation: context.instrumentation,
@@ -211,6 +221,7 @@ export class SubAgentForegroundRunner {
 				threadId,
 				parentThreadId: operation.request.parentThreadId,
 				parentAgentId: context.parentAgentId,
+				runType: context.runType,
 				taskPath: operation.taskPath,
 				userMessage,
 				record: messageRecord,
@@ -245,6 +256,7 @@ export class SubAgentForegroundRunner {
 		threadId: string;
 		parentThreadId?: string;
 		parentAgentId?: string;
+		runType: AgentRunTelemetryType;
 		taskPath: SubAgentTaskPath;
 		userMessage: string | null;
 		record: MessageRecord;
@@ -256,6 +268,7 @@ export class SubAgentForegroundRunner {
 			threadId,
 			parentThreadId,
 			parentAgentId,
+			runType,
 			taskPath,
 			userMessage,
 			record,
@@ -277,7 +290,7 @@ export class SubAgentForegroundRunner {
 					...(parentAgentId !== undefined ? { parentAgentId } : {}),
 				},
 				telemetry: {
-					runType: 'production',
+					runType,
 					configuration: buildAgentConfigurationTelemetryFromConfig(runtimeSource.config),
 				},
 			});

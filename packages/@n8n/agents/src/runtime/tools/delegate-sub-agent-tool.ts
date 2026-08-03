@@ -33,6 +33,7 @@ import type {
 } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import type { JSONValue } from '../../types/utils/json';
+import { withoutMessageCount } from '../loop/execution-counter';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
 export const INLINE_SUB_AGENT_ID = 'inline';
@@ -713,7 +714,9 @@ function createDelegateSubAgentRequest(
 			: {}),
 		...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
 		...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
-		...(ctx.executionCounter !== undefined ? { parentExecutionCounter: ctx.executionCounter } : {}),
+		...(ctx.executionCounter !== undefined
+			? { parentExecutionCounter: withoutMessageCount(ctx.executionCounter) }
+			: {}),
 		...(ctx.parentTelemetry !== undefined ? { parentTelemetry: ctx.parentTelemetry } : {}),
 		...(policy !== undefined ? { policy } : {}),
 	};

@@ -670,7 +670,7 @@ describe('createDelegateSubAgentTool', () => {
 		]);
 	});
 
-	it('forwards the parent execution counter to the runner callback', async () => {
+	it('forwards the parent execution counter but suppresses the child message count', async () => {
 		const runSubAgent = vi
 			.fn<DelegateSubAgentRunner>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
@@ -687,14 +687,16 @@ describe('createDelegateSubAgentTool', () => {
 			executionCounter,
 		});
 
-		expect(runSubAgent).toHaveBeenCalledWith(
-			expect.objectContaining({
-				parentExecutionCounter: executionCounter,
-			}),
-			expect.objectContaining({
-				runInlineSubAgent: expect.any(Function),
-			}),
-		);
+		const forwarded = runSubAgent.mock.calls[0]?.[0]?.parentExecutionCounter;
+		forwarded?.incrementMessageCount();
+		forwarded?.incrementToolCallCount();
+		forwarded?.incrementTokenCount(42);
+
+		// A delegation is not a fresh user turn, so it must not add to the parent's
+		// message count — but its tokens and tool calls still roll up.
+		expect(executionCounter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(executionCounter.incrementToolCallCount).toHaveBeenCalledOnce();
+		expect(executionCounter.incrementTokenCount).toHaveBeenCalledWith(42);
 	});
 
 	it('forwards the parent persistence thread id and resource id', async () => {
