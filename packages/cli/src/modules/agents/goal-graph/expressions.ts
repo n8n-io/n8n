@@ -127,11 +127,12 @@ function isDataObject(value: unknown): value is IDataObject {
 /**
  * Normalize a tool output into the `$json` object that output-mapping
  * expressions (`={{ $json.id }}`) read. Tools return data in several shapes —
- * this makes `$json` see the data regardless:
+ * this makes `$json` see the meaningful row regardless of tool type:
  *
- * - a plain object → used directly;
- * - a JSON string (handlers often `return JSON.stringify(...)`, or the model-
- *   facing result is a string) → parsed;
+ * - a plain object → used directly (custom tools);
+ * - a JSON string (`return JSON.stringify(...)`) → parsed;
+ * - an n8n sub-workflow envelope `{ executionId, status, data: { <node>: [rows] } }`
+ *   (workflow tools) → the last node's first row;
  * - an n8n item array `[{ json: {...} }]` or `[ {...} ]` → first element;
  * - a `{ json: {...} }` envelope → the inner object.
  *
@@ -148,6 +149,20 @@ export function toJsonContext(output: unknown): IDataObject {
 			} catch {
 				// Not JSON — keep the raw string, exposed below as `{ value }`.
 			}
+		}
+	}
+
+	// Workflow-tool envelope: unwrap to the last node's first output row so
+	// `$json.<field>` reads the workflow's actual result, not the wrapper.
+	if (
+		isDataObject(value) &&
+		isDataObject(value.data) &&
+		('executionId' in value || 'status' in value)
+	) {
+		const nodeOutputs = Object.values(value.data).filter((o): o is unknown[] => Array.isArray(o));
+		const lastRows = nodeOutputs[nodeOutputs.length - 1];
+		if (lastRows && lastRows.length > 0) {
+			value = lastRows[0];
 		}
 	}
 

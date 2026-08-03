@@ -73,6 +73,17 @@ describe('toJsonContext', () => {
 		expect(toJsonContext({ json: { id: 'SF-3' } })).toEqual({ id: 'SF-3' });
 	});
 
+	it('unwraps the workflow-tool execution envelope to the last output row', () => {
+		// Shape returned by a sub-workflow tool, so $json.id resolves.
+		expect(
+			toJsonContext({
+				executionId: '5991',
+				status: 'success',
+				data: { 'Edit Fields': [{ id: '100500' }] },
+			}),
+		).toEqual({ id: '100500' });
+	});
+
 	it('wraps non-JSON strings and primitives under value', () => {
 		expect(toJsonContext('done')).toEqual({ value: 'done' });
 		expect(toJsonContext(42)).toEqual({ value: 42 });
