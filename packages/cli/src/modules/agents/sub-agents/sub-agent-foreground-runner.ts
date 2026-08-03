@@ -26,6 +26,7 @@ import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentati
 import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
+import type { AgentExpressionContext } from '../expression/agent-expression-context';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
@@ -64,6 +65,7 @@ export interface SubAgentForegroundRunContext {
 	instrumentation?: AgentRuntimeInstrumentation;
 	/** Optional callback to forward child stream chunks to the parent chat. */
 	onChunk?: (chunk: StreamChunk) => void;
+	runtimeContext?: AgentExpressionContext;
 }
 
 export interface SubAgentForegroundResult {
@@ -120,7 +122,7 @@ export class SubAgentForegroundRunner {
 			context.instrumentation?.transformDelegatedAgentConfig?.(runtimeSource.source.config, {
 				subAgentId: runtimeSource.source.sourceId,
 			}) ?? runtimeSource.source.config;
-		const { agent } = await reconstructionService.reconstructFromResolvedSource({
+		const { agent, createRunOverlay } = await reconstructionService.reconstructFromResolvedSource({
 			config: childConfig,
 			memoryOwnerAgentId: runtimeSource.source.sourceId,
 			projectId: context.projectId,
@@ -141,6 +143,10 @@ export class SubAgentForegroundRunner {
 
 		const prompt = renderDelegateSubAgentPrompt(request);
 		try {
+			const runtimeOverlay =
+				context.runtimeContext !== undefined
+					? await createRunOverlay?.(context.runtimeContext)
+					: undefined;
 			const resultStream = await agent.stream(prompt, {
 				...(abortSignal !== undefined ? { abortSignal } : {}),
 				...(telemetry !== undefined ? { telemetry } : {}),
@@ -149,6 +155,8 @@ export class SubAgentForegroundRunner {
 					threadId,
 				},
 				executionCounter: context.executionCounter,
+				...(context.runtimeContext !== undefined ? { runtimeContext: context.runtimeContext } : {}),
+				...(runtimeOverlay !== undefined ? { runtimeOverlay } : {}),
 			});
 			const recorder = new ExecutionRecorder();
 			let structuredOutput: unknown;

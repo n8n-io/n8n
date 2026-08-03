@@ -1,17 +1,18 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
-import type { Mock, Mocked, MockedFunction } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { Author } from 'chat';
 import { createHmac } from 'crypto';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { Mock, Mocked, MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { UrlService } from '@/services/url.service';
 
 import type { Agent } from '../../../../entities/agent.entity';
+import type { AgentExpressionContext } from '../../../../expression/agent-expression-context';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../../../agent-chat-integration';
 import { loadTelegramAdapter } from '../../../esm-loader';
@@ -181,67 +182,99 @@ describe('TelegramIntegration.requiresLeader', () => {
 });
 describe('TelegramIntegration.isUserAllowed', () => {
 	const { integration } = makeIntegration();
+	const author = { userId: '123', userName: 'someuser' } as Author;
+	const expressionAllowlist = ['={{ $vars.TELEGRAM_USERS }}'];
+	const publicIntegration = {
+		type: 'telegram',
+		credentialId: 'cred-1',
+		settings: { accessMode: 'public', allowedUsers: [] },
+	} satisfies Agent['integrations'][number];
 
-	it('allows everyone in public mode', () => {
-		expect(
-			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, {
-				type: 'telegram',
-				credentialId: 'cred-1',
-				settings: {
-					accessMode: 'public',
-					allowedUsers: [],
-				},
-			}),
-		).toBe(true);
+	function makeExpressionContext(resolvedValue: unknown) {
+		const expressionContext = mock<AgentExpressionContext>();
+		expressionContext.resolveValue.mockResolvedValue(resolvedValue as never);
+		return expressionContext;
+	}
+
+	function privateIntegration(allowedUsers: string[]) {
+		return {
+			type: 'telegram',
+			credentialId: 'cred-1',
+			settings: { accessMode: 'private', allowedUsers },
+		} as const;
+	}
+
+	it.each([
+		['public', publicIntegration],
+		['legacy', undefined],
+	] as const)('allows everyone in %s mode without resolving', async (_label, settings) => {
+		const expressionContext = makeExpressionContext([]);
+
+		await expect(integration.isUserAllowed(author, settings, expressionContext)).resolves.toBe(
+			true,
+		);
+		expect(expressionContext.resolveValue).not.toHaveBeenCalled();
 	});
 
-	it('allows everyone for legacy connections without saved settings', () => {
-		expect(
-			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, undefined),
-		).toBe(true);
+	it('resolves the complete allowlist once and accepts a literal numeric ID', async () => {
+		const expressionContext = makeExpressionContext(['123', '456']);
+		const settings = privateIntegration(['123', '456']);
+
+		await expect(integration.isUserAllowed(author, settings, expressionContext)).resolves.toBe(
+			true,
+		);
+		expect(expressionContext.resolveValue).toHaveBeenCalledOnce();
+		expect(expressionContext.resolveValue).toHaveBeenCalledWith(
+			settings.settings.allowedUsers,
+			'integrations.telegram.settings.allowedUsers',
+		);
 	});
 
-	it('accepts a whitelisted user by numeric ID in private mode', () => {
-		expect(
-			integration.isUserAllowed({ userId: '123', userName: 'someuser' } as Author, {
-				type: 'telegram',
-				credentialId: 'cred-1',
-				settings: {
-					accessMode: 'private',
-					allowedUsers: ['123', '456'],
-				},
-			}),
-		).toBe(true);
+	it.each([
+		['numeric ID', author, [123]],
+		['username', { userId: '999', userName: 'john_doe123' } as Author, ['john_doe123']],
+		['@username', { userId: '999', userName: 'john_doe123' } as Author, ['@john_doe123']],
+	])('accepts a resolved %s', async (_label, candidate, resolvedValue) => {
+		await expect(
+			integration.isUserAllowed(
+				candidate,
+				privateIntegration(expressionAllowlist),
+				makeExpressionContext(resolvedValue),
+			),
+		).resolves.toBe(true);
 	});
 
-	it('accepts a whitelisted user by username in private mode', () => {
-		expect(
-			integration.isUserAllowed({ userId: '999', userName: 'john_doe123' } as Author, {
-				type: 'telegram',
-				credentialId: 'cred-1',
-				settings: {
-					accessMode: 'private',
-					allowedUsers: ['john_doe123', '456'],
-				},
-			}),
-		).toBe(true);
+	it.each([
+		['an absent user', ['456']],
+		['a boolean', [true]],
+		['an object', [{ userId: '123' }]],
+		['a non-finite number', [Number.POSITIVE_INFINITY]],
+		['a blank string', ['  ']],
+		['an empty array', []],
+		['a nested array', [['123']]],
+		['a nested invalid leaf', [['123'], [false]]],
+		['multiple users in one string', '123 456'],
+	])('denies the entire event when the result contains %s', async (_label, resolvedValue) => {
+		await expect(
+			integration.isUserAllowed(
+				author,
+				privateIntegration(expressionAllowlist),
+				makeExpressionContext(resolvedValue),
+			),
+		).resolves.toBe(false);
 	});
 
-	it('rejects a user whose ID and username are both absent from the allowlist', () => {
-		expect(
-			integration.isUserAllowed({ userId: '999', userName: 'stranger' } as Author, {
-				type: 'telegram',
-				credentialId: 'cred-1',
-				settings: {
-					accessMode: 'private',
-					allowedUsers: ['123', 'john_doe123'],
-				},
-			}),
-		).toBe(false);
+	it('propagates expression errors to the bridge authorization boundary', async () => {
+		const expressionContext = mock<AgentExpressionContext>();
+		expressionContext.resolveValue.mockRejectedValue(new Error('private expression text'));
+
+		await expect(
+			integration.isUserAllowed(author, privateIntegration(expressionAllowlist), expressionContext),
+		).rejects.toThrow('private expression text');
 	});
 
-	it('throws UnexpectedError when settings type does not match telegram', () => {
-		expect(() =>
+	it('throws UnexpectedError when settings type does not match telegram', async () => {
+		await expect(
 			integration.isUserAllowed(
 				{ userId: '123', userName: 'user' } as Author,
 				{
@@ -249,8 +282,9 @@ describe('TelegramIntegration.isUserAllowed', () => {
 					accessMode: 'private',
 					allowedUsers: ['123'],
 				} as never,
+				makeExpressionContext([]),
 			),
-		).toThrow();
+		).rejects.toThrow();
 	});
 });
 

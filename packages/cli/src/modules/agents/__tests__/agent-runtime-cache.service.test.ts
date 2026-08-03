@@ -12,6 +12,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentRunOverlayFactory } from '../expression/agent-run-overlay';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
 
@@ -38,6 +39,7 @@ function makeRuntime() {
 			close: Mock;
 		},
 		toolRegistry: mock<ToolRegistry>(),
+		createRunOverlay: vi.fn() as AgentRunOverlayFactory,
 	};
 }
 
@@ -79,6 +81,8 @@ describe('AgentRuntimeCacheService', () => {
 		const second = await service.getRuntime({ agentId, projectId });
 
 		expect(first).toBe(second);
+		expect(first.createRunOverlay).toBe(runtime.createRunOverlay);
+		expect(runtime.createRunOverlay).not.toHaveBeenCalled();
 		expect(first.telemetryConfiguration).toEqual(
 			expect.objectContaining({
 				model: 'openai:gpt-4o',

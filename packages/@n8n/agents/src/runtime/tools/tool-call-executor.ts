@@ -116,6 +116,7 @@ export interface ToolBatchContext {
 	persistence?: AgentPersistenceOptions;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	runtimeContext?: unknown;
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
 }
@@ -135,6 +136,7 @@ interface ProcessToolCallParams {
 	resumeData?: unknown;
 	resolvedTelemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	runtimeContext?: unknown;
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
@@ -265,6 +267,7 @@ export class ToolCallExecutor {
 			runId,
 			telemetry: resolvedTelemetry,
 			executionCounter,
+			runtimeContext,
 			abortSignal,
 		} = ctx;
 		const errors: ToolCallError[] = [];
@@ -339,6 +342,7 @@ export class ToolCallExecutor {
 							persistence: ctx.persistence,
 							resolvedTelemetry,
 							executionCounter,
+							runtimeContext,
 							abortSignal,
 							countToolCall: true,
 						}),
@@ -472,6 +476,7 @@ export class ToolCallExecutor {
 			persistence,
 			telemetry: resolvedTelemetry,
 			executionCounter,
+			runtimeContext,
 			abortSignal,
 		} = ctx;
 		const resumedId = pendingResume.resumeToolCallId;
@@ -498,6 +503,7 @@ export class ToolCallExecutor {
 			resumeData: pendingResume.resumeData,
 			resolvedTelemetry,
 			executionCounter,
+			runtimeContext,
 			abortSignal,
 			countToolCall: false,
 			suspendPayload: resumedEntry.suspended ? resumedEntry.suspendPayload : undefined,
@@ -612,6 +618,7 @@ export class ToolCallExecutor {
 				persistence,
 				telemetry: resolvedTelemetry,
 				executionCounter,
+				runtimeContext,
 				abortSignal,
 				isAborted: ctx.isAborted,
 			});
@@ -786,6 +793,7 @@ export class ToolCallExecutor {
 			resumeData,
 			resolvedTelemetry,
 			executionCounter,
+			runtimeContext,
 			abortSignal,
 			suspendPayload,
 		} = params;
@@ -803,6 +811,7 @@ export class ToolCallExecutor {
 							emitEvent: (event) => this.eventBus.emit(event),
 							abortSignal,
 							executionCounter,
+							runtimeContext,
 							suspendPayload,
 						}),
 					abortSignal,

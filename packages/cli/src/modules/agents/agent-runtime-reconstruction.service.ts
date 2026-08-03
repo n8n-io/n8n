@@ -52,6 +52,11 @@ import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
 import { Agent } from './entities/agent.entity';
+import type { AgentRunFieldSources } from './expression/agent-run-fields';
+import {
+	createAgentRunOverlayFactory,
+	type AgentRunOverlayFactory,
+} from './expression/agent-run-overlay';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
 	createIntegrationActionTool,
@@ -79,6 +84,7 @@ import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
+
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
  * row exists, so anything keyed on a real agent id (checkpoints, knowledge
@@ -89,6 +95,12 @@ export type AgentRuntimeProfile = 'top-level' | 'sub-agent' | 'inline';
 export interface SubAgentDelegationConfig {
 	sourcesById: Record<string, SubAgentSource>;
 	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
+}
+
+export interface ReconstructedAgentRuntime {
+	agent: RuntimeAgent;
+	toolRegistry: ToolRegistry;
+	createRunOverlay?: AgentRunOverlayFactory;
 }
 
 export interface ReconstructAgentRuntimeParams {
@@ -175,6 +187,36 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 	) {}
 
+	createNodeToolInputSchemaResolver(
+		projectId: string,
+		instrumentToolAdditionalData?: AgentRuntimeInstrumentation['configureToolAdditionalData'],
+	): NonNullable<AgentRunFieldSources['resolveNodeToolInputSchema']> {
+		return async (toolSchema, expressionContext) => {
+			const { resolveNodeToolInputSchemaForRun } = await import('./tools/node-tool-factory.js');
+			return await resolveNodeToolInputSchemaForRun(
+				toolSchema,
+				{
+					executor: this.ephemeralNodeExecutor,
+					projectId,
+					instrumentToolAdditionalData,
+				},
+				expressionContext,
+			);
+		};
+	}
+
+	async filterConfigToolsForUser(
+		config: AgentJsonConfig,
+		projectId: string,
+		user: User,
+	): Promise<AgentJsonConfig> {
+		if (!config.tools?.length) return config;
+		return {
+			...config,
+			tools: await this.filterToolsForUser(config.tools, projectId, user),
+		};
+	}
+
 	async reconstructFromAgentEntity(
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
@@ -182,23 +224,17 @@ export class AgentRuntimeReconstructionService {
 		integrationType?: string,
 		user?: User,
 		instrumentation?: AgentRuntimeInstrumentation,
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	): Promise<ReconstructedAgentRuntime> {
 		let config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
 		}
-
 		// Published/integration runs have no interactive n8n user and keep
 		// today's project-scoped trust boundary. When a user is present (in-app
 		// chat, resume, task-now), drop node/workflow tools the user can't
 		// execute or lacks credential/workflow access to before the runtime is
 		// built, so denied tools never reach the LLM or the executor.
-		if (user && config.tools?.length) {
-			config = {
-				...config,
-				tools: await this.filterToolsForUser(config.tools, agentEntity.projectId, user),
-			};
-		}
+		if (user) config = await this.filterConfigToolsForUser(config, agentEntity.projectId, user);
 
 		const toolsByName: Record<string, string> = {};
 		const toolDescriptors: Record<string, ToolDescriptor> = {};
@@ -309,14 +345,10 @@ export class AgentRuntimeReconstructionService {
 	 */
 	async reconstructFromResolvedSource(
 		params: ReconstructAgentRuntimeParams,
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	): Promise<ReconstructedAgentRuntime> {
 		let config = params.config;
-		if (params.user && config.tools?.length) {
-			config = {
-				...config,
-				tools: await this.filterToolsForUser(config.tools, params.projectId, params.user),
-			};
-		}
+		if (params.user)
+			config = await this.filterConfigToolsForUser(config, params.projectId, params.user);
 
 		const subAgentDelegation = await this.createSubAgentDelegationConfig(config, params.projectId);
 
@@ -344,7 +376,7 @@ export class AgentRuntimeReconstructionService {
 		subAgentDelegation: SubAgentDelegationConfig;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
-	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	}): Promise<ReconstructedAgentRuntime> {
 		const {
 			config,
 			memoryOwnerAgentId,
@@ -373,7 +405,6 @@ export class AgentRuntimeReconstructionService {
 		const aiMcpFetch =
 			instrumentation?.mcpFetch ??
 			createAiMcpFetch(this.outboundHttp, this.ssrfConfig, this.ssrfProtectionService);
-
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
@@ -431,7 +462,21 @@ export class AgentRuntimeReconstructionService {
 			instrumentation,
 		});
 
-		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
+		const resolveNodeToolInputSchema = this.createNodeToolInputSchemaResolver(
+			projectId,
+			instrumentation?.configureToolAdditionalData,
+		);
+		const createRunOverlay = createAgentRunOverlayFactory({
+			config,
+			skills,
+			resolveNodeToolInputSchema,
+		});
+
+		return {
+			agent: reconstructed,
+			toolRegistry: buildToolRegistry(resolvedTools),
+			createRunOverlay,
+		};
 	}
 
 	async createSubAgentDelegationConfig(

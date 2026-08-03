@@ -16,6 +16,7 @@ import { TtlMap } from '@/utils/ttl-map';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
+import type { AgentRunOverlayFactory } from './expression/agent-run-overlay';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -42,6 +43,7 @@ export interface AgentRuntime {
 	toolRegistry: ToolRegistry;
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
+	createRunOverlay?: AgentRunOverlayFactory;
 }
 
 interface RuntimeInitialization {
@@ -228,14 +230,17 @@ export class AgentRuntimeCacheService {
 			projectId,
 			user,
 		);
-		const { agent: agentInstance, toolRegistry } =
-			await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
-				agentData,
-				credentialProvider,
-				usePublishedVersion ? 'production' : 'test',
-				integrationType,
-				user,
-			);
+		const {
+			agent: agentInstance,
+			toolRegistry,
+			createRunOverlay,
+		} = await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
+			agentData,
+			credentialProvider,
+			usePublishedVersion ? 'production' : 'test',
+			integrationType,
+			user,
+		);
 
 		return {
 			agent: agentInstance,
@@ -243,6 +248,7 @@ export class AgentRuntimeCacheService {
 			toolRegistry,
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
+			createRunOverlay,
 		};
 	}
 }

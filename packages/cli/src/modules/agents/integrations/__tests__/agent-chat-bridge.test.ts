@@ -1,10 +1,16 @@
-import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
-import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import {
+	type AgentIntegrationConfig,
+	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+	type RichCardComponentType,
+} from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { AgentExpressionContext } from '../../expression/agent-expression-context';
+import type { AgentExpressionContextService } from '../../expression/agent-expression-context.service';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
@@ -14,8 +20,6 @@ import {
 import type { ComponentMapper } from '../component-mapper';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
 import { SlackIntegration } from '../platforms/slack-integration';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { RichCardComponentType } from '@n8n/api-types';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
@@ -96,7 +100,7 @@ async function* toStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
 }
 
 function makeAgentExecutor(chunks: StreamChunk[]) {
-	const captured: { message: string }[] = [];
+	const captured: Array<{ message: string }> = [];
 	const executeForChatPublished = vi.fn((config: { message: string }) => {
 		captured.push(config);
 		return toStream(chunks);
@@ -2226,5 +2230,134 @@ describe('AgentChatBridge — Slack thread history', () => {
 		// The full 2000-char message is not surfaced; it is cut to 1500 chars + ellipsis.
 		expect(call.message).not.toContain(longText);
 		expect(call.message).toContain(`${'a'.repeat(1500)}…`);
+	});
+});
+
+describe('AgentChatBridge — expression-aware authorization', () => {
+	const componentMapper = mock<ComponentMapper>();
+	const logger = mock<Logger>();
+	const integration = {
+		type: 'test-authorization',
+		credentialId: 'cred-1',
+	} as unknown as AgentIntegrationConfig;
+
+	afterEach(() => {
+		Container.reset();
+		vi.clearAllMocks();
+	});
+
+	function setup(
+		authorize: NonNullable<AgentChatIntegration['isUserAllowed']>,
+		contextService: Pick<AgentExpressionContextService, 'createForProject'>,
+	) {
+		const registry = mock<ChatIntegrationRegistry>();
+		registry.get.mockReturnValue({ isUserAllowed: authorize } as AgentChatIntegration);
+		Container.set(ChatIntegrationRegistry, registry);
+
+		const { bot, handlers } = makeBot();
+		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+		const bridge = new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			agentExecutor as never,
+			componentMapper,
+			logger,
+			'project-1',
+			integration,
+			undefined,
+			undefined,
+			contextService as AgentExpressionContextService,
+		);
+
+		return { bridge, handlers, agentExecutor };
+	}
+
+	it.each(['mention', 'subscribed', 'action'] as const)(
+		'reuses one project expression context for %s authorization and execution',
+		async (eventType) => {
+			const expressionContext = mock<AgentExpressionContext>();
+			const contextService = mock<AgentExpressionContextService>();
+			contextService.createForProject.mockResolvedValue(expressionContext);
+			const authorize = vi.fn().mockResolvedValue(true);
+			const { bridge, handlers, agentExecutor } = setup(authorize, contextService);
+			const updatedIntegration = { ...integration, credentialId: 'cred-2' };
+			bridge.updateIntegration(updatedIntegration);
+			const user = { userId: 'u1', userName: 'user1' };
+
+			if (eventType === 'action') {
+				await handlers.action!({
+					actionId: 'resume:run-1:tool-1:0',
+					value: '{"approved":true}',
+					messageId: 'message-1',
+					thread: makeThread(),
+					threadId: 'thread-1',
+					user,
+					adapter: { deleteMessage: vi.fn().mockResolvedValue(undefined) },
+				});
+			} else {
+				await handlers[eventType]!(makeThread(), { text: 'hi', author: user });
+			}
+
+			expect(contextService.createForProject).toHaveBeenCalledOnce();
+			expect(authorize).toHaveBeenCalledWith(user, updatedIntegration, expressionContext);
+			const execute =
+				eventType === 'action'
+					? agentExecutor.resumeForChat
+					: agentExecutor.executeForChatPublished;
+			expect(execute).toHaveBeenCalledWith(expect.objectContaining({ expressionContext }));
+		},
+	);
+
+	it.each([
+		{ label: 'access is denied', authorization: false },
+		{ label: 'authorization fails', authorization: new Error('secret authorization') },
+	])('fails closed without replying when $label', async ({ authorization }) => {
+		const contextService = mock<AgentExpressionContextService>();
+		contextService.createForProject.mockResolvedValue(mock<AgentExpressionContext>());
+		const authorize = vi.fn();
+		if (authorization instanceof Error) authorize.mockRejectedValue(authorization);
+		else authorize.mockResolvedValue(authorization);
+		const { handlers, agentExecutor } = setup(authorize, contextService);
+		const thread = makeThread();
+
+		await handlers.mention!(thread, {
+			text: 'hi',
+			author: { userId: 'u1', userName: 'user1' },
+		});
+
+		expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		expect(thread.subscribe).not.toHaveBeenCalled();
+		expect(thread.post).not.toHaveBeenCalled();
+		if (!(authorization instanceof Error)) {
+			expect(logger.warn).not.toHaveBeenCalled();
+			return;
+		}
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('Failed to evaluate integration authorization'),
+			expect.objectContaining({
+				fieldPath: 'integrations.test-authorization.settings',
+			}),
+		);
+		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('secret');
+	});
+
+	it('reports expression context creation failures through normal handler errors', async () => {
+		const contextService = mock<AgentExpressionContextService>();
+		contextService.createForProject.mockRejectedValue(new Error('context unavailable'));
+		const { handlers, agentExecutor } = setup(vi.fn(), contextService);
+		const thread = makeThread();
+
+		await handlers.mention!(thread, {
+			text: 'hi',
+			author: { userId: 'u1', userName: 'user1' },
+		});
+
+		expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		expect(thread.subscribe).not.toHaveBeenCalled();
+		expect(thread.post).toHaveBeenCalledOnce();
+		expect(logger.error).toHaveBeenCalledWith(
+			expect.stringContaining('Error in handler'),
+			expect.objectContaining({ error: 'context unavailable' }),
+		);
 	});
 });

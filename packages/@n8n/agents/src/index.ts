@@ -74,6 +74,8 @@ export type {
 	SmoothStreamOptions,
 	TokenUsage,
 	AgentExecutionCounter,
+	AgentRuntimeOverlay,
+	AgentToolRuntimeOverride,
 	PersistedExecutionOptions,
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,

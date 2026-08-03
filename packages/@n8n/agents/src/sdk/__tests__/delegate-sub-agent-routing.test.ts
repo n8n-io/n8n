@@ -10,6 +10,7 @@ import {
 	type DelegateSubAgentRunner,
 	type DelegateSubAgentRunnerHelpers,
 } from '../../runtime/tools/delegate-sub-agent-tool';
+import { createRuntimeSkillRegistry, type RuntimeSkillSource } from '../../skills';
 import type {
 	AgentDbMessage,
 	AgentExecutionCounter,
@@ -128,10 +129,18 @@ const delegateInput = {
 	goal: 'Find the API behavior.',
 };
 
-async function buildAgentConfig(agent: Agent): Promise<AgentRuntimeModule.AgentRuntimeConfig> {
-	return await (
-		agent as unknown as { build(): Promise<AgentRuntimeModule.AgentRuntimeConfig> }
-	).build();
+async function buildAgentConfig(
+	agent: Agent,
+	executionOptions?: Parameters<Agent['generate']>[1],
+): Promise<AgentRuntimeModule.AgentRuntimeConfig> {
+	const internals = agent as unknown as {
+		ensureBuilt(): Promise<AgentRuntimeModule.AgentRuntimeConfig>;
+		prepareRuntimeConfig(
+			config: AgentRuntimeModule.AgentRuntimeConfig,
+			options?: Parameters<Agent['generate']>[1],
+		): Promise<AgentRuntimeModule.AgentRuntimeConfig>;
+	};
+	return await internals.prepareRuntimeConfig(await internals.ensureBuilt(), executionOptions);
 }
 
 describe('delegate sub-agent routing', () => {
@@ -315,6 +324,76 @@ describe('delegate sub-agent routing', () => {
 		expect(executionCounter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(executionCounter.incrementToolCallCount).toHaveBeenCalledOnce();
 		expect(executionCounter.incrementTokenCount).toHaveBeenCalledWith(42);
+	});
+
+	it('passes the exact parent runtime context to inline child generate options', async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.tool(createDelegateSubAgentTool())
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		const runtimeContext = { variables: { region: 'eu' } };
+
+		await delegateTool?.handler?.(delegateInput, {
+			runId: 'parent-run-1',
+			runtimeContext,
+		});
+
+		expect(runtimeGenerateOptions[0]).toEqual(expect.objectContaining({ runtimeContext }));
+		expect(runtimeGenerateOptions[0]?.runtimeContext).toBe(runtimeContext);
+	});
+
+	it('builds inline child tools from the per-run overlay', async () => {
+		const resolvedSchema = z.object({ region: z.string() });
+		const resolvedSkill = {
+			id: 'regional_help',
+			name: 'Regional help',
+			description: 'Use regional guidance',
+			instructions: 'Resolved regional instructions',
+		};
+		const loadSkill = vi.fn(
+			async (skillId: string) =>
+				await Promise.resolve(skillId === resolvedSkill.id ? resolvedSkill : null),
+		);
+		const skillSource = {
+			registry: createRuntimeSkillRegistry([resolvedSkill]),
+			loadSkill,
+		} satisfies RuntimeSkillSource;
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.skills([{ id: 'base_skill', name: 'Base', description: 'Base skill', instructions: 'Base' }])
+			.tool(createDelegateSubAgentTool())
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent, {
+			runtimeOverlay: {
+				skillSource,
+				toolOverrides: new Map([
+					['lookup', { description: 'Resolved lookup', inputSchema: resolvedSchema }],
+				]),
+			},
+		});
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+
+		await delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' });
+
+		const childTools = runtimeConfigs[0]?.tools as BuiltTool[];
+		expect(childTools.find((tool) => tool.name === 'lookup')).toMatchObject({
+			description: 'Resolved lookup',
+			inputSchema: resolvedSchema,
+		});
+		await childTools
+			.find((tool) => tool.name === 'load_skill')
+			?.handler?.({ skillId: resolvedSkill.id }, {});
+		expect(loadSkill).toHaveBeenCalledWith(resolvedSkill.id);
 	});
 
 	it('preserves required approval when completing inline delegate tools', async () => {

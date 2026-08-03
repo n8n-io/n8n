@@ -1,5 +1,7 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import {
-	AgentIntegrationConfig,
+	type AgentIntegrationConfig,
 	type AgentIntegrationSettings,
 	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
@@ -404,7 +406,9 @@ export class ChatIntegrationService {
 		previous: AgentIntegrationConfig[],
 		next: AgentIntegrationConfig[],
 	): Promise<void> {
-		const previousKeys = new Set(previous.map(buildIntegrationConnectionId));
+		const previousByKey = new Map(
+			previous.map((integration) => [buildIntegrationConnectionId(integration), integration]),
+		);
 		const nextKeys = new Set(next.map(buildIntegrationConnectionId));
 
 		for (const integration of previous) {
@@ -413,22 +417,31 @@ export class ChatIntegrationService {
 			}
 		}
 
-		const additions = next.filter((i) => !previousKeys.has(buildIntegrationConnectionId(i)));
+		const additionsOrChanges = next.filter((integration) => {
+			const previousConfig = previousByKey.get(buildIntegrationConnectionId(integration));
+			return previousConfig === undefined || !isDeepStrictEqual(previousConfig, integration);
+		});
 
-		if (additions.length > 0 && !agent.activeVersionId) {
+		if (additionsOrChanges.length > 0 && !agent.activeVersionId) {
 			this.logger.debug(
 				'[ChatIntegrationService] Skipping connect for unpublished agent — entry persisted, will connect on publish',
-				{ agentId: agent.id, pendingTypes: additions.map((i) => i.type) },
+				{ agentId: agent.id, pendingTypes: additionsOrChanges.map((i) => i.type) },
 			);
 			return;
 		}
 
-		for (const integration of additions) {
+		for (const integration of additionsOrChanges) {
 			const key = this.connectionKey(agent.id, integration.type, integration.credentialId);
-			if (this.connections.has(key)) continue;
-
+			const existingConnection = this.connections.get(key);
 			try {
-				await this.connect(agent.id, integration, agent.projectId);
+				if (existingConnection) {
+					existingConnection.bridge.updateIntegration(integration);
+				} else if (
+					!this.integrationRegistry.get(integration.type)?.requiresLeader() ||
+					this.instanceSettings.isLeader
+				) {
+					await this.connect(agent.id, integration, agent.projectId);
+				}
 				await this.broadcastIntegrationChange(agent.id, integration, 'connect');
 			} catch (error) {
 				this.logger.warn('[ChatIntegrationService] Could not connect integration during sync', {
@@ -536,7 +549,11 @@ export class ChatIntegrationService {
 				}
 
 				const key = this.connectionKey(agent.id, integration.type, integration.credentialId);
-				if (this.connections.has(key)) continue;
+				const existingConnection = this.connections.get(key);
+				if (existingConnection) {
+					existingConnection.bridge.updateIntegration(integration);
+					continue;
+				}
 
 				// External setup runs once per cluster — the leader claims that role
 				// on startup; followers only build local runtime state.
@@ -588,7 +605,11 @@ export class ChatIntegrationService {
 		}
 
 		const key = this.connectionKey(agentId, type, credentialId);
-		if (this.connections.has(key)) return;
+		const existingConnection = this.connections.get(key);
+		if (existingConnection) {
+			existingConnection.bridge.updateIntegration(integration);
+			return;
+		}
 
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
 		if (!agent) {

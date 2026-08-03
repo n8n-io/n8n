@@ -1,4 +1,10 @@
-import type { Agent as RuntimeAgent, BuiltAgent, BuiltTool, CredentialProvider } from '@n8n/agents';
+import type {
+	Agent as RuntimeAgent,
+	AgentRuntimeOverlay,
+	BuiltAgent,
+	BuiltTool,
+	CredentialProvider,
+} from '@n8n/agents';
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
@@ -27,6 +33,9 @@ import {
 	buildAgentConfigurationTelemetryFromConfig,
 } from './agent-telemetry';
 import { AgentExecutionService } from './agent-execution.service';
+import type { AgentExpressionContext } from './expression/agent-expression-context';
+import { AgentExpressionContextService } from './expression/agent-expression-context.service';
+import type { AgentRunOverlayFactory } from './expression/agent-run-overlay';
 import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
@@ -57,7 +66,17 @@ export class AgentWorkflowExecutionService {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly agentRunTracingService: AgentRunTracingService,
+		private readonly agentExpressionContextService: AgentExpressionContextService,
 	) {}
+
+	private async createExpressionContext(
+		projectId: string,
+		workflowContext?: ExecuteAgentWorkflowContext,
+	): Promise<AgentExpressionContext> {
+		const resolver = workflowContext?.expressionResolver;
+		if (resolver) return this.agentExpressionContextService.createForWorkflow(resolver);
+		return await this.agentExpressionContextService.createForProject(projectId);
+	}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
 		const normalizedError = error instanceof Error ? error : new Error(String(error));
@@ -81,7 +100,8 @@ export class AgentWorkflowExecutionService {
 		reconstructed: RuntimeAgent,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
-	): { ok: boolean; agent?: BuiltAgent; error?: string } {
+		createRunOverlay?: AgentRunOverlayFactory,
+	): CompiledWorkflowAgent {
 		if (outputSchema) {
 			reconstructed.structuredOutput(outputSchema);
 		}
@@ -101,7 +121,7 @@ export class AgentWorkflowExecutionService {
 			}
 			reconstructed.tool(extraTools);
 		}
-		return { ok: true, agent: reconstructed as BuiltAgent };
+		return { ok: true, agent: reconstructed as BuiltAgent, createRunOverlay };
 	}
 
 	/**
@@ -115,7 +135,7 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
-	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
+	): Promise<CompiledWorkflowAgent> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
 		}
@@ -128,13 +148,18 @@ export class AgentWorkflowExecutionService {
 			// webhook/trigger-fired executions even that can be absent. This
 			// runtime also isn't cached (see the docstring above), so there's no
 			// cache-key concern here either — just no per-user tool filtering.
-			const { agent: reconstructed } =
+			const { agent: reconstructed, createRunOverlay } =
 				await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 					agentEntity,
 					credentialProvider,
 					runType,
 				);
-			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
+			return this.applyPerCallAgentExtras(
+				reconstructed,
+				outputSchema,
+				extraTools,
+				createRunOverlay,
+			);
 		} catch (e) {
 			return {
 				ok: false,
@@ -160,9 +185,9 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
-	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
+	): Promise<CompiledWorkflowAgent> {
 		try {
-			const { agent: reconstructed } =
+			const { agent: reconstructed, createRunOverlay } =
 				await this.agentRuntimeReconstructionService.reconstructFromResolvedSource({
 					config,
 					memoryOwnerAgentId: syntheticAgentId,
@@ -174,7 +199,12 @@ export class AgentWorkflowExecutionService {
 					runtimeProfile: 'inline',
 					runType,
 				});
-			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
+			return this.applyPerCallAgentExtras(
+				reconstructed,
+				outputSchema,
+				extraTools,
+				createRunOverlay,
+			);
 		} catch (e) {
 			return {
 				ok: false,
@@ -205,6 +235,8 @@ export class AgentWorkflowExecutionService {
 		telemetryUserId?: string;
 		runType: AgentRunTelemetryType;
 		outputSchema?: JSONSchema7;
+		expressionContext: AgentExpressionContext;
+		runtimeOverlay?: AgentRuntimeOverlay;
 		tracing: {
 			projectId: string;
 			executionId?: string;
@@ -220,6 +252,8 @@ export class AgentWorkflowExecutionService {
 			telemetryUserId,
 			runType,
 			outputSchema,
+			expressionContext,
+			runtimeOverlay,
 			tracing,
 		} = params;
 
@@ -261,6 +295,8 @@ export class AgentWorkflowExecutionService {
 					runType,
 				}),
 				...(telemetry ? { telemetry } : {}),
+				runtimeContext: expressionContext,
+				...(runtimeOverlay ? { runtimeOverlay } : {}),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -379,6 +415,7 @@ export class AgentWorkflowExecutionService {
 		}
 		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
 		const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
+		const expressionContext = await this.createExpressionContext(projectId, workflowContext);
 
 		const extraTools = this.buildWorkflowExtraTools(workflowContext);
 		const compiled = await this.compileIsolated(
@@ -393,6 +430,7 @@ export class AgentWorkflowExecutionService {
 		}
 
 		const agentInstance = compiled.agent;
+		const runtimeOverlay = await compiled.createRunOverlay?.(expressionContext);
 		const run = await this.streamWorkflowAgent({
 			agentInstance,
 			message,
@@ -401,6 +439,8 @@ export class AgentWorkflowExecutionService {
 			telemetryUserId,
 			runType,
 			outputSchema,
+			expressionContext,
+			runtimeOverlay,
 			tracing: {
 				projectId,
 				executionId,
@@ -484,6 +524,7 @@ export class AgentWorkflowExecutionService {
 			: config;
 
 		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+		const expressionContext = await this.createExpressionContext(projectId, workflowContext);
 
 		// For telemetry/logging and memory-owner keying — never persisted, and
 		// stable enough to aggregate runs of the same node across executions.
@@ -505,6 +546,7 @@ export class AgentWorkflowExecutionService {
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
 		}
+		const runtimeOverlay = await compiled.createRunOverlay?.(expressionContext);
 
 		const run = await this.streamWorkflowAgent({
 			agentInstance: compiled.agent,
@@ -514,6 +556,8 @@ export class AgentWorkflowExecutionService {
 			telemetryUserId,
 			runType,
 			outputSchema,
+			expressionContext,
+			runtimeOverlay,
 			tracing: {
 				projectId,
 				executionId,
@@ -597,4 +641,11 @@ interface WorkflowAgentRunOutcome {
 	structuredOutput: unknown;
 	toolCalls: ExecuteAgentData['toolCalls'];
 	streamError?: Error;
+}
+
+interface CompiledWorkflowAgent {
+	ok: boolean;
+	agent?: BuiltAgent;
+	createRunOverlay?: AgentRunOverlayFactory;
+	error?: string;
 }

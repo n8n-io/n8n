@@ -1,9 +1,9 @@
+import { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Thread, Author, Message } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
-import { AgentIntegrationConfig } from '@n8n/api-types';
-import type { RichCardComponentType } from '@n8n/api-types';
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
 import {
@@ -20,6 +20,7 @@ import type {
 	IntegrationToolConnectionDescriptor,
 	ReplyExpectation,
 } from './integration-tools';
+import type { AgentExpressionContext } from '../expression/agent-expression-context';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
 export interface AgentChatIntegrationContext {
@@ -299,7 +300,11 @@ export abstract class AgentChatIntegration {
 	 * Default (no implementation): allow. Telegram uses this to enforce the
 	 * Private-mode allowlist.
 	 */
-	isUserAllowed?(author: Author, settings: AgentIntegrationConfig | undefined): boolean;
+	isUserAllowed?(
+		author: Author,
+		settings: AgentIntegrationConfig | undefined,
+		expressionContext: AgentExpressionContext,
+	): boolean | Promise<boolean>;
 
 	/**
 	 * Optional platform context needed by the bridge before execution. Slack uses

@@ -1,4 +1,4 @@
-import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
+import type { Agent as RuntimeAgent, AgentRuntimeOverlay, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { JSONSchema7 } from 'json-schema';
@@ -12,6 +12,8 @@ import type { Telemetry } from '@/telemetry';
 
 import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentExpressionContext } from '../expression/agent-expression-context';
+import type { AgentExpressionContextService } from '../expression/agent-expression-context.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { Agent } from '../entities/agent.entity';
@@ -72,6 +74,7 @@ function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
 }
 
 function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }]) {
+	const runtimeOverlay: AgentRuntimeOverlay = { instructions: 'resolved instructions' };
 	return {
 		agent: {
 			name: 'Runtime Agent',
@@ -95,6 +98,8 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 			num_skills: 0,
 			memory_type: 'none' as const,
 		},
+		createRunOverlay: vi.fn().mockResolvedValue(runtimeOverlay),
+		runtimeOverlay,
 	};
 }
 
@@ -105,9 +110,14 @@ function makeService() {
 	const credentialsService = mock<CredentialsService>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
 	const agentRunTracingService = mock<AgentRunTracingService>();
+	const agentExpressionContextService = mock<AgentExpressionContextService>();
+	const projectExpressionContext = mock<AgentExpressionContext>();
+	const workflowExpressionContext = mock<AgentExpressionContext>();
 
 	executionService.recordMessage.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
+	agentExpressionContextService.createForProject.mockResolvedValue(projectExpressionContext);
+	agentExpressionContextService.createForWorkflow.mockReturnValue(workflowExpressionContext);
 
 	const service = new AgentWorkflowExecutionService(
 		mockLogger(),
@@ -117,6 +127,7 @@ function makeService() {
 		credentialsService,
 		reconstructionService,
 		agentRunTracingService,
+		agentExpressionContextService,
 	);
 
 	return {
@@ -126,6 +137,9 @@ function makeService() {
 		telemetry,
 		reconstructionService,
 		agentRunTracingService,
+		agentExpressionContextService,
+		projectExpressionContext,
+		workflowExpressionContext,
 	};
 }
 
@@ -142,15 +156,28 @@ describe('AgentWorkflowExecutionService', () => {
 			executionService,
 			telemetry,
 			agentRunTracingService,
+			agentExpressionContextService,
+			workflowExpressionContext,
 		} = makeService();
 		const runtime = makeRuntime([
 			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: { id: 1 } },
 			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'lookup', output: { ok: true } },
 			{ type: 'finish', finishReason: 'stop', structuredOutput: { answer: 'done' } },
 		]);
+		Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		const expressionResolver = {
+			variables: { region: 'EU' },
+			resolveParameterValue: vi.fn(),
+		};
+		const workflowContext: ExecuteAgentWorkflowContext = {
+			callingNodeName: 'Message an Agent',
+			nodes: [],
+			runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+			expressionResolver,
+		};
 
 		const result = await service.executeForWorkflow(
 			agentId,
@@ -159,6 +186,9 @@ describe('AgentWorkflowExecutionService', () => {
 			'thread-1',
 			projectId,
 			userId,
+			undefined,
+			undefined,
+			workflowContext,
 		);
 
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
@@ -168,8 +198,16 @@ describe('AgentWorkflowExecutionService', () => {
 				// across executions (NOT the execution id) or a reused session id
 				// would never see its prior messages.
 				persistence: { resourceId: 'thread-1', threadId: 'thread-1' },
+				runtimeContext: workflowExpressionContext,
+				runtimeOverlay: runtime.runtimeOverlay,
 			}),
 		);
+		expect(agentExpressionContextService.createForWorkflow).toHaveBeenCalledOnce();
+		expect(agentExpressionContextService.createForWorkflow).toHaveBeenCalledWith(
+			expressionResolver,
+		);
+		expect(agentExpressionContextService.createForProject).not.toHaveBeenCalled();
+		expect(runtime.createRunOverlay).toHaveBeenCalledWith(workflowExpressionContext);
 		expect(result).toEqual(
 			expect.objectContaining({
 				response: '',
@@ -407,6 +445,8 @@ describe('AgentWorkflowExecutionService', () => {
 				executionService,
 				telemetry,
 				agentRunTracingService,
+				agentExpressionContextService,
+				projectExpressionContext,
 			} = makeService();
 			const runtime = makeRuntime([
 				{ type: 'text-start', id: 'text-1' },
@@ -475,8 +515,13 @@ describe('AgentWorkflowExecutionService', () => {
 				'hello',
 				expect.objectContaining({
 					persistence: { resourceId: 'thread-1', threadId: 'thread-1' },
+					runtimeContext: projectExpressionContext,
+					runtimeOverlay: runtime.runtimeOverlay,
 				}),
 			);
+			expect(agentExpressionContextService.createForProject).toHaveBeenCalledWith(projectId);
+			expect(agentExpressionContextService.createForWorkflow).not.toHaveBeenCalled();
+			expect(runtime.createRunOverlay).toHaveBeenCalledWith(projectExpressionContext);
 
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({

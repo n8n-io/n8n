@@ -45,10 +45,11 @@ import {
 	createRuntimeSkillTools,
 	RUNTIME_SKILL_TOOL_NAMES,
 } from '../skills';
-import type { RuntimeSkill, RuntimeSkillSource } from '../skills';
+import type { RuntimeSkill, RuntimeSkillRegistry, RuntimeSkillSource } from '../skills';
 import type {
 	AgentEventHandler,
 	AgentMiddleware,
+	AgentToolRuntimeOverride,
 	BuiltAgent,
 	BuiltEval,
 	BuiltFileStore,
@@ -743,11 +744,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
-		const config = await this.ensureBuilt();
-		const active = this.createRuntime(config);
+		const baseConfig = await this.ensureBuilt();
 		const mergedOptions = this.mergeWithDefaults(options);
+		const config = await this.prepareRuntimeConfig(baseConfig, mergedOptions);
+		const active = this.createRuntime(config);
+		const runtimeOptions = mergedOptions ? stripRuntimeOverlay(mergedOptions) : undefined;
 		try {
-			return await active.runtime.generate(this.toMessages(input), mergedOptions);
+			return await active.runtime.generate(this.toMessages(input), runtimeOptions);
 		} finally {
 			await this.cleanupRuntime(active);
 		}
@@ -758,11 +761,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
-		const config = await this.ensureBuilt();
-		const active = this.createRuntime(config);
+		const baseConfig = await this.ensureBuilt();
 		const mergedOptions = this.mergeWithDefaults(options);
+		const config = await this.prepareRuntimeConfig(baseConfig, mergedOptions);
+		const active = this.createRuntime(config);
+		const runtimeOptions = mergedOptions ? stripRuntimeOverlay(mergedOptions) : undefined;
 		try {
-			const result = await active.runtime.stream(this.toMessages(input), mergedOptions);
+			const result = await active.runtime.stream(this.toMessages(input), runtimeOptions);
 			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
 		} catch (error) {
 			await this.cleanupRuntime(active);
@@ -786,18 +791,20 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		data: unknown,
 		options: ResumeOptions & ExecutionOptions,
 	): Promise<GenerateResult | StreamResult> {
-		const config = await this.ensureBuilt();
+		const baseConfig = await this.ensureBuilt();
+		const config = await this.prepareRuntimeConfig(baseConfig, options);
+		const runtimeOptions = stripRuntimeOverlay(options);
 		if (method === 'generate') {
-			const active = this.createRuntime(config, options.runId);
+			const active = this.createRuntime(config, runtimeOptions.runId);
 			try {
-				return await active.runtime.resume('generate', data, options);
+				return await active.runtime.resume('generate', data, runtimeOptions);
 			} finally {
 				await this.cleanupRuntime(active);
 			}
 		}
-		const active = this.createRuntime(config, options.runId);
+		const active = this.createRuntime(config, runtimeOptions.runId);
 		try {
-			const result = await active.runtime.resume('stream', data, options);
+			const result = await active.runtime.resume('stream', data, runtimeOptions);
 			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
 		} catch (error) {
 			await this.cleanupRuntime(active);
@@ -814,10 +821,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	async crashResume(
 		options: { runId: string; contextNotes?: string[] } & ExecutionOptions,
 	): Promise<StreamResult> {
-		const config = await this.ensureBuilt();
-		const active = this.createRuntime(config, options.runId);
+		const baseConfig = await this.ensureBuilt();
+		const config = await this.prepareRuntimeConfig(baseConfig, options);
+		const runtimeOptions = stripRuntimeOverlay(options);
+		const active = this.createRuntime(config, runtimeOptions.runId);
 		try {
-			const result = await active.runtime.crashResume(options);
+			const result = await active.runtime.crashResume(runtimeOptions);
 			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
 		} catch (error) {
 			await this.cleanupRuntime(active);
@@ -875,6 +884,79 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			});
 		}
 		return await this.buildPromise;
+	}
+
+	private async prepareRuntimeConfig(
+		baseConfig: AgentRuntimeConfig,
+		executionOptions?: ExecutionOptions,
+	): Promise<AgentRuntimeConfig> {
+		const overlay = executionOptions?.runtimeOverlay;
+		await overlay?.skillSource?.prepare?.();
+		const instructions =
+			overlay?.instructions !== undefined || overlay?.skillSource !== undefined
+				? this.composeInstructions(
+						overlay.instructions ?? this.instructionsText ?? baseConfig.instructions,
+						overlay.skillSource?.registry ?? this.skillSource?.registry,
+					)
+				: baseConfig.instructions;
+		const toolOverrides = overlay?.toolOverrides;
+		const overlaySkillTools =
+			overlay?.skillSource && overlay.skillSource.registry.skills.length > 0
+				? createRuntimeSkillTools(overlay.skillSource)
+				: [];
+		const conflictingSkillTool =
+			overlaySkillTools.length > 0
+				? baseConfig.tools?.find(
+						(tool) => RUNTIME_SKILL_TOOL_NAMES.has(tool.name) && !isSdkOwnedBuiltInTool(tool),
+					)
+				: undefined;
+		if (conflictingSkillTool) {
+			throw new Error(`Tool name "${conflictingSkillTool.name}" is reserved for runtime skills`);
+		}
+		const baseTools = overlay?.skillSource
+			? [
+					...(baseConfig.tools ?? []).filter(
+						(tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name) || !isSdkOwnedBuiltInTool(tool),
+					),
+					...overlaySkillTools,
+				]
+			: baseConfig.tools;
+		const baseDeferredTools = overlay?.skillSource
+			? baseConfig.deferredTools?.filter(
+					(tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name) || !isSdkOwnedBuiltInTool(tool),
+				)
+			: baseConfig.deferredTools;
+		const tools = cloneRuntimeTools(baseTools, toolOverrides);
+		const deferredTools = cloneRuntimeTools(baseDeferredTools, toolOverrides);
+		const completedTools = tools
+			? this.completeInlineDelegateTools(tools, {
+					deferredTools: deferredTools ?? [],
+					modelConfig: baseConfig.model,
+					...(baseConfig.telemetry !== undefined ? { telemetry: baseConfig.telemetry } : {}),
+					...(baseConfig.toolCallConcurrency !== undefined
+						? { toolCallConcurrency: baseConfig.toolCallConcurrency }
+						: {}),
+					...(baseConfig.toolSearch !== undefined ? { toolSearch: baseConfig.toolSearch } : {}),
+				})
+			: undefined;
+
+		return {
+			...baseConfig,
+			instructions,
+			...(completedTools !== undefined ? { tools: completedTools } : {}),
+			...(deferredTools !== undefined ? { deferredTools } : {}),
+		};
+	}
+
+	private composeInstructions(instructions: string, skillRegistry?: RuntimeSkillRegistry): string {
+		let composedInstructions = skillRegistry
+			? appendSkillCatalogToInstructions(instructions, skillRegistry)
+			: instructions;
+		const workspaceInstructions = this.workspaceInstance?.getInstructions();
+		if (workspaceInstructions) {
+			composedInstructions = `${composedInstructions}\n\n${workspaceInstructions}`;
+		}
+		return composedInstructions;
 	}
 
 	private createRuntime(config: AgentRuntimeConfig, runId?: string): ActiveRuntime {
@@ -1025,7 +1107,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
-		let allTools = [...finalStaticTools, ...mcpTools];
+		const allTools = [...finalStaticTools, ...mcpTools];
 
 		// Validate checkpoint again after discovering actual MCP tools
 		// (catches the case where MCP tools have suspendSchema after listing).
@@ -1044,33 +1126,18 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			? resolveMemoryConfigDefaults(this.memoryConfig, { defaultModel: modelConfig })
 			: undefined;
 
-		let instructions = this.instructionsText;
 		if (this.skillSource) {
 			await this.skillSource.prepare?.();
-			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
 		}
-		if (this.workspaceInstance) {
-			const wsInstructions = this.workspaceInstance.getInstructions();
-			if (wsInstructions) {
-				instructions = `${instructions}\n\n${wsInstructions}`;
-			}
-		}
+		const instructions = this.composeInstructions(
+			this.instructionsText,
+			this.skillSource?.registry,
+		);
 		const telemetry = this.telemetryConfig ?? (await this.telemetryBuilder?.build());
 		const toolSearch =
 			finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
 				? { topK: this.deferredToolSearchTopK }
 				: undefined;
-
-		allTools = this.completeInlineDelegateTools(allTools, {
-			deferredTools: finalDeferredTools,
-			modelConfig,
-			...(telemetry !== undefined ? { telemetry } : {}),
-			...(this.concurrencyValue !== undefined
-				? { toolCallConcurrency: this.concurrencyValue }
-				: {}),
-			...(toolSearch !== undefined ? { toolSearch } : {}),
-		});
-
 		let modelCost: Awaited<ReturnType<typeof getModelCost>> | undefined;
 		try {
 			const modelId =
@@ -1108,7 +1175,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			promptCaching: this.promptCachingConfig,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
-			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
+			telemetry,
 			modelCost,
 			runState,
 			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
@@ -1231,6 +1298,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					...(telemetry !== undefined ? { telemetry } : {}),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
+						: {}),
+					...(request.parentRuntimeContext !== undefined
+						? { runtimeContext: request.parentRuntimeContext }
 						: {}),
 				});
 
@@ -1409,4 +1479,24 @@ function findDuplicateToolNames(tools: BuiltTool[]): string[] {
 		seen.add(tool.name);
 	}
 	return [...duplicates].sort();
+}
+
+function cloneRuntimeTools(
+	tools: BuiltTool[] | undefined,
+	overrides: ReadonlyMap<string, AgentToolRuntimeOverride> | undefined,
+): BuiltTool[] | undefined {
+	if (!overrides?.size) return tools;
+	return tools?.map((tool) => {
+		const override = overrides.get(tool.name);
+		return {
+			...tool,
+			...(override?.description !== undefined ? { description: override.description } : {}),
+			...(override?.inputSchema !== undefined ? { inputSchema: override.inputSchema } : {}),
+		};
+	});
+}
+
+function stripRuntimeOverlay<T extends ExecutionOptions>(options: T): Omit<T, 'runtimeOverlay'> {
+	const { runtimeOverlay: _runtimeOverlay, ...runtimeOptions } = options;
+	return runtimeOptions;
 }

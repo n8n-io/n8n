@@ -405,6 +405,27 @@ describe('createDelegateSubAgentTool', () => {
 		expect(executionCounter.incrementTokenCount).toHaveBeenCalledWith(42);
 	});
 
+	it('forwards the exact parent runtime context to the runner callback', async () => {
+		const runSubAgent = vi
+			.fn<DelegateSubAgentRunner>()
+			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+		const runtimeContext = { variables: { region: 'eu' } };
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'tool-call-1',
+			runtimeContext,
+		});
+
+		expect(runSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ parentRuntimeContext: runtimeContext }),
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+			}),
+		);
+	});
+
 	it('forwards the parent persistence thread id and resource id', async () => {
 		const runSubAgent = vi
 			.fn<DelegateSubAgentRunner>()
@@ -439,6 +460,7 @@ describe('createDelegateSubAgentTool', () => {
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentResourceId');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentAbortSignal');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentExecutionCounter');
+		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentRuntimeContext');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentTelemetry');
 	});
 

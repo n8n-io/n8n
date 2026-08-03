@@ -10,6 +10,7 @@ import type { JSONObject } from '../utils/json';
 export interface ToolExecutionContext {
 	/** Agent run ID for the current execution. */
 	runId?: string;
+	runtimeContext?: unknown;
 	/**
 	 * Current persisted thread scope when the run is backed by memory.
 	 * The runtime owns these IDs so tools can read/update data tied to the
@@ -44,6 +45,7 @@ export interface ToolContext {
 	toolName?: string;
 	/** Agent run ID and persistence scope for the current execution. */
 	runId?: string;
+	runtimeContext?: ToolExecutionContext['runtimeContext'];
 	/** Current persisted thread scope when the run is backed by memory. */
 	persistence?: ToolExecutionContext['persistence'];
 	/** Telemetry config from the parent agent. */
@@ -73,6 +75,7 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	toolName?: string;
 	/** Agent run ID for the current execution. */
 	runId?: string;
+	runtimeContext?: ToolExecutionContext['runtimeContext'];
 	/** Current persisted thread scope when the run is backed by memory. */
 	persistence?: ToolExecutionContext['persistence'];
 	/** Telemetry config from the parent agent. */
@@ -147,6 +150,8 @@ export interface BuiltTool {
 	 */
 	readonly editable?: boolean;
 }
+
+export type AgentToolRuntimeOverride = Partial<Pick<BuiltTool, 'description' | 'inputSchema'>>;
 
 /**
  * A provider-defined tool (e.g. Anthropic web search, OpenAI code interpreter).

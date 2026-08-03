@@ -10,6 +10,7 @@ import {
 import { StructuredToolkit } from 'n8n-core';
 import {
 	NodeConnectionTypes,
+	WorkflowExpression,
 	type IExecuteFunctions,
 	type INodeCredentialsDetails,
 	type INodeType,
@@ -404,7 +405,23 @@ describe('EphemeralNodeExecutor', () => {
 
 	describe('executeInline routing', () => {
 		it('invokes the LangChain tool when the node implements supplyData', async () => {
-			const invoke = vi.fn().mockResolvedValue('wiki-result');
+			let isolateOwned = false;
+			const acquireIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
+				.mockImplementation(async () => {
+					isolateOwned = true;
+					return await Promise.resolve(true);
+				});
+			const releaseIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+				.mockImplementation(async () => {
+					isolateOwned = false;
+					await Promise.resolve();
+				});
+			const invoke = vi.fn().mockImplementation(async () => {
+				expect(isolateOwned).toBe(true);
+				return await Promise.resolve('wiki-result');
+			});
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mockNodeType({
 					description: toolDescription,
@@ -412,19 +429,27 @@ describe('EphemeralNodeExecutor', () => {
 				}),
 			);
 
-			const result = await executor.executeInline({
-				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
-				nodeTypeVersion: 1,
-				nodeParameters: {},
-				inputData: [{ json: { query: 'n8n' } }],
-				projectId: 'p-1',
-			});
+			try {
+				const result = await executor.executeInline({
+					nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					inputData: [{ json: { query: 'n8n' } }],
+					projectId: 'p-1',
+				});
 
-			expect(invoke).toHaveBeenCalledWith({ query: 'n8n' });
-			expect(result).toEqual({
-				status: 'success',
-				data: [{ json: { response: 'wiki-result' } }],
-			});
+				expect(invoke).toHaveBeenCalledWith({ query: 'n8n' });
+				expect(result).toEqual({
+					status: 'success',
+					data: [{ json: { response: 'wiki-result' } }],
+				});
+				expect(acquireIsolate).toHaveBeenCalledOnce();
+				expect(releaseIsolate).toHaveBeenCalledOnce();
+				expect(isolateOwned).toBe(false);
+			} finally {
+				acquireIsolate.mockRestore();
+				releaseIsolate.mockRestore();
+			}
 		});
 
 		it('returns an error result when the supplyData tool invocation throws', async () => {
@@ -652,6 +677,49 @@ describe('EphemeralNodeExecutor', () => {
 	});
 
 	describe('introspectSupplyDataToolSchema', () => {
+		it('owns the workflow expression isolate while supplyData is introspected', async () => {
+			let isolateOwned = false;
+			const acquireIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
+				.mockImplementation(async () => {
+					isolateOwned = true;
+					return await Promise.resolve(true);
+				});
+			const releaseIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+				.mockImplementation(async () => {
+					isolateOwned = false;
+					await Promise.resolve();
+				});
+			const schema = { type: 'object', properties: { query: { type: 'string' } } };
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({
+					description: toolDescription,
+					supplyData: vi.fn().mockImplementation(async () => {
+						expect(isolateOwned).toBe(true);
+						return await Promise.resolve({ response: { invoke: vi.fn(), schema } });
+					}),
+				}),
+			);
+
+			try {
+				const result = await executor.introspectSupplyDataToolSchema({
+					projectId: 'p-1',
+					nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				});
+
+				expect(result).toBe(schema);
+				expect(acquireIsolate).toHaveBeenCalledOnce();
+				expect(releaseIsolate).toHaveBeenCalledOnce();
+				expect(isolateOwned).toBe(false);
+			} finally {
+				acquireIsolate.mockRestore();
+				releaseIsolate.mockRestore();
+			}
+		});
+
 		it('returns the schema a structured tool exposes', async () => {
 			const schema = { type: 'object', properties: { query: { type: 'string' } } };
 			nodeTypes.getByNameAndVersion.mockReturnValue(

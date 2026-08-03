@@ -16,6 +16,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiService } from '@/services/ai.service';
@@ -26,6 +27,7 @@ import type { AgentChatAttachmentService } from '../agent-chat-attachment.servic
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { Agent } from '../entities/agent.entity';
+import { AgentExpressionContext } from '../expression/agent-expression-context';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type * as FromJsonConfig from '../json-config/from-json-config';
@@ -106,6 +108,7 @@ function makeService(overrides: {
 	credentialsFinderService?: ReturnType<typeof mock<CredentialsFinderService>>;
 	workflowFinderService?: ReturnType<typeof mock<WorkflowFinderService>>;
 	workflowRepository?: ReturnType<typeof mock<WorkflowRepository>>;
+	ephemeralNodeExecutor?: ReturnType<typeof mock<EphemeralNodeExecutor>>;
 }) {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
@@ -118,6 +121,7 @@ function makeService(overrides: {
 		overrides.credentialsFinderService ?? mock<CredentialsFinderService>();
 	const workflowFinderService = overrides.workflowFinderService ?? mock<WorkflowFinderService>();
 	const workflowRepository = overrides.workflowRepository ?? mock<WorkflowRepository>();
+	const ephemeralNodeExecutor = overrides.ephemeralNodeExecutor ?? mock<EphemeralNodeExecutor>();
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
@@ -128,7 +132,7 @@ function makeService(overrides: {
 		mock<UrlService>(),
 		mock<N8NCheckpointStorage>(),
 		secureRuntime,
-		mock<EphemeralNodeExecutor>(),
+		ephemeralNodeExecutor,
 		mock<N8nMemory>(),
 		mock<OauthService>(),
 		{ modules: [] } as unknown as AgentsConfig,
@@ -142,7 +146,13 @@ function makeService(overrides: {
 		mock<AgentChatAttachmentService>(),
 	);
 
-	return { service, credentialsFinderService, workflowFinderService, workflowRepository };
+	return {
+		service,
+		credentialsFinderService,
+		workflowFinderService,
+		workflowRepository,
+		ephemeralNodeExecutor,
+	};
 }
 
 function toolNamesPassedToBuildFromJson(): string[] {
@@ -176,6 +186,50 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		);
 	});
 
+	it('wires expression-bearing node schemas into the per-run overlay', async () => {
+		const inputSchema = {
+			type: 'object' as const,
+			properties: { telegramChannel: { type: 'string' as const } },
+		};
+		const ephemeralNodeExecutor = mock<EphemeralNodeExecutor>();
+		ephemeralNodeExecutor.introspectSupplyDataToolSchema.mockResolvedValue(inputSchema);
+		Container.set(NodeTypes, {
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: { description: 'Get date' },
+				supplyData: vi.fn(),
+			}),
+		} as unknown as NodeTypes);
+		const { service } = makeService({ ephemeralNodeExecutor });
+		const entity = makeAgentEntity([
+			{
+				...nodeToolWithoutCredential,
+				node: {
+					...nodeToolWithoutCredential.node,
+					nodeParameters: { channelId: '={{ $vars.telegramChannel }}' },
+				},
+			},
+		]);
+
+		const runtime = await service.reconstructFromAgentEntity(
+			entity,
+			mock<CredentialProvider>(),
+			'production',
+		);
+		if (!runtime.createRunOverlay) throw new Error('Expected a run overlay factory');
+		const context = new AgentExpressionContext(
+			{ telegramChannel: 'channel-eu' },
+			async (value) => value,
+		);
+		const overlay = await runtime.createRunOverlay(context);
+
+		expect(overlay.toolOverrides?.get('Get_date')?.inputSchema).toBe(inputSchema);
+		expect(ephemeralNodeExecutor.introspectSupplyDataToolSchema).toHaveBeenCalledOnce();
+		const request = ephemeralNodeExecutor.introspectSupplyDataToolSchema.mock.calls[0][0];
+		const additionalData = { variables: { stale: true } };
+		request.configureAdditionalData?.(additionalData as never);
+		expect(additionalData.variables).toEqual({ telegramChannel: 'channel-eu' });
+	});
+
 	it('drops node and workflow tools for a user without workflow:execute, keeps custom tools', async () => {
 		vi.mocked(userHasScopes).mockResolvedValue(false);
 		const { service } = makeService({});
@@ -194,6 +248,38 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			projectId,
 		});
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['custom_tool']);
+	});
+
+	it('does not introspect run schemas for node tools filtered by user access', async () => {
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+		const ephemeralNodeExecutor = mock<EphemeralNodeExecutor>();
+		const { service } = makeService({ ephemeralNodeExecutor });
+		const entity = makeAgentEntity([
+			{
+				...nodeToolWithoutCredential,
+				node: {
+					...nodeToolWithoutCredential.node,
+					nodeParameters: { channelId: '={{ $vars.telegramChannel }}' },
+				},
+			},
+		]);
+
+		const runtime = await service.reconstructFromAgentEntity(
+			entity,
+			mock<CredentialProvider>(),
+			'production',
+			undefined,
+			testUser,
+		);
+		if (!runtime.createRunOverlay) {
+			throw new Error('Expected a run overlay factory');
+		}
+		const overlay = await runtime.createRunOverlay(
+			new AgentExpressionContext({ telegramChannel: 'channel-eu' }, async (value) => value),
+		);
+
+		expect(overlay.toolOverrides?.size).toBe(0);
+		expect(ephemeralNodeExecutor.introspectSupplyDataToolSchema).not.toHaveBeenCalled();
 	});
 
 	it('drops a node tool when the user lacks credential:read on a baked credential', async () => {

@@ -26,6 +26,7 @@ import type {
 	NodeConnectionType,
 	IExecuteFunctions,
 	ExecuteAgentWorkflowContext,
+	ExecuteAgentExpressionResolver,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -34,10 +35,12 @@ import {
 	NodeConnectionTypes,
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
+	deepCopy,
 	createEnvProviderState,
 	applyDynamicCredentialsUsage,
 	takeAttachedDynamicCredentialsUsage,
 } from 'n8n-workflow';
+import { deepFreeze, withExpressionIsolate } from 'n8n-workflow/expression-sandboxing';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import { deepMerge } from '@/utils/deep-merge';
@@ -225,6 +228,33 @@ export class BaseExecuteContext extends NodeExecutionContext {
 					? [primaryBranch[itemIndex]]
 					: [];
 
+		const { workflow, node, runExecutionData, runIndex, connectionInputData, mode, executeData } =
+			this;
+		const variables = deepCopy(this.additionalKeys.$vars ?? {});
+		deepFreeze(variables);
+		const additionalKeys = {
+			...this.additionalKeys,
+			$vars: variables,
+			$secrets: undefined,
+		};
+		const expressionResolver: ExecuteAgentExpressionResolver = {
+			variables,
+			resolveParameterValue: async (value) =>
+				await withExpressionIsolate(workflow, async () =>
+					workflow.expression.getParameterValue(
+						value,
+						runExecutionData,
+						runIndex,
+						itemIndex,
+						node.name,
+						connectionInputData,
+						mode,
+						additionalKeys,
+						executeData,
+					),
+				),
+		};
+
 		const workflowContext: ExecuteAgentWorkflowContext = {
 			workflowId: this.workflow.id,
 			workflowName: this.workflow.name,
@@ -236,6 +266,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			hasCallerSessionId: Boolean(callerSessionId),
 			nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
 			runExecutionData: this.runExecutionData,
+			expressionResolver,
 		};
 
 		return await this.additionalData.executeAgent(

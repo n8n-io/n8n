@@ -14,8 +14,10 @@ import type {
 	SubAgentForegroundResult,
 	SubAgentForegroundRunner,
 } from './sub-agent-foreground-runner';
+import { isAgentExpressionContext } from '../expression/agent-expression-context';
 
-export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForegroundRunContext {
+export interface CreateN8nDelegateSubAgentToolOptions
+	extends Omit<SubAgentForegroundRunContext, 'runtimeContext'> {
 	runner: SubAgentForegroundRunner;
 	sourcesById: Record<string, SubAgentSource>;
 	availableSubAgents?: Array<{ id: string; name: string; useWhen?: string }>;
@@ -80,6 +82,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				},
 				{
 					...runContext,
+					...(isAgentExpressionContext(request.parentRuntimeContext)
+						? { runtimeContext: request.parentRuntimeContext }
+						: {}),
 					...(request.parentAbortSignal !== undefined
 						? { abortSignal: request.parentAbortSignal }
 						: {}),

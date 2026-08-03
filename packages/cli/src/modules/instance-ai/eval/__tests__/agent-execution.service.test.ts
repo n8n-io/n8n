@@ -1,4 +1,4 @@
-import type { GenerateResult } from '@n8n/agents';
+import type { AgentRuntimeOverlay, GenerateResult } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
@@ -12,6 +12,8 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import type { AgentExpressionContext } from '@/modules/agents/expression/agent-expression-context';
+import { AgentExpressionContextService } from '@/modules/agents/expression/agent-expression-context.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -35,6 +37,9 @@ vi.mock('@/modules/agents/repositories/agent.repository', () => ({
 vi.mock('@/modules/agents/agent-runtime-reconstruction.service', () => ({
 	AgentRuntimeReconstructionService: class AgentRuntimeReconstructionService {},
 }));
+vi.mock('@/modules/agents/expression/agent-expression-context.service', () => ({
+	AgentExpressionContextService: class AgentExpressionContextService {},
+}));
 vi.mock('@/modules/agents/utils/agent-credential-provider', () => ({
 	createAgentCredentialProvider: vi.fn(() => ({ resolve: vi.fn() })),
 }));
@@ -52,6 +57,18 @@ const user = mock<User>();
 
 const findByIdAndProjectId = vi.fn();
 const reconstructFromAgentEntity = vi.fn();
+const filterConfigToolsForUser = vi.fn();
+const createExpressionContextForProject = vi.fn();
+const expressionContext = {
+	projectId: 'proj-1',
+	variables: { instructions: 'Resolved eval instructions' },
+	resolveText: vi.fn(async (value: string, fieldPath: string) => {
+		if (fieldPath === 'instructions') return 'Resolved eval instructions';
+		if (fieldPath === 'skills.support.instructions') return 'Resolved skill instructions';
+		if (fieldPath === 'tools.0.description') return 'Resolved tool description';
+		return value;
+	}),
+} as unknown as AgentExpressionContext;
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Support agent',
@@ -67,7 +84,11 @@ const baseConfig: AgentJsonConfig = {
 	],
 } as unknown as AgentJsonConfig;
 
-const makeEntity = (config: AgentJsonConfig, integrations: unknown[] = []): AgentEntity =>
+const makeEntity = (
+	config: AgentJsonConfig,
+	integrations: unknown[] = [],
+	skills: NonNullable<AgentEntity['skills']> = {},
+): AgentEntity =>
 	({
 		id: 'agent-1',
 		projectId: 'proj-1',
@@ -75,7 +96,7 @@ const makeEntity = (config: AgentJsonConfig, integrations: unknown[] = []): Agen
 		tools: {
 			't-1': { code: 'export default 1', descriptor: { name: 'my_custom', description: 'Custom' } },
 		},
-		skills: {},
+		skills,
 		integrations,
 	}) as unknown as AgentEntity;
 
@@ -123,7 +144,15 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		Container.set(AgentRepository, { findByIdAndProjectId } as unknown as AgentRepository);
 		Container.set(AgentRuntimeReconstructionService, {
 			reconstructFromAgentEntity,
+			filterConfigToolsForUser,
 		} as unknown as AgentRuntimeReconstructionService);
+		Container.set(AgentExpressionContextService, {
+			createForProject: createExpressionContextForProject,
+		} as unknown as AgentExpressionContextService);
+		createExpressionContextForProject.mockResolvedValue(expressionContext);
+		filterConfigToolsForUser.mockImplementation(
+			async (config: AgentJsonConfig) => await Promise.resolve(config),
+		);
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 		vi.mocked(generateAgentScenarioSeed).mockResolvedValue(seed);
 		vi.mocked(createLlmMockHandler).mockReturnValue(
@@ -227,6 +256,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 				toolName: 'Slack_Tool',
 				toolKind: 'node',
 			});
+			expect(additionalData.variables).toEqual(expressionContext.variables);
 			expect(additionalData.credentialsHelper).not.toBe(innerCredentialsHelper);
 			const handler = additionalData.evalLlmMockHandler as EvalLlmMockHandler;
 			await handler(
@@ -277,6 +307,125 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(integrationType).toBeUndefined();
 		expect(userArg).toBe(user);
 		expect(instrumentation.modelFetch).toBeDefined();
+	});
+
+	it('resolves seed text fields once and reuses that overlay for execution', async () => {
+		const resolutionCounts = new Map<string, number>();
+		vi.mocked(expressionContext.resolveText).mockImplementation(async (value, fieldPath) => {
+			const call = (resolutionCounts.get(fieldPath) ?? 0) + 1;
+			resolutionCounts.set(fieldPath, call);
+			if (fieldPath === 'instructions') return `Resolved eval instructions ${call}`;
+			if (fieldPath === 'skills.support.instructions') return `Resolved skill instructions ${call}`;
+			if (fieldPath === 'tools.0.description') return `Resolved tool description ${call}`;
+			return value;
+		});
+		const config: AgentJsonConfig = {
+			...baseConfig,
+			instructions: '={{ $vars.instructions }}',
+			skills: [{ type: 'skill', id: 'support' }],
+			tools: [
+				{
+					type: 'node',
+					name: 'Slack Tool',
+					node: {
+						nodeType: 'n8n-nodes-base.slackTool',
+						nodeTypeVersion: 1,
+						nodeParameters: { channelId: '={{ $vars.channelId }}' },
+					},
+					description: '={{ $vars.toolDescription }}',
+				},
+			],
+		};
+		const skills: NonNullable<AgentEntity['skills']> = {
+			support: {
+				name: 'Support procedures',
+				description: 'Use for support requests',
+				instructions: '={{ $vars.skillInstructions }}',
+			},
+		};
+		findByIdAndProjectId.mockResolvedValue(makeEntity(config, [], skills));
+		const suspended = makeGenerateResult({
+			pendingSuspend: [
+				{
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					toolName: 'Slack_Tool',
+					input: {},
+					suspendPayload: {},
+				},
+			],
+		});
+		const generate = vi.fn().mockResolvedValue(suspended);
+		const approve = vi.fn().mockResolvedValue(makeGenerateResult());
+		const createRunOverlay = vi.fn();
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate, approve, close: vi.fn() },
+			toolRegistry: {},
+			createRunOverlay,
+		});
+
+		await buildService().executeWithLlmMock('agent-1', user, request);
+
+		expect(createExpressionContextForProject).toHaveBeenCalledOnce();
+		expect(createExpressionContextForProject).toHaveBeenCalledWith('proj-1');
+		expect(filterConfigToolsForUser).toHaveBeenCalledWith(config, 'proj-1', user);
+		expect(generateAgentScenarioSeed).toHaveBeenCalledWith(
+			expect.objectContaining({
+				instructions: expect.stringContaining('Resolved eval instructions 1'),
+				tools: expect.arrayContaining([
+					expect.objectContaining({
+						name: 'Slack_Tool',
+						description: 'Resolved tool description 1',
+					}),
+				]),
+			}),
+		);
+		expect(createRunOverlay).not.toHaveBeenCalled();
+		expect(generate).toHaveBeenCalledWith(
+			seed.openingMessage,
+			expect.objectContaining({
+				runtimeContext: expressionContext,
+				runtimeOverlay: expect.objectContaining({
+					instructions: expect.stringContaining('Resolved eval instructions 1'),
+				}),
+			}),
+		);
+		expect(approve).toHaveBeenCalledWith(
+			'generate',
+			expect.objectContaining({
+				runtimeContext: expressionContext,
+				runtimeOverlay: expect.objectContaining({
+					instructions: expect.stringContaining('Resolved eval instructions 1'),
+				}),
+			}),
+		);
+		const runtimeOptions = generate.mock.calls[0]?.[1] as {
+			runtimeOverlay: AgentRuntimeOverlay;
+		};
+		expect(runtimeOptions.runtimeOverlay.toolOverrides?.get('Slack_Tool')?.description).toBe(
+			'Resolved tool description 1',
+		);
+		const runtimeSkillSource = runtimeOptions.runtimeOverlay.skillSource;
+		if (!runtimeSkillSource)
+			throw new Error('Expected the seed skill source on the runtime overlay');
+		expect((await runtimeSkillSource.loadSkill('support'))?.instructions).toBe(
+			'Resolved skill instructions 1',
+		);
+		const scenarioInstructions = vi.mocked(generateAgentScenarioSeed).mock.calls[0][0].instructions;
+		const mockInstructions = vi.mocked(createMcpMockFetch).mock.calls[0][0].agentInstructions;
+		for (const instructions of [scenarioInstructions, mockInstructions]) {
+			expect(instructions).toContain('description: "Use for support requests"');
+			expect(instructions.match(/Skill loading protocol:/g)).toHaveLength(1);
+		}
+		for (const fieldPath of [
+			'instructions',
+			'skills.support.instructions',
+			'tools.0.description',
+		]) {
+			expect(
+				vi.mocked(expressionContext.resolveText).mock.calls.filter((call) => call[1] === fieldPath),
+			).toHaveLength(1);
+		}
 	});
 
 	it('attributes MCP calls when the server name requires normalization', async () => {
