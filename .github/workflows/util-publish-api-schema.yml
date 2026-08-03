@@ -6,7 +6,6 @@ on:
     branches:
       - master
     paths:
-      # One pattern per extension — GitHub Actions path filters don't support {a,b} brace expansion.
       - 'packages/cli/src/public-api/**/*.yml'               # Public API specs, incl. generated fragments
       - 'packages/cli/src/public-api/**/*.yaml'
       - 'packages/cli/src/public-api/**/*.css'
