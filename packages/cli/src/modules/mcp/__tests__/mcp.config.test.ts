@@ -9,6 +9,7 @@ describe('McpConfig', () => {
 
 	afterEach(() => {
 		delete process.env.N8N_MCP_SERVER_RATE_LIMIT;
+		delete process.env.N8N_MCP_SERVER_WRITE_TOOL_RATE_LIMIT;
 		delete process.env.N8N_MCP_BASE_URL;
 	});
 
@@ -44,6 +45,24 @@ describe('McpConfig', () => {
 			expect(config.rateLimitServer).toBe(100);
 		},
 	);
+
+	describe('rateLimitWriteTool', () => {
+		it('applies the documented default', () => {
+			expect(Container.get(McpConfig).rateLimitWriteTool).toBe(60);
+		});
+
+		it('reads the limit from its environment variable', () => {
+			process.env.N8N_MCP_SERVER_WRITE_TOOL_RATE_LIMIT = '25';
+
+			expect(Container.get(McpConfig).rateLimitWriteTool).toBe(25);
+		});
+
+		it('accepts 0 to disable the per-tool limit', () => {
+			process.env.N8N_MCP_SERVER_WRITE_TOOL_RATE_LIMIT = '0';
+
+			expect(Container.get(McpConfig).rateLimitWriteTool).toBe(0);
+		});
+	});
 
 	describe('baseUrl', () => {
 		it('defaults to unset', () => {

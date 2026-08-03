@@ -1,7 +1,10 @@
+import { inProduction } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NextFunction, Response, Request } from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { NextFunction, Response, Request, type RequestHandler } from 'express';
+import { rateLimit as expressRateLimit } from 'express-rate-limit';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
@@ -14,7 +17,12 @@ import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpProtectedResource } from './mcp-protected-resource';
-import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
+import { McpConfig } from './mcp.config';
+import {
+	isRateLimitedWriteTool,
+	USER_CONNECTED_TO_MCP_EVENT,
+	UNAUTHORIZED_ERROR_MESSAGE,
+} from './mcp.constants';
 import { getClientInfo, getProtocolVersion } from './mcp.utils';
 
 /**
@@ -30,7 +38,38 @@ export class McpServerMiddlewareService {
 		private readonly mcpProtectedResource: McpProtectedResource,
 		private readonly jwtService: JwtService,
 		private readonly telemetry: Telemetry,
+		private readonly mcpConfig: McpConfig,
 	) {}
+
+	/**
+	 * Second rate-limit layer: a tighter, per-user, per-tool cap for the tools
+	 * that trigger executions or heavy creation, keyed off the `Mcp-Name` header.
+	 * Runs after auth (so the user is known) and sits on top of the flat per-IP
+	 * limit, so it only ever tightens. Only enforced in production, like the flat
+	 * limit, so local building is never throttled; a `0` config disables it.
+	 */
+	getToolRateLimitMiddleware(): RequestHandler {
+		const limit = this.mcpConfig.rateLimitWriteTool;
+		if (!inProduction || limit <= 0) return (_req, _res, next) => next();
+
+		return expressRateLimit({
+			limit,
+			windowMs: 5 * Time.minutes.toMilliseconds,
+			// Key per user + tool: one client hammering execute_workflow can't
+			// exhaust another user's budget or that user's other tools.
+			keyGenerator: (req: Request) =>
+				`mcp-write:${(req as AuthenticatedRequest).user?.id ?? 'anon'}:${req.header('mcp-name')}`,
+			// Only the write tools are capped here; everything else rides the flat limit.
+			skip: (req: Request) => !isRateLimitedWriteTool(req.header('mcp-name')),
+			standardHeaders: true,
+			legacyHeaders: false,
+			message: {
+				jsonrpc: '2.0',
+				error: { code: -32000, message: 'Too many requests for this tool. Try again shortly.' },
+				id: null,
+			},
+		});
+	}
 
 	/**
 	 * Get user for a given token (API key or OAuth access token)
