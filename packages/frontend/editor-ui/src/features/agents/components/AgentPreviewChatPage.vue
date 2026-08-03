@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { LOCAL_STORAGE_AGENT_PREVIEW_CHAT_PANEL_WIDTH } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type { GoalGraphLiveState } from '../composables/useAgentChatStream';

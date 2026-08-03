@@ -4,13 +4,22 @@ import { useRoute, useRouter } from 'vue-router';
 import type { LocationQueryValue } from 'vue-router';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { EXECUTIONS_SECTION_KEY } from '../constants';
 
-export type AgentBuilderMainTab = 'agent' | 'knowledge' | 'sessions' | 'settings' | 'evals';
+export type AgentBuilderMainTab =
+	| 'agent'
+	| 'knowledge'
+	| 'goals'
+	| 'sessions'
+	| 'settings'
+	| 'evals';
 
 type AgentBuilderSection =
 	| 'knowledge'
+	| 'goals'
 	| typeof EXECUTIONS_SECTION_KEY
 	| 'settings'
 	| 'evals'
@@ -23,7 +32,12 @@ function getSectionFromQuery(
 	isEvalsEnabled: boolean,
 ): AgentBuilderSection {
 	const value = Array.isArray(section) ? section[0] : section;
-	if (value === 'knowledge' || value === EXECUTIONS_SECTION_KEY || value === 'settings') {
+	if (
+		value === 'knowledge' ||
+		value === 'goals' ||
+		value === EXECUTIONS_SECTION_KEY ||
+		value === 'settings'
+	) {
 		return value;
 	}
 	// A deep link to the evals surface falls back to the default tab while the
@@ -34,6 +48,7 @@ function getSectionFromQuery(
 
 function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
 	if (tab === 'knowledge') return 'knowledge';
+	if (tab === 'goals') return 'goals';
 	if (tab === 'sessions') return EXECUTIONS_SECTION_KEY;
 	if (tab === 'settings') return 'settings';
 	if (tab === 'evals') return 'evals';
@@ -51,6 +66,7 @@ export function useAgentBuilderMainTabs({
 	const router = useRouter();
 	const i18n = useI18n();
 	const isEvalsEnabled = useAgentEvalsFlag();
+	const settingsStore = useSettingsStore();
 	const selectedSection = ref<AgentBuilderSection>(null);
 
 	async function setSelectedSection(section: AgentBuilderSection) {
@@ -64,6 +80,7 @@ export function useAgentBuilderMainTabs({
 	const activeMainTab = computed<AgentBuilderMainTab>({
 		get() {
 			if (selectedSection.value === 'knowledge') return 'knowledge';
+			if (selectedSection.value === 'goals') return 'goals';
 			if (selectedSection.value === EXECUTIONS_SECTION_KEY) return 'sessions';
 			if (selectedSection.value === 'settings') return 'settings';
 			if (selectedSection.value === 'evals') return 'evals';
@@ -80,6 +97,15 @@ export function useAgentBuilderMainTabs({
 			label: i18n.baseText('agents.builder.header.tab.knowledge' as BaseTextKey),
 			value: 'knowledge',
 		},
+		// Experimental goal-graph steering — tab exists only when the module is on.
+		...(settingsStore.isAgentsGoalGraphFeatureEnabled
+			? [
+					{
+						label: i18n.baseText('agents.builder.header.tab.goals' as BaseTextKey),
+						value: 'goals' as const,
+					},
+				]
+			: []),
 		{ label: i18n.baseText('agents.builder.header.tab.executions'), value: 'sessions' },
 		{
 			label: i18n.baseText('agents.builder.header.tab.settings' as BaseTextKey),
@@ -111,7 +137,11 @@ export function useAgentBuilderMainTabs({
 		() => [routeBacked.value, route.query[SECTION_QUERY_PARAM], isEvalsEnabled.value] as const,
 		([isRouteBacked, section, evalsEnabled]) => {
 			if (!isRouteBacked) return;
-			selectedSection.value = getSectionFromQuery(section, evalsEnabled);
+			const resolved = getSectionFromQuery(section, evalsEnabled);
+			// The goals section only exists while the experimental goal-graph
+			// module is enabled — otherwise fall back to the default (agent) tab.
+			selectedSection.value =
+				resolved === 'goals' && !settingsStore.isAgentsGoalGraphFeatureEnabled ? null : resolved;
 		},
 		{ immediate: true },
 	);

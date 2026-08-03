@@ -7742,6 +7742,7 @@
 	"agents.builder.header.executions": "Executions",
 	"agents.builder.header.tab.agent": "Agent",
 	"agents.builder.header.tab.knowledge": "Knowledge",
+	"agents.builder.header.tab.goals": "Goals",
 	"agents.builder.header.tab.executions": "Sessions",
 	"agents.builder.header.tab.settings": "Settings",
 	"agents.builder.header.tab.memory": "Memory",

@@ -205,6 +205,22 @@ const i18n = useI18n();
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'goals' && goalGraphEnabled"
+					data-testid="agent-goals-tab-content"
+				>
+					<div :class="$style.settingsCards">
+						<N8nCard :class="$style.settingsCard" data-testid="agent-goals-card-wrapper">
+							<AgentGoalsPanel
+								:config="localConfig"
+								:disabled="childrenDisabled"
+								data-testid="agent-goals-card"
+								@update:config="emit('update:config', $event)"
+							/>
+						</N8nCard>
+					</div>
+				</AgentBuilderTabPanel>
+
+				<AgentBuilderTabPanel
 					v-else-if="activeMainTab === 'sessions'"
 					data-testid="agent-sessions-tab-content"
 				>
@@ -228,18 +244,6 @@ const i18n = useI18n();
 								:disabled="childrenDisabled"
 								:project-id="projectId"
 								:agent-id="agentId"
-								@update:config="emit('update:config', $event)"
-							/>
-						</N8nCard>
-						<N8nCard
-							v-if="goalGraphEnabled"
-							:class="$style.settingsCard"
-							data-testid="agent-settings-card"
-						>
-							<AgentGoalsPanel
-								:config="localConfig"
-								:disabled="childrenDisabled"
-								data-testid="agent-goals-card"
 								@update:config="emit('update:config', $event)"
 							/>
 						</N8nCard>
