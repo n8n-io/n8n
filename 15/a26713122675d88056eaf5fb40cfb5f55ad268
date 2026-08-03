@@ -1,0 +1,22 @@
+packages/frontend/@n8n/design-system/src/components/ConditionalRouterLink/ConditionalRouterLink.props.test.ts
+  s_7f74a587f3f1f3::t_a8d5c97c92e778 14,20
+  s_7f74a587f3f1f3::t_655660aa49c0ae 15-17
+  s_7f74a587f3f1f3::t_82307beb1ab282 1-13,18-19,21-30,32-33
+  s_7f74a587f3f1f3::t_a7cf71a475f57f 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "15a26713122675d88056eaf5fb40cfb5f55ad268",
+  "prompts": {},
+  "sessions": {
+    "s_7f74a587f3f1f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ea56e4-9924-44d1-a099-c929e348d2cc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
