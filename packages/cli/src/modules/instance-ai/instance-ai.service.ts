@@ -9,8 +9,6 @@ import type {
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
-	credentialSetupHintSchema,
-	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -5761,49 +5759,12 @@ export class InstanceAiService {
 			}
 		}
 
-		// Whether any requested credential is a recipe-driven Templated Custom Auth
-		// one (guided inline setup), to compare completion against modal-based types.
-		const credentialRequests: unknown[] = Array.isArray(payload.credentialRequests)
-			? payload.credentialRequests
-			: [];
-		const containsTemplatedCred = credentialRequests.some(
-			(request) =>
-				typeof request === 'object' &&
-				request !== null &&
-				(('credentialType' in request &&
-					request.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) ||
-					('setupHint' in request &&
-						request.setupHint !== null &&
-						request.setupHint !== undefined)),
-		);
-
 		this.telemetry.track('Builder asked for input', {
 			thread_id: threadId,
 			input_thread_id: inputThreadId,
 			type,
 			num_steps: numSteps,
-			contains_templated_cred: containsTemplatedCred,
 		});
-
-		// Recipe content at spec time — production visibility into the fields the
-		// offline eval suite grades. Secret-free: recipes are agent-authored
-		// before any user input.
-		for (const request of credentialRequests) {
-			if (typeof request !== 'object' || request === null || !('setupHint' in request)) continue;
-			const parsedHint = credentialSetupHintSchema.safeParse(request.setupHint);
-			if (!parsedHint.success) continue;
-			const hint = parsedHint.data;
-			this.telemetry.track('Builder specced templated cred', {
-				thread_id: threadId,
-				input_thread_id: inputThreadId,
-				template: hint.template,
-				placeholders: hint.placeholders,
-				test_url: hint.testUrl,
-				docs_url: hint.docsUrl,
-				service_host: hint.serviceHost,
-				accepted_status_codes: hint.acceptedStatusCodes,
-			});
-		}
 	}
 
 	private async finalizeCancelledSuspendedRun(
