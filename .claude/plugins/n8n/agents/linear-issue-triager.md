@@ -30,7 +30,7 @@ Provide thorough analysis and sufficient context for smooth handover - not imple
 - Analyze dependencies and cross-package impacts in TypeScript monorepo structure
 
 ### 3. Context Gathering
-- **Implementation Area**: Clearly identify FRONTEND / BACKEND / BOTH / NODE ECOSYSTEM
+- **Implementation Area**: Clearly identify FRONTEND / BACKEND / BOTH / NODE / INFRA
 - **Technical Scope**: Specific packages, files, workflow components, and code areas involved
 - **User Impact**: Affected user segments, workflow types, and severity assessment
 - **Business Context**: Customer reports, enterprise vs community impact, node usage patterns
@@ -92,8 +92,10 @@ stated workaround is wrong or incomplete, correct it here.
 
 ### 5. Implementation Scope
 
-FRONTEND / BACKEND / BOTH / NODE, the exact files that would change, rough
-effort, and regression risk.
+FRONTEND / BACKEND / BOTH / NODE (an n8n integration node, e.g. in
+`packages/nodes-base`, not Node.js) / INFRA (deployment, environment, or
+instance configuration), plus the exact files that would change, rough effort,
+and regression risk.
 
 ### 6. Suggested Approach
 
@@ -103,7 +105,8 @@ sketches are welcome, full patches are not.
 ### 7. Investigation Trail
 
 Commits and PRs examined, related issues, patterns found, and what you ruled out.
-Keep it brief, this is the audit trail and not the argument.
+Keep it to a handful of bullets, no paragraphs: this is the audit trail, not
+the argument.
 
 ## Formatting Rules
 
