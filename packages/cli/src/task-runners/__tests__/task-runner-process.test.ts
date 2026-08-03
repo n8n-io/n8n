@@ -2,7 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { TaskRunnersConfig } from '@n8n/config';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
-import { mock } from 'vitest-mock-extended';
+import { EventEmitter } from 'node:events';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
@@ -204,6 +205,117 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock.mock.calls[0].at(1)).toEqual([
 				expect.stringContaining('/packages/@n8n/task-runner/dist/start.js'),
 			]);
+		});
+	});
+
+	describe('relaunch on unexpected exit', () => {
+		let auth: MockProxy<TaskBrokerAuthService>;
+
+		const createChildProcess = (pid?: number) =>
+			Object.assign(new EventEmitter(), {
+				pid,
+				stdout: new EventEmitter(),
+				stderr: new EventEmitter(),
+				kill: vi.fn(),
+			}) as unknown as ChildProcess;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			auth = mock<TaskBrokerAuthService>();
+			auth.createGrantToken.mockResolvedValue('grantToken');
+			taskRunnerProcess = new JsTaskRunnerProcess(logger, runnerConfig, auth, mock());
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should relaunch the runner after it exits', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			child.emit('exit', 1);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(spawnMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('should keep retrying when a relaunch attempt fails', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+			auth.createGrantToken.mockRejectedValueOnce(new Error('grant token unavailable'));
+
+			child.emit('exit', 1);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(spawnMock).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(spawnMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('should relaunch the runner when it errors without exiting', async () => {
+			const failedSpawn = createChildProcess(undefined);
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValueOnce(failedSpawn).mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			failedSpawn.emit('error', new Error('spawn EAGAIN'));
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(spawnMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('should relaunch only once when a failed spawn emits both error and exit', async () => {
+			const failedSpawn = createChildProcess(undefined);
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValueOnce(failedSpawn).mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			failedSpawn.emit('error', new Error('spawn EAGAIN'));
+			failedSpawn.emit('exit', 1);
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(spawnMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('should not treat an error from a spawned process as an exit', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			child.emit('error', new Error('kill EPERM'));
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(spawnMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not relaunch after stop', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			const stopPromise = taskRunnerProcess.stop();
+			child.emit('exit', 0);
+			await stopPromise;
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(spawnMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('should stop retrying once shutdown begins', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+			auth.createGrantToken.mockRejectedValue(new Error('grant token unavailable'));
+
+			child.emit('exit', 1);
+			await vi.advanceTimersByTimeAsync(0);
+			await taskRunnerProcess.stop();
+			await vi.advanceTimersByTimeAsync(10_000);
+
+			expect(spawnMock).toHaveBeenCalledTimes(1);
 		});
 	});
 });
