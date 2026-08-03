@@ -1,12 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
+import pLimit from 'p-limit';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings, Span, Tracing } from 'n8n-core';
 
 import type { EventService } from '@/events/event.service';
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import type { WorkflowPublicationActivationLimiter } from '@/workflows/publication/workflow-publication-activation-limiter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import type { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
@@ -21,6 +23,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const reporter = mock<PublicationStatusReporter>();
 	const tracing = mock<Tracing>();
 	const eventService = mock<EventService>();
+	const activationLimiter = mock<WorkflowPublicationActivationLimiter>();
 
 	let consumer: WorkflowPublicationOutboxConsumer;
 
@@ -43,6 +46,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			new WorkflowPublicationLifecycleLock(),
 			tracing,
 			eventService,
+			activationLimiter,
 		);
 	}
 
@@ -65,6 +69,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
 		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
+		activationLimiter.run.mockImplementation(async (fn) => await fn());
 		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
 		applier.apply.mockResolvedValue({ type: 'completed', triggerStatuses: [] });
 		reporter.report.mockResolvedValue(undefined);
@@ -240,6 +245,62 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			releases.get(3)!();
 			const processed = await drain;
 			expect(processed).toBe(3);
+		});
+	});
+
+	describe('shared activation limiter', () => {
+		test('claims and processes every record inside a limiter permit', async () => {
+			// The claim must sit inside the permit too: a worker that claims first
+			// and then waits for a permit would leave the record in_progress,
+			// burning lease time while direct re-registrations hold the budget.
+			let permitDepth = 0;
+			const observed: Array<{ op: 'claim' | 'apply'; underPermit: boolean }> = [];
+			activationLimiter.run.mockImplementation(async (fn) => {
+				permitDepth++;
+				try {
+					return await fn();
+				} finally {
+					permitDepth--;
+				}
+			});
+			const records = [
+				makeRecord({ id: 1, workflowId: 'wf-1' }),
+				makeRecord({ id: 2, workflowId: 'wf-2' }),
+			];
+			outboxRepository.claimNextPendingRecord.mockImplementation(async () => {
+				observed.push({ op: 'claim', underPermit: permitDepth > 0 });
+				return records.shift() ?? null;
+			});
+			applier.apply.mockImplementation(async () => {
+				observed.push({ op: 'apply', underPermit: permitDepth > 0 });
+				return { type: 'completed', triggerStatuses: [] };
+			});
+			consumer.startPolling();
+
+			const processed = await consumer.drainPending();
+
+			expect(processed).toBe(2);
+			expect(observed.filter((entry) => entry.op === 'apply')).toHaveLength(2);
+			expect(observed.every((entry) => entry.underPermit)).toBe(true);
+		});
+
+		test('drains everything even when the limiter is narrower than the worker count', async () => {
+			// A capacity-1 budget under two workers: the wiring must serialize the
+			// iterations without deadlocking or dropping records.
+			const limit = pLimit(1);
+			activationLimiter.run.mockImplementation(async (fn) => await limit(fn));
+			consumer = createConsumer(true, true, 2);
+			outboxRepository.claimNextPendingRecord
+				.mockResolvedValueOnce(makeRecord({ id: 1, workflowId: 'wf-1' }))
+				.mockResolvedValueOnce(makeRecord({ id: 2, workflowId: 'wf-2' }))
+				.mockResolvedValueOnce(makeRecord({ id: 3, workflowId: 'wf-3' }))
+				.mockResolvedValue(null);
+			consumer.startPolling();
+
+			const processed = await consumer.drainPending();
+
+			expect(processed).toBe(3);
+			expect(applier.apply).toHaveBeenCalledTimes(3);
 		});
 	});
 

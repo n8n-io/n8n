@@ -16,6 +16,7 @@ import type { PublicationResult } from '@/workflows/publication/publication-resu
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
+import { WorkflowPublicationActivationLimiter } from './workflow-publication-activation-limiter';
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It owns the
@@ -47,6 +48,7 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 		private readonly tracing: Tracing,
 		private readonly eventService: EventService,
+		private readonly workflowPublicationActivationLimiter: WorkflowPublicationActivationLimiter,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -168,10 +170,14 @@ export class WorkflowPublicationOutboxConsumer {
 				let aborted = false;
 				const runWorker = async () => {
 					while (!aborted && this.shouldKeepPolling()) {
-						const record = await this.outboxRepository.claimNextPendingRecord();
-						if (!record) break;
+						const outcome = await this.workflowPublicationActivationLimiter.run(async () => {
+							const record = await this.outboxRepository.claimNextPendingRecord();
+							if (!record) return 'drained';
+							await this.processRecord(record);
+							return 'processed';
+						});
 
-						await this.processRecord(record);
+						if (outcome === 'drained') break;
 						processed++;
 					}
 				};
