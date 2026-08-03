@@ -1,2 +1,1 @@
-export { toKafkaJSConfig } from './config';
-export { getKafkaLibrary } from './client';
+export { createKafkaProducer } from './producer';
