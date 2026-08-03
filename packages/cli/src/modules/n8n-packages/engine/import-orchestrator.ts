@@ -59,7 +59,7 @@ import type {
 } from '../n8n-packages.types';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
 import { toImportBlockedError } from './import-blocked.error';
-import { assertVariableCreationAllowed, assertVariableUpdateAllowed } from './import-gates';
+import { assertVariableWritesAllowed } from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -134,14 +134,10 @@ export class ImportOrchestrator {
 		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
 		const overwrites = plans.flatMap((plan) => plan.variablePlan.overwrites);
 
-		assertVariableCreationAllowed({
+		assertVariableWritesAllowed({
 			licenseState: this.licenseState,
 			apiKeyScopes: options.apiKeyScopes,
 			hasCreations: creations.length > 0,
-		});
-		assertVariableUpdateAllowed({
-			licenseState: this.licenseState,
-			apiKeyScopes: options.apiKeyScopes,
 			hasOverwrites: overwrites.length > 0,
 		});
 

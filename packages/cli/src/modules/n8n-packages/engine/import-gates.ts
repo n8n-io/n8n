@@ -17,40 +17,26 @@ export function assertPackageImportApiKeyScopes(
 }
 
 /**
- * Gated on what the import will create, not on what the package requires: a package whose variables
- * all resolve creates nothing, so it needs neither the licence nor the scope. Mirrors the variables UI.
+ * Gated on what the import will write, not on what the package requires: a package whose variables
+ * all resolve writes nothing, so it needs neither the licence nor a scope. Mirrors the variables UI.
+ * One licence covers both writes; the API key scopes are per write.
  */
-export function assertVariableCreationAllowed(options: {
+export function assertVariableWritesAllowed(options: {
 	licenseState: LicenseState;
 	apiKeyScopes: string[] | undefined;
 	hasCreations: boolean;
-}): void {
-	const { licenseState, apiKeyScopes, hasCreations } = options;
-	if (!hasCreations) return;
-
-	if (!licenseState.isVariablesLicensed()) {
-		throw new ForbiddenError(
-			'Your license does not allow variables. Importing a package that creates variables requires a license that supports variables.',
-		);
-	}
-	assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
-}
-
-/** Same shape as the creation gate: only an import that would rewrite a value needs the licence and scope. */
-export function assertVariableUpdateAllowed(options: {
-	licenseState: LicenseState;
-	apiKeyScopes: string[] | undefined;
 	hasOverwrites: boolean;
 }): void {
-	const { licenseState, apiKeyScopes, hasOverwrites } = options;
-	if (!hasOverwrites) return;
+	const { licenseState, apiKeyScopes, hasCreations, hasOverwrites } = options;
+	if (!hasCreations && !hasOverwrites) return;
 
 	if (!licenseState.isVariablesLicensed()) {
 		throw new ForbiddenError(
-			'Your license does not allow variables. Importing a package that overwrites variables requires a license that supports variables.',
+			'Your license does not allow variables. Importing a package that writes variables requires a license that supports variables.',
 		);
 	}
-	assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:update']);
+	if (hasCreations) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
+	if (hasOverwrites) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:update']);
 }
 
 /**
